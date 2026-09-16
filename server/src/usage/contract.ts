@@ -36,15 +36,15 @@ export interface ProviderUsage {
   /** Claude only: provider-authoritative once-weekly session reset offer. */
   limitReset?: ClaudeLimitResetStatus | null;
   /**
-   * Claude only: every connected account's meters, active one first. The
+   * Claude and Codex: every connected account's meters, in registry order. The
    * top-level fields above describe the ACTIVE account, so a single-account
    * install reads exactly as it always did.
    */
-  accounts?: ClaudeAccountUsageBlock[];
+  accounts?: ProviderAccountUsageBlock[];
 }
 
-/** One connected Claude subscription's meters (Settings → Usage, one block each). */
-export interface ClaudeAccountUsageBlock {
+/** One connected subscription's meters (Settings → Usage, one block each). */
+export interface ProviderAccountUsageBlock {
   accountId: string;
   /** User-facing account name (defaults to the account email). */
   label: string;
@@ -56,7 +56,14 @@ export interface ClaudeAccountUsageBlock {
   capturedAt: string | null;
   source: string | null;
   limitReset: ClaudeLimitResetStatus | null;
+  /** Codex only: whether the account's credential is still present. */
+  connected?: boolean;
+  /** Codex only: degraded reason for this account, if any. */
+  error?: string | null;
 }
+
+/** Kept for the Claude-side callers and tests. */
+export type ClaudeAccountUsageBlock = ProviderAccountUsageBlock;
 
 export interface UsageResponse {
   providers: { claude: ProviderUsage; codex: ProviderUsage; grok: ProviderUsage };

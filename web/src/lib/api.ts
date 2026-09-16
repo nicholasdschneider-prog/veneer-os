@@ -682,25 +682,43 @@ export const api = {
   claudeTest: () => requestJson<{ result: ProbeResult }>('/api/admin/claude/test', { method: 'POST' }),
   openRouterTest: () => requestJson<{ result: ProbeResult }>('/api/admin/openrouter/test', { method: 'POST' }),
 
-  // Codex account (owner/consultant only). Codex owns ~/.codex/auth.json, so
-  // there's no token to store — the device flow just drives `codex login`.
+  // Codex accounts (owner/consultant only). Codex owns `$CODEX_HOME/auth.json`,
+  // so there's no token to store — each account is its own profile directory
+  // and the device flow drives `codex login` into a staging one.
   codexStatus: () => requestJson<CodexStatus>('/api/admin/codex/status'),
   codexInstall: () => requestJson<{ detail: string }>('/api/admin/codex/install', { method: 'POST' }),
-  codexConnectStart: (force = false) =>
+  // Adding an account never signs a connected one out (the login lands in a
+  // staging profile), so nothing changes until the poll reports success.
+  codexConnectStart: () =>
     requestJson<{ attemptId: string; verificationUrl: string; userCode: string; expiresAt: string }>(
       '/api/admin/codex/connect/start',
-      { method: 'POST', body: JSON.stringify({ force }) },
-    ).then(codexAccountChanged),
+      { method: 'POST', body: JSON.stringify({}) },
+    ),
   codexConnectPoll: (attemptId: string) =>
-    requestJson<{ state: CodexAttemptState; detail: string }>('/api/admin/codex/connect/poll', {
-      method: 'POST',
-      body: JSON.stringify({ attemptId }),
-    }).then((result) => result.state === 'success' ? codexAccountChanged(result) : result),
+    requestJson<{ state: CodexAttemptState; detail: string; account?: CodexAccount | null; accounts?: CodexAccount[] }>(
+      '/api/admin/codex/connect/poll',
+      { method: 'POST', body: JSON.stringify({ attemptId }) },
+    ).then((result) => result.state === 'success' ? codexAccountChanged(result) : result),
   codexConnectCancel: (attemptId: string) =>
     requestJson<{ cancelled: boolean }>('/api/admin/codex/connect/cancel', {
       method: 'POST',
       body: JSON.stringify({ attemptId }),
     }),
+  // Switch which connected Codex account new turns run on (next message).
+  codexAccountActivate: (id: string) =>
+    requestJson<{ accounts: CodexAccount[] }>(`/api/admin/codex/accounts/${encodeURIComponent(id)}/activate`, {
+      method: 'POST',
+    }).then(codexAccountChanged),
+  codexAccountRename: (id: string, label: string) =>
+    requestJson<{ accounts: CodexAccount[] }>(`/api/admin/codex/accounts/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ label }),
+    }),
+  codexAccountRemove: (id: string) =>
+    requestJson<{ accounts: CodexAccount[]; connected: boolean }>(
+      `/api/admin/codex/accounts/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    ).then(codexAccountChanged),
   codexDisconnect: () =>
     requestJson<{ connected: boolean }>('/api/admin/codex/disconnect', { method: 'POST' }).then(codexAccountChanged),
 
@@ -1483,12 +1501,27 @@ export interface ProbeResult {
 
 export type CodexAttemptState = 'pending' | 'success' | 'error' | 'expired' | 'no_attempt';
 
+export interface CodexAccount {
+  id: string;
+  /** User-facing name; defaults to the account email. */
+  label: string;
+  email: string | null;
+  planType: string | null;
+  connectedAt: string;
+  /** True for the account new turns run on. */
+  active: boolean;
+  /** Whether the account's profile still holds a credential. */
+  connected: boolean;
+}
+
 export interface CodexStatus {
   connected: boolean;
   method: 'chatgpt' | 'apikey' | null;
   installed: boolean;
-  /** Signed-in ChatGPT identity (ChatGPT logins only); null when unknown. */
+  /** Signed-in ChatGPT identity of the active account; null when unknown. */
   account?: { email: string | null; plan: string | null } | null;
+  /** Every connected subscription. Optional across adjacent releases. */
+  accounts?: CodexAccount[];
 }
 
 export type GrokAttemptState = 'pending' | 'success' | 'error' | 'expired' | 'no_attempt';
@@ -1528,12 +1561,12 @@ export interface ProviderUsage {
   error: string | null;
   /** Claude only: live, provider-authoritative weekly session-reset offer. */
   limitReset?: ClaudeLimitResetStatus | null;
-  /** Claude only: per-account meters when more than one account is connected. */
-  accounts?: ClaudeAccountUsage[];
+  /** Claude and Codex: per-account meters, one block per connected account. */
+  accounts?: ProviderAccountUsage[];
 }
 
-/** One connected Claude subscription's meters. */
-export interface ClaudeAccountUsage {
+/** One connected subscription's meters (Claude or Codex). */
+export interface ProviderAccountUsage {
   accountId: string;
   label: string;
   accountEmail: string | null;
@@ -1543,7 +1576,14 @@ export interface ClaudeAccountUsage {
   capturedAt: string | null;
   source: string | null;
   limitReset: ClaudeLimitResetStatus | null;
+  /** Codex only: whether the account's credential is still present. */
+  connected?: boolean;
+  /** Codex only: degraded reason for this account, if any. */
+  error?: string | null;
 }
+
+/** Kept for the Claude-side call sites. */
+export type ClaudeAccountUsage = ProviderAccountUsage;
 
 export interface ClaudeLimitResetStatus {
   available: boolean;

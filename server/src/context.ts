@@ -6,6 +6,7 @@ import type { UserRow } from './db/db.js';
 import type { SecretStore } from './secrets/store.js';
 import type { ClaudeConnectManager } from './claude/setupToken.js';
 import type { CodexConnectManager } from './codex/deviceAuth.js';
+import type { CodexAccountStore } from './codex/accounts.js';
 import type { GrokConnectManager } from './grok/deviceAuth.js';
 import type { CodexUsageReader } from './usage/codex.js';
 import type { GrokUsageReader } from './usage/grok.js';
@@ -39,6 +40,8 @@ export interface AppContext {
   projectDopplerCli?: ProjectDopplerCli | null;
   claudeConnect: ClaudeConnectManager;
   codexConnect: CodexConnectManager;
+  /** Registry of connected Codex accounts and their profiles (see codex/accounts.ts). */
+  codexAccounts: CodexAccountStore;
   /** Drives `grok login --device-auth`; Grok owns its own auth.json. */
   grokConnect: GrokConnectManager;
   /** On-demand Codex subscription usage (live RPC, session-file fallback, ~60s cache). */

@@ -20,6 +20,7 @@ import {
   type ClaudePreferences,
   type ClaudeStatus,
   type ProbeResult,
+  type CodexAccount,
   type CodexStatus,
   type CodexAttemptState,
   type GrokStatus,
@@ -121,7 +122,18 @@ export function ProviderVersionLine({ info }: { info: ProviderRuntimeVersion | n
  * the next message, which is the whole point: hit a 5-hour limit on one
  * account, click another, keep working — no logout/login cycle.
  */
-function ClaudeAccountRow({
+/** The fields a per-account row needs; Claude and Codex accounts both carry them. */
+interface AccountRowModel {
+  id: string;
+  label: string;
+  email: string | null;
+  planType: string | null;
+  active: boolean;
+  /** Codex only: the profile lost its credential (sign in again). */
+  connected?: boolean;
+}
+
+function ProviderAccountRow({
   account,
   busy,
   renaming,
@@ -132,7 +144,7 @@ function ClaudeAccountRow({
   onRemove,
   removable,
 }: {
-  account: ClaudeAccount;
+  account: AccountRowModel;
   busy: boolean;
   renaming: boolean;
   onRename: () => void;
@@ -174,7 +186,11 @@ function ClaudeAccountRow({
         )}
         <span className="truncate text-xs text-muted-foreground">
           {account.email && account.email !== account.label ? `${account.email} · ` : ''}
-          {account.active ? 'Active — new messages use this account' : 'Connected'}
+          {account.connected === false
+            ? 'Signed out — connect again to use this account'
+            : account.active
+              ? 'Active — new messages use this account'
+              : 'Connected'}
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -563,7 +579,7 @@ export function AccountsPage({ showNewChatDefaults = true }: { showNewChatDefaul
             <>
               <ul className="flex flex-col gap-2">
                 {accounts.map((account) => (
-                  <ClaudeAccountRow
+                  <ProviderAccountRow
                     key={account.id}
                     account={account}
                     busy={accountBusy === account.id}
@@ -1084,11 +1100,11 @@ export function NewChatDefaultsCard({
 }
 
 /**
- * Codex account: `codex login --device-auth`. Mirror image of the Claude card —
+ * Codex accounts: `codex login --device-auth`. Mirror image of the Claude card —
  * the code is entered on the WEBSITE (phone), nothing is pasted back, and the
- * CLI writes ~/.codex/auth.json itself, so this polls for completion instead of
- * taking a code. HAZARD: starting a sign-in wipes the current login, so we
- * confirm before replacing a connected account (force=true).
+ * CLI writes auth.json itself, so this polls for completion instead of taking
+ * a code. Several subscriptions can be connected with one active; a sign-in
+ * runs in a staging profile, so adding an account never signs another out.
  */
 function CodexAccountCard({
   children,
@@ -1103,9 +1119,11 @@ function CodexAccountCard({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState<{ attemptId: string; verificationUrl: string; userCode: string; expiresAt: string } | null>(null);
   const [busy, setBusy] = useState<null | 'start' | 'disconnect' | 'install'>(null);
+  const [accountBusy, setAccountBusy] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; label: string } | null>(null);
   const [flowError, setFlowError] = useState<string | null>(null);
   const [pollState, setPollState] = useState<CodexAttemptState | null>(null);
-  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [signedIn, setSignedIn] = useState<CodexAccount | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -1116,6 +1134,7 @@ function CodexAccountCard({
   const expired = attempt !== null && remaining <= 0;
   const connected = status?.connected ?? false;
   const installed = status?.installed ?? true;
+  const accounts = status?.accounts ?? [];
 
   const loadStatus = useCallback(() => {
     api.codexStatus().then((s) => { setStatus(s); setLoadError(null); }).catch((err: Error) => setLoadError(err.message));
@@ -1133,6 +1152,8 @@ function CodexAccountCard({
         setPollState(r.state);
         if (r.state === 'success') {
           setAttempt(null);
+          setSignedIn(r.account ?? null);
+          if (r.accounts) setStatus((prev) => (prev ? { ...prev, accounts: r.accounts, connected: true } : prev));
           loadStatus();
         } else if (r.state === 'error' || r.state === 'expired' || r.state === 'no_attempt') {
           setAttempt(null);
@@ -1145,9 +1166,8 @@ function CodexAccountCard({
     return () => { stop = true; clearInterval(iv); };
   }, [attempt, pollState, loadStatus]);
 
-  // Best-effort cancel of an in-flight attempt if the user leaves. NOTE: a
-  // cancelled attempt leaves Codex logged out (device-auth wiped auth.json on
-  // start) — the UI warns about this before starting.
+  // Best-effort cancel of an in-flight attempt if the user leaves. The login
+  // runs in a staging profile, so cancelling loses nothing already connected.
   useEffect(() => {
     return () => {
       const a = attemptRef.current;
@@ -1155,28 +1175,21 @@ function CodexAccountCard({
     };
   }, []);
 
-  const doStart = useCallback(async (force: boolean) => {
+  const doStart = useCallback(async () => {
     setBusy('start');
     setFlowError(null);
     setPollState(null);
-    setConfirmReplace(false);
+    setSignedIn(null);
     try {
-      const r = await api.codexConnectStart(force);
+      const r = await api.codexConnectStart();
       setAttempt({ attemptId: r.attemptId, verificationUrl: r.verificationUrl, userCode: r.userCode, expiresAt: r.expiresAt });
       setPollState('pending');
     } catch (err) {
-      // The server sends 409 already_connected as an Error with that message.
-      if (/already signed in/i.test((err as Error).message)) setConfirmReplace(true);
-      else setFlowError((err as Error).message);
+      setFlowError((err as Error).message);
     } finally {
       setBusy(null);
     }
   }, []);
-
-  const startConnect = useCallback(() => {
-    if (connected) setConfirmReplace(true);
-    else void doStart(false);
-  }, [connected, doStart]);
 
   const doInstall = useCallback(async () => {
     setBusy('install');
@@ -1201,9 +1214,29 @@ function CodexAccountCard({
     loadStatus();
   }, [loadStatus]);
 
+  /** Run an account action and fold its fresh list back into status. */
+  const accountAction = useCallback(
+    async (id: string, run: () => Promise<{ accounts: CodexAccount[] }>) => {
+      setAccountBusy(id);
+      setFlowError(null);
+      setSignedIn(null);
+      try {
+        const r = await run();
+        setStatus((prev) => (prev ? { ...prev, accounts: r.accounts, connected: r.accounts.some((a) => a.active && a.connected) } : prev));
+        loadStatus();
+      } catch (err) {
+        setFlowError((err as Error).message);
+      } finally {
+        setAccountBusy(null);
+      }
+    },
+    [loadStatus],
+  );
+
   const disconnect = useCallback(async () => {
     setBusy('disconnect');
     setFlowError(null);
+    setSignedIn(null);
     try {
       await api.codexDisconnect();
       setConfirmLogout(false);
@@ -1226,14 +1259,17 @@ function CodexAccountCard({
 
   const sourceLine = (): string => {
     if (!installed) return "The Codex CLI isn't installed on this machine yet.";
-    if (!connected) return 'Connect a ChatGPT (Codex) subscription so your assistants can run on Codex.';
+    if (!connected && accounts.length === 0) return 'Connect a ChatGPT (Codex) subscription so your assistants can run on Codex.';
     if (status?.method === 'apikey') return 'Connected with an OpenAI API key.';
+    if (accounts.length > 1) {
+      return 'Several Codex subscriptions are connected. Pick which one answers; hit a usage limit and Veneer moves to the one with the most headroom.';
+    }
     const acct = status?.account;
     if (acct?.email) {
       const plan = acct.plan ? ` · ${acct.plan.charAt(0).toUpperCase()}${acct.plan.slice(1)} plan` : '';
       return `Signed in as ${acct.email}${plan}.`;
     }
-    return 'Connected with ChatGPT.';
+    return connected ? 'Connected with ChatGPT.' : 'The connected account is signed out. Connect again to keep using Codex.';
   };
 
   return (
@@ -1241,7 +1277,7 @@ function CodexAccountCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg font-semibold">
           <ProviderIcon provider="codex" variant="color" className="size-5" />
-          Codex account
+          {accounts.length > 1 ? 'Codex accounts' : 'Codex account'}
         </CardTitle>
         <CardAction>
           {status ? (
@@ -1250,7 +1286,11 @@ function CodexAccountCard({
                 connected ? 'bg-accent text-brand' : 'bg-destructive/10 text-destructive'
               }`}
             >
-              {!installed ? 'Not installed' : connected ? 'Connected' : 'Not connected'}
+              {!installed
+                ? 'Not installed'
+                : connected
+                  ? accounts.length > 1 ? `${accounts.length} connected` : 'Connected'
+                  : 'Not connected'}
             </span>
           ) : (
             <span className="shrink-0 text-xs text-muted-foreground">…</span>
@@ -1263,12 +1303,47 @@ function CodexAccountCard({
           <div className="mb-4 rounded-xl bg-destructive/10 px-4 py-2.5 text-destructive">{loadError}</div>
         ) : null}
 
-        {!attempt && !confirmReplace ? <p className="text-muted-foreground">{sourceLine()}</p> : null}
+        {!attempt ? <p className="text-muted-foreground">{sourceLine()}</p> : null}
         <ProviderVersionLine info={version} />
+
+        {accounts.length > 0 && !attempt ? (
+          <div className="mt-4">
+            <ul className="flex flex-col gap-2">
+              {accounts.map((account) => (
+                <ProviderAccountRow
+                  key={account.id}
+                  account={account}
+                  busy={accountBusy === account.id}
+                  renaming={renaming?.id === account.id}
+                  onRename={() => setRenaming({ id: account.id, label: account.label })}
+                  onRenameChange={(label) => setRenaming({ id: account.id, label })}
+                  onRenameCommit={(label) => {
+                    setRenaming(null);
+                    const next = label?.trim();
+                    if (!next || next === account.label) return;
+                    void accountAction(account.id, () => api.codexAccountRename(account.id, next));
+                  }}
+                  onActivate={() => void accountAction(account.id, () => api.codexAccountActivate(account.id))}
+                  onRemove={() => void accountAction(account.id, () => api.codexAccountRemove(account.id))}
+                  // Removing the last account would leave the assistant unable
+                  // to answer; Disconnect below is the explicit way to do that.
+                  removable={accounts.length > 1}
+                />
+              ))}
+            </ul>
+            {accounts.length > 1 ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Switching applies to your next message. A reply already in progress finishes on the account it
+                started with.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {!attempt && pollState === 'success' ? (
           <div className="mt-4 flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-brand">
-            <CheckCircle2 className="size-4 shrink-0" /> Signed in to Codex.
+            <CheckCircle2 className="size-4 shrink-0" />
+            {signedIn?.email ? `Signed in to Codex as ${signedIn.email}.` : 'Signed in to Codex.'}
           </div>
         ) : null}
 
@@ -1280,7 +1355,7 @@ function CodexAccountCard({
           <div className="mt-4 flex flex-col gap-2">
             <div className="overflow-hidden rounded-2xl border">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
-                <p className="font-semibold">Connect in two steps</p>
+                <p className="font-semibold">{accounts.length > 0 ? 'Add a Codex account in two steps' : 'Connect in two steps'}</p>
                 <TimerPill remaining={remaining} />
               </div>
               {expired ? (
@@ -1296,6 +1371,11 @@ function CodexAccountCard({
                     <div className="flex min-w-0 flex-1 flex-col gap-3">
                       <div>
                         <p className="font-medium">Open the sign-in link</p>
+                        {accounts.length > 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            Sign in with the other ChatGPT account there. Accounts already connected stay signed in.
+                          </p>
+                        ) : null}
                       </div>
                       <Button asChild className="h-10 max-w-full self-start rounded-xl px-5">
                         <a href={attempt.verificationUrl} target="_blank" rel="noopener noreferrer">
@@ -1333,7 +1413,7 @@ function CodexAccountCard({
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onPointerUp={() => void doStart(true)}
+                onPointerUp={() => void doStart()}
                 disabled={busy === 'start'}
               >
                 {busy === 'start' ? 'Starting…' : 'Start over'}
@@ -1348,21 +1428,6 @@ function CodexAccountCard({
               </Button>
             </div>
           </div>
-        ) : confirmReplace ? (
-          <div className="mt-4 flex flex-col gap-3">
-            <div className="rounded-xl bg-amber-500/10 px-4 py-2.5 text-amber-700 dark:text-amber-300">
-              Codex is already signed in. Starting a new sign-in signs the current account out first — you'll be logged
-              out until you finish.
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button className="h-10 rounded-xl px-5" onPointerUp={() => void doStart(true)} disabled={busy === 'start'}>
-                {busy === 'start' ? 'Starting…' : 'Replace sign-in'}
-              </Button>
-              <Button variant="outline" className="h-10 rounded-xl px-5" onPointerUp={() => setConfirmReplace(false)}>
-                Keep current
-              </Button>
-            </div>
-          </div>
         ) : !installed ? (
           <div className="mt-4">
             <Button className="h-10 rounded-xl px-5" onPointerUp={() => void doInstall()} disabled={busy === 'install'}>
@@ -1371,23 +1436,23 @@ function CodexAccountCard({
           </div>
         ) : (
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button className="h-10 rounded-xl px-5" onPointerUp={startConnect} disabled={busy === 'start'}>
+            <Button className="h-10 rounded-xl px-5" onPointerUp={() => void doStart()} disabled={busy === 'start'}>
               {busy === 'start' ? (
                 'Starting…'
               ) : (
                 <>
-                  {connected ? 'Reconnect' : 'Connect Codex'}
-                  {!connected ? <ArrowRight /> : null}
+                  {accounts.length > 0 ? 'Add another account' : 'Connect Codex'}
+                  {accounts.length === 0 ? <ArrowRight /> : null}
                 </>
               )}
             </Button>
-            {connected ? (
+            {accounts.length > 0 ? (
               <Button
                 variant="ghost"
                 className="h-9 rounded-xl px-3 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onPointerUp={() => setConfirmLogout(true)}
               >
-                Disconnect
+                {accounts.length > 1 ? 'Disconnect all' : 'Disconnect'}
               </Button>
             ) : null}
           </div>
@@ -1398,8 +1463,12 @@ function CodexAccountCard({
       <Dialog open={confirmLogout} onOpenChange={setConfirmLogout}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Disconnect Codex?</DialogTitle>
-            <DialogDescription>Removes this machine's Codex credentials. You can connect again anytime.</DialogDescription>
+            <DialogTitle>{accounts.length > 1 ? 'Disconnect every Codex account?' : 'Disconnect Codex?'}</DialogTitle>
+            <DialogDescription>
+              {accounts.length > 1
+                ? "Removes this machine's credentials for all connected Codex accounts. You can connect them again anytime."
+                : "Removes this machine's Codex credentials. You can connect again anytime."}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <Button variant="outline" className="h-11 flex-1 rounded-xl" onPointerUp={() => setConfirmLogout(false)}>

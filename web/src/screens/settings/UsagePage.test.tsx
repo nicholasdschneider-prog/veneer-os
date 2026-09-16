@@ -220,6 +220,24 @@ describe('usage card order', () => {
     expect(cards[2]?.accountId).toBe('active');
   });
 
+  it('gives each connected Codex account its own card, switchable like Claude', () => {
+    const cards = orderUsageCards({
+      claude: disconnectedProvider,
+      codex: {
+        ...disconnectedProvider,
+        connected: true,
+        accounts: [
+          account({ accountId: 'c1', label: 'Work', active: true, windows: used(70) }),
+          account({ accountId: 'c2', label: 'Home', windows: used(5) }),
+        ],
+      },
+    });
+    expect(cards.map((c) => c.key)).toEqual(['claude', 'codex:c1', 'codex:c2']);
+    expect(cards[1]).toMatchObject({ kind: 'codex', name: 'Work', active: true, accountId: 'c1' });
+    expect(cards[2]).toMatchObject({ kind: 'codex', name: 'Home', active: false, accountId: 'c2' });
+    expect(cards[2]?.usage.windows[0]?.usedPercent).toBe(5);
+  });
+
   it('falls back to a single Claude card when only one account is connected', () => {
     const cards = orderUsageCards({ claude: disconnectedProvider, codex: disconnectedProvider });
     expect(cards.map((c) => c.key)).toEqual(['claude', 'codex']);

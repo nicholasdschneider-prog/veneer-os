@@ -124,14 +124,14 @@ describe('Codex usage disconnect lifecycle', () => {
     expect(codexRingModel(current(), Date.now())?.percent).toBe(4);
   });
 
-  it('clears the previous meter when replacement sign-in starts', async () => {
+  it('clears the previous meter when the active account changes', async () => {
     const refresh = deferred<Response>();
     fetchMock.mockResolvedValueOnce(json(usage(true)))
-      .mockResolvedValueOnce(json({ ok: true, attemptId: 'replacement' }))
+      .mockResolvedValueOnce(json({ ok: true, accounts: [] }))
       .mockReturnValueOnce(refresh.promise);
     useUsage(false);
     await flush();
-    await api.codexConnectStart(true);
+    await api.codexAccountActivate('other');
     expect(codexRingModel(current(), Date.now())).toBeNull();
     refresh.resolve(json(usage(false)));
     await flush();

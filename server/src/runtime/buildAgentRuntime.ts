@@ -6,6 +6,9 @@ import type { AssistantRow, ConversationRow } from '../db/db.js';
 import type { SecretStore } from '../secrets/store.js';
 import { LEGACY_ACCOUNT_ID, type UsageStore } from '../usage/store.js';
 import { createClaudeAdapter } from '../providers/claude/adapter.js';
+import { createCodexAccountFailover } from '../providers/codex/accountFailover.js';
+import { createCodexAccountStore, ensureCodexAccountHome, type CodexAccountStore } from '../codex/accounts.js';
+import { createCodexAccountUsage, type CodexUsageReader } from '../usage/codex.js';
 import { createClaudeAccountFailover } from '../providers/claude/accountFailover.js';
 import type { ClaudeProbe } from '../usage/claudeProbe.js';
 import { createCodexAdapter } from '../providers/codexAppServer/adapter.js';
@@ -136,12 +139,18 @@ export function buildAgentRuntime({
   doppler,
   usage,
   claudeProbe,
+  codexAccounts = createCodexAccountStore(config.dataDir),
+  codexUsage = createCodexAccountUsage({ codexBin: config.codexBin, accounts: codexAccounts }),
 }: {
   config: Config;
   db: Database.Database;
   secrets: SecretStore;
   doppler: DopplerRuntime;
   usage: UsageStore;
+  /** Connected Codex accounts; defaults to the registry in `config.dataDir`. */
+  codexAccounts?: CodexAccountStore;
+  /** Per-account Codex usage, consulted by failover to rank spare accounts. */
+  codexUsage?: Pick<CodexUsageReader, 'read'>;
   claudeProbe?: Pick<ClaudeProbe, 'refreshIfStale'>;
 }): AgentRuntime {
   const projectDopplerCli = enableProjectDopplerCli(config.dataDir, process.env);
@@ -200,6 +209,13 @@ export function buildAgentRuntime({
       // here. App Server can resume their native Codex thread ids, while this
       // fallback keeps their already-rendered turns visible.
       legacyTranscriptsDir: path.join(config.dataDir, 'codex-transcripts'),
+      getAccountId: () => codexAccounts.activeAccountId(),
+      // Every account is its own CODEX_HOME sharing the primary profile's
+      // history through links; refresh those links before each spawn.
+      codexHomeFor: (accountId) => ensureCodexAccountHome(codexAccounts.homeFor(accountId)),
+      onUsageLimit: (event) => {
+        void codexFailover.handleUsageLimit(event);
+      },
     }),
     grok: createGrokAdapter({
       grokBin: config.grokBin,
@@ -314,6 +330,7 @@ export function buildAgentRuntime({
 
   // Wire recovery as part of runtime construction so a boot caller cannot omit it.
   const claudeFailover = createClaudeAccountFailover({ db, secrets, usage, manager, probe: claudeProbe });
+  const codexFailover = createCodexAccountFailover({ db, accounts: codexAccounts, usage: codexUsage, manager });
 
   return {
     adapters,

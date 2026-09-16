@@ -6,8 +6,10 @@ import {
   codexWindows,
   normalizeCodexRpc,
   normalizeCodexSession,
+  type ProviderAccountUsageBlock,
   type ProviderUsage,
 } from './contract.js';
+import type { CodexAccountStore } from '../codex/accounts.js';
 
 /**
  * On-demand Codex subscription usage. Primary source is the live
@@ -25,6 +27,8 @@ const SESSION_SCAN_LIMIT = 5;
 
 export interface CodexUsageReaderOptions {
   codexBin: string;
+  /** The account profile to read (default: CODEX_HOME, then Pro's primary profile). */
+  codexHome?: string;
   /** Override the app-server client (tests). */
   client?: AppServerClient;
   /** Session directory to scan for the fallback (default ~/.codex/sessions). */
@@ -115,7 +119,7 @@ export function readNewestSessionRateLimits(sessionsDir: string, capturedAfter =
 
 export function createCodexUsageReader(opts: CodexUsageReaderOptions): CodexUsageReader {
   const log = opts.log ?? console;
-  const codexHome = process.env.CODEX_HOME?.trim() || proCodexHome();
+  const codexHome = opts.codexHome ?? (process.env.CODEX_HOME?.trim() || proCodexHome());
   const sessionsDir = opts.sessionsDir ?? path.join(codexHome, 'sessions');
   const authFile = opts.authFile ?? path.join(codexHome, 'auth.json');
   const cacheTtl = opts.cacheTtlMs ?? CACHE_TTL_MS;
@@ -162,7 +166,7 @@ export function createCodexUsageReader(opts: CodexUsageReaderOptions): CodexUsag
   async function readLive(): Promise<ProviderUsage | null> {
     // Pro's own Codex profile: this reads the subscription's rate limits, so it
     // must use the service login, never whatever HOME this process inherited.
-    if (!client) client = new AppServerClient({ codexBin: opts.codexBin, env: proServiceEnv(), log });
+    if (!client) client = new AppServerClient({ codexBin: opts.codexBin, env: { ...proServiceEnv(), CODEX_HOME: codexHome }, log });
     let res: unknown;
     try {
       res = await withTimeout(client.request('account/rateLimits/read', {}), rpcTimeout);
@@ -225,6 +229,92 @@ export function createCodexUsageReader(opts: CodexUsageReaderOptions): CodexUsag
     shutdown() {
       // Only reap a client we own; an injected one belongs to the caller.
       if (!opts.client) client?.shutdown();
+    },
+  };
+}
+
+export interface CodexAccountUsageOptions {
+  codexBin: string;
+  accounts: Pick<CodexAccountStore, 'list' | 'homeFor'>;
+  /** Build one reader per account (tests inject fakes). */
+  readerFor?: (accountId: string, codexHome: string) => CodexUsageReader;
+  cacheTtlMs?: number;
+  rpcTimeoutMs?: number;
+  log?: Pick<Console, 'warn' | 'error'>;
+}
+
+/**
+ * Usage across every connected Codex account. Same `CodexUsageReader` shape as
+ * a single reader, so `GET /api/usage` is unchanged for a one-account install:
+ * the top-level fields describe the ACTIVE account, and `accounts` carries one
+ * block per registered account so the Usage screen can show which one still
+ * has headroom. One lazily-spawned reader per account; readers for removed
+ * accounts are shut down on the next read.
+ */
+export function createCodexAccountUsage(opts: CodexAccountUsageOptions): CodexUsageReader {
+  const log = opts.log ?? console;
+  const readers = new Map<string, CodexUsageReader>();
+  const readerFor = opts.readerFor ?? ((_id: string, codexHome: string) =>
+    createCodexUsageReader({
+      codexBin: opts.codexBin, codexHome, cacheTtlMs: opts.cacheTtlMs, rpcTimeoutMs: opts.rpcTimeoutMs, log,
+    }));
+
+  function reader(accountId: string): CodexUsageReader {
+    let existing = readers.get(accountId);
+    if (!existing) {
+      existing = readerFor(accountId, opts.accounts.homeFor(accountId));
+      readers.set(accountId, existing);
+    }
+    return existing;
+  }
+
+  return {
+    async read() {
+      const accounts = opts.accounts.list();
+      const live = new Set(accounts.map((a) => a.id));
+      for (const [id, r] of readers) {
+        if (!live.has(id)) {
+          r.shutdown();
+          readers.delete(id);
+        }
+      }
+      if (accounts.length === 0) {
+        return {
+          connected: false, planType: null, windows: [], capturedAt: null, source: null,
+          error: 'Codex usage is unavailable — it may not be installed or signed in.',
+        };
+      }
+      const blocks: ProviderAccountUsageBlock[] = await Promise.all(accounts.map(async (account) => {
+        const usage = await reader(account.id).read();
+        return {
+          accountId: account.id,
+          label: account.label,
+          accountEmail: account.email,
+          planType: usage.planType ?? account.planType,
+          active: account.active,
+          windows: usage.windows,
+          capturedAt: usage.capturedAt,
+          source: usage.source,
+          limitReset: null,
+          connected: usage.connected,
+          error: usage.error,
+        };
+      }));
+      const active = blocks.find((b) => b.active) ?? blocks[0]!;
+      return {
+        connected: active.connected ?? false,
+        planType: active.planType,
+        accountEmail: active.accountEmail,
+        windows: active.windows,
+        capturedAt: active.capturedAt,
+        source: active.source,
+        error: active.error ?? null,
+        accounts: blocks,
+      };
+    },
+    shutdown() {
+      for (const r of readers.values()) r.shutdown();
+      readers.clear();
     },
   };
 }

@@ -146,7 +146,28 @@ export interface CodexAdapterOptions {
   runBrowser?: typeof runAgentBrowser;
   /** Test seam for the per-access-level app-server environment. */
   buildEnv?: (fullAccess: boolean) => NodeJS.ProcessEnv;
+  /**
+   * The Codex account new turns run on (read once per turn). Each account has
+   * its own CODEX_HOME, so each gets its own long-lived app-server.
+   */
+  getAccountId?: () => string | null;
+  /** CODEX_HOME for an account; called before every spawn so the profile is ready. */
+  codexHomeFor?: (accountId: string) => string;
+  /** A turn died on the subscription's usage limit — see ../codex/accountFailover.ts. */
+  onUsageLimit?: (event: CodexUsageLimitEvent) => void;
 }
+
+/** What the adapter reports when Codex ends a turn on a usage limit. */
+export interface CodexUsageLimitEvent {
+  conversationId: string | null;
+  /** Account the turn ran on (captured at spawn), or null if unknown. */
+  accountId: string | null;
+  text: string;
+  at: Date;
+}
+
+/** Codex phrases a subscription limit as a turn error; match it, not other failures. */
+export const CODEX_USAGE_LIMIT_RE = /usage limit|rate limit|too many requests|\b429\b|quota/i;
 
 /**
  * Canonical Codex adapter over `codex app-server`. One process for the whole
@@ -183,20 +204,22 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
    * said anything about.
    */
   const subagentsByThread = new Map<string, Map<string, CodexSubagentRecord>>();
-  const clients = new Map<boolean, AppServerClient>();
+  // Keyed by account and access level: a Codex account is a CODEX_HOME, and
+  // the app-server reads its credential from there at spawn, so switching
+  // accounts means a different long-lived process, not a different argument.
+  const clients = new Map<string, AppServerClient>();
   // A bounded interrupt fallback can release Veneer before app-server releases
   // its native turn. The next turn on that thread must quarantine unscoped late
   // notifications as well as rejecting messages carrying the old turn id.
   const fallbackInterruptedThreads = new Set<string>();
-  function clientFor(fullAccess: boolean): AppServerClient {
-    let existing = clients.get(fullAccess);
+  function clientFor(fullAccess: boolean, accountId: string | null): AppServerClient {
+    const key = `${accountId ?? ''}\u0000${fullAccess ? 'full' : 'safe'}`;
+    let existing = clients.get(key);
     if (!existing) {
-      existing = new AppServerClient({
-        codexBin: opts.codexBin,
-        env: (opts.buildEnv ?? agentEnv)(fullAccess),
-        log,
-      });
-      clients.set(fullAccess, existing);
+      const env = (opts.buildEnv ?? agentEnv)(fullAccess);
+      if (accountId && opts.codexHomeFor) env.CODEX_HOME = opts.codexHomeFor(accountId);
+      existing = new AppServerClient({ codexBin: opts.codexBin, env, log });
+      clients.set(key, existing);
     }
     return existing;
   }
@@ -204,14 +227,17 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
   let modelsCache: { at: number; models: ModelOption[] } | null = null;
   async function listModels(): Promise<ModelOption[]> {
     if (modelsCache && Date.now() - modelsCache.at < MODELS_CACHE_TTL_MS) return modelsCache.models;
-    const models = await requestModelList(clientFor(false));
+    const models = await requestModelList(clientFor(false, opts.getAccountId?.() ?? null));
     modelsCache = { at: Date.now(), models };
     return models;
   }
 
   function runTurn(spec: TurnSpec, onEvent: (e: ConversationEvent) => void, onSessionId?: (id: string) => void): TurnHandle {
     const turnId = spec.turnId;
-    const client = clientFor(spec.dangerous ?? false);
+    // Captured at spawn: the active account is one global setting, so it can
+    // move while the turn runs; usage attribution stays with this one.
+    const spawnAccountId = opts.getAccountId?.() ?? null;
+    const client = clientFor(spec.dangerous ?? false, spawnAccountId);
     let settled = false;
     let killed = false;
     let killReason: 'user' | 'timeout' | null = null;
@@ -1204,9 +1230,12 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
                   : 'completed';
           // An interrupted or timed-out parent leaves its children alone; only a
           // real terminal report from Codex may change a child's status.
+          let usageLimitText: string | null = null;
           if (turn.error && outcome === 'failed') {
             settleActiveSubagents('failed');
-            const e: ConversationEvent = { type: 'error', message: turn.error.message ?? 'Turn failed', fatal: false };
+            const message = turn.error.message ?? 'Turn failed';
+            if (CODEX_USAGE_LIMIT_RE.test(message)) usageLimitText = message;
+            const e: ConversationEvent = { type: 'error', message, fatal: false };
             onEvent(e);
             pushPersist(e);
           }
@@ -1220,6 +1249,21 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           onEvent(done);
           pushPersist(done);
           finish();
+          // The subscription, not the work, ended this turn. Reported after
+          // turn_done so the failover's continuation queues behind a finished
+          // turn. Best effort: a throw here must not derail the stream.
+          if (usageLimitText && opts.onUsageLimit) {
+            try {
+              opts.onUsageLimit({
+                conversationId: spec.conversationId ?? null,
+                accountId: spawnAccountId,
+                text: usageLimitText,
+                at: new Date(),
+              });
+            } catch (err) {
+              log.warn(`[codex] usage-limit failover failed: ${(err as Error).message}`);
+            }
+          }
           break;
         }
         case 'error': {
@@ -1421,7 +1465,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
   }
 
   function compactSession(spec: CompactSessionSpec): CompactSessionHandle {
-    const client = clientFor(spec.dangerous ?? false);
+    const client = clientFor(spec.dangerous ?? false, opts.getAccountId?.() ?? null);
     const threadId = spec.nativeSessionId;
     let settled = false;
     let requested = false;

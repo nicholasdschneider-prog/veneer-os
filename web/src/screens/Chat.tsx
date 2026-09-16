@@ -107,7 +107,7 @@ import {
   ModelRow,
   type ModelChoice,
 } from '@/components/chat/ModelThinkingPicker';
-import { ClaudeAccountSwitcher } from '@/components/chat/ClaudeAccountSwitcher';
+import { AccountSwitcher } from '@/components/chat/AccountSwitcher';
 import { ThinkingLevelControl } from '@/components/chat/ThinkingLevelControl';
 import { modelTier } from '@/lib/modelTier';
 import { useTypewriter } from '@/hooks/useTypewriter';
@@ -3201,7 +3201,7 @@ export function Chat({
             })() : null}
             {/* Out of headroom on one subscription? Switch here instead of
                 walking to Settings; it lands on the next message. */}
-            <ClaudeAccountSwitcher provider={activeProvider} />
+            <AccountSwitcher provider={activeProvider} />
           </div>
         </DialogContent>
       </Dialog>

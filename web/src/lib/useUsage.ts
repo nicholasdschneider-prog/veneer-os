@@ -52,6 +52,7 @@ export function newestCapturedAtMs(usage: UsageResponse | null): number | null {
   const { claude, codex } = usage.providers;
   for (const account of claude.accounts ?? []) if (account.capturedAt) stamps.push(account.capturedAt);
   if (claude.capturedAt) stamps.push(claude.capturedAt);
+  for (const account of codex.accounts ?? []) if (account.capturedAt) stamps.push(account.capturedAt);
   if (codex.capturedAt) stamps.push(codex.capturedAt);
   let newest: number | null = null;
   for (const stamp of stamps) {
@@ -150,18 +151,23 @@ export function claudeRingModel(usage: UsageResponse | null, now: number): Usage
 export function codexRingModel(usage: UsageResponse | null, now: number): UsageRingModel | null {
   const codex = usage?.providers.codex;
   if (!codex?.connected) return null;
+  // With several accounts the top-level fields already describe the active
+  // one; name it in the tooltip so the ring says whose week this is.
+  const accounts = codex.accounts ?? [];
+  const active = accounts.length > 1 ? accounts.find((a) => a.active) ?? accounts[0] : undefined;
   const weekly = codexWeeklyWindow(codex.windows);
   const percent = weekly?.usedPercent ?? 0;
   const stale = isUsageStale(codex.capturedAt, now);
   const unknown = !weekly;
   const reset = localTime(weekly?.resetsAt ?? null);
+  const who = active?.label ?? codex.planType;
   return {
     provider: 'codex',
     label: 'week',
     percent,
     stale,
     unknown,
-    primaryText: `Codex${codex.planType ? ` · ${codex.planType}` : ''} · ${Math.round(percent)}% of week used`,
+    primaryText: `Codex${who ? ` · ${who}` : ''} · ${Math.round(percent)}% of week used`,
     secondaryText: reset ? `resets ${reset}` : null,
   };
 }

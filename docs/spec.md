@@ -333,7 +333,7 @@ Both live behind `processStrategy.ts`; the conversation manager doesn't know whi
 ### 7.4 Auth (both providers, headless Linux)
 
 - **Claude:** `claude setup-token` (sanctioned headless path) → one-year `sk-ant-oat01-*` token → `CLAUDE_CODE_OAUTH_TOKEN` in the service env file. Draws from the client's Pro/Max plan. `vp doctor` checks expiry/liveness via `authStatus()`.
-- **Codex:** `codex login --device-auth` once per box (ChatGPT plan); credentials in `~/.codex/auth.json` (0600).
+- **Codex:** `codex login --device-auth` per account (ChatGPT plan); credentials in `$CODEX_HOME/auth.json` (0600). Several accounts can be connected with one active, as for Claude: the first (adopted) account keeps Pro's `.codex` profile, every further one is its own `CODEX_HOME` under `.codex-accounts/<id>/` where everything but `auth.json` is a symlink into the primary profile, so thread history, skills and config are shared and a chat resumes on whichever account is active. Registry (labels, active id; no secrets) in `DATA_DIR/codex-accounts.json`; a sign-in runs in a staging home and is adopted on success, so adding an account never signs another out. A turn that fails on a usage limit switches to the account with the most headroom and continues (`providers/codex/accountFailover.ts`).
 - Provisioning captures both; the admin UI shows login state per provider (red banner when broken).
 
 ---

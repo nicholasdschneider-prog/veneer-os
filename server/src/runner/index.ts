@@ -6,6 +6,7 @@ import { openDb } from '../db/db.js';
 import { initMediaStore } from '../runtime/media.js';
 import { buildAgentRuntime } from '../runtime/buildAgentRuntime.js';
 import { conversationsForSweep, ensureClaudeTranscriptRetention } from '../runtime/transcriptArchive.js';
+import { adoptCodexLogins, createCodexAccountStore } from '../codex/accounts.js';
 import { createSecretStore } from '../secrets/store.js';
 import { createUsageStore } from '../usage/store.js';
 import { createClaudeProbe } from '../usage/claudeProbe.js';
@@ -74,7 +75,11 @@ const claudeProbe = createClaudeProbe({
   getAccounts: () => secrets.claudeAccountCredentials(),
   onProfile: (accountId, profile) => secrets.updateClaudeAccountProfile(accountId, profile),
 });
-const runtime = buildAgentRuntime({ config, db, secrets, doppler, usage, claudeProbe });
+// Codex accounts: the registry is shared with web through its JSON file; a
+// pre-multi-account login in Pro's `.codex` profile is adopted as `primary`.
+const codexAccounts = createCodexAccountStore(config.dataDir);
+adoptCodexLogins(codexAccounts);
+const runtime = buildAgentRuntime({ config, db, secrets, doppler, usage, claudeProbe, codexAccounts });
 const { manager, adapters, transcriptArchive, projectDopplerCli } = runtime;
 const claudeLimitReset = createClaudeLimitResetManager({
   // The requested account is explicit. This never reads or changes the active

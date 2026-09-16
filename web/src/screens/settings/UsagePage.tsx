@@ -85,9 +85,9 @@ export interface UsageCardSpec {
   name: string;
   usage: ProviderUsage;
   kind: 'claude' | 'codex' | 'grok';
-  /** The account new Claude turns run on — wears the Active tab. */
+  /** The account new turns run on — wears the Active tab. */
   active?: boolean;
-  /** Exact Claude account for switching and reset actions. */
+  /** Exact account for switching and reset actions. */
   accountId?: string;
 }
 
@@ -95,7 +95,7 @@ export interface UsageCardSpec {
  * Switch which account new turns run on, then reload so the Active tab moves to
  * the card you tapped. Failures land on the page's existing error banner.
  */
-export async function switchClaudeAccount(
+export async function switchAccount(
   accountId: string,
   deps: {
     activate: (accountId: string) => Promise<unknown>;
@@ -111,46 +111,58 @@ export async function switchClaudeAccount(
   }
 }
 
+/** Kept for callers that still import the Claude-specific name. */
+export const switchClaudeAccount = switchAccount;
+
 /**
- * Claude accounts in the order the registry returns them, then the other
- * providers in their fixed order. Cards hold still: activating one moves the
- * tab, it doesn't reshuffle the grid under the pointer. Kept compatible with
- * the pre-Grok API during rolling restarts.
+ * One card per connected account when several are connected (a single
+ * blended meter would say nothing about which account still has headroom),
+ * else the provider's flat view under the account's own label.
+ */
+function accountCards(
+  kind: 'claude' | 'codex',
+  fallbackName: string,
+  provider: ProviderUsage,
+): UsageCardSpec[] {
+  const accounts = provider.accounts ?? [];
+  if (accounts.length > 1) {
+    return accounts.map((account) => ({
+      key: kind === 'claude' ? account.accountId : `${kind}:${account.accountId}`,
+      name: account.label,
+      kind,
+      active: account.active,
+      accountId: account.accountId,
+      usage: {
+        connected: account.connected ?? true,
+        planType: account.planType,
+        accountEmail: account.accountEmail,
+        windows: account.windows,
+        capturedAt: account.capturedAt,
+        source: account.source,
+        error: account.error ?? null,
+        limitReset: account.limitReset,
+      },
+    }));
+  }
+  return [{
+    key: kind,
+    name: accounts[0]?.label ?? fallbackName,
+    kind,
+    accountId: accounts[0]?.accountId,
+    usage: provider,
+  }];
+}
+
+/**
+ * Claude accounts in the order the registry returns them, then Codex's, then
+ * Grok. Cards hold still: activating one moves the tab, it doesn't reshuffle
+ * the grid under the pointer. Kept compatible with the pre-Grok API during
+ * rolling restarts.
  */
 export function orderUsageCards(providers: UsageResponse['providers']): UsageCardSpec[] {
-  // With several Claude accounts connected, one card each — a single blended
-  // meter would say nothing about which account still has headroom.
-  const accounts = providers.claude.accounts ?? [];
-  const claude: UsageCardSpec[] =
-    accounts.length > 1
-      ? accounts.map((account) => ({
-          key: account.accountId,
-          name: account.label,
-          kind: 'claude' as const,
-          active: account.active,
-          accountId: account.accountId,
-          usage: {
-            connected: true,
-            planType: account.planType,
-            accountEmail: account.accountEmail,
-            windows: account.windows,
-            capturedAt: account.capturedAt,
-            source: account.source,
-            error: null,
-            limitReset: account.limitReset,
-          },
-        }))
-      : [{
-          key: 'claude',
-          name: accounts[0]?.label ?? 'Claude',
-          kind: 'claude',
-          accountId: accounts[0]?.accountId,
-          usage: providers.claude,
-        }];
-
   return [
-    ...claude,
-    { key: 'codex', name: 'Codex', kind: 'codex', usage: providers.codex },
+    ...accountCards('claude', 'Claude', providers.claude),
+    ...accountCards('codex', 'Codex', providers.codex),
     ...(providers.grok
       ? [{ key: 'grok', name: 'Grok', kind: 'grok' as const, usage: providers.grok }]
       : []),
@@ -351,8 +363,8 @@ export function UsageCardGrid({
 }: {
   providers: UsageResponse['providers'];
   now: number;
-  /** Omit to render read-only cards; only per-account Claude cards can switch. */
-  onActivate?: (accountId: string) => void;
+  /** Omit to render read-only cards; only per-account Claude and Codex cards can switch. */
+  onActivate?: (accountId: string, kind: 'claude' | 'codex') => void;
   /** Account id whose switch is in flight. */
   switching?: string | null;
   onLimitReset?: (accountId: string, name: string) => void;
@@ -364,7 +376,8 @@ export function UsageCardGrid({
     <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] items-start gap-3">
       {orderUsageCards(providers).map((card) => {
         const accountId = card.accountId;
-        const canSwitch = (providers.claude.accounts?.length ?? 0) > 1;
+        const kind = card.kind;
+        const canSwitch = kind !== 'grok' && (providers[kind].accounts?.length ?? 0) > 1;
         return (
           <UsageAccountCard
             key={card.key}
@@ -373,10 +386,10 @@ export function UsageCardGrid({
             usage={card.usage}
             now={now}
             kind={card.kind}
-            onActivate={canSwitch && onActivate && accountId && !card.active ? () => onActivate(accountId) : undefined}
+            onActivate={canSwitch && onActivate && accountId && !card.active ? () => onActivate(accountId, kind as 'claude' | 'codex') : undefined}
             busy={switching != null && switching === accountId}
             switchDisabled={switching != null}
-            onLimitReset={onLimitReset && accountId ? () => onLimitReset(accountId, card.name) : undefined}
+            onLimitReset={onLimitReset && accountId && kind === 'claude' ? () => onLimitReset(accountId, card.name) : undefined}
             resetBusy={resetting != null && resetting === accountId}
           />
         );
@@ -552,10 +565,10 @@ export function UsagePage({ canManage = false }: { canManage?: boolean }) {
   // Cached re-fetch: the active flag comes from the account registry, not the
   // probe, so there's nothing to re-probe after a switch.
   const activate = useCallback(
-    (accountId: string) => {
+    (accountId: string, kind: 'claude' | 'codex') => {
       setSwitching(accountId);
-      void switchClaudeAccount(accountId, {
-        activate: (id) => api.claudeAccountActivate(id),
+      void switchAccount(accountId, {
+        activate: (id) => (kind === 'codex' ? api.codexAccountActivate(id) : api.claudeAccountActivate(id)),
         reload: () => load(false),
         onError: setError,
       }).finally(() => setSwitching(null));

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { proCodexHome, proServiceEnv, serviceHome } from '../homes.js';
 import { stripAnsi } from '../claude/setupToken.js';
+import type { CodexAccountSummary } from './accounts.js';
 
 /**
  * Productized `codex login --device-auth` — the Codex counterpart to the Claude
@@ -24,10 +25,12 @@ import { stripAnsi } from '../claude/setupToken.js';
  *
  * We keep at most one attempt alive; the device code expires in ~15 min.
  *
- * HAZARD: `codex login --device-auth` DELETES the existing `~/.codex/auth.json`
- * the instant it starts (before the user authorizes). So starting then
- * cancelling logs the account out. `start()` refuses to replace a live login
- * unless `force` is set; the UI confirms first.
+ * HAZARD: `codex login --device-auth` DELETES the existing `$CODEX_HOME/auth.json`
+ * the instant it starts (before the user authorizes). Every sign-in therefore
+ * runs in a throwaway staging home (`start({ codexHome })`), and the caller's
+ * `onSuccess` adopts the credential into a real account afterwards — see
+ * ./accounts.ts. A cancelled or expired attempt only ever loses the staging
+ * directory, never a connected account.
  */
 
 const CODE_EXPIRY_MS = 15 * 60 * 1000; // "expires in 15 minutes" per the CLI.
@@ -66,6 +69,8 @@ export interface CodexInstallResult {
 
 export interface CodexStartResult {
   attemptId: string;
+  /** The CODEX_HOME the sign-in writes into. */
+  codexHome: string | null;
   verificationUrl: string;
   userCode: string;
   expiresAt: string;
@@ -74,10 +79,17 @@ export interface CodexStartResult {
 export interface CodexPollResult {
   state: CodexAttemptState;
   detail: string;
+  /** The account a successful attempt was adopted into (when `onSuccess` is wired). */
+  account?: CodexAccountSummary | null;
+}
+
+export interface CodexStartOptions {
+  /** CODEX_HOME for the sign-in child (a staging home; see ./accounts.ts). */
+  codexHome?: string;
 }
 
 export interface CodexConnectManager {
-  start(): Promise<CodexStartResult>;
+  start(options?: CodexStartOptions): Promise<CodexStartResult>;
   poll(attemptId: string): Promise<CodexPollResult>;
   cancel(attemptId: string): { cancelled: boolean };
   hasAttempt(): boolean;
@@ -85,7 +97,7 @@ export interface CodexConnectManager {
   shutdown(): void;
 }
 
-export type CodexSpawner = (bin: string, args: string[]) => ChildProcess;
+export type CodexSpawner = (bin: string, args: string[], options?: CodexStartOptions) => ChildProcess;
 type StatusReader = (bin: string) => Promise<CodexConnectStatus>;
 
 export interface CodexConnectManagerOptions {
@@ -94,6 +106,13 @@ export interface CodexConnectManagerOptions {
   statusFn?: StatusReader;
   timeouts?: { startMs?: number; expiryMs?: number };
   log?: Pick<Console, 'warn' | 'error'>;
+  /**
+   * Adopt a finished sign-in's credential (in `codexHome`) into an account.
+   * Runs once per successful attempt, from the poll that observes success.
+   */
+  onSuccess?: (codexHome: string) => CodexAccountSummary;
+  /** Discard an attempt's staging home after cancel, expiry, or failure. */
+  onDiscard?: (codexHome: string) => void;
 }
 
 export class CodexAuthError extends Error {
@@ -123,9 +142,10 @@ function delay(ms: number): Promise<void> {
  */
 export function readCodexAccount(
   readFileFn: (p: string) => string = (p) => fs.readFileSync(p, 'utf8'),
+  codexHome?: string,
 ): CodexAccount | null {
   try {
-    const home = process.env.CODEX_HOME || proCodexHome();
+    const home = codexHome || process.env.CODEX_HOME || proCodexHome();
     const auth = JSON.parse(readFileFn(path.join(home, 'auth.json'))) as {
       tokens?: { id_token?: string };
     };
@@ -145,14 +165,23 @@ export function readCodexAccount(
   }
 }
 
+/** Pro's service environment, with CODEX_HOME pointed at one account's profile when given. */
+function codexEnv(codexHome?: string): NodeJS.ProcessEnv {
+  const env = proServiceEnv();
+  if (codexHome) env.CODEX_HOME = codexHome;
+  return env;
+}
+
 /** Read the current Codex login state from `codex login status`. */
 export function codexLoginStatus(
   codexBin: string,
   execFileFn: typeof execFile = execFile,
-  accountFn: () => CodexAccount | null = readCodexAccount,
+  accountFn?: () => CodexAccount | null,
+  codexHome?: string,
 ): Promise<CodexConnectStatus> {
+  const readAccount = accountFn ?? (() => readCodexAccount(undefined, codexHome));
   return new Promise((resolve) => {
-    execFileFn(codexBin, ['login', 'status'], { timeout: STATUS_TIMEOUT_MS, env: proServiceEnv(), cwd: serviceHome() }, (err, stdout, stderr) => {
+    execFileFn(codexBin, ['login', 'status'], { timeout: STATUS_TIMEOUT_MS, env: codexEnv(codexHome), cwd: serviceHome() }, (err, stdout, stderr) => {
       // ENOENT means the binary itself is missing, not just logged out — the
       // UI needs to tell these apart to offer an "Install" button instead of
       // "Connect".
@@ -167,7 +196,13 @@ export function codexLoginStatus(
       } else if (/api key/i.test(text)) {
         resolve({ connected: true, method: 'apikey', installed: true, detail: text });
       } else if (/logged in/i.test(text)) {
-        resolve({ connected: true, method: 'chatgpt', installed: true, detail: text, account: accountFn() });
+        resolve({
+          connected: true,
+          method: 'chatgpt',
+          installed: true,
+          detail: text,
+          account: readAccount(),
+        });
       } else {
         resolve({ connected: false, method: null, installed: true, detail: text });
       }
@@ -229,13 +264,14 @@ export function installCodex(spawnFn: CodexSpawner = defaultSpawner): Promise<Co
   });
 }
 
-/** Remove stored Codex credentials (`codex logout`). */
+/** Remove stored Codex credentials (`codex logout`) from one profile. */
 export function codexLogout(
   codexBin: string,
   execFileFn: typeof execFile = execFile,
+  codexHome?: string,
 ): Promise<{ ok: boolean; detail: string }> {
   return new Promise((resolve) => {
-    execFileFn(codexBin, ['logout'], { timeout: STATUS_TIMEOUT_MS, env: proServiceEnv(), cwd: serviceHome() }, (err, stdout, stderr) => {
+    execFileFn(codexBin, ['logout'], { timeout: STATUS_TIMEOUT_MS, env: codexEnv(codexHome), cwd: serviceHome() }, (err, stdout, stderr) => {
       if (err) {
         const detail = stripAnsi(`${stderr || ''}${stdout || ''}`).trim();
         resolve({ ok: false, detail: detail || err.message });
@@ -249,12 +285,16 @@ export function codexLogout(
 // Signing Pro in and out is Pro's own business: run it in the service home with
 // CODEX_HOME pinned, so a login always lands in Pro's profile and never in the
 // login user's own ~/.codex.
-const defaultSpawner: CodexSpawner = (bin, args) =>
-  spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], cwd: serviceHome(), env: proServiceEnv() });
+const defaultSpawner: CodexSpawner = (bin, args, options) =>
+  spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], cwd: serviceHome(), env: codexEnv(options?.codexHome) });
 
 interface Attempt {
   attemptId: string;
+  codexHome: string | null;
   child: ChildProcess;
+  /** Set once `onSuccess` ran or the staging home was discarded. */
+  finalized: boolean;
+  account: CodexAccountSummary | null;
   buffer: string;
   state: CodexAttemptState;
   detail: string;
@@ -271,6 +311,21 @@ export function createCodexConnectManager(opts: CodexConnectManagerOptions): Cod
   const startTimeout = opts.timeouts?.startMs ?? START_TIMEOUT_MS;
   const expiry = opts.timeouts?.expiryMs ?? CODE_EXPIRY_MS;
   let current: Attempt | null = null;
+  // Outcomes of attempts already torn down, so a poll that arrives after the
+  // success poll (a second tab, a retried request) still gets the real answer.
+  const finished = new Map<string, CodexPollResult>();
+
+  function discard(attempt: Attempt): void {
+    if (attempt.finalized) return;
+    attempt.finalized = true;
+    if (attempt.codexHome && opts.onDiscard) {
+      try {
+        opts.onDiscard(attempt.codexHome);
+      } catch (err) {
+        log.warn(`[codex-connect] could not discard staging home: ${(err as Error).message}`);
+      }
+    }
+  }
 
   function teardown(attempt: Attempt): void {
     clearTimeout(attempt.expiryTimer);
@@ -279,27 +334,60 @@ export function createCodexConnectManager(opts: CodexConnectManagerOptions): Cod
     } catch {
       /* already gone */
     }
+    if (attempt.state !== 'success') discard(attempt);
+    if (finished.size > 20) finished.delete(finished.keys().next().value!);
+    finished.set(attempt.attemptId, { state: attempt.state, detail: attempt.detail, account: attempt.account });
     if (current === attempt) current = null;
+  }
+
+  /** Adopt a successful attempt's credential exactly once. */
+  function finalize(attempt: Attempt): void {
+    if (attempt.finalized) return;
+    attempt.finalized = true;
+    if (!attempt.codexHome || !opts.onSuccess) return;
+    try {
+      attempt.account = opts.onSuccess(attempt.codexHome);
+    } catch (err) {
+      attempt.state = 'error';
+      attempt.detail = `Signed in, but the account could not be saved: ${(err as Error).message}`;
+      log.error(`[codex-connect] ${attempt.detail}`);
+      try {
+        opts.onDiscard?.(attempt.codexHome);
+      } catch {
+        /* best effort */
+      }
+    }
   }
 
   return {
     hasAttempt: () => current !== null,
 
-    async start() {
+    async start(options) {
       if (current) teardown(current);
 
       const attemptId = crypto.randomUUID();
+      const codexHome = options?.codexHome ?? null;
       let child: ChildProcess;
       try {
-        child = spawnFn(opts.codexBin, ['login', '--device-auth']);
+        child = spawnFn(opts.codexBin, ['login', '--device-auth'], codexHome ? { codexHome } : undefined);
       } catch (err) {
+        if (codexHome) {
+          try {
+            opts.onDiscard?.(codexHome);
+          } catch {
+            /* best effort */
+          }
+        }
         throw new CodexAuthError(`Could not start the Codex sign-in: ${(err as Error).message}`, 'spawn_failed');
       }
 
       const now = Date.now();
       const attempt: Attempt = {
         attemptId,
+        codexHome,
         child,
+        finalized: false,
+        account: null,
         buffer: '',
         state: 'pending',
         detail: '',
@@ -350,6 +438,7 @@ export function createCodexConnectManager(opts: CodexConnectManagerOptions): Cod
           attempt.userCode = codeMatch;
           return {
             attemptId,
+            codexHome,
             verificationUrl: url,
             userCode: codeMatch,
             expiresAt: new Date(attempt.expiresAt).toISOString(),
@@ -370,15 +459,22 @@ export function createCodexConnectManager(opts: CodexConnectManagerOptions): Cod
     async poll(attemptId) {
       const attempt = current;
       if (!attempt || attempt.attemptId !== attemptId) {
-        // A finished attempt is torn down; fall back to the real login state so
-        // a slightly-late poll after success still reports connected.
+        const done = finished.get(attemptId);
+        if (done) return done;
+        // Unknown attempt (a restart in between): fall back to the real login
+        // state so a slightly-late poll after success still reports connected.
         const st = await statusFn(opts.codexBin);
         return st.connected
           ? { state: 'success', detail: 'Signed in to Codex.' }
           : { state: 'no_attempt', detail: 'This sign-in attempt is no longer active.' };
       }
-      if (attempt.state === 'success') teardown(attempt);
-      return { state: attempt.state, detail: attempt.detail };
+      if (attempt.state === 'success') {
+        finalize(attempt);
+        teardown(attempt);
+      } else if (attempt.state === 'error' || attempt.state === 'expired') {
+        teardown(attempt);
+      }
+      return { state: attempt.state, detail: attempt.detail, account: attempt.account };
     },
 
     cancel(attemptId) {

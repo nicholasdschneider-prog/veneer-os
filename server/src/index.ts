@@ -29,9 +29,10 @@ import { desktopWrapperHtml } from './routes/desktopPage.js';
 import { cdpDesktopPageHtml } from './routes/cdpDesktopPage.js';
 import { createSecretStore } from './secrets/store.js';
 import { createClaudeConnectManager } from './claude/setupToken.js';
+import { adoptCodexLogin, adoptCodexLogins, createCodexAccountStore } from './codex/accounts.js';
 import { createCodexConnectManager } from './codex/deviceAuth.js';
 import { createGrokConnectManager } from './grok/deviceAuth.js';
-import { createCodexUsageReader } from './usage/codex.js';
+import { createCodexAccountUsage } from './usage/codex.js';
 import { createGrokUsageReader } from './usage/grok.js';
 import { createOpenRouterUsageReader } from './usage/openrouter.js';
 import { effectiveApiKey } from './secrets/apiKeys.js';
@@ -95,9 +96,17 @@ const manager = createRunnerClient({
 });
 const appRunner = createLocalAppRunnerClient(`http://127.0.0.1:${config.appRunnerPort}`);
 const claudeConnect = createClaudeConnectManager({ claudeBin: config.claudeBin, secrets });
-const codexConnect = createCodexConnectManager({ codexBin: config.codexBin });
+// Several Codex accounts, each its own CODEX_HOME; sign-ins run in a staging
+// home and are adopted into the registry on success (see codex/accounts.ts).
+const codexAccounts = createCodexAccountStore(config.dataDir);
+adoptCodexLogins(codexAccounts);
+const codexConnect = createCodexConnectManager({
+  codexBin: config.codexBin,
+  onSuccess: (stagingHome) => adoptCodexLogin(codexAccounts, stagingHome),
+  onDiscard: (stagingHome) => fs.rmSync(stagingHome, { recursive: true, force: true }),
+});
 const grokConnect = createGrokConnectManager({ grokBin: config.grokBin });
-const codexUsage = createCodexUsageReader({ codexBin: config.codexBin });
+const codexUsage = createCodexAccountUsage({ codexBin: config.codexBin, accounts: codexAccounts });
 const grokUsage = createGrokUsageReader();
 const openRouterUsage = createOpenRouterUsageReader({
   getApiKey: () => effectiveApiKey('openrouter', secrets, config, doppler).value,
@@ -137,6 +146,7 @@ const ctx: AppContext = {
   projectDopplerCli,
   claudeConnect,
   codexConnect,
+  codexAccounts,
   grokConnect,
   codexUsage,
   grokUsage,

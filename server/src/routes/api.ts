@@ -60,7 +60,14 @@ import {
   readTodoPlanningSettings,
   writeTodoPlanningSettings,
 } from './todoPlanningSettings.js';
-import { codexLogout, installCodex, type CodexInstallResult } from '../codex/deviceAuth.js';
+import { codexLoginStatus, codexLogout, installCodex, type CodexInstallResult } from '../codex/deviceAuth.js';
+import {
+  adoptCodexLogins,
+  codexStagingHome,
+  ensureCodexAccountHome,
+  removeCodexAccountFiles,
+  type CodexAccountSummary,
+} from '../codex/accounts.js';
 import { grokLogout, installGrok, type GrokInstallResult } from '../grok/deviceAuth.js';
 import { buildClaudeAccountUsage, buildClaudeProvider } from '../usage/contract.js';
 import { API_KEY_DEFS, apiKeyStatuses, effectiveApiKey, type ApiKeyId } from '../secrets/apiKeys.js';
@@ -4129,13 +4136,36 @@ export function createApiRouter(ctx: AppContext): Router {
     );
   });
 
-  // ── Admin: Codex account connect/logout (owner + consultant only) ──────────
-  // Codex owns ~/.codex/auth.json, so there's no token to store or inject —
-  // these routes just drive `codex login --device-auth` and report state.
+  // ── Admin: Codex accounts connect/switch/logout (owner + consultant only) ──
+  // Codex owns `$CODEX_HOME/auth.json`, so there is no token to store or
+  // inject: each connected account is its own CODEX_HOME (codex/accounts.ts),
+  // and these routes drive `codex login --device-auth` into a staging home,
+  // then adopt the credential into the registry.
+  function codexAccountsPayload(): { accounts: CodexAccountSummary[]; connected: boolean } {
+    const accounts = ctx.codexAccounts.list();
+    return { accounts, connected: accounts.some((account) => account.active && account.connected) };
+  }
+
   admin.get('/codex/status', (_req, res) => {
-    void ctx.codexConnect
-      .status()
-      .then((s) => res.json({ ok: true, connected: s.connected, method: s.method, installed: s.installed, account: s.account ?? null }))
+    // Re-sync identity from each home (Codex refreshes id_tokens itself) and
+    // pick up a login placed in the primary profile by hand.
+    adoptCodexLogins(ctx.codexAccounts);
+    const active = ctx.codexAccounts.active();
+    const statusFor = active
+      ? codexLoginStatus(ctx.config.codexBin, undefined, undefined, ctx.codexAccounts.homeFor(active.id))
+      : ctx.codexConnect.status();
+    void statusFor
+      .then((s) => {
+        const { accounts } = codexAccountsPayload();
+        res.json({
+          ok: true,
+          connected: s.connected,
+          method: s.method,
+          installed: s.installed,
+          account: s.account ?? (active ? { email: active.email, plan: active.planType } : null),
+          accounts,
+        });
+      })
       .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
 
@@ -4151,26 +4181,13 @@ export function createApiRouter(ctx: AppContext): Router {
       .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
 
-  admin.post('/codex/connect/start', (req, res) => {
-    const force = req.body?.force === true;
-    // Backstop for the destructive-start hazard: refuse to blow away a live
-    // login unless the client explicitly confirmed with `force: true`.
-    const proceed = force
-      ? Promise.resolve<{ connected: boolean; method: 'chatgpt' | 'apikey' | null } | null>(null)
-      : ctx.codexConnect.status();
-    void proceed
-      .then((s) => {
-        if (s && s.connected) {
-          res.status(409).json({
-            ok: false,
-            code: 'already_connected',
-            error: 'Codex is already signed in. Starting a new sign-in will replace it.',
-            method: s.method,
-          });
-          return undefined;
-        }
-        return ctx.codexConnect.start().then((r) => res.json({ ok: true, ...r }));
-      })
+  // Adding an account never touches a connected one: the sign-in lands in a
+  // throwaway staging home, so `force` is accepted for older clients and ignored.
+  admin.post('/codex/connect/start', (_req, res) => {
+    const stagingHome = ensureCodexAccountHome(codexStagingHome(crypto.randomUUID()));
+    void ctx.codexConnect
+      .start({ codexHome: stagingHome })
+      .then((r) => res.json({ ok: true, ...r }))
       .catch((err: Error) => res.status(502).json({ ok: false, error: err.message }));
   });
 
@@ -4182,7 +4199,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     void ctx.codexConnect
       .poll(body.data.attemptId)
-      .then((r) => res.json({ ok: true, ...r }))
+      .then((r) => res.json({ ok: true, ...r, ...(r.state === 'success' ? codexAccountsPayload() : {}) }))
       .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
 
@@ -4196,10 +4213,57 @@ export function createApiRouter(ctx: AppContext): Router {
     res.json({ ok: true, cancelled: r.cancelled });
   });
 
-  admin.post('/codex/disconnect', (_req, res) => {
-    void codexLogout(ctx.config.codexBin)
-      .then((r) => res.json({ ok: r.ok, connected: false, detail: r.detail }))
+  // Switch which connected account new turns run on. Lands on the next
+  // message: a turn already running finishes on the app-server it started on.
+  admin.post('/codex/accounts/:id/activate', (req, res) => {
+    if (!ctx.codexAccounts.setActive(String(req.params.id))) {
+      res.status(404).json({ ok: false, error: 'That Codex account is not connected.' });
+      return;
+    }
+    res.json({ ok: true, ...codexAccountsPayload() });
+  });
+
+  admin.patch('/codex/accounts/:id', (req, res) => {
+    const body = ClaudeAccountLabelSchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ ok: false, error: 'label required' });
+      return;
+    }
+    if (!ctx.codexAccounts.rename(String(req.params.id), body.data.label)) {
+      res.status(404).json({ ok: false, error: 'That Codex account is not connected.' });
+      return;
+    }
+    res.json({ ok: true, ...codexAccountsPayload() });
+  });
+
+  admin.delete('/codex/accounts/:id', (req, res) => {
+    const id = String(req.params.id);
+    if (!ctx.codexAccounts.list().some((account) => account.id === id)) {
+      res.status(404).json({ ok: false, error: 'That Codex account is not connected.' });
+      return;
+    }
+    // `codex logout` first so the CLI drops any keychain/cache state of its
+    // own; the home (or, for the primary profile, just its credential) goes after.
+    void codexLogout(ctx.config.codexBin, undefined, ctx.codexAccounts.homeFor(id))
+      .catch(() => undefined)
+      .then(() => {
+        removeCodexAccountFiles(ctx.codexAccounts, id);
+        ctx.codexAccounts.remove(id);
+        res.json({ ok: true, ...codexAccountsPayload() });
+      })
       .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+  });
+
+  /** Disconnect every account (the card's "Disconnect all"). */
+  admin.post('/codex/disconnect', (_req, res) => {
+    void (async () => {
+      for (const account of ctx.codexAccounts.list()) {
+        await codexLogout(ctx.config.codexBin, undefined, ctx.codexAccounts.homeFor(account.id)).catch(() => undefined);
+        removeCodexAccountFiles(ctx.codexAccounts, account.id);
+      }
+      ctx.codexAccounts.clear();
+      res.json({ ok: true, connected: false, accounts: [], detail: 'Logged out of Codex.' });
+    })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
 
   // ── Admin: Grok account connect/logout (owner + consultant only) ───────────

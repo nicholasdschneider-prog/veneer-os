@@ -13,7 +13,7 @@ import { modelTier } from '../../lib/modelTier';
 import { ProviderIcon } from '@/components/ProviderIcon';
 import { CapabilityDots } from '@/components/chat/CapabilityDots';
 import { effortLabel, ThinkingLevelControl } from '@/components/chat/ThinkingLevelControl';
-import { ClaudeAccountSwitcher } from '@/components/chat/ClaudeAccountSwitcher';
+import { AccountSwitcher } from '@/components/chat/AccountSwitcher';
 import {
   Dialog,
   DialogContent,
@@ -276,7 +276,7 @@ export function ModelThinkingPicker({
               onChange={(effort) => onChange({ ...value, effort })}
             />
           </div>
-          <ClaudeAccountSwitcher provider={tab} />
+          <AccountSwitcher provider={tab} />
         </div>
       </DialogContent>
     </Dialog>
