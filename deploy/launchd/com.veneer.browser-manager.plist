@@ -77,6 +77,12 @@
     <string>__HOME__/Library/Application Support/veneer-browser/store</string>
     <key>VENEER_BROWSER_CLIENTS_FILE</key>
     <string>__HOME__/.config/veneer-browser/clients.json</string>
+
+    <!-- Visible Chrome, not --headless=new: Google sign-in rejects headless
+         Chrome as "not secure". Single-owner machine, so windows on the
+         desktop are acceptable. -->
+    <key>VENEER_BROWSER_HEADLESS</key>
+    <string>0</string>
   </dict>
 </dict>
 </plist>
