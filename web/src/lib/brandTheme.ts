@@ -20,14 +20,14 @@ export function brandCss(brand: PageBrand): string | null {
   return `:root:not([data-theme]) {
   --brand: ${color};
   --ring: ${color};
-  --shell-rail: color-mix(in oklab, ${color} 5%, #eeece8);
-  --shell-sidebar: color-mix(in oklab, ${color} 4%, #f5f3f0);
-  --background: color-mix(in oklab, ${color} 3%, #fcfbf9);
-  --secondary: color-mix(in oklab, ${color} 6%, #e8e5e0);
-  --muted: color-mix(in oklab, ${color} 6%, #e8e5e0);
-  --accent: color-mix(in oklab, ${color} 6%, #e8e5e0);
-  --border: color-mix(in oklab, ${color} 8%, #ddd9d3);
-  --input: color-mix(in oklab, ${color} 8%, #ddd9d3);
+  --shell-rail: color-mix(in oklab, ${color} 5%, #ebecee);
+  --shell-sidebar: color-mix(in oklab, ${color} 4%, #f3f4f5);
+  --background: color-mix(in oklab, ${color} 3%, #fafafa);
+  --secondary: color-mix(in oklab, ${color} 6%, #e9eaec);
+  --muted: color-mix(in oklab, ${color} 6%, #e9eaec);
+  --accent: color-mix(in oklab, ${color} 6%, #e9eaec);
+  --border: color-mix(in oklab, ${color} 8%, #dcdee1);
+  --input: color-mix(in oklab, ${color} 8%, #dcdee1);
 }
 :root[data-color-mode='dark']:not([data-theme]) {
   --brand: color-mix(in oklab, ${color} 60%, #f2f4f6);

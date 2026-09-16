@@ -4,14 +4,14 @@ import { applyColorMode, applyTheme, getColorMode } from './theme';
 const values = new Map<string, string>();
 const dataset: Record<string, string> = {};
 const metas = [
-  { media: '(prefers-color-scheme: light)', content: '#fcfbf9' },
+  { media: '(prefers-color-scheme: light)', content: '#fafafa' },
   { media: '(prefers-color-scheme: dark)', content: '#191c21' },
 ];
 
 beforeEach(() => {
   values.clear();
   for (const key of Object.keys(dataset)) delete dataset[key];
-  metas[0]!.content = '#fcfbf9';
+  metas[0]!.content = '#fafafa';
   metas[1]!.content = '#191c21';
 
   vi.stubGlobal('localStorage', {
@@ -44,7 +44,7 @@ describe('color mode', () => {
     applyColorMode('system');
     expect(dataset.colorMode).toBeUndefined();
     expect(values.get('vp-color-mode')).toBe('system');
-    expect(metas.map((meta) => meta.content)).toEqual(['#fcfbf9', '#191c21']);
+    expect(metas.map((meta) => meta.content)).toEqual(['#fafafa', '#191c21']);
   });
 
   it('keeps an always-dark named theme dark and restores the saved mode later', () => {
@@ -55,6 +55,6 @@ describe('color mode', () => {
     applyTheme('default');
     expect(dataset.theme).toBeUndefined();
     expect(dataset.colorMode).toBe('light');
-    expect(metas.map((meta) => meta.content)).toEqual(['#fcfbf9', '#fcfbf9']);
+    expect(metas.map((meta) => meta.content)).toEqual(['#fafafa', '#fafafa']);
   });
 });

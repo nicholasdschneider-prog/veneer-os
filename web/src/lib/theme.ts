@@ -41,7 +41,7 @@ export const THEMES: ThemeDef[] = [
     description: 'Clean and neutral with serif prose.',
     appearance: 'system',
     themeColor: null,
-    preview: ['#fcfbf9', '#292826', '#7b7062'],
+    preview: ['#fafafa', '#27282b', '#7b7062'],
     tags: ['neutral', 'serif prose'],
   },
   {
@@ -61,7 +61,7 @@ const COLOR_MODE_STORAGE_KEY = 'vp-color-mode';
 // index.html ships light/dark theme-color metas; remember their defaults so
 // switching back to 'default' restores media-based behavior.
 const META_DEFAULTS: Record<string, string> = {
-  '(prefers-color-scheme: light)': '#fcfbf9',
+  '(prefers-color-scheme: light)': '#fafafa',
   '(prefers-color-scheme: dark)': '#191c21',
 };
 
