@@ -285,6 +285,15 @@ None of this is needed to log in. Each is off until fully configured; see the RE
   `VP_PAGES_BUCKET` (default `veneer-pages`), `VP_PAGES_PUBLIC_BASE`. Create an R2 bucket, attach a
   public hostname to it, and set the public base to that origin. Publishing stays disabled unless
   the account id, the token and the public base are all present.
+
+  **Live on this install (2026-09-16):** bucket `veneer-pages`, custom domain
+  `https://pages.nicksworld.dev` (R2 custom domain on the `nicksworld.dev` zone), 7-day expiry
+  lifecycle rule on the `p/` prefix (the server creates and keeps it). `VP_PAGES_CF_ACCOUNT_ID` and
+  `VP_PAGES_PUBLIC_BASE` are in `~/.config/veneer-pro/env`; the scoped token (Cloudflare token name
+  `veneer-pages-r2`, Workers R2 Storage Write) is the Doppler secret `VP_PAGES_CF_API_TOKEN` in
+  `main/prd`, which the web service reads at boot. Agents get the `publish_page` / `list_pages`
+  tools plus the `veneer-publish-page` skill automatically once these are set; a restart is needed
+  after changing them.
 - **Cloudflare-hosted Mini Apps (Workers).** `VP_APPS_CF_ACCOUNT_ID`, `VP_APPS_CF_API_TOKEN`
   (Workers Scripts Write + Workers Routes Write + R2 Storage Write), `VP_APPS_CF_ZONE_ID`,
   `VP_APPS_PUBLIC_ORIGIN`. One isolated Worker and route per app; the Workers token is deliberately
