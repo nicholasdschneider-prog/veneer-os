@@ -1,0 +1,14 @@
+{
+  "claude": {
+    "installerUrl": "https://claude.ai/install.sh",
+    "version": "2.1.259"
+  },
+  "codex": {
+    "package": "@openai/codex",
+    "version": "0.153.4"
+  },
+  "grok": {
+    "installerUrl": "https://x.ai/cli/install.sh",
+    "version": "1.0.5"
+  }
+}

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Veneer Pro web and API — the launchd counterpart of veneer-pro.service.
+
+  Reference copy. The live agent is rendered from this template by the installer
+  into ~/Library/LaunchAgents/, with __TOKENS__ replaced.
+
+  KeepAlive is what makes `npm run restart` work here exactly as systemd's
+  Restart=always does on Linux: the service drains, exits 0, and launchd starts
+  it again. There is no EnvironmentFile equivalent in launchd, so the service
+  reads ~/.config/veneer-pro/env itself (server/src/envFile.ts).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.pro</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE__</string>
+    <string>__CODE_DIR__/server/dist/index.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__CODE_DIR__</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- Mirrors systemd RestartSec=1. Below 10s launchd would otherwise throttle. -->
+  <key>ThrottleInterval</key>
+  <integer>1</integer>
+
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-pro.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-pro.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- Everything else comes from the env file the service loads itself. -->
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>VP_ENV_FILE</key>
+    <string>__ENV_FILE__</string>
+    <!-- The service home holds Pro's OWN runtime state, kept apart from the
+         login user's. It is named explicitly because it is not the same thing
+         as HOME: a Full Access agent runs with the login account's HOME so
+         git/gh/ssh find this machine's credentials, and VP_SERVICE_HOME is how
+         its children still find Pro's directories. Linux sets the same pair
+         from the env file, where both are the `veneer` account's home. -->
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <key>VP_SERVICE_HOME</key>
+    <string>__HOME__</string>
+    <!-- The local browser manager serves a self-signed loopback certificate.
+         Node reads NODE_EXTRA_CA_CERTS once, at process start, so it cannot come
+         from the env file this service loads itself: without it every request to
+         https://localhost:7301 fails with DEPTH_ZERO_SELF_SIGNED_CERT. -->
+    <key>NODE_EXTRA_CA_CERTS</key>
+    <string>__EXTRA_CA__</string>
+  </dict>
+</dict>
+</plist>

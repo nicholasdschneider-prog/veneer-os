@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Self-hosted Supermemory — the launchd counterpart of veneer-supermemory.service.
+
+  Reference copy, rendered by the installer into ~/Library/LaunchAgents/.
+  The binary is platform-specific (the Linux host runs an ELF build), so it is
+  installed per-host by https://supermemory.ai/install, which resolves
+  darwin-arm64. Its own env file carries the data dir and model provider.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.supermemory</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__SUPERMEMORY_BIN__</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__HOME__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>2</integer>
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-supermemory.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-supermemory.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>HOME</key>
+    <string>__HOME__</string>
+__SUPERMEMORY_ENV__
+  </dict>
+</dict>
+</plist>

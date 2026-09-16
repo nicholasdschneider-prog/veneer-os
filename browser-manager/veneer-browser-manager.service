@@ -1,0 +1,23 @@
+[Unit]
+Description=Veneer Browser Manager
+After=docker.service network-online.target srv-veneer\x2dbrowser-store.mount
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/veneer-browser-manager
+EnvironmentFile=-/etc/veneer-browser/manager.env
+Environment=VENEER_BROWSER_REQUIRE_ENCRYPTED=1
+ExecStart=/usr/bin/node /opt/veneer-browser-manager/manager.mjs
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/veneer-browser/store /run/docker.sock
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.pro.backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE__</string>
+    <string>__CODE_DIR__/installer/backup.mjs</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__CODE_DIR__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>20</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-pro-backup.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-pro-backup.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <key>VP_ENV_FILE</key>
+    <string>__ENV_FILE__</string>
+  </dict>
+</dict>
+</plist>

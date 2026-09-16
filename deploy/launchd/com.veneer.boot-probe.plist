@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Post-boot self-verification. Runs once per boot (RunAtLoad, no KeepAlive),
+  checks every hop from the loopback ports out to the public edge, writes
+  ~/veneer-boot-report-<timestamp>.txt and emails the verdict.
+
+  This is the only agent here that deliberately runs as the LOGIN user rather
+  than in the Pro service home: it reports to a human, so it needs the login
+  home's ~/.doppler (for the Resend key) and drops its report where that human
+  will look for it.
+
+  Reference copy. The live agent is rendered from this template by the installer
+  into ~/Library/LaunchAgents/, with __TOKENS__ replaced.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.boot-probe</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE__</string>
+    <string>__CODE_DIR__/scripts/boot-probe.mjs</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__USER_HOME__</string>
+
+  <!-- One shot per boot: RunAtLoad starts it, and with no KeepAlive launchd
+       lets it exit. A non-zero exit means a check failed; that is a report,
+       not a crash, so there is nothing to restart. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-boot-probe.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-boot-probe.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>HOME</key>
+    <string>__USER_HOME__</string>
+    <!-- Ports come from the same env file the services read. -->
+    <key>VP_ENV_FILE</key>
+    <string>__ENV_FILE__</string>
+    <!-- Browser tooling lives under the isolated service HOME, while this
+         human-facing probe deliberately runs under the login HOME. -->
+    <key>VP_SERVICE_HOME</key>
+    <string>__HOME__</string>
+  </dict>
+</dict>
+</plist>

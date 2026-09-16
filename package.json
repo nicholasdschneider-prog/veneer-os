@@ -1,0 +1,39 @@
+{
+  "name": "veneer-os",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "server",
+    "web",
+    "browser-manager"
+  ],
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "build": "npm run build -w @veneer-pro/server && npm run build -w @veneer-pro/web",
+    "typecheck": "tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p web/tsconfig.json",
+    "test": "npm run test:installer && npm run test -w @veneer-pro/server && npm run test -w @veneer-pro/web && npm test -w veneer-browser-manager",
+    "test:installer": "node --test installer/*.test.mjs",
+    "dev": "npm run dev -w @veneer-pro/server",
+    "start": "node server/dist/index.js",
+    "start:runner": "node server/dist/runner/index.js",
+    "start:app-runner": "node server/dist/appRunner/index.js",
+    "start:term": "node server/dist/terminalService/index.js",
+    "restart": "node scripts/restart.mjs",
+    "dev:app-runner": "tsx watch server/src/appRunner/index.ts",
+    "backfill:memory-curator": "tsx scripts/backfill-curated-memory.ts",
+    "audit:memory-duplicates": "tsx scripts/audit-memory-duplicates.ts"
+  },
+  "dependencies": {
+    "docx": "9.7.1",
+    "jszip": "3.10.1",
+    "marked": "18.0.9"
+  },
+  "allowScripts": {
+    "better-sqlite3": true,
+    "esbuild": true,
+    "node-pty": true
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Publish a Veneer Page"
+  short_description: "Publish browser deliverables as Veneer pages"
+  default_prompt: "Use $veneer-publish-page to create and publish this browser-viewable deliverable as a page."

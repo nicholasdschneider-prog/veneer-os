@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Veneer Browser manager — the launchd counterpart of veneer-browser-manager.service.
+
+  On Linux this runs on its own VM and drives one Docker container per browser
+  profile. On a Mac it runs beside the Pro server and drives native Chrome
+  processes instead (VENEER_BROWSER_BACKEND=native), one per working copy, so
+  there is no VM, no Docker and no Xvfb. The listeners stay on loopback.
+
+  The TLS listener is not optional here: the Pro server requires an https origin
+  with a /cdp/ path for browser tickets and pins the certificate through
+  VP_VENEER_BROWSER_LAN_CA. browser-manager/scripts/local-tls.mjs writes the
+  pair this template points at.
+
+  Reference copy. The live agent is rendered from this template by the installer
+  into ~/Library/LaunchAgents/, with __TOKENS__ replaced. See
+  browser-manager/INSTALL-MACOS.md for the full sequence.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.browser-manager</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE__</string>
+    <string>__CODE_DIR__/browser-manager/manager.mjs</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__CODE_DIR__/browser-manager</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>1</integer>
+
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-browser-manager.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-browser-manager.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>HOME</key>
+    <string>__HOME__</string>
+
+    <!-- Native Chrome processes, not containers. -->
+    <key>VENEER_BROWSER_BACKEND</key>
+    <string>native</string>
+    <key>VENEER_BROWSER_CHROME_BIN</key>
+    <string>__CHROME__</string>
+
+    <!-- Both listeners stay on loopback: the Pro server is on this machine. -->
+    <key>VENEER_BROWSER_BIND</key>
+    <string>127.0.0.1</string>
+    <key>VENEER_BROWSER_MANAGER_PORT</key>
+    <string>7300</string>
+    <key>VENEER_BROWSER_TLS_PORT</key>
+    <string>7301</string>
+    <key>VENEER_BROWSER_TLS_CERT</key>
+    <string>__HOME__/.config/veneer-browser/tls/cert.pem</string>
+    <key>VENEER_BROWSER_TLS_KEY</key>
+    <string>__HOME__/.config/veneer-browser/tls/key.pem</string>
+
+    <!-- The origin the Pro server pins, minted into every ticket. -->
+    <key>VENEER_BROWSER_PUBLIC_ORIGIN</key>
+    <string>https://localhost:7301</string>
+
+    <!-- Defaults on darwin, spelled out so the service is readable from launchctl. -->
+    <key>VENEER_BROWSER_STORE</key>
+    <string>__HOME__/Library/Application Support/veneer-browser/store</string>
+    <key>VENEER_BROWSER_CLIENTS_FILE</key>
+    <string>__HOME__/.config/veneer-browser/clients.json</string>
+  </dict>
+</dict>
+</plist>

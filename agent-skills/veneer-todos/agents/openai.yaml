@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Veneer Todos"
+  short_description: "Add and update native Veneer Todo lists"
+  default_prompt: "Use $veneer-todos to add this item to my Veneer Todo list."

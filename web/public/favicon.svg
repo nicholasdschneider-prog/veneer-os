@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Veneer Pro">
+  <!-- Veneer Pro favicon: the brand mark (bowed panel with a knocked-out V) on
+       an ink rounded tile, so it stays legible on any browser-tab background.
+       App icons use separate full-bleed sources in web/public/icons. -->
+  <rect width="512" height="512" rx="114" fill="#191714"/>
+  <g transform="translate(141 106.5) scale(1.15)">
+    <mask id="v"><rect width="200" height="260" fill="white"/>
+      <path d="M70 90 L100 180 L130 90" fill="none" stroke="black" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></mask>
+    <path d="M14 8 C60 4, 140 4, 186 8 C198 70, 198 190, 186 252 C140 256, 60 256, 14 252 C2 190, 2 70, 14 8 Z" fill="#faf7f2" mask="url(#v)"/>
+  </g>
+</svg>

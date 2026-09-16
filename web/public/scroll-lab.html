@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Scroll lab</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: #1e1e1e; color: #ccc;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── controls ── */
+  #bar {
+    flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: calc(env(safe-area-inset-top) + 8px) 10px 8px;
+    border-bottom: 1px solid #3c3c3c; background: #252526;
+    font-size: 12px;
+  }
+  #bar button {
+    font: inherit; color: #ccc; background: #2d2d30; border: 1px solid #3c3c3c;
+    border-radius: 6px; padding: 6px 9px;
+  }
+  #bar button[data-on="1"] { background: #0e639c; color: #fff; border-color: #0e639c; }
+  #meter { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+  #meter b { color: #4ec9b0; }
+  #meter.bad b { color: #f14c4c; }
+
+  /* ── scroller mirrors the app viewport ── */
+  #scroller {
+    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  }
+  body.contain #scroller { contain: content; }
+  body.mask #scroller {
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 40px), transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 40px), transparent 100%);
+  }
+  #content {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 16px; min-height: 100%; height: max-content;
+    max-width: 672px; margin: 0 auto; width: 100%;
+  }
+  .item { flex-shrink: 0; min-width: 0; }
+
+  /* user bubble ≈ Bubble default variant */
+  body.bubbles .user {
+    display: flex; width: fit-content; max-width: 80%; margin-left: auto;
+    background: #0e639c; color: #fff;
+    border-radius: 16px; border-bottom-right-radius: 6px;
+    padding: 10px 16px; overflow: hidden; white-space: pre-wrap;
+    font-size: 16px; line-height: 1.5;
+  }
+  body:not(.bubbles) .user { font-size: 16px; line-height: 1.5; color: #9cdcfe; }
+
+  /* assistant prose ≈ .prose-assistant */
+  .asst { font-size: 15px; line-height: 1.55; }
+  .asst p { margin: 0.6em 0; }
+  .asst p:first-child { margin-top: 0; }
+  .asst p:last-child { margin-bottom: 0; }
+  .asst pre {
+    background: #2d2d30; border: 1px solid #3c3c3c; border-radius: 10px;
+    padding: 0.8em 1em; margin: 0.7em 0;
+    font: 13px/1.5 ui-monospace, Menlo, monospace;
+  }
+  body.hscroll .asst pre { overflow-x: auto; }
+  body:not(.hscroll) .asst pre { overflow-x: hidden; white-space: pre-wrap; word-break: break-all; }
+  .tool { font-size: 13px; color: #9d9d9d; display: flex; gap: 8px; align-items: center; }
+  .tool::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #3c3c3c; flex-shrink: 0; }
+</style>
+</head>
+<body class="bubbles hscroll contain"><!-- defaults = the app's current state on iOS -->
+
+<div id="bar">
+  <button data-cls="bubbles">bubbles</button>
+  <button data-cls="hscroll">code&nbsp;h-scroll</button>
+  <button data-cls="contain">contain</button>
+  <button data-cls="mask">fade&nbsp;mask</button>
+  <div id="meter">worst <b id="worst">–</b>ms<br>jank/5s <b id="jank">–</b></div>
+</div>
+
+<div id="scroller"><div id="content"></div></div>
+
+<script>
+// Deterministic content so every toggle scrolls the exact same transcript.
+let seed = 42;
+const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+const WORDS = 'the scroll layer paints each tile when content enters the viewport and safari must rasterize glyphs borders and masks before the frame deadline or the gesture visibly stutters under the finger'.split(' ');
+const sentence = (n) => { let out = []; for (let i = 0; i < n; i++) out.push(WORDS[(rnd() * WORDS.length) | 0]); return out.join(' ') + '.'; };
+const codeLine = (w) => ('const value_' + ((rnd() * 999) | 0) + ' = compute(' + '"' + sentence(w).replaceAll(' ', '_') + '"' + ');');
+
+const content = document.getElementById('content');
+const frag = [];
+for (let m = 0; m < 140; m++) {
+  const r = rnd();
+  if (r < 0.3) {
+    // user prompt — occasionally several in a row, like queued follow-ups
+    const run = rnd() < 0.3 ? 2 + ((rnd() * 2) | 0) : 1;
+    for (let i = 0; i < run; i++)
+      frag.push('<div class="item"><div class="user">' + sentence(4 + ((rnd() * 14) | 0)) + '</div></div>');
+  } else if (r < 0.55) {
+    // assistant reply with code blocks (some long lines to engage h-scroll)
+    let pre = '';
+    const lines = 6 + ((rnd() * 14) | 0);
+    for (let i = 0; i < lines; i++) pre += codeLine(i % 5 === 2 ? 18 : 4) + '\n';
+    frag.push('<div class="item"><div class="asst"><p>' + sentence(12) + '</p><pre>' + pre + '</pre><p>' + sentence(10) + '</p></div></div>');
+  } else if (r < 0.7) {
+    frag.push('<div class="item"><div class="tool">Ran a tool · ' + sentence(3) + '</div></div>');
+  } else {
+    frag.push('<div class="item"><div class="asst"><p>' + sentence(30 + ((rnd() * 40) | 0)) + '</p><p>' + sentence(20) + '</p></div></div>');
+  }
+}
+content.innerHTML = frag.join('');
+
+const scroller = document.getElementById('scroller');
+scroller.scrollTop = scroller.scrollHeight; // start at bottom, like the app
+
+// toggles
+for (const b of document.querySelectorAll('#bar button')) {
+  const cls = b.dataset.cls;
+  const sync = () => (b.dataset.on = document.body.classList.contains(cls) ? '1' : '0');
+  b.addEventListener('click', () => { document.body.classList.toggle(cls); sync(); resetMeter(); });
+  sync();
+}
+
+// jank meter: worst rAF gap + count of >33ms frames in a rolling 5s window
+const worstEl = document.getElementById('worst');
+const jankEl = document.getElementById('jank');
+const meterEl = document.getElementById('meter');
+let last = performance.now(), worst = 0, janks = [];
+function resetMeter() { worst = 0; janks = []; }
+function tick(now) {
+  const dt = now - last; last = now;
+  if (dt > worst) worst = dt;
+  if (dt > 33) janks.push(now);
+  while (janks.length && janks[0] < now - 5000) janks.shift();
+  worstEl.textContent = worst.toFixed(0);
+  jankEl.textContent = janks.length;
+  meterEl.classList.toggle('bad', janks.length > 3);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+scroller.addEventListener('scroll', () => {}, { passive: true });
+</script>
+</body>
+</html>

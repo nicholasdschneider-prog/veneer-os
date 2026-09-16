@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Veneer Pro terminal service — the launchd counterpart of veneer-pro-term.service.
+
+  It owns every browser-terminal pty. Web only relays frames to it, so shipping
+  web/UI code swaps the web process while open shells keep running here.
+  Restarting THIS service is what ends them, which is why `npm run ship` starts
+  it only when terminal-service code changed.
+
+  Reference copy. The live agent is rendered from this template by the installer
+  into ~/Library/LaunchAgents/, with __TOKENS__ replaced.
+
+  KeepAlive is what makes `npm run restart` work here exactly as systemd's
+  Restart=always does on Linux: the service drains, exits 0, and launchd starts
+  it again. There is no EnvironmentFile equivalent in launchd, so the service
+  reads ~/.config/veneer-pro/env itself (server/src/envFile.ts).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.pro.term</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE__</string>
+    <string>__CODE_DIR__/server/dist/terminalService/index.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__CODE_DIR__</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- Mirrors systemd RestartSec=1. Below 10s launchd would otherwise throttle. -->
+  <key>ThrottleInterval</key>
+  <integer>1</integer>
+
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-pro-term.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-pro-term.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- Everything else comes from the env file the service loads itself. -->
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>VP_ENV_FILE</key>
+    <string>__ENV_FILE__</string>
+    <!-- The service home holds Pro's OWN runtime state, kept apart from the
+         login user's. It is named explicitly because it is not the same thing
+         as HOME: a Full Access agent runs with the login account's HOME so
+         git/gh/ssh find this machine's credentials, and VP_SERVICE_HOME is how
+         its children still find Pro's directories. Linux sets the same pair
+         from the env file, where both are the `veneer` account's home. -->
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <key>VP_SERVICE_HOME</key>
+    <string>__HOME__</string>
+  </dict>
+</dict>
+</plist>

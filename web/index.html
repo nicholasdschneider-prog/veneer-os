@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
+    />
+    <title>Veneer Pro</title>
+    <!-- Apply saved theme settings before first paint. Keys and behavior
+         mirror src/lib/theme.ts — keep them in sync. -->
+    <script>
+      try {
+        var vpTheme = localStorage.getItem('vp-theme');
+        if (vpTheme && vpTheme !== 'default') document.documentElement.dataset.theme = vpTheme;
+        var vpColorMode = localStorage.getItem('vp-color-mode');
+        if (vpColorMode === 'light' || vpColorMode === 'dark') {
+          document.documentElement.dataset.colorMode = vpColorMode;
+        }
+      } catch (e) {}
+    </script>
+    <!-- Apply the saved brand tint before first paint. Key + behavior mirror
+         src/lib/brandTheme.ts — keep in sync. -->
+    <script>
+      try {
+        var vpBrandCss = localStorage.getItem('vp-brand-css');
+        if (vpBrandCss) {
+          var vpBrandStyle = document.createElement('style');
+          vpBrandStyle.id = 'vp-brand-style';
+          vpBrandStyle.textContent = vpBrandCss;
+          document.head.appendChild(vpBrandStyle);
+        }
+      } catch (e) {}
+    </script>
+    <meta name="theme-color" content="#fcfbf9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191c21" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Veneer Pro" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <!-- Favicon: SVG for crisp modern tabs, .ico for legacy / bare /favicon.ico
+         requests, PNGs as the sized fallback. All are the Veneer brand mark. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Temporary scroll-jank diagnostic; no-ops unless ?scrolldebug was set.
+         Classic script so its devtools hook installs before React loads. -->
+    <script src="/scroll-debug.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

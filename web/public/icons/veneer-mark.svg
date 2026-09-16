@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" role="img" aria-label="Veneer">
+  <!-- Veneer mark: a slightly bowed panel with a V knocked out of it.
+       Single path + mask, no fills other than currentColor — set `color`
+       (or fill) on the parent to theme it. Source of truth: Veneer Studio's
+       AppLogo (veneer/src/components/ProjectListView.jsx). -->
+  <defs>
+    <mask id="veneer-mark-cutout">
+      <rect width="200" height="260" fill="white" />
+      <path d="M70 90 L100 180 L130 90" fill="none" stroke="black" stroke-width="22"
+            stroke-linecap="round" stroke-linejoin="round" />
+    </mask>
+  </defs>
+  <path d="M14 8 C60 4, 140 4, 186 8 C198 70, 198 190, 186 252 C140 256, 60 256, 14 252 C2 190, 2 70, 14 8 Z"
+        fill="currentColor" mask="url(#veneer-mark-cutout)" />
+</svg>

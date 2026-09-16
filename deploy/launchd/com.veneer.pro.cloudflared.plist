@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.pro.cloudflared</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__CLOUDFLARED__</string>
+    <string>tunnel</string>
+    <string>--no-autoupdate</string>
+    <string>run</string>
+    <string>--token-file</string>
+    <string>__TUNNEL_TOKEN_FILE__</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__USER_HOME__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-pro-cloudflared.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-pro-cloudflared.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>HOME</key>
+    <string>__USER_HOME__</string>
+  </dict>
+</dict>
+</plist>

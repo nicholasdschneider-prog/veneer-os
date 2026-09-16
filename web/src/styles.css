@@ -1,0 +1,945 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@source '../../node_modules/streamdown/dist/*.js';
+@source '../../node_modules/@streamdown/mermaid/dist/*.js';
+
+/*
+ * Veneer Pro themes, mapped into the shadcn semantic tokens.
+ *
+ * 'default' (no data-theme attribute) is the neutral Veneer palette. Its color
+ * mode follows the system unless data-color-mode forces light or dark. Named
+ * themes are token blocks keyed off `data-theme` on <html>, set by
+ * src/lib/theme.ts. To add one: write a `:root[data-theme='<id>']` block and
+ * register it in theme.ts.
+ */
+@theme {
+  --font-sans: 'InterVariable', ui-sans-serif, system-ui, sans-serif;
+  --font-prose: 'Iowan Old Style', 'Palatino', Georgia, 'Times New Roman', serif;
+}
+
+@theme inline {
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-shell-sidebar: var(--shell-sidebar);
+  --color-shell-rail: var(--shell-rail);
+  --color-brand: var(--brand);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Base token literals are mirrored by src/lib/brandTheme.ts — keep in sync. */
+:root {
+  color-scheme: light;
+  --shell-rail: #eeece8;
+  --shell-sidebar: #f5f3f0;
+  --background: #fcfbf9;
+  --foreground: #292826;
+  --card: #ffffff;
+  --card-foreground: #292826;
+  --popover: #ffffff;
+  --popover-foreground: #292826;
+  --primary: #292826;
+  --primary-foreground: #f8f7f5;
+  --secondary: #e8e5e0;
+  --secondary-foreground: #292826;
+  --muted: #e8e5e0;
+  --muted-foreground: #6b6863;
+  --accent: #e8e5e0;
+  --accent-foreground: #292826;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #ddd9d3;
+  --input: #ddd9d3;
+  --ring: #7b7062;
+  --brand: #7b7062;
+  --radius: 0.75rem;
+}
+
+/*
+ * `dark:` utilities follow the saved override, or the device setting while
+ * mode is System. Forced-dark named themes also enable them.
+ */
+@custom-variant dark {
+  &:where(
+    [data-theme='terminal'],
+    [data-theme='terminal'] *,
+    :root[data-color-mode='dark']:not([data-theme]),
+    :root[data-color-mode='dark']:not([data-theme]) *
+  ) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(
+      :root:not([data-theme]):not([data-color-mode]),
+      :root:not([data-theme]):not([data-color-mode]) *
+    ) {
+      @slot;
+    }
+  }
+}
+
+:root[data-color-mode='dark']:not([data-theme]) {
+  color-scheme: dark;
+  --shell-rail: #14171b;
+  --shell-sidebar: #20242a;
+  --background: #191c21;
+  --foreground: #f2f4f6;
+  --card: #272b31;
+  --card-foreground: #f2f4f6;
+  --popover: #272b31;
+  --popover-foreground: #f2f4f6;
+  --primary: #f2f4f6;
+  --primary-foreground: #191c21;
+  --secondary: #30353d;
+  --secondary-foreground: #f2f4f6;
+  --muted: #30353d;
+  --muted-foreground: #b3b8c0;
+  --accent: #30353d;
+  --accent-foreground: #f2f4f6;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #3a4048;
+  --input: #3a4048;
+  --ring: #aeb8c7;
+  --brand: #aeb8c7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]):not([data-color-mode]) {
+    color-scheme: dark;
+    --shell-rail: #14171b;
+    --shell-sidebar: #20242a;
+    --background: #191c21;
+    --foreground: #f2f4f6;
+    --card: #272b31;
+    --card-foreground: #f2f4f6;
+    --popover: #272b31;
+    --popover-foreground: #f2f4f6;
+    --primary: #f2f4f6;
+    --primary-foreground: #191c21;
+    --secondary: #30353d;
+    --secondary-foreground: #f2f4f6;
+    --muted: #30353d;
+    --muted-foreground: #b3b8c0;
+    --accent: #30353d;
+    --accent-foreground: #f2f4f6;
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: #3a4048;
+    --input: #3a4048;
+    --ring: #aeb8c7;
+    --brand: #aeb8c7;
+  }
+}
+
+/*
+ * Terminal — always-dark IDE theme in the style of VS Code (Dark+).
+ *
+ * Themes are more than a recolor: a theme block may restyle each of these
+ * layers. They're labeled below so future themes can copy the structure.
+ *   1. Tokens      — the shadcn color/radius vars
+ *   2. Typography  — font stacks (the whole UI goes monospace here)
+ *   3. Shape       — pill/rounded utilities squashed to IDE corners
+ *   4. Chrome      — headers become slim editor title bars
+ *   5. Controls    — selects/inputs/focus in VS Code's filled style
+ *   6. Prose       — markdown replies styled like VS Code's preview
+ *   7. Surfaces    — scrollbars, text selection
+ * These rules are unlayered on purpose: Tailwind utilities live in
+ * @layer utilities, so theme rules win regardless of specificity.
+ */
+
+/* ── 1. Tokens: near-black cool charcoal, VS Code dark-theme family ── */
+:root[data-theme='terminal'] {
+  color-scheme: dark;
+  --shell-rail: #17171c;
+  --shell-sidebar: #141419;
+  --background: #101014; /* editor background */
+  --foreground: #c9d1d9; /* UI text */
+  --card: #17171c; /* sidebar / title bars */
+  --card-foreground: #c9d1d9;
+  --popover: #17171c;
+  --popover-foreground: #c9d1d9;
+  --primary: #1f6feb; /* button blue */
+  --primary-foreground: #ffffff;
+  --secondary: #1e1e24;
+  --secondary-foreground: #c9d1d9;
+  --muted: #1e1e24;
+  --muted-foreground: #8b929e;
+  --accent: #0d3a66; /* list selection */
+  --accent-foreground: #ffffff;
+  --destructive: #f14c4c;
+  --border: #26262e;
+  --input: #26262e;
+  --ring: #1f6feb; /* focus border */
+  --brand: #58a6ff; /* link blue */
+  --radius: 0.3rem;
+}
+
+/* ── 2. Typography: monospace everywhere, like an editor ── */
+:root[data-theme='terminal'] {
+  --font-mono-ui: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+  --font-sans: var(--font-mono-ui);
+  --default-font-family: var(--font-mono-ui); /* preflight's html font */
+  --font-prose: var(--font-mono-ui);
+  /* Denser type scale: the UI is rem-based, so shrinking the root shrinks
+     everything (beats the global `html { font-size: 15px }` on specificity).
+     The chat composer keeps its absolute text-[16px], so iOS focus-zoom
+     behavior is unchanged. */
+  font-size: 14px;
+}
+:root[data-theme='terminal'] body {
+  font-family: var(--font-mono-ui);
+  letter-spacing: -0.01em;
+}
+/* Big friendly screen titles become compact editor-tab labels. */
+:root[data-theme='terminal'] h1 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+:root[data-theme='terminal'] h1::after {
+  content: '_';
+  color: var(--brand);
+}
+
+/* ── 3. Shape: no pills in an IDE (toggle switches keep theirs) ── */
+:root[data-theme='terminal'] .rounded-full:not([role='switch'], [role='switch'] *) {
+  border-radius: var(--radius-md);
+}
+
+/* ── 4. Chrome: headers as slim title bars ── */
+:root[data-theme='terminal'] header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* ── 5. Controls: VS Code's filled, near-square fields ── */
+:root[data-theme='terminal'] select,
+:root[data-theme='terminal'] [data-slot='input'] {
+  background-color: #232329; /* a step lighter than the panel behind it */
+  border-color: transparent;
+  border-radius: 2px;
+  color: #c9d1d9;
+}
+:root[data-theme='terminal'] select:focus,
+:root[data-theme='terminal'] [data-slot='input']:focus-visible {
+  border-color: var(--ring);
+  box-shadow: none;
+}
+/* Crisp 1px focus border instead of the soft glow ring. */
+:root[data-theme='terminal'] :is(button, [role='button'], a, textarea):focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: -1px;
+  box-shadow: none;
+}
+
+/* ── 6. Prose: markdown replies like VS Code's preview pane ── */
+:root[data-theme='terminal'] .prose-assistant {
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+:root[data-theme='terminal'] .prose-assistant :is(h1, h2) {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.25em;
+  text-transform: none;
+}
+:root[data-theme='terminal'] .prose-assistant h1::after {
+  content: none;
+}
+:root[data-theme='terminal'] .prose-assistant code {
+  color: #ee5d90; /* syntax pink, like the tag color in dark editor themes */
+}
+:root[data-theme='terminal'] .prose-assistant pre {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+:root[data-theme='terminal'] .prose-assistant pre code {
+  color: #c9d1d9; /* blocks read as editor text, not one long string */
+}
+:root[data-theme='terminal'] .prose-assistant blockquote {
+  border-left-color: #1f6feb;
+  background: color-mix(in oklab, #1f6feb 10%, transparent);
+}
+
+/* ── 7. Surfaces: scrollbars and selection ── */
+:root[data-theme='terminal'] ::selection {
+  background: #1c4a7e; /* editor selection blue */
+  color: #ffffff;
+}
+:root[data-theme='terminal'] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+:root[data-theme='terminal'] ::-webkit-scrollbar-thumb {
+  background: rgb(121 121 121 / 0.35);
+  border-radius: 0;
+}
+:root[data-theme='terminal'] ::-webkit-scrollbar-thumb:active {
+  background: rgb(121 121 121 / 0.6);
+}
+:root[data-theme='terminal'] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  /* Minimal scrollbars app-wide: the standard properties (not ::-webkit-*)
+     make Chrome drop its bordered, filled default track entirely — just a
+     thin, faint thumb from the theme's foreground on a transparent track.
+     scrollbar-width doesn't inherit, hence the `*`. The terminal theme is
+     excluded: it draws its own VS Code-style bars via ::-webkit-scrollbar
+     (already trackless), which setting these properties would disable.
+     Utilities (scrollbar-thumb-transparent etc.) still win over this layer. */
+  :root:not([data-theme='terminal']),
+  :root:not([data-theme='terminal']) * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 28%, transparent) transparent;
+  }
+}
+
+/* Composer + its model/effort pickers carry no border: a filled surface is
+   what sets them off from the page. The fill lightens a touch while the field
+   is focused, so the active control is obvious. */
+.composer-fill {
+  background-color: var(--muted);
+  border: none;
+  transition: background-color 0.15s ease;
+}
+.composer-fill:focus,
+.composer-fill:focus-within {
+  background-color: color-mix(in srgb, var(--muted), #fff 8%);
+}
+
+/* Slightly condensed global scale — the UI is rem-based, so nudging the root
+   shrinks everything proportionally. Keep focusable text inputs at >=16px
+   (absolute) where it matters: below that iOS zooms the page on focus. */
+html {
+  font-size: 15px;
+  /* iOS Safari paints browser chrome and the safe-area/overscroll canvas from
+     the root element. Keep it opaque so dark mode cannot reveal WebKit's
+     default white document canvas above the app. */
+  background-color: var(--background);
+}
+
+html,
+body {
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  height: 100%;
+}
+
+/*
+ * Height of the mobile bottom nav bar (see components/NavBar.tsx), including its
+ * safe-area padding. Bottom-pinned overlays add this to their offset so they
+ * clear the bar. On desktop the nav is a left rail, so there's nothing to clear.
+ */
+:root {
+  --vp-nav-h: calc(env(safe-area-inset-bottom) + 3.5rem);
+}
+@media (min-width: 768px) and (min-height: 600px) {
+  :root {
+    --vp-nav-h: 0px;
+  }
+}
+
+/* Assistant prose (rendered markdown) */
+.prose-assistant {
+  font-family: var(--font-prose);
+  font-size: 1.02rem;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+.prose-assistant p { margin: 0.6em 0; }
+.prose-assistant p:first-child { margin-top: 0; }
+.prose-assistant p:last-child { margin-bottom: 0; }
+.prose-assistant h1, .prose-assistant h2, .prose-assistant h3 {
+  font-weight: 700;
+  margin: 1.1em 0 0.4em;
+  line-height: 1.25;
+}
+.prose-assistant :is(h1, h2, h3):first-child { margin-top: 0; }
+/* h1 capped near h2: agents sometimes open with #, and a shouting title reads
+   worse than a section header in a chat bubble. */
+.prose-assistant h1 { font-size: 1.3em; }
+.prose-assistant h2 { font-size: 1.25em; }
+.prose-assistant h3 { font-size: 1.1em; font-weight: 650; }
+.prose-assistant ul, .prose-assistant ol { margin: 0.5em 0; padding-left: 1.4em; }
+.prose-assistant ul { list-style: disc; }
+.prose-assistant ol { list-style: decimal; }
+.prose-assistant li { margin: 0.2em 0; }
+.prose-assistant a { color: var(--brand); text-decoration: underline; }
+.prose-assistant a.vp-citation-link {
+  display: inline-flex;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-inline: 0.08rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--brand) 8%, transparent);
+  font-family: Inter, sans-serif;
+  font-size: 0.72em;
+  font-weight: 650;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: text-top;
+}
+.prose-assistant a.vp-citation-link:hover {
+  border-color: var(--brand);
+  background: color-mix(in oklab, var(--brand) 14%, transparent);
+}
+/* "Watch live" card: a live-desktop link rendered as a compact chip (see
+ * components/Markdown.tsx). Clicking opens the floating desktop, not a nav. */
+.prose-assistant a.vp-watch-desktop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.3em 0.7em;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 0.9em;
+  font-weight: 550;
+  text-decoration: none;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+.prose-assistant a.vp-watch-desktop:hover { border-color: var(--brand); }
+.prose-assistant a.vp-watch-desktop svg {
+  width: 1.05em;
+  height: 1.05em;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+/* Published page link: own-line wash + Pages nav icon (see Markdown.tsx). */
+.prose-assistant a.vp-page-link {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.4em;
+  margin: 0.4em 0 0.15em;
+  padding: 0.32em 0.68em 0.32em 0.52em;
+  border: none;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--brand) 6%, transparent);
+  color: var(--foreground);
+  text-decoration: underline;
+}
+.prose-assistant a.vp-page-link:hover {
+  background: color-mix(in oklab, var(--brand) 10%, transparent);
+  text-decoration: underline;
+}
+.prose-assistant a.vp-page-link svg {
+  width: 1.05em;
+  height: 1.05em;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+/* Inline-code file path promoted to a link (see Markdown.tsx). The code chip
+   keeps its shape; the tint and dotted rule say "tap to open". */
+.prose-assistant a.vp-file-path { text-decoration: none; }
+.prose-assistant a.vp-file-path code {
+  color: var(--brand);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+.prose-assistant a.vp-file-path:hover code {
+  background: color-mix(in oklab, var(--brand) 12%, var(--muted));
+}
+/* Blockquote as a tinted callout panel — agents use it for warnings/blockers,
+   so it keeps full-contrast text instead of the muted "quotation" gray. */
+.prose-assistant blockquote {
+  border-left: 3px solid color-mix(in oklab, var(--brand) 55%, var(--border));
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in oklab, var(--brand) 6%, transparent);
+  padding: 0.55em 0.9em;
+  margin: 0.7em 0;
+  color: var(--foreground);
+}
+.prose-assistant blockquote > :first-child { margin-top: 0; }
+.prose-assistant blockquote > :last-child { margin-bottom: 0; }
+.prose-assistant code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86em;
+  background: var(--muted);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.prose-assistant pre {
+  background: var(--muted);
+  border-radius: 10px;
+  padding: 0.8em 1em;
+  overflow-x: auto;
+  margin: 0.7em 0;
+}
+.prose-assistant pre code { background: none; padding: 0; }
+
+/* Streamdown's fenced-code shell is the only boundary. Its highlighted body
+   and Veneer's generic pre styles must not create nested cards inside it. */
+.prose-assistant [data-streamdown='code-block'] {
+  position: relative;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+  border-radius: 0.75rem;
+  background: transparent;
+}
+.prose-assistant [data-streamdown='code-block-header'] {
+  height: 2.5rem;
+  padding-inline: 0.75rem;
+  padding-right: 3rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 55%, transparent);
+}
+.prose-assistant [data-streamdown='code-block'] > div:has(> [data-streamdown='code-block-actions']) {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  z-index: 2;
+  display: flex;
+  height: 2rem;
+  margin: 0;
+  pointer-events: none;
+}
+.prose-assistant [data-streamdown='code-block-actions'] {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+.prose-assistant [data-streamdown='code-block-copy-button'] {
+  position: relative;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  color: var(--muted-foreground);
+  transition: none;
+}
+.prose-assistant [data-streamdown='code-block-copy-button']:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+.prose-assistant [data-streamdown='code-block-copy-button']:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.prose-assistant [data-streamdown='code-block-body'] {
+  border: 0;
+  border-radius: 0;
+  padding: 0.75rem 1rem;
+}
+.prose-assistant [data-streamdown='code-block-body'] pre {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Plain text has no useful language chrome. Use one compact neutral well;
+   an unlabeled fence follows the same presentation. */
+.prose-assistant [data-streamdown='code-block']:is(
+  [data-language=''],
+  [data-language='text' i],
+  [data-language='plaintext' i],
+  [data-language='txt' i]
+) {
+  background: transparent;
+}
+.prose-assistant [data-streamdown='code-block']:is(
+  [data-language=''],
+  [data-language='text' i],
+  [data-language='plaintext' i],
+  [data-language='txt' i]
+) [data-streamdown='code-block-header'] {
+  display: none;
+}
+.prose-assistant [data-streamdown='code-block']:is(
+  [data-language=''],
+  [data-language='text' i],
+  [data-language='plaintext' i],
+  [data-language='txt' i]
+) [data-streamdown='code-block-body'] {
+  padding-right: 3rem;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in oklab, var(--muted) 72%, transparent);
+}
+.prose-assistant table { border-collapse: collapse; margin: 0.8em 0; display: block; overflow-x: auto; font-size: 0.95em; }
+.prose-assistant th, .prose-assistant td { border: none; border-bottom: 1px solid var(--border); padding: 0.45em 0.75em; text-align: left; }
+.prose-assistant th { font-weight: 650; border-bottom-width: 2px; }
+.prose-assistant tbody tr:nth-child(even) { background: color-mix(in oklab, var(--muted) 55%, transparent); }
+.prose-assistant hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+/* <details>/<summary> pass the shared renderer's sanitizer untouched, so
+   agents get collapsible sections with native toggling — no transcript JS. */
+.prose-assistant details {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5em 0.9em;
+  margin: 0.7em 0;
+  background: color-mix(in oklab, var(--muted) 40%, transparent);
+}
+.prose-assistant summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  /* Padding lives on <details> so the closed state stays compact; keep the
+     summary itself flush. */
+  margin: 0;
+}
+.prose-assistant summary::-webkit-details-marker { display: none; }
+.prose-assistant summary::before {
+  content: '';
+  width: 0.55em;
+  height: 0.55em;
+  flex-shrink: 0;
+  border-right: 2px solid var(--muted-foreground);
+  border-bottom: 2px solid var(--muted-foreground);
+  transform: rotate(-45deg); /* chevron pointing right */
+  transition: transform 120ms ease;
+}
+.prose-assistant details[open] > summary::before { transform: rotate(45deg); }
+.prose-assistant details[open] > summary { margin-bottom: 0.4em; }
+
+/* KaTeX display output stays readable on narrow chat and file-preview panes. */
+.prose-assistant .katex-display {
+  max-width: 100%;
+  margin: 0.8em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15em 0;
+}
+.prose-assistant .katex-display > .katex { min-width: max-content; }
+
+/* Mermaid is media, not a nested code card. Let the diagram use the complete
+   Markdown width while keeping Streamdown's controls and readable fallback. */
+.prose-assistant [data-streamdown='mermaid-block'] {
+  font-family: var(--font-sans);
+  position: relative;
+  width: 100%;
+  margin: 1em 0;
+  padding: 0;
+  gap: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.prose-assistant [data-streamdown='mermaid-block'] > :first-child {
+  display: block;
+  height: 3rem;
+  visibility: hidden;
+}
+.prose-assistant [data-streamdown='mermaid-block'] > div:has(> [data-streamdown='mermaid-block-actions']) {
+  position: relative;
+  top: auto;
+  z-index: 2;
+  display: flex;
+  height: 3rem;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: -3rem;
+  pointer-events: none;
+}
+.prose-assistant [data-streamdown='mermaid-block-actions'] {
+  position: static;
+  height: auto;
+  margin-right: 0.25rem;
+  border-color: color-mix(in oklab, var(--border) 65%, transparent);
+  background: color-mix(in oklab, var(--background) 88%, transparent);
+}
+.prose-assistant [data-streamdown='mermaid-block-actions'] > div:has(> button[aria-label='Download diagram']),
+.prose-assistant [data-streamdown='mermaid-block-actions'] > button[aria-label='Copy Code'] {
+  display: none;
+}
+.prose-assistant [data-streamdown='mermaid-block-actions'] > button[aria-label='View fullscreen'] {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem 0.375rem 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+.prose-assistant [data-streamdown='mermaid-block'] > :last-child {
+  min-height: 12rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.prose-assistant [data-streamdown='mermaid'] [role='img'] {
+  width: 100%;
+  align-items: center;
+}
+.prose-assistant [data-streamdown='mermaid'] div:has(> button[aria-label='Zoom in']) {
+  display: none;
+}
+.prose-assistant [data-streamdown='mermaid'] svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Assistant bubbles size to their prose. A Mermaid-bearing row alone expands
+   through that fit-content boundary to the existing chat column. */
+[data-vp-mermaid-row] > [data-slot='message-content'] > [data-slot='bubble'],
+[data-vp-mermaid-row] [data-slot='bubble-content'] {
+  width: 100%;
+}
+
+/* Streamdown supplies the focus trap, Escape handling, and click-outside
+   behavior. Veneer turns its full-bleed layer into a roomy desktop lightbox. */
+[data-streamdown='mermaid-fullscreen'] {
+  padding: 5dvh 4vw;
+  background: color-mix(in oklab, var(--color-black) 52%, transparent);
+  backdrop-filter: blur(6px);
+}
+[data-streamdown='mermaid-fullscreen'] > :first-child {
+  top: calc(5dvh + 0.5rem);
+  right: calc(4vw + 0.5rem);
+}
+[data-streamdown='mermaid-fullscreen'] > :last-child {
+  width: 100%;
+  height: 100%;
+  padding: 3rem 1rem 1rem;
+  border-radius: var(--radius-xl);
+  background: var(--background);
+  outline: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+  outline-offset: -1px;
+}
+[data-streamdown='mermaid-fullscreen'] [data-streamdown='mermaid'] div:has(> button[aria-label='Zoom in']) {
+  position: fixed;
+  top: calc(5dvh + 0.5rem);
+  right: calc(4vw + 6.25rem);
+  bottom: auto;
+  left: auto;
+  display: flex;
+  flex-direction: row;
+}
+
+@media (max-width: 639px) {
+  [data-streamdown='mermaid-fullscreen'] {
+    padding: 0;
+    background: var(--background);
+    backdrop-filter: none;
+  }
+  [data-streamdown='mermaid-fullscreen'] > :first-child {
+    top: calc(env(safe-area-inset-top) + 0.5rem);
+    right: calc(env(safe-area-inset-right) + 0.5rem);
+  }
+  [data-streamdown='mermaid-fullscreen'] > :last-child {
+    padding: calc(env(safe-area-inset-top) + 3rem) 0.5rem calc(env(safe-area-inset-bottom) + 0.5rem);
+    border-radius: 0;
+    outline: 0;
+  }
+  [data-streamdown='mermaid-fullscreen'] [data-streamdown='mermaid'] div:has(> button[aria-label='Zoom in']) {
+    top: calc(env(safe-area-inset-top) + 0.5rem);
+    right: calc(env(safe-area-inset-right) + 10rem);
+  }
+}
+
+@media (pointer: coarse) {
+  .prose-assistant [data-streamdown='code-block-copy-button']::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 3rem);
+    height: max(100%, 3rem);
+    content: '';
+    transform: translate(-50%, -50%);
+  }
+  .prose-assistant [data-streamdown='mermaid-block-actions'] button,
+  [data-streamdown='mermaid-fullscreen'] > :first-child button {
+    min-width: 3rem;
+    min-height: 3rem;
+  }
+}
+
+/*
+ * wterm (browser terminal, screens/Terminal.tsx) integration.
+ *
+ * - @wterm/dom's InputHandler creates a hidden offscreen <textarea> directly
+ *   inside the `.wterm` container (no class of its own; layout styles are
+ *   inline but font-size is NOT). iOS Safari focus-zooms any focused field
+ *   under 16px, so pin it — the textarea is invisible either way.
+ * - The stock .wterm chrome (rounded corners + drop shadow) is meant for a
+ *   floating demo widget; ours fills an edge-to-edge dark pane, so flatten it.
+ */
+.wterm textarea {
+  font-size: 16px;
+}
+.wterm {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@keyframes vp-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.vp-working { animation: vp-pulse 1.4s ease-in-out infinite; }
+
+@keyframes vp-filament-tip-ping {
+  0% { opacity: 0.52; stroke-width: 5px; }
+  48%, 100% { opacity: 0; stroke-width: 11px; }
+}
+.vp-filament-tip-ping { animation: vp-filament-tip-ping 1.2s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-filament-tip-ping { animation: none; opacity: 0.42; }
+}
+
+@keyframes vp-wake-march {
+  to { stroke-dashoffset: -11px; }
+}
+.vp-wake-march { animation: vp-wake-march 1.6s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-wake-march { animation: none; }
+}
+
+@keyframes vp-secret-march {
+  to { stroke-dashoffset: -10px; }
+}
+.vp-secret-march { animation: vp-secret-march 1.8s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-secret-march { animation: none; }
+}
+
+@keyframes vp-starting-dot {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+.vp-starting-ellipsis > span { animation: vp-starting-dot 1.2s ease-in-out infinite; }
+.vp-starting-ellipsis > span:nth-child(2) { animation-delay: 0.15s; }
+.vp-starting-ellipsis > span:nth-child(3) { animation-delay: 0.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-starting-ellipsis > span { animation: none; opacity: 1; }
+}
+
+/* Veneer Browser start-up screen: slow pulse on the headline, hairline sweep
+   along the bottom edge. The orb animates itself. */
+/* Veneer Browser start-up overlay: covers the iframe from mount (no black
+   flash) and crossfades to the live page once the first frame arrives. */
+.vp-browser-overlay { opacity: 1; transition: opacity 180ms ease; }
+.vp-browser-overlay[data-live='true'] { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .vp-browser-overlay { transition: none; }
+}
+
+@keyframes vp-browser-start-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.vp-browser-start-pulse { animation: vp-browser-start-pulse 2.2s ease-in-out infinite; }
+.vp-browser-start-hair {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px; overflow: hidden;
+  background: color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+.vp-browser-start-hair::after {
+  content: ""; position: absolute; left: -40%; width: 40%; height: 100%;
+  background: var(--brand, var(--primary));
+  animation: vp-browser-start-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes vp-browser-start-sweep { to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .vp-browser-start-pulse { animation: none; }
+  .vp-browser-start-hair::after { animation: none; left: 30%; }
+}
+
+@keyframes vp-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.vp-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  vertical-align: -0.15em;
+  background: var(--brand);
+  animation: vp-blink 1s step-end infinite;
+}
+
+/* Composer send: appear-only jelly pop. Exit uses a short transform fade. */
+@keyframes vp-composer-send-in {
+  0% {
+    transform: scale(0.42);
+    opacity: 0;
+  }
+  56% {
+    transform: scale(1.16, 0.86);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.93, 1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.vp-composer-send-in {
+  animation: vp-composer-send-in 380ms cubic-bezier(0.22, 1.15, 0.32, 1) 50ms both;
+}
+
+.vp-composer-send-out {
+  transform: scale(0.5);
+  opacity: 0;
+  transition:
+    transform 200ms cubic-bezier(0.4, 0, 0.7, 0.2),
+    opacity 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-composer-send-in {
+    animation: none;
+  }
+  .vp-composer-send-out {
+    transition: none;
+  }
+}

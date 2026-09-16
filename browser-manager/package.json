@@ -1,0 +1,14 @@
+{
+  "name": "veneer-browser-manager",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

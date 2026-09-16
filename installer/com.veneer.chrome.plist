@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The shared desktop Chrome — what the CDP desktop viewer streams and what
+  agent-browser drives via --cdp. On Linux this was a visible Chrome inside
+  Xvfb; here it is headless, which is the whole point of the CDP swap: no
+  display server, no login session, no Screen Recording permission.
+
+  Its profile lives in the service home so agent logins persist across restarts.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.veneer.chrome</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__CHROME__</string>
+    <string>--headless=new</string>
+    <string>--remote-debugging-port=__CDP_PORT__</string>
+    <string>--remote-debugging-address=127.0.0.1</string>
+    <string>--user-data-dir=__HOME__/.veneer-chrome</string>
+    <string>--no-first-run</string>
+    <string>--no-default-browser-check</string>
+    <string>--disable-features=Translate</string>
+    <string>about:blank</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__HOME__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/veneer-chrome.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/veneer-chrome.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>HOME</key>
+    <string>__HOME__</string>
+  </dict>
+</dict>
+</plist>

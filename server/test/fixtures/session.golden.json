@@ -1,0 +1,48 @@
+[
+  {
+    "type": "turn_started",
+    "turnId": "t1",
+    "role": "user",
+    "text": "Say exactly: HELLO SPIKE",
+    "at": "2026-07-03T21:08:07.988Z",
+    "via": "web"
+  },
+  {
+    "type": "text_final",
+    "turnId": "t1",
+    "markdown": "I'll say exactly what you asked:\n\nHELLO SPIKE",
+    "at": "2026-07-03T21:08:10.130Z",
+    "usage": {
+      "inputTokens": 32226,
+      "outputTokens": 24,
+      "totalInputTokens": 32226,
+      "totalOutputTokens": 24,
+      "totalTokens": 32250,
+      "cachedInputTokens": 15584,
+      "cacheWriteInputTokens": 5139
+    }
+  },
+  {
+    "type": "turn_started",
+    "turnId": "t2",
+    "role": "user",
+    "text": "What did I ask you to say earlier? Answer in one line.",
+    "at": "2026-07-03T21:08:32.770Z",
+    "via": "web"
+  },
+  {
+    "type": "text_final",
+    "turnId": "t2",
+    "markdown": "You asked me to say exactly: HELLO SPIKE",
+    "at": "2026-07-03T21:08:34.211Z",
+    "usage": {
+      "inputTokens": 32635,
+      "outputTokens": 21,
+      "totalInputTokens": 32635,
+      "totalOutputTokens": 21,
+      "totalTokens": 32656,
+      "cachedInputTokens": 15584,
+      "cacheWriteInputTokens": 16678
+    }
+  }
+]
