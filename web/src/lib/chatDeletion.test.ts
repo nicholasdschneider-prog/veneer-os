@@ -31,6 +31,7 @@ describe('chatHeaderMenuLabels', () => {
       info: 'Chat info',
       copyLink: 'Copy link',
       manage: {
+        rename: 'Rename chat…',
         pin: 'Pin chat',
         delete: 'Delete chat…',
       },
@@ -42,6 +43,7 @@ describe('chatHeaderMenuLabels', () => {
       info: 'Chat info',
       copyLink: 'Copy link',
       manage: {
+        rename: 'Rename chat…',
         pin: 'Unpin chat',
         delete: 'Delete chat…',
       },

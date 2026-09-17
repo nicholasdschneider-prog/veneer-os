@@ -113,6 +113,7 @@ import { modelTier } from '@/lib/modelTier';
 import { useTypewriter } from '@/hooks/useTypewriter';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { FileDownloadLink } from '@/components/ui/file-download-link';
 import { CodeFilePreview, isCodeFileName } from '@/components/chat/CodeFilePreview';
 import { HtmlFilePreview, isHtmlFileName } from '@/components/chat/HtmlFilePreview';
@@ -543,6 +544,8 @@ export function Chat({
   const [conversationActivity, setConversationActivity] = useState<ConversationActivity>(null);
   const [visibilityDialogOpen, setVisibilityDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState('');
   const [contextDialogOpen, setContextDialogOpen] = useState(false);
 
   // New-chat-only picker (server picks a default for anything left unset).
@@ -1846,6 +1849,31 @@ export function Chat({
     }
   };
 
+  const openRenameDialog = () => {
+    setRenameDraft(title?.trim() || '');
+    setRenameDialogOpen(true);
+  };
+
+  const renameChat = async () => {
+    const next = renameDraft.trim();
+    if (!next) return;
+    if (next === (title?.trim() || '')) {
+      setRenameDialogOpen(false);
+      return;
+    }
+    setMenuBusy(true);
+    try {
+      const result = await api.updateConversation(conversationId, { title: next });
+      setTitle(result.conversation.title);
+      setRenameDialogOpen(false);
+      onToast('Chat renamed');
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'Could not rename chat');
+    } finally {
+      setMenuBusy(false);
+    }
+  };
+
   const deleteChat = async () => {
     setMenuBusy(true);
     try {
@@ -2313,6 +2341,7 @@ export function Chat({
                     disabledReason: archived ? 'Restore this chat before compacting its context.' : undefined,
                   }}
                   onInfo={() => setContextDialogOpen(true)}
+                  onRename={openRenameDialog}
                   onCopyLink={() => {
                     void copyChatShareUrl(
                       navigator.clipboard,
@@ -3230,6 +3259,40 @@ export function Chat({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={renameDialogOpen} onOpenChange={(open) => !menuBusy && setRenameDialogOpen(open)}>
+        <DialogContent>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void renameChat();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Rename chat</DialogTitle>
+              <DialogDescription>Give this chat a name that reflects what you are working on.</DialogDescription>
+            </DialogHeader>
+            <Input
+              className="mt-4"
+              value={renameDraft}
+              onChange={(event) => setRenameDraft(event.target.value)}
+              maxLength={300}
+              autoFocus
+              aria-label="Chat name"
+              placeholder="Chat name"
+              disabled={menuBusy}
+            />
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" disabled={menuBusy} onClick={() => setRenameDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={menuBusy || !renameDraft.trim()}>
+                {menuBusy ? 'Saving…' : 'Save'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => !menuBusy && setDeleteDialogOpen(open)}>
         <AlertDialogContent>

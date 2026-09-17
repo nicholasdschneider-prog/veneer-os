@@ -17,7 +17,7 @@ export interface ChatActionLabels {
 export interface ChatHeaderMenuLabels {
   info: string;
   copyLink: string;
-  manage: Pick<ChatActionLabels, 'pin' | 'delete'> | null;
+  manage: (Pick<ChatActionLabels, 'pin' | 'delete'> & { rename: string }) | null;
 }
 
 export function chatActionLabels(pinned: boolean, archived: boolean): ChatActionLabels {
@@ -36,7 +36,7 @@ export function chatHeaderMenuLabels(
   return {
     info: 'Chat info',
     copyLink: 'Copy link',
-    manage: canManage ? { pin: actions.pin, delete: actions.delete } : null,
+    manage: canManage ? { rename: 'Rename chat…', pin: actions.pin, delete: actions.delete } : null,
   };
 }
 

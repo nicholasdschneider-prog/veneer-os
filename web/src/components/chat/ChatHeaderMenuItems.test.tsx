@@ -13,6 +13,7 @@ function renderMenu(canManage: boolean) {
           pinned={false}
           compaction={{ supported: true, disabled: false, busy: false }}
           onInfo={vi.fn()}
+          onRename={vi.fn()}
           onCopyLink={vi.fn()}
           onOpenBrowser={vi.fn()}
           onCompact={vi.fn()}
@@ -28,6 +29,7 @@ describe('ChatHeaderMenuItems', () => {
   it('puts Compact context near Pin and uses one separator directly above Delete chat', () => {
     const html = renderMenu(true);
     const info = html.indexOf('Chat info');
+    const rename = html.indexOf('Rename chat…');
     const copy = html.indexOf('Copy link');
     const openBrowser = html.indexOf('Open browser');
     const compact = html.indexOf('Compact context');
@@ -36,7 +38,8 @@ describe('ChatHeaderMenuItems', () => {
     const deleteChat = html.indexOf('Delete chat…');
 
     expect(info).toBeGreaterThan(-1);
-    expect(info).toBeLessThan(copy);
+    expect(info).toBeLessThan(rename);
+    expect(rename).toBeLessThan(copy);
     expect(copy).toBeLessThan(openBrowser);
     expect(openBrowser).toBeLessThan(compact);
     expect(compact).toBeLessThan(pin);
@@ -51,6 +54,7 @@ describe('ChatHeaderMenuItems', () => {
     expect(html).toContain('Chat info');
     expect(html).toContain('Copy link');
     expect(html).toContain('Open browser');
+    expect(html).not.toContain('Rename chat…');
     expect(html).not.toContain('Pin chat');
     expect(html).not.toContain('Compact context');
     expect(html).not.toContain('Delete chat…');
@@ -66,6 +70,7 @@ describe('ChatHeaderMenuItems', () => {
             pinned={false}
             compaction={{ supported: true, disabled: false, busy: false }}
             onInfo={vi.fn()}
+            onRename={vi.fn()}
             onCopyLink={vi.fn()}
             onCompact={vi.fn()}
             onTogglePin={vi.fn()}
@@ -87,6 +92,7 @@ describe('ChatHeaderMenuItems', () => {
             pinned={false}
             compaction={{ supported: false, disabled: true, busy: false }}
             onInfo={vi.fn()}
+            onRename={vi.fn()}
             onCopyLink={vi.fn()}
             onOpenBrowser={vi.fn()}
             onCompact={vi.fn()}

@@ -1,4 +1,4 @@
-import { Copy, Globe, LoaderCircle, Minimize2, Pin, Trash2 } from 'lucide-react';
+import { Copy, Globe, LoaderCircle, Minimize2, Pencil, Pin, Trash2 } from 'lucide-react';
 import type { ChatHeaderMenuLabels } from '../../lib/chatDeletion';
 import { cn } from '@/lib/utils';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -9,6 +9,7 @@ interface ChatHeaderMenuItemsProps {
   pinned: boolean;
   compaction: { supported: boolean; disabled: boolean; busy: boolean; disabledReason?: string };
   onInfo: () => void;
+  onRename: () => void;
   onCopyLink: () => void;
   onOpenBrowser?: () => void;
   onCompact: () => void;
@@ -21,6 +22,7 @@ export function ChatHeaderMenuItems({
   pinned,
   compaction,
   onInfo,
+  onRename,
   onCopyLink,
   onOpenBrowser,
   onCompact,
@@ -30,6 +32,12 @@ export function ChatHeaderMenuItems({
   return (
     <>
       <ChatInfoMenuItem label={labels.info} onSelect={onInfo} />
+      {labels.manage ? (
+        <DropdownMenuItem onSelect={onRename}>
+          <Pencil className="size-4" />
+          {labels.manage.rename}
+        </DropdownMenuItem>
+      ) : null}
       <DropdownMenuItem onSelect={onCopyLink}>
         <Copy className="size-4" />
         {labels.copyLink}
