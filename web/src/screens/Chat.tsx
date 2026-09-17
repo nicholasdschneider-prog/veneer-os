@@ -1,3 +1,4 @@
+import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, Mic, Paperclip, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
@@ -453,6 +454,19 @@ export function Chat({
       return '';
     }
   });
+  const quoteStorageKey = `veneer.quote.${conversationId}`;
+  const [messageQuote, setMessageQuote] = useState<MessageQuote | null>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(quoteStorageKey) ?? 'null');
+      return saved && typeof saved.text === 'string' && typeof saved.role === 'string' ? saved : null;
+    } catch { return null; }
+  });
+  useEffect(() => {
+    try {
+      if (messageQuote) localStorage.setItem(quoteStorageKey, JSON.stringify(messageQuote));
+      else localStorage.removeItem(quoteStorageKey);
+    } catch { /* The quote remains available in memory. */ }
+  }, [messageQuote, quoteStorageKey]);
   const [creatingNewChat, setCreatingNewChat] = useState(false);
   useEffect(() => {
     if (isNew) {
@@ -1453,7 +1467,7 @@ export function Chat({
     }
     const text = draft.trim();
     const readyFiles = attachments.filter((a) => a.status === 'done' && a.path);
-    if (!text && readyFiles.length === 0) return;
+    if (!text && !messageQuote && readyFiles.length === 0) return;
     if (attachments.some((a) => a.status === 'uploading')) {
       setSendError('Still uploading — one moment…');
       return;
@@ -1477,7 +1491,7 @@ export function Chat({
     // ids the agent needs go into a machine-readable footer the transcript
     // strips again. Only tokens still present in the draft are attached.
     const chatMentions = chatMentionsInText(text, chatMentionMapRef.current);
-    const visibleOutgoing = appendChatMentionFooter(withFiles, chatMentions);
+    const visibleOutgoing = appendChatMentionFooter(appendMessageQuote(withFiles, messageQuote), chatMentions);
     const invokedSkill = skillNameForPrompt(text, skillCommands);
     // Keep the seeded to-do text clean and editable in the composer, then add
     // the planning-only contract only at submission. Ordinary new chats and
@@ -1492,10 +1506,12 @@ export function Chat({
     // The empty composer prevents a duplicate send while that request runs.
     if (isNew) writeNewChatDraft(projectId, todoId, text);
     setDraft('');
+    setMessageQuote(null);
     setAttachments([]);
     setSendError(null);
     const restore = () => {
       setDraft(text);
+      setMessageQuote(messageQuote);
       setAttachments(stagedAttachments);
     };
     const releasePreviews = () => {
@@ -1570,7 +1586,7 @@ export function Chat({
       setSendError((err as Error).message);
       restore();
     }
-  }, [draft, attachments, recording, transcribing, isNew, assistantSlug, pick, pickEffort, projectId, visibility, todoId, conversationId, onNavigate, working, applyQueueSnapshot, archived, restoreChatViewport, creatingNewChat, skillCommands]);
+  }, [draft, messageQuote, attachments, recording, transcribing, isNew, assistantSlug, pick, pickEffort, projectId, visibility, todoId, conversationId, onNavigate, working, applyQueueSnapshot, archived, restoreChatViewport, creatingNewChat, skillCommands]);
   sendRef.current = send;
 
   // Long-press-to-queue: persist immediately through the same server-authoritative
@@ -1587,7 +1603,7 @@ export function Chat({
     }
     const text = draft.trim();
     const readyFiles = attachments.filter((a) => a.status === 'done' && a.path);
-    if (!text && readyFiles.length === 0) return false;
+    if (!text && !messageQuote && readyFiles.length === 0) return false;
     if (attachments.some((a) => a.status === 'uploading')) {
       setSendError('Still uploading — one moment…');
       return false;
@@ -1599,11 +1615,12 @@ export function Chat({
       : text;
     const invokedSkill = skillNameForPrompt(text, skillCommands);
     const outgoing = appendSkillInvocationMarker(
-      appendChatMentionFooter(withFiles, chatMentionsInText(text, chatMentionMapRef.current)),
+      appendChatMentionFooter(appendMessageQuote(withFiles, messageQuote), chatMentionsInText(text, chatMentionMapRef.current)),
       invokedSkill,
     );
     const stagedAttachments = attachments;
     setDraft('');
+    setMessageQuote(null);
     setAttachments([]);
     setSendError(null);
     const pendingId = crypto.randomUUID();
@@ -1627,17 +1644,18 @@ export function Chat({
       .catch((err) => {
         setPendingSends((prev) => prev.filter((pending) => pending.id !== pendingId));
         setDraft(text);
+        setMessageQuote(messageQuote);
         setAttachments(stagedAttachments);
         setSendError((err as Error).message);
       });
     return true;
-  }, [draft, attachments, recording, transcribing, conversationId, applyQueueSnapshot, archived, skillCommands]);
+  }, [draft, messageQuote, attachments, recording, transcribing, conversationId, applyQueueSnapshot, archived, skillCommands]);
 
   // Edit a queued message: pull it back into the composer. Only allowed when
   // the composer is empty, so an in-progress draft is never clobbered.
   const editQueued = useCallback(
     (id: number) => {
-      if (draft.trim()) return;
+      if (draft.trim() || messageQuote) return;
       const item = queued.find((q) => q.id === id);
       if (!item) return;
       void api
@@ -1658,7 +1676,7 @@ export function Chat({
         })
         .catch((err) => setSendError((err as Error).message));
     },
-    [draft, queued, conversationId, applyQueueSnapshot],
+    [draft, messageQuote, queued, conversationId, applyQueueSnapshot],
   );
 
   const removeQueued = useCallback(
@@ -1737,7 +1755,7 @@ export function Chat({
   );
 
   // Send-button gesture handlers: a normal tap sends; a ~450ms hold queues.
-  const canStage = () => Boolean(draft.trim()) || attachments.some((a) => a.status === 'done');
+  const canStage = () => Boolean(draft.trim() || messageQuote) || attachments.some((a) => a.status === 'done');
   const cancelLp = () => {
     if (lpTimer.current != null) {
       clearTimeout(lpTimer.current);
@@ -1934,7 +1952,7 @@ export function Chat({
   const hasReadyAttachment = attachments.some((a) => a.status === 'done');
   const dictationActive =
     recording || transcribing || micDictation.isActive || micDictation.isFinalizing;
-  const hasSendableContent = composerHasSendableContent({
+  const hasSendableContent = !!messageQuote || composerHasSendableContent({
     draft,
     hasReadyAttachment,
     dictationActive,
@@ -2196,6 +2214,10 @@ export function Chat({
       ref={screenRef}
       className="relative mx-auto flex h-full max-w-2xl flex-col overflow-hidden pt-[calc(env(safe-area-inset-top)+1.25rem)] md:pt-[env(safe-area-inset-top)]"
     >
+      {showComposer && !creatingNewChat ? <MessageSelection rootRef={screenRef} onAdd={(quote) => {
+        setMessageQuote(quote);
+        textareaRef.current?.focus();
+      }} /> : null}
       {isNew ? (
         <Button
           variant="ghost"
@@ -2531,7 +2553,7 @@ export function Chat({
                   <Message data-vp-mermaid-row={containsMermaidFence(revealedStreamingText) ? '' : undefined}>
                     <MessageContent>
                       <Bubble variant="ghost">
-                        <BubbleContent className="text-base">
+                        <BubbleContent data-message-quote="assistant" className="text-base">
                           <Markdown markdown={revealedStreamingText} mode="streaming" />
                           <span className="vp-caret" />
                         </BubbleContent>
@@ -2556,7 +2578,7 @@ export function Chat({
                         index={index}
                         count={queued.length}
                         canManage={canManage}
-                        draftBlocked={!!draft.trim()}
+                        draftBlocked={!!draft.trim() || !!messageQuote}
                         sendingId={sendingQueuedId}
                         onSend={sendQueuedNow}
                         onEdit={editQueued}
@@ -2816,6 +2838,10 @@ export function Chat({
               addFiles(e.dataTransfer.files);
             }}
           >
+            {messageQuote ? <ComposerQuote quote={messageQuote} onRemove={() => {
+              setMessageQuote(null);
+              textareaRef.current?.focus();
+            }} /> : null}
             <div className="flex min-w-0 items-start gap-1.5">
               {composerSkill ? (
                 <ComposerSkillChip
@@ -3677,7 +3703,7 @@ const ChatRow = memo(function ChatRow({
       <Message align="end">
         <MessageContent>
           <Bubble align="end">
-            <BubbleContent className="whitespace-pre-wrap rounded-2xl rounded-br-md px-4 py-2.5 text-base">
+            <BubbleContent data-message-quote="user" className="whitespace-pre-wrap rounded-2xl rounded-br-md px-4 py-2.5 text-base">
               {collapsePrompt ? (
                 <PromptDisclosure text={visiblePromptText(item.text)} />
               ) : (
@@ -3720,7 +3746,7 @@ const ChatRow = memo(function ChatRow({
       <Message data-vp-mermaid-row={hasMermaid ? '' : undefined}>
         <MessageContent>
           <Bubble variant="ghost">
-            <BubbleContent className="text-base">
+            <BubbleContent data-message-quote="assistant" className="text-base">
               <AssistantMarkdown markdown={item.markdown} live={live} citations={citations} />
             </BubbleContent>
           </Bubble>
@@ -3952,7 +3978,7 @@ function PendingUserRow({
     <Message align="end" className="opacity-60">
       <MessageContent>
         <Bubble align="end">
-          <BubbleContent className="whitespace-pre-wrap rounded-2xl rounded-br-md px-4 py-2.5 text-base">
+          <BubbleContent data-message-quote="user" className="whitespace-pre-wrap rounded-2xl rounded-br-md px-4 py-2.5 text-base">
             {collapsePrompt ? (
               <PromptDisclosure text={visiblePromptText(text)} />
             ) : (
