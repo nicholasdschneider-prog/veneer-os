@@ -203,80 +203,37 @@ describe('scoped Agent Browser commands', () => {
     expect(normalized.args.slice(0, 4)).toEqual(['--session', normalized.args[1], '--max-output', '100000']);
   });
 
-  it('trusts the pinned Veneer Browser certificate only when one is supplied', async () => {
+  it('adapts a pinned WSS connection without leaking its local capability or TLS environment', async () => {
     const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vp-browser-home-'));
     const binary = path.join(tmpHome, 'agent-browser-stub');
     const config = path.join(tmpHome, 'agent-browser.json');
     const caFile = path.join(tmpHome, 'lan-ca.pem');
-    const originalHome = process.env.HOME;
-    const originalServiceHome = process.env.VP_SERVICE_HOME;
-    const originalBinary = process.env.VP_AGENT_BROWSER_BIN;
-    const originalConfig = process.env.VP_AGENT_BROWSER_CONFIG;
+    const original = { binary: process.env.VP_AGENT_BROWSER_BIN, config: process.env.VP_AGENT_BROWSER_CONFIG };
     const remote = {
-      conversationId: 'conversation-1',
-      workspaceDir,
-      remoteCdpUrl: 'wss://browser.lan.test:8443/cdp/ticket/ws',
-      trustedCdpOrigin: 'wss://browser.lan.test:8443/cdp/ticket/ws',
+      conversationId: 'pinned-adapter', workspaceDir,
+      remoteCdpUrl: 'wss://browser.lan.test:8443/cdp/fixture/ws',
+      trustedCdpOrigin: 'wss://browser.lan.test:8443/cdp/fixture/ws',
     };
-
     try {
-      fs.writeFileSync(binary, '#!/bin/sh\necho "ca=[$NODE_EXTRA_CA_CERTS]"\n', { mode: 0o700 });
-      fs.chmodSync(binary, 0o700);
+      fs.writeFileSync(binary, '#!/bin/sh\necho "ca=[$NODE_EXTRA_CA_CERTS] $*"\n', { mode: 0o700 });
       fs.writeFileSync(config, '{}');
-      fs.writeFileSync(caFile, '-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----\n');
-      process.env.HOME = tmpHome;
-      process.env.VP_SERVICE_HOME = tmpHome;
+      fs.writeFileSync(caFile, 'fixture certificate');
       process.env.VP_AGENT_BROWSER_BIN = binary;
       process.env.VP_AGENT_BROWSER_CONFIG = config;
-      resetHomesCache();
-
       const pinned = await runAgentBrowser(['get', 'url'], { ...remote, cdpCaFile: caFile });
-      expect(pinned.stdout).toBe(`ca=[${caFile}]`);
-
-      const plain = await runAgentBrowser(['get', 'url'], remote);
-      expect(plain.stdout).toBe('ca=[]');
-
-      // Veneer OS: the manager is this machine's own loopback listener, so the
-      // ticket carries no separate LAN CA — the configured one still has to
-      // reach the CLI, because it no longer inherits NODE_EXTRA_CA_CERTS.
-      const originalLanCa = process.env.VP_VENEER_BROWSER_LAN_CA;
-      const originalInherited = process.env.NODE_EXTRA_CA_CERTS;
-      try {
-        process.env.VP_VENEER_BROWSER_LAN_CA = caFile;
-        process.env.NODE_EXTRA_CA_CERTS = path.join(tmpHome, 'not-ours.pem');
-        const configured = await runAgentBrowser(['get', 'url'], remote);
-        expect(configured.stdout).toBe(`ca=[${caFile}]`);
-
-        // A local session never dials the manager, so it inherits no roots.
-        const localWithConfig = await runAgentBrowser(['get', 'url'], {
-          conversationId: 'conversation-1',
-          workspaceDir,
-        });
-        expect(localWithConfig.stdout).toBe('ca=[]');
-      } finally {
-        if (originalLanCa === undefined) delete process.env.VP_VENEER_BROWSER_LAN_CA;
-        else process.env.VP_VENEER_BROWSER_LAN_CA = originalLanCa;
-        if (originalInherited === undefined) delete process.env.NODE_EXTRA_CA_CERTS;
-        else process.env.NODE_EXTRA_CA_CERTS = originalInherited;
-      }
-
-      // Without a remote control address there is nothing to pin it to.
-      const local = await runAgentBrowser(['get', 'url'], {
-        conversationId: 'conversation-1',
-        workspaceDir,
-        cdpCaFile: caFile,
-      });
-      expect(local.stdout).toBe('ca=[]');
+      expect(pinned.stdout).toContain('ca=[]');
+      expect(pinned.stdout).toContain('--cdp [browser control]');
+      expect(JSON.stringify(pinned)).not.toContain('127.0.0.1');
+      expect(JSON.stringify(pinned)).not.toContain('/cdp/fixture');
+      const plain = await runAgentBrowser(['get', 'url'], { ...remote, conversationId: 'unpinned-adapter' });
+      expect(plain.stdout).toContain('--cdp [Veneer Browser control address removed]');
+      expect(plain.stdout).toContain('ca=[]');
     } finally {
-      if (originalHome === undefined) delete process.env.HOME;
-      else process.env.HOME = originalHome;
-      if (originalServiceHome === undefined) delete process.env.VP_SERVICE_HOME;
-      else process.env.VP_SERVICE_HOME = originalServiceHome;
-      if (originalBinary === undefined) delete process.env.VP_AGENT_BROWSER_BIN;
-      else process.env.VP_AGENT_BROWSER_BIN = originalBinary;
-      if (originalConfig === undefined) delete process.env.VP_AGENT_BROWSER_CONFIG;
-      else process.env.VP_AGENT_BROWSER_CONFIG = originalConfig;
-      resetHomesCache();
+      await closeVeneerBrowserSession(remote);
+      if (original.binary === undefined) delete process.env.VP_AGENT_BROWSER_BIN;
+      else process.env.VP_AGENT_BROWSER_BIN = original.binary;
+      if (original.config === undefined) delete process.env.VP_AGENT_BROWSER_CONFIG;
+      else process.env.VP_AGENT_BROWSER_CONFIG = original.config;
       fs.rmSync(tmpHome, { recursive: true, force: true });
     }
   });

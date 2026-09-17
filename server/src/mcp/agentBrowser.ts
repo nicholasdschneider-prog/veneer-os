@@ -10,6 +10,7 @@ import {
   type BrowserTab,
 } from '../veneerBrowser/tabReuse.js';
 import { createSerialQueue } from './serialQueue.js';
+import { pinnedCdpAddress, closePinnedCdpBridge } from '../veneerBrowser/pinnedCdpBridge.js';
 
 const MAX_ARGS = 100;
 const MAX_ARG_LENGTH = 4_000;
@@ -309,22 +310,8 @@ export function normalizeAgentBrowserArgs(
   };
 }
 
-/**
- * The pinned browser-manager certificate, from the same setting config.ts reads.
- * On Veneer OS the manager is this Mac's own loopback listener, so its ticket
- * origin is the configured base URL and `remote.cdpCaFile()` hands back nothing;
- * the CLI still needs that one root to dial it, and inheriting the service's own
- * NODE_EXTRA_CA_CERTS is not an acceptable way to supply it.
- */
-function configuredBrowserCaFile(): string | undefined {
-  const file = process.env.VP_VENEER_BROWSER_LAN_CA?.trim();
-  return file ? path.resolve(file) : undefined;
-}
-
-function safeBrowserEnvironment(mode: 'local' | 'shared' | 'veneer', cdpCaFile?: string): NodeJS.ProcessEnv {
-  // NODE_EXTRA_CA_CERTS is deliberately *not* inherited: whatever roots this
-  // service was started with are its own business, and the browser CLI gets
-  // exactly the one certificate it needs, set below.
+function safeBrowserEnvironment(mode: 'local' | 'shared' | 'veneer'): NodeJS.ProcessEnv {
+  // Never inherit service TLS overrides or credentials into the native CLI.
   const keep = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'XDG_RUNTIME_DIR'] as const;
   const env = Object.fromEntries(
     keep.flatMap((key) => (process.env[key] ? [[key, process.env[key]]] : [])),
@@ -338,11 +325,6 @@ function safeBrowserEnvironment(mode: 'local' | 'shared' | 'veneer', cdpCaFile?:
   // timeout keeps tab and @ref state intact during a long agent turn.
   if (mode === 'shared') env.AGENT_BROWSER_IDLE_TIMEOUT_MS = '15000';
   if (mode === 'veneer') env.AGENT_BROWSER_IDLE_TIMEOUT_MS = '0';
-  // The Veneer Browser listener presents a self-signed certificate, so the CLI
-  // needs that one extra root to dial its control address directly — whether it
-  // is a LAN address or this machine's own loopback manager.
-  const caFile = cdpCaFile ?? (mode === 'veneer' ? configuredBrowserCaFile() : undefined);
-  if (caFile) env.NODE_EXTRA_CA_CERTS = caFile;
   return env;
 }
 
@@ -395,67 +377,82 @@ async function runAgentBrowserRaw(
     ? Math.max(1_000, Math.min(MAX_TIMEOUT_MS, Math.floor(requestedTimeout)))
     : DEFAULT_TIMEOUT_MS;
 
-  const execute = (command: NormalizedBrowserCommand): Promise<BrowserRunResult> => new Promise<BrowserRunResult>((resolve, reject) => {
-    const child = spawn(binary, ['--config', config, ...command.args], {
-      cwd: path.resolve(options.workspaceDir),
-      env: safeBrowserEnvironment(
-        options.shared ? 'shared' : options.remoteCdpUrl ? 'veneer' : 'local',
-        options.remoteCdpUrl ? options.cdpCaFile : undefined,
-      ),
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let stdout = '';
-    let stderr = '';
-    let outputBytes = 0;
-    let settled = false;
-    const finish = (fn: () => void): void => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      fn();
-    };
-    const append = (target: 'stdout' | 'stderr', chunk: Buffer): void => {
-      outputBytes += chunk.length;
-      if (outputBytes > MAX_OUTPUT_BYTES) {
-        child.kill('SIGKILL');
-        finish(() => reject(new Error('agent-browser output exceeded the 1 MiB safety limit. Narrow the snapshot or query.')));
-        return;
-      }
-      if (target === 'stdout') stdout += chunk.toString('utf8');
-      else stderr += chunk.toString('utf8');
-    };
-    child.stdout.on('data', (chunk: Buffer) => append('stdout', chunk));
-    child.stderr.on('data', (chunk: Buffer) => append('stderr', chunk));
-    child.once('error', (error) => finish(() => reject(error)));
-    child.once('close', (code) =>
-      finish(() => {
-        // Heartbeat for the SPA's live-view auto-pop; never let it fail a command.
-        if (options.shared && code === 0) {
-          try {
-            writeActivity(options.conversationId);
-          } catch {
-            /* activity is best-effort */
-          }
+  const execute = async (command: NormalizedBrowserCommand): Promise<BrowserRunResult> => {
+    const cliArgs = [...command.args];
+    const caFile = options.remoteCdpUrl ? options.cdpCaFile : undefined;
+    if (caFile && options.remoteCdpUrl) {
+      // Only replace the already validated, platform-injected --cdp value.
+      // Agent-supplied WS addresses remain forbidden by normalization.
+      const index = cliArgs.indexOf('--cdp');
+      cliArgs[index + 1] = await pinnedCdpAddress(
+        veneerBrowserSessionName(options.conversationId, options.remoteSessionId),
+        options.remoteCdpUrl, caFile,
+      );
+    }
+    const localAddress = cliArgs[cliArgs.indexOf('--cdp') + 1];
+    const scrubLocalAddress = (value: string): string => caFile && localAddress
+      ? value.split(localAddress).join('[browser control]') : value;
+    return await new Promise<BrowserRunResult>((resolve, reject) => {
+      const child = spawn(binary, ['--config', config, ...cliArgs], {
+        cwd: path.resolve(options.workspaceDir),
+        env: safeBrowserEnvironment(
+          options.shared ? 'shared' : options.remoteCdpUrl ? 'veneer' : 'local',
+        ),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stdout = '';
+      let stderr = '';
+      let outputBytes = 0;
+      let settled = false;
+      const finish = (fn: () => void): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        fn();
+      };
+      const append = (target: 'stdout' | 'stderr', chunk: Buffer): void => {
+        outputBytes += chunk.length;
+        if (outputBytes > MAX_OUTPUT_BYTES) {
+          child.kill('SIGKILL');
+          finish(() => reject(new Error('agent-browser output exceeded the 1 MiB safety limit. Narrow the snapshot or query.')));
+          return;
         }
-        const redact = (value: string): string =>
-          options.remoteCdpUrl ? value.replaceAll(options.remoteCdpUrl, '[Veneer Browser control address removed]') : value;
-        resolve({
-          ...command,
-          args: options.remoteCdpUrl
-            ? command.args.map((arg) => (arg === options.remoteCdpUrl ? '[Veneer Browser control address removed]' : arg))
-            : command.args,
-          stdout: redact(stdout.trim()),
-          stderr: redact(stderr.trim()),
-          exitCode: code ?? 1,
-        });
-      }),
-    );
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL');
-      finish(() => reject(new Error(`agent-browser timed out after ${timeoutMs}ms.`)));
-    }, timeoutMs);
-    timer.unref();
-  });
+        if (target === 'stdout') stdout += chunk.toString('utf8');
+        else stderr += chunk.toString('utf8');
+      };
+      child.stdout.on('data', (chunk: Buffer) => append('stdout', chunk));
+      child.stderr.on('data', (chunk: Buffer) => append('stderr', chunk));
+      child.once('error', (error) => finish(() => reject(error)));
+      child.once('close', (code) =>
+        finish(() => {
+          // Heartbeat for the SPA's live-view auto-pop; never let it fail a command.
+          if (options.shared && code === 0) {
+            try {
+              writeActivity(options.conversationId);
+            } catch {
+              /* activity is best-effort */
+            }
+          }
+          const redact = (value: string): string =>
+            options.remoteCdpUrl ? value.replaceAll(options.remoteCdpUrl, '[Veneer Browser control address removed]') : value;
+          resolve({
+            ...command,
+            args: options.remoteCdpUrl
+              ? command.args.map((arg) => (arg === options.remoteCdpUrl ? '[Veneer Browser control address removed]' : arg))
+              : command.args,
+            stdout: scrubLocalAddress(redact(stdout.trim())),
+            stderr: scrubLocalAddress(redact(stderr.trim())),
+            exitCode: code ?? 1,
+          });
+        }),
+      );
+      const timer = setTimeout(() => {
+        child.kill('SIGKILL');
+        finish(() => reject(new Error(`agent-browser timed out after ${timeoutMs}ms.`)));
+      }, timeoutMs);
+      timer.unref();
+    });
+  };
 
   // Waiting longer than EXTERNAL_BROWSER_WAIT_TIMEOUT_MS for a turn fails the
   // command without running it, exactly as `flock -w 60` did.
@@ -594,6 +591,7 @@ export async function closeVeneerBrowserSession(options: {
   const queue = veneerBrowserQueue(session);
   const { binary, config } = resolveAgentBrowserPaths();
   if (!fs.existsSync(binary) || !fs.existsSync(config)) {
+    closePinnedCdpBridge(session);
     veneerBrowserQueues.delete(session);
     veneerBrowserStates.delete(session);
     return;
@@ -633,6 +631,7 @@ export async function closeVeneerBrowserSession(options: {
       timer.unref();
     }), { waitTimeoutMs: EXTERNAL_BROWSER_WAIT_TIMEOUT_MS });
   } finally {
+    closePinnedCdpBridge(session);
     veneerBrowserQueues.delete(session);
     veneerBrowserStates.delete(session);
   }
