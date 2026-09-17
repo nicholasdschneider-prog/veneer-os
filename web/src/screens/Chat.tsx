@@ -68,11 +68,8 @@ import { containsMermaidFence, segmentFrozenTranscript } from '../lib/transcript
 import {
   agentBadge,
   contextWindowFor,
-  effortOptionsFor,
   formatTokens,
   isProvider,
-  modelKey,
-  orderModels,
   modelLabel,
   PROVIDERS,
   providerLabel,
@@ -102,15 +99,12 @@ import { ComposerSkillChip, ComposerSkillDetails } from '@/components/chat/Compo
 import { AssistantResponseMetadata } from '@/components/chat/AssistantResponseMetadata';
 import {
   ModelThinkingPicker,
-  CLAUDE_ALIASES,
   buildModelChoices,
+  buildExistingChatModelChoices,
+  type ModelThinkingValue,
   effortLabel,
-  ModelRow,
   type ModelChoice,
 } from '@/components/chat/ModelThinkingPicker';
-import { AccountSwitcher } from '@/components/chat/AccountSwitcher';
-import { ThinkingLevelControl } from '@/components/chat/ThinkingLevelControl';
-import { modelTier } from '@/lib/modelTier';
 import { useTypewriter } from '@/hooks/useTypewriter';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -1021,6 +1015,7 @@ export function Chat({
       setAssistantName(r.conversation.assistantName);
       setProvider(r.conversation.provider);
       setModel(r.conversation.model);
+      setLastAnsweredModel(r.conversation.lastAnsweredModel ?? null);
       setEffort(r.conversation.effort);
       setApprovalModeOverride(r.conversation.approvalMode);
       setEffectiveApprovalMode(r.conversation.effectiveApprovalMode);
@@ -1159,6 +1154,7 @@ export function Chat({
       if (stop) return;
       setProvider(r.conversation.provider);
       setModel(r.conversation.model);
+      setLastAnsweredModel(r.conversation.lastAnsweredModel ?? null);
       setEffort(r.conversation.effort);
       setApprovalModeOverride(r.conversation.approvalMode);
       setEffectiveApprovalMode(r.conversation.effectiveApprovalMode);
@@ -1173,41 +1169,53 @@ export function Chat({
     };
   }, [conversationId, isNew, status]);
 
-  // Mid-chat model options, scoped to this conversation's provider — a native
-  // session can't move between providers, so no cross-provider entries here.
-  // Falls back to Claude's aliases when the live list is unavailable.
   const [chatModelOptions, setChatModelOptions] = useState<ModelOption[]>([]);
+  const [chatPick, setChatPick] = useState<ModelThinkingValue>({ provider: 'claude', model: '', effort: '' });
+  const [modelSaving, setModelSaving] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [lastAnsweredModel, setLastAnsweredModel] = useState<string | null>(null);
   useEffect(() => {
     if (isNew || !provider || !isProvider(provider)) return;
     let stop = false;
-    void Promise.all([
-      api.modelPrefs().then((r) => r.prefs).catch(() => null),
-      api.models(provider).then((r) => r.models).catch(() => [] as ModelOption[]),
-    ]).then(([prefs, models]) => {
+    let stopLoading = () => {};
+    void api.modelPrefs().then((r) => r.prefs).catch(() => null).then((prefs) => {
       if (stop) return;
-      const hidden = prefs?.hiddenModels ?? [];
-      // Same Settings drag order as the new-chat picker.
-      const visible = orderModels(provider, models, prefs?.modelOrder).filter(
-        (m) => !hidden.includes(modelKey(provider, m.id)),
+      defaultEffortRef.current = prefs?.defaultEffort ?? null;
+      stopLoading = loadModelCatalogsProgressively(
+        (target) => api.models(target).then((result) => result.models),
+        (catalogs) => {
+          if (stop) return;
+          setChatModelOptions(catalogs[provider]);
+          setModelChoices(buildExistingChatModelChoices(catalogs, prefs?.hiddenModels ?? [], prefs?.modelOrder ?? {}));
+        },
       );
-      if (visible.length === 0 && provider === 'claude') {
-        setChatModelOptions(CLAUDE_ALIASES.map((a) => ({ id: a, label: a[0]!.toUpperCase() + a.slice(1) })));
-      } else {
-        setChatModelOptions(visible);
-      }
     });
-    return () => {
-      stop = true;
-    };
+    return () => { stop = true; stopLoading(); };
   }, [isNew, provider]);
-
-  // Optimistic mid-chat switch; the row is read fresh when the next turn
-  // spawns, so this applies from the next reply. Revert on rejection.
-  const changeChatEffort = useCallback((next: string) => {
-    const prev = effort;
-    setEffort(next || null);
-    void api.updateConversation(conversationId, { effort: next || null }).catch(() => setEffort(prev));
-  }, [conversationId, effort]);
+  useEffect(() => {
+    if (!isNew && modelPickerOpen && provider && isProvider(provider)) {
+      setChatPick({ provider, model: model ?? '', effort: effort ?? '' });
+      setModelError(null);
+    }
+  }, [isNew, modelPickerOpen, provider, model, effort]);
+  const applyChatModel = async () => {
+    if (modelSaving) return;
+    setModelSaving(true);
+    setModelError(null);
+    try {
+      const { conversation } = await api.switchConversationModel(conversationId, chatPick);
+      setProvider(conversation.provider);
+      setModel(conversation.model);
+      setEffort(conversation.effort);
+      setLastAnsweredModel(conversation.lastAnsweredModel ?? null);
+      setContextTokens(conversation.contextTokens);
+      setModelPickerOpen(false);
+    } catch (error) {
+      setModelError(error instanceof Error ? error.message : 'Could not switch models.');
+    } finally {
+      setModelSaving(false);
+    }
+  };
   const selectedAgent = agentTypes.find((agent) => agent.slug === assistantSlug);
   const hasFullAccess = isNew ? Boolean(selectedAgent?.full_access) : conversationFullAccess;
   const shownApprovalMode = resolveEffectiveApprovalMode(
@@ -1233,16 +1241,6 @@ export function Chat({
         setEffectiveApprovalMode(previousEffective);
       });
   }, [approvalModeOverride, conversationId, effectiveApprovalMode, hasFullAccess, isNew, shownApprovalMode]);
-  const changeChatModel = useCallback((next: string) => {
-    const prev = model;
-    setModel(next);
-    void api.updateConversation(conversationId, { model: next }).catch(() => setModel(prev));
-    // A thinking level the new model doesn't support (per-model vocab since
-    // GPT-5.6) would fail its next turn — drop back to the model's default.
-    const efforts = chatModelOptions.find((m) => m.id === next)?.efforts;
-    if (effort && efforts && !efforts.includes(effort)) changeChatEffort('');
-  }, [conversationId, model, effort, chatModelOptions, changeChatEffort]);
-
   // Live subscription (snapshot + deltas over the multiplexed socket).
   useEffect(() => {
     // Chat-mention token → id mappings belong to one conversation's draft.
@@ -2173,7 +2171,7 @@ export function Chat({
     }
   };
   const activeEffort = isNew ? pickEffort : effort ?? '';
-  const chipDisabled = isNew && modelChoices === null;
+  const chipDisabled = (isNew && modelChoices === null) || (!isNew && (status === 'working' || status === 'needs_you' || modelSaving));
   const showComposer = canUseChatComposer(isNew, canSend);
   const showChatControls = canUseChatControls(isNew, canManage);
   // Compact chip label — always "Provider ModelName" (never "Default"/parens);
@@ -3196,70 +3194,22 @@ export function Chat({
           }}
         />
       ) : null}
-      <Dialog open={!isNew && modelPickerOpen} onOpenChange={setModelPickerOpen}>
-        {/* Don't auto-focus the first model row on open — its focus ring gets
-            clipped by the scroll container's top edge and reads as a stray
-            outline. */}
-        <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Agent model</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Model</p>
-              <div role="radiogroup" aria-label="Model" className="flex max-h-[45dvh] flex-col gap-0.5 overflow-y-auto">
-                {activeProvider ? (
-                  <>
-                    {/* The model that actually answered may not be in the live
-                        list (alias, hidden, or retired) — keep it at the top. */}
-                    {model === null ? (
-                      <ModelRow
-                        name={`${providerLabel(activeProvider)} · Default model`}
-                        tier={null}
-                        selected
-                        disabled
-                      />
-                    ) : null}
-                    {model !== null && !chatModelOptions.some((m) => m.id === model) ? (
-                      <ModelRow
-                        name={stripProviderPrefix(agentBadge(activeProvider, model) ?? model, activeProvider)}
-                        tier={modelTier(activeProvider, model)}
-                        selected
-                        onPick={() => changeChatModel(model)}
-                      />
-                    ) : null}
-                    {chatModelOptions.map((m) => (
-                      <ModelRow
-                        key={m.id}
-                        name={stripProviderPrefix(m.label, activeProvider)}
-                        tier={modelTier(activeProvider, m.id)}
-                        isDefault={m.isDefault}
-                        selected={model === m.id}
-                        onPick={() => changeChatModel(m.id)}
-                      />
-                    ))}
-                  </>
-                ) : null}
-              </div>
-            </div>
-            {activeProvider ? (() => {
-              // The vocabulary is the selected model's own when it reports one
-              // (per-model since GPT-5.6), else the provider fallback.
-              const selEfforts = model ? (chatModelOptions.find((m) => m.id === model)?.efforts ?? null) : null;
-              const levels = ['', ...effortOptionsFor(activeProvider, selEfforts)];
-              return (
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Thinking</p>
-                  <ThinkingLevelControl levels={levels} value={activeEffort} onChange={changeChatEffort} />
-                </div>
-              );
-            })() : null}
-            {/* Out of headroom on one subscription? Switch here instead of
-                walking to Settings; it lands on the next message. */}
-            <AccountSwitcher provider={activeProvider} />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {!isNew && activeProvider ? (
+        <ModelThinkingPicker
+          open={modelPickerOpen}
+          onOpenChange={(open) => { if (!modelSaving) setModelPickerOpen(open); }}
+          choices={modelChoices}
+          value={chatPick}
+          defaultEffort={defaultEffortRef.current}
+          onChange={setChatPick}
+          onApply={() => void applyChatModel()}
+          busy={modelSaving}
+          error={modelError}
+          description={chatPick.provider !== activeProvider
+            ? 'Keep this chat and its history. The next reply starts a fresh provider session with recorded context; internal session state does not transfer.'
+            : `Applies to the next reply.${lastAnsweredModel ? ` Last answered by ${modelLabel(lastAnsweredModel) ?? lastAnsweredModel}.` : ''}`}
+        />
+      ) : null}
 
       <AlertDialog open={visibilityDialogOpen} onOpenChange={(open) => !menuBusy && setVisibilityDialogOpen(open)}>
         <AlertDialogContent>

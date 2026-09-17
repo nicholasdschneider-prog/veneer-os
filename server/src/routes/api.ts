@@ -252,8 +252,8 @@ const PatchConversationSchema = z.object({
   archived: z.boolean().optional(),
   visibility: z.enum(['team', 'private']).optional(),
   // Mid-chat model/thinking switch — picked up by the next turn's spawn
-  // (adapters pass --model/--effort every turn). Provider can't change:
-  // the native session belongs to it. effort null = provider default.
+  // (adapters pass --model/--effort every turn). Cross-provider changes use
+  // POST /conversations/:id/model to transfer context. effort null = provider default.
   model: z.string().trim().min(1).max(100).optional(),
   effort: z.string().trim().min(1).max(40).nullable().optional(),
   approval_mode: ApprovalModeSchema.nullable().optional(),
@@ -637,6 +637,8 @@ export async function conversationView(
     canChangeVisibility: viewer ? canChangeConversationVisibility(viewer, row) : true,
     provider: row.provider,
     model: row.model,
+    lastAnsweredModel: row.last_answered_model ?? null,
+    lastAnsweredProvider: row.last_answered_provider ?? null,
     effort: row.effort,
     approvalMode: row.approval_mode,
     effectiveApprovalMode: resolveEffectiveApprovalMode(
@@ -3468,6 +3470,45 @@ export function createApiRouter(ctx: AppContext): Router {
     void conversationView(ctx, row, req.user!)
       .then((conversation) => res.json({ ok: true, conversation }))
       .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+  });
+
+  router.post('/conversations/:id/model', (req, res) => {
+    const row = conversationFor(req, res, true);
+    if (!row) return;
+    if (req.agentConversationId) {
+      res.status(403).json({ ok: false, error: 'Only a user can switch the chat provider.' });
+      return;
+    }
+    if (row.archived) {
+      res.status(409).json({ ok: false, error: 'Reopen this chat before switching models.' });
+      return;
+    }
+    const parsed = z.object({
+      provider: z.enum(['claude', 'codex', 'grok', 'openrouter']),
+      model: z.string().trim().max(100).nullable(),
+      effort: z.string().trim().max(40).nullable(),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ ok: false, error: 'Invalid model selection' });
+      return;
+    }
+    const prefs = readModelPrefs();
+    const provider = parsed.data.provider;
+    const model = parsed.data.model || prefs.providerDefaults[provider] || null;
+    if ((provider === 'openrouter' && (!model || !prefs.openrouterModels.includes(model))) ||
+        !canUserAccessModel(req.user!.email, provider, model)) {
+      res.status(400).json({ ok: false, error: 'This model is not available' });
+      return;
+    }
+    void manager.switchProvider(row.id, { provider, model, effort: parsed.data.effort || null })
+      .then(async (result) => {
+        if (!result.ok) {
+          res.status(409).json({ ok: false, error: result.message });
+          return;
+        }
+        const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(row.id) as ConversationRow;
+        res.json({ ok: true, conversation: await conversationView(ctx, fresh, req.user!) });
+      }).catch(() => res.status(503).json({ ok: false, error: 'Could not reach the runner. Refresh the chat before trying again.' }));
   });
 
   router.patch('/conversations/:id', (req, res) => {

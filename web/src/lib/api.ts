@@ -328,6 +328,10 @@ export const api = {
     requestJson<{ context: ConversationDebugContext }>(`/api/conversations/${id}/context`),
   freshConversationContext: (id: string) =>
     requestJson<{ conversation: Conversation }>(`/api/conversations/${id}/fresh-context`, { method: 'POST' }),
+  switchConversationModel: (id: string, selection: { provider: string; model: string; effort: string }) =>
+    requestJson<{ conversation: Conversation }>(`/api/conversations/${id}/model`, {
+      method: 'POST', body: JSON.stringify(selection),
+    }),
   updateConversation: (
     id: string,
     patch: {

@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import type { ModelOption } from '../../lib/api';
 import {
@@ -113,6 +114,19 @@ export function buildModelChoices(
   return choices;
 }
 
+/** Existing chats select concrete model IDs, including the provider default. */
+export function buildExistingChatModelChoices(
+  all: Record<Provider, ModelOption[]>, hidden: string[], modelOrder: Record<string, string[]>,
+): ModelChoice[] {
+  return PROVIDERS.flatMap((provider) => orderModels(provider, all[provider], modelOrder)
+    .filter((model) => !hidden.includes(modelKey(provider, model.id)))
+    .map((model) => ({
+      provider, model: model.id, label: model.label,
+      short: stripProviderPrefix(model.label, provider), efforts: model.efforts ?? null,
+      isDefault: model.isDefault, tier: modelTier(provider, model.id),
+    })));
+}
+
 /**
  * Segmented provider switcher. The dialog is ~360px wide, so with more than
  * three providers only the active tab shows its name; the rest collapse to
@@ -203,6 +217,7 @@ export function ModelThinkingPicker({
   defaultEffort,
   onChange,
   title = 'Agent model',
+  description, onApply, busy = false, error,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -211,6 +226,10 @@ export function ModelThinkingPicker({
   defaultEffort: string | null;
   onChange: (value: ModelThinkingValue) => void;
   title?: string;
+  description?: string;
+  onApply?: () => void;
+  busy?: boolean;
+  error?: string | null;
 }) {
   const [tab, setTab] = useState<Provider>(value.provider);
 
@@ -245,7 +264,8 @@ export function ModelThinkingPicker({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
+        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        <fieldset disabled={busy} className="flex min-w-0 flex-col gap-4">
           {providers.length > 1 ? (
             <ProviderTabs providers={providers} value={tab} onChange={setTab} />
           ) : null}
@@ -277,7 +297,9 @@ export function ModelThinkingPicker({
             />
           </div>
           <AccountSwitcher provider={tab} />
-        </div>
+        </fieldset>
+        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+        {onApply ? <Button disabled={busy || !choices?.some((choice) => choice.provider === value.provider && choice.model === value.model)} onClick={onApply}>{busy ? 'Switching…' : 'Use model'}</Button> : null}
       </DialogContent>
     </Dialog>
   );

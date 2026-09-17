@@ -46,6 +46,10 @@ import {
 } from './loopbackDeliverables.js';
 import { providerSkillPrompt } from './skillInvocation.js';
 import type { TranscriptArchive } from './transcriptArchive.js';
+import {
+  namespaceHistory, writeProviderHandoff, PROVIDER_CONTINUATION_RULES,
+  type ModelSelection, type SwitchProviderResult,
+} from './providerSwitch.js';
 
 const TIMEOUT_DENY_MESSAGE =
   'No one approved this action in time, so it was automatically declined. Continue without it and do not retry it.';
@@ -123,7 +127,7 @@ interface PendingSteerOrigin {
 
 interface LiveConversation {
   turn: LiveTurn | null; // non-null while a turn is in flight
-  maintenance: { kind: 'compaction'; kill: () => void; interrupted: boolean } | null;
+  maintenance: { kind: 'compaction' | 'provider-switch'; kill: () => void; interrupted: boolean } | null;
   kill: ((reason?: TurnKillReason) => void) | null;
   steer: ((text: string) => Promise<boolean | SteerDelivery>) | null;
   respond: ((requestId: string, decision: ApprovalDecision) => boolean) | null;
@@ -254,6 +258,7 @@ export interface ConversationManager {
    * current turn's user message — and any events streamed before subscribe.
    */
   snapshot(conv: ConversationRow): Promise<ConversationEvent[]>;
+  switchProvider(conv: ConversationRow, selection: ModelSelection): Promise<SwitchProviderResult>;
   /**
    * Candidate deliverable files (CSV etc.) this conversation's agent created,
    * scanned from the native session file. Not existence-checked — the route
@@ -731,7 +736,12 @@ export function createConversationManager({
   const activeUserEmailStmt = db.prepare("SELECT email FROM users WHERE id = ? AND status = 'active'");
   // Only overwrite the title while it's still auto-managed — a user rename (PATCH) clears title_auto.
   const updateAutoTitleStmt = db.prepare('UPDATE conversations SET title = ? WHERE id = ? AND title_auto = 1');
-  const updateModelStmt = db.prepare('UPDATE conversations SET model = ? WHERE id = ?');
+  const updateModelStmt = db.prepare(`UPDATE conversations SET last_answered_model = ?, last_answered_provider = ?
+    WHERE id = ? AND provider = ? AND native_session_id = ?`);
+  const providerContextStmt = db.prepare('SELECT * FROM conversation_provider_context WHERE conversation_id = ?');
+  const providerContext = (id: string) => providerContextStmt.get(id) as {
+    history_json: string; files_json: string; handoff: string; pending: number;
+  } | undefined;
   const updateContextTokensStmt = db.prepare('UPDATE conversations SET last_input_tokens = ? WHERE id = ?');
   const updateNativeSessionIdStmt = db.prepare('UPDATE conversations SET native_session_id = ? WHERE id = ?');
   const updateProviderInstructionHashStmt = db.prepare(
@@ -1352,6 +1362,9 @@ export function createConversationManager({
   async function runNext(conv: ConversationRow): Promise<void> {
     const entry = entryFor(conv.id);
     if (entry.turn || entry.maintenance) return;
+    // Callers may have queued work before a provider switch. Always spawn from the current row.
+    conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow;
+    if (!conv) return;
     // A turn that exhausted recovery remains visible/retryable. Do not run later
     // messages past it until the user explicitly retries or skips it.
     if (failedTurnStmt.get(conv.id)) return;
@@ -1491,6 +1504,14 @@ export function createConversationManager({
     } catch (err) {
       log.warn(`[runtime] memory context omitted: ${(err as Error).message}`);
     }
+    const continuation = providerContext(conv.id);
+    if (continuation?.pending) {
+      memoryBlock = [continuation.handoff, memoryBlock].filter(Boolean).join('\n\n');
+      // Even when memory recall is disabled, strip the context wrapper from visible history.
+      if (!db.prepare('SELECT 1 FROM turn_recall WHERE conversation_id = ? AND turn_id = ?').get(conv.id, turnId)) {
+        insertTurnRecallStmt.run(conv.id, turnId, visibleText, JSON.stringify([]));
+      }
+    }
     try {
       // Core rules and the fixed snapshot must survive a toolbox write failure.
       // A provider turn must never start with missing Veneer developer context.
@@ -1525,6 +1546,11 @@ export function createConversationManager({
         spawnConfig.mcpConfigPath = null;
         spawnConfig.settingsPath = null;
       }
+    }
+
+    if (continuation) {
+      spawnConfig.developerInstructions = `${spawnConfig.developerInstructions ?? ''}\n\n${PROVIDER_CONTINUATION_RULES}`;
+      spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
     }
 
     let sawError = false;
@@ -1715,15 +1741,16 @@ export function createConversationManager({
           })
           .catch((err: Error) => log.warn(`[runtime] readTitle failed: ${err.message}`));
       }
-      // Mirror the model that actually answered — the CLI resolves its own
-      // default when none was requested, so this is the only source of truth.
-      if (adapter.readModel) {
-        void adapter
-          .readModel({ cwd: workspace.workspaceDir, nativeSessionId: conv.native_session_id })
-          .then((model) => {
-            if (model) updateModelStmt.run(model, conv.id);
-          })
-          .catch((err: Error) => log.warn(`[runtime] readModel failed: ${err.message}`));
+      // Report the answering model separately; a failed transcript may only
+      // contain an older model and must never overwrite the user's selection.
+      if (!sawError && terminalOutcome === 'completed') {
+        db.prepare('UPDATE conversation_provider_context SET pending = 0 WHERE conversation_id = ?').run(conv.id);
+        if (adapter.readModel) {
+          void adapter.readModel({ cwd: workspace.workspaceDir, nativeSessionId: conv.native_session_id })
+            .then((model) => {
+              if (model) updateModelStmt.run(model, conv.provider, conv.id, conv.provider, conv.native_session_id);
+            }).catch((err: Error) => log.warn(`[runtime] readModel failed: ${err.message}`));
+        }
       }
       if (!sawError && captureMemoryTurn && turn.events.some((event) => event.type === 'text_final')) {
         const captureEvents = [...turn.events];
@@ -2053,6 +2080,63 @@ export function createConversationManager({
       emitStatus(conv.id);
       return { ok: true, queue: emitQueue(conv.id) };
     },
+    async switchProvider(conv, selection) {
+      const entry = entryFor(conv.id);
+      if (entry.turn || entry.maintenance || hasPendingStmt.get(conv.id) || hasPendingQuestion(conv.id)) {
+        return { ok: false, message: 'Finish or stop the current reply before switching models.' };
+      }
+      const adapter = adapters[selection.provider];
+      if (!adapter) return { ok: false, message: 'This provider is not configured.' };
+      const maintenance: NonNullable<LiveConversation['maintenance']> = {
+        kind: 'provider-switch', kill() {}, interrupted: false,
+      };
+      entry.maintenance = maintenance;
+      emitStatus(conv.id);
+      try {
+        if (selection.provider === conv.provider) {
+          db.prepare('UPDATE conversations SET model = ?, effort = ? WHERE id = ?')
+            .run(selection.model, selection.effort, conv.id);
+          return { ok: true };
+        }
+        const models = await adapter.listModels?.() ?? [];
+        if (!models.length || (selection.model && !models.some((model) => model.id === selection.model))) {
+          return { ok: false, message: 'This model is not available. Connect the provider and refresh its model list.' };
+        }
+        const history = namespaceHistory(await this.snapshot(conv));
+        const files = await this.listSessionFiles(conv);
+        if (maintenance.interrupted) return { ok: false, message: 'Model switch canceled.' };
+        const handoff = writeProviderHandoff(resolveWorkspace(conv).workspaceDir, conv.id, history);
+        const notice: ConversationEvent = {
+          type: 'notice', at: new Date().toISOString(),
+          message: `Switched from ${conv.provider} to ${selection.provider} (${selection.model ?? 'default model'}). Earlier history is preserved; the next reply receives recorded context in a fresh provider session.`,
+        };
+        history.push(notice);
+        const nativeSessionId = adapter.mintSessionId();
+        db.transaction(() => {
+          db.prepare(`INSERT INTO conversation_provider_context (conversation_id, history_json, files_json, handoff)
+            VALUES (?, ?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET
+            history_json = excluded.history_json, files_json = excluded.files_json,
+            handoff = excluded.handoff, pending = 1, updated_at = datetime('now')`)
+            .run(conv.id, JSON.stringify(history), JSON.stringify(files), handoff);
+          db.prepare(`UPDATE conversations SET provider = ?, model = ?, effort = ?, native_session_id = ?,
+            provider_instruction_hash = NULL, last_input_tokens = NULL, files_synced_at = NULL,
+            title_auto = CASE WHEN title IS NOT NULL THEN 0 ELSE title_auto END WHERE id = ?`)
+            .run(selection.provider, selection.model, selection.effort, nativeSessionId, conv.id);
+          db.prepare('DELETE FROM settings WHERE key = ?').run(`turn_ran:${conv.id}`);
+        })();
+        bus.emit('event', conv.id, notice);
+        bus.emit('event', conv.id, { type: 'context_compacted', contextTokens: null });
+        return { ok: true };
+      } catch {
+        return { ok: false, message: 'Could not transfer the chat context. The provider was not changed.' };
+      } finally {
+        if (entry.maintenance === maintenance) entry.maintenance = null;
+        emitStatus(conv.id);
+        // Messages arriving during the switch retain their durable queue rows.
+        const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
+        if (fresh && !fresh.archived && entry.queue.length) void runNext(fresh);
+      }
+    },
     async compactConversation(conv) {
       const entry = entryFor(conv.id);
       if (entry.maintenance) {
@@ -2357,12 +2441,20 @@ export function createConversationManager({
       // A no-op stat when the native file is still there.
       if (adapter) await transcriptArchive?.restore(conv.provider, { cwd, nativeSessionId: conv.native_session_id });
       const fileEvents = adapter ? await adapter.readTranscript({ cwd, nativeSessionId: conv.native_session_id }) : [];
+      // A switch can finish while the old provider transcript is being read.
+      // Restart the read instead of combining the old session with its archived copy.
+      const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
+      if (fresh && (fresh.provider !== conv.provider || fresh.native_session_id !== conv.native_session_id)) {
+        return this.snapshot(fresh);
+      }
+      const history = providerContext(conv.id);
+      const historicalEvents = history ? JSON.parse(history.history_json) as ConversationEvent[] : [];
       const connectorSources = connectorToolSourcesForConversation(db, conv.id, conv.user_id);
       const approvals = listConversationApprovalsStmt.all(conv.id) as ApprovalRow[];
       const questions = listConversationQuestionsStmt.all(conv.id) as QuestionRow[];
       const merged = reconcileQuestionEvents(
         reconcileApprovalEvents(
-          mergeLiveIntoSnapshot(fileEvents, live.get(conv.id)?.turn ?? null, { settleOrphans: true }),
+          [...historicalEvents, ...mergeLiveIntoSnapshot(fileEvents, live.get(conv.id)?.turn ?? null, { settleOrphans: true })],
           approvals,
         ),
         questions,
@@ -2386,7 +2478,9 @@ export function createConversationManager({
       // replies. The strongest deliverable signal there is (the agent chose to
       // present them), and the only one every provider emits. Reported as
       // 'bash' so the registry's heuristic guards (exists + mtime) still apply.
-      const bySource = new Map(refs.map((ref) => [ref.path, ref.source]));
+      const context = providerContext(conv.id);
+      const previous = context ? JSON.parse(context.files_json) as CreatedFileRef[] : [];
+      const bySource = new Map([...previous, ...refs].map((ref) => [ref.path, ref.source]));
       for (const event of await adapter.readTranscript(target)) {
         if (event.type !== 'text_final') continue;
         for (const linked of linkedFilePaths(event.markdown, expandUserPath)) {

@@ -174,6 +174,8 @@ export interface ConversationRow {
   effort: string | null;
   /** Per-chat approval override; null inherits the assistant's setting. */
   approval_mode: 'ask' | 'auto' | null;
+  last_answered_model?: string | null;
+  last_answered_provider?: string | null;
   native_session_id: string;
   /** Fixed agent + project instruction snapshot, created when the chat starts. */
   instruction_snapshot_json: string | null;

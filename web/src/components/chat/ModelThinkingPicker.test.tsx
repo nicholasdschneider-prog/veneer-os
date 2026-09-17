@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { buildModelChoices, ModelRow, ProviderTabs } from './ModelThinkingPicker';
+import { buildExistingChatModelChoices, buildModelChoices, ModelRow, ProviderTabs } from './ModelThinkingPicker';
 
 describe('buildModelChoices', () => {
   it('attaches a capability tier to each visible model', () => {
@@ -94,5 +94,19 @@ describe('ModelRow', () => {
     );
 
     expect(html).not.toContain('Capability');
+  });
+});
+
+
+describe('existing-chat model choices', () => {
+  it('keeps concrete default IDs, offers other providers, and excludes hidden or empty catalogs', () => {
+    const choices = buildExistingChatModelChoices({
+      claude: [{ id: 'opus', label: 'Opus', isDefault: true }],
+      codex: [{ id: 'gpt-astra', label: 'Astra', isDefault: true }, { id: 'hidden', label: 'Hidden' }],
+      grok: [], openrouter: [],
+    }, ['codex:hidden'], {});
+    expect(choices.map(({ provider, model }) => ({ provider, model }))).toEqual([
+      { provider: 'claude', model: 'opus' }, { provider: 'codex', model: 'gpt-astra' },
+    ]);
   });
 });

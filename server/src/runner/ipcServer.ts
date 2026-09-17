@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import http from 'node:http';
 import type { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -243,6 +244,17 @@ export function createIpcServer({
         const conv = readConv(body.convId);
         if (!conv) return void sendJson(res, 404, { error: 'conversation not found' });
         return void sendJson(res, 200, manager.discardFailedTurn(conv));
+      }
+      case '/rpc/switchProvider': {
+        const conv = readConv(body.convId);
+        if (!conv) return void sendJson(res, 404, { error: 'conversation not found' });
+        const selection = z.object({
+          provider: z.enum(['claude', 'codex', 'grok', 'openrouter']),
+          model: z.string().min(1).max(100).nullable(),
+          effort: z.string().min(1).max(40).nullable(),
+        }).safeParse(body.selection);
+        if (!selection.success) return void sendJson(res, 400, { error: 'Invalid model selection' });
+        return void sendJson(res, 200, await manager.switchProvider(conv, selection.data));
       }
       case '/rpc/compactConversation': {
         const conv = readConv(body.convId);

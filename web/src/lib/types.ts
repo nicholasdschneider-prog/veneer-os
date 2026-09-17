@@ -382,6 +382,8 @@ export interface Conversation {
   };
   provider: string;
   model: string | null;
+  lastAnsweredModel?: string | null;
+  lastAnsweredProvider?: string | null;
   effort: string | null;
   /** Per-chat override; null inherits the selected agent's setting. */
   approvalMode: ApprovalMode | null;

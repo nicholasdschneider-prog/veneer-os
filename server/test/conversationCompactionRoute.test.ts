@@ -15,6 +15,7 @@ const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../s
 let server: Server;
 let base: string;
 let db: Database.Database;
+const switchProvider = vi.fn();
 const compactConversation = vi.fn<(id: string) => Promise<CompactConversationResult>>();
 
 async function compact(
@@ -55,6 +56,7 @@ beforeAll(async () => {
     manager: {
       statusOf: async () => 'idle',
       compactConversation,
+      switchProvider,
     },
   } as unknown as AppContext;
   const app = express();
@@ -66,6 +68,8 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  switchProvider.mockReset();
+  switchProvider.mockResolvedValue({ ok: false, message: 'Finish or stop the current reply before switching models.' });
   compactConversation.mockReset();
   compactConversation.mockResolvedValue({ ok: true, contextTokens: null });
 });
@@ -127,5 +131,25 @@ describe('manual compaction route', () => {
       status: 502,
       body: { ok: false, code: 'failed' },
     });
+  });
+});
+
+
+describe('inline model switch authorization', () => {
+  const switchModel = (id: string, headers: Record<string, string> = {}, body: unknown = { provider: 'codex', model: 'gpt-astra', effort: 'high' }) =>
+    fetch(`${base}/api/conversations/${id}/model`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  it('rejects unauthenticated, agent, private-other, archived and malformed requests', async () => {
+    expect((await switchModel('ready', { 'x-no-auth': '1' })).status).toBe(403);
+    expect((await switchModel('ready', { 'x-agent-chat': 'ready' })).status).toBe(403);
+    expect((await switchModel('private-other')).status).toBe(404);
+    expect((await switchModel('archived')).status).toBe(409);
+    expect((await switchModel('ready', {}, { provider: 'bad', model: 'wrong' })).status).toBe(400);
+    expect(switchProvider).not.toHaveBeenCalled();
+  });
+  it('passes the complete selection to the runner and exposes rejection errors', async () => {
+    const response = await switchModel('ready');
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ ok: false, error: 'Finish or stop the current reply before switching models.' });
+    expect(switchProvider).toHaveBeenCalledWith('ready', { provider: 'codex', model: 'gpt-astra', effort: 'high' });
   });
 });

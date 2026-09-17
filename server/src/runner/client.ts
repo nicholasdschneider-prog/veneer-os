@@ -1,3 +1,4 @@
+import type { ModelSelection, SwitchProviderResult } from '../runtime/providerSwitch.js';
 import { EventEmitter } from 'node:events';
 import { WebSocket } from 'ws';
 import type {
@@ -84,6 +85,7 @@ export interface RunnerClient {
   retryFailedTurn(convId: string, actorUserId: number): Promise<QueueMutationResult>;
   discardFailedTurn(convId: string): Promise<QueueMutationResult>;
   compactConversation(convId: string): Promise<CompactConversationResult>;
+  switchProvider(convId: string, selection: ModelSelection): Promise<SwitchProviderResult>;
   interrupt(convId: string): Promise<boolean>;
   resolveApproval(
     approvalId: number,
@@ -299,6 +301,7 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     retryFailedTurn: (convId, actorUserId) => rpc('/rpc/retryFailedTurn', { convId, actorUserId }),
     discardFailedTurn: (convId) => rpc('/rpc/discardFailedTurn', { convId }),
     compactConversation: (convId) => rpc('/rpc/compactConversation', { convId }),
+    switchProvider: (convId, selection) => rpc('/rpc/switchProvider', { convId, selection }),
     interrupt: (convId) => rpc<{ ok: boolean }>('/rpc/interrupt', { convId }).then((r) => r.ok),
     resolveApproval: (approvalId, outcome, byUserId) =>
       rpc('/rpc/resolveApproval', { approvalId, outcome, byUserId }),
