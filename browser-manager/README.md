@@ -34,6 +34,13 @@ bearer-token auth.
 - Never log request bodies, cookies, page data, clipboard data, or control
   tickets.
 - The web and runner services can restart without stopping live browsers.
+- A working copy cannot answer a passkey prompt: the manager holds one
+  DevTools session per temporary copy that installs an empty virtual
+  authenticator on every page (`webauthn.mjs`), so `navigator.credentials.get()`
+  rejects within milliseconds and passkey-first sites fall back to their
+  password path instead of spinning forever. Saved profiles a person opens in
+  the live browser view are left alone. `VP_BROWSER_ALLOW_PASSKEYS=1` in the
+  manager's environment switches the block off.
 
 ## What the CDP relay refuses
 

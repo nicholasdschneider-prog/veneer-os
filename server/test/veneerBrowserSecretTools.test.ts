@@ -527,6 +527,26 @@ describe('Veneer Browser credential tools', () => {
     expect(runCommand).toHaveBeenCalledWith(1, 'token-chat', ['get', 'value', '@e3']);
   });
 
+  it('lets a link href be read while a secret is live, but never from the filled field', async () => {
+    await call('fill_secret', { target: '@e3', secret_name: 'ACME_PASSWORD' });
+    runCommand.mockClear();
+    // The "log in a different way" link next to a passkey prompt.
+    const link = await call('run', { args: ['get', 'attr', '@e7', 'href'] });
+    expect(link.isError).toBeUndefined();
+    expect(runCommand).toHaveBeenCalledWith(1, 'token-chat', ['get', 'attr', '@e7', 'href']);
+    runCommand.mockClear();
+    for (const args of [
+      ['get', 'attr', '@e3', 'href'],
+      ['get', 'attr', '@E3', 'href'],
+      ['get', 'attr', '@e7', 'value'],
+      ['get', 'attr', '@e7', 'data-password'],
+      ['get', 'value', '@e7'],
+    ]) {
+      expect((await call('run', { args })).isError, args.join(' ')).toBe(true);
+    }
+    expect(runCommand).not.toHaveBeenCalled();
+  });
+
   it('does not let a chat unlock its own guard by filling more fields', async () => {
     for (let index = 0; index < 25; index += 1) {
       await call('fill_secret', { target: `@e${index}`, secret_name: 'ACME_PASSWORD' });

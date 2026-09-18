@@ -202,6 +202,12 @@ no browser VM and no Docker: `com.veneer.browser-manager` drives native Chrome p
 (`VENEER_BROWSER_BACKEND=native`), one per profile working copy, and both of its listeners stay on
 loopback. See `browser-manager/INSTALL-MACOS.md` for the manager's own reference.
 
+Agent working copies have passkeys switched off: the manager installs an empty WebAuthn virtual
+authenticator on every page of a temporary copy, so a passkey-first login (Shopify admin, for one)
+fails over to its password + code path within a second instead of hanging on a prompt nobody can
+tap. Saved profiles opened in the live browser view keep real passkeys. Set
+`VP_BROWSER_ALLOW_PASSKEYS=1` in `com.veneer.browser-manager`'s environment to switch that off.
+
 `node installer/install-darwin.mjs` sets all of it up, idempotently:
 
 1. Runs `browser-manager/scripts/local-tls.mjs` with `HOME` set to the service home, creating the

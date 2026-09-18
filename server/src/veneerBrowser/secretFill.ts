@@ -172,6 +172,10 @@ export function assertNoSecretReadback(conversationId: string, args: string[]): 
   if (args[0]?.toLowerCase() !== 'get') return;
   const subcommand = (args[1] ?? '').toLowerCase();
   if (!READBACK_SUBCOMMANDS.has(subcommand)) return;
+  // A link's href is where a login page keeps its "use a different method"
+  // path, and a typed value never reflects into any element's attributes, so
+  // that one attribute may be read from anything but the field just filled.
+  if (subcommand === 'attr' && (args[3] ?? '').toLowerCase() === 'href' && args[2] && !refs.has(normalizeRef(args[2]))) return;
   throw new Error(
     `A field in this chat was just filled with a secret, so "get ${subcommand}" is refused until the page changes. `
       + 'Use read for the page, or verify the login by what the page does next.',

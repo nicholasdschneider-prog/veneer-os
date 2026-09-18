@@ -83,6 +83,10 @@
          desktop are acceptable. -->
     <key>VENEER_BROWSER_HEADLESS</key>
     <string>0</string>
+
+    <!-- Working copies get an empty WebAuthn virtual authenticator so passkey
+         prompts fail fast and sites fall back to password + code. Add
+         VP_BROWSER_ALLOW_PASSKEYS=1 here to leave passkeys live. -->
   </dict>
 </dict>
 </plist>

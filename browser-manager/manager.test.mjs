@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { after, before, test } from 'node:test';
+import { WebSocketServer } from 'ws';
 import { seedDownloadPreferences } from './backends/native.mjs';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'veneer-browser-manager-'));
@@ -28,6 +29,9 @@ const freshProfileId = 'fresh-copy';
 const children = [];
 let cdpServer;
 let cdpPort;
+// Every DevTools command the fake browser target receives, so a test can tell
+// whether a manager armed the passkey block on a runtime.
+let cdpCommands = [];
 let port;
 let child;
 let childOutput = '';
@@ -390,6 +394,20 @@ before(async () => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ Browser: 'Chrome/fake', webSocketDebuggerUrl: `ws://127.0.0.1:${cdpPort}/devtools/browser/fake` }));
   });
+  const cdpSocket = new WebSocketServer({ server: cdpServer, path: '/devtools/browser/fake' });
+  cdpSocket.on('connection', (socket) => {
+    socket.on('message', (data) => {
+      const message = JSON.parse(data.toString());
+      cdpCommands.push(message);
+      socket.send(JSON.stringify({ id: message.id, sessionId: message.sessionId, result: {} }));
+      if (message.method === 'Target.setAutoAttach') {
+        socket.send(JSON.stringify({
+          method: 'Target.attachedToTarget',
+          params: { sessionId: 'fake-page', waitingForDebugger: false, targetInfo: { type: 'page', url: 'about:blank' } },
+        }));
+      }
+    });
+  });
   await new Promise((resolve) => cdpServer.listen(0, '127.0.0.1', resolve));
   cdpPort = cdpServer.address().port;
 
@@ -623,6 +641,14 @@ test('opens a saved profile as a running working copy with a ticket', async () =
   assert.equal(workMeta.sourceGeneration, 1);
   assert.equal(containers(fast.state)[work.container].running, true);
 
+  // The working copy got the empty virtual authenticator, so a passkey prompt
+  // fails fast instead of hanging on a platform authenticator that is not there.
+  await fast.wait(() => cdpCommands.some((c) => c.method === 'WebAuthn.addVirtualAuthenticator' && c.sessionId === 'fake-page'));
+  const authenticator = cdpCommands.find((c) => c.method === 'WebAuthn.addVirtualAuthenticator');
+  assert.equal(authenticator.params.options.hasUserVerification, false);
+  assert.equal(authenticator.params.options.isUserVerified, false);
+  assert.ok(fast.output.includes('passkeys blocked in this working copy'), fast.output);
+
   // The copy runs against a created-but-not-started container, so the two steps
   // must be separate docker calls.
   const calls = fs.readFileSync(fast.log, 'utf8');
@@ -699,6 +725,40 @@ test('adopts the warm copy on the next open even at the active browser limit', a
   await new Promise((resolve) => setTimeout(resolve, 2500));
   assert.equal(containers(fast.state)[warm.name].running, true);
   assert.equal(fs.existsSync(fast.scope(warmCloneId).profileRoot), true);
+});
+
+test('leaves passkeys alone for a saved profile and when VP_BROWSER_ALLOW_PASSKEYS=1', async () => {
+  // A saved profile is what a person opens in the live browser view; it keeps
+  // its real WebAuthn even though the same manager blocks it in working copies.
+  const saved = await startManager('saved-profile', { VENEER_BROWSER_WARM: '0' });
+  cdpCommands = [];
+  const created = await saved.call('/v1/profiles', {
+    method: 'POST',
+    body: JSON.stringify({ projectId, profileId: 'human-saved', name: 'Human saved' }),
+  });
+  assert.equal(created.status, 201);
+  const started = await saved.call('/v1/profiles/human-saved/start', { method: 'POST', body: JSON.stringify({ projectId }) });
+  assert.equal(started.status, 200, saved.output);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.equal(cdpCommands.some((c) => c.method.startsWith('WebAuthn.')), false, JSON.stringify(cdpCommands));
+  assert.equal(saved.output.includes('passkeys blocked'), false, saved.output);
+  await saved.call('/v1/profiles/human-saved/stop', { method: 'POST', body: JSON.stringify({ projectId }) });
+
+  const allow = await startManager('allow-passkeys', { VENEER_BROWSER_WARM: '0', VP_BROWSER_ALLOW_PASSKEYS: '1' });
+  const source = await allow.call('/v1/profiles', {
+    method: 'POST',
+    body: JSON.stringify({ projectId, profileId: 'allow-source', name: 'Allow source' }),
+  });
+  assert.equal(source.status, 201);
+  cdpCommands = [];
+  const opened = await allow.call('/v1/profiles/allow-source/open', {
+    method: 'POST',
+    body: JSON.stringify({ projectId, cloneProfileId: 'allow-work', purpose: 'agent' }),
+  });
+  assert.equal(opened.status, 200, allow.output);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.equal(cdpCommands.some((c) => c.method.startsWith('WebAuthn.')), false, JSON.stringify(cdpCommands));
+  assert.equal(allow.output.includes('passkeys blocked'), false, allow.output);
 });
 
 test('rejects an open for a profile that does not exist', async () => {

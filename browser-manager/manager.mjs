@@ -10,6 +10,7 @@ import { promisify } from 'node:util';
 import { WebSocket, WebSocketServer } from 'ws';
 import { createAgentCursorTracker, ticketPurpose } from './cursor.mjs';
 import { relayCdp } from './cdp-relay.mjs';
+import { blockPasskeys, browserSocketUrl, passkeysAllowed } from './webauthn.mjs';
 import { createDockerBackend } from './backends/docker.mjs';
 import { createNativeBackend } from './backends/native.mjs';
 
@@ -37,6 +38,9 @@ const BIND = process.env.VENEER_BROWSER_BIND || (DARWIN ? '127.0.0.1' : '0.0.0.0
 // container between them and the network, so reaching it from off-box is an
 // explicit decision rather than a typo in VENEER_BROWSER_BIND.
 const ALLOW_REMOTE = process.env.VENEER_BROWSER_ALLOW_REMOTE === '1';
+// Working copies get an empty virtual authenticator so passkey prompts fail fast
+// (see webauthn.mjs); VP_BROWSER_ALLOW_PASSKEYS=1 leaves WebAuthn untouched.
+const PASSKEYS_ALLOWED = passkeysAllowed();
 // The Pro server pins the origin it was configured with, so tickets can be
 // forced to that origin rather than echoing the request's Host header.
 const PUBLIC_ORIGIN = (process.env.VENEER_BROWSER_PUBLIC_ORIGIN || '').replace(/\/+$/, '');
@@ -475,6 +479,7 @@ async function startProfile(s) {
     backend.prepareDir(s.downloadsDir);
     await backend.prepare(s);
     await backend.start(s);
+    await armPasskeyBlock(s);
     writeMeta(s, { lastUsedAt: new Date().toISOString() });
     console.log(`[veneer-browser] started profile ${s.key.slice(0, 10)}`);
     return { active: true, runtimeId: s.container };
@@ -526,6 +531,7 @@ async function cloneAndStartLocked(source, sourceMeta, target, name, labels = []
       generation: 1,
     });
     await backend.start(target);
+    await armPasskeyBlock(target);
     console.log(`[veneer-browser] opened copy ${target.key.slice(0, 10)} of ${source.key.slice(0, 10)}`);
     return profile;
   } catch (error) {
@@ -536,6 +542,49 @@ async function cloneAndStartLocked(source, sourceMeta, target, name, labels = []
     fs.rmSync(target.root, { recursive: true, force: true });
     throw error;
   }
+}
+
+// One browser-level DevTools session per running working copy, keyed by scope,
+// holding the empty virtual authenticator that makes passkey prompts fail fast.
+// Saved profiles (the ones a person opens in the live browser view) are never
+// touched: only a copy whose metadata says `temporary` is an agent runtime.
+const passkeyBlockers = new Map();
+
+async function ensurePasskeyBlock(s) {
+  if (PASSKEYS_ALLOWED) return false;
+  if (!readMeta(s)?.temporary) return false;
+  const port = await cdpPort(s);
+  const current = passkeyBlockers.get(s.key);
+  if (current && current.port === port && !current.handle.closed) return true;
+  current?.handle.close();
+  const handle = blockPasskeys(await browserSocketUrl(port), {
+    log: (message) => console.log(`[veneer-browser] ${s.key.slice(0, 10)}: ${message}`),
+  });
+  const entry = { port, handle };
+  passkeyBlockers.set(s.key, entry);
+  void handle.done.then((reason) => {
+    if (passkeyBlockers.get(s.key) === entry) passkeyBlockers.delete(s.key);
+    if (reason !== 'stopped') console.log(`[veneer-browser] ${s.key.slice(0, 10)}: passkey block ended (${reason})`);
+  });
+  await handle.ready;
+  console.log(`[veneer-browser] ${s.key.slice(0, 10)}: passkeys blocked in this working copy`);
+  return true;
+}
+
+// Logged, never thrown: a copy that cannot take the block still has to open, and
+// the sweep re-attaches on its next pass while the runtime is up.
+function armPasskeyBlock(s) {
+  return ensurePasskeyBlock(s).catch((error) => {
+    console.log(`[veneer-browser] ${s.key.slice(0, 10)}: passkey block failed: ${error.message}`);
+    return false;
+  });
+}
+
+function dropPasskeyBlock(s) {
+  const entry = passkeyBlockers.get(s.key);
+  if (!entry) return;
+  passkeyBlockers.delete(s.key);
+  entry.handle.close();
 }
 
 // Docker reuses 127.0.0.1 ports, so a ticket must not outlive the runtime it
@@ -553,6 +602,7 @@ function purgeTickets(s) {
 async function discardWarmCopy(entry) {
   if (warmCopies.get(entry.sourceKey) === entry) warmCopies.delete(entry.sourceKey);
   return serial(entry.scope.key, async () => {
+    dropPasskeyBlock(entry.scope);
     await backend.remove(entry.containerName).catch(() => {});
     purgeTickets(entry.scope);
     fs.rmSync(entry.scope.root, { recursive: true, force: true });
@@ -686,6 +736,7 @@ async function openProfile(clientId, source, cloneProfileId, name) {
 
 async function stopProfileLocked(s) {
   if (!(await runtimeStatus(s)).exists) return { active: false };
+  dropPasskeyBlock(s);
   await backend.stop(s);
   purgeTickets(s);
   console.log(`[veneer-browser] stopped profile ${s.key.slice(0, 10)}`);
@@ -1178,6 +1229,27 @@ function handleUpgrade(req, socket, head) {
 }
 server.on('upgrade', handleUpgrade);
 
+async function rearmPasskeyBlock(s) {
+  if (PASSKEYS_ALLOWED) return;
+  if (!(await runtimeStatus(s).catch(() => ({ running: false }))).running) return;
+  await armPasskeyBlock(s);
+}
+
+async function reattachPasskeyBlocks() {
+  if (PASSKEYS_ALLOWED) return;
+  const root = path.join(STORE, 'profiles');
+  if (!fs.existsSync(root)) return;
+  for (const client of fs.readdirSync(root)) for (const project of fs.readdirSync(path.join(root, client))) {
+    for (const profile of fs.readdirSync(path.join(root, client, project))) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(path.join(root, client, project, profile, 'metadata.json'), 'utf8'));
+        if (!meta.temporary) continue;
+        await rearmPasskeyBlock(scope(meta.clientId, meta.projectId, meta.profileId));
+      } catch {}
+    }
+  }
+}
+
 setInterval(() => {
   const now = Date.now();
   for (const [key, ticket] of tickets) if (ticket.expiresAt <= now) tickets.delete(key);
@@ -1196,6 +1268,10 @@ setInterval(() => {
           if (meta.lastUsedAt && now - Date.parse(meta.lastUsedAt) > IDLE_MS) dropWarmCopy(warm.sourceKey);
         } else if (temporaryProfileIsStale(meta, now)) {
           void cleanupTemporaryProfile(s, now).catch(() => {});
+        } else if (meta.temporary && !passkeyBlockers.has(s.key)) {
+          // A block dropped by a hiccup on Chrome's socket is put back while the
+          // copy is still running; a stopped copy simply has no port to reach.
+          void rearmPasskeyBlock(s);
         } else if (meta.lastUsedAt && now - Date.parse(meta.lastUsedAt) > IDLE_MS && !profileHasLiveConnection(s)) {
           void stopProfile(s).catch(() => {});
         }
@@ -1207,6 +1283,9 @@ setInterval(() => {
 // Before the listeners: an /open during the restore would register a warm copy
 // that the restore then overwrote, leaving the loser's container behind.
 await backend.restore().catch((error) => console.log(`[veneer-browser] runtime restore failed: ${error.message}`));
+// Chrome outlives the manager, and the virtual authenticators died with the old
+// manager's sockets, so every working copy still running gets its block back.
+await reattachPasskeyBlocks();
 if (WARM) {
   await restoreWarmRegistry()
     .catch((error) => console.log(`[veneer-browser] warm registry restore failed: ${error.message}`));
