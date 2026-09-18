@@ -47,6 +47,7 @@ import { startPageExpiry } from './pages/expiry.js';
 import { applyPagesPublishingConfig } from './routes/pagesConfig.js';
 import { refreshMiniAppWrappers } from './miniApps/wrapperUpgrade.js';
 import { createSupermemoryProvisioner } from './memory/provision.js';
+import { LiveVoiceService } from './voice/service.js';
 
 // Before config: launchd cannot inject an env file, so the service reads it.
 loadEnvFile();
@@ -156,6 +157,7 @@ const ctx: AppContext = {
 };
 const pageExpiry = startPageExpiry(ctx);
 ctx.pageExpiry = pageExpiry;
+ctx.liveVoice = new LiveVoiceService(ctx);
 
 // Keeps the Files page fresh without polling: when a turn finishes, re-scan that
 // chat's transcript and mirror any new deliverables into the durable registry
@@ -252,6 +254,7 @@ const shutdown = createShutdown({
   name: 'veneer-pro',
   server,
   release: () => {
+    ctx.liveVoice?.close();
     manager.close();
     terminals.shutdown();
     claudeConnect.shutdown();

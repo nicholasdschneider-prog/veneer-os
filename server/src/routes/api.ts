@@ -49,6 +49,7 @@ import { createDesktopRouter } from './desktop.js';
 import { createVeneerBrowserRouter } from './veneerBrowser.js';
 import { createConversationReactivator } from './conversationActivity.js';
 import { createRecentConversationsRouter } from './recentConversations.js';
+import { createLiveVoiceRouter } from './liveVoice.js';
 import {
   autoArchiveInactiveConversations,
   readChatAutoArchiveSettings,
@@ -813,6 +814,8 @@ export function createApiRouter(ctx: AppContext): Router {
       conversationView: (row, viewer) => conversationView(ctx, row, viewer),
     }),
   );
+
+  router.use('/live-voice', createLiveVoiceRouter(ctx));
 
   router.get('/system/usage', (_req, res) => {
     res.set('Cache-Control', 'no-store');

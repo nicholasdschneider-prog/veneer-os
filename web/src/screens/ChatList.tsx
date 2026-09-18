@@ -13,6 +13,7 @@ import {
   Pencil,
   Pin,
   Plus,
+  Phone,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import type { BuildQueueJob, Conversation, Project, ScheduledTask, ScheduledTaskRun } from '../lib/types';
@@ -677,6 +678,10 @@ export function ChatList({
           <ChatListFilterControl filter={filter} unreadCount={unreadCount} onChange={setFilter} />
         ) : null}
       </header>
+
+      {canManage && view === 'active' && <div className="px-5 pb-3">
+        <Button variant="outline" className="min-h-11 w-full" asChild><a href="#/voice"><Phone className="size-4" />Talk to Henry</a></Button>
+      </div>}
 
       <div ref={listScrollRef} className="flex-1 overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
         {/* Unread view drops the whole Projects section when no project has

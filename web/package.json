@@ -25,6 +25,7 @@
     "fast-xml-parser": "5.10.1",
     "jszip": "3.10.1",
     "katex": "^0.16.47",
+    "livekit-client": "^2.22.3",
     "lucide-react": "^1.23.0",
     "marked": "^15.0.4",
     "pdfjs-dist": "^6.1.200",

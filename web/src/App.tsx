@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from './lib/api';
 import type { Me, WorkspaceNavigation } from './lib/types';
 import { Setup } from './screens/Setup';
@@ -34,6 +34,7 @@ import { useFloatingDesktop } from './components/desktop/FloatingDesktop';
 import { ProjectBrowserPanel } from './components/browser/ProjectBrowserPanel';
 
 const THREE_PANE_QUERY = '(min-width: 1180px)';
+const LiveVoice = lazy(() => import('./screens/LiveVoice').then(module => ({ default: module.LiveVoice })));
 
 const SETTINGS_ALIASES: Record<string, { section: Exclude<SettingsSection, 'index'>; tab?: string }> = {
   accounts: { section: 'providers', tab: 'providers' },
@@ -344,7 +345,10 @@ export function App() {
   }
 
   let screen: ReactNode | null = null;
-  if (hash.startsWith('#/tools')) {
+  if (hash.startsWith('#/voice')) {
+    if (!canManage) { navigate('#/'); return null; }
+    screen = <Suspense fallback={<p role="status" className="p-6">Opening voice…</p>}><LiveVoice onBack={() => navigate('#/tools')} /></Suspense>;
+  } else if (hash.startsWith('#/tools')) {
     if (!canManage) {
       navigate('#/');
       return null;

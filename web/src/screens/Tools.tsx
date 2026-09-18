@@ -1,6 +1,7 @@
-import { ChevronRight, FolderOpen, SquareTerminal } from 'lucide-react';
+import { ChevronRight, FolderOpen, SquareTerminal, Phone } from 'lucide-react';
 
 const TOOLS = [
+  { title: 'Talk to Henry', description: 'A live conversation to work through questions from your agents.', hash: '#/voice', icon: Phone },
   {
     title: 'File browser',
     description: 'Browse and manage files on this Veneer host.',
