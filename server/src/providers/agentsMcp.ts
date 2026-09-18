@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * MCP servers lifted out of a materialized Claude-format mcp-config.json so
@@ -8,6 +10,15 @@ import fs from 'node:fs';
  * cross-chat tools, per-turn agent token in env) AND user connectors/toolbox
  * servers (stdio or streamable HTTP).
  */
+
+/** Built stdio proxy that forwards the Veneer Browser MCP over HTTP with a
+ * per-request agent token (see mcp/veneerBrowserProxy.ts). */
+export const VENEER_BROWSER_PROXY_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'mcp',
+  'veneerBrowserProxy.js',
+);
 
 export type LiftedMcpServer =
   | { name: string; kind: 'stdio'; command: string; args: string[]; env: Record<string, string> }
@@ -49,11 +60,20 @@ export function readAllMcpServers(mcpConfigPath: string | null | undefined): Lif
  * `http_headers` support (verified 0.144.4: the key is silently ignored; only
  * bearer_token_env_var exists) — so servers that need headers are wrapped in
  * an `mcp-remote` stdio proxy, with header VALUES riding in env (mcp-remote
- * interpolates ${VAR}) so secrets stay out of argv.
+ * interpolates ${VAR}) so secrets stay out of argv. The built-in
+ * `veneer_browser` server is the exception: it goes through our own stdio
+ * proxy so the agent token is re-read per request instead of frozen with the
+ * thread.
  */
 export function codexMcpServers(mcpConfigPath: string | null | undefined): Record<string, Record<string, unknown>> {
   const out: Record<string, Record<string, unknown>> = {};
-  for (const s of readAllMcpServers(mcpConfigPath)) {
+  const servers = readAllMcpServers(mcpConfigPath);
+  // The agents stdio server already carries the conversation id and the
+  // per-conversation token file; the browser proxy needs the same pair.
+  const agents = servers.find((s) => s.name === 'agents' && s.kind === 'stdio');
+  const conversationId = agents?.kind === 'stdio' ? agents.env.VP_CONVERSATION_ID ?? '' : '';
+  const agentTokenFile = agents?.kind === 'stdio' ? agents.env.VP_AGENT_TOKEN_FILE ?? '' : '';
+  for (const s of servers) {
     // Name becomes a TOML key segment / MCP server id — skip anything unsafe.
     if (!/^[A-Za-z0-9_-]+$/.test(s.name)) continue;
     if (s.kind === 'stdio') {
@@ -83,6 +103,22 @@ export function codexMcpServers(mcpConfigPath: string | null | undefined): Recor
       };
     } else if (Object.keys(s.headers).length === 0) {
       out[s.name] = { url: s.url };
+    } else if (s.name === 'veneer_browser') {
+      // Not mcp-remote: Codex persists the server env with the native thread
+      // and relaunches with it on resume, so a token frozen in argv/env expires
+      // after a few hours and mcp-remote then misreads the 401 as an OAuth
+      // challenge. The proxy re-reads the token file on every request.
+      out[s.name] = {
+        command: process.execPath,
+        args: [VENEER_BROWSER_PROXY_PATH],
+        env: {
+          VP_VENEER_BROWSER_URL: s.url,
+          VP_AGENT_TOKEN: s.headers['X-VP-Agent-Token'] ?? '',
+          ...(conversationId ? { VP_CONVERSATION_ID: conversationId } : {}),
+          ...(agentTokenFile ? { VP_AGENT_TOKEN_FILE: agentTokenFile } : {}),
+        },
+        tool_timeout_sec: 960,
+      };
     } else {
       const env: Record<string, string> = {};
       const args = ['-y', 'mcp-remote', s.url];
@@ -91,7 +127,7 @@ export function codexMcpServers(mcpConfigPath: string | null | undefined): Recor
         env[envVar] = value;
         args.push('--header', `${key}:\${${envVar}}`);
       });
-      out[s.name] = { command: 'npx', args, env, ...(s.name === 'veneer_browser' ? { tool_timeout_sec: 960 } : {}) };
+      out[s.name] = { command: 'npx', args, env };
     }
   }
   return out;

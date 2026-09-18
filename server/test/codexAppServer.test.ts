@@ -107,6 +107,45 @@ describe('AppServerClient cleanup (BUG 5)', () => {
     expect(servers.other).not.toHaveProperty('tool_timeout_sec');
     fs.rmSync(dir, { recursive: true, force: true });
   });
+
+  it('routes veneer_browser through the token-file proxy instead of mcp-remote', () => {
+    const dir = tmpDir();
+    const configPath = path.join(dir, 'mcp.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          agents: {
+            command: 'node',
+            args: ['agents.js'],
+            env: { VP_AGENT_TOKEN: 'turn-token', VP_CONVERSATION_ID: 'conv-1', VP_AGENT_TOKEN_FILE: '/tmp/tokens/conv-1' },
+          },
+          veneer_browser: {
+            type: 'http',
+            url: 'http://127.0.0.1:3101/mcp/veneer-browser',
+            headers: { 'X-VP-Agent-Token': 'turn-token' },
+          },
+          other_headered: { type: 'http', url: 'http://example.test/mcp', headers: { Authorization: 'Bearer abc' } },
+        },
+      }),
+    );
+    const servers = codexMcpServers(configPath);
+    const browser = servers.veneer_browser!;
+    expect(browser.command).toBe(process.execPath);
+    expect((browser.args as string[]).map((a) => path.basename(a))).toEqual(['veneerBrowserProxy.js']);
+    expect(browser.env).toEqual({
+      VP_VENEER_BROWSER_URL: 'http://127.0.0.1:3101/mcp/veneer-browser',
+      VP_AGENT_TOKEN: 'turn-token',
+      VP_CONVERSATION_ID: 'conv-1',
+      VP_AGENT_TOKEN_FILE: '/tmp/tokens/conv-1',
+    });
+    expect(browser.tool_timeout_sec).toBe(960);
+    expect(JSON.stringify(browser)).not.toContain('mcp-remote');
+    // Other headered remote servers keep the mcp-remote wrapper.
+    expect(servers.other_headered?.command).toBe('npx');
+    expect(servers.other_headered?.args).toEqual(['-y', 'mcp-remote', 'http://example.test/mcp', '--header', 'Authorization:${MCP_HEADER_0}']);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });
 
 describe('canonical Codex App Server adapter', () => {
