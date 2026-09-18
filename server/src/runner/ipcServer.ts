@@ -24,6 +24,7 @@ import { ensureIpcSecret, IPC_SECRET_HEADER, ipcSecretMatches } from './ipcSecre
 import { handleVeneerBrowserMcp } from '../veneerBrowser/mcp.js';
 import type { VeneerBrowserManager } from '../veneerBrowser/manager.js';
 import type { SecretAccessDeps } from '../secrets/readSecret.js';
+import type { EmailCodeSource } from '../veneerBrowser/emailCode.js';
 
 /**
  * Runner-side IPC server (plan §"IPC boundary"). A loopback HTTP server on
@@ -55,6 +56,7 @@ export function createIpcServer({
   wakeups,
   buildQueue,
   secretAccess,
+  emailCodes,
   onRestart,
 }: {
   manager: ConversationManager;
@@ -87,6 +89,8 @@ export function createIpcServer({
    * back through an agent-visible payload.
    */
   secretAccess?: SecretAccessDeps;
+  /** Configured code mailbox for fill_email_code; absent disables the tool. */
+  emailCodes?: EmailCodeSource;
   /** Drain and exit 0 so the supervisor respawns us (the UI "unstick" path). */
   onRestart: (reason: string) => void;
 }): http.Server {
@@ -141,6 +145,7 @@ export function createIpcServer({
         db,
         manager: veneerBrowser,
         ...(secretAccess ? { secrets: secretAccess } : {}),
+        ...(emailCodes ? { emailCodes } : {}),
       }).catch(() => {
         if (!res.headersSent) sendJson(res, 502, { error: 'Veneer Browser MCP failed' });
         else res.destroy();

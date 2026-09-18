@@ -42,6 +42,15 @@ const EnvSchema = z.object({
   COMPOSIO_WEBHOOK_SECRET: z.string().optional(),
   // Runner IPC: the standalone agent-execution process binds this loopback port;
   // web talks to it there (runner/client.ts). Same env file both services read.
+  // fill_email_code (Veneer Browser): the ONE mailbox whose emailed
+  // verification codes the runner may read, through the shared Gmail
+  // connector labeled with this address. Unset disables the tool.
+  VP_EMAIL_CODE_MAILBOX: z.string().trim().email().optional(),
+  // Comma-separated sender addresses or domains a code may come from; the
+  // agent can narrow this list but never widen it. Empty accepts any sender.
+  VP_EMAIL_CODE_SENDERS: z.string().optional(),
+  // Optional user_connectors.id pin when more than one shared install carries the label.
+  VP_EMAIL_CODE_CONNECTOR_ID: z.coerce.number().int().positive().optional(),
   VP_RUNNER_PORT: z.coerce.number().int().positive().default(3101),
   // Local Mini App runner IPC. It is a separate service so an app crash or
   // restart cannot disturb the web process or active agent turns.
@@ -135,6 +144,8 @@ export interface Config {
   composioApiKey: string | null;
   /** Server-only signature secret for the public Composio webhook ingress. */
   composioWebhookSecret: string | null;
+  /** Mailbox fill_email_code reads through the shared Gmail connector, or null when the tool is off. */
+  emailCode: { mailbox: string; senders: string[]; connectorId: number | null } | null;
   /** Loopback port the runner's IPC server binds; web's runner client dials it. */
   runnerPort: number;
   /** Loopback port the local Mini App runner binds. */
@@ -249,6 +260,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     supermemoryApiKey: parsed.SUPERMEMORY_API_KEY?.trim() || null,
     composioApiKey: parsed.COMPOSIO_API_KEY ?? null,
     composioWebhookSecret: parsed.COMPOSIO_WEBHOOK_SECRET ?? null,
+    emailCode: parsed.VP_EMAIL_CODE_MAILBOX
+      ? {
+          mailbox: parsed.VP_EMAIL_CODE_MAILBOX.toLowerCase(),
+          senders: (parsed.VP_EMAIL_CODE_SENDERS ?? '').split(',').map((entry) => entry.trim().toLowerCase()).filter(Boolean),
+          connectorId: parsed.VP_EMAIL_CODE_CONNECTOR_ID ?? null,
+        }
+      : null,
     runnerPort: parsed.VP_RUNNER_PORT,
     appRunnerPort: parsed.VP_APP_RUNNER_PORT,
     termPort: parsed.VP_TERM_PORT,

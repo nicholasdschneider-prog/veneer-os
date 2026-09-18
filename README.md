@@ -159,6 +159,9 @@ rather than silently granting owner access to every caller.
 | `VP_VENEER_BROWSER_IDENTITY_FILE` | — | explicit path to that identity file; the installer points it at `browser.env` |
 | `NODE_EXTRA_CA_CERTS` | — | the manager's loopback certificate. Set by the installer, and also rendered into the web and runner plists, because Node reads it only at process start |
 | `VP_VENEER_BROWSER_LAN_URL` / `VP_VENEER_BROWSER_LAN_CA` | — / cert path | LAN shortcut to a manager on *another* host; `https://` only, with a pinned certificate. A local manager needs no shortcut, so the installer sets only the CA path |
+| `VP_EMAIL_CODE_MAILBOX` | — | enables the browser's `fill_email_code` tool: the one mailbox whose emailed verification codes the runner may read, through the **shared** Gmail connector labeled with this address (exactly one must match) |
+| `VP_EMAIL_CODE_SENDERS` | — | comma-separated sender addresses or domains a code may come from; the agent can narrow but never widen it |
+| `VP_EMAIL_CODE_CONNECTOR_ID` | — | pins a `user_connectors` row id when more than one shared install carries the label |
 | `VP_LAN_VIEWER_HOST` / `VP_LAN_VIEWER_PORT` / `VP_LAN_VIEWER_CERT` / `VP_LAN_VIEWER_KEY` | — `3443` — — | direct LAN listener for the live browser view; all four needed for it to start |
 
 ### Publishing (all optional)

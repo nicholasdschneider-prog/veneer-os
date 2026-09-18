@@ -15,6 +15,7 @@ import type { SecretAccessDeps } from '../src/secrets/readSecret.js';
 import { handleVeneerBrowserMcp } from '../src/veneerBrowser/mcp.js';
 import { classifyProbe, clearSecretFields } from '../src/veneerBrowser/secretFill.js';
 import { findSmsCode, SmsCodeError } from '../src/veneerBrowser/smsCode.js';
+import { EmailCodeError, findEmailCode, type EmailCodeSource } from '../src/veneerBrowser/emailCode.js';
 import type { VeneerBrowserManager } from '../src/veneerBrowser/manager.js';
 
 // Only the Doppler read is stubbed; the tools, the probe, the redaction seam,
@@ -29,6 +30,12 @@ vi.mock('../src/secrets/readSecret.js', async (importOriginal) => ({
 vi.mock('../src/veneerBrowser/smsCode.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/veneerBrowser/smsCode.js')>()),
   findSmsCode: vi.fn(),
+}));
+
+// The mailbox lookup is stubbed the same way; EmailCodeError stays real.
+vi.mock('../src/veneerBrowser/emailCode.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/veneerBrowser/emailCode.js')>()),
+  findEmailCode: vi.fn(),
 }));
 
 // Pins the macOS half of the fill_sms_code gate so the suite means the same
@@ -837,5 +844,303 @@ describe('fill_sms_code', () => {
     // Only the probe ran; nothing was typed anywhere.
     expect(runCommands).toHaveBeenCalledTimes(1);
     expect(runCommands.mock.calls[0]![2]).toEqual(probeBatch('@e9'));
+  });
+});
+
+describe('fill_email_code', () => {
+  let db: Database.Database;
+  let withMailbox: Server | undefined;
+  let withoutMailbox: Server | undefined;
+  let mailboxBase: string;
+  let plainBase: string;
+  let token: string;
+  let memberToken: string;
+  let fixture: ElementFixture = TEXT_INPUT;
+  let pageUrl = 'https://app.shipsurance.example/claimstatus';
+  let order: string[] = [];
+
+  const emailCode = vi.mocked(findEmailCode);
+  const MATCH = {
+    code: '482913',
+    sender: 'noreply@shipsurance.com',
+    subject: 'Your claim status verification code',
+    messageId: 'msg-1',
+    messageAgeSeconds: 8,
+  };
+  const emailCodes: EmailCodeSource = {
+    mailbox: 'help@elkhartrvparts.com',
+    senders: ['shipsurance.com'],
+    fetchRecent: vi.fn(async () => []),
+  };
+
+  const conversationSession = vi.fn(async () => ({
+    configured: true,
+    active: true,
+    projectId: 'unfiled-user-1',
+    profileId: null,
+    profileName: null,
+    status: 'active' as const,
+    inUseByAnotherChat: false,
+    temporaryClone: true,
+    fresh: false,
+    canUpdateProfile: false,
+    lastUsedAt: null,
+    error: null,
+  }));
+  const runCommand = vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0, screenshotPath: null }));
+  const runCommands = vi.fn(async (
+    _userId: number,
+    _conversationId: string,
+    commands: string[][],
+    _options?: { redact?: string[] },
+  ) => {
+    order.push(`runCommands:${commands[0]![0]}`);
+    return {
+      steps: commands.map((command) => ({
+        command,
+        result: { args: command, stdout: cliStdout(command, fixture, pageUrl, ''), stderr: '', exitCode: 0 },
+      })),
+      failure: null as null | { index: number; command: string[]; output: string },
+      released: false,
+    };
+  });
+
+  function serverFor(source: EmailCodeSource | undefined): Server {
+    const manager = {
+      conversationSession,
+      runCommand,
+      runCommands,
+      captureGrantActive: vi.fn(() => false),
+      probeCommand: vi.fn(async () => null),
+    } as unknown as VeneerBrowserManager;
+    const secrets = {
+      db,
+      projectDopplerCli: { binDir: '/tmp/bin', configDir: '/tmp/cfg', userHome: '/tmp' },
+    } as SecretAccessDeps;
+    return createServer((req, res) => {
+      void handleVeneerBrowserMcp(req, res, { db, manager, secrets, ...(source ? { emailCodes: source } : {}) });
+    });
+  }
+
+  beforeAll(async () => {
+    db = new Database(':memory:');
+    migrate(db, MIGRATIONS);
+    db.prepare("INSERT INTO users (id, email, display_name, role) VALUES (1, 'owner@example.com', 'Owner', 'owner')").run();
+    db.prepare("INSERT INTO users (id, email, display_name, role) VALUES (2, 'member@example.com', 'Member', 'member')").run();
+    db.prepare("INSERT INTO conversations (id, assistant_id, user_id, provider, native_session_id) VALUES ('email-chat', 1, 1, 'claude', 'email-native')").run();
+    db.prepare("INSERT INTO conversations (id, assistant_id, user_id, provider, native_session_id) VALUES ('email-member-chat', 1, 2, 'claude', 'email-member-native')").run();
+    token = mintAgentToken(db, 'owner@example.com', 'email-chat');
+    memberToken = mintAgentToken(db, 'member@example.com', 'email-member-chat');
+    withMailbox = serverFor(emailCodes);
+    withoutMailbox = serverFor(undefined);
+    await new Promise<void>((resolve) => withMailbox!.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) => withoutMailbox!.listen(0, '127.0.0.1', resolve));
+    mailboxBase = `http://127.0.0.1:${(withMailbox.address() as AddressInfo).port}`;
+    plainBase = `http://127.0.0.1:${(withoutMailbox.address() as AddressInfo).port}`;
+  });
+
+  afterAll(() => {
+    withMailbox?.close();
+    withoutMailbox?.close();
+    db.close();
+  });
+
+  beforeEach(() => {
+    platform.macOS = true;
+    vi.clearAllMocks();
+    clearSecretFields('email-chat');
+    fixture = TEXT_INPUT;
+    pageUrl = 'https://app.shipsurance.example/claimstatus';
+    order = [];
+    auditLines.length = 0;
+    emailCode.mockImplementation(async () => {
+      order.push('findEmailCode');
+      return { ...MATCH };
+    });
+  });
+
+  async function rpc(base: string, method: string, params: Record<string, unknown>, bearer = token): Promise<any> {
+    const response = await fetch(base, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-VP-Agent-Token': bearer },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+    });
+    return (await response.json() as { result: unknown }).result;
+  }
+
+  const call = (base: string, args: Record<string, unknown>): Promise<McpResult> =>
+    rpc(base, 'tools/call', { name: 'fill_email_code', arguments: args }) as Promise<McpResult>;
+
+  it('lists the tool only where a mailbox is configured, right after fill_sms_code', async () => {
+    const listed = await rpc(mailboxBase, 'tools/list', {}) as { tools: Array<{ name: string; description: string }> };
+    const names = listed.tools.map((tool) => tool.name);
+    expect(names).toContain('fill_email_code');
+    expect(names.indexOf('fill_email_code')).toBe(names.indexOf('fill_sms_code') + 1);
+    expect(listed.tools.find((tool) => tool.name === 'fill_email_code')?.description).toMatch(/Advanced capture/);
+    const schema = listed.tools.find((tool) => tool.name === 'fill_email_code')?.inputSchema as { properties: Record<string, unknown> };
+    // The mailbox is not an argument: the agent cannot point the tool anywhere else.
+    expect(Object.keys(schema.properties)).not.toContain('mailbox');
+    expect(Object.keys(schema.properties)).toEqual(expect.arrayContaining(['target', 'targets', 'sender', 'subject', 'thread_id']));
+
+    // Without the SMS tool it still sits directly after fill_totp.
+    platform.macOS = false;
+    const noSms = await rpc(mailboxBase, 'tools/list', {}) as { tools: Array<{ name: string }> };
+    const noSmsNames = noSms.tools.map((tool) => tool.name);
+    expect(noSmsNames).not.toContain('fill_sms_code');
+    expect(noSmsNames.indexOf('fill_email_code')).toBe(noSmsNames.indexOf('fill_totp') + 1);
+
+    const plain = await rpc(plainBase, 'tools/list', {}) as { tools: Array<{ name: string }> };
+    expect(plain.tools.map((tool) => tool.name)).not.toContain('fill_email_code');
+  });
+
+  it('refuses the call where no mailbox is configured, even though the list omitted it', async () => {
+    const result = await call(plainBase, { target: '@e9' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toBe('Error: fill_email_code is not configured on this instance: no code mailbox is set.');
+    expect(emailCode).not.toHaveBeenCalled();
+    expect(runCommands).not.toHaveBeenCalled();
+  });
+
+  it('hides the tool from a member turn and refuses the call anyway', async () => {
+    const listed = await rpc(mailboxBase, 'tools/list', {}, memberToken) as { tools: Array<{ name: string }> };
+    expect(listed.tools.map((tool) => tool.name)).not.toContain('fill_email_code');
+    const result = await rpc(mailboxBase, 'tools/call', { name: 'fill_email_code', arguments: { target: '@e9' } }, memberToken) as McpResult;
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toMatch(/administrator/);
+    expect(emailCode).not.toHaveBeenCalled();
+  });
+
+  it('fills one field and reports only the shape of what it did', async () => {
+    const result = await call(mailboxBase, { target: '@e9', sender: 'shipsurance.com', subject: 'verification', submit: true });
+    expect(result.isError).toBeUndefined();
+    const text = result.content[0]!.text;
+    expect(text).not.toContain(MATCH.code);
+    expect(text).not.toContain('msg-1');
+    expect(JSON.parse(text)).toEqual({
+      ok: true,
+      target: '@e9',
+      sender: 'noreply@shipsurance.com',
+      subject: 'Your claim status verification code',
+      message_age_seconds: 8,
+      submitted: true,
+    });
+    expect(emailCode).toHaveBeenCalledWith(emailCodes, expect.objectContaining({
+      conversationId: 'email-chat', sender: 'shipsurance.com', subject: 'verification',
+    }));
+    const [, , commands, options] = runCommands.mock.calls[1]!;
+    expect(commands).toEqual([['fill', '@e9', MATCH.code], ['press', 'Enter']]);
+    expect(options).toEqual({ redact: [MATCH.code] });
+    expect(order).toEqual(['findEmailCode', 'runCommands:get', 'runCommands:fill']);
+    expect(auditLines).toHaveLength(1);
+    expect(auditLines[0]).toBe(
+      '[veneer-browser] fill_email_code user=1 conversation=email-chat mailbox=help@elkhartrvparts.com '
+        + 'sender=noreply@shipsurance.com subject=Your_claim_status_verification_code target=@e9 '
+        + 'url=https://app.shipsurance.example/claimstatus ok=true',
+    );
+    expect(auditLines[0]).not.toContain(MATCH.code);
+  });
+
+  it('distributes the digits across a row of boxes in one sequence and guards every box', async () => {
+    const targets = ['@e1', '@e2', '@e3', '@e4', '@e5', '@e6'];
+    const result = await call(mailboxBase, { targets, submit: true });
+    expect(result.isError).toBeUndefined();
+    const text = result.content[0]!.text;
+    expect(text).not.toContain(MATCH.code);
+    expect(JSON.parse(text)).toEqual({
+      ok: true,
+      targets,
+      sender: 'noreply@shipsurance.com',
+      subject: 'Your claim status verification code',
+      message_age_seconds: 8,
+      submitted: true,
+    });
+    // Six probes, then one fill sequence.
+    expect(runCommands).toHaveBeenCalledTimes(7);
+    for (let index = 0; index < 6; index += 1) {
+      expect(runCommands.mock.calls[index]![2]).toEqual(probeBatch(targets[index]!));
+    }
+    const [, , commands, options] = runCommands.mock.calls[6]!;
+    expect(commands).toEqual([
+      ['fill', '@e1', '4'], ['fill', '@e2', '8'], ['fill', '@e3', '2'],
+      ['fill', '@e4', '9'], ['fill', '@e5', '1'], ['fill', '@e6', '3'],
+      ['press', 'Enter'],
+    ]);
+    expect(options).toEqual({ redact: [MATCH.code, '4', '8', '2', '9', '1', '3'] });
+    // Every box is now a secret field for the readback guard.
+    const readback = await rpc(mailboxBase, 'tools/call', { name: 'run', arguments: { args: ['get', 'value', '@e6'] } }) as McpResult;
+    expect(readback.isError).toBe(true);
+    expect(readback.content[0]!.text).toMatch(/just filled with a secret/);
+    expect(auditLines[0]).toContain('target=@e1,@e2,@e3,@e4,@e5,@e6');
+  });
+
+  it('refuses a box count that does not match the code, before typing anything', async () => {
+    const result = await call(mailboxBase, { targets: ['@e1', '@e2', '@e3', '@e4'] });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toMatch(/4 boxes/);
+    expect(result.content[0]!.text).not.toContain(MATCH.code);
+    expect(runCommands).not.toHaveBeenCalled();
+  });
+
+  it('refuses both target and targets, a duplicate box, and no target at all', async () => {
+    for (const args of [
+      { target: '@e1', targets: ['@e1', '@e2'] },
+      { targets: ['@e1', '@e1'] },
+      {},
+    ]) {
+      const result = await call(mailboxBase, args);
+      expect(result.isError).toBe(true);
+      expect(emailCode).not.toHaveBeenCalled();
+    }
+  });
+
+  it('clamps a wait longer than the cap', async () => {
+    await call(mailboxBase, { target: '@e9', wait_seconds: 600, max_age_seconds: 120 });
+    expect(emailCode).toHaveBeenCalledWith(emailCodes, expect.objectContaining({ waitSeconds: 180, maxAgeSeconds: 120 }));
+  });
+
+  it('passes a not_found failure through without inventing a code', async () => {
+    emailCode.mockImplementation(async () => {
+      throw new EmailCodeError('not_found', 'No unused code from shipsurance.com in help@elkhartrvparts.com in the last 600 s after waiting 90 s.');
+    });
+    const result = await call(mailboxBase, { target: '@e9', sender: 'shipsurance.com' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toBe('Error: No unused code from shipsurance.com in help@elkhartrvparts.com in the last 600 s after waiting 90 s.');
+    expect(runCommands).not.toHaveBeenCalled();
+    expect(auditLines[0]).toContain('ok=false');
+    expect(auditLines[0]).not.toContain(MATCH.code);
+  });
+
+  it('refuses a target that cannot hold typed text, without typing the code', async () => {
+    fixture = BUTTON;
+    const result = await call(mailboxBase, { target: '@e9' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toMatch(/not a text input/);
+    expect(result.content[0]!.text).not.toContain(MATCH.code);
+    expect(runCommands).toHaveBeenCalledTimes(1);
+  });
+
+  it('redacts the code out of a failing multi-box sequence', async () => {
+    runCommands.mockImplementationOnce(async (_u, _c, commands) => ({
+      steps: commands.map((command) => ({ command, result: { args: command, stdout: cliStdout(command, fixture, pageUrl, ''), stderr: '', exitCode: 0 } })),
+      failure: null,
+      released: false,
+    }));
+    let calls = 0;
+    runCommands.mockImplementation(async (_u, _c, commands) => {
+      calls += 1;
+      if (commands[0]![0] === 'fill') {
+        return { steps: [], failure: { index: 0, command: commands[0]!, output: `Error: could not fill ${MATCH.code} into ${commands[0]![1]}` }, released: false };
+      }
+      return {
+        steps: commands.map((command) => ({ command, result: { args: command, stdout: cliStdout(command, fixture, pageUrl, ''), stderr: '', exitCode: 0 } })),
+        failure: null,
+        released: false,
+      };
+    });
+    const result = await call(mailboxBase, { targets: ['@e1', '@e2', '@e3', '@e4', '@e5', '@e6'] });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).not.toContain(MATCH.code);
+    expect(result.content[0]!.text).toContain('[redacted]');
+    expect(calls).toBeGreaterThan(0);
   });
 });

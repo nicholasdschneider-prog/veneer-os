@@ -8,6 +8,8 @@ import { buildAgentRuntime } from '../runtime/buildAgentRuntime.js';
 import { conversationsForSweep, ensureClaudeTranscriptRetention } from '../runtime/transcriptArchive.js';
 import { adoptCodexLogins, createCodexAccountStore } from '../codex/accounts.js';
 import { createSecretStore } from '../secrets/store.js';
+import { effectiveApiKey } from '../secrets/apiKeys.js';
+import { createComposioEmailCodeSource, findMailboxConnector } from '../veneerBrowser/emailCode.js';
 import { createUsageStore } from '../usage/store.js';
 import { createClaudeProbe } from '../usage/claudeProbe.js';
 import { createClaudeLimitResetManager } from '../usage/claudeLimitReset.js';
@@ -104,6 +106,26 @@ await veneerBrowser.reconcile();
 const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000 });
 const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bus, tickMs: 2_000 });
 const buildQueue = createBuildQueueCoordinator({ db, manager });
+// fill_email_code reads the configured help mailbox through the shared Gmail
+// connector, in this process. The binding is checked once here so a missing
+// or ambiguous connector shows up in the log at boot, by row id and label only.
+let emailCodes: ReturnType<typeof createComposioEmailCodeSource> | undefined;
+if (config.emailCode) {
+  const { mailbox, senders, connectorId } = config.emailCode;
+  try {
+    const row = findMailboxConnector(db, mailbox, connectorId);
+    console.log(`[veneer-pro-runner] fill_email_code bound to Gmail connector #${row.id} (${row.label ?? ''}); senders: ${senders.join(', ') || 'any'}`);
+  } catch (err) {
+    console.warn(`[veneer-pro-runner] fill_email_code: ${(err as Error).message}`);
+  }
+  emailCodes = createComposioEmailCodeSource({
+    db,
+    mailbox,
+    senders,
+    connectorId,
+    composioApiKey: () => effectiveApiKey('composio', secrets, config, doppler).value,
+  });
+}
 const server = createIpcServer({
   manager,
   adapters,
@@ -122,6 +144,7 @@ const server = createIpcServer({
     db,
     projectDopplerCli,
   },
+  ...(emailCodes ? { emailCodes } : {}),
   onRestart: (reason) => shutdown.drainAndExit(reason),
 });
 const clearPidFile = writePidFile(config.dataDir, 'veneer-pro-runner');

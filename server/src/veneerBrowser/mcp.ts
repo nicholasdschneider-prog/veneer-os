@@ -10,11 +10,13 @@ import {
   assertNoSecretReadback,
   clearSecretFields,
   fillSecretTool,
+  fillEmailCodeTool,
   fillSmsCodeTool,
   fillTotpTool,
   MAX_SMS_WAIT_SECONDS,
   type SecretToolDeps,
 } from './secretFill.js';
+import { MAX_EMAIL_WAIT_SECONDS, type EmailCodeSource } from './emailCode.js';
 import {
   appendTabList,
   listBrowserTabs,
@@ -74,10 +76,19 @@ const FILL_SMS_CODE_TOOL: ToolDef = { name: 'fill_sms_code', description: 'Enter
 
 const SMS_CODE_UNAVAILABLE = 'fill_sms_code is only available on macOS.';
 
-// All three read something only an administrator may reach: fill_secret and
-// fill_totp read Doppler, which every Doppler route 403s a member out of, and
-// fill_sms_code reads the operator's personal Messages database.
-const CREDENTIAL_TOOLS = new Set(['fill_secret', 'fill_totp', 'fill_sms_code']);
+// Listed only when this instance has a configured code mailbox, so an agent is
+// never offered a mailbox it cannot read. The mailbox itself is fixed by
+// configuration; the agent narrows by sender, subject, or thread only. Same
+// fillWithResolvedValue seam as the other three.
+const FILL_EMAIL_CODE_TOOL: ToolDef = { name: 'fill_email_code', description: 'Enter a verification code that just arrived by EMAIL in the configured help mailbox, read server-side through the connected Gmail connector. Use it for a 2-step prompt when fill_totp and fill_sms_code are not possible, because the site emails a code. Veneer looks only at messages inside max_age_seconds, waits up to wait_seconds for one to arrive, extracts the code here and types it; the message, the subject line beyond what you named, and the code never reach you, the chat, or any log, and the filled fields cannot be read back. A message is used once: a second call never re-types the same code. Name the sender (address or domain) and a subject fragment to ignore unrelated mail. For a row of single-digit boxes pass targets (one @e ref per box, in order) instead of target; each box gets one digit. Allowed while Advanced capture is on, because the code is single-use. Set submit to press Enter in the same step. If no code arrives, ask the user to type it in the live browser view.', inputSchema: { type: 'object', properties: { target: { type: 'string', description: 'One field that takes the whole code.' }, targets: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 12, description: 'One ref per single-digit box, in order. Use instead of target.' }, sender: { type: 'string', minLength: 1, maxLength: 200, description: 'Sender address or domain, for example shipsurance.com.' }, subject: { type: 'string', minLength: 1, maxLength: 200, description: 'Text the subject must contain.' }, thread_id: { type: 'string', minLength: 1, maxLength: 200, description: 'Gmail thread id the message must belong to.' }, max_age_seconds: { type: 'integer', minimum: 1, maximum: 3600, default: 600, description: 'How old a message may be and still count.' }, wait_seconds: { type: 'integer', minimum: 0, maximum: MAX_EMAIL_WAIT_SECONDS, default: 90, description: 'How long to wait for the email to arrive. 0 checks once.' }, submit: { type: 'boolean' }, pattern: { type: 'string', minLength: 1, maxLength: 200, description: 'Regular expression overriding the code shape. The default finds a 4-8 digit code, including "123-456".' } }, additionalProperties: false } };
+
+const EMAIL_CODE_UNAVAILABLE = 'fill_email_code is not configured on this instance: no code mailbox is set.';
+
+// All four read something only an administrator may reach: fill_secret and
+// fill_totp read Doppler, which every Doppler route 403s a member out of,
+// fill_sms_code reads the operator's personal Messages database, and
+// fill_email_code reads the shared help mailbox.
+const CREDENTIAL_TOOLS = new Set(['fill_secret', 'fill_totp', 'fill_sms_code', 'fill_email_code']);
 
 const CREDENTIAL_TOOLS_MEMBER_REFUSAL =
   'Entering a stored credential or a texted code needs Doppler and device access this account does not have. '
@@ -91,11 +102,18 @@ function smsCodeAvailable(secrets: SecretAccessDeps | undefined, memberActor: bo
   return Boolean(secrets) && isMacOS() && !memberActor;
 }
 
-function listedTools(smsAvailable: boolean, memberActor: boolean): ToolDef[] {
+/** fill_email_code needs a configured mailbox source and an actor entitled to read it. */
+function emailCodeAvailable(emailCodes: EmailCodeSource | undefined, memberActor: boolean): boolean {
+  return Boolean(emailCodes) && !memberActor;
+}
+
+function listedTools(smsAvailable: boolean, emailAvailable: boolean, memberActor: boolean): ToolDef[] {
   const base = memberActor ? TOOLS.filter((tool) => !CREDENTIAL_TOOLS.has(tool.name)) : TOOLS;
-  if (!smsAvailable) return base;
   const after = base.findIndex((tool) => tool.name === 'fill_totp') + 1;
-  return [...base.slice(0, after), FILL_SMS_CODE_TOOL, ...base.slice(after)];
+  // In the order the agent should try them: totp, then sms, then email.
+  const extra = [...(smsAvailable ? [FILL_SMS_CODE_TOOL] : []), ...(emailAvailable ? [FILL_EMAIL_CODE_TOOL] : [])];
+  if (!extra.length) return base;
+  return [...base.slice(0, after), ...extra, ...base.slice(after)];
 }
 
 // Served once, at initialize, so the agent knows the handful of things this
@@ -108,7 +126,7 @@ const INSTRUCTIONS = [
   'navigate switches to a tab whose URL matches exactly and otherwise opens a new tab, so the page you are on is not replaced.',
   'A confirm or prompt dialog blocks its page until it is answered, so a command that timed out may be waiting on one: call dialog status, then accept or dismiss. A dialog on a different tab that cannot be switched to is unreachable (browser limitation): dialog dismiss will close that tab for you after confirming it is stuck, and it does that even when dialog status reports nothing, because status only sees the selected tab; the closed page\'s state is lost. To answer such a dialog instead, the user can do it by hand in the live browser view.',
   'When refs cannot reach an element — a cross-origin iframe, a canvas, or shadow DOM, and a snapshot inlines only one level of iframe nesting — take a fresh non-full screenshot and use click_at, hover_at, or scroll_at on its pixels.',
-  'Signing in: a stored password or API key goes in with fill_secret, naming the Doppler secret — the value never enters chat, your arguments, or the result, and the filled field cannot be read back. For a 2-step prompt, try these in order: fill_totp (a Doppler secret holding the TOTP seed or otpauth:// URI); then fill_sms_code, which reads a texted code out of Messages and is listed only on the Pro Mac instance; and only then ask the user to type the code in the live browser view. Never pass a secret to type, fill, or find, and never ask the user to paste one in chat. When there is no stored password, collect it with request_secret, and collect a TOTP seed with a second request_secret (the user gets it from the authenticator app\'s "can\'t scan? enter key manually" option).',
+  'Signing in: a stored password or API key goes in with fill_secret, naming the Doppler secret — the value never enters chat, your arguments, or the result, and the filled field cannot be read back. For a 2-step prompt, try these in order: fill_totp (a Doppler secret holding the TOTP seed or otpauth:// URI); then fill_sms_code, which reads a texted code out of Messages and is listed only on the Pro Mac instance; then fill_email_code, which reads an emailed code out of the configured help mailbox and is listed only where one is set up (pass targets for a row of one-digit boxes); and only then ask the user to type the code in the live browser view. Never pass a secret to type, fill, or find, and never ask the user to paste one in chat. When there is no stored password, collect it with request_secret, and collect a TOTP seed with a second request_secret (the user gets it from the authenticator app\'s "can\'t scan? enter key manually" option).',
   'Use find when refs have gone stale or a snapshot would be huge, and read when you need the whole page.',
   'To keep a file, click its download link in the page and then call download to import it into the project.',
 ].join('\n\n');
@@ -635,11 +653,13 @@ export function rejectLoopbackUrl(name: string, args: Record<string, unknown>): 
 export async function handleVeneerBrowserMcp(
   req: http.IncomingMessage,
   res: http.ServerResponse,
-  { db, manager, secrets }: {
+  { db, manager, secrets, emailCodes }: {
     db: Database.Database;
     manager: VeneerBrowserManager;
     /** Doppler read access for fill_secret / fill_totp; absent disables them. */
     secrets?: SecretAccessDeps;
+    /** The configured code mailbox for fill_email_code; absent disables it. */
+    emailCodes?: EmailCodeSource;
   },
 ): Promise<void> {
   if (req.method === 'DELETE') return void sendJson(res, 200, { ok: true });
@@ -662,7 +682,7 @@ export async function handleVeneerBrowserMcp(
   const method = String(message.method ?? '');
   if (method === 'notifications/initialized') { res.writeHead(202); res.end(); return; }
   if (method === 'initialize') return void sendJson(res, 200, { jsonrpc: '2.0', id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'veneer-browser', version: '1.0.0' }, instructions: INSTRUCTIONS } });
-  if (method === 'tools/list') return void sendJson(res, 200, { jsonrpc: '2.0', id, result: { tools: listedTools(smsCodeAvailable(secrets, memberActor), memberActor) } });
+  if (method === 'tools/list') return void sendJson(res, 200, { jsonrpc: '2.0', id, result: { tools: listedTools(smsCodeAvailable(secrets, memberActor), emailCodeAvailable(emailCodes, memberActor), memberActor) } });
   if (method !== 'tools/call') return void sendJson(res, 200, { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } });
 
   const params = (message.params ?? {}) as Record<string, unknown>;
@@ -699,6 +719,10 @@ export async function handleVeneerBrowserMcp(
       // gate, and a cached tool list would otherwise reach a client instance.
       if (!smsCodeAvailable(secrets, memberActor)) throw new Error(SMS_CODE_UNAVAILABLE);
       result = textResult(await fillSmsCodeTool({ manager, userId: user.id, conversationId }, args));
+    } else if (name === 'fill_email_code') {
+      // Same double check as fill_sms_code: the list is a hint, not a gate.
+      if (!emailCodeAvailable(emailCodes, memberActor)) throw new Error(EMAIL_CODE_UNAVAILABLE);
+      result = textResult(await fillEmailCodeTool({ manager, userId: user.id, conversationId, emailCodes: emailCodes! }, args));
     } else if (name === 'fetch_url') {
       const read = await manager.fetchUrl(user.id, conversationId, args);
       result = { ...textResult(JSON.stringify(read), !read.ok), structuredContent: read };

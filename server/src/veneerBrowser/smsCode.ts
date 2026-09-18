@@ -39,7 +39,7 @@ const ROW_LIMIT = 50;
  * Matches "123-456", "123 456" and bare 4-8 digit runs, but not a digit run
  * that is part of a longer number (order/tracking IDs).
  */
-const DEFAULT_CODE_PATTERN = /(?<!\d)(\d{3}[-\s]\d{3}|\d{4,8})(?!\d)/;
+export const DEFAULT_CODE_PATTERN = /(?<!\d)(\d{3}[-\s]\d{3}|\d{4,8})(?!\d)/;
 
 export type SmsCodeErrorKind =
   | 'unavailable'
@@ -303,6 +303,32 @@ async function matchTextsInWorker(pattern: string, texts: string[]): Promise<Pat
     await worker.terminate();
   }
 }
+
+/** One extracted code and the index of the text it came from. */
+export interface CodeHit {
+  index: number;
+  code: string;
+}
+
+/**
+ * First code per text, in order, with the same worker isolation findSmsCode
+ * applies to a caller-supplied pattern. Shared with emailCode.ts so both
+ * channels extract codes identically; `texts` must already be capped by the
+ * caller (see MAX_CODE_TEXT_LENGTH).
+ */
+export async function matchCodeTexts(texts: string[], pattern?: string): Promise<CodeHit[]> {
+  compilePattern(pattern);
+  const hits = pattern ? await matchTextsInWorker(pattern, texts) : matchTexts(DEFAULT_CODE_PATTERN, texts);
+  const out: CodeHit[] = [];
+  for (const hit of hits) {
+    const code = normalizeMatch(hit.raw, Boolean(pattern));
+    if (code) out.push({ index: hit.index, code });
+  }
+  return out;
+}
+
+/** Haystack cap shared with the email reader. */
+export const MAX_CODE_TEXT_LENGTH = MAX_TEXT_LENGTH;
 
 /**
  * Returns the first code-shaped run in `text`, or null.

@@ -1,6 +1,7 @@
 import { assertDopplerSecretName } from '../secrets/doppler.js';
 import { readSecretValue, type SecretAccessDeps } from '../secrets/readSecret.js';
 import type { VeneerBrowserManager } from './manager.js';
+import { findEmailCode, MAX_EMAIL_WAIT_SECONDS, type EmailCodeSource } from './emailCode.js';
 import { findSmsCode } from './smsCode.js';
 import { generateTotp, parseTotpSeed } from './totp.js';
 
@@ -561,6 +562,135 @@ export async function fillSmsCodeTool(deps: SecretFillDeps, args: Record<string,
     });
   } catch (error) {
     logFill('fill_sms_code', deps, { sender: matchedSender, target, url: pageUrl }, false);
+    throw error;
+  }
+}
+
+/**
+ * Fill an emailed verification code from the ONE configured mailbox. The
+ * caller gates availability (see mcp.ts); this body assumes it is allowed to
+ * look. The mailbox read happens BEFORE any browser command, like the SMS
+ * path, so a long wait never holds the chat's browser command slot.
+ *
+ * Two target shapes: `target` for one field that takes the whole code, or
+ * `targets` for a row of single-character boxes — each box gets one character,
+ * in order, all inside one browser sequence with the optional Enter last. Every
+ * box is probed before anything is typed, and every box joins the readback
+ * guard. EmailCodeError messages pass through as-is: they name the mailbox,
+ * the sender filter, and the window, never a message.
+ */
+export interface EmailCodeToolDeps extends SecretFillDeps {
+  emailCodes: EmailCodeSource;
+}
+
+const MAX_CODE_BOXES = 12;
+
+function requireTargets(args: Record<string, unknown>): { targets: string[]; multi: boolean } {
+  const single = String(args.target ?? '').trim();
+  const list = Array.isArray(args.targets) ? args.targets.map((entry) => String(entry ?? '').trim()) : null;
+  if (single && list) throw new Error('Pass either target (one field) or targets (one box per digit), not both.');
+  if (list) {
+    if (list.length < 2 || list.length > MAX_CODE_BOXES || list.some((entry) => !entry)) {
+      throw new Error(`targets needs between 2 and ${MAX_CODE_BOXES} refs such as @e1, one per digit box, from a recent read.`);
+    }
+    if (new Set(list.map((entry) => entry.toLowerCase())).size !== list.length) {
+      throw new Error('targets lists the same ref more than once.');
+    }
+    return { targets: list, multi: true };
+  }
+  return { targets: [requireTarget(single)], multi: false };
+}
+
+/**
+ * Multi-box twin of fillWithResolvedValue: one probe per box first, then one
+ * sequence that types each character and optionally presses Enter. The code
+ * and each of its characters are redacted from the run, and every path out
+ * goes through `scrubbed`.
+ */
+export async function fillBoxesWithResolvedValue(
+  deps: SecretFillDeps,
+  input: { targets: string[]; value: string; submit?: boolean },
+): Promise<{ targets: string[]; submitted: boolean; pageUrl: string; masked: boolean }> {
+  const { targets, value } = input;
+  const submit = input.submit === true;
+  try {
+    const chars = Array.from(value);
+    if (chars.length !== targets.length) {
+      throw new Error(`The code has ${chars.length} characters but ${targets.length} boxes were given; take a fresh read and pass one ref per box.`);
+    }
+    const probes: FillProbe[] = [];
+    for (const target of targets) probes.push(await probeFillTarget(deps, target));
+    const commands: string[][] = targets.map((target, index) => ['fill', target, chars[index]!]);
+    if (submit) commands.push(['press', 'Enter']);
+    const run = await deps.manager.runCommands(deps.userId, deps.conversationId, commands, {
+      redact: [value, ...new Set(chars)],
+    });
+    if (run.failure) throw new Error(run.failure.output);
+    for (const target of targets) rememberSecretField(deps.conversationId, target);
+    return {
+      targets,
+      submitted: submit,
+      pageUrl: probes[0]?.pageUrl ?? '',
+      masked: probes.every((probe) => probe.masked),
+    };
+  } catch (error) {
+    throw scrubbed(error, value);
+  }
+}
+
+export async function fillEmailCodeTool(deps: EmailCodeToolDeps, args: Record<string, unknown>): Promise<string> {
+  const { targets, multi } = requireTargets(args);
+  const sender = optionalSegment(args.sender);
+  const subject = optionalSegment(args.subject);
+  const threadId = optionalSegment(args.thread_id);
+  const pattern = optionalSegment(args.pattern);
+  const maxAgeSeconds = optionalSeconds(args.max_age_seconds, 'max_age_seconds');
+  const requestedWait = optionalSeconds(args.wait_seconds, 'wait_seconds');
+  const waitSeconds = requestedWait === undefined ? undefined : Math.min(requestedWait, MAX_EMAIL_WAIT_SECONDS);
+  const targetField = multi ? targets.join(',') : targets[0]!;
+  let matchedSender = sender;
+  let matchedSubject = subject;
+  let pageUrl = '';
+  try {
+    const match = await findEmailCode(deps.emailCodes, {
+      conversationId: deps.conversationId,
+      ...(sender ? { sender } : {}),
+      ...(subject ? { subject } : {}),
+      ...(threadId ? { threadId } : {}),
+      ...(pattern ? { pattern } : {}),
+      ...(maxAgeSeconds === undefined ? {} : { maxAgeSeconds }),
+      ...(waitSeconds === undefined ? {} : { waitSeconds }),
+    });
+    matchedSender = match.sender || sender;
+    matchedSubject = match.subject || subject;
+    const submit = args.submit === true;
+    let submitted: boolean;
+    if (multi) {
+      const outcome = await fillBoxesWithResolvedValue(deps, { targets, value: match.code, submit });
+      pageUrl = outcome.pageUrl;
+      submitted = outcome.submitted;
+    } else {
+      const outcome = await fillWithResolvedValue(deps, { target: targets[0]!, value: match.code, submit });
+      pageUrl = outcome.pageUrl;
+      submitted = outcome.submitted;
+    }
+    logFill('fill_email_code', deps, {
+      mailbox: deps.emailCodes.mailbox, sender: matchedSender, subject: matchedSubject, target: targetField, url: pageUrl,
+    }, true);
+    // The code, the message id, and the body stay here; only the shape of what
+    // happened goes back, same contract as the other three fill tools.
+    return JSON.stringify({
+      ok: true,
+      ...(multi ? { targets } : { target: targets[0] }),
+      sender: match.sender,
+      subject: match.subject,
+      message_age_seconds: match.messageAgeSeconds,
+      submitted,
+    });
+  } catch (error) {
+    logFill('fill_email_code', deps, {
+      mailbox: deps.emailCodes.mailbox, sender: matchedSender, subject: matchedSubject, target: targetField, url: pageUrl,
+    }, false);
     throw error;
   }
 }
