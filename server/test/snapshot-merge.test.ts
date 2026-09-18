@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { promptWithMemoryReference } from '../src/instructions/context.js';
 import { mergeLiveIntoSnapshot, settleOrphanedSubagentEvents } from '../src/runtime/conversationManager.js';
 import type { ConversationEvent } from '../src/runtime/events.js';
@@ -123,10 +123,13 @@ describe('settleOrphanedSubagentEvents', () => {
   });
 
   it('marks trailing running agents stopped when nothing is live', () => {
-    const events = [started('t1', 'go'), launched('t1', 'a')];
-    const settled = settleOrphanedSubagentEvents(events);
-    expect(settled.at(-1)).toMatchObject({ type: 'subagent_updated', turnId: 't1', agentKey: 'a', status: 'stopped' });
-    expect(mergeLiveIntoSnapshot(events, null, { settleOrphans: true })).toEqual(settled);
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-01-01T00:01:00Z'));
+    try {
+      const events = [started('t1', 'go'), launched('t1', 'a')];
+      const settled = settleOrphanedSubagentEvents(events);
+      expect(settled.at(-1)).toMatchObject({ type: 'subagent_updated', turnId: 't1', agentKey: 'a', status: 'stopped' });
+      expect(mergeLiveIntoSnapshot(events, null, { settleOrphans: true })).toEqual(settled);
+    } finally { clock.mockRestore(); }
   });
 
   it('leaves settled agents alone and returns the same array', () => {

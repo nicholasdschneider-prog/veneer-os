@@ -59,7 +59,14 @@ function contentHash(sql: string): string {
 function ensureContentHashColumn(db: Database.Database): void {
   const columns = db.pragma('table_info(migrations)') as { name: string }[];
   if (!columns.some((c) => c.name === 'content_hash')) {
-    db.exec('ALTER TABLE migrations ADD COLUMN content_hash TEXT');
+    // Several services can observe the legacy schema together. Recheck after
+    // taking the write lock, just as applyPending does for numbered migrations.
+    db.transaction(() => {
+      const fresh = db.pragma('table_info(migrations)') as { name: string }[];
+      if (!fresh.some((c) => c.name === 'content_hash')) {
+        db.exec('ALTER TABLE migrations ADD COLUMN content_hash TEXT');
+      }
+    }).immediate();
   }
 }
 
