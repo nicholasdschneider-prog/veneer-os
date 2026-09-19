@@ -81,7 +81,12 @@ export function replyActivity(event: ConversationEvent, current: boolean): boole
     return false;
   return current;
 }
-export function BotPresence({ id, state }: { id: string; state: string }) {
+/**
+ * Live view of a bot conversation: `typing` while reply text streams in,
+ * `liveState` from the conversation's run status. Shared by the presence
+ * label, the working indicator, and decision cards.
+ */
+export function useBotLiveStatus(id: string): { typing: boolean; liveState: string | null } {
   const [typing, setTyping] = useState(false);
   const [liveState, setLiveState] = useState<string | null>(null);
   useEffect(() => {
@@ -128,24 +133,62 @@ export function BotPresence({ id, state }: { id: string; state: string }) {
       clearTimeout(timer);
     };
   }, [id]);
+  return { typing, liveState };
+}
+
+export function BotWorkingDots({ label }: { label: string }) {
+  return (
+    <span role="status" aria-label={label} className="inline-flex items-center gap-1">
+      {[0, 1, 2].map((n) => (
+        <span
+          key={n}
+          aria-hidden="true"
+          className="size-1 rounded-full bg-current motion-safe:animate-bounce"
+          style={{ animationDelay: `${n * 150}ms` }}
+        />
+      ))}
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
+/**
+ * "Grant is working…" while the bot's conversation is mid-turn. Renders
+ * nothing when the bot is idle so it can sit inline anywhere.
+ */
+export function BotWorkingIndicator({
+  id,
+  name,
+  compact = false,
+}: {
+  id: string;
+  name: string;
+  compact?: boolean;
+}) {
+  const { typing, liveState } = useBotLiveStatus(id);
+  if (!typing && liveState !== 'working') return null;
+  const label = typing ? `${name} is writing a reply` : `${name} is working`;
+  if (compact)
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2 py-0.5 text-[0.6875rem] font-medium text-sky-700 dark:text-sky-300">
+        <BotWorkingDots label={label} />
+        {typing ? 'Writing' : 'Working'}
+      </span>
+    );
+  return (
+    <div className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+      <BotWorkingDots label={label} />
+      <span>{typing ? `${name} is writing a reply…` : `${name} is working…`}</span>
+    </div>
+  );
+}
+
+export function BotPresence({ id, state }: { id: string; state: string }) {
+  const { typing, liveState } = useBotLiveStatus(id);
   return (
     <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
       {typing ? (
-        <span
-          role="status"
-          aria-label="Composing a reply"
-          className="inline-flex items-center gap-1"
-        >
-          {[0, 1, 2].map((n) => (
-            <span
-              key={n}
-              aria-hidden="true"
-              className="size-1 rounded-full bg-current motion-safe:animate-bounce"
-              style={{ animationDelay: `${n * 150}ms` }}
-            />
-          ))}
-          <span className="sr-only">Composing a reply</span>
-        </span>
+        <BotWorkingDots label="Composing a reply" />
       ) : liveState === 'idle' ? (
         state === 'working' || state === 'failed' ? (
           'available'

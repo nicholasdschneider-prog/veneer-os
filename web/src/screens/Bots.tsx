@@ -2,7 +2,8 @@ import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
 import { BotConversationRail } from '@/components/BotConversationRail';
-import { BotAvatar, BotName, BotPresence } from '@/components/BotIdentity';
+import { BotAvatar, BotName, BotPresence, BotWorkingIndicator } from '@/components/BotIdentity';
+import { BotComposer } from '@/components/BotComposer';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -101,7 +102,6 @@ export function Bots({
   >([]);
   const [chatId, setChatId] = useState('');
   const [name, setName] = useState('');
-  const [message, setMessage] = useState('');
   const [answer, setAnswer] = useState('');
   const [scope, setScope] = useState('this_case');
   const [editing, setEditing] = useState(false);
@@ -170,7 +170,6 @@ export function Bots({
   useEffect(() => {
     reviewedVersion.current = null;
     setStale(false);
-    setMessage('');
     setAnswer('');
     setScope('this_case');
     setEditing(false);
@@ -612,9 +611,10 @@ export function Bots({
                     </p>
                   )}
                   <div className="mt-6 border-t pt-5">
-                    <h3 className="flex items-center gap-2 font-medium">
+                    <h3 className="flex flex-wrap items-center gap-2 font-medium">
                       <MessageSquare className="size-4" />
                       Discussion with {d.bot_name}
+                      <BotWorkingIndicator id={d.conversation_id} name={d.bot_name} compact />
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Replies go to this bot’s existing conversation.
@@ -640,38 +640,16 @@ export function Bots({
                         </div>
                       ))}
                     </div>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void act(async () => {
-                          await send(d.id, 'thread', {
-                            text: message,
-                          });
-                          setMessage('');
-                        });
-                      }}
-                    >
-                      <label className="sr-only" htmlFor="bot-message">
-                        Message to bot
-                      </label>
-                      <textarea
-                        id="bot-message"
-                        className={field}
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Ask a question or add context…"
-                        required
-                        rows={3}
-                      />
-                      <Button
-                        className="mt-2 min-h-11"
-                        type="submit"
-                        variant="outline"
-                        disabled={busy || !message.trim()}
-                      >
-                        Send to {d.bot_name}
-                      </Button>
-                    </form>
+                    <BotComposer
+                      conversationId={d.conversation_id}
+                      botName={d.bot_name}
+                      busy={busy}
+                      onSend={(text) =>
+                        act(async () => {
+                          await send(d.id, 'thread', { text });
+                        })
+                      }
+                    />
                   </div>
                   {d.state === 'needs_input' &&
                     (d.can_answer ? (
@@ -858,7 +836,7 @@ function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
       className="w-full rounded-2xl border bg-card p-4 text-left transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
+        <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}<BotWorkingIndicator id={d.conversation_id} name={d.bot_name} compact /></span>
         <State state={d.state} />
       </div>
       <h3 className="font-medium leading-snug">{d.proposal.question}</h3>
