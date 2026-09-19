@@ -35,6 +35,7 @@ import {
   type UsageRingModel,
 } from '@/lib/useUsage';
 import { DESKTOP_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
+import { useDocumentScrollLock } from '../hooks/useDocumentScrollLock';
 
 export type NavKey =
   | 'bots'
@@ -297,6 +298,9 @@ export function NavShell({
   children: ReactNode;
 }) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  // Keep the bottom bar pinned: iOS pans the document to reveal a focused
+  // field and leaves it there once the keyboard closes.
+  useDocumentScrollLock(!isDesktop);
   // One fetch feeds both the rail rings and the mobile bar ring.
   const { usage, now } = useUsage(chatOpen);
   const claudeRing = claudeRingModel(usage, now);
