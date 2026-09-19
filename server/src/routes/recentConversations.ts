@@ -1,3 +1,4 @@
+import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
 import express, { type Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
@@ -173,7 +174,7 @@ export function createRecentConversationsRouter(
       const input = parsed.data;
       options.refreshAutoArchive(req.user!.id);
 
-      const where = ["(c.visibility = 'team' OR c.user_id = ?)"];
+      const where = ["(c.visibility = 'team' OR c.user_id = ?)", businessScopeSql(req.user!.id), businessAgentSql(ctx.db, req.agentConversationId)];
       const params: unknown[] = [req.user!.id];
       if (!input.includeArchived) where.push('c.archived = 0');
       if (input.projectId === 'none') where.push('c.project_id IS NULL');
@@ -204,7 +205,7 @@ export function createRecentConversationsRouter(
         )
         .all(...params, scanLimit + 1, input.offset) as RecentConversationRow[];
       const hasMoreBaseRows = rows.length > scanLimit;
-      const candidates = rows.slice(0, scanLimit);
+      const candidates = rows.slice(0, scanLimit).filter(row => sameBusiness(ctx.db, req.agentConversationId, row));
 
       const built = await inBatches(candidates, async (row): Promise<RecentConversationView> => {
         const [base, events] = await Promise.all([

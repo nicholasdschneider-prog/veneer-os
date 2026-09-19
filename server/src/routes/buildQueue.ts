@@ -23,7 +23,7 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
      WHERE c.id = ?`,
   );
   const queueConversation = ctx.db.prepare(
-    `SELECT c.user_id, c.visibility
+    `SELECT c.id, c.user_id, c.visibility, c.business_team_id
      FROM build_queue b JOIN conversations c ON c.id = b.conversation_id
      WHERE b.id = ?`,
   );
@@ -73,7 +73,7 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
           const conversation = queueConversation.get(job.id) as
             | { user_id: number; visibility: 'team' | 'private' }
             | undefined;
-          return Boolean(conversation && canViewConversation(req.user!, conversation));
+          return Boolean(conversation && canViewConversation(req.user!, conversation, ctx.db));
         });
         return Promise.all(visible.map(async ({ job, position }) => ({
           ...jobView(job, await ctx.manager.statusOf(job.conversation_id)),
@@ -93,11 +93,11 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
       return;
     }
     const conv = ctx.db
-      .prepare('SELECT id, user_id, visibility FROM conversations WHERE id = ?')
+      .prepare('SELECT id, user_id, visibility, business_team_id FROM conversations WHERE id = ?')
       .get(body.data.sourceConversationId) as
       | { id: string; user_id: number; visibility: 'team' | 'private' }
       | undefined;
-    if (!conv || !canManageConversation(req.user!, conv)) {
+    if (!conv || !canManageConversation(req.user!, conv, ctx.db)) {
       res.status(404).json({ ok: false, error: 'Conversation not found' });
       return;
     }
@@ -136,7 +136,7 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     const conversation = queueConversation.get(jobId) as
       | { user_id: number; visibility: 'team' | 'private' }
       | undefined;
-    if (!conversation || !canManageConversation(req.user!, conversation)) {
+    if (!conversation || !canManageConversation(req.user!, conversation, ctx.db)) {
       res.status(404).json({ ok: false, error: 'not_found' });
       return;
     }

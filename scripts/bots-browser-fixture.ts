@@ -1,3 +1,4 @@
+import { createTeamService } from '../server/src/bots/teams.js';
 /** Run with Node 24: node --import tsx scripts/bots-browser-fixture.ts.
  * In-memory database and deterministic adapter only. Never reads production state or credentials.
  */
@@ -184,10 +185,19 @@ db.prepare("UPDATE conversation_wakeups SET status='cancelled'").run();
 db.prepare(
   "UPDATE bot_decisions SET created_at=datetime('now','-5 hours')",
 ).run();
+if (process.argv.includes('--teams')) {
+  const teams = createTeamService(db);
+  for (const [id, name] of [['atlas', 'ERVP fixture'], ['robin', 'Other business fixture']]) {
+    const t = teams.manage(human, { action: 'create', name });
+    const p = teams.bulk(human, { mode: 'preview', team_id: t.id, request_key: id, bots: [{ conversation_id: id, name: id === 'atlas' ? 'Atlas' : 'Robin', role: 'coordinator' }] });
+    teams.bulk(human, { mode: 'apply', team_id: t.id, preview_id: p.preview_id });
+    if (id === 'robin') teams.manage(human, { action: 'member', team_id: t.id, user_id: 2, role: 'viewer' });
+  }
+}
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
-  req.user = user;
+  req.user = process.argv.includes('--teams') && req.headers['x-fixture-user'] === '2' ? db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow : user;
   next();
 });
 app.use(
@@ -195,6 +205,7 @@ app.use(
   createBotsRouter({
     db,
     manager: {
+      bus: manager.bus,
       statusOf: async (id: string) =>
         id === 'atlas' ? 'working' : manager.statusOf(id),
     },

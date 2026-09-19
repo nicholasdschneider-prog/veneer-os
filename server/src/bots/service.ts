@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import type { ConversationRow, UserRow } from '../db/db.js';
-import { canViewConversation } from '../conversations/access.js';
+import { canViewConversation, sameBusiness } from '../conversations/access.js';
 
 const text = z.string().trim().min(1).max(12000);
 export const evidenceSchema = z
@@ -53,12 +53,15 @@ export function createBotService(db: Database.Database) {
       | undefined;
   function chat(actor: Actor, id: string) {
     const c = conversation(id);
-    if (!c || !canViewConversation(actor.user, c))
+    if (!c || !canViewConversation(actor.user, c, db) || !sameBusiness(db, actor.conversationId, c))
       throw new BotError(404, 'Bot or decision not found');
     return c;
   }
-  function evidenceAllowed(actor: Actor, p: Proposal) {
-    for (const e of p.evidence) chat(actor, e.conversation_id);
+  function evidenceAllowed(actor: Actor, p: Proposal, botId?: string) {
+    for (const e of p.evidence) {
+      const c = chat(actor, e.conversation_id);
+      if (!sameBusiness(db, botId, c)) throw new BotError(403, 'Cross-business evidence is not allowed');
+    }
   }
   function read(actor: Actor, id: string) {
     const d = db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(id) as
@@ -66,7 +69,7 @@ export function createBotService(db: Database.Database) {
       | undefined;
     if (!d) throw new BotError(404, 'Decision not found');
     chat(actor, d.conversation_id);
-    evidenceAllowed(actor, JSON.parse(d.proposal_json));
+    evidenceAllowed(actor, JSON.parse(d.proposal_json), d.conversation_id);
     return d;
   }
   function owner(actor: Actor, d: Decision) {
@@ -91,12 +94,12 @@ export function createBotService(db: Database.Database) {
       throw new BotError(403, 'Only the assigned approver may answer');
   }
   function validateProposal(actor: Actor, p: Proposal, botId: string) {
-    evidenceAllowed(actor, p);
+    evidenceAllowed(actor, p, botId);
     const user = db
       .prepare("SELECT * FROM users WHERE id=? AND status='active'")
       .get(p.assignee_id) as UserRow | undefined;
     const c = conversation(botId)!;
-    if (!user || !canViewConversation(user, c))
+    if (!user || !canViewConversation(user, c, db))
       throw new BotError(400, 'Approver must have access to the bot');
     evidenceAllowed({ user }, p);
     // Evidence must also be accessible to the permanent owner at execution time.
@@ -233,6 +236,7 @@ export function createBotService(db: Database.Database) {
     register(actor: Actor, id: string, name: string, active: boolean) {
       human(actor);
       const c = chat(actor, id);
+      if (c.business_team_id) throw new BotError(409, 'Use business membership management for enrolled bots');
       if (c.user_id !== actor.user.id)
         throw new BotError(
           403,
@@ -363,7 +367,7 @@ export function createBotService(db: Database.Database) {
       })();
     },
     thread(actor: Actor, id: string) {
-      read(actor, id);
+      const d = read(actor, id);
       // Old proposal evidence is checked too: audit history must not leak revoked links.
       const events = db
         .prepare(
@@ -373,10 +377,10 @@ export function createBotService(db: Database.Database) {
       for (const e of events) {
         const p = JSON.parse(e.payload_json);
         try {
-          if (e.kind === 'raised') evidenceAllowed(actor, p.proposal);
-          if (e.kind === 'revised') evidenceAllowed(actor, p);
+          if (e.kind === 'raised') evidenceAllowed(actor, p.proposal, d.conversation_id);
+          if (e.kind === 'revised') evidenceAllowed(actor, p, d.conversation_id);
         } catch (error) {
-          if (!(error instanceof BotError) || error.status !== 404) throw error;
+          if (!(error instanceof BotError) || ![403, 404].includes(error.status)) throw error;
           e.payload_json = JSON.stringify({
             text: 'Historical proposal context is no longer accessible.',
           });

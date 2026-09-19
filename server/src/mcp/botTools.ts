@@ -61,9 +61,17 @@ function definition(
   };
 }
 export const BOT_TOOL_DEFINITIONS = [
+  definition('manage_business_team', 'Manage an owned business and explicit membership/delegation. Human owner or owner-authenticated Platform Dev only; the native actor is audited. create is idempotent by owner/name. delegate allows only explicit owned chat IDs; empty allowed_ids revokes. No financial/customer authority is granted.', {
+    action: { type: 'string', enum: ['create','member','delegate','remove_bot'] }, name: str, team_id: str, user_id: { type: 'integer' }, role: { type: ['string','null'], enum: ['viewer','member','manager',null] }, conversation_id: str, allowed_ids: { type: 'array', items: str },
+  }, ['action']),
+  definition('enroll_business_bots', 'Preview or apply reversible enrollment of explicit EXISTING native bot chat IDs. Requires an active owner-granted delegation to THIS conversation and its exact allowlist. preview uses request_key and bots; apply uses returned preview_id and team_id. Apply rechecks ownership, delegation, membership and metadata; changed previews require fresh review. Retries are idempotent. No new chats or executors, no model/project/history changes, no finance or customer authority.', {
+    mode: { type: 'string', enum: ['preview','apply'] }, team_id: str, request_key: str, preview_id: str,
+    bots: { type: 'array', items: { type: 'object', properties: { conversation_id: str, name: str, role: { type: 'string', enum: ['coordinator','lead','bot'] }, subteam: str, reports_to: { type: ['string','null'] } }, required: ['conversation_id','name','role'], additionalProperties: false } },
+  }, ['mode','team_id']),
+
   definition(
     'raise_decision',
-    'Raise a persistent human decision for THIS registered bot. Does not stop unrelated work or grant authority. Dedupe uses source_key + proposal_key. Use conversation evidence references. Release external ticket/case leases with their owning system first, then record park_decision_work. Registration is managed by the human in VeneerBots.',
+    'Raise a persistent human decision for THIS registered bot. Does not stop unrelated work or grant authority. Dedupe uses source_key + proposal_key. Use conversation evidence references. Release external ticket/case leases with their owning system first, then record park_decision_work. Business fleet enrollment uses explicit delegated preview/apply tools.',
     { source_key: str, proposal_key: str, proposal },
     ['source_key', 'proposal_key', 'proposal'],
   ),
@@ -123,6 +131,10 @@ export async function callBotTool({
   ) => Promise<Record<string, unknown>>;
 }) {
   if (!BOT_TOOL_DEFINITIONS.some((t) => t.name === name)) return null;
+  if (name === 'manage_business_team' || name === 'enroll_business_bots') {
+    const result = await callApi(name === 'manage_business_team' ? '/api/bots/teams/manage' : '/api/bots/teams/enroll', { method: 'POST', body: JSON.stringify(args) });
+    return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+  }
   const { decision_id, ...body } = args;
   const base = '/api/bots/decisions';
   const target = `${base}/${encodeURIComponent(String(decision_id ?? ''))}`;

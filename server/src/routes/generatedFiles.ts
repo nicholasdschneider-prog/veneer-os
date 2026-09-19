@@ -28,7 +28,7 @@ export function createGeneratedFilesRouter(ctx: AppContext): Router {
   // routes: unknown/foreign-to-member/missing-on-disk all collapse to "not
   // found" so we never leak the existence of another user's file.
   function fileFor(req: Request, res: Response): { view: GeneratedFileView; path: string } | null {
-    const row = getGeneratedFile(ctx, req.user!, String(req.params.id));
+    const row = getGeneratedFile(ctx, req.user!, String(req.params.id), req.agentConversationId);
     if (!row) {
       res.status(404).json({ ok: false, error: 'File not found' });
       return null;
@@ -65,8 +65,8 @@ export function createGeneratedFilesRouter(ctx: AppContext): Router {
   router.get('/', (req, res) => {
     void ensureFileSyncBackfill(ctx);
     try {
-      const files = listGeneratedFiles(ctx, req.user!);
-      const pendingSync = staleConversationCount(ctx, req.user!);
+      const files = listGeneratedFiles(ctx, req.user!, req.agentConversationId);
+      const pendingSync = staleConversationCount(ctx, req.user!, req.agentConversationId);
       res.json({ ok: true, files, pendingSync });
     } catch (err) {
       res.status(500).json({ ok: false, error: (err as Error).message });
@@ -124,7 +124,7 @@ export function createGeneratedFilesRouter(ctx: AppContext): Router {
   // registry row. A directory is refused (400); an already-gone file still
   // succeeds and drops the row.
   router.delete('/:id', (req, res) => {
-    const row = getGeneratedFile(ctx, req.user!, String(req.params.id));
+    const row = getGeneratedFile(ctx, req.user!, String(req.params.id), req.agentConversationId);
     const cannotDeleteAnotherUsersPrivateFile =
       row?.conversation_visibility === 'private' && row.conversation_user_id !== req.user!.id;
     if (!row || cannotDeleteAnotherUsersPrivateFile || (row.user_id !== req.user!.id && req.user!.role === 'member')) {

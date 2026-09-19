@@ -1,3 +1,4 @@
+import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
 import { createBotsRouter } from '../bots/routes.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -628,6 +629,7 @@ export async function conversationView(
   }
   return {
     id: row.id,
+    businessTeamId: row.business_team_id ?? null,
     isBot: Boolean(ctx.db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(row.id)),
     title: row.title,
     creator: {
@@ -635,8 +637,8 @@ export async function conversationView(
       displayName: creator?.display_name ?? 'Unknown user',
     },
     visibility: row.visibility,
-    canSend: viewer ? canSendToConversation(viewer, row) : true,
-    canManage: viewer ? canManageConversation(viewer, row) : true,
+    canSend: viewer ? canSendToConversation(viewer, row, ctx.db) : true,
+    canManage: viewer ? canManageConversation(viewer, row, ctx.db) : true,
     canChangeVisibility: viewer ? canChangeConversationVisibility(viewer, row) : true,
     provider: row.provider,
     model: row.model,
@@ -817,6 +819,14 @@ export function createApiRouter(ctx: AppContext): Router {
     }),
   );
 
+  router.use('/conversations/:id', (req, res, next) => {
+    if (req.params.id === 'new') return next();
+    const c = db.prepare('SELECT * FROM conversations WHERE id=?').get(req.params.id) as ConversationRow | undefined;
+    if (c && (!canViewConversation(req.user!, c, db) || !sameBusiness(db, req.agentConversationId, c))) {
+      res.status(404).json({ error: 'Conversation not found' }); return;
+    }
+    next();
+  });
   router.use('/live-voice', createLiveVoiceRouter(ctx));
   router.use('/bots', createBotsRouter(ctx));
 
@@ -829,7 +839,7 @@ export function createApiRouter(ctx: AppContext): Router {
     const row = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id) as
       | ConversationRow
       | undefined;
-    const allowed = row && (manage ? canManageConversation(req.user!, row) : canViewConversation(req.user!, row));
+    const allowed = row && sameBusiness(db, req.agentConversationId, row) && (manage ? canManageConversation(req.user!, row, ctx.db) : canViewConversation(req.user!, row, ctx.db));
     if (!row || !allowed) {
       res.status(404).json({ ok: false, error: 'Conversation not found' });
       return null;
@@ -1211,6 +1221,8 @@ export function createApiRouter(ctx: AppContext): Router {
       const where = ['archived = ?'];
       const params: unknown[] = [archived];
       where.push("(visibility = 'team' OR user_id = ?)");
+      where.push(businessScopeSql(req.user!.id, 'conversations'));
+      where.push(businessAgentSql(db, req.agentConversationId, 'conversations'));
       params.push(req.user!.id);
       if (!archived && project === 'none') {
         // Automation project assignment controls its execution workspace; its
@@ -1266,7 +1278,7 @@ export function createApiRouter(ctx: AppContext): Router {
         )
         .all(...params) as Array<ConversationRow & { has_pending_wakeup: 0 | 1 }>;
       const conversations = await Promise.all(
-        rows.map((row) => conversationView(ctx, row, req.user!, row.has_pending_wakeup === 1)),
+        rows.filter(row => sameBusiness(db, req.agentConversationId, row)).map((row) => conversationView(ctx, row, req.user!, row.has_pending_wakeup === 1)),
       );
       res.json({ ok: true, conversations });
     })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
@@ -1285,6 +1297,8 @@ export function createApiRouter(ctx: AppContext): Router {
       const where = [
         'c.archived = 1',
         "(c.visibility = 'team' OR c.user_id = ?)",
+        businessScopeSql(req.user!.id),
+        businessAgentSql(db, req.agentConversationId),
         `(c.channel <> 'automation'
           OR NOT EXISTS (
             SELECT 1 FROM scheduled_task_runs linked WHERE linked.conversation_id = c.id
@@ -1345,7 +1359,7 @@ export function createApiRouter(ctx: AppContext): Router {
           pageSize: requestedPageSize,
           totalPages,
           conversations: await Promise.all(
-            rows.map((row) => conversationView(ctx, row, req.user!, row.has_pending_wakeup === 1)),
+            rows.filter(row => sameBusiness(db, req.agentConversationId, row)).map((row) => conversationView(ctx, row, req.user!, row.has_pending_wakeup === 1)),
           ),
         };
       };
@@ -1407,7 +1421,7 @@ export function createApiRouter(ctx: AppContext): Router {
         `SELECT COUNT(*) AS chatCount, MAX(last_active_at) AS lastActiveAt
          FROM conversations
          WHERE project_id = ? AND archived = 0 AND channel <> 'automation'
-           AND (visibility = 'team' OR user_id = ?)`,
+           AND (visibility = 'team' OR user_id = ?) AND ${businessScopeSql(user.id, 'conversations')}`,
       )
       .get(row.id, user.id) as {
       chatCount: number;
@@ -2676,6 +2690,7 @@ export function createApiRouter(ctx: AppContext): Router {
         crypto.randomUUID(),
         originId,
       );
+      if (req.agentConversationId) db.prepare('UPDATE conversations SET business_team_id=(SELECT business_team_id FROM conversations WHERE id=?) WHERE id=?').run(req.agentConversationId, id);
       ensureConversationInstructionSnapshot(db, id);
     })();
     const row = db.prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow;
@@ -2696,7 +2711,7 @@ export function createApiRouter(ctx: AppContext): Router {
     const row = conversationFor(req, res);
     if (!row) return;
     // Agent reads are coordination, not a human reopening the chat.
-    if (!req.agentConversationId && canManageConversation(req.user!, row)) {
+    if (!req.agentConversationId && canManageConversation(req.user!, row, ctx.db)) {
       db.prepare("UPDATE conversations SET last_user_activity_at = datetime('now') WHERE id = ?").run(row.id);
       markSeen(db, req.user!.id, row.id);
     }
@@ -2760,6 +2775,7 @@ export function createApiRouter(ctx: AppContext): Router {
         source.approval_mode,
         crypto.randomUUID(),
       );
+      if (source.business_team_id) db.prepare('UPDATE conversations SET business_team_id=? WHERE id=?').run(source.business_team_id, id);
       ensureConversationInstructionSnapshot(db, id);
     })();
     const row = db.prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow;
@@ -2842,7 +2858,7 @@ export function createApiRouter(ctx: AppContext): Router {
         last_error: string | null;
         updated_at: string;
       }[];
-      const files = listGeneratedFiles(ctx, req.user!).filter((file) => file.conversationId === row.id);
+      const files = listGeneratedFiles(ctx, req.user!, req.agentConversationId).filter((file) => file.conversationId === row.id);
       const artifacts = [
         ...pages.map((page) => ({
           type: 'page' as const,
@@ -2936,7 +2952,7 @@ export function createApiRouter(ctx: AppContext): Router {
     // messages. Management actions still use the stricter creator/admin rule.
     const row = conversationFor(req, res);
     if (!row) return;
-    if (!canSendToConversation(req.user!, row)) {
+    if (!canSendToConversation(req.user!, row, ctx.db)) {
       res.status(404).json({ ok: false, error: 'Conversation not found' });
       return;
     }
@@ -3453,7 +3469,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     const stmt = db.prepare(
       `UPDATE conversations SET pin_order = ?
-       WHERE id = ? AND pin_order IS NOT NULL AND (visibility = 'team' OR user_id = ?)`,
+       WHERE id = ? AND pin_order IS NOT NULL AND (visibility = 'team' OR user_id = ?) AND ${businessScopeSql(req.user!.id, 'conversations')}`,
     );
     db.transaction((ids: string[]) => {
       ids.forEach((id, i) => stmt.run(i, id, req.user!.id));
@@ -3672,7 +3688,7 @@ export function createApiRouter(ctx: AppContext): Router {
     const rows = db
       .prepare(
         `SELECT a.* FROM approvals a JOIN conversations c ON c.id = a.conversation_id
-         WHERE a.status = ? AND (c.visibility = 'team' OR c.user_id = ?)
+         WHERE a.status = ? AND (c.visibility = 'team' OR c.user_id = ?) AND ${businessScopeSql(req.user!.id)} AND ${businessAgentSql(db, req.agentConversationId)}
          ORDER BY a.created_at DESC`,
       )
       .all(status, req.user!.id) as ApprovalRow[];
@@ -3705,7 +3721,7 @@ export function createApiRouter(ctx: AppContext): Router {
     const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(row.conversation_id) as
       | ConversationRow
       | undefined;
-    if (!conv || !canManageConversation(req.user!, conv)) {
+    if (!conv || !canManageConversation(req.user!, conv, ctx.db)) {
       res.status(404).json({ ok: false, error: 'Approval not found' });
       return;
     }
@@ -3742,7 +3758,7 @@ export function createApiRouter(ctx: AppContext): Router {
       const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(q.conversationId) as
         | ConversationRow
         | undefined;
-      if (!conv || !canManageConversation(req.user!, conv)) {
+      if (!conv || !canManageConversation(req.user!, conv, ctx.db)) {
         res.status(404).json({ ok: false, error: 'Question not found' });
         return;
       }
@@ -3790,7 +3806,7 @@ export function createApiRouter(ctx: AppContext): Router {
       const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(q.conversationId) as
         | ConversationRow
         | undefined;
-      if (!conv || !canManageConversation(req.user!, conv)) {
+      if (!conv || !canManageConversation(req.user!, conv, ctx.db)) {
         res.status(404).json({ ok: false, error: 'Question not found' });
         return;
       }
@@ -3862,7 +3878,7 @@ export function createApiRouter(ctx: AppContext): Router {
     const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(q.conversationId) as
       | ConversationRow
       | undefined;
-    if (!conv || !canManageConversation(req.user!, conv)) {
+    if (!conv || !canManageConversation(req.user!, conv, ctx.db)) {
       res.status(404).json({ ok: false, error: 'Question not found' });
       return null;
     }

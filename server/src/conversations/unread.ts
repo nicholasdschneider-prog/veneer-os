@@ -1,3 +1,4 @@
+import { canViewConversation } from './access.js';
 import type Database from 'better-sqlite3';
 import type { ConversationRow } from '../db/db.js';
 
@@ -22,9 +23,9 @@ export function markSeen(db: Database.Database, userId: number, conversationId: 
 
 function eligibleUserIds(db: Database.Database, conversation: ConversationUnreadRow): number[] {
   if (conversation.visibility === 'private') return [conversation.user_id];
-  return (db.prepare("SELECT id FROM users WHERE status = 'active'").all() as { id: number }[]).map(
-    (row) => row.id,
-  );
+  const current = db.prepare('SELECT * FROM conversations WHERE id=?').get(conversation.id) as ConversationRow | undefined;
+  return (db.prepare("SELECT id FROM users WHERE status = 'active'").all() as { id: number }[])
+    .filter(user => canViewConversation(user, current ?? conversation, db)).map(user => user.id);
 }
 
 /** After an assistant turn ends: viewers stay seen, everyone else who can see the chat is unread. */

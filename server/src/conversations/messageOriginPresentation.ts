@@ -26,7 +26,7 @@ function presentMessageOrigin(
   if (!source) return presented;
 
   const localPresented: MessageOrigin = { ...presented, local: true };
-  if (!canViewConversation(user, source)) return localPresented;
+  if (!canViewConversation(user, source, db)) return localPresented;
 
   const title = source.title?.trim() || origin.sourceConversationTitle?.trim() || 'Untitled chat';
   return {
@@ -54,7 +54,7 @@ function presentAgentMessageDetails(
        JOIN assistants a ON a.id = c.assistant_id
       WHERE c.id = ?`,
   ).get(details.targetConversationId) as (ConversationRow & { agent_name: string }) | undefined;
-  if (!target || !canViewConversation(user, target)) return presented;
+  if (!target || !canViewConversation(user, target, db)) return presented;
 
   return {
     ...presented,

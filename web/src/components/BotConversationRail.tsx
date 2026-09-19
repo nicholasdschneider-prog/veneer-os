@@ -1,3 +1,6 @@
+import { api } from '@/lib/api';
+import { BusinessSelector, useBusinessSelection } from './BusinessSelector';
+import type { BusinessTeam } from '@/lib/bots';
 import { useEffect, useState } from 'react';
 import { botsApi, type Bot } from '@/lib/bots';
 import { BotAvatar, BotPresence } from './BotIdentity';
@@ -10,6 +13,14 @@ export function BotConversationRail({
   selectedId?: string | null;
   onNavigate: (hash: string) => void;
 }) {
+  const { business, select } = useBusinessSelection();
+  const [teams, setTeams] = useState<BusinessTeam[]>([]);
+  useEffect(() => {
+    if (!selectedId) return;
+    let active = true;
+    void api.conversation(selectedId).then(r => { if (active && r.conversation.businessTeamId) select(r.conversation.businessTeamId); }).catch(() => {});
+    return () => { active = false; };
+  }, [selectedId]);
   const [bots, setBots] = useState<Bot[]>([]);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
@@ -17,10 +28,11 @@ export function BotConversationRail({
     let active = true;
     const refresh = () =>
       void botsApi
-        .list('all')
+        .list('all', business)
         .then((result) => {
           if (active) {
             setBots(result.bots);
+            setTeams(result.teams ?? []);
             setError('');
           }
         })
@@ -33,13 +45,14 @@ export function BotConversationRail({
       active = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [business]);
   return (
     <aside aria-label="Bot conversations" className="flex h-full min-h-0 flex-col border-r bg-card">
       <div className="space-y-3 border-b p-4">
         <button className="text-lg font-semibold" onClick={() => onNavigate('#/bots')}>
           VeneerBots
         </button>
+        <BusinessSelector teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} />
         <p className="text-xs text-muted-foreground">
           {bots.length} bots · Your existing conversations
         </p>
@@ -50,12 +63,12 @@ export function BotConversationRail({
           onChange={(e) => setQuery(e.target.value)}
           className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
         />
-        <button
+        {teams.length === 0 && <button
           className="text-sm text-primary underline"
           onClick={() => onNavigate('#/bots?register=1')}
         >
           Register an existing chat
-        </button>
+        </button>}
       </div>
       {error && (
         <p role="alert" className="p-4 text-sm text-destructive">
@@ -92,6 +105,7 @@ export function BotConversationRail({
                   {bot.title || 'Open conversation'}
                 </span>
                 <BotPresence id={bot.conversation_id} state={bot.state} />
+              {bot.membership && <span className="block text-xs text-muted-foreground">{bot.membership.role === 'coordinator' ? 'Fleet coordinator' : bot.membership.subteam ? `${bot.membership.subteam} · ${bot.membership.role === 'lead' ? 'Lead' : 'Team'}` : 'Specialist'}</span>}
                 {bot.questions > 0 && (
                   <span className="block text-xs text-amber-600 dark:text-amber-300">
                     {bot.questions} raised {bot.questions === 1 ? 'hand' : 'hands'}

@@ -1,3 +1,4 @@
+import { businessScopeSql } from '../conversations/access.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import express, { type Request, type Router } from 'express';
@@ -76,8 +77,8 @@ function registeredFilePaths(ctx: AppContext, conversation: ConversationRow): Se
     `SELECT g.path
        FROM generated_files g
        LEFT JOIN conversations c ON c.id = g.conversation_id
-      WHERE g.user_id = ? OR c.visibility = 'team'`,
-  ).all(conversation.user_id) as { path: string }[];
+      WHERE (g.user_id = ? OR c.visibility = 'team') AND ${businessScopeSql(conversation.user_id)} AND (c.business_team_id IS NULL OR c.business_team_id IS (SELECT business_team_id FROM conversations WHERE id=?))`,
+  ).all(conversation.user_id, conversation.id) as { path: string }[];
   return new Set(rows.map((row) => row.path));
 }
 

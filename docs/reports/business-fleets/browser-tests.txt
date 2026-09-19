@@ -1,0 +1,1 @@
+PASS: desktop/mobile business switching scopes roster and raised hands; owner grants/removes fixture viewer access; nonmember cannot read; viewer cannot answer another assigned human decision; native IDs retained; no overflow or browser exceptions.

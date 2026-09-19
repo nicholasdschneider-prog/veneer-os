@@ -164,6 +164,7 @@ export interface ConversationRow {
   user_id: number;
   /** Team chats are visible to every active user; private chats only to their creator. */
   visibility: 'team' | 'private';
+  business_team_id?: string | null;
   /** Project (folder) this chat runs in; null = the shared assistant workspace. Fixed at creation. */
   project_id: string | null;
   title: string | null;

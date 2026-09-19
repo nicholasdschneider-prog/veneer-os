@@ -33,7 +33,10 @@ export interface BotDecision {
   bot_name: string;
   assignee_name: string;
 }
+export interface BusinessTeam { id: string; name: string; can_manage: boolean; members: { user_id: number; role: string; display_name: string }[] }
 export interface Bot {
+  business_team_id?: string | null;
+  membership?: { role: string; subteam: string; reports_to: string | null } | null;
   title?: string | null;
   updated_at?: string | null;
   unread?: boolean;
@@ -65,9 +68,10 @@ export interface BotThread {
   }[];
 }
 export const botsApi = {
-  list: (filter: string) =>
-    requestJson<{ bots: Bot[]; decisions: BotDecision[] }>(
-      `/api/bots?filter=${filter}`,
+  manageTeam: (body: Record<string, unknown>) => requestJson('/api/bots/teams/manage', { method: 'POST', body: JSON.stringify(body) }),
+  list: (filter: string, business?: string) =>
+    requestJson<{ bots: Bot[]; decisions: BotDecision[]; teams: BusinessTeam[] }>(
+      `/api/bots?filter=${filter}${business ? `&business=${encodeURIComponent(business)}` : ''}`,
     ),
   detail: (id: string) =>
     requestJson<BotThread>(`/api/bots/decisions/${encodeURIComponent(id)}`),

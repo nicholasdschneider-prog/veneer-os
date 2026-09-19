@@ -1,0 +1,16 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run businessTeams generatedFiles recentConversations conversationUnread
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/generatedFiles.test.ts (13 tests) 108ms
+ ✓ test/recentConversations.test.ts (7 tests) 84ms
+ ✓ test/businessTeams.test.ts (7 tests) 270ms
+ ✓ test/conversationUnread.test.ts (8 tests) 352ms
+
+ Test Files  4 passed (4)
+      Tests  35 passed (35)
+   Start at  12:54:40
+   Duration  1.24s (transform 451ms, setup 0ms, collect 2.35s, tests 814ms, environment 0ms, prepare 137ms)

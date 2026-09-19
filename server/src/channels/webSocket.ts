@@ -84,7 +84,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       const row = ctx.db.prepare('SELECT * FROM conversations WHERE id = ?').get(frame.conversationId) as
         | ConversationRow
         | undefined;
-      if (!row || !canViewConversation(user, row)) {
+      if (!row || !canViewConversation(user, row, ctx.db)) {
         send(ws, { kind: 'error', conversationId: frame.conversationId, message: 'Conversation not found' });
         return;
       }
@@ -111,6 +111,8 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
         ctx.manager.listWakeups(row.id).catch(() => [] as ConversationWakeupRow[]),
       ])
         .then(([events, status, activity, queue, wakeups]) => {
+          const current = ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(row.id) as ConversationRow | undefined;
+          if (!sub.conversations.has(row.id) || !current || !canViewConversation(user, current, ctx.db)) return;
           send(ws, {
             kind: 'snapshot',
             conversationId: row.id,
@@ -194,7 +196,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       | undefined;
     for (const sub of subs) {
       if (!sub.conversations.has(conversationId) && !sub.observers.has(conversationId)) continue;
-      if (row && canViewConversation(sub.user, row)) continue;
+      if (row && canViewConversation(sub.user, row, ctx.db)) continue;
       sub.conversations.delete(conversationId);
       sub.observers.delete(conversationId);
       send(sub.socket, { kind: 'error', conversationId, message: 'Conversation access changed' });

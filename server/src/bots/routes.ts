@@ -1,3 +1,4 @@
+import { createTeamService } from './teams.js';
 import express from 'express';
 import { isUnread } from '../conversations/unread.js';
 import { canViewConversation } from '../conversations/access.js';
@@ -13,6 +14,7 @@ const mutation = z.object({
 export function createBotsRouter(ctx: AppContext) {
   const router = express.Router();
   const s = createBotService(ctx.db);
+  const teams = createTeamService(ctx.db);
   router.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
@@ -42,11 +44,28 @@ export function createBotsRouter(ctx: AppContext) {
     user: req.user!,
     conversationId: req.agentConversationId,
   });
+  const changed = (teamId: string) => {
+    for (const c of ctx.db.prepare('SELECT id FROM conversations WHERE business_team_id=?').all(teamId) as { id: string }[]) ctx.manager.bus?.emit('access', c.id);
+  };
+  router.get('/teams', run((req, res) => res.json({ teams: teams.list(actor(req)) })));
+  router.post('/teams/manage', run((req, res) => {
+    const result = teams.manage(actor(req), req.body);
+    changed(result.id);
+    if (req.body.action === 'remove_bot') ctx.manager.bus?.emit('access', req.body.conversation_id);
+    res.json({ team: result });
+  }));
+  router.post('/teams/enroll', run((req, res) => {
+    const result = teams.bulk(actor(req), req.body);
+    if (req.body.mode === 'apply') changed(req.body.team_id);
+    res.json(result);
+  }));
   router.get(
     '/',
     run(async (req, res) => {
       const a = actor(req);
-      const decisions = s.list(a, String(req.query.filter ?? 'all'));
+      const selected = typeof req.query.business === 'string' ? req.query.business : null;
+      const inTeam = (id: string) => !selected || s.chat(a, id).business_team_id === selected;
+      const decisions = s.list(a, String(req.query.filter ?? 'all')).filter(d => inTeam(d.conversation_id));
       const allDecisions = s.list(a);
       const bots = [];
       for (const r of ctx.db
@@ -58,6 +77,8 @@ export function createBotsRouter(ctx: AppContext) {
         } catch {
           continue;
         }
+        if (!inTeam(c.id)) continue;
+        const membership = ctx.db.prepare('SELECT role,subteam,reports_to FROM business_bot_members WHERE conversation_id=?').get(c.id) as { role: string; subteam: string; reports_to: string | null } | undefined;
         const status = await ctx.manager.statusOf(c.id);
         const own = allDecisions.filter((d) => d.conversation_id === c.id);
         const whole = own.some(
@@ -73,12 +94,14 @@ export function createBotsRouter(ctx: AppContext) {
         bots.push({
           ...r,
           project_id: c.project_id,
+          business_team_id: c.business_team_id,
+          membership,
           title: c.title,
           updated_at: c.last_active_at,
           unread: isUnread(ctx.db, a.user.id, c.id),
           provider: c.provider,
           archived: Boolean(c.archived),
-          can_manage: !a.conversationId && c.user_id === a.user.id,
+          can_manage: !c.business_team_id && !a.conversationId && c.user_id === a.user.id,
           questions: own.filter((d) => d.state === 'needs_input').length,
           state:
             status === 'working'
@@ -92,6 +115,8 @@ export function createBotsRouter(ctx: AppContext) {
                     : 'available',
         });
       }
+      const rank = (role?: string) => role === 'coordinator' ? 0 : role === 'lead' ? 1 : 2;
+      bots.sort((x,y) => rank(x.membership?.role) - rank(y.membership?.role) || (x.membership?.subteam ?? '~').localeCompare(y.membership?.subteam ?? '~') || x.name.localeCompare(y.name));
       const ownerChat = a.conversationId ? s.chat(a, a.conversationId) : null;
       const approvers = ownerChat
         ? (
@@ -99,10 +124,10 @@ export function createBotsRouter(ctx: AppContext) {
               .prepare("SELECT * FROM users WHERE status='active'")
               .all() as UserRow[]
           )
-            .filter((user) => canViewConversation(user, ownerChat))
+            .filter((user) => canViewConversation(user, ownerChat, ctx.db))
             .map((user) => ({ id: user.id, name: user.display_name }))
         : [];
-      res.json({ bots, decisions, approvers });
+      res.json({ bots, decisions, approvers, teams: teams.list(a) });
     }),
   );
   router.get(

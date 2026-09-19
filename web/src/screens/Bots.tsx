@@ -1,3 +1,6 @@
+import { BusinessAccess } from '@/components/BusinessAccess';
+import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
+import type { BusinessTeam } from '@/lib/bots';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -83,6 +86,8 @@ export function Bots({
     return result;
   };
   const [stale, setStale] = useState(false);
+  const { business, select } = useBusinessSelection();
+  const [teams, setTeams] = useState<BusinessTeam[]>([]);
   const [filter, setFilter] = useState('me');
   const [bots, setBots] = useState<Bot[]>([]);
   const [decisions, setDecisions] = useState<BotDecision[]>([]);
@@ -106,7 +111,7 @@ export function Bots({
   const [amendAction, setAmendAction] = useState('');
   const refresh = useCallback(async () => {
     const [list, thread] = await Promise.all([
-      botsApi.list(filter),
+      botsApi.list(filter, business),
       decisionId ? botsApi.detail(decisionId) : Promise.resolve(null),
     ]);
     if (currentRoute.current !== decisionId) return;
@@ -122,10 +127,11 @@ export function Bots({
     reviewedVersion.current = thread?.decision.version ?? null;
     setStale(false);
     setBots(list.bots);
+    setTeams(list.teams ?? []);
     setDecisions(list.decisions);
     setDetail(thread);
     setLoading(false);
-  }, [filter, decisionId]);
+  }, [filter, decisionId, business]);
   useEffect(() => {
     let active = true;
     void refresh().catch((e) => {
@@ -136,12 +142,13 @@ export function Bots({
     });
     const timer = setInterval(() => {
       void Promise.all([
-        botsApi.list(filter),
+        botsApi.list(filter, business),
         decisionId ? botsApi.detail(decisionId) : Promise.resolve(null),
       ])
         .then(([list, thread]) => {
           if (active && currentRoute.current === decisionId) {
             setBots(list.bots);
+    setTeams(list.teams ?? []);
             setDecisions(list.decisions);
             if (thread && reviewedVersion.current === thread.decision.version)
               setDetail(thread);
@@ -203,6 +210,8 @@ export function Bots({
     <div className="h-full min-w-0 flex-1 overflow-y-auto bg-background">
       <div className="mx-auto max-w-6xl px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-8">
         <details className="mb-4 md:hidden"><summary className="cursor-pointer rounded-xl border p-3 text-sm font-medium">All bot conversations</summary><div className="h-[min(65dvh,32rem)]"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div></details>
+        <div className="mb-4 max-w-xs md:hidden"><BusinessSelector teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} /></div>
+        {teams.find(t => t.id === business && t.can_manage) && <BusinessAccess team={teams.find(t => t.id === business)!} onChanged={() => { void refresh(); }} />}
         <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -216,7 +225,7 @@ export function Bots({
               where it left off.
             </p>
           </div>
-          <Button
+          {teams.length === 0 && <Button
             className="min-h-11"
             variant="outline"
             onClick={openRegistration}
@@ -224,7 +233,7 @@ export function Bots({
           >
             <Plus className="mr-2 size-4" />
             Register a bot
-          </Button>
+          </Button>}
         </header>
         {stale && (
           <div role="alert" className="mb-4 rounded-xl border p-3 text-sm">

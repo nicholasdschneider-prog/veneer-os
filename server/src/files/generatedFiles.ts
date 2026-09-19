@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AppContext } from '../context.js';
-import { canViewConversation } from '../conversations/access.js';
+import { canViewConversation, businessScopeSql, businessAgentSql, sameBusiness } from '../conversations/access.js';
 import type { ConversationRow, GeneratedFileRow, UserRow } from '../db/db.js';
 
 /**
@@ -124,12 +124,12 @@ const STALE = 'files_synced_at IS NULL OR last_active_at > files_synced_at';
  * How many visible conversations still need a scan — drives the client's
  * "Indexing older chats…" hint and its polling.
  */
-export function staleConversationCount(ctx: AppContext, user: UserRow): number {
+export function staleConversationCount(ctx: AppContext, user: UserRow, sourceId?: string): number {
   return (
     ctx.db
       .prepare(
         `SELECT COUNT(*) AS n FROM conversations
-         WHERE (visibility = 'team' OR user_id = ?) AND (${STALE})`,
+         WHERE (visibility = 'team' OR user_id = ?) AND (${STALE}) AND ${businessScopeSql(user.id, 'conversations')} AND ${businessAgentSql(ctx.db, sourceId, 'conversations')}`,
       )
       .get(user.id) as { n: number }
   ).n;
@@ -175,12 +175,13 @@ interface GeneratedFileJoinRow extends GeneratedFileRow {
   conversation_title: string | null;
   conversation_visibility: ConversationRow['visibility'] | null;
   conversation_user_id: number | null;
+  business_team_id: string | null;
   project_name: string | null;
 }
 
 const SELECT_JOIN =
   `SELECT g.*, c.title AS conversation_title, c.visibility AS conversation_visibility,
-          c.user_id AS conversation_user_id, p.name AS project_name
+          c.user_id AS conversation_user_id, c.business_team_id, p.name AS project_name
      FROM generated_files g
      LEFT JOIN conversations c ON c.id = g.conversation_id
      LEFT JOIN projects p ON p.id = g.project_id`;
@@ -207,14 +208,14 @@ function toView(row: GeneratedFileJoinRow, size: number, mtimeMs: number): Gener
  * Chat files follow chat visibility. Unlinked files keep the earlier behavior:
  * members see their own rows, while administrators can see all unlinked rows.
  */
-export function listGeneratedFiles(ctx: AppContext, user: UserRow): GeneratedFileView[] {
+export function listGeneratedFiles(ctx: AppContext, user: UserRow, sourceId?: string): GeneratedFileView[] {
   const { db } = ctx;
   const visibilityWhere = user.role === 'member'
-    ? " WHERE c.visibility = 'team' OR c.user_id = ? OR (c.id IS NULL AND g.user_id = ?)"
-    : " WHERE c.visibility = 'team' OR c.user_id = ? OR c.id IS NULL";
+    ? ` WHERE (c.visibility = 'team' OR c.user_id = ? OR (c.id IS NULL AND g.user_id = ?)) AND ${businessScopeSql(user.id)}`
+    : ` WHERE (c.visibility = 'team' OR c.user_id = ? OR c.id IS NULL) AND ${businessScopeSql(user.id)}`;
   const visibilityParams = user.role === 'member' ? [user.id, user.id] : [user.id];
   const rows = db
-    .prepare(`${SELECT_JOIN}${visibilityWhere} ORDER BY g.mtime_ms DESC`)
+    .prepare(`${SELECT_JOIN}${visibilityWhere} AND ${businessAgentSql(db, sourceId)} ORDER BY g.mtime_ms DESC`)
     .all(...visibilityParams) as GeneratedFileJoinRow[];
   const del = db.prepare('DELETE FROM generated_files WHERE id = ?');
   const views: GeneratedFileView[] = [];
@@ -236,17 +237,19 @@ export function listGeneratedFiles(ctx: AppContext, user: UserRow): GeneratedFil
  * Fetch one registry row with the same visibility rule as the list route.
  * Returns null for hidden rows. Does NOT touch disk.
  */
-export function getGeneratedFile(ctx: AppContext, user: UserRow, id: string): GeneratedFileJoinRow | null {
+export function getGeneratedFile(ctx: AppContext, user: UserRow, id: string, sourceId?: string): GeneratedFileJoinRow | null {
   const { db } = ctx;
   const row = db.prepare(`${SELECT_JOIN} WHERE g.id = ?`).get(id) as GeneratedFileJoinRow | undefined;
   if (!row) return null;
+  if (!sameBusiness(db, sourceId, { user_id: row.conversation_user_id ?? row.user_id ?? -1, visibility: row.conversation_visibility ?? 'private', business_team_id: row.business_team_id })) return null;
   if (row.conversation_visibility) {
     if (
       row.conversation_user_id === null ||
       !canViewConversation(user, {
         user_id: row.conversation_user_id,
         visibility: row.conversation_visibility,
-      })
+        business_team_id: row.business_team_id,
+      }, db)
     ) {
       return null;
     }
