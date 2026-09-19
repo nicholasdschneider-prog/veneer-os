@@ -206,7 +206,7 @@ export function Bots({
   return (
     <div className="flex h-full min-h-0">
       <div className="hidden w-72 shrink-0 md:block"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
-    <div className="h-full min-w-0 flex-1 overflow-y-auto bg-background">
+    <div className="h-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-background">
       <div className="mx-auto max-w-6xl px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-8">
         {/* One thin toolbar: business picker and conversation drawer on mobile,
             plus the access manager for owners. Everything opens in place so the
@@ -477,7 +477,7 @@ export function Bots({
           </div>
           {decisionId && (
             <section
-              className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5"
+              className="min-w-0 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere] sm:p-5"
               aria-label="Decision thread"
             >
               <button
@@ -833,7 +833,7 @@ function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="w-full rounded-2xl border bg-card p-4 text-left transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="w-full min-w-0 rounded-2xl border bg-card p-4 text-left [overflow-wrap:anywhere] transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}<BotWorkingIndicator id={d.conversation_id} name={d.bot_name} compact /></span>
