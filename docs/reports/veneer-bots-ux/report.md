@@ -1,6 +1,6 @@
 # VeneerBots conversation UX — build 78
 
-Implemented September 19, 2026. Source checks and browser validation passed. Deployment status: build complete; required restart pending.
+Implemented September 19, 2026. Source checks and browser validation passed. Deployment status: deployed from commit `118b2ad` on `origin/main`; required restart completed successfully. All five services reported healthy. [Restart output](./restart.txt).
 
 ## What changed
 
@@ -38,6 +38,8 @@ Reproduce with Node 24 on PATH. Start `node --import tsx scripts/bots-browser-fi
 ![Mobile registration discovery](./screenshots/mobile-registration.png)
 
 ## Adoption and boundaries
+
+The required root `npm run restart` completed after successful checks and build. Web, runner, app-runner, terminal and browser-manager all reported healthy; the durable build queue resumed this chat after the runner restart. No second restart was necessary.
 
 No database migration is required. The deployment requires the normal root `npm run restart` after successful checks/build; this restarts the web, runner, app-runner, terminal and browser-manager services. Both web and runner must adopt the new source together. No direct system service manager commands are used.
 
@@ -78,3 +80,5 @@ Known limits: rows show conversation titles rather than copying message bodies i
 - [server-tests.txt](/Users/archerclawdington/veneer-os/docs/reports/veneer-bots-ux/server-tests.txt)
 - [typecheck.txt](/Users/archerclawdington/veneer-os/docs/reports/veneer-bots-ux/typecheck.txt)
 - [web-tests.txt](/Users/archerclawdington/veneer-os/docs/reports/veneer-bots-ux/web-tests.txt)
+
+- [restart.txt](/Users/archerclawdington/veneer-os/docs/reports/veneer-bots-ux/restart.txt)
