@@ -1,0 +1,1 @@
+PASS: scoped statuses, completed card without bot-wide activity, queued/running/blocked/failed/deferred/terminal disposition sections; transition automatically moves to history; discussion/answer/evidence retained; desktop/mobile navigation and no overflow. History list/detail ACL denies nonmember; audit retained. In-memory --history --teams fixture only.

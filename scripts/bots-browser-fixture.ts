@@ -210,6 +210,20 @@ if (process.argv.includes('--teams')) {
     if (id === 'robin') teams.manage(human, { action: 'member', team_id: t.id, user_id: 2, role: 'viewer' });
   }
 }
+const historyIds: Record<string, string> = {};
+if (process.argv.includes('--history')) {
+  for (const [state, action] of [['decided', 'approve'], ['action_pending', 'approve'], ['running', 'approve'], ['blocked', 'approve'], ['verified_completed', 'approve'], ['decided', 'reject'], ['decided', 'withdraw'], ['decided', 'defer']]) {
+    const key = `${state}-${action}`;
+    const d = s.raise({ user, conversationId: 'atlas' }, { source_key: key, proposal_key: 'history', proposal: proposalSchema.parse({ question: `Fixture ${key}`, recommendation: 'Review this scoped task only.', consequence: 'Internal fixture only', assignee_id: 1, blocked_action: 'Finish the internal email draft; shipment remains pending', evidence: [{ label: 'Fixture context', conversation_id: 'atlas' }] }) });
+    s.reply(human, d.id, 'discussion', 'Keep the wider shipment case open.');
+    s.answer(human, d.id, 1, 'answer', { action, text: 'This internal scoped task only.', scope: 'this_case' });
+    historyIds[key] = d.id;
+    // Deterministic lifecycle snapshots, only in this in-memory test database.
+    db.prepare('UPDATE bot_decisions SET state=? WHERE id=?').run(state === 'verified_completed' ? 'running' : state, d.id);
+    if (state === 'verified_completed') s.result({ user, conversationId: 'atlas' }, d.id, 1, 'complete', { state: 'verified_completed', evidence: 'Internal email draft verified. Shipment remains pending.' });
+  }
+  db.prepare("UPDATE conversation_wakeups SET status='cancelled'").run();
+}
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
@@ -227,6 +241,10 @@ app.use(
     },
   } as unknown as AppContext),
 );
+if (process.argv.includes('--history')) app.post('/fixture/complete', (_req, res) => {
+  s.result({ user, conversationId: 'atlas' }, historyIds['running-approve'], 1, 'complete', { state: 'verified_completed', evidence: 'Transition fixture verified; wider case remains open.' });
+  res.json({ ok: true });
+});
 app.post('/fixture/presence', (_req, res) => {
   const chat = db.prepare("SELECT * FROM conversations WHERE id='robin'").get() as import('../server/src/db/db.js').ConversationRow;
   manager.postMessage(chat, 'presence fixture', 1);

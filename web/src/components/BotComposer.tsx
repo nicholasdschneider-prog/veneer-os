@@ -16,7 +16,6 @@ import {
   type ModelChoice,
   type ModelThinkingValue,
 } from './chat/ModelThinkingPicker';
-import { BotWorkingIndicator } from './BotIdentity';
 
 const IS_TOUCH = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 
@@ -245,7 +244,6 @@ export function BotComposer({
 
   return (
     <div className="space-y-2">
-      <BotWorkingIndicator id={conversationId} name={botName} />
       <div className="rounded-3xl border border-transparent bg-card p-0.5 shadow-sm ring-1 ring-foreground/10">
         <div className="composer-fill flex min-w-0 flex-col gap-1.5 overflow-hidden rounded-[calc(var(--radius-3xl)-2px)] px-2 py-2">
           {attachments.length ? (

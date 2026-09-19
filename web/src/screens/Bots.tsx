@@ -1,8 +1,9 @@
+import { decisionSection, decisionStatusLabel } from '@/lib/decisionPresentation';
 import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
 import { BotConversationRail } from '@/components/BotConversationRail';
-import { BotAvatar, BotName, BotPresence, BotWorkingIndicator } from '@/components/BotIdentity';
+import { BotAvatar, BotName, BotPresence } from '@/components/BotIdentity';
 import { BotComposer } from '@/components/BotComposer';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -40,7 +41,7 @@ function when(value: string) {
       ? `${hours}h ago`
       : `${Math.floor(hours / 24)}d ago`;
 }
-function State({ state }: { state: string }) {
+function State({ state, label }: { state: string; label?: string }) {
   return (
     <span
       className={cn(
@@ -54,7 +55,7 @@ function State({ state }: { state: string }) {
               : 'bg-muted text-muted-foreground',
       )}
     >
-      {decisionLabel(state)}
+      {label ?? decisionLabel(state)}
     </span>
   );
 }
@@ -192,8 +193,13 @@ export function Bots({
       expected_version: detail!.decision.version,
       ...body,
     });
-  const needs = decisions.filter((d) => d.state === 'needs_input');
-  const execution = decisions.filter((d) => d.state !== 'needs_input');
+  const needs = decisions.filter((d) => decisionSection(d) === 'input');
+  const sections = [
+    ['execution', 'Following through'],
+    ['attention', 'Needs attention'],
+    ['deferred', 'Deferred'],
+    ['history', 'Completed / History'],
+  ] as const;
   const d = detail?.decision;
   const openRegistration = () =>
     void act(async () => {
@@ -404,22 +410,19 @@ export function Bots({
                 </div>
               )}
             </section>
-            {execution.length > 0 && (
-              <section className="mt-7" aria-label="Execution status">
-                <h2 className="mb-3 text-lg font-semibold">
-                  Following through
-                </h2>
-                <div className="grid gap-3">
-                  {execution.map((item) => (
-                    <DecisionCard
-                      key={item.id}
-                      d={item}
-                      onOpen={() => onNavigate('#/bots/' + item.id)}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
+            {sections.map(([key, title]) => {
+              const items = decisions.filter(item => decisionSection(item) === key);
+              if (!items.length && key !== 'history') return null;
+              return (
+                <section key={key} className="mt-7" aria-label={title}>
+                  <h2 className="mb-3 text-lg font-semibold">{title} <span className="text-sm font-normal text-muted-foreground">{items.length}</span></h2>
+                  {key === 'history' && <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>}
+                  <div className="grid gap-3">
+                    {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} />)}
+                  </div>
+                </section>
+              );
+            })}
             <section className="mt-8" aria-labelledby="bot-roster">
               <h2 id="bot-roster" className="mb-3 text-lg font-semibold">
                 Your bots{' '}
@@ -493,7 +496,7 @@ export function Bots({
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
-                    <State state={d.state} />
+                    <State state={d.state} label={decisionStatusLabel(d)} />
                   </div>
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
                     {d.proposal.question}
@@ -614,7 +617,7 @@ export function Bots({
                     <h3 className="flex flex-wrap items-center gap-2 font-medium">
                       <MessageSquare className="size-4" />
                       Discussion with {d.bot_name}
-                      <BotWorkingIndicator id={d.conversation_id} name={d.bot_name} compact />
+
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Replies go to this bot’s existing conversation.
@@ -829,17 +832,19 @@ export function Bots({
     </div>
   );
 }
-function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
+export function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
       className="w-full min-w-0 rounded-2xl border bg-card p-4 text-left [overflow-wrap:anywhere] transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}<BotWorkingIndicator id={d.conversation_id} name={d.bot_name} compact /></span>
-        <State state={d.state} />
+        <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
+        <State state={d.state} label={decisionStatusLabel(d)} />
       </div>
       <h3 className="font-medium leading-snug">{d.proposal.question}</h3>
+      <p className="mt-2 text-sm">Task: {d.proposal.blocked_action}</p>
+      {d.result && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{d.result.evidence}</p>}
       <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
         {d.proposal.recommendation}
       </p>

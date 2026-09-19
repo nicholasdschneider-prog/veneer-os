@@ -1,0 +1,14 @@
+
+> @veneer-pro/web@0.1.0 test
+> vitest run decisionPresentation
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/web
+
+ ✓ src/lib/decisionPresentation.test.ts (12 tests) 2ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  17:23:03
+   Duration  184ms (transform 29ms, setup 0ms, collect 32ms, tests 2ms, environment 0ms, prepare 35ms)
+
