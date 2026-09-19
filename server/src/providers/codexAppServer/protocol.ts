@@ -161,6 +161,11 @@ export class AppServerClient {
     this.opts = opts;
   }
 
+  /** True while an app-server process is up (or starting) for this client. */
+  get running(): boolean {
+    return this.child !== null || this.starting !== null;
+  }
+
   private ensureStarted(): Promise<void> {
     if (!this.starting) this.starting = this.start();
     return this.starting;

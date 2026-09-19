@@ -38,6 +38,43 @@ import {
 } from './protocol.js';
 
 const MODELS_CACHE_TTL_MS = 5 * 60_000;
+/**
+ * Codex 0.153+ holds a per-thread writer lock (`CODEX_HOME/thread-writer-locks`)
+ * in whichever app-server process last loaded the thread, for as long as the
+ * thread stays loaded — not only while a turn runs. Veneer keeps several
+ * long-lived app-servers over one shared sessions tree (one per account and
+ * access level), so a chat that moves between them (account failover, Ask↔Allow)
+ * has to have the previous process close the thread before the next resumes it.
+ * Both maps are process-wide: more than one adapter can exist in a service.
+ */
+const threadOwners = new Map<string, AppServerClient>();
+const liveClients = new Set<AppServerClient>();
+const WRITER_LOCKED_RE = /already has an active writer/i;
+const THREAD_CLOSE_TIMEOUT_MS = 5_000;
+
+/** Ask `holders` to unload `threadId`; failures are expected (not loaded there) and ignored. */
+async function closeThreadOn(holders: Iterable<AppServerClient>, threadId: string): Promise<void> {
+  const requests = [...holders].map((holder) => Promise.race([
+    holder.request('thread/close', { threadId }),
+    new Promise((resolve) => setTimeout(resolve, THREAD_CLOSE_TIMEOUT_MS).unref?.()),
+  ]).catch(() => undefined));
+  await Promise.all(requests);
+}
+
+/** Release the thread from the process that last loaded it, if that is not `client`. */
+async function releaseThreadOwner(threadId: string, client: AppServerClient): Promise<void> {
+  const owner = threadOwners.get(threadId);
+  if (owner && owner !== client && owner.running) await closeThreadOn([owner], threadId);
+}
+
+/** Owner unknown (another adapter, or a stale map): ask every other live app-server. */
+async function releaseThreadEverywhere(threadId: string, client: AppServerClient): Promise<void> {
+  await closeThreadOn([...liveClients].filter((c) => c !== client && c.running), threadId);
+}
+
+function isWriterLocked(err: unknown): boolean {
+  return WRITER_LOCKED_RE.test((err as Error)?.message ?? '');
+}
 const CODEX_BROWSER_TOOL_NAME = 'agent_browser';
 const desktopUrl = sharedDesktopUrl();
 const CODEX_BROWSER_TOOL = {
@@ -220,6 +257,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       if (accountId && opts.codexHomeFor) env.CODEX_HOME = opts.codexHomeFor(accountId);
       existing = new AppServerClient({ codexBin: opts.codexBin, env, log });
       clients.set(key, existing);
+      liveClients.add(existing);
     }
     return existing;
   }
@@ -1300,6 +1338,22 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         const mcpServers = codexMcpServers(spec.mcpConfigPath);
         const config = Object.keys(mcpServers).length ? { mcp_servers: mcpServers } : undefined;
         let threadId: string;
+        // History is retained across a fork; the chat just gets a new native id.
+        const fork = async (): Promise<string> => {
+          const res = (await client.request('thread/fork', {
+            threadId: spec.nativeSessionId,
+            cwd: spec.cwd,
+            sandbox,
+            approvalPolicy,
+            model: spec.model ?? undefined,
+            config,
+            developerInstructions: spec.developerInstructions ?? undefined,
+            dynamicTools: [CODEX_BROWSER_TOOL],
+          })) as { thread: { id: string } };
+          await recordCodexFork(opts, res.thread.id, spec.nativeSessionId);
+          onSessionId?.(res.thread.id);
+          return res.thread.id;
+        };
         if (spec.firstTurn) {
           const res = (await client.request('thread/start', {
             cwd: spec.cwd,
@@ -1318,32 +1372,46 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           // once when the durable developer hash changes: history is retained,
           // a new native id is returned, and the next turn cannot run with stale
           // or missing Core Veneer rules.
-          const res = (await client.request('thread/fork', {
-            threadId: spec.nativeSessionId,
-            cwd: spec.cwd,
-            sandbox,
-            approvalPolicy,
-            model: spec.model ?? undefined,
-            config,
-            developerInstructions: spec.developerInstructions ?? undefined,
-            dynamicTools: [CODEX_BROWSER_TOOL],
-          })) as { thread: { id: string } };
-          threadId = res.thread.id;
-          await recordCodexFork(opts, threadId, spec.nativeSessionId);
-          onSessionId?.(threadId);
+          await releaseThreadOwner(spec.nativeSessionId, client);
+          threadId = await fork();
         } else {
-          const res = (await client.request('thread/resume', {
-            threadId: spec.nativeSessionId,
-            sandbox,
-            approvalPolicy,
-            config,
-            developerInstructions: spec.developerInstructions ?? undefined,
-            // Accepted by current app-server builds even though older schema
-            // snapshots omitted it; refreshes the host tool on resumed chats.
-            dynamicTools: [CODEX_BROWSER_TOOL],
-          })) as { thread?: { id: string } };
-          threadId = res.thread?.id ?? spec.nativeSessionId;
+          const resume = async (): Promise<string> => {
+            const res = (await client.request('thread/resume', {
+              threadId: spec.nativeSessionId,
+              sandbox,
+              approvalPolicy,
+              config,
+              developerInstructions: spec.developerInstructions ?? undefined,
+              // Accepted by current app-server builds even though older schema
+              // snapshots omitted it; refreshes the host tool on resumed chats.
+              dynamicTools: [CODEX_BROWSER_TOOL],
+            })) as { thread?: { id: string } };
+            return res.thread?.id ?? spec.nativeSessionId;
+          };
+          // The process that last loaded this thread holds its writer lock
+          // until it closes the thread (see threadOwners).
+          await releaseThreadOwner(spec.nativeSessionId, client);
+          try {
+            threadId = await resume();
+          } catch (err) {
+            if (!isWriterLocked(err)) throw err;
+            await releaseThreadEverywhere(spec.nativeSessionId, client);
+            try {
+              threadId = await resume();
+            } catch (retryErr) {
+              if (!isWriterLocked(retryErr)) throw retryErr;
+              // Nothing we can reach will release it (another service, or a
+              // process that ignores thread/close): continue on a fork rather
+              // than leaving the chat stuck behind the lock.
+              threadId = await fork();
+              onEvent({
+                type: 'notice',
+                message: 'Codex kept this thread open in another process; Veneer continued it in a new thread with the full history.',
+              });
+            }
+          }
         }
+        threadOwners.set(threadId, client);
         resolvedThreadId = threadId;
         quarantineUnscopedNativeEvents = fallbackInterruptedThreads.delete(threadId);
         // A Stop/timeout that landed while thread/start|resume was in flight only set
@@ -1624,7 +1692,9 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       try {
         // Reload persisted threads after an app-server restart before asking it
         // to compact. Subscribe first so no lifecycle notification can race us.
+        await releaseThreadOwner(threadId, client);
         await client.request('thread/resume', { threadId });
+        threadOwners.set(threadId, client);
         if (killed || settled) {
           finish(completionError());
           return;

@@ -77,14 +77,26 @@ rl.on('line', (line) => {
       break;
     case 'thread/start':
       if (process.env.HANG_START === '1') break; // never resolves — test kills mid-start
+      // WRITER_LOCK_FILE models Codex 0.153's per-thread writer lock: the process
+      // that loads a thread holds it (the file exists) until it closes the thread.
+      if (process.env.WRITER_LOCK_FILE) fs.writeFileSync(process.env.WRITER_LOCK_FILE, 't1');
       send({ id: m.id, result: { thread: { id: 't1' } } });
       break;
-    case 'thread/resume':
+    case 'thread/resume': {
+      const threadId = m.params?.threadId ?? 't1';
       if (process.env.COMPACT_MODE === 'stale') {
         send({ id: m.id, error: { code: -32602, message: 'thread not found' } });
+      } else if (process.env.WRITER_LOCK_FILE && fs.existsSync(process.env.WRITER_LOCK_FILE)) {
+        send({ id: m.id, error: { code: -32603, message: `thread ${threadId} already has an active writer` } });
       } else {
-        send({ id: m.id, result: { thread: { id: m.params?.threadId ?? 't1' } } });
+        if (process.env.WRITER_LOCK_FILE) fs.writeFileSync(process.env.WRITER_LOCK_FILE, threadId);
+        send({ id: m.id, result: { thread: { id: threadId } } });
       }
+      break;
+    }
+    case 'thread/close':
+      if (process.env.WRITER_LOCK_FILE) fs.rmSync(process.env.WRITER_LOCK_FILE, { force: true });
+      send({ id: m.id, result: {} });
       break;
     case 'thread/fork':
       send({ id: m.id, result: { thread: { id: 't-forked' }, instructionSources: [] } });
@@ -149,6 +161,12 @@ rl.on('line', (line) => {
           completeTurn(threadId, previousTurnId, 'interrupted');
         }
       };
+      if (process.env.COMPLETE_TURNS === '1') {
+        // Plain turn that finishes on its own, for tests about thread lifecycle.
+        respondStarted();
+        completeTurn(threadId, turnId, 'completed');
+        break;
+      }
       if (process.env.EMIT_BROWSER_TOOL_CALL) {
         respondStarted();
         pendingServerRequestId = 'browser-request-1';

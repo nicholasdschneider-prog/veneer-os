@@ -1111,3 +1111,70 @@ describe('canonical Codex App Server adapter', () => {
     expect(JSON.stringify(events)).not.toContain('running-child-secret');
   });
 });
+
+describe('Codex thread writer locks across app-server processes', () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    delete process.env.WRITER_LOCK_FILE;
+    delete process.env.COMPLETE_TURNS;
+    delete process.env.REQUEST_LOG;
+    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+  });
+
+  it('closes the thread on the process that loaded it before resuming on another', async () => {
+    const dir = tmpDir();
+    dirs.push(dir);
+    const lockFile = path.join(dir, 'writer.lock');
+    const requestLog = path.join(dir, 'requests.jsonl');
+    process.env.WRITER_LOCK_FILE = lockFile;
+    process.env.COMPLETE_TURNS = '1';
+    process.env.REQUEST_LOG = requestLog;
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 5_000, transcriptsDir: dir, log: silent });
+
+    // Full Access spawns one app-server; it loads t1 and holds the writer lock.
+    await adapter.runTurn(turnSpec({ dangerous: true }), () => undefined).done;
+    expect(fs.existsSync(lockFile)).toBe(true);
+
+    // Ask mode is a different long-lived process. It must not fail on the lock.
+    const events: ConversationEvent[] = [];
+    await adapter.runTurn(turnSpec({ firstTurn: false, dangerous: false, turnId: 'turn-2' }), (e) => events.push(e)).done;
+
+    const requests = fs.readFileSync(requestLog, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    const methods = requests.map((request) => request.method);
+    expect(methods.indexOf('thread/close')).toBeGreaterThan(methods.indexOf('thread/start'));
+    expect(methods.indexOf('thread/resume')).toBeGreaterThan(methods.indexOf('thread/close'));
+    expect(requests.find((request) => request.method === 'thread/close')?.params).toEqual({ threadId: 't1' });
+    expect(methods).not.toContain('thread/fork');
+    expect(events.at(-1)).toMatchObject({ type: 'turn_done', turnId: 'turn-2', outcome: 'completed' });
+    expect(events.some((e) => e.type === 'error')).toBe(false);
+  });
+
+  it('forks the thread when no reachable process will release the writer lock', async () => {
+    const dir = tmpDir();
+    dirs.push(dir);
+    const lockFile = path.join(dir, 'writer.lock');
+    const requestLog = path.join(dir, 'requests.jsonl');
+    fs.writeFileSync(lockFile, 'held-elsewhere');
+    process.env.WRITER_LOCK_FILE = lockFile;
+    process.env.COMPLETE_TURNS = '1';
+    process.env.REQUEST_LOG = requestLog;
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 5_000, transcriptsDir: dir, log: silent });
+
+    const events: ConversationEvent[] = [];
+    const sessionIds: string[] = [];
+    await adapter.runTurn(
+      turnSpec({ firstTurn: false, nativeSessionId: 'held-elsewhere' }),
+      (e) => events.push(e),
+      (id) => sessionIds.push(id),
+    ).done;
+
+    const requests = fs.readFileSync(requestLog, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    const methods = requests.map((request) => request.method);
+    expect(methods.filter((m) => m === 'thread/resume')).toHaveLength(2);
+    expect(requests.find((request) => request.method === 'thread/fork')?.params).toMatchObject({ threadId: 'held-elsewhere' });
+    expect(sessionIds).toEqual(['t-forked']);
+    expect(events.some((e) => e.type === 'notice' && /new thread with the full history/.test(e.message))).toBe(true);
+    expect(events.some((e) => e.type === 'error')).toBe(false);
+    expect(events.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'completed' });
+  });
+});
