@@ -1,0 +1,14 @@
+
+> veneer-os@0.1.0 restart
+> node scripts/restart.mjs
+
+[restart] preflight: /opt/homebrew/opt/node@24/bin/node v24.21.0 ABI 137; native modules load
+[restart] veneer-pro: draining pid 38513
+[restart] veneer-pro: healthy as pid 76297
+[restart] veneer-pro-runner: draining pid 40720
+[restart] veneer-pro-runner: healthy as pid 76315
+[restart] veneer-pro-app-runner: draining pid 70723
+[restart] veneer-pro-app-runner: healthy as pid 76336
+[restart] veneer-pro-term: draining pid 70827
+[restart] veneer-pro-term: healthy as pid 76458
+[restart] veneer-browser-manager: healthy

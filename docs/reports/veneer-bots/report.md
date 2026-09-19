@@ -66,7 +66,7 @@ All screenshots show isolated internal fixture bots, not Henry, Grant, Astra, or
 
 ## Deployment and adoption
 
-Validation and production build are complete. Service restart outcome will be recorded below. The platform finish instructions require `npm run restart` only after successful typecheck, tests, and build; no mid-build restart was performed.
+Validation, production build, and the required service restart are complete. All five services reported healthy. The implementation is committed and pushed to origin/main as f75edff. The platform finish instructions require `npm run restart` only after successful typecheck, tests, and build; no mid-build restart was performed.
 
 Migration 0091 is additive and creates empty bot/decision tables. It does not register real bots, approve a decision, release any external lease, send a customer message, or modify models. Services apply it through the existing migration mechanism when they start. No installer or separate release step is needed.
 
@@ -118,4 +118,10 @@ Grant's RZ99W6 escalation (78b88e47-7871-4db7-a95a-4376e26cf182) was not read, m
 
 ## Service restart outcome
 
-Pending the platform-required final restart.
+`npm run restart` completed successfully after all required checks and the production build passed. The restart script reported healthy replacements for web, runner, app-runner, terminal, and browser-manager. It interrupted this implementation chat; the durable build queue resumed the same chat, and the restart log and pushed commit were verified after resumption. No second restart was performed.
+
+A read-only production database check confirmed the new schema exists with zero registrations and zero decisions. Adoption remains an explicit registration of existing chats through VeneerBots; deployment performed no live registration or decision side effects.
+
+[Restart output](/Users/archerclawdington/veneer-os/docs/reports/veneer-bots/restart.log)
+
+The implementation commit is `f75edff` on `origin/main`. A follow-up documentation commit retains this report and the validation/restart logs.
