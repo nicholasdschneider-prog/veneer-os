@@ -34,4 +34,4 @@ Reproduce using Node24: `node --import tsx scripts/bots-browser-fixture.ts --his
 
 ## Adoption
 
-No data migration or manual task closing is needed. Deployment result will be recorded after the required root restart.
+Source commit `fb81286` is deployed and pushed to `origin/main`. The required root restart completed after successful checks, with web, runner, app-runner, terminal and browser-manager healthy ([restart output](./restart.txt)). No data migration, manual task closing or additional restart is needed.
