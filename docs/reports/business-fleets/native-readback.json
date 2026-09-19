@@ -1,0 +1,308 @@
+{
+  "bots": [
+    {
+      "conversation_id": "2c5de4ad-00b4-4be2-abf7-25f34eb787a3",
+      "name": "Henry",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "coordinator",
+        "subteam": "",
+        "reports_to": null
+      },
+      "title": "Henry · ERVP Business Leadership",
+      "updated_at": "2026-09-19 17:03:44",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "cb4ade24-c960-4235-956a-220260e5adac",
+      "name": "Grant",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "lead",
+        "subteam": "Customer Service",
+        "reports_to": null
+      },
+      "title": "Grant · Customer Service Lead",
+      "updated_at": "2026-09-19 13:13:32",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "9bb5b47e-b9c9-43c0-a83b-7dc485166c0f",
+      "name": "Boris",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "",
+        "reports_to": null
+      },
+      "title": "Boris · Technical Support",
+      "updated_at": "2026-09-19 13:13:07",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "7f83ff8e-43a3-4c16-b2bd-c304dd946d11",
+      "name": "Clara",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "",
+        "reports_to": null
+      },
+      "title": "Clara · Accounting",
+      "updated_at": "2026-09-19 13:11:29",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "fba422e0-f9a7-43b5-b130-f4cbe4034380",
+      "name": "Finn",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "",
+        "reports_to": null
+      },
+      "title": "Finn · Order Triage",
+      "updated_at": "2026-09-19 13:11:20",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "6d3b5223-10df-4a18-86ab-cbbc5533e98e",
+      "name": "Maya",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "",
+        "reports_to": null
+      },
+      "title": "Maya · Marketing",
+      "updated_at": "2026-09-19 13:11:21",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "06f163cc-8061-4559-b8f7-167d8ec34631",
+      "name": "Piper",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "",
+        "reports_to": null
+      },
+      "title": "Piper Content",
+      "updated_at": "2026-09-19 13:11:26",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "a6a9b2d4-384c-423a-a2fa-4f623aaeeb98",
+      "name": "Sage",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "",
+        "reports_to": null
+      },
+      "title": "Sage · Vendor Operations/Orders",
+      "updated_at": "2026-09-19 13:11:24",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "170ab267-448c-4b13-97f4-5f24db2f3652",
+      "name": "Avery",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "Customer Service",
+        "reports_to": "cb4ade24-c960-4235-956a-220260e5adac"
+      },
+      "title": "Avery · New Ticket Triage",
+      "updated_at": "2026-09-19 13:08:42",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "8540bd53-1a6f-440e-a136-4a4c7ac7f940",
+      "name": "Miles",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "Customer Service",
+        "reports_to": "cb4ade24-c960-4235-956a-220260e5adac"
+      },
+      "title": "Miles · Customer Service",
+      "updated_at": "2026-09-19 13:08:55",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "e9fe9b64-9b75-4280-b795-42158ae9cf16",
+      "name": "Nora",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "Customer Service",
+        "reports_to": "cb4ade24-c960-4235-956a-220260e5adac"
+      },
+      "title": "Nora · Customer Service",
+      "updated_at": "2026-09-19 13:11:19",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "26c325f7-32de-46ec-80f1-1c28e75d4b37",
+      "name": "Owen",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "Customer Service",
+        "reports_to": "cb4ade24-c960-4235-956a-220260e5adac"
+      },
+      "title": "Owen · Customer Service",
+      "updated_at": "2026-09-19 13:08:53",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    },
+    {
+      "conversation_id": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+      "name": "Tess",
+      "active": 1,
+      "registered_by": 1,
+      "created_at": "2026-09-19 17:03:18",
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "membership": {
+        "role": "bot",
+        "subteam": "Customer Service",
+        "reports_to": "cb4ade24-c960-4235-956a-220260e5adac"
+      },
+      "title": "Tess · Customer Service",
+      "updated_at": "2026-09-19 13:08:49",
+      "unread": true,
+      "provider": "codex",
+      "archived": false,
+      "can_manage": false,
+      "questions": 0,
+      "state": "available"
+    }
+  ],
+  "decisions": [],
+  "approvers": [
+    {
+      "id": 1,
+      "name": "Nicholas"
+    }
+  ],
+  "teams": [
+    {
+      "id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "name": "ERVP",
+      "owner_id": 1,
+      "revision": 3,
+      "created_at": "2026-09-19 17:00:50",
+      "can_manage": false,
+      "members": []
+    }
+  ]
+}

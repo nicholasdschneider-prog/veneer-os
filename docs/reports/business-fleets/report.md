@@ -1,6 +1,9 @@
 # Business fleets and ERVP adoption — build 79
 
-September 19, 2026. Source implementation and validation complete. Deployment and actual ERVP enrollment are pending; this report will be updated after supported adoption/readback.
+September 19, 2026. Source implementation deployed as `d4576bb` on `origin/main`. The required restart completed with all five services healthy ([output](./restart.txt)). **Actual ERVP enrollment is complete and accepted by Henry: 13/13 original native bots, with unchanged identities, models, effort and project ownership.** No employee grants or BulkBid enrollment were made.
+
+ERVP team: `5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86`. Henry’s native preview/apply receipt: `f38f57ec-06a0-4b12-901a-48df00f66760`, request key `ervp-initial13-build79`. Exactly one preview was applied under Henry’s authenticated native identity; the business is at revision3. [Independent verification output](./adoption-verification.txt), [metadata and immutable audit readback](./adoption-after.json), [supported native tool roster readback](./native-readback.json).
+
 
 ## Built
 
@@ -27,7 +30,7 @@ Business roles do not grant financial approval, expand policy authority, or bypa
 - Focused business/registry/discovery/unread tests: 35 passed ([output](./scoped-tests.txt)).
 - Business tests cover exact-once enrollment across service recreation, unchanged native identity/ownership, immutable audit, duplicate/foreign/unapproved IDs, stale metadata, actor-bound previews, delegation revocation, membership revocation, read-only viewers, cross-business evidence and native reads, assigned-human enforcement, reversible metadata restoration, and direct HTTP conversation/discovery/tool/write gates.
 - Isolated browser fixture uses two test businesses, real service/router and production UI. Desktop1440×1000/mobile390×844: business selector scopes roster/raised hands; owner grants/removes fixture viewer access; nonmember gets404; viewer cannot approve a decision assigned to someone else; no horizontal overflow or browser exceptions ([output](./browser-tests.txt)).
-- Production build: [output](./build.txt). No live customer/finance tests.
+- Production build passed with the existing Vite large-chunk advisory: [output](./build.txt). No live customer/finance tests.
 
 Run the fixture with Node24: `node --import tsx scripts/bots-browser-fixture.ts --teams`. Run `node scripts/business-fleets-browser-check.mjs <local-playwright-module-path>`. These fixture controls exist only in the standalone test server.
 
@@ -45,7 +48,11 @@ Henry and Platform Dev independently verified the exact13 existing chats: active
 
 [Pre-adoption metadata](./adoption-before.json) stores native session hashes, not session values. [Exact reviewed enrollment](./ervp-enrollment.json) contains Henry as fleet coordinator, Grant as Customer Service lead, the five frontline bots reporting to Grant, and six specialists outside that reporting subteam. No employee grants, BulkBid adoption, cloned chats, customer/financial action, or RZ99W6 disposition is authorized or performed by this build.
 
-Deployment requires the new additive0092 migration and rebuilt source, adopted by root `npm run restart` after successful checks/build. No migration seeds or automatically enrolls real chats. After restart Platform Dev will use the authenticated supported management tool to create ERVP and delegate only this list to Henry. Henry will preview/apply through his own tool identity. Readback will compare all13 native identities, models, effort, project ownership and exact hierarchy against the baseline.
+Deployment applied the additive0092 migration through rebuilt source and the required root `npm run restart` after successful checks/build. No migration seeded or enrolled real chats. Platform Dev used the supported authenticated management tool to create ERVP and delegate only the verified list to Henry. Henry then previewed, reviewed, and applied through his own native tool identity, and returned acceptance with an independent exact-ID/name/membership comparison.
+
+The read-only verifier subsequently compared all13 live rows against the pre-adoption metadata: titles, native session hashes, provider, model, effort, owner, project, assistant, visibility and archived state are unchanged. It verified exact roles/reporting structure, active registration for all13, exactly one applied native Henry receipt, zero employee grants, and no BulkBid business. Both Henry and Platform Dev supported-tool readbacks reported the expected fleet. Registration/enrollment did not touch RZ99W6, pending decisions, customer systems, finance, or existing case-ownership files. No additional enrollment or restart is needed.
+
+Re-run metadata verification with Node24: `node scripts/verify-ervp-adoption.mjs`. It opens the database read-only, compares the committed baseline and exact reviewed roster, and writes only report artifacts. Native session values are hashed before report output.
 
 ## Changed source and test files
 
@@ -84,3 +91,11 @@ Deployment requires the new additive0092 migration and rebuilt source, adopted b
 - [full-tests.txt](/Users/archerclawdington/veneer-os/docs/reports/business-fleets/full-tests.txt)
 - [scoped-tests.txt](/Users/archerclawdington/veneer-os/docs/reports/business-fleets/scoped-tests.txt)
 - [typecheck.txt](/Users/archerclawdington/veneer-os/docs/reports/business-fleets/typecheck.txt)
+
+- [restart.txt](/Users/archerclawdington/veneer-os/docs/reports/business-fleets/restart.txt)
+
+- [Read-only adoption verifier](/Users/archerclawdington/veneer-os/scripts/verify-ervp-adoption.mjs)
+
+- [adoption-after.json](/Users/archerclawdington/veneer-os/docs/reports/business-fleets/adoption-after.json)
+- [adoption-verification.txt](/Users/archerclawdington/veneer-os/docs/reports/business-fleets/adoption-verification.txt)
+- [native-readback.json](/Users/archerclawdington/veneer-os/docs/reports/business-fleets/native-readback.json)
