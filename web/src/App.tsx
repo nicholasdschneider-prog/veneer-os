@@ -319,9 +319,27 @@ export function App() {
               : 'chats';
 
   if (routePath === '#/bots' || routePath.startsWith('#/bots/')) {
+    const botsSegments = routePath.split('/');
+    // #/bots/talk/<conversationId>?decision=<id>: a live voice call with one bot.
+    if (botsSegments[2] === 'talk' && botsSegments[3]) {
+      if (!canManage) { navigate('#/bots'); return null; }
+      const talkDecision = params.get('decision');
+      return (
+        <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+          <Suspense fallback={<p role="status" className="p-6">Opening voice…</p>}>
+            <LiveVoice
+              botConversationId={decodeURIComponent(botsSegments[3])}
+              decisionId={talkDecision}
+              onBack={() => navigate(talkDecision ? `#/bots/${talkDecision}` : '#/bots')}
+              onNavigate={navigate}
+            />
+          </Suspense>
+        </NavShell>
+      );
+    }
     return (
       <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-        <Bots registrationRequested={params.get('register') === '1'} decisionId={routePath.split('/')[2]} onNavigate={navigate} />
+        <Bots registrationRequested={params.get('register') === '1'} decisionId={botsSegments[2]} canCall={canManage} onNavigate={navigate} />
       </NavShell>
     );
   }
@@ -357,7 +375,7 @@ export function App() {
   let screen: ReactNode | null = null;
   if (hash.startsWith('#/voice')) {
     if (!canManage) { navigate('#/'); return null; }
-    screen = <Suspense fallback={<p role="status" className="p-6">Opening voice…</p>}><LiveVoice onBack={() => navigate('#/tools')} /></Suspense>;
+    screen = <Suspense fallback={<p role="status" className="p-6">Opening voice…</p>}><LiveVoice onBack={() => navigate('#/bots')} onNavigate={navigate} /></Suspense>;
   } else if (hash.startsWith('#/tools')) {
     if (!canManage) {
       navigate('#/');

@@ -1,17 +1,38 @@
 import type { AppContext } from '../context.js';
-import type { ConversationRow, QuestionRow } from '../db/db.js';
+import type { ConversationRow, QuestionRow, UserRow } from '../db/db.js';
 import type { QuestionAnswers, QuestionPrompt } from '../runtime/events.js';
 import { sanitizeMemoryText } from '../memory/capture.js';
+import { canSendToConversation } from '../conversations/access.js';
+import { BotError, createBotService } from '../bots/service.js';
 import { z } from 'zod';
 
 export const AnswerSchema = z.object({
   requestId: z.string().min(1).max(200),
   answers: z.record(z.array(z.string().min(1).max(4000)).min(1).max(30)),
 });
+export const DecisionAnswerSchema = z.object({
+  decisionId: z.string().min(1).max(200),
+  version: z.number().int().positive(),
+  action: z.enum(['approve', 'reject', 'defer', 'withdraw']),
+  text: z.string().trim().min(1).max(12000),
+  scope: z.enum(['this_case', 'standing_rule']).default('this_case'),
+});
+const clip = (value: string, max: number) => sanitizeMemoryText(value ?? '').slice(0, max);
 
-/** Only the caller's own chats are available to voice, including for administrators. */
+/** Only the caller's own chats are available to voice, including for administrators.
+ * A bot call is additionally scoped to one registered VeneerBot the caller can view. */
 export class VoiceWorkspace {
-  constructor(private ctx: AppContext, readonly userId: number) {}
+  private bots: ReturnType<typeof createBotService>;
+  constructor(private ctx: AppContext, readonly userId: number, readonly botConversationId: string | null = null) {
+    this.bots = createBotService(ctx.db);
+  }
+
+  private get user(): UserRow {
+    const row = this.ctx.db.prepare('SELECT * FROM users WHERE id=?').get(this.userId) as UserRow | undefined;
+    if (!row) throw new Error('User not found.');
+    return row;
+  }
+  private get actor() { return { user: this.user }; }
 
   private question(requestId: string): (QuestionRow & { title: string | null }) | undefined {
     return this.ctx.db.prepare(`SELECT q.*, c.title FROM questions q
@@ -28,11 +49,29 @@ export class VoiceWorkspace {
     } catch { return []; }
   }
 
+  /** The registered bot this call is placed to. Throws when it is not visible to the caller. */
+  bot() {
+    const id = this.botConversationId;
+    if (!id) throw new Error('This call is not placed to a bot.');
+    const chat = this.bots.chat(this.actor, id);
+    const registration = this.ctx.db.prepare('SELECT name FROM bot_registrations WHERE conversation_id=? AND active=1')
+      .get(id) as { name: string } | undefined;
+    if (!registration) throw new BotError(404, 'Bot not found');
+    const membership = this.ctx.db.prepare('SELECT role,subteam FROM business_bot_members WHERE conversation_id=?')
+      .get(id) as { role: string; subteam: string } | undefined;
+    const team = chat.business_team_id
+      ? (this.ctx.db.prepare('SELECT name FROM business_teams WHERE id=?').get(chat.business_team_id) as { name: string } | undefined)?.name ?? null
+      : null;
+    return { conversationId: id, name: registration.name, title: chat.title, archived: Boolean(chat.archived),
+      role: membership?.role ?? null, subteam: membership?.subteam || null, team,
+      canMessage: !chat.archived && canSendToConversation(this.user, chat, this.ctx.db) };
+  }
+
   blockers() {
     const rows = this.ctx.db.prepare(`SELECT q.*, c.title FROM questions q
       JOIN conversations c ON c.id=q.conversation_id
-      WHERE c.user_id=? AND q.status='pending' ORDER BY q.created_at LIMIT 100`)
-      .all(this.userId) as (QuestionRow & { title: string | null })[];
+      WHERE c.user_id=? AND q.status='pending' AND (? IS NULL OR q.conversation_id=?) ORDER BY q.created_at LIMIT 100`)
+      .all(this.userId, this.botConversationId, this.botConversationId) as (QuestionRow & { title: string | null })[];
     return rows.flatMap(row => {
       const questions = this.prompts(row);
       return questions.length ? [{ requestId: row.request_id, conversationId: row.conversation_id,
@@ -46,35 +85,106 @@ export class VoiceWorkspace {
       ORDER BY c.last_active_at DESC LIMIT 80`).all(this.userId);
   }
 
-  async readChat(conversationId: string) {
+  private visibleChat(conversationId: string): ConversationRow {
+    if (this.botConversationId) {
+      if (conversationId !== this.botConversationId) throw new Error('Only the bot on this call can be read.');
+      return this.bots.chat(this.actor, conversationId);
+    }
     const row = this.ctx.db.prepare('SELECT * FROM conversations WHERE id=? AND user_id=?')
       .get(conversationId, this.userId) as ConversationRow | undefined;
     if (!row) throw new Error('Chat not found.');
+    return row;
+  }
+
+  async readChat(conversationId: string) {
+    const row = this.visibleChat(conversationId);
     const events = await this.ctx.manager.snapshot(row.id);
     const messages = events.flatMap(event => {
-      if (event.type === 'turn_started') return [{ role: 'user', text: sanitizeMemoryText(event.text ?? '').slice(0,2000) }];
-      if (event.type === 'text_final') return [{ role: 'assistant', text: sanitizeMemoryText(event.markdown).slice(0,2000) }];
+      if (event.type === 'turn_started') return [{ role: 'user', text: clip(event.text ?? '', 2000) }];
+      if (event.type === 'text_final') return [{ role: 'assistant', text: clip(event.markdown, 2000) }];
       return [];
     }).filter(m => m.text).slice(-12);
     return { conversationId, title: row.title, status: await this.ctx.manager.statusOf(row.id), messages };
   }
 
+  /** Number of bot replies so far; the call loop uses it to notice a new reply. */
+  async replyCount(): Promise<number> {
+    if (!this.botConversationId) return 0;
+    const events = await this.ctx.manager.snapshot(this.botConversationId);
+    return events.filter(event => event.type === 'text_final').length;
+  }
+
+  /** Relay what the caller said into the bot's own conversation, the same way the chat composer would. */
+  async sendMessage(text: string) {
+    const bot = this.bot();
+    if (!bot.canMessage) throw new Error('This bot cannot receive messages right now.');
+    const clean = clip(text, 12000).trim();
+    if (!clean) throw new Error('Nothing to send.');
+    const posted = await this.ctx.manager.postMessage(bot.conversationId, `[Voice call] ${clean}`, this.userId);
+    return { ...posted, ok: true, delivery: 'Message queued to the bot. Its reply arrives in the chat; read_chat shows it.' };
+  }
+
+  decisions() {
+    const id = this.botConversationId;
+    if (!id) return [];
+    return this.bots.list(this.actor).filter(d => d.conversation_id === id).slice(0, 40).map(d => ({
+      decisionId: d.id, version: d.version, state: d.state, createdAt: d.created_at, updatedAt: d.updated_at,
+      canAnswer: d.can_answer, assignee: d.assignee_name,
+      question: clip(d.proposal.question, 2000), recommendation: clip(d.proposal.recommendation, 2000),
+      consequence: clip(d.proposal.consequence, 1000), blockedAction: clip(d.proposal.blocked_action, 1000),
+      blocksScope: d.proposal.blocks_scope, deadline: d.proposal.deadline,
+      answer: d.answer ? { action: d.answer.action, scope: d.answer.scope, text: clip(d.answer.text, 1000) } : null,
+      result: d.result ? { state: d.result.state, evidence: clip(d.result.evidence, 1000) } : null,
+    }));
+  }
+
+  readDecision(decisionId: string) {
+    const id = this.botConversationId;
+    if (!id) throw new Error('This call is not placed to a bot.');
+    const decision = this.bots.view(this.actor, this.bots.read(this.actor, decisionId));
+    if (decision.conversation_id !== id) throw new Error('That decision belongs to another bot.');
+    const thread = this.bots.thread(this.actor, decisionId);
+    const summary = this.decisions().find(d => d.decisionId === decisionId)!;
+    return { ...summary, evidence: (decision.proposal.evidence as { label: string }[]).map(e => clip(e.label, 300)),
+      discussion: (thread.messages as { actor_name: string; actor_conversation_id: string | null; text: string; created_at: string }[])
+        .slice(-20).map(m => ({ from: m.actor_conversation_id ? decision.bot_name : m.actor_name, text: clip(m.text, 2000), at: m.created_at })) };
+  }
+
+  discuss(sessionId: string, decisionId: string, text: string) {
+    this.readDecision(decisionId);
+    const clean = clip(text, 12000).trim();
+    if (!clean) throw new Error('Nothing to send.');
+    const decision = this.bots.reply(this.actor, decisionId, `voice:${sessionId}:${Date.now()}`, `[Voice call] ${clean}`);
+    return { ok: true, decisionId: decision.id, delivery: 'Discussion message posted; it wakes the bot but does not approve anything.' };
+  }
+
+  answerDecision(sessionId: string, input: unknown) {
+    const { decisionId, version, action, text, scope } = DecisionAnswerSchema.parse(input);
+    const current = this.readDecision(decisionId);
+    if (!current.canAnswer) throw new Error('Only the assigned approver can answer this decision.');
+    if (current.state !== 'needs_input') throw new Error('This decision already has an answer.');
+    const decision = this.bots.answer(this.actor, decisionId, version, `voice:${sessionId}:answer:${version}`, { action, text, scope });
+    this.record(sessionId, 'decision', `${decision.bot_name}: ${action} — ${text}${scope === 'standing_rule' ? ' (standing rule requested)' : ''}`);
+    return { ok: true, decisionId, state: decision.state, delivery: 'Decision recorded and delivered to the bot. Execution is tracked separately; it has not been verified.' };
+  }
+
   history(limit = 40): { id: number; role: string; text: string; createdAt: string }[] {
     return this.ctx.db.prepare(`SELECT id, role, text, created_at AS createdAt FROM
-      (SELECT * FROM voice_entries WHERE user_id=? ORDER BY id DESC LIMIT ?) ORDER BY id`)
-      .all(this.userId, limit) as { id: number; role: string; text: string; createdAt: string }[];
+      (SELECT * FROM voice_entries WHERE user_id=? AND bot_conversation_id IS ? ORDER BY id DESC LIMIT ?) ORDER BY id`)
+      .all(this.userId, this.botConversationId, limit) as { id: number; role: string; text: string; createdAt: string }[];
   }
 
   record(sessionId: string, role: 'user' | 'assistant' | 'decision', text: string) {
-    const clean = sanitizeMemoryText(text).slice(0,8000).trim();
-    if (clean) this.ctx.db.prepare('INSERT INTO voice_entries(user_id,session_id,role,text) VALUES(?,?,?,?)')
-      .run(this.userId, sessionId, role, clean);
+    const clean = clip(text, 8000).trim();
+    if (clean) this.ctx.db.prepare('INSERT INTO voice_entries(user_id,session_id,role,text,bot_conversation_id) VALUES(?,?,?,?,?)')
+      .run(this.userId, sessionId, role, clean, this.botConversationId);
   }
 
   async answer(sessionId: string, input: unknown) {
     const { requestId, answers } = AnswerSchema.parse(input);
     const row = this.question(requestId);
     if (!row || !this.prompts(row).length) throw new Error('Question not available to voice.');
+    if (this.botConversationId && row.conversation_id !== this.botConversationId) throw new Error('That question belongs to another chat.');
     const canonical = (a: QuestionAnswers) => JSON.stringify(Object.keys(a).sort().map(k => [k, [...a[k]!].sort()]));
     const existing = this.ctx.db.prepare('SELECT answers_json, status FROM voice_decisions WHERE user_id=? AND request_id=?')
       .get(this.userId, requestId) as { answers_json: string; status: string } | undefined;

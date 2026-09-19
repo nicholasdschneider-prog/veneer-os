@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { VoiceWorkspace } from '../voice/workspace.js';
 
+const id = z.string().min(1).max(100);
 export function createLiveVoiceRouter(ctx: AppContext): Router {
   const router = express.Router();
   router.use((req, res, next) => {
@@ -14,15 +15,24 @@ export function createLiveVoiceRouter(ctx: AppContext): Router {
     next();
   });
   router.get('/', (req, res) => {
-    const workspace = new VoiceWorkspace(ctx, req.user!.id);
+    const query = z.object({ bot: id.optional(), decision: id.optional() }).safeParse(req.query);
+    if (!query.success) { res.status(400).json({ ok: false, error: 'Invalid bot.' }); return; }
+    const workspace = new VoiceWorkspace(ctx, req.user!.id, query.data.bot ?? null);
+    let bot: ReturnType<VoiceWorkspace['bot']> | null = null;
+    let decision: ReturnType<VoiceWorkspace['readDecision']> | null = null;
+    if (query.data.bot) {
+      try { bot = workspace.bot(); } catch { res.status(404).json({ ok: false, error: 'Bot not found.' }); return; }
+      if (query.data.decision) { try { decision = workspace.readDecision(query.data.decision); } catch { decision = null; } }
+    }
     res.json({ ok: true, configuration: ctx.liveVoice?.configuration() ?? { ready: false, missing: ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'OPENAI_API_KEY'], invalidUrl: false },
-      call: ctx.liveVoice?.status(req.user!.id) ?? null, blockers: workspace.blockers(), chats: workspace.chats(), history: workspace.history(80) });
+      call: ctx.liveVoice?.status(req.user!.id) ?? null, bot, decision, decisions: bot ? workspace.decisions() : [],
+      blockers: workspace.blockers(), chats: bot ? [] : workspace.chats(), history: workspace.history(80) });
   });
   router.post('/calls', (req, res) => {
-    const body = z.object({ contextConversationId: z.string().min(1).max(100).optional() }).safeParse(req.body);
-    if (!body.success) { res.status(400).json({ ok: false, error: 'Invalid context chat.' }); return; }
+    const body = z.object({ contextConversationId: id.optional(), botConversationId: id.optional(), decisionId: id.optional() }).safeParse(req.body);
+    if (!body.success) { res.status(400).json({ ok: false, error: 'Invalid call request.' }); return; }
     if (!ctx.liveVoice) { res.status(503).json({ ok: false, error: 'Live voice is not available.' }); return; }
-    void ctx.liveVoice.start(req.user!.id, body.data.contextConversationId)
+    void ctx.liveVoice.start(req.user!.id, body.data)
       .then(call => res.json({ ok: true, ...call }))
       .catch((error: Error) => res.status(503).json({ ok: false, error: error.message }));
   });

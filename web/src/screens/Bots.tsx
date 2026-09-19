@@ -13,9 +13,11 @@ import {
   Check,
   Hand,
   MessageSquare,
+  Phone,
   Plus,
   RefreshCw,
 } from 'lucide-react';
+import { botCallHash } from '@/lib/liveVoice';
 import {
   botsApi,
   decisionLabel,
@@ -62,10 +64,13 @@ function State({ state, label }: { state: string; label?: string }) {
 export function Bots({
   decisionId,
   registrationRequested = false,
+  canCall = false,
   onNavigate,
 }: {
   decisionId?: string;
   registrationRequested?: boolean;
+  /** Owners and consultants can place a live voice call to a bot. */
+  canCall?: boolean;
   onNavigate: (hash: string) => void;
 }) {
   const currentRoute = useRef(decisionId);
@@ -405,6 +410,7 @@ export function Bots({
                       key={item.id}
                       d={item}
                       onOpen={() => onNavigate('#/bots/' + item.id)}
+                      onCall={canCall ? () => onNavigate(botCallHash(item.conversation_id, item.id)) : undefined}
                     />
                   ))}
                 </div>
@@ -418,7 +424,7 @@ export function Bots({
                   <h2 className="mb-3 text-lg font-semibold">{title} <span className="text-sm font-normal text-muted-foreground">{items.length}</span></h2>
                   {key === 'history' && <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>}
                   <div className="grid gap-3">
-                    {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} />)}
+                    {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} onCall={canCall ? () => onNavigate(botCallHash(item.conversation_id, item.id)) : undefined} />)}
                   </div>
                 </section>
               );
@@ -455,7 +461,20 @@ export function Bots({
                         {bot.questions === 1 ? 'question' : 'questions'}
                       </span>
                     </button>
-                    <ArrowUpRight className="size-4 text-muted-foreground" />
+                    {canCall && !bot.archived ? (
+                      <Button
+                        variant="outline"
+                        size="icon-lg"
+                        className="rounded-full"
+                        aria-label={`Talk with ${bot.name}`}
+                        title={`Talk with ${bot.name}`}
+                        onClick={() => onNavigate(botCallHash(bot.conversation_id))}
+                      >
+                        <Phone className="size-4" />
+                      </Button>
+                    ) : (
+                      <ArrowUpRight className="size-4 text-muted-foreground" />
+                    )}
                     {bot.can_manage && (
                       <button
                         className="col-span-2 col-start-2 justify-self-start text-xs text-muted-foreground underline sm:col-span-1 sm:col-start-auto"
@@ -498,6 +517,15 @@ export function Bots({
                     <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
                     <State state={d.state} label={decisionStatusLabel(d)} />
                   </div>
+                  {canCall && (
+                    <Button
+                      className="mt-4 min-h-11 w-full sm:w-auto"
+                      onClick={() => onNavigate(botCallHash(d.conversation_id, d.id))}
+                    >
+                      <Phone className="size-4" />
+                      Talk with {d.bot_name} about this
+                    </Button>
+                  )}
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
                     {d.proposal.question}
                   </h2>
@@ -832,13 +860,26 @@ export function Bots({
     </div>
   );
 }
-export function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
+export function DecisionCard({ d, onOpen, onCall }: { d: BotDecision; onOpen: () => void; onCall?: () => void }) {
   return (
+    <div className="relative w-full min-w-0 rounded-2xl border bg-card [overflow-wrap:anywhere] transition-colors hover:border-foreground/30 focus-within:ring-2 focus-within:ring-ring">
+      {onCall && (
+        <Button
+          variant="outline"
+          size="icon-lg"
+          className="absolute right-3 top-3 z-10 rounded-full"
+          aria-label={`Talk with ${d.bot_name} about this`}
+          title={`Talk with ${d.bot_name} about this`}
+          onClick={(event) => { event.stopPropagation(); onCall(); }}
+        >
+          <Phone className="size-4" />
+        </Button>
+      )}
     <button
       onClick={onOpen}
-      className="w-full min-w-0 rounded-2xl border bg-card p-4 text-left [overflow-wrap:anywhere] transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="w-full min-w-0 rounded-2xl p-4 text-left focus-visible:outline-none"
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className={cn('mb-3 flex flex-wrap items-center justify-between gap-2', onCall && 'pr-12')}>
         <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
         <State state={d.state} label={decisionStatusLabel(d)} />
       </div>
@@ -869,6 +910,7 @@ export function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void
         · v{d.version}
       </p>
     </button>
+    </div>
   );
 }
 

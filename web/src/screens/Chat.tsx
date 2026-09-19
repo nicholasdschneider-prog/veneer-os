@@ -1,8 +1,9 @@
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
+import { botCallHash } from '@/lib/liveVoice';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, Mic, Paperclip, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
+import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, Mic, Paperclip, Phone, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
 import { api, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
 import { chatDeleteConfirmation, chatHeaderMenuLabels, copyChatShareUrl } from '../lib/chatDeletion';
 import type { Artifact, PublishedArtifact } from '../lib/artifacts';
@@ -2292,6 +2293,19 @@ export function Chat({
         </div>
         {!isNew ? (
           <div className="flex shrink-0 items-center gap-1">
+            {backHash === '#/bots' && canManage ? (
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="relative rounded-full text-muted-foreground"
+                onPointerUp={() => onNavigate(botCallHash(conversationId))}
+                aria-label={`Talk with ${title?.trim() || agentName}`}
+                title="Talk with this bot"
+              >
+                <Phone className="size-4" aria-hidden="true" />
+                <span className="pointer-fine:hidden absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true" />
+              </Button>
+            ) : null}
             {canChangeVisibility ? (
               <Button
                 variant="ghost"

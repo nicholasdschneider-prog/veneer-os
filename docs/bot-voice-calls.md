@@ -1,8 +1,14 @@
-# Henry live voice trial
+# Voice calls with VeneerBots
 
-Open [Talk to Henry](https://nicksworld.dev/#/voice), or use **Chats → Talk to Henry** / **Tools → Talk to Henry**.
+Every registered bot can be called from VeneerBots (`#/bots`):
 
-This is a LiveKit/OpenAI voice coordinator for the signed-in user's Veneer work. It is not a connection to the native ChatGPT voice subscription. No existing Henry agent was configured on this install when the feature was built. Choose a working-context chat to give the coordinator its recent visible messages. It does not automatically inherit another agent's hidden state, instructions, or full memory.
+- **Bot roster** — the phone button beside a bot opens a call with it.
+- **Decision cards and the decision thread** — "Talk with *bot* about this" opens a call focused on that decision, so you can talk it through and decide out loud.
+- **A bot's chat** (opened from VeneerBots) — the phone button in the header calls that bot.
+
+The call route is `#/bots/talk/<conversationId>` with an optional `?decision=<id>`. The original all-agents coordinator, Henry, remains reachable at `#/voice` but no longer has entry points on the Chats or Tools screens.
+
+This is a LiveKit/OpenAI voice session that speaks *for* the bot from its real chat, decisions and pending questions. It is not the bot's own model on the line: the bot keeps working in its chat, and the voice line relays what you say to it, reads its replies aloud when they arrive, and records the decisions you state explicitly. Saved conversation history is kept per bot, separately from Henry's.
 
 ## Setup
 
@@ -22,12 +28,21 @@ The first trial accepts LiveKit Cloud project URLs only. A self-hosted media ser
 ## iPhone and AirPods
 
 1. Connect AirPods before opening the call. Select the desired route in iPhone Control Center.
-2. Tap **Call Henry** and allow microphone access. **Enable Henry's audio** appears if Safari blocks playback.
-3. Speak normally and interrupt when needed. Henry can read pending structured questions, look up their source chats, and deliver your explicit answers.
+2. Tap **Call *bot*** and allow microphone access. **Enable *bot*'s audio** appears if Safari blocks playback.
+3. Speak normally and interrupt when needed. On a bot call the voice line reads the bot's chat and open decisions first, then tells you what it is working on or waiting on.
 4. **Mute** disables microphone transmission but leaves the call connected. **Standby** disconnects the voice session and microphone; resume starts a new connection with saved reference history.
 5. Keep the page open during this trial. Screen lock, app switching, calls from other apps, or Bluetooth changes can interrupt audio. A screen wake lock is requested when available; it is not a background-audio guarantee.
 
 Calls stop after 55 minutes; tap to continue. An absent browser heartbeat ends an abandoned call after approximately 90–105 seconds. A stuck startup is ended after approximately 45–60 seconds. Only one active call per user is allowed. Leaving the voice screen ends that call. An **End previous call** control recovers a connection left by another tab.
+
+## What a bot call can do
+
+- Read the bot's recent visible chat messages and status (`read_chat`), and relay what you say into that chat (`send_message`, prefixed `[Voice call]`) the same way the composer would. When the bot replies during the call, the voice line is told and reads the reply aloud.
+- List and read the bot's decisions (`list_decisions`, `read_decision`), post into a decision's discussion thread (`discuss_decision`, which wakes the bot but approves nothing), and record an explicit approve / reject / defer / withdraw with your reasoning (`answer_decision`). The decision's version is checked, only the assigned approver can answer, and the answer goes through the same VeneerBots service and wake-up the web form uses.
+- Answer the bot's structured pending questions (`list_blockers`, `answer_question`).
+- Newly raised decisions and new questions are mentioned briefly while you are both listening.
+
+A bot call is scoped to that one bot: other chats, other bots and the Henry chat list are not available on it.
 
 ## What Henry can do
 
@@ -57,11 +72,12 @@ A real LiveKit/OpenAI media session and physical iPhone/AirPods behavior still r
 - [Application context](/Users/archerclawdington/veneer-os/server/src/context.ts)
 - [API mounting](/Users/archerclawdington/veneer-os/server/src/routes/api.ts)
 - [Startup and shutdown](/Users/archerclawdington/veneer-os/server/src/index.ts)
-- [iPhone-oriented call screen](/Users/archerclawdington/veneer-os/web/src/screens/LiveVoice.tsx)
+- [Call screen, bot and coordinator modes](/Users/archerclawdington/veneer-os/web/src/screens/LiveVoice.tsx)
+- [VeneerBots entry points](/Users/archerclawdington/veneer-os/web/src/screens/Bots.tsx)
+- [Bot chat header entry point](/Users/archerclawdington/veneer-os/web/src/screens/Chat.tsx)
+- [Bot-scoped history migration](/Users/archerclawdington/veneer-os/server/src/db/migrations/0093_voice_bot_calls.sql)
 - [Browser API client](/Users/archerclawdington/veneer-os/web/src/lib/liveVoice.ts)
 - [Lazy-loaded application route](/Users/archerclawdington/veneer-os/web/src/App.tsx)
-- [Chat-list entry point](/Users/archerclawdington/veneer-os/web/src/screens/ChatList.tsx)
-- [Tools entry point](/Users/archerclawdington/veneer-os/web/src/screens/Tools.tsx)
 - [Workspace and HTTP tests](/Users/archerclawdington/veneer-os/server/test/liveVoice.test.ts)
 - [Call lifecycle tests](/Users/archerclawdington/veneer-os/server/test/liveVoiceService.test.ts)
 - [Server dependencies](/Users/archerclawdington/veneer-os/server/package.json), [browser dependencies](/Users/archerclawdington/veneer-os/web/package.json), [lockfile](/Users/archerclawdington/veneer-os/package-lock.json)
