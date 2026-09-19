@@ -365,7 +365,43 @@ async function restart(service) {
   return true;
 }
 
+/**
+ * Codex holds a per-thread writer lock in whichever process loaded the thread and
+ * rewrites config.toml in its CODEX_HOME. A desktop Codex (the ChatGPT app) that
+ * was launched from an agent shell inherits Veneer's CODEX_HOME — `open` forwards
+ * the caller's environment — and then locks Veneer's threads and injects its
+ * desktop plugins and MCP servers into every Veneer turn. Warn, do not block:
+ * the adapter forks a locked thread, but the user should relaunch the app.
+ */
+function warnForeignCodexHome() {
+  if (process.platform !== 'darwin') return;
+  const serviceHome = process.env.VP_SERVICE_HOME || path.join(os.homedir(), 'veneer-pro-home');
+  let listing = '';
+  try {
+    listing = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' });
+  } catch {
+    return;
+  }
+  for (const line of listing.split('\n')) {
+    const match = /^\s*(\d+)\s+(.*ChatGPT\.app\/Contents\/MacOS\/ChatGPT.*)$/.exec(line);
+    if (!match) continue;
+    let env = '';
+    try {
+      env = execFileSync('ps', ['eww', '-o', 'command=', '-p', match[1]], { encoding: 'utf8' });
+    } catch {
+      continue;
+    }
+    const home = /(?:^|\s)CODEX_HOME=(\S+)/.exec(env)?.[1];
+    if (home && home.startsWith(serviceHome)) {
+      console.warn(`[restart] warning: ChatGPT.app (pid ${match[1]}) is running with Veneer's CODEX_HOME (${home}).`);
+      console.warn('[restart]   It will hold writer locks on Veneer\'s Codex threads and rewrite the shared config.toml.');
+      console.warn('[restart]   Quit it and reopen it from the Dock or Finder, never from an agent shell.');
+    }
+  }
+}
+
 if (!checkServiceRuntime()) process.exit(1);
+warnForeignCodexHome();
 if (checkOnly) process.exit(0);
 
 let failed = false;

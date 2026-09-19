@@ -243,6 +243,27 @@ approval flags above:
 - A live authenticated `model/list` returned `gpt-6-astra` as the default model
   with `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` effort choices.
 
+## Codex thread writer locks (0.153.x, observed 2026-09-19)
+
+- `thread/resume` fails with `thread <id> already has an active writer` when a
+  *different* app-server process still has that thread loaded. The lock is a
+  file under `$CODEX_HOME/thread-writer-locks/<thread>.lock`, held for as long
+  as the thread stays loaded in that process — not only during a turn.
+- Veneer runs one long-lived app-server per Codex account and access level over
+  one shared sessions tree (account homes symlink `sessions/` and
+  `thread-writer-locks/`). Account failover or an Ask↔Allow switch therefore
+  moves a chat to another process. The adapter records the owning process per
+  thread, sends `thread/close` there before resuming elsewhere, broadcasts the
+  close to every live app-server when the owner is unknown, and finally falls
+  back to `thread/fork` (history retained, new native id) with a notice.
+- `lsof +D $CODEX_HOME/thread-writer-locks` shows the holder. A holder outside
+  Veneer's services is usually the ChatGPT desktop app launched from an agent
+  shell: `open` forwards the caller's environment, so the app inherits Veneer's
+  `CODEX_HOME`, locks Veneer's threads, and rewrites the shared `config.toml`
+  with its desktop plugins, `mcp_servers`, and a turn-end `notify` hook.
+  `npm run restart` warns when it sees that; fix it by quitting the app and
+  reopening it from the Dock or Finder.
+
 ## Not verified here (deferred, per spec §16)
 
 - LONG_LIVED strategy (multiple user messages over one process's stdin).
