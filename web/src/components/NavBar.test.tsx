@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { NavigationBrand, NavShell } from './NavBar';
+import { NavCountBadge, NavigationBrand, NavShell } from './NavBar';
 import { DEFAULT_WORKSPACE_NAVIGATION } from '../lib/navigation';
 
 vi.mock('../lib/useUsage', async (importOriginal) => {
@@ -313,4 +313,14 @@ it('shows provider usage meters to members', () => {
   );
   expect(html).toContain('42% of 5hr used');
   expect(html).toContain('Open usage settings.');
+});
+
+describe('NavCountBadge', () => {
+  it('renders nothing at zero', () => {
+    expect(renderToStaticMarkup(<NavCountBadge count={0} label="none" />)).toBe('');
+  });
+  it('shows the pending count and caps it at 99+', () => {
+    expect(renderToStaticMarkup(<NavCountBadge count={3} label="3 decisions need your input" />)).toContain('>3<');
+    expect(renderToStaticMarkup(<NavCountBadge count={120} label="120 decisions need your input" />)).toContain('99+');
+  });
 });

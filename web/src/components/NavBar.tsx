@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type ReactElement, type ReactNode } from '
 import { Tooltip as TooltipPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
 import { api, type SystemUsage } from '@/lib/api';
+import { botsApi } from '@/lib/bots';
 import { CLIENT_LOGO_CHANGED_EVENT } from '@/lib/clientLogo';
 import {
   BUILTIN_NAVIGATION,
@@ -52,8 +53,56 @@ const CHATS: Item = { key: 'chats', label: 'Chats', icon: MessageSquare, hash: '
 const BOTS: Item = { key: 'bots', label: 'VeneerBots', icon: Bot, hash: '#/bots' };
 const SETTINGS: Item = { key: 'settings', label: 'Settings', icon: Settings, hash: '#/settings' };
 const SYSTEM_USAGE_POLL_MS = 5_000;
+const BOT_INPUT_POLL_MS = 30_000;
 /** Where a usage ring goes when tapped (see resolveSettingsRoute in App.tsx). */
 const USAGE_HASH = '#/settings/usage';
+
+/**
+ * How many bot decisions are waiting on the signed-in user, across every
+ * business. Polled slowly; a route change or tab focus re-probes so the badge
+ * clears right after an answer. Failures keep the last known count.
+ */
+function useBotInputCount(current: NavSelection): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      if (document.hidden) return;
+      void botsApi
+        .list('me')
+        .then((result) => {
+          if (!active) return;
+          setCount(result.decisions.filter((d) => d.state === 'needs_input').length);
+        })
+        .catch(() => {
+          // Keep the last count; the bots screen surfaces the error itself.
+        });
+    };
+    refresh();
+    const interval = window.setInterval(refresh, BOT_INPUT_POLL_MS);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [current]);
+  return count;
+}
+
+/** The small count pinned to the VeneerBots icon's corner. */
+export function NavCountBadge({ count, label }: { count: number; label: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-label={label}
+      data-testid="bots-input-badge"
+      className="absolute top-1/2 left-1/2 flex h-4 min-w-4 -translate-y-[1.15rem] translate-x-[0.15rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.625rem] leading-none font-semibold text-black tabular-nums shadow-[0_0_0_2px_var(--card)]"
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
 
 function DesktopNavigationTooltip({ label, children }: { label: ReactNode; children: ReactElement }) {
   return (
@@ -252,6 +301,7 @@ export function NavShell({
   const { usage, now } = useUsage(chatOpen);
   const claudeRing = claudeRingModel(usage, now);
   const codexRing = codexRingModel(usage, now);
+  const botInputCount = useBotInputCount(current);
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
   const clientLogoUrlRef = useRef<string | null>(null);
 
@@ -342,6 +392,12 @@ export function NavShell({
           />
         ) : null}
         <Icon className="size-5 shrink-0" />
+        {it.key === 'bots' ? (
+          <NavCountBadge
+            count={botInputCount}
+            label={`${botInputCount} ${botInputCount === 1 ? 'decision needs' : 'decisions need'} your input`}
+          />
+        ) : null}
       </button>
     );
     return desktop ? (

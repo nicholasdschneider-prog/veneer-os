@@ -23,15 +23,34 @@ export function BusinessSelector({
   teams,
   business,
   onSelect,
+  compact = false,
 }: {
   teams: BusinessTeam[];
   business: string;
   onSelect: (id: string) => void;
+  /** A bare pill-shaped select with no caption, for a one-line toolbar. */
+  compact?: boolean;
 }) {
   useEffect(() => {
     if (teams.length && localStorage.getItem(key) === null) onSelect(teams[0]!.id);
   }, [teams]);
   if (!teams.length) return null;
+  if (compact)
+    return (
+      <select
+        aria-label="Business"
+        value={business}
+        onChange={(e) => onSelect(e.target.value)}
+        className="max-w-[11rem] rounded-full border bg-background px-3 py-1.5 text-xs font-medium text-foreground"
+      >
+        <option value="">All businesses</option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+    );
   return (
     <label className="block text-xs text-muted-foreground">
       Business

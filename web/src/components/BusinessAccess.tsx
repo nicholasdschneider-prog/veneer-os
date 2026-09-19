@@ -21,7 +21,7 @@ export function BusinessAccess({ team, onChanged }: { team: BusinessTeam; onChan
   };
   return (
     <details
-      className="mb-5 rounded-xl border p-4"
+      className="group [&[open]]:basis-full [&[open]]:rounded-xl [&[open]]:border [&[open]]:p-4"
       onToggle={(e) => {
         if (e.currentTarget.open)
           void botsApi
@@ -30,7 +30,10 @@ export function BusinessAccess({ team, onChanged }: { team: BusinessTeam; onChan
             .catch((e) => setError(e.message));
       }}
     >
-      <summary className="cursor-pointer text-sm font-medium">{team.name} business access</summary>
+      <summary className="cursor-pointer list-none rounded-full border px-3 py-1.5 text-xs font-medium group-open:mb-1 group-open:inline-block group-open:border-0 group-open:px-0 group-open:py-0 group-open:text-sm">
+        <span className="group-open:hidden">Manage access</span>
+        <span className="hidden group-open:inline">{team.name} business access</span>
+      </summary>
       <p className="my-3 text-xs text-muted-foreground">
         Access applies only to this business. Viewers can read; members can chat; managers can
         manage chats. Only the owner changes business access. Assigned decision approval remains

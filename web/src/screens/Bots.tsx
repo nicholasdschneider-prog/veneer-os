@@ -209,9 +209,21 @@ export function Bots({
       <div className="hidden w-72 shrink-0 md:block"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
     <div className="h-full min-w-0 flex-1 overflow-y-auto bg-background">
       <div className="mx-auto max-w-6xl px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-8">
-        <details className="mb-4 md:hidden"><summary className="cursor-pointer rounded-xl border p-3 text-sm font-medium">All bot conversations</summary><div className="h-[min(65dvh,32rem)]"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div></details>
-        <div className="mb-4 max-w-xs md:hidden"><BusinessSelector teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} /></div>
-        {teams.find(t => t.id === business && t.can_manage) && <BusinessAccess team={teams.find(t => t.id === business)!} onChanged={() => { void refresh(); }} />}
+        {/* One thin toolbar: business picker and conversation drawer on mobile,
+            plus the access manager for owners. Everything opens in place so the
+            page header stays near the top. */}
+        <div className="mb-4 flex flex-wrap items-center gap-2 empty:hidden md:mb-3">
+          <div className="md:hidden">
+            <BusinessSelector compact teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} />
+          </div>
+          <details className="[&[open]]:basis-full md:hidden">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium">
+              <MessageSquare className="size-3.5" /> Conversations
+            </summary>
+            <div className="mt-2 h-[min(65dvh,32rem)] overflow-hidden rounded-xl border"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
+          </details>
+          {teams.find(t => t.id === business && t.can_manage) && <BusinessAccess team={teams.find(t => t.id === business)!} onChanged={() => { void refresh(); }} />}
+        </div>
         <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
