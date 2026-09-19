@@ -10,7 +10,7 @@ import {
 import { createConversationWakeupScheduler } from '../src/scheduled/wakeups.js';
 import { createConversationManager } from '../src/runtime/conversationManager.js';
 import type { ConversationRow, UserRow } from '../src/db/db.js';
-import type { ProviderAdapter } from '../src/providers/types.js';
+import type { SteerDelivery, ProviderAdapter } from '../src/providers/types.js';
 import { autoArchiveInactiveConversations } from '../src/routes/chatAutoArchive.js';
 import { createBotsRouter } from '../src/bots/routes.js';
 import express from 'express';
@@ -24,6 +24,8 @@ describe('VeneerBots', () => {
   let bot: Actor;
   let manager: ReturnType<typeof createConversationManager>;
   let scheduler: ReturnType<typeof createConversationWakeupScheduler>;
+  let adapter: ProviderAdapter;
+  let steer: ((text: string) => Promise<boolean | SteerDelivery>) | undefined;
   const runs: { prompt: string; finish: () => void }[] = [];
   beforeEach(() => {
     db = new Database(':memory:');
@@ -53,7 +55,8 @@ describe('VeneerBots', () => {
     s.register(human, 'fixture-a', 'Fixture Atlas', true);
     s.register(human, 'fixture-b', 'Fixture Robin', true);
     runs.length = 0;
-    const adapter: ProviderAdapter = {
+    steer = undefined;
+    adapter = {
       id: 'claude',
       mintSessionId: () => '',
       readTranscript: async () => [],
@@ -66,11 +69,12 @@ describe('VeneerBots', () => {
           };
         });
         runs.push({ prompt: spec.prompt, finish });
-        return { done, kill: finish, respondToApproval: () => true };
+        return { done, kill: finish, respondToApproval: () => true, ...(steer ? { steer } : {}) };
       },
     };
     manager = createConversationManager({
       db,
+      steerAckWaitMs: 5,
       adapters: { claude: adapter },
       resolveWorkspace: () => ({
         workspaceDir: '/tmp',
@@ -107,6 +111,99 @@ describe('VeneerBots', () => {
       proposal_key: 'draft',
       proposal: proposal(),
     });
+  it('steers a human discussion once to the active owner, retiring only the acknowledged row', async () => {
+    let ack!: (ok: boolean) => void;
+    const seen: string[] = [];
+    steer = async text => { seen.push(text); return { acknowledged: new Promise<boolean>(resolve => { ack = resolve; }) }; };
+    const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+    manager.postMessage(conv, 'Unrelated authorized work');
+    await flush();
+    const d = raise();
+    s.reply(human, d.id, 'thread-1', 'Please clarify in this decision.');
+    scheduler.tick();
+    await new Promise(resolve => setTimeout(resolve, 15));
+    scheduler.tick();
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain(d.id);
+    expect(seen[0]).toContain('Please clarify in this decision.');
+    expect(db.prepare('SELECT count(*) AS n FROM queued_messages').get()).toEqual({ n: 1 });
+    expect(s.thread(human, d.id).events.some(e => e.payload_json.includes('written_awaiting_ack'))).toBe(true);
+    ack(true);
+    await flush();
+    expect(db.prepare('SELECT count(*) AS n FROM queued_messages').get()).toEqual({ n: 0 });
+    expect(s.thread(human, d.id).events.some(e => e.payload_json.includes('provider_consumed'))).toBe(true);
+    const w = db.prepare('SELECT id FROM conversation_wakeups').get() as { id: string };
+    expect(manager.deliverWakeup(conv, seen[0]!, w.id).disposition).toBe('duplicate');
+    expect(seen).toHaveLength(1);
+    runs[0]!.finish(); await flush();
+    expect(runs).toHaveLength(1);
+    expect(s.read(human, d.id).state).toBe('needs_input');
+  });
+  it.each(['unsupported', 'other_actor', 'write_failed'])('keeps the same durable discussion fallback for %s', async reason => {
+    const seen = vi.fn(async () => false);
+    if (reason !== 'unsupported') steer = seen;
+    const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+    manager.postMessage(conv, 'Existing turn', reason === 'other_actor' ? 2 : 1);
+    await flush();
+    const d = raise();
+    s.reply(human, d.id, 'thread', 'Discussion fallback'); scheduler.tick(); await flush();
+    expect(db.prepare('SELECT count(*) AS n FROM queued_messages').get()).toEqual({ n: 1 });
+    expect(seen).toHaveBeenCalledTimes(reason === 'write_failed' ? 1 : 0);
+    runs[0]!.finish(); await flush();
+    expect(runs).toHaveLength(2);
+    expect(runs[1]!.prompt).toContain('Discussion fallback');
+  });
+  it.each(['version', 'access'])('rechecks %s before a queued discussion starts', async change => {
+    const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+    manager.postMessage(conv, 'Existing turn'); await flush();
+    const d = raise(); s.reply(human, d.id, 'thread', 'Stale proposal question'); scheduler.tick(); await flush();
+    if (change === 'version') s.revise(bot, d.id, 1, 'revise', proposal({ recommendation: 'New material evidence' }));
+    else s.register(human, 'fixture-a', 'Fixture Atlas', false);
+    runs[0]!.finish(); await flush();
+    expect(runs).toHaveLength(1);
+    expect(db.prepare("SELECT count(*) AS n FROM bot_decision_events WHERE decision_id=? AND kind='discussion_delivery' AND json_extract(payload_json,'$.stage')='cancelled'").get(d.id)).toEqual({ n: 1 });
+  });
+  it('retries a crash-after-enqueue discussion receipt without a second steer or message', async () => {
+    steer = vi.fn(async () => true);
+    const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+    manager.postMessage(conv, 'Existing turn'); await flush();
+    const d = raise(); s.reply(human, d.id, 'thread', 'Exactly once discussion');
+    const crashing = createConversationWakeupScheduler({ db, manager: {
+      deliverWakeup(...args) { manager.deliverWakeup(...args); throw new Error('Simulated scheduler crash'); },
+    }, log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } });
+    crashing.tick(); await flush();
+    expect(db.prepare('SELECT status FROM conversation_wakeups').get()).toEqual({ status: 'pending' });
+    scheduler.tick(); await flush();
+    expect(steer).toHaveBeenCalledTimes(1);
+    expect(db.prepare('SELECT count(*) AS n FROM hub_inbound_messages').get()).toEqual({ n: 1 });
+    expect(db.prepare('SELECT count(*) AS n FROM queued_messages').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT status FROM conversation_wakeups').get()).toEqual({ status: 'delivered' });
+  });
+  it('recovers a queued discussion after runtime restart without creating another message', async () => {
+    const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+    manager.postMessage(conv, 'Long original turn'); await flush();
+    const d = raise(); s.reply(human, d.id, 'thread', 'Durable discussion after restart'); scheduler.tick(); await flush();
+    const w = db.prepare('SELECT id,reason FROM conversation_wakeups').get() as { id: string; reason: string };
+    // Simulated process death: the old adapter never finishes or drains its queue.
+    manager = createConversationManager({ db, adapters: { claude: adapter },
+      resolveWorkspace: () => ({ workspaceDir: '/tmp', assistantSlug: 'assistant', elevated: false, fullAccess: false }),
+      log: { warn: vi.fn(), error: vi.fn() },
+    });
+    manager.resumeInterruptedTurns(); await flush();
+    expect(manager.deliverWakeup(conv, w.reason, w.id).disposition).toBe('duplicate');
+    runs.at(-1)!.finish(); await flush();
+    expect(runs.filter(r => r.prompt.includes('Durable discussion after restart'))).toHaveLength(1);
+    expect(db.prepare('SELECT count(*) AS n FROM hub_inbound_messages').get()).toEqual({ n: 1 });
+  });
+  it('never live-steers approvals or ordinary wakeups', async () => {
+    steer = vi.fn(async () => true);
+    const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+    manager.postMessage(conv, 'Existing turn'); await flush();
+    const d = raise(); s.answer(human, d.id, 1, 'approve', { action: 'approve', text: 'Internal fixture only', scope: 'this_case' });
+    scheduler.tick(); manager.deliverWakeup(conv, 'Ordinary reminder', 'ordinary-fixture'); await flush();
+    expect(steer).not.toHaveBeenCalled();
+    expect(db.prepare('SELECT count(*) AS n FROM queued_messages').get()).toEqual({ n: 2 });
+  });
   it('keeps six questions across two permanent bots for five hours; reversible registration and auto-archive exemption', () => {
     for (const a of [bot, { ...bot, conversationId: 'fixture-b' }])
       for (let i = 0; i < 3; i++) raise(`case${i}`, a);

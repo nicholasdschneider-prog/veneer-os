@@ -107,3 +107,27 @@ export function botWakeCancelled(
       `delivery-blocked:${w.id}`,
     );
 }
+
+/** Only human discussion events qualify; answers and ordinary wakeups never steer. */
+export function botDiscussionWake(db: Database.Database, wakeupId: string): ConversationWakeupRow | undefined {
+  return db.prepare(`SELECT w.* FROM conversation_wakeups w JOIN bot_decision_events e ON e.id=w.id
+    WHERE w.id=? AND w.wake_key='bot-decision:' || w.id AND e.kind='message'
+    AND e.actor_conversation_id IS NULL`).get(wakeupId) as ConversationWakeupRow | undefined;
+}
+
+export function recordDiscussionDelivery(db: Database.Database, wakeupId: string, stage: string, reason?: string) {
+  db.prepare(`INSERT OR IGNORE INTO bot_decision_events
+    (id,decision_id,version,kind,actor_id,payload_json,request_key)
+    SELECT ?,decision_id,version,'discussion_delivery',actor_id,?,? FROM bot_decision_events
+    WHERE id=? AND kind='message' AND actor_conversation_id IS NULL`).run(
+    crypto.randomUUID(), JSON.stringify({ message_id: wakeupId, stage, ...(reason ? { reason } : {}) }),
+    `discussion-delivery:${wakeupId}:${stage}`, wakeupId,
+  );
+}
+
+/** New deliveries only: never sweep/re-steer older already-delivered incident messages. */
+export function queuedDiscussionWake(db: Database.Database, conversationId: string, messageId: number): ConversationWakeupRow | undefined {
+  return db.prepare(`SELECT w.* FROM hub_inbound_messages h JOIN conversation_wakeups w ON h.idempotency_key='wakeup:' || w.id
+    JOIN bot_decision_events e ON e.request_key='discussion-delivery:' || w.id || ':queued'
+    WHERE h.conversation_id=? AND h.message_id=? AND h.source_kind='wakeup' AND e.kind='discussion_delivery'`).get(conversationId, messageId) as ConversationWakeupRow | undefined;
+}

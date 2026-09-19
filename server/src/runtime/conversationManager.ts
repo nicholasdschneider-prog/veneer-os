@@ -1,3 +1,4 @@
+import { botDiscussionWake, botWakeAllowed, queuedDiscussionWake, recordDiscussionDelivery } from '../bots/delivery.js';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -1370,6 +1371,15 @@ export function createConversationManager({
     if (failedTurnStmt.get(conv.id)) return;
     const item = entry.queue.shift();
     if (item === undefined) return;
+    const discussion = item.id === null ? undefined : queuedDiscussionWake(db, conv.id, item.id);
+    if (discussion && !botWakeAllowed(db, discussion, conv)) {
+      deleteQueuedMessageStmt.run(item.id);
+      recordDiscussionDelivery(db, discussion.id, 'cancelled', 'Access or proposal version changed before queued execution');
+      emitQueue(conv.id);
+      void runNext(conv);
+      return;
+    }
+    if (discussion) recordDiscussionDelivery(db, discussion.id, 'turn_started');
     const text = item.prompt;
     const skillPrompt = providerSkillPrompt(conv.provider, text);
     const visibleText = skillPrompt.visible;
@@ -1785,6 +1795,7 @@ export function createConversationManager({
     idempotency?: { key: string; sourceKind: 'wakeup' },
     actorUserId: number | null = conv.user_id,
     origin?: MessageOrigin,
+    onPersisted?: () => void,
   ): PostMessageResult {
     const entry = entryFor(conv.id);
     const disposition: PostMessageResult['disposition'] =
@@ -1817,6 +1828,7 @@ export function createConversationManager({
         );
         const id = Number(info.lastInsertRowid);
         insertInboundReceiptStmt.run(idempotency.key, conv.id, id, idempotency.sourceKind);
+        onPersisted?.();
         return { messageId: id, duplicate: false };
       })();
       if (stored.duplicate) {
@@ -1842,16 +1854,10 @@ export function createConversationManager({
     };
   }
 
-  return {
-    bus,
-    postMessage(conv, text, actorUserId = conv.user_id, origin) {
-      return enqueueMessage(conv, text, true, undefined, actorUserId, origin);
-    },
-    async steerMessage(conv, text, _idempotencyKey, actorUserId = conv.user_id, origin) {
-      // Persist before touching the provider. If steering is unavailable, the
-      // process dies, or the turn ends during the request, runNext still owns a
-      // durable ordinary-turn fallback.
-      const posted = enqueueMessage(conv, text, true, undefined, actorUserId, origin);
+  async function steerQueued(
+    conv: ConversationRow, text: string, posted: PostMessageResult,
+    actorUserId: number | null, origin?: MessageOrigin, onConsumed?: () => void,
+  ): Promise<PostMessageResult> {
       if (posted.disposition === 'duplicate') return posted;
       if (posted.disposition !== 'queued') return posted;
       const entry = entryFor(conv.id);
@@ -1893,7 +1899,11 @@ export function createConversationManager({
         // "Send now" replaces that turn, and a late echo from the dying process
         // must not retire a row whose message nobody will ever answer.
         if (entry.turn !== steeredTurn || steeredTurn.discarded) return;
-        const deleted = deleteConversationQueuedMessageStmt.run(posted.messageId, conv.id);
+        const deleted = db.transaction(() => {
+          const result = deleteConversationQueuedMessageStmt.run(posted.messageId, conv.id);
+          if (result.changes > 0) onConsumed?.();
+          return result;
+        })();
         if (deleted.changes > 0) {
           entry.queue = entry.queue.filter((item) => item.id !== posted.messageId);
           emitQueue(conv.id);
@@ -1960,16 +1970,43 @@ export function createConversationManager({
         disposition: 'delivered',
         queue: queueSnapshot(conv.id),
       };
+  }
+
+  return {
+    bus,
+    postMessage(conv, text, actorUserId = conv.user_id, origin) {
+      return enqueueMessage(conv, text, true, undefined, actorUserId, origin);
+    },
+    async steerMessage(conv, text, _idempotencyKey, actorUserId = conv.user_id, origin) {
+      const posted = enqueueMessage(conv, text, true, undefined, actorUserId, origin);
+      return steerQueued(conv, text, posted, actorUserId, origin);
     },
     queueMessage(conv, text, actorUserId = conv.user_id, origin) {
       return enqueueMessage(conv, text, false, undefined, actorUserId, origin);
     },
     deliverWakeup(conv, text, wakeupId, actorUserId = conv.user_id) {
+      const discussion = botDiscussionWake(db, wakeupId);
+      if (discussion && !botWakeAllowed(db, discussion, conv)) throw new Error('Discussion access or version changed');
       const name = assistantNameFor(conv);
-      return enqueueMessage(conv, text, false, {
-        key: `wakeup:${wakeupId}`,
-        sourceKind: 'wakeup',
-      }, actorUserId, { kind: 'wakeup', from: name, to: name });
+      const origin: MessageOrigin = { kind: 'wakeup', from: name, to: name };
+      const posted = enqueueMessage(conv, text, false, {
+        key: `wakeup:${wakeupId}`, sourceKind: 'wakeup',
+      }, actorUserId, origin, discussion ? () => recordDiscussionDelivery(db, wakeupId, 'queued') : undefined);
+      if (discussion && posted.disposition !== 'duplicate') {
+        if (posted.disposition === 'queued') {
+          // The original durable row remains until the provider acknowledges it.
+          // Retries use the receipt above and never issue another steer.
+          void steerQueued(conv, text, posted, actorUserId, origin, () =>
+            recordDiscussionDelivery(db, wakeupId, 'provider_consumed'),
+          ).then(result => {
+            if (result.disposition !== 'steered') {
+              const stage = result.disposition === 'delivered' ? 'written_awaiting_ack' : 'queued_fallback';
+              recordDiscussionDelivery(db, wakeupId, stage, result.steerReason);
+            }
+          }).catch(() => recordDiscussionDelivery(db, wakeupId, 'queued_fallback', 'steer_failed'));
+        }
+      }
+      return posted;
     },
     queueSnapshot,
     updateQueuedMessage(conversationId, messageId, text, actorUserId) {
