@@ -46,4 +46,4 @@ Append-only `discussion_delivery` audit entries distinguish `queued`, `queued_fa
 
 ## Deployment
 
-Pending final required checks and root restart. No historical message replay or migration is required for adoption.
+Deployed source commit `92e32ac`, pushed to `origin/main`. The required root restart completed after passing checks; web, runner, app-runner, terminal and browser-manager are healthy ([restart output](./restart.txt)). No additional restart, historical message replay or migration is required for adoption.
