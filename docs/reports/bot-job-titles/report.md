@@ -32,4 +32,4 @@ Reproduce browser validation with Node24: run `node --import tsx scripts/bots-br
 
 ## Deployment
 
-No migration or enrollment required. Deployment status will be recorded after the required root restart completes.
+Deployed source commit `2118beb`, pushed to `origin/main`. The required root restart completed successfully after all checks passed; web, runner, app-runner, terminal and browser-manager are healthy ([restart output](./restart.txt)). No migration, enrollment or additional restart is required.
