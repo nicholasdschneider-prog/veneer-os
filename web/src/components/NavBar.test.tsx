@@ -283,24 +283,24 @@ describe('NavShell mobile bar', () => {
     expect(render()).not.toContain('aria-label="New chat"');
   });
 
-  it('reads Chats · Automations · More · Settings, everything else behind More', () => {
+  it('reads Chats · VeneerBots · More · Settings, everything else behind More', () => {
     const html = render();
     const menu = html.slice(html.indexOf('aria-label="More navigation"'));
 
     // Only the mobile items carry a `title` (the desktop rail uses tooltips
     // instead), so a title is the tell for "this is in the bottom bar".
     expect(html).toContain('title="Chats"');
-    expect(html).toContain('title="Automations"');
+    expect(html).toContain('title="VeneerBots"');
     expect(html).toContain('title="Settings"');
     expect(html).toContain('aria-label="More navigation"');
-    expect(html.indexOf('title="Chats"')).toBeLessThan(html.indexOf('title="Automations"'));
-    expect(html.indexOf('title="Automations"')).toBeLessThan(html.indexOf('aria-label="More navigation"'));
+    expect(html.indexOf('title="Chats"')).toBeLessThan(html.indexOf('title="VeneerBots"'));
+    expect(html.indexOf('title="VeneerBots"')).toBeLessThan(html.indexOf('aria-label="More navigation"'));
     expect(html.indexOf('aria-label="More navigation"')).toBeLessThan(html.lastIndexOf('title="Settings"'));
     for (const label of ['Pages', 'Apps', 'Sales Pulse']) {
       expect(html).not.toContain(`title="${label}"`);
       expect(menu).toContain(label);
     }
-    expect(menu).not.toContain('>Automations<');
+    expect(html).not.toContain('title="Automations"');
   });
 });
 

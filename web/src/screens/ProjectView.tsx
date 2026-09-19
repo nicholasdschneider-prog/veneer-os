@@ -66,7 +66,7 @@ export function ProjectView({
 
   const projectJobs = buildJobs.filter((job) => job.projectId === projectId);
   const queuedIds = new Set(buildJobs.map((job) => job.conversationId));
-  const listedConversations = conversations?.filter((conversation) => !queuedIds.has(conversation.id)) ?? null;
+  const listedConversations = conversations?.filter((conversation) => !conversation.isBot && !queuedIds.has(conversation.id)) ?? null;
   const pagination = listedConversations === null
     ? null
     : getConversationListPagination(listedConversations, selectedId, 'created');

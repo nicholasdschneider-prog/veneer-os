@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Bot,
   Ellipsis,
   MessageSquare,
   Settings,
@@ -35,6 +36,7 @@ import {
 import { DESKTOP_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 
 export type NavKey =
+  | 'bots'
   | 'chats'
   | 'automations'
   | 'todos'
@@ -47,6 +49,7 @@ export type NavSelection = NavKey | `app:${string}`;
 type Item = { key: NavSelection; label: string; icon: LucideIcon; hash: string };
 
 const CHATS: Item = { key: 'chats', label: 'Chats', icon: MessageSquare, hash: '#/' };
+const BOTS: Item = { key: 'bots', label: 'VeneerBots', icon: Bot, hash: '#/bots' };
 const SETTINGS: Item = { key: 'settings', label: 'Settings', icon: Settings, hash: '#/settings' };
 const SYSTEM_USAGE_POLL_MS = 5_000;
 /** Where a usage ring goes when tapped (see resolveSettingsRoute in App.tsx). */
@@ -303,13 +306,12 @@ export function NavShell({
         hash: `#/apps/${encodeURIComponent(item.appId)}`,
       };
     });
-  const desktopItems = [CHATS, ...configuredItems];
-  // Mobile bar, left to right: Chats · Automations · More · Claude ring ·
-  // Settings. Automations earns a slot (when the admin config shows it); every
-  // other configured item — including pinned Mini Apps — sits behind More so the
+  const desktopItems = [CHATS, BOTS, ...configuredItems];
+  // Mobile bar, left to right: Chats · VeneerBots · More · Claude ring ·
+  // Settings. Every configured item, including Automations and pinned Mini Apps,
+  // sits behind More so the
   // bar has room for the usage ring and stays comfortable for thumbs.
-  const mobileAutomations = configuredItems.find((item) => item.key === 'automations') ?? null;
-  const mobileOverflow = configuredItems.filter((item) => item.key !== 'automations');
+  const mobileOverflow = configuredItems;
   const renderItem = (it: Item, desktop = false) => {
     const active = it.key === current;
     const Icon = it.icon;
@@ -394,7 +396,7 @@ export function NavShell({
         <div className={cn('flex min-w-0 flex-1 items-stretch', isDesktop && 'min-h-0 flex-col')}>
           <div className={cn('min-w-0 flex-1 items-stretch', isDesktop ? 'hidden' : 'flex')}>
             {renderItem(CHATS)}
-            {mobileAutomations ? renderItem(mobileAutomations) : null}
+            {renderItem(BOTS)}
             {mobileOverflow.length ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

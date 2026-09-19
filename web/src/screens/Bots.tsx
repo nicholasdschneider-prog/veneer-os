@@ -1,0 +1,884 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Bot as BotIcon,
+  Check,
+  Hand,
+  MessageSquare,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  botsApi,
+  decisionLabel,
+  type Bot,
+  type BotDecision,
+  type BotThread,
+} from '@/lib/bots';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+const field =
+  'w-full rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring';
+function when(value: string) {
+  const date = new Date(
+    value.includes('T') ? value : value.replace(' ', 'T') + 'Z',
+  );
+  const hours = Math.max(
+    0,
+    Math.floor((Date.now() - date.getTime()) / 3600000),
+  );
+  return hours < 1
+    ? 'Less than an hour ago'
+    : hours < 24
+      ? `${hours}h ago`
+      : `${Math.floor(hours / 24)}d ago`;
+}
+function State({ state }: { state: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+        state === 'needs_input'
+          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+          : state === 'failed' || state === 'blocked'
+            ? 'bg-destructive/10 text-destructive'
+            : state === 'verified_completed'
+              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+              : 'bg-muted text-muted-foreground',
+      )}
+    >
+      {decisionLabel(state)}
+    </span>
+  );
+}
+export function Bots({
+  decisionId,
+  onNavigate,
+}: {
+  decisionId?: string;
+  onNavigate: (hash: string) => void;
+}) {
+  const currentRoute = useRef(decisionId);
+  currentRoute.current = decisionId;
+  const reviewedVersion = useRef<number | null>(null);
+  const pendingRequests = useRef(new Map<string, string>());
+  const send = async (
+    id: string,
+    kind: string,
+    body: Record<string, unknown>,
+  ) => {
+    const fingerprint = JSON.stringify([id, kind, body]);
+    const key = pendingRequests.current.get(fingerprint) ?? crypto.randomUUID();
+    pendingRequests.current.set(fingerprint, key);
+    const result = await botsApi.mutate(id, kind, {
+      ...body,
+      request_key: key,
+    });
+    pendingRequests.current.delete(fingerprint);
+    return result;
+  };
+  const [stale, setStale] = useState(false);
+  const [filter, setFilter] = useState('me');
+  const [bots, setBots] = useState<Bot[]>([]);
+  const [decisions, setDecisions] = useState<BotDecision[]>([]);
+  const [detail, setDetail] = useState<BotThread | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [candidates, setCandidates] = useState<
+    { id: string; title: string | null }[]
+  >([]);
+  const [chatId, setChatId] = useState('');
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [scope, setScope] = useState('this_case');
+  const [editing, setEditing] = useState(false);
+  const [recommendation, setRecommendation] = useState('');
+  const [amendQuestion, setAmendQuestion] = useState('');
+  const [amendConsequence, setAmendConsequence] = useState('');
+  const [amendAction, setAmendAction] = useState('');
+  const refresh = useCallback(async () => {
+    const [list, thread] = await Promise.all([
+      botsApi.list(filter),
+      decisionId ? botsApi.detail(decisionId) : Promise.resolve(null),
+    ]);
+    if (currentRoute.current !== decisionId) return;
+    if (
+      thread &&
+      reviewedVersion.current !== null &&
+      reviewedVersion.current !== thread.decision.version
+    ) {
+      setAnswer('');
+      setScope('this_case');
+      setEditing(false);
+    }
+    reviewedVersion.current = thread?.decision.version ?? null;
+    setStale(false);
+    setBots(list.bots);
+    setDecisions(list.decisions);
+    setDetail(thread);
+    setLoading(false);
+  }, [filter, decisionId]);
+  useEffect(() => {
+    let active = true;
+    void refresh().catch((e) => {
+      if (active) {
+        setError(e.message);
+        setLoading(false);
+      }
+    });
+    const timer = setInterval(() => {
+      void Promise.all([
+        botsApi.list(filter),
+        decisionId ? botsApi.detail(decisionId) : Promise.resolve(null),
+      ])
+        .then(([list, thread]) => {
+          if (active && currentRoute.current === decisionId) {
+            setBots(list.bots);
+            setDecisions(list.decisions);
+            if (thread && reviewedVersion.current === thread.decision.version)
+              setDetail(thread);
+            else if (thread) setStale(true);
+          }
+        })
+        .catch((e) => {
+          if (active) {
+            setError(e.message);
+            if (e.status === 403 || e.status === 404) setDetail(null);
+          }
+        });
+    }, 5000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [refresh, filter]);
+  useEffect(() => {
+    reviewedVersion.current = null;
+    setStale(false);
+    setMessage('');
+    setAnswer('');
+    setScope('this_case');
+    setEditing(false);
+    setDetail(null);
+  }, [decisionId]);
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError('');
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const mutate = (kind: string, body: Record<string, unknown>) =>
+    send(decisionId!, kind, {
+      expected_version: detail!.decision.version,
+      ...body,
+    });
+  const needs = decisions.filter((d) => d.state === 'needs_input');
+  const execution = decisions.filter((d) => d.state !== 'needs_input');
+  const d = detail?.decision;
+  const openRegistration = () =>
+    void act(async () => {
+      setCandidates((await botsApi.candidates()).conversations);
+      setRegistering(true);
+    });
+  return (
+    <div className="h-full overflow-y-auto bg-background">
+      <div className="mx-auto max-w-6xl px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-8">
+        <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <BotIcon className="size-4" /> Your operational team
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              VeneerBots
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+              A home for your ongoing work. Answer a question; your bot picks up
+              where it left off.
+            </p>
+          </div>
+          <Button
+            className="min-h-11"
+            variant="outline"
+            onClick={openRegistration}
+            disabled={busy}
+          >
+            <Plus className="mr-2 size-4" />
+            Register a bot
+          </Button>
+        </header>
+        {stale && (
+          <div role="alert" className="mb-4 rounded-xl border p-3 text-sm">
+            This proposal has changed.{' '}
+            <button className="underline" onClick={() => void act(refresh)}>
+              Review the new version
+            </button>
+          </div>
+        )}
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl border border-destructive/30 p-3 text-sm text-destructive"
+          >
+            {error}
+            <button
+              className="ml-3 underline"
+              onClick={() => void act(refresh)}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {registering && (
+          <form
+            className="mb-6 grid gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void act(async () => {
+                await botsApi.register(chatId, name, true);
+                setRegistering(false);
+              });
+            }}
+          >
+            <div className="sm:col-span-2">
+              <h2 className="font-medium">Register an existing chat</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Its history, model, and ownership stay with the same chat. You
+                can return it to Chats at any time.
+              </p>
+            </div>
+            <label className="grid gap-1 text-sm">
+              Chat
+              <select
+                required
+                className={field}
+                value={chatId}
+                onChange={(e) => {
+                  setChatId(e.target.value);
+                  setName(
+                    candidates.find((c) => c.id === e.target.value)?.title ??
+                      '',
+                  );
+                }}
+              >
+                <option value="">Choose your chat</option>
+                {candidates.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title ?? c.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              Bot name
+              <input
+                required
+                maxLength={100}
+                className={field}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+            <div className="flex gap-2">
+              <Button disabled={busy || !chatId || !name} type="submit">
+                Register bot
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setRegistering(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+        <div
+          className="mb-6 flex flex-wrap items-center gap-2"
+          aria-label="Decision filters"
+        >
+          {[
+            ['me', 'For me'],
+            ['team', 'My team'],
+            ['all', 'All I can access'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value!)}
+              aria-pressed={filter === value}
+              className={cn(
+                'min-h-10 rounded-full px-4 text-sm font-medium',
+                filter === value
+                  ? 'bg-foreground text-background'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            aria-label="Refresh bots"
+            onClick={() => void act(refresh)}
+            className="ml-auto rounded-full p-3 text-muted-foreground"
+          >
+            <RefreshCw className="size-4" />
+          </button>
+        </div>
+        <div
+          className={cn(
+            'grid gap-6',
+            decisionId && 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]',
+          )}
+        >
+          <div className={cn('min-w-0', decisionId && 'hidden lg:block')}>
+            <section aria-labelledby="raised-hands">
+              <div className="mb-3 flex items-center gap-2">
+                <Hand className="size-5 text-amber-600 dark:text-amber-300" />
+                <h2 id="raised-hands" className="text-lg font-semibold">
+                  Needs your input
+                </h2>
+                <span className="rounded-full bg-muted px-2 text-sm text-muted-foreground">
+                  {needs.length}
+                </span>
+              </div>
+              {loading ? (
+                <p className="py-8 text-muted-foreground">Loading your team…</p>
+              ) : needs.length === 0 ? (
+                <div className="rounded-2xl border border-dashed p-6">
+                  <Check className="mb-2 size-5 text-muted-foreground" />
+                  <p className="font-medium">No questions waiting here</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Questions stay here until someone gives an explicit answer.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className={cn('grid gap-3', !decisionId && 'md:grid-cols-2')}
+                >
+                  {needs.map((item) => (
+                    <DecisionCard
+                      key={item.id}
+                      d={item}
+                      onOpen={() => onNavigate('#/bots/' + item.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+            {execution.length > 0 && (
+              <section className="mt-7" aria-label="Execution status">
+                <h2 className="mb-3 text-lg font-semibold">
+                  Following through
+                </h2>
+                <div className="grid gap-3">
+                  {execution.map((item) => (
+                    <DecisionCard
+                      key={item.id}
+                      d={item}
+                      onOpen={() => onNavigate('#/bots/' + item.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+            <section className="mt-8" aria-labelledby="bot-roster">
+              <h2 id="bot-roster" className="mb-3 text-lg font-semibold">
+                Your bots{' '}
+                <span className="ml-1 text-sm font-normal text-muted-foreground">
+                  {bots.length}
+                </span>
+              </h2>
+              {bots.length === 0 && !loading && (
+                <p className="rounded-2xl border p-5 text-sm text-muted-foreground">
+                  Register an existing operational chat to give it a place here.
+                </p>
+              )}
+              <div className="divide-y rounded-2xl border bg-card">
+                {bots.map((bot) => (
+                  <div
+                    key={bot.conversation_id}
+                    className="flex flex-wrap items-center gap-3 p-4"
+                  >
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                      <BotIcon className="size-5" />
+                    </div>
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() =>
+                        onNavigate(`#/chat/${bot.conversation_id}?from=bots`)
+                      }
+                    >
+                      <span className="block break-words font-medium">
+                        {bot.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {bot.archived ? 'Archived · ' : ''}
+                        {bot.state} · {bot.questions} waiting{' '}
+                        {bot.questions === 1 ? 'question' : 'questions'}
+                      </span>
+                    </button>
+                    <ArrowUpRight className="size-4 text-muted-foreground" />
+                    {bot.can_manage && (
+                      <button
+                        className="text-xs text-muted-foreground underline"
+                        disabled={busy}
+                        onClick={() =>
+                          void act(() =>
+                            botsApi.register(
+                              bot.conversation_id,
+                              bot.name,
+                              false,
+                            ),
+                          )
+                        }
+                      >
+                        Return to Chats
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+          {decisionId && (
+            <section
+              className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5"
+              aria-label="Decision thread"
+            >
+              <button
+                className="mb-5 flex min-h-10 items-center gap-2 text-sm text-muted-foreground"
+                onClick={() => onNavigate('#/bots')}
+              >
+                <ArrowLeft className="size-4" />
+                All questions
+              </button>
+              {!d ? (
+                <p>Loading decision…</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{d.bot_name}</span>
+                    <State state={d.state} />
+                  </div>
+                  <h2 className="mt-4 text-xl font-semibold leading-snug">
+                    {d.proposal.question}
+                  </h2>
+                  <p className="mt-2 break-all text-xs text-muted-foreground">
+                    {d.id} · Proposal v{d.version}
+                  </p>
+                  <div className="mt-5 rounded-xl bg-muted/60 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Recommendation
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm">
+                      {d.proposal.recommendation}
+                    </p>
+                    <p className="mt-3 text-sm font-medium">
+                      {d.proposal.consequence}
+                    </p>
+                  </div>
+                  <dl className="mt-4 grid gap-3 text-sm">
+                    <div>
+                      <dt className="text-muted-foreground">Waiting on</dt>
+                      <dd>
+                        {d.assignee_name}
+                        {d.proposal.team && ` · ${d.proposal.team}`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">
+                        Dependent action
+                      </dt>
+                      <dd>
+                        {d.proposal.blocked_action}{' '}
+                        <span className="text-muted-foreground">
+                          · Blocks{' '}
+                          {d.proposal.blocks_scope === 'task'
+                            ? 'this task only'
+                            : 'the whole workload'}
+                        </span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Timing</dt>
+                      <dd>
+                        {when(d.created_at)} ·{' '}
+                        {d.proposal.deadline
+                          ? `Due ${new Date(d.proposal.deadline).toLocaleString()}`
+                          : 'No deadline'}
+                      </dd>
+                    </div>
+                  </dl>
+                  {d.proposal.evidence.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-medium">
+                        Evidence & context
+                      </h3>
+                      {d.proposal.evidence.map((e, i) => (
+                        <a
+                          key={i}
+                          href={`#/chat/${e.conversation_id}?from=bots`}
+                          className="mt-2 block text-sm underline"
+                        >
+                          {e.label} ↗
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {d.answer && (
+                    <div className="mt-4 rounded-xl border p-3 text-sm">
+                      <p className="font-medium">
+                        {d.answer.action} ·{' '}
+                        {d.answer.scope === 'this_case'
+                          ? 'This case only'
+                          : 'Standing rule requested'}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap">
+                        {d.answer.text}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Recorded answer; execution is tracked separately.
+                      </p>
+                      {!d.dismissed && (
+                        <button
+                          className="mt-3 underline"
+                          disabled={busy}
+                          onClick={() =>
+                            void act(() =>
+                              botsApi.mutate(d.id, 'dismiss', {
+                                expected_version: d.version,
+                              }),
+                            )
+                          }
+                        >
+                          Dismiss from my input queue
+                        </button>
+                      )}
+                      {d.dismissed && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Dismissed from your input queue. Execution remains
+                          visible.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {d.result && (
+                    <div className="mt-4 rounded-xl border p-3 text-sm">
+                      <State state={d.result.state} />
+                      <p className="mt-2 whitespace-pre-wrap">
+                        {d.result.evidence}
+                      </p>
+                    </div>
+                  )}
+                  {d.parked && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Work parked: {d.parked.evidence}
+                    </p>
+                  )}
+                  <div className="mt-6 border-t pt-5">
+                    <h3 className="flex items-center gap-2 font-medium">
+                      <MessageSquare className="size-4" />
+                      Discussion with {d.bot_name}
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Replies go to this bot’s existing conversation.
+                    </p>
+                    <div className="my-4 space-y-3">
+                      {detail?.messages.map((m) => (
+                        <div
+                          key={m.id}
+                          className={cn(
+                            'rounded-xl p-3 text-sm',
+                            m.actor_conversation_id ? 'bg-muted/60' : 'border',
+                          )}
+                        >
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">
+                            {m.actor_conversation_id
+                              ? d.bot_name
+                              : m.actor_name}{' '}
+                            · {when(m.created_at)}
+                          </p>
+                          <p className="whitespace-pre-wrap break-words">
+                            {m.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void act(async () => {
+                          await send(d.id, 'thread', {
+                            text: message,
+                          });
+                          setMessage('');
+                        });
+                      }}
+                    >
+                      <label className="sr-only" htmlFor="bot-message">
+                        Message to bot
+                      </label>
+                      <textarea
+                        id="bot-message"
+                        className={field}
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder="Ask a question or add context…"
+                        required
+                        rows={3}
+                      />
+                      <Button
+                        className="mt-2 min-h-11"
+                        type="submit"
+                        variant="outline"
+                        disabled={busy || !message.trim()}
+                      >
+                        Send to {d.bot_name}
+                      </Button>
+                    </form>
+                  </div>
+                  {d.state === 'needs_input' &&
+                    (d.can_answer ? (
+                      <div className="mt-6 border-t pt-5">
+                        <h3 className="font-medium">
+                          Your decision · v{d.version}
+                        </h3>
+                        <label className="mt-3 block text-sm">
+                          Answer or reasoning
+                          <textarea
+                            className={cn(field, 'mt-1')}
+                            rows={3}
+                            value={answer}
+                            onChange={(e) => setAnswer(e.target.value)}
+                          />
+                        </label>
+                        <label className="mt-3 block text-sm">
+                          Applies to
+                          <select
+                            className={cn(field, 'mt-1')}
+                            value={scope}
+                            onChange={(e) => setScope(e.target.value)}
+                          >
+                            <option value="this_case">This case only</option>
+                            <option value="standing_rule">
+                              Standing rule (record intent)
+                            </option>
+                          </select>
+                        </label>
+                        {scope === 'standing_rule' && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            This records your intent. Existing policy and
+                            financial approvals still apply.
+                          </p>
+                        )}
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {['approve', 'reject', 'defer', 'withdraw'].map(
+                            (action) => (
+                              <Button
+                                key={action}
+                                className="min-h-11"
+                                variant={
+                                  action === 'approve' ? 'default' : 'outline'
+                                }
+                                disabled={busy || stale || !answer.trim()}
+                                onClick={() =>
+                                  void act(async () => {
+                                    await mutate('answer', {
+                                      action,
+                                      text: answer,
+                                      scope,
+                                    });
+                                    setAnswer('');
+                                  })
+                                }
+                              >
+                                {action[0]!.toUpperCase() + action.slice(1)}
+                              </Button>
+                            ),
+                          )}
+                        </div>
+                        <button
+                          className="mt-4 text-sm underline"
+                          onClick={() => {
+                            setEditing(!editing);
+                            setRecommendation(d.proposal.recommendation);
+                            setAmendQuestion(d.proposal.question);
+                            setAmendConsequence(d.proposal.consequence);
+                            setAmendAction(d.proposal.blocked_action);
+                          }}
+                        >
+                          Amend proposal
+                        </button>
+                        {editing && (
+                          <div className="mt-3 space-y-3">
+                            <label className="block text-sm">
+                              Question
+                              <textarea
+                                className={field}
+                                value={amendQuestion}
+                                onChange={(e) =>
+                                  setAmendQuestion(e.target.value)
+                                }
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              Revised recommendation
+                              <textarea
+                                className={cn(field, 'mt-1')}
+                                value={recommendation}
+                                onChange={(e) =>
+                                  setRecommendation(e.target.value)
+                                }
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              Amount or consequence
+                              <textarea
+                                className={field}
+                                value={amendConsequence}
+                                onChange={(e) =>
+                                  setAmendConsequence(e.target.value)
+                                }
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              Dependent action
+                              <textarea
+                                className={field}
+                                value={amendAction}
+                                onChange={(e) => setAmendAction(e.target.value)}
+                              />
+                            </label>
+                            <Button
+                              className="mt-2 min-h-11"
+                              disabled={
+                                busy ||
+                                !recommendation.trim() ||
+                                !amendQuestion.trim() ||
+                                !amendConsequence.trim() ||
+                                !amendAction.trim()
+                              }
+                              onClick={() =>
+                                void act(async () => {
+                                  await mutate('proposal', {
+                                    proposal: {
+                                      ...d.proposal,
+                                      recommendation,
+                                      question: amendQuestion,
+                                      consequence: amendConsequence,
+                                      blocked_action: amendAction,
+                                    },
+                                  });
+                                  setEditing(false);
+                                })
+                              }
+                            >
+                              Save new version
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-5 rounded-xl bg-muted p-3 text-sm">
+                        Only {d.assignee_name} can answer this proposal.
+                      </p>
+                    ))}
+                  <details className="mt-6 border-t pt-4">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">
+                      Decision history
+                    </summary>
+                    <ol className="mt-3 space-y-3">
+                      {detail?.events.map((e) => (
+                        <li key={e.id} className="text-xs">
+                          <p className="font-medium">
+                            {e.kind} · v{e.version} · User {e.actor_id} ·{' '}
+                            {when(e.created_at)}
+                          </p>
+                          <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-muted-foreground">
+                            {JSON.stringify(
+                              JSON.parse(e.payload_json),
+                              null,
+                              2,
+                            )}
+                          </pre>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                </>
+              )}
+            </section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="w-full rounded-2xl border bg-card p-4 text-left transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium">{d.bot_name}</span>
+        <State state={d.state} />
+      </div>
+      <h3 className="font-medium leading-snug">{d.proposal.question}</h3>
+      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+        {d.proposal.recommendation}
+      </p>
+      <p className="mt-3 text-sm font-medium">{d.proposal.consequence}</p>
+      <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>{d.assignee_name}</span>
+        <span>{when(d.created_at)}</span>
+        <span>
+          {d.proposal.deadline
+            ? `Due ${new Date(d.proposal.deadline).toLocaleString()}`
+            : 'No deadline'}
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {d.proposal.blocks_scope === 'task'
+          ? d.state === 'needs_input'
+            ? 'One task waiting · Other work can continue'
+            : 'Task scope'
+          : d.state === 'needs_input'
+            ? 'Whole workload waiting'
+            : 'Workload scope'}{' '}
+        · v{d.version}
+      </p>
+    </button>
+  );
+}
+
+function auditText(payload: string) {
+  const value = JSON.parse(payload);
+  if (typeof value === 'string') return value;
+  const p = value.proposal ?? value;
+  return [
+    p.action,
+    p.question,
+    p.recommendation,
+    p.consequence,
+    p.blocked_action,
+    p.text,
+    p.evidence && typeof p.evidence === 'string' ? p.evidence : null,
+    p.scope === 'standing_rule'
+      ? 'Standing rule requested (existing authority unchanged)'
+      : p.scope === 'this_case'
+        ? 'This case only'
+        : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}

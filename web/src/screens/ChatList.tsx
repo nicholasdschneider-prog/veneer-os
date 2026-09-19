@@ -466,7 +466,7 @@ export function ChatList({
         ? optimisticChats
         : null
       : mergeReadyConversations(chats, optimisticChats).filter(
-          (chat) => !queuedConversationIds.has(chat.id) && !hiddenPendingIds.has(chat.id),
+          (chat) => !chat.isBot && !queuedConversationIds.has(chat.id) && !hiddenPendingIds.has(chat.id),
         );
   };
 
@@ -475,7 +475,7 @@ export function ChatList({
     readyConversations(activePendingNewChats, null),
   ).filter(
     (conversation) =>
-      !queuedConversationIds.has(conversation.id) && !hiddenPendingIds.has(conversation.id),
+      !conversation.isBot && !queuedConversationIds.has(conversation.id) && !hiddenPendingIds.has(conversation.id),
   );
 
   // Counted from what the screen already holds: collapsed projects that have

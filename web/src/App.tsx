@@ -1,3 +1,4 @@
+import { Bots } from './screens/Bots';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from './lib/api';
 import type { Me, WorkspaceNavigation } from './lib/types';
@@ -316,6 +317,14 @@ export function App() {
               ? 'settings'
               : 'chats';
 
+  if (routePath === '#/bots' || routePath.startsWith('#/bots/')) {
+    return (
+      <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+        <Bots decisionId={routePath.split('/')[2]} onNavigate={navigate} />
+      </NavShell>
+    );
+  }
+
   if (routePath === '#/terminal') {
     if (!canManage) {
       navigate('#/');
@@ -450,7 +459,7 @@ export function App() {
   const chatTodoId = chatId ? params.get('todo') : null;
   const chatBackHash = chatId && ['scheduled', 'automations'].includes(params.get('from') ?? '')
     ? '#/automations'
-    : null;
+    : chatId && params.get('from') === 'bots' ? '#/bots' : null;
   const chatFocusMessageId = chatId ? params.get('message') : null;
   const artifactParam = chatId ? params.get('artifact') : null;
   // Only an explicit #/project/:id route shows the standalone project view. A

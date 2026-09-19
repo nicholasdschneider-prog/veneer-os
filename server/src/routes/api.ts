@@ -1,3 +1,4 @@
+import { createBotsRouter } from '../bots/routes.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -627,6 +628,7 @@ export async function conversationView(
   }
   return {
     id: row.id,
+    isBot: Boolean(ctx.db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(row.id)),
     title: row.title,
     creator: {
       id: row.user_id,
@@ -816,6 +818,7 @@ export function createApiRouter(ctx: AppContext): Router {
   );
 
   router.use('/live-voice', createLiveVoiceRouter(ctx));
+  router.use('/bots', createBotsRouter(ctx));
 
   router.get('/system/usage', (_req, res) => {
     res.set('Cache-Control', 'no-store');

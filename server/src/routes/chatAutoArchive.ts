@@ -82,6 +82,7 @@ export function autoArchiveInactiveConversations(
          FROM conversations
         WHERE user_id = ?
           AND archived = 0
+          AND NOT EXISTS (SELECT 1 FROM bot_registrations b WHERE b.conversation_id=conversations.id AND b.active=1)
           AND pin_order IS NULL
           AND channel <> 'automation'
           AND COALESCE(last_user_activity_at, last_active_at, created_at) < datetime('now', ?)`,

@@ -367,6 +367,7 @@ export interface PendingWakeup {
 }
 
 export interface Conversation {
+  isBot?: boolean;
   id: string;
   title: string | null;
   visibility: 'team' | 'private';

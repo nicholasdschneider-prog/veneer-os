@@ -1,3 +1,4 @@
+import { BOT_TOOL_DEFINITIONS, callBotTool } from './botTools.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -84,6 +85,7 @@ const TOOLS: ToolDef[] = [
   PROJECT_SETTINGS_TOOL,
   ...PROJECT_TOOL_DEFINITIONS,
   ...CONVERSATION_DISCOVERY_TOOL_DEFINITIONS,
+  ...BOT_TOOL_DEFINITIONS,
   ...TODO_TOOL_DEFINITIONS,
   GMAIL_DRAFT_TOOL,
   {
@@ -915,6 +917,8 @@ async function callTool(
     }
     const projectResult = await callProjectTool({ name, args, callApi });
     if (projectResult) return projectResult;
+    const botResult = await callBotTool({ name, args, callApi });
+    if (botResult) return botResult;
     const conversationDiscoveryResult = await callConversationDiscoveryTool({ name, args, callApi });
     if (conversationDiscoveryResult) return conversationDiscoveryResult;
     const chatLinkResult = await callChatLinkTool({ name, args, callApi, sourceConversationId: spawnConversationId });

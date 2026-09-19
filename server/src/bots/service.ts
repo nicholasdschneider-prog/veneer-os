@@ -1,0 +1,498 @@
+import crypto from 'node:crypto';
+import type Database from 'better-sqlite3';
+import { z } from 'zod';
+import type { ConversationRow, UserRow } from '../db/db.js';
+import { canViewConversation } from '../conversations/access.js';
+
+const text = z.string().trim().min(1).max(12000);
+export const evidenceSchema = z
+  .object({ label: text, conversation_id: z.string().min(1) })
+  .strict();
+export const proposalSchema = z
+  .object({
+    question: text,
+    recommendation: text,
+    consequence: text,
+    assignee_id: z.number().int().positive(),
+    team: z.string().max(160).default(''),
+    deadline: z.string().datetime({ offset: true }).nullable().default(null),
+    evidence: z.array(evidenceSchema).max(30).default([]),
+    blocked_action: text,
+    blocks_scope: z.enum(['task', 'workload']).default('task'),
+  })
+  .strict();
+export type Proposal = z.infer<typeof proposalSchema>;
+export type Decision = {
+  id: string;
+  conversation_id: string;
+  source_key: string;
+  proposal_key: string;
+  version: number;
+  state: string;
+  proposal_json: string;
+  assignee_id: number;
+  answer_json: string | null;
+  result_json: string | null;
+  parked_json: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type Actor = { user: UserRow; conversationId?: string };
+export class BotError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+export function createBotService(db: Database.Database) {
+  const conversation = (id: string) =>
+    db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as
+      | ConversationRow
+      | undefined;
+  function chat(actor: Actor, id: string) {
+    const c = conversation(id);
+    if (!c || !canViewConversation(actor.user, c))
+      throw new BotError(404, 'Bot or decision not found');
+    return c;
+  }
+  function evidenceAllowed(actor: Actor, p: Proposal) {
+    for (const e of p.evidence) chat(actor, e.conversation_id);
+  }
+  function read(actor: Actor, id: string) {
+    const d = db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(id) as
+      | Decision
+      | undefined;
+    if (!d) throw new BotError(404, 'Decision not found');
+    chat(actor, d.conversation_id);
+    evidenceAllowed(actor, JSON.parse(d.proposal_json));
+    return d;
+  }
+  function owner(actor: Actor, d: Decision) {
+    if (actor.conversationId !== d.conversation_id)
+      throw new BotError(403, 'Only the owning bot may perform this action');
+    if (
+      !db
+        .prepare(
+          'SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1',
+        )
+        .get(d.conversation_id)
+    )
+      throw new BotError(409, 'Bot registration is inactive');
+  }
+  function human(actor: Actor) {
+    if (actor.conversationId)
+      throw new BotError(403, 'A human answer is required');
+  }
+  function approver(actor: Actor, d: Decision) {
+    human(actor);
+    if (actor.user.id !== d.assignee_id)
+      throw new BotError(403, 'Only the assigned approver may answer');
+  }
+  function validateProposal(actor: Actor, p: Proposal, botId: string) {
+    evidenceAllowed(actor, p);
+    const user = db
+      .prepare("SELECT * FROM users WHERE id=? AND status='active'")
+      .get(p.assignee_id) as UserRow | undefined;
+    const c = conversation(botId)!;
+    if (!user || !canViewConversation(user, c))
+      throw new BotError(400, 'Approver must have access to the bot');
+    evidenceAllowed({ user }, p);
+    // Evidence must also be accessible to the permanent owner at execution time.
+    const botOwner = db
+      .prepare('SELECT * FROM users WHERE id=?')
+      .get(c.user_id) as UserRow;
+    evidenceAllowed({ user: botOwner }, p);
+  }
+  function event(
+    actor: Actor,
+    d: Decision,
+    kind: string,
+    payload: unknown,
+    key: string,
+  ) {
+    const id = crypto.randomUUID();
+    db.prepare(
+      'INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,actor_conversation_id,payload_json,request_key) VALUES(?,?,?,?,?,?,?,?)',
+    ).run(
+      id,
+      d.id,
+      d.version,
+      kind,
+      actor.user.id,
+      actor.conversationId ?? null,
+      JSON.stringify(payload),
+      key,
+    );
+    return id;
+  }
+  function replay(
+    actor: Actor,
+    d: Decision,
+    key: string,
+    kind: string,
+    payload: unknown,
+  ) {
+    const e = db
+      .prepare(
+        'SELECT * FROM bot_decision_events WHERE decision_id=? AND request_key=?',
+      )
+      .get(d.id, key) as
+      | {
+          actor_id: number;
+          actor_conversation_id: string | null;
+          kind: string;
+          payload_json: string;
+        }
+      | undefined;
+    if (!e) return false;
+    if (
+      e.actor_id !== actor.user.id ||
+      e.actor_conversation_id !== (actor.conversationId ?? null) ||
+      e.kind !== kind ||
+      e.payload_json !== JSON.stringify(payload)
+    )
+      throw new BotError(
+        409,
+        'Idempotency key already used for a different action',
+      );
+    return true;
+  }
+  function cas(d: Decision, version: number) {
+    if (d.version !== version)
+      throw new BotError(
+        409,
+        'Proposal changed. Reload and review the current version.',
+      );
+  }
+  function wake(
+    actor: Actor,
+    d: Decision,
+    eventId: string,
+    kind: string,
+    payload: unknown,
+  ) {
+    const c = chat(actor, d.conversation_id);
+    if (c.archived)
+      throw new BotError(
+        409,
+        'Restore the bot chat before sending a decision or message',
+      );
+    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. Revalidate material evidence and call record_decision_result with state running and this version before executing. Revise changed proposals with update_decision. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
+    db.prepare(
+      'INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)',
+    ).run(
+      eventId,
+      c.id,
+      c.user_id,
+      `bot-decision:${eventId}`,
+      reason,
+      new Date().toISOString(),
+    );
+  }
+  function view(actor: Actor, d: Decision) {
+    const c = chat(actor, d.conversation_id);
+    const dismissed = Boolean(
+      db
+        .prepare(
+          'SELECT 1 FROM bot_decision_dismissals WHERE decision_id=? AND user_id=? AND version=?',
+        )
+        .get(d.id, actor.user.id, d.version),
+    );
+    const parse = (s: string | null) => (s ? JSON.parse(s) : null);
+    return {
+      ...d,
+      proposal: parse(d.proposal_json),
+      answer: parse(d.answer_json),
+      result: parse(d.result_json),
+      parked: parse(d.parked_json),
+      proposal_json: undefined,
+      answer_json: undefined,
+      result_json: undefined,
+      parked_json: undefined,
+      can_answer: !actor.conversationId && actor.user.id === d.assignee_id,
+      can_manage: !actor.conversationId && actor.user.id === c.user_id,
+      dismissed,
+      bot_name: (
+        db
+          .prepare('SELECT name FROM bot_registrations WHERE conversation_id=?')
+          .get(c.id) as { name: string }
+      ).name,
+      assignee_name: (
+        db
+          .prepare('SELECT display_name FROM users WHERE id=?')
+          .get(d.assignee_id) as { display_name: string }
+      ).display_name,
+    };
+  }
+  return {
+    read,
+    view,
+    chat,
+    register(actor: Actor, id: string, name: string, active: boolean) {
+      human(actor);
+      const c = chat(actor, id);
+      if (c.user_id !== actor.user.id)
+        throw new BotError(
+          403,
+          'Only the chat owner may change bot registration',
+        );
+      if (c.archived && active)
+        throw new BotError(409, 'Restore the chat before registering it');
+      db.prepare(
+        'INSERT INTO bot_registrations(conversation_id,name,active,registered_by) VALUES(?,?,?,?) ON CONFLICT(conversation_id) DO UPDATE SET name=excluded.name,active=excluded.active',
+      ).run(id, name, Number(active), actor.user.id);
+    },
+    list(actor: Actor, filter = 'all') {
+      return (
+        db
+          .prepare('SELECT * FROM bot_decisions ORDER BY created_at DESC,id')
+          .all() as Decision[]
+      ).flatMap((d) => {
+        try {
+          read(actor, d.id);
+          if (
+            actor.conversationId &&
+            d.conversation_id !== actor.conversationId
+          )
+            return [];
+          if (filter === 'me' && d.assignee_id !== actor.user.id) return [];
+          if (
+            filter === 'team' &&
+            chat(actor, d.conversation_id).visibility !== 'team'
+          )
+            return [];
+          return [view(actor, d)];
+        } catch (e) {
+          if (e instanceof BotError && e.status === 404) return [];
+          throw e;
+        }
+      });
+    },
+    raise(
+      actor: Actor,
+      input: { source_key: string; proposal_key: string; proposal: Proposal },
+    ) {
+      if (!actor.conversationId)
+        throw new BotError(403, 'Only a registered bot can raise a decision');
+      const c = chat(actor, actor.conversationId);
+      owner(actor, { conversation_id: c.id } as Decision);
+      validateProposal(actor, input.proposal, c.id);
+      return db.transaction(() => {
+        const existing = db
+          .prepare(
+            'SELECT * FROM bot_decisions WHERE conversation_id=? AND source_key=? AND proposal_key=?',
+          )
+          .get(c.id, input.source_key, input.proposal_key) as
+          | Decision
+          | undefined;
+        if (existing) return view(actor, read(actor, existing.id));
+        const id = crypto.randomUUID();
+        db.prepare(
+          'INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,?,?,?,?,?)',
+        ).run(
+          id,
+          c.id,
+          input.source_key,
+          input.proposal_key,
+          JSON.stringify(input.proposal),
+          input.proposal.assignee_id,
+        );
+        const d = read(actor, id);
+        event(actor, d, 'raised', input, 'raise');
+        return view(actor, d);
+      })();
+    },
+    revise(
+      actor: Actor,
+      id: string,
+      version: number,
+      key: string,
+      p: Proposal,
+    ) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        if (actor.conversationId) owner(actor, d);
+        else approver(actor, d);
+        if (replay(actor, d, key, 'revised', p)) return view(actor, d);
+        cas(d, version);
+        if (d.state === 'running')
+          throw new BotError(
+            409,
+            'Running work cannot be revised; record blocked or failed first',
+          );
+        if (!actor.conversationId && p.assignee_id !== d.assignee_id)
+          throw new BotError(
+            403,
+            'A proposal amendment cannot transfer approval authority',
+          );
+        validateProposal(actor, p, d.conversation_id);
+        db.prepare(
+          "UPDATE bot_decisions SET version=version+1,state='needs_input',proposal_json=?,assignee_id=?,answer_json=NULL,result_json=NULL,parked_json=NULL,updated_at=datetime('now') WHERE id=?",
+        ).run(JSON.stringify(p), p.assignee_id, id);
+        const revised = read(actor, id);
+        event(actor, revised, 'revised', p, key);
+        return view(actor, revised);
+      })();
+    },
+    answer(
+      actor: Actor,
+      id: string,
+      version: number,
+      key: string,
+      payload: { action: string; text: string; scope: string },
+    ) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        approver(actor, d);
+        if (replay(actor, d, key, 'answered', payload)) return view(actor, d);
+        cas(d, version);
+        if (d.state !== 'needs_input')
+          throw new BotError(409, 'This proposal already has an answer');
+        db.prepare(
+          "UPDATE bot_decisions SET state='decided',answer_json=?,updated_at=datetime('now') WHERE id=? AND version=? AND state='needs_input'",
+        ).run(
+          JSON.stringify({ ...payload, actor_id: actor.user.id }),
+          id,
+          version,
+        );
+        const ev = event(actor, d, 'answered', payload, key);
+        wake(actor, d, ev, 'answer', payload);
+        return view(actor, read(actor, id));
+      })();
+    },
+    thread(actor: Actor, id: string) {
+      read(actor, id);
+      // Old proposal evidence is checked too: audit history must not leak revoked links.
+      const events = db
+        .prepare(
+          'SELECT * FROM bot_decision_events WHERE decision_id=? ORDER BY rowid',
+        )
+        .all(id) as { payload_json: string; kind: string }[];
+      for (const e of events) {
+        const p = JSON.parse(e.payload_json);
+        try {
+          if (e.kind === 'raised') evidenceAllowed(actor, p.proposal);
+          if (e.kind === 'revised') evidenceAllowed(actor, p);
+        } catch (error) {
+          if (!(error instanceof BotError) || error.status !== 404) throw error;
+          e.payload_json = JSON.stringify({
+            text: 'Historical proposal context is no longer accessible.',
+          });
+        }
+      }
+      return {
+        messages: db
+          .prepare(
+            'SELECT t.*,u.display_name AS actor_name FROM bot_decision_threads t JOIN users u ON u.id=t.actor_id WHERE decision_id=? ORDER BY t.rowid',
+          )
+          .all(id),
+        events,
+      };
+    },
+    reply(actor: Actor, id: string, key: string, message: string) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        if (actor.conversationId) owner(actor, d);
+        if (replay(actor, d, key, 'message', message)) return view(actor, d);
+        const ev = event(actor, d, 'message', message, key);
+        db.prepare(
+          'INSERT INTO bot_decision_threads(id,decision_id,actor_id,actor_conversation_id,text) VALUES(?,?,?,?,?)',
+        ).run(ev, id, actor.user.id, actor.conversationId ?? null, message);
+        if (!actor.conversationId)
+          wake(actor, d, ev, 'discussion (not an approval)', message);
+        return view(actor, d);
+      })();
+    },
+    result(
+      actor: Actor,
+      id: string,
+      version: number,
+      key: string,
+      payload: {
+        state: string;
+        evidence: string;
+        material_evidence_unchanged?: boolean;
+      },
+    ) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        owner(actor, d);
+        if (replay(actor, d, key, 'result', payload)) return view(actor, d);
+        cas(d, version);
+        const action = d.answer_json ? JSON.parse(d.answer_json).action : null;
+        if (payload.state === 'running') {
+          validateProposal(
+            actor,
+            JSON.parse(d.proposal_json),
+            d.conversation_id,
+          );
+          const delivered = db
+            .prepare(
+              `SELECT 1 FROM bot_decision_events e
+            JOIN conversation_wakeups w ON w.id=e.id
+            WHERE e.decision_id=? AND e.version=? AND e.kind='answered' AND w.status='delivered'`,
+            )
+            .get(id, version);
+          if (!delivered)
+            throw new BotError(
+              409,
+              'Decision delivery must finish before execution',
+            );
+        }
+        const allowed =
+          payload.state === 'running'
+            ? ['action_pending', 'blocked'].includes(d.state) &&
+              action === 'approve' &&
+              payload.material_evidence_unchanged === true
+            : payload.state === 'verified_completed'
+              ? d.state === 'running'
+              : ['decided', 'action_pending', 'running', 'blocked'].includes(
+                  d.state,
+                );
+        if (!allowed)
+          throw new BotError(
+            409,
+            'Invalid execution transition; approval, delivery and current evidence are required',
+          );
+        db.prepare(
+          "UPDATE bot_decisions SET state=?,result_json=?,updated_at=datetime('now') WHERE id=?",
+        ).run(payload.state, JSON.stringify(payload), id);
+        event(actor, d, 'result', payload, key);
+        return view(actor, read(actor, id));
+      })();
+    },
+    park(
+      actor: Actor,
+      id: string,
+      version: number,
+      key: string,
+      payload: { released_leases: string[]; evidence: string },
+    ) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        owner(actor, d);
+        if (replay(actor, d, key, 'parked', payload)) return view(actor, d);
+        cas(d, version);
+        if (!['needs_input', 'decided', 'blocked'].includes(d.state))
+          throw new BotError(409, 'Work can only be parked while waiting');
+        db.prepare(
+          "UPDATE bot_decisions SET parked_json=?,updated_at=datetime('now') WHERE id=?",
+        ).run(JSON.stringify(payload), id);
+        event(actor, d, 'parked', payload, key);
+        return view(actor, read(actor, id));
+      })();
+    },
+    dismiss(actor: Actor, id: string, version: number) {
+      const d = read(actor, id);
+      human(actor);
+      cas(d, version);
+      if (d.state === 'needs_input')
+        throw new BotError(409, 'Answer the question before dismissing it');
+      db.prepare(
+        'INSERT INTO bot_decision_dismissals VALUES(?,?,?) ON CONFLICT(decision_id,user_id) DO UPDATE SET version=excluded.version',
+      ).run(id, actor.user.id, version);
+    },
+  };
+}

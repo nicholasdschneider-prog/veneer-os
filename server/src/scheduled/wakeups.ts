@@ -1,3 +1,4 @@
+import { botWakeAllowed, botWakeDelivered, botWakeCancelled } from '../bots/delivery.js';
 import crypto from 'node:crypto';
 import type { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -200,14 +201,23 @@ export function createConversationWakeupScheduler({
    * on purpose (delivery threw) so the next tick can retry the same key.
    */
   function deliver(row: ConversationWakeupRow, conv: ConversationRow): boolean {
+    if (!botWakeAllowed(db, row, conv)) {
+      db.transaction(() => {
+        db.prepare("UPDATE conversation_wakeups SET status='cancelled',cancelled_at=datetime('now') WHERE id=?").run(row.id);
+        botWakeCancelled(db, row);
+      })();
+      return false;
+    }
     const deliveredAt = now();
     try {
       const posted = manager.deliverWakeup(conv, wakeupPrompt(row), row.id, row.actor_user_id);
-      db.prepare(
-        `UPDATE conversation_wakeups
-         SET status = 'delivered', delivered_at = ?
-         WHERE id = ? AND status = 'pending'`,
-      ).run(deliveredAt.toISOString(), row.id);
+      db.transaction(() => {
+        db.prepare(
+          `UPDATE conversation_wakeups SET status = 'delivered', delivered_at = ?
+           WHERE id = ? AND status = 'pending'`,
+        ).run(deliveredAt.toISOString(), row.id);
+        botWakeDelivered(db, row);
+      })();
       log.info(
         `[wakeup] delivered ${row.id} conversation=${row.conversation_id} disposition=${posted.disposition}` +
           ` scheduled=${row.scheduled_for} at=${deliveredAt.toISOString()}`,
@@ -249,11 +259,13 @@ export function createConversationWakeupScheduler({
       for (const row of due) {
         const conv = conversationById.get(row.conversation_id) as ConversationRow | undefined;
         if (!conv || conv.archived) {
-          db.prepare(
-            `UPDATE conversation_wakeups
-             SET status = 'cancelled', cancelled_at = datetime('now')
-             WHERE id = ? AND status = 'pending'`,
-          ).run(row.id);
+          db.transaction(() => {
+            db.prepare(
+              `UPDATE conversation_wakeups SET status='cancelled',cancelled_at=datetime('now')
+               WHERE id=? AND status='pending'`,
+            ).run(row.id);
+            botWakeCancelled(db, row);
+          })();
           log.warn(
             `[wakeup] cancelled undeliverable ${row.id} conversation=${row.conversation_id}` +
               (conv?.archived ? ' reason=archived' : ' reason=deleted'),
