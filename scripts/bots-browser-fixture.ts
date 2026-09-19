@@ -41,6 +41,22 @@ const user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
 const human = { user };
 s.register(human, 'atlas', 'Atlas', true);
 s.register(human, 'robin', 'Robin', true);
+// Display-only representative native titles; enabled only in this in-memory fixture.
+if (process.argv.includes('--titles')) {
+  for (const [name, title] of [
+    ['Henry', 'Henry · ERVP Business Leadership'],
+    ['Grant', 'Grant · Customer Service Lead'],
+    ['Piper', 'Piper Content'],
+    ['Sage', 'Sage · Vendor Operations/Orders'],
+    ['Long', 'Long · International Vendor Operations and Order Coordination Across Regional Teams'],
+    ['Solo', 'Solo'],
+    ['Missing', ''],
+  ]) {
+    const id = `title-${name.toLowerCase()}`;
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,visibility,native_session_id) VALUES(?,1,1,?,'claude','team',?)").run(id, title, `fixture-${id}`);
+    s.register(human, id, name, true);
+  }
+}
 const adapter: ProviderAdapter = {
   id: 'claude',
   mintSessionId: () => '',

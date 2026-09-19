@@ -1,0 +1,1 @@
+PASS desktop roster/rail and selected native chat; mobile 390px/320px roster; no duplicate names, missing-title artifacts, long-title overflow or browser errors. No live data accessed.

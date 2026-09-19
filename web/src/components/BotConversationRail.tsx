@@ -3,7 +3,7 @@ import { BusinessSelector, useBusinessSelection } from './BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
 import { useEffect, useState } from 'react';
 import { botsApi, type Bot } from '@/lib/bots';
-import { BotAvatar, BotPresence } from './BotIdentity';
+import { BotAvatar, BotName, BotPresence } from './BotIdentity';
 import { cn } from '@/lib/utils';
 
 export function BotConversationRail({
@@ -92,17 +92,14 @@ export function BotConversationRail({
             >
               <BotAvatar id={bot.conversation_id} name={bot.name} />
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2 font-medium">
-                  <span className="truncate">{bot.name}</span>
+                <span className="flex items-baseline gap-2">
+                  <BotName name={bot.name} title={bot.title} />
                   {bot.unread && (
                     <span
                       aria-label="Unread messages"
                       className="size-2 shrink-0 rounded-full bg-primary"
                     />
                   )}
-                </span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {bot.title || 'Open conversation'}
                 </span>
                 <BotPresence id={bot.conversation_id} state={bot.state} />
               {bot.membership && <span className="block text-xs text-muted-foreground">{bot.membership.role === 'coordinator' ? 'Fleet coordinator' : bot.membership.subteam ? `${bot.membership.subteam} · ${bot.membership.role === 'lead' ? 'Lead' : 'Team'}` : 'Specialist'}</span>}

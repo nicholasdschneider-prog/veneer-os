@@ -2,6 +2,31 @@ import { useEffect, useState } from 'react';
 import { wsBus } from '@/lib/ws';
 import type { ConversationEvent } from '@/lib/types';
 
+/** Derive display copy only; native chat titles and membership roles stay untouched. */
+export function botJobTitle(name: string, title?: string | null): string {
+  const value = title?.trim() ?? '';
+  const prefix = name.trim();
+  if (!prefix) return value;
+  if (value.toLocaleLowerCase() === prefix.toLocaleLowerCase()) return '';
+  if (value.slice(0, prefix.length).toLocaleLowerCase() !== prefix.toLocaleLowerCase())
+    return value;
+  const remainder = value.slice(prefix.length);
+  // Require a boundary: Ann must not remove the start of Annette.
+  return /^[\s·•|:–—-]/u.test(remainder)
+    ? remainder.replace(/^[\s·•|:–—-]+/u, '').trim()
+    : value;
+}
+
+export function BotName({ name, title }: { name: string; title?: string | null }) {
+  const description = botJobTitle(name, title);
+  return (
+    <span className="block min-w-0 break-words font-medium [overflow-wrap:anywhere]">
+      <span>{name}</span>
+      {description && <>{' '}<span className="ml-1 text-xs font-normal text-muted-foreground">{description}</span></>}
+    </span>
+  );
+}
+
 const colors = ['#7c3aed', '#0284c7', '#059669', '#db2777', '#d97706', '#4f46e5'];
 export function BotAvatar({ id, name }: { id: string; name: string }) {
   const hash = Array.from(id).reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 0);

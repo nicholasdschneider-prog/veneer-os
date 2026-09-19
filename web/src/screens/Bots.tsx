@@ -2,7 +2,7 @@ import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
 import { BotConversationRail } from '@/components/BotConversationRail';
-import { BotAvatar, BotPresence } from '@/components/BotIdentity';
+import { BotAvatar, BotName, BotPresence } from '@/components/BotIdentity';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -425,7 +425,7 @@ export function Bots({
                 {bots.map((bot) => (
                   <div
                     key={bot.conversation_id}
-                    className="flex flex-wrap items-center gap-3 p-4"
+                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
                   >
                     <BotAvatar id={bot.conversation_id} name={bot.name} />
                     <button
@@ -434,9 +434,7 @@ export function Bots({
                         onNavigate(`#/chat/${bot.conversation_id}?from=bots`)
                       }
                     >
-                      <span className="block break-words font-medium">
-                        {bot.name}
-                      </span>
+                      <BotName name={bot.name} title={bot.title} />
                       <span className="text-xs text-muted-foreground">
                         {bot.archived ? 'Archived · ' : ''}
                         <BotPresence id={bot.conversation_id} state={bot.state} /> · {bot.questions} waiting{' '}
@@ -446,7 +444,7 @@ export function Bots({
                     <ArrowUpRight className="size-4 text-muted-foreground" />
                     {bot.can_manage && (
                       <button
-                        className="text-xs text-muted-foreground underline"
+                        className="col-span-2 col-start-2 justify-self-start text-xs text-muted-foreground underline sm:col-span-1 sm:col-start-auto"
                         disabled={busy}
                         onClick={() =>
                           void act(() =>

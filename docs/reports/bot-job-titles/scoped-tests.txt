@@ -1,0 +1,14 @@
+
+> @veneer-pro/web@0.1.0 test
+> vitest run BotIdentity
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/web
+
+ ✓ src/components/BotIdentity.test.tsx (18 tests) 5ms
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  13:33:03
+   Duration  193ms (transform 24ms, setup 0ms, collect 38ms, tests 5ms, environment 0ms, prepare 33ms)
+
