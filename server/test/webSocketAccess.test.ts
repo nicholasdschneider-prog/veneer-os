@@ -23,7 +23,7 @@ describe('conversation WebSocket access changes', () => {
     db?.close();
   });
 
-  it('stops a Team subscriber when the creator makes the chat Private', async () => {
+  it.each(['subscribe', 'observe'])('stops a Team %s when the creator makes the chat Private', async (kind) => {
     db = new Database(':memory:');
     db.pragma('foreign_keys = ON');
     migrate(db, MIGRATIONS);
@@ -56,8 +56,8 @@ describe('conversation WebSocket access changes', () => {
       socket!.once('open', resolve);
       socket!.once('error', reject);
     });
-    socket.send(JSON.stringify({ kind: 'subscribe', conversationId: 'shared-chat' }));
-    await expect(nextFrame(socket)).resolves.toMatchObject({ kind: 'snapshot', conversationId: 'shared-chat' });
+    socket.send(JSON.stringify({ kind, conversationId: 'shared-chat' }));
+    await expect(nextFrame(socket)).resolves.toMatchObject({ kind: kind === 'observe' ? 'status' : 'snapshot', conversationId: 'shared-chat' });
 
     db.prepare("UPDATE conversations SET visibility = 'private' WHERE id = 'shared-chat'").run();
     bus.emit('access', 'shared-chat');

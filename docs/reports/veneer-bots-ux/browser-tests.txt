@@ -1,0 +1,1 @@
+PASS: desktop/mobile rails, avatars, real runtime working → typing → available, reduced motion, disconnect, search, decision navigation, registration, no overflow or browser errors.

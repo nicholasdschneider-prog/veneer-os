@@ -71,6 +71,55 @@ describe('conversation WebSocket unread', () => {
     expect(isUnread(db, 2, 'team-chat')).toBe(true);
   });
 
+  it('observes reply activity without transcript content or marking conversations read', async () => {
+    db = new Database(':memory:');
+    db.pragma('foreign_keys = ON');
+    migrate(db, MIGRATIONS);
+    db.prepare("INSERT INTO users (email, display_name, role) VALUES ('owner@example.com', 'Owner', 'owner')").run();
+    db.prepare("INSERT INTO users (email, display_name, role) VALUES ('member@example.com', 'Member', 'member')").run();
+    db.prepare(
+      `INSERT INTO conversations (id, assistant_id, user_id, visibility, title, provider, native_session_id, channel)
+       VALUES ('team-chat', 1, 1, 'team', 'Team chat', 'claude', 'session-1', 'web')`,
+    ).run();
+
+    const bus = new EventEmitter();
+    const ctx = {
+      db,
+      resolveIdentity: async () => ({ email: 'owner@example.com' }),
+      manager: {
+        bus,
+        snapshot: async () => [],
+        statusOf: async () => 'idle',
+        activityOf: async () => null,
+        queueSnapshot: async () => ({ revision: 0, messages: [], failedTurn: null }),
+        listWakeups: async () => [],
+      },
+    } as unknown as AppContext;
+    server = createServer();
+    attachWebSocket(server, ctx);
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
+
+    socket = new WebSocket(`ws://127.0.0.1:${(server.address() as AddressInfo).port}/ws`);
+    await new Promise<void>((resolve, reject) => {
+      socket!.once('open', resolve);
+      socket!.once('error', reject);
+    });
+    socket.send(JSON.stringify({ kind: 'observe', conversationId: 'team-chat' }));
+    await expect(nextFrame(socket)).resolves.toMatchObject({ kind: 'status', conversationId: 'team-chat', status: 'idle' });
+
+    bus.emit('event', 'team-chat', { type: 'text_delta', text: 'Private transcript content' });
+    await expect(nextFrame(socket)).resolves.toEqual({ kind: 'presence', conversationId: 'team-chat', event: { type: 'text_delta', text: '…' } });
+    bus.emit('event', 'team-chat', { type: 'turn_done', turnId: 'turn-1', outcome: 'completed' });
+    await expect(nextFrame(socket)).resolves.toMatchObject({
+      kind: 'presence',
+      conversationId: 'team-chat',
+      event: { type: 'turn_done' },
+    });
+
+    expect(isUnread(db, 1, 'team-chat')).toBe(true);
+    expect(isUnread(db, 2, 'team-chat')).toBe(true);
+  });
+
   it('restores compaction activity in snapshots and clears it live', async () => {
     db = new Database(':memory:');
     db.pragma('foreign_keys = ON');

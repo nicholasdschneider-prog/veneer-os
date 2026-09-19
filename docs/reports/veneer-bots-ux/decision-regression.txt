@@ -1,0 +1,1 @@
+PASS: desktop + mobile; six persistent questions; thread reply; approve -> verified complete; dismiss preserves result; team filter; viewer cannot approve; stale proposal disables approval and clears draft on review; defer does not execute; reversible registration; no horizontal overflow or browser exceptions.

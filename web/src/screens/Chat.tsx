@@ -1,3 +1,4 @@
+import { BotAvatar, BotPresence } from '@/components/BotIdentity';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -2246,7 +2247,9 @@ export function Chat({
         >
           <ChevronLeft className="size-5" />
         </Button>
+        {backHash === '#/bots' && <BotAvatar id={conversationId} name={title || agentName} />}
         <div className="min-w-0 flex-1">
+          {backHash === '#/bots' && <BotPresence id={conversationId} state={status === 'working' ? 'working' : status === 'failed' ? 'failed' : 'available'} />}
           {isNew ? (
             <>
               {/* No title yet — lead with the agent so the picker choice reads back. */}

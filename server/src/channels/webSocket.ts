@@ -28,7 +28,7 @@ import type {
  */
 
 const ClientFrameSchema = z.object({
-  kind: z.enum(['subscribe', 'unsubscribe', 'ping']),
+  kind: z.enum(['subscribe', 'observe', 'unsubscribe', 'ping']),
   conversationId: z.string().optional(),
 });
 
@@ -36,6 +36,7 @@ interface Sub {
   socket: WebSocket;
   user: UserRow;
   conversations: Set<string>;
+  observers: Set<string>;
 }
 
 export function attachWebSocket(server: Server, ctx: AppContext): void {
@@ -60,7 +61,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
   });
 
   wss.on('connection', (ws: WebSocket, _req: IncomingMessage, user: UserRow) => {
-    const sub: Sub = { socket: ws, user, conversations: new Set() };
+    const sub: Sub = { socket: ws, user, conversations: new Set(), observers: new Set() };
     subs.add(sub);
 
     ws.on('message', (data) => {
@@ -77,6 +78,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       if (!frame.conversationId) return;
       if (frame.kind === 'unsubscribe') {
         sub.conversations.delete(frame.conversationId);
+        sub.observers.delete(frame.conversationId);
         return;
       }
       const row = ctx.db.prepare('SELECT * FROM conversations WHERE id = ?').get(frame.conversationId) as
@@ -86,6 +88,15 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
         send(ws, { kind: 'error', conversationId: frame.conversationId, message: 'Conversation not found' });
         return;
       }
+      if (frame.kind === 'observe') {
+        sub.conversations.delete(row.id);
+        sub.observers.add(row.id);
+        void ctx.manager.statusOf(row.id).then(status => {
+          if (sub.observers.has(row.id)) send(ws, { kind: 'status', conversationId: row.id, status });
+        }).catch(() => send(ws, { kind: 'error', conversationId: row.id, message: 'Activity unavailable' }));
+        return;
+      }
+      sub.observers.delete(row.id);
       sub.conversations.add(row.id);
       markSeen(ctx.db, user.id, row.id);
       // The bus subscriptions below are already registered, so no live event is
@@ -133,6 +144,10 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       }
     }
     for (const sub of subs) {
+      if (sub.observers.has(conversationId)) {
+        // Presence observers receive no transcript content and never mark a chat read.
+        send(sub.socket, { kind: 'presence', conversationId, event: { type: event.type, ...(event.type === 'text_delta' ? { text: event.text.trim() ? '…' : '' } : {}) } });
+      }
       if (sub.conversations.has(conversationId)) {
         send(sub.socket, {
           kind: 'event',
@@ -148,7 +163,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
     activity: ConversationActivity = null,
   ) => {
     for (const sub of subs) {
-      if (sub.conversations.has(conversationId)) {
+      if (sub.conversations.has(conversationId) || sub.observers.has(conversationId)) {
         send(sub.socket, { kind: 'status', conversationId, status, activity });
       }
     }
@@ -178,9 +193,10 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       | ConversationRow
       | undefined;
     for (const sub of subs) {
-      if (!sub.conversations.has(conversationId)) continue;
+      if (!sub.conversations.has(conversationId) && !sub.observers.has(conversationId)) continue;
       if (row && canViewConversation(sub.user, row)) continue;
       sub.conversations.delete(conversationId);
+      sub.observers.delete(conversationId);
       send(sub.socket, { kind: 'error', conversationId, message: 'Conversation access changed' });
     }
   });

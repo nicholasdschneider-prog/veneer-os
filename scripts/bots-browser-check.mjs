@@ -11,9 +11,9 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-const output = path.resolve('docs/reports/veneer-bots/screenshots');
+const output = path.resolve(process.argv[3] ?? 'docs/reports/veneer-bots/screenshots');
 const screenshot = async (name) => {
-  await page.screenshot({ path: path.join(output, name) });
+  await page.screenshot({ path: path.join(output, process.argv[3] ? 'regression-' + name : name) });
 };
 const overflow = async () =>
   assert.equal(
@@ -166,13 +166,13 @@ try {
   await page.getByRole('combobox').selectOption('unregistered');
   await page.getByLabel('Bot name', { exact: true }).fill('Fixture Charlie');
   await page.getByRole('button', { name: 'Register bot', exact: true }).click();
-  await page.getByRole('button', { name: /Fixture Charlie/ }).waitFor();
+  await page.getByRole('region', { name: 'Your bots 3' }).getByRole('button', { name: /Fixture Charlie/ }).waitFor();
   assert.equal(
     (await page.request.get('http://127.0.0.1:3297/api/bots')).status(),
     200,
   );
   await page
-    .getByRole('button', { name: /Fixture Charlie/ })
+    .getByRole('region', { name: 'Your bots 3' }).getByRole('button', { name: /Fixture Charlie/ })
     .locator('..')
     .getByRole('button', { name: 'Return to Chats', exact: true })
     .click();

@@ -16,6 +16,7 @@ const RECONNECT_BACKOFF_MS = [800, 2_000, 5_000, 10_000, 30_000];
 const PING_INTERVAL_MS = 25_000;
 
 export interface SubscriptionHandlers {
+  presenceOnly?: boolean;
   onSnapshot?: (
     events: ConversationEvent[],
     status: ConversationStatus,
@@ -28,6 +29,7 @@ export interface SubscriptionHandlers {
   onQueue?: (queue: ConversationQueueSnapshot) => void;
   onWakeups?: (wakeups: PendingWakeup[]) => void;
   onError?: (message: string) => void;
+  onDisconnect?: () => void;
 }
 
 /**
@@ -37,7 +39,7 @@ export interface SubscriptionHandlers {
 export type GlobalFrameKind = 'usage_updated';
 
 export interface ServerFrame {
-  kind: 'snapshot' | 'event' | 'status' | 'queue' | 'wakeups' | 'error' | 'pong' | GlobalFrameKind;
+  kind: 'snapshot' | 'presence' | 'event' | 'status' | 'queue' | 'wakeups' | 'error' | 'pong' | GlobalFrameKind;
   conversationId?: string;
   events?: ConversationEvent[];
   event?: ConversationEvent;
@@ -57,7 +59,8 @@ export function deliverServerFrame(frame: ServerFrame, handlers: SubscriptionHan
       frame.activity ?? null,
       toPendingWakeups(frame.wakeups),
     );
-  } else if (frame.kind === 'event' && frame.event) handlers.onEvent?.(frame.event);
+  } else if (frame.kind === 'presence' && frame.event && handlers.presenceOnly) handlers.onEvent?.(frame.event);
+  else if (frame.kind === 'event' && frame.event) handlers.onEvent?.(frame.event);
   else if (frame.kind === 'status' && frame.status) handlers.onStatus?.(frame.status, frame.activity ?? null);
   else if (frame.kind === 'queue' && frame.queue) handlers.onQueue?.(frame.queue);
   else if (frame.kind === 'wakeups' && frame.wakeups) handlers.onWakeups?.(toPendingWakeups(frame.wakeups));
@@ -82,7 +85,7 @@ class WsBus {
     set.add(handlers);
     this.ensureStarted();
     if (this.socket?.readyState === WebSocket.OPEN) {
-      this.send({ kind: 'subscribe', conversationId });
+      this.send({ kind: [...(this.subs.get(conversationId) ?? [])].every(h => h.presenceOnly) ? 'observe' : 'subscribe', conversationId });
     } else if (!this.socket || this.socket.readyState !== WebSocket.CONNECTING) {
       // Socket died (or never opened) while no subs were active, so onDown
       // nulled it and scheduleReconnect() bailed on subs.size === 0. Reopen
@@ -93,6 +96,9 @@ class WsBus {
     return () => {
       const s = this.subs.get(conversationId);
       s?.delete(handlers);
+      if (s?.size && this.socket?.readyState === WebSocket.OPEN) {
+        this.send({ kind: [...s].every(h => h.presenceOnly) ? 'observe' : 'subscribe', conversationId });
+      }
       if (s && s.size === 0) {
         this.subs.delete(conversationId);
         if (this.socket?.readyState === WebSocket.OPEN) {
@@ -151,7 +157,7 @@ class WsBus {
       this.reconnectAttempt = 0;
       // Resubscribe everything; the server responds with fresh snapshots.
       for (const conversationId of this.subs.keys()) {
-        this.send({ kind: 'subscribe', conversationId });
+        this.send({ kind: [...(this.subs.get(conversationId) ?? [])].every(h => h.presenceOnly) ? 'observe' : 'subscribe', conversationId });
       }
       if (this.pingTimer) clearInterval(this.pingTimer);
       this.pingTimer = setInterval(() => {
@@ -194,6 +200,9 @@ class WsBus {
       // live socket's keepalive.
       if (this.socket !== ws) return;
       this.socket = null;
+      for (const handlers of this.subs.values()) for (const h of handlers) {
+        try { h.onDisconnect?.(); } catch { /* isolate subscribers */ }
+      }
       if (this.pingTimer) {
         clearInterval(this.pingTimer);
         this.pingTimer = null;

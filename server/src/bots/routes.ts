@@ -1,4 +1,5 @@
 import express from 'express';
+import { isUnread } from '../conversations/unread.js';
 import { canViewConversation } from '../conversations/access.js';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
@@ -72,6 +73,9 @@ export function createBotsRouter(ctx: AppContext) {
         bots.push({
           ...r,
           project_id: c.project_id,
+          title: c.title,
+          updated_at: c.last_active_at,
+          unread: isUnread(ctx.db, a.user.id, c.id),
           provider: c.provider,
           archived: Boolean(c.archived),
           can_manage: !a.conversationId && c.user_id === a.user.id,

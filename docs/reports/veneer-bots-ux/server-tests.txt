@@ -1,0 +1,15 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run webSocket bots
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/webSocketUnread.test.ts (3 tests) 116ms
+ ✓ test/webSocketAccess.test.ts (2 tests) 189ms
+ ✓ test/bots.test.ts (10 tests) 348ms
+
+ Test Files  3 passed (3)
+      Tests  15 passed (15)
+   Start at  12:22:48
+   Duration  643ms (transform 126ms, setup 0ms, collect 255ms, tests 654ms, environment 0ms, prepare 92ms)

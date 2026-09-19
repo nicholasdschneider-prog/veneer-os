@@ -1,3 +1,4 @@
+import { BotConversationRail } from '@/components/BotConversationRail';
 import { Bots } from './screens/Bots';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from './lib/api';
@@ -320,7 +321,7 @@ export function App() {
   if (routePath === '#/bots' || routePath.startsWith('#/bots/')) {
     return (
       <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-        <Bots decisionId={routePath.split('/')[2]} onNavigate={navigate} />
+        <Bots registrationRequested={params.get('register') === '1'} decisionId={routePath.split('/')[2]} onNavigate={navigate} />
       </NavShell>
     );
   }
@@ -519,7 +520,7 @@ export function App() {
     updateProjectFilesHash(`#/${query ? `?${query}` : ''}`, true);
   };
 
-  const sidebar = sidebarProjectId ? (
+  const sidebar = chatBackHash === '#/bots' ? <BotConversationRail selectedId={chatId} onNavigate={navigate} /> : sidebarProjectId ? (
     <ProjectView
       projectId={sidebarProjectId}
       role={role}
@@ -557,7 +558,7 @@ export function App() {
       {/* mobileHidden on detail routes: the detail owns the mobile viewport
           (its header arrow goes back); the rail still shows on desktop. */}
       <NavShell
-        current={navCurrent}
+        current={chatBackHash === '#/bots' ? 'bots' : navCurrent}
         canManage={canManage}
         signedInEmail={signedInEmail}
         onNavigate={navigate}
@@ -569,7 +570,7 @@ export function App() {
           storageKey="split:chats"
           mobileShows={chatId || projectFilesId || projectBrowserId ? 'detail' : 'sidebar'}
           sidebarHidden={Boolean(
-            chatId && (desktopState === 'full' || artifactParam || projectFilesId || projectBrowserId) && !hasThreePaneRoom,
+            chatBackHash !== '#/bots' && chatId && (desktopState === 'full' || artifactParam || projectFilesId || projectBrowserId) && !hasThreePaneRoom,
           )}
           sidebar={sidebar}
         >

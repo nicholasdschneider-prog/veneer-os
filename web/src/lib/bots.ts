@@ -34,6 +34,9 @@ export interface BotDecision {
   assignee_name: string;
 }
 export interface Bot {
+  title?: string | null;
+  updated_at?: string | null;
+  unread?: boolean;
   conversation_id: string;
   name: string;
   state: string;

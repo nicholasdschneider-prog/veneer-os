@@ -2,6 +2,7 @@
  * In-memory database and deterministic adapter only. Never reads production state or credentials.
  */
 import express from 'express';
+import { attachWebSocket } from '../server/src/channels/webSocket.js';
 import Database from 'better-sqlite3';
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +45,14 @@ const adapter: ProviderAdapter = {
   mintSessionId: () => '',
   readTranscript: async () => [],
   runTurn(spec, onEvent) {
+    if (spec.prompt === 'presence fixture') {
+      const done = new Promise<void>(resolve => {
+        setTimeout(() => onEvent({ type: 'text_delta', text: 'Hello from the fixture' }), 1200);
+        setTimeout(() => onEvent({ type: 'text_final', text: 'Hello from the fixture' }), 4500);
+        setTimeout(() => { onEvent({ type: 'turn_done', turnId: spec.turnId }); resolve(); }, 5500);
+      });
+      return { done, kill: () => {}, respondToApproval: () => true };
+    }
     const done = new Promise<void>((resolve) =>
       setTimeout(() => {
         const match = spec.prompt.match(
@@ -191,6 +200,15 @@ app.use(
     },
   } as unknown as AppContext),
 );
+app.post('/fixture/presence', (_req, res) => {
+  const chat = db.prepare("SELECT * FROM conversations WHERE id='robin'").get() as import('../server/src/db/db.js').ConversationRow;
+  manager.postMessage(chat, 'presence fixture', 1);
+  res.json({ ok: true });
+});
+app.get('/api/conversations/:id', (req, res) => {
+  const c = db.prepare('SELECT * FROM conversations WHERE id=?').get(req.params.id) as import('../server/src/db/db.js').ConversationRow;
+  res.json({ conversation: { id: c.id, title: c.title, assistantSlug: 'assistant', assistantName: 'Fixture bot', provider: 'claude', model: null, effort: null, approvalMode: null, effectiveApprovalMode: 'default', fullAccess: false, archived: false, pinOrder: null, creator: { id: 1, displayName: 'Alex' }, visibility: 'team', canSend: true, canManage: true, canChangeVisibility: true, projectId: null, contextTokens: null, automation: null } });
+});
 app.get('/api/client-logo', (_req, res) => res.status(404).end());
 app.get('/api/system/usage', (_req, res) =>
   res.json({
@@ -204,7 +222,7 @@ app.get('/api/system/usage', (_req, res) =>
 app.use('/api', (_req, res) =>
   res.json({
     providers: { claude: { connected: false }, codex: { connected: false } },
-    ok: true,
+    ok: true, scopes: [], builtins: [], models: [], projects: [], assistants: [], files: [], artifacts: [], settings: {}, prefs: {},
   }),
 );
 const vite = await createServer({
@@ -226,6 +244,11 @@ app.get('/', async (_req, res) =>
 const server = app.listen(3297, '127.0.0.1', () =>
   console.log('Isolated VeneerBots fixture ready on port 3297'),
 );
+attachWebSocket(server, { db, resolveIdentity: async () => ({ email: user.email }), manager: {
+  bus: manager.bus, statusOf: async (id: string) => id === 'atlas' ? 'working' : manager.statusOf(id),
+  activityOf: async () => null, snapshot: async (id: string) => manager.snapshot(db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as import('../server/src/db/db.js').ConversationRow),
+  queueSnapshot: async () => ({ revision: 0, messages: [], failedTurn: null }), listWakeups: async () => [],
+} } as unknown as AppContext);
 scheduler.start();
 process.on('SIGTERM', () => {
   scheduler.stop();

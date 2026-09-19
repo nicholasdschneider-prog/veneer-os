@@ -1,0 +1,3 @@
+
+> veneer-os@0.1.0 typecheck
+> tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p web/tsconfig.json

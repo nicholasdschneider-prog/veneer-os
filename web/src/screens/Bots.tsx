@@ -1,3 +1,5 @@
+import { BotConversationRail } from '@/components/BotConversationRail';
+import { BotAvatar, BotPresence } from '@/components/BotIdentity';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -54,9 +56,11 @@ function State({ state }: { state: string }) {
 }
 export function Bots({
   decisionId,
+  registrationRequested = false,
   onNavigate,
 }: {
   decisionId?: string;
+  registrationRequested?: boolean;
   onNavigate: (hash: string) => void;
 }) {
   const currentRoute = useRef(decisionId);
@@ -190,9 +194,15 @@ export function Bots({
       setCandidates((await botsApi.candidates()).conversations);
       setRegistering(true);
     });
+  useEffect(() => {
+    if (registrationRequested) openRegistration();
+  }, [registrationRequested]);
   return (
-    <div className="h-full overflow-y-auto bg-background">
+    <div className="flex h-full min-h-0">
+      <div className="hidden w-72 shrink-0 md:block"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
+    <div className="h-full min-w-0 flex-1 overflow-y-auto bg-background">
       <div className="mx-auto max-w-6xl px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-8">
+        <details className="mb-4 md:hidden"><summary className="cursor-pointer rounded-xl border p-3 text-sm font-medium">All bot conversations</summary><div className="h-[min(65dvh,32rem)]"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div></details>
         <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -408,9 +418,7 @@ export function Bots({
                     key={bot.conversation_id}
                     className="flex flex-wrap items-center gap-3 p-4"
                   >
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
-                      <BotIcon className="size-5" />
-                    </div>
+                    <BotAvatar id={bot.conversation_id} name={bot.name} />
                     <button
                       className="min-w-0 flex-1 text-left"
                       onClick={() =>
@@ -422,7 +430,7 @@ export function Bots({
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {bot.archived ? 'Archived · ' : ''}
-                        {bot.state} · {bot.questions} waiting{' '}
+                        <BotPresence id={bot.conversation_id} state={bot.state} /> · {bot.questions} waiting{' '}
                         {bot.questions === 1 ? 'question' : 'questions'}
                       </span>
                     </button>
@@ -466,7 +474,7 @@ export function Bots({
               ) : (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-medium">{d.bot_name}</span>
+                    <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
                     <State state={d.state} />
                   </div>
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
@@ -821,6 +829,7 @@ export function Bots({
         </div>
       </div>
     </div>
+    </div>
   );
 }
 function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
@@ -830,7 +839,7 @@ function DecisionCard({ d, onOpen }: { d: BotDecision; onOpen: () => void }) {
       className="w-full rounded-2xl border bg-card p-4 text-left transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-medium">{d.bot_name}</span>
+        <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
         <State state={d.state} />
       </div>
       <h3 className="font-medium leading-snug">{d.proposal.question}</h3>
