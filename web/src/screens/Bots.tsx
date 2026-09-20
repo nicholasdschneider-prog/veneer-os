@@ -5,12 +5,13 @@ import type { BusinessTeam } from '@/lib/bots';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { BotAvatar, BotName, BotPresence } from '@/components/BotIdentity';
 import { BotComposer } from '@/components/BotComposer';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowUpRight,
   Bot as BotIcon,
   Check,
+  ChevronDown,
   Hand,
   MessageSquare,
   Phone,
@@ -29,6 +30,46 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 const field =
   'w-full rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring';
+const COLLAPSED_KEY = 'veneer:bots-collapsed';
+/** Section heading that folds its body away; the choice sticks per device. */
+function SectionToggle({
+  id,
+  title,
+  count,
+  icon,
+  open,
+  onToggle,
+}: {
+  id: string;
+  title: string;
+  count: number;
+  icon?: ReactNode;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="mb-3 flex min-h-10 w-full items-center gap-2 text-left"
+    >
+      {icon}
+      <h2 id={id} className="text-lg font-semibold">
+        {title}
+      </h2>
+      <span className="rounded-full bg-muted px-2 text-sm text-muted-foreground">{count}</span>
+      <ChevronDown
+        aria-hidden="true"
+        className={cn(
+          'ml-auto size-5 text-muted-foreground transition-transform',
+          !open && '-rotate-90',
+        )}
+      />
+      <span className="sr-only">{open ? 'Hide section' : 'Show section'}</span>
+    </button>
+  );
+}
 function when(value: string) {
   const date = new Date(
     value.includes('T') ? value : value.replace(' ', 'T') + 'Z',
@@ -96,6 +137,19 @@ export function Bots({
   const { business, select } = useBusinessSelection();
   const [teams, setTeams] = useState<BusinessTeam[]>([]);
   const [filter, setFilter] = useState('me');
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? '{}') as Record<string, boolean>;
+    } catch {
+      return {};
+    }
+  });
+  const toggleSection = (key: string) =>
+    setCollapsed((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      return next;
+    });
   const [bots, setBots] = useState<Bot[]>([]);
   const [decisions, setDecisions] = useState<BotDecision[]>([]);
   const [detail, setDetail] = useState<BotThread | null>(null);
@@ -382,16 +436,15 @@ export function Bots({
         >
           <div className={cn('min-w-0', decisionId && 'hidden lg:block')}>
             <section aria-labelledby="raised-hands">
-              <div className="mb-3 flex items-center gap-2">
-                <Hand className="size-5 text-amber-600 dark:text-amber-300" />
-                <h2 id="raised-hands" className="text-lg font-semibold">
-                  Needs your input
-                </h2>
-                <span className="rounded-full bg-muted px-2 text-sm text-muted-foreground">
-                  {needs.length}
-                </span>
-              </div>
-              {loading ? (
+              <SectionToggle
+                id="raised-hands"
+                title="Needs your input"
+                count={needs.length}
+                icon={<Hand className="size-5 text-amber-600 dark:text-amber-300" />}
+                open={!collapsed.input}
+                onToggle={() => toggleSection('input')}
+              />
+              {collapsed.input ? null : loading ? (
                 <p className="py-8 text-muted-foreground">Loading your team…</p>
               ) : needs.length === 0 ? (
                 <div className="rounded-2xl border border-dashed p-6">
@@ -421,21 +474,22 @@ export function Bots({
               if (!items.length && key !== 'history') return null;
               return (
                 <section key={key} className="mt-7" aria-label={title}>
-                  <h2 className="mb-3 text-lg font-semibold">{title} <span className="text-sm font-normal text-muted-foreground">{items.length}</span></h2>
-                  {key === 'history' && <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>}
-                  <div className="grid gap-3">
-                    {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} onCall={canCall ? () => onNavigate(botCallHash(item.conversation_id, item.id)) : undefined} />)}
-                  </div>
+                  <SectionToggle id={`section-${key}`} title={title} count={items.length} open={!collapsed[key]} onToggle={() => toggleSection(key)} />
+                  {collapsed[key] ? null : (
+                    <>
+                      {key === 'history' && <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>}
+                      <div className="grid gap-3">
+                        {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} onCall={canCall ? () => onNavigate(botCallHash(item.conversation_id, item.id)) : undefined} />)}
+                      </div>
+                    </>
+                  )}
                 </section>
               );
             })}
             <section className="mt-8" aria-labelledby="bot-roster">
-              <h2 id="bot-roster" className="mb-3 text-lg font-semibold">
-                Your bots{' '}
-                <span className="ml-1 text-sm font-normal text-muted-foreground">
-                  {bots.length}
-                </span>
-              </h2>
+              <SectionToggle id="bot-roster" title="Your bots" count={bots.length} open={!collapsed.bots} onToggle={() => toggleSection('bots')} />
+              {collapsed.bots ? null : (
+              <>
               {bots.length === 0 && !loading && (
                 <p className="rounded-2xl border p-5 text-sm text-muted-foreground">
                   Register an existing operational chat to give it a place here.
@@ -495,6 +549,8 @@ export function Bots({
                   </div>
                 ))}
               </div>
+              </>
+              )}
             </section>
           </div>
           {decisionId && (
