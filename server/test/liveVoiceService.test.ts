@@ -15,6 +15,7 @@ import { LiveVoiceService } from '../src/voice/service.js';
 let db: Database.Database;
 let service: LiveVoiceService;
 let secrets: Record<string,string>;
+let manager: { snapshot: ReturnType<typeof vi.fn>; statusOf: ReturnType<typeof vi.fn>; steerMessage: ReturnType<typeof vi.fn> };
 let child: EventEmitter & { send: ReturnType<typeof vi.fn>; kill: ReturnType<typeof vi.fn>; connected: boolean; exitCode: number | null };
 beforeEach(() => {
   vi.useFakeTimers(); vi.clearAllMocks();
@@ -23,7 +24,8 @@ beforeEach(() => {
   secrets = { LIVEKIT_URL:'wss://voice-test.livekit.cloud', LIVEKIT_API_KEY:'test-key', LIVEKIT_API_SECRET:'test-secret', OPENAI_API_KEY:'test-openai' };
   child = Object.assign(new EventEmitter(), { send:vi.fn(),kill:vi.fn(),connected:true,exitCode:null });
   fakes.fork.mockReturnValue(child); fakes.createRoom.mockResolvedValue({}); fakes.deleteRoom.mockResolvedValue({});
-  service = new LiveVoiceService({db,doppler:{get:(name:string)=>secrets[name]??null,refresh:async()=>({})}} as unknown as AppContext);
+  manager = {snapshot:vi.fn().mockResolvedValue([]),statusOf:vi.fn().mockResolvedValue('idle'),steerMessage:vi.fn().mockResolvedValue({ok:true,messageId:1,disposition:'running'})};
+  service = new LiveVoiceService({db,manager,doppler:{get:(name:string)=>secrets[name]??null,refresh:async()=>({})}} as unknown as AppContext);
 });
 afterEach(() => { service.close(); db.close(); vi.useRealTimers(); });
 describe('live voice lifecycle', () => {
@@ -47,6 +49,27 @@ describe('live voice lifecycle', () => {
     service.end(1,'wrong-id'); expect(child.kill).not.toHaveBeenCalled();
     service.end(1,call.id); expect(child.kill).toHaveBeenCalledWith('SIGTERM');
     expect(fakes.deleteRoom).toHaveBeenCalled(); expect(service.status(1)).toBeNull();
+  });
+  it('keeps a normal thread call alive through task dispatch and reports real replies', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();
+    const call = await service.start(1,{botConversationId:'thread'});
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({type:'start',mode:'bot',agentName:'Assistant'}));
+    child.emit('message',{type:'ready'});
+    child.emit('message',{type:'tool',id:'ipc-1',name:'send_message',args:{text:'Review order',instructionId:'task-1'}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(manager.steerMessage).toHaveBeenCalledWith('thread','[Voice call] Review order',1);
+    expect(service.status(1)?.id).toBe(call.id);
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({type:'result',id:'ipc-1',result:expect.objectContaining({disposition:'running'})}));
+    child.emit('message',{type:'tool',id:'ipc-2',name:'send_message',args:{text:'Review order',instructionId:'task-1'}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(manager.steerMessage).toHaveBeenCalledTimes(1);
+    manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t1',markdown:'Verified order result'}]);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({type:'notice',kind:'update',context:expect.objectContaining({currentConversation:expect.objectContaining({messages:[{role:'assistant',text:'Verified order result'}]})})}));
+    expect(service.status(1)?.id).toBe(call.id);
+    db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(service.status(1)).toBeNull();
   });
   it('reaps an abandoned phone connection even if its worker stays alive', async () => {
     await service.start(1); child.emit('message',{type:'ready'});

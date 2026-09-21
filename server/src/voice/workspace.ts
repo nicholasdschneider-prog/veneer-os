@@ -2,8 +2,8 @@ import type { AppContext } from '../context.js';
 import type { ConversationRow, QuestionRow, UserRow } from '../db/db.js';
 import type { QuestionAnswers, QuestionPrompt } from '../runtime/events.js';
 import { sanitizeMemoryText } from '../memory/capture.js';
-import { canSendToConversation } from '../conversations/access.js';
-import { BotError, createBotService } from '../bots/service.js';
+import { canSendToConversation, canViewConversation, canManageConversation } from '../conversations/access.js';
+import { createBotService } from '../bots/service.js';
 import { z } from 'zod';
 
 export const AnswerSchema = z.object({
@@ -19,8 +19,8 @@ export const DecisionAnswerSchema = z.object({
 });
 const clip = (value: string, max: number) => sanitizeMemoryText(value ?? '').slice(0, max);
 
-/** Only the caller's own chats are available to voice, including for administrators.
- * A bot call is additionally scoped to one registered VeneerBot the caller can view. */
+/** Coordinator context is owned chats; pinned calls use the normal conversation access policy.
+ * botConversationId is the legacy column/API name and may identify an ordinary thread. */
 export class VoiceWorkspace {
   private bots: ReturnType<typeof createBotService>;
   constructor(private ctx: AppContext, readonly userId: number, readonly botConversationId: string | null = null) {
@@ -29,7 +29,7 @@ export class VoiceWorkspace {
 
   private get user(): UserRow {
     const row = this.ctx.db.prepare('SELECT * FROM users WHERE id=?').get(this.userId) as UserRow | undefined;
-    if (!row) throw new Error('User not found.');
+    if (!row || row.status !== 'active') throw new Error('User not available.');
     return row;
   }
   private get actor() { return { user: this.user }; }
@@ -37,7 +37,7 @@ export class VoiceWorkspace {
   private question(requestId: string): (QuestionRow & { title: string | null }) | undefined {
     return this.ctx.db.prepare(`SELECT q.*, c.title FROM questions q
       JOIN conversations c ON c.id=q.conversation_id
-      WHERE q.request_id=? AND c.user_id=?`).get(requestId, this.userId) as
+      WHERE q.request_id=? AND (c.user_id=? OR c.id=?)`).get(requestId, this.userId, this.botConversationId) as
       (QuestionRow & { title: string | null }) | undefined;
   }
 
@@ -49,30 +49,32 @@ export class VoiceWorkspace {
     } catch { return []; }
   }
 
-  /** The registered bot this call is placed to. Throws when it is not visible to the caller. */
+  /** Pinned agent identity, with a registered bot name when available. */
   bot() {
     const id = this.botConversationId;
     if (!id) throw new Error('This call is not placed to a bot.');
-    const chat = this.bots.chat(this.actor, id);
+    const chat = this.visibleChat(id);
     const registration = this.ctx.db.prepare('SELECT name FROM bot_registrations WHERE conversation_id=? AND active=1')
       .get(id) as { name: string } | undefined;
-    if (!registration) throw new BotError(404, 'Bot not found');
+
     const membership = this.ctx.db.prepare('SELECT role,subteam FROM business_bot_members WHERE conversation_id=?')
       .get(id) as { role: string; subteam: string } | undefined;
     const team = chat.business_team_id
       ? (this.ctx.db.prepare('SELECT name FROM business_teams WHERE id=?').get(chat.business_team_id) as { name: string } | undefined)?.name ?? null
       : null;
-    return { conversationId: id, name: registration.name, title: chat.title, archived: Boolean(chat.archived),
+    return { conversationId: id, name: registration?.name ?? (this.ctx.db.prepare('SELECT name FROM assistants WHERE id=?').get(chat.assistant_id) as {name:string}|undefined)?.name ?? 'Assistant', title: chat.title, archived: Boolean(chat.archived),
       role: membership?.role ?? null, subteam: membership?.subteam || null, team,
       canMessage: !chat.archived && canSendToConversation(this.user, chat, this.ctx.db) };
   }
 
   blockers() {
+    if (this.botConversationId) this.visibleChat(this.botConversationId);
     const rows = this.ctx.db.prepare(`SELECT q.*, c.title FROM questions q
       JOIN conversations c ON c.id=q.conversation_id
-      WHERE c.user_id=? AND q.status='pending' AND (? IS NULL OR q.conversation_id=?) ORDER BY q.created_at LIMIT 100`)
-      .all(this.userId, this.botConversationId, this.botConversationId) as (QuestionRow & { title: string | null })[];
+      WHERE (c.user_id=? OR c.id=?) AND q.status='pending' AND (? IS NULL OR q.conversation_id=?) ORDER BY q.created_at LIMIT 100`)
+      .all(this.userId, this.botConversationId, this.botConversationId, this.botConversationId) as (QuestionRow & { title: string | null })[];
     return rows.flatMap(row => {
+      try { this.visibleChat(row.conversation_id); } catch { return []; }
       const questions = this.prompts(row);
       return questions.length ? [{ requestId: row.request_id, conversationId: row.conversation_id,
         title: row.title, createdAt: row.created_at, questions }] : [];
@@ -80,19 +82,23 @@ export class VoiceWorkspace {
   }
 
   chats() {
-    return this.ctx.db.prepare(`SELECT c.id, c.title, p.name AS projectName FROM conversations c
+    const rows = this.ctx.db.prepare(`SELECT c.*, p.name AS projectName FROM conversations c
       LEFT JOIN projects p ON p.id=c.project_id WHERE c.user_id=? AND c.archived=0
-      ORDER BY c.last_active_at DESC LIMIT 80`).all(this.userId);
+      ORDER BY c.last_active_at DESC LIMIT 80`).all(this.userId) as (ConversationRow & {projectName:string|null})[];
+    return rows.filter(row => canViewConversation(this.user, row, this.ctx.db))
+      .map(row => ({id:row.id,title:row.title,projectName:row.projectName}));
   }
 
   private visibleChat(conversationId: string): ConversationRow {
     if (this.botConversationId) {
-      if (conversationId !== this.botConversationId) throw new Error('Only the bot on this call can be read.');
-      return this.bots.chat(this.actor, conversationId);
+      if (conversationId !== this.botConversationId) throw new Error('Only the conversation on this call can be read.');
+      const row = this.ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(conversationId) as ConversationRow | undefined;
+      if (!row || !canViewConversation(this.user, row, this.ctx.db)) throw new Error('Chat not found.');
+      return row;
     }
     const row = this.ctx.db.prepare('SELECT * FROM conversations WHERE id=? AND user_id=?')
       .get(conversationId, this.userId) as ConversationRow | undefined;
-    if (!row) throw new Error('Chat not found.');
+    if (!row || !canViewConversation(this.user, row, this.ctx.db)) throw new Error('Chat not found.');
     return row;
   }
 
@@ -110,18 +116,29 @@ export class VoiceWorkspace {
   /** Number of bot replies so far; the call loop uses it to notice a new reply. */
   async replyCount(): Promise<number> {
     if (!this.botConversationId) return 0;
+    this.visibleChat(this.botConversationId);
     const events = await this.ctx.manager.snapshot(this.botConversationId);
     return events.filter(event => event.type === 'text_final').length;
   }
 
   /** Relay what the caller said into the bot's own conversation, the same way the chat composer would. */
-  async sendMessage(text: string) {
+  async sendMessage(text: string, instructionId: string) {
     const bot = this.bot();
     if (!bot.canMessage) throw new Error('This bot cannot receive messages right now.');
     const clean = clip(text, 12000).trim();
     if (!clean) throw new Error('Nothing to send.');
-    const posted = await this.ctx.manager.postMessage(bot.conversationId, `[Voice call] ${clean}`, this.userId);
-    return { ...posted, ok: true, delivery: 'Message queued to the bot. Its reply arrives in the chat; read_chat shows it.' };
+    if (!/^[a-zA-Z0-9_-]{1,160}$/.test(instructionId)) throw new Error('Invalid instruction ID.');
+    const prior = this.ctx.db.prepare('SELECT text,result_json FROM voice_dispatches WHERE user_id=? AND conversation_id=? AND instruction_id=?').get(this.userId, bot.conversationId, instructionId) as {text:string;result_json:string|null}|undefined;
+    if (prior) {
+      if (prior.text !== clean) throw new Error('Instruction ID already used for different text.');
+      return prior.result_json ? JSON.parse(prior.result_json) : { ok: false, delivery: 'Delivery is unconfirmed. Check the chat before asking to resend; do not retry this instruction.' };
+    }
+    this.ctx.db.prepare('INSERT INTO voice_dispatches(user_id,conversation_id,instruction_id,text) VALUES(?,?,?,?)').run(this.userId,bot.conversationId,instructionId,clean);
+    // Runner persists the message before steering; do not wait for agent completion.
+    const posted = await this.ctx.manager.steerMessage(bot.conversationId, `[Voice call] ${clean}`, this.userId);
+    const result = { ok: true, messageId: posted.messageId, disposition: posted.disposition, steerReason: posted.steerReason, status: await this.ctx.manager.statusOf(bot.conversationId), delivery: 'Instruction delivered to the conversation. Keep talking while the agent works. Check read_chat for actual status and results; delivery does not mean completion.' };
+    this.ctx.db.prepare('UPDATE voice_dispatches SET result_json=? WHERE user_id=? AND conversation_id=? AND instruction_id=?').run(JSON.stringify(result),this.userId,bot.conversationId,instructionId);
+    return result;
   }
 
   decisions() {
@@ -169,12 +186,14 @@ export class VoiceWorkspace {
   }
 
   history(limit = 40): { id: number; role: string; text: string; createdAt: string }[] {
+    if (this.botConversationId) this.visibleChat(this.botConversationId);
     return this.ctx.db.prepare(`SELECT id, role, text, created_at AS createdAt FROM
       (SELECT * FROM voice_entries WHERE user_id=? AND bot_conversation_id IS ? ORDER BY id DESC LIMIT ?) ORDER BY id`)
       .all(this.userId, this.botConversationId, limit) as { id: number; role: string; text: string; createdAt: string }[];
   }
 
   record(sessionId: string, role: 'user' | 'assistant' | 'decision', text: string) {
+    if (this.botConversationId) this.visibleChat(this.botConversationId);
     const clean = clip(text, 8000).trim();
     if (clean) this.ctx.db.prepare('INSERT INTO voice_entries(user_id,session_id,role,text,bot_conversation_id) VALUES(?,?,?,?,?)')
       .run(this.userId, sessionId, role, clean, this.botConversationId);
@@ -183,6 +202,7 @@ export class VoiceWorkspace {
   async answer(sessionId: string, input: unknown) {
     const { requestId, answers } = AnswerSchema.parse(input);
     const row = this.question(requestId);
+    if (row && !canManageConversation(this.user, this.visibleChat(row.conversation_id), this.ctx.db)) throw new Error('You cannot answer in this chat.');
     if (!row || !this.prompts(row).length) throw new Error('Question not available to voice.');
     if (this.botConversationId && row.conversation_id !== this.botConversationId) throw new Error('That question belongs to another chat.');
     const canonical = (a: QuestionAnswers) => JSON.stringify(Object.keys(a).sort().map(k => [k, [...a[k]!].sort()]));

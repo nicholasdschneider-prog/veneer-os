@@ -66,7 +66,10 @@ class MicDictation {
     return () => this.levelListeners.delete(listener);
   }
 
+  liveVoiceActive = false;
+
   async start(handlers: DictationHandlers): Promise<void> {
+    if (this.liveVoiceActive) { handlers.onError?.('End or pause live voice before dictating.'); handlers.onEnd?.('cancel'); return; }
     if (this.ws) return;
     const gen = ++this.generation;
     this.handlers = handlers;

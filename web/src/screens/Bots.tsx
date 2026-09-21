@@ -18,7 +18,7 @@ import {
   Plus,
   RefreshCw,
 } from 'lucide-react';
-import { botCallHash } from '@/lib/liveVoice';
+import { useLiveVoice } from '@/components/VoiceProvider';
 import { sideChatHash } from '@/lib/sideChat';
 import {
   botsApi,
@@ -111,7 +111,7 @@ export function Bots({
 }: {
   decisionId?: string;
   registrationRequested?: boolean;
-  /** Owners and consultants can place a live voice call to a bot. */
+  /** Direct human sessions can call bots within their normal conversation access. */
   canCall?: boolean;
   onNavigate: (hash: string) => void;
 }) {
@@ -156,6 +156,7 @@ export function Bots({
   const [detail, setDetail] = useState<BotThread | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const liveVoice = useLiveVoice();
   const [busy, setBusy] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [candidates, setCandidates] = useState<
@@ -464,7 +465,7 @@ export function Bots({
                       key={item.id}
                       d={item}
                       onOpen={() => onNavigate('#/bots/' + item.id)}
-                      onCall={canCall ? () => onNavigate(botCallHash(item.conversation_id, item.id)) : undefined}
+                      onCall={canCall ? () => liveVoice.open(item.conversation_id, item.id) : undefined}
                     />
                   ))}
                 </div>
@@ -480,7 +481,7 @@ export function Bots({
                     <>
                       {key === 'history' && <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>}
                       <div className="grid gap-3">
-                        {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} onCall={canCall ? () => onNavigate(botCallHash(item.conversation_id, item.id)) : undefined} />)}
+                        {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} onCall={canCall ? () => liveVoice.open(item.conversation_id, item.id) : undefined} />)}
                       </div>
                     </>
                   )}
@@ -523,7 +524,7 @@ export function Bots({
                         className="rounded-full"
                         aria-label={`Talk with ${bot.name}`}
                         title={`Talk with ${bot.name}`}
-                        onClick={() => onNavigate(botCallHash(bot.conversation_id))}
+                        onClick={() => liveVoice.open(bot.conversation_id)}
                       >
                         <Phone className="size-4" />
                       </Button>
@@ -578,7 +579,7 @@ export function Bots({
                     {canCall && (
                       <Button
                         className="min-h-11 flex-1 sm:flex-none"
-                        onClick={() => onNavigate(botCallHash(d.conversation_id, d.id))}
+                        onClick={() => liveVoice.open(d.conversation_id, d.id)}
                       >
                         <Phone className="size-4" />
                         Talk with {d.bot_name} about this

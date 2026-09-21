@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { VoiceProvider } from './components/VoiceProvider';
 import { App } from './App';
 import { FloatingDesktopProvider } from './components/desktop/FloatingDesktop';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
@@ -17,7 +18,7 @@ applyColorMode(getColorMode());
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <FloatingDesktopProvider>
-      <App />
+      <VoiceProvider><App /></VoiceProvider>
     </FloatingDesktopProvider>
     <PwaUpdatePrompt />
   </StrictMode>,

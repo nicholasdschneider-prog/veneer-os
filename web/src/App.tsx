@@ -339,7 +339,7 @@ export function App() {
     }
     return (
       <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-        <Bots registrationRequested={params.get('register') === '1'} decisionId={botsSegments[2]} canCall={canManage} onNavigate={navigate} />
+        <Bots registrationRequested={params.get('register') === '1'} decisionId={botsSegments[2]} canCall={true} onNavigate={navigate} />
       </NavShell>
     );
   }

@@ -1,85 +1,73 @@
-# Voice calls with VeneerBots
+# Live voice in chats and VeneerBots
 
-Every registered bot can be called from VeneerBots (`#/bots`):
+Use the phone icon beside the chat composer, or the call button on a bot card. Tap **Start voice** in the floating panel. The conversation stays open; navigating to another thread keeps the call pinned to its original agent and conversation. The panel displays both identities and links back to that thread. An unsaved new chat needs its first message before a call can be attached.
 
-- **Bot roster** — the phone button beside a bot opens a call with it.
-- **Decision cards and the decision thread** — "Talk with *bot* about this" opens a call focused on that decision, so you can talk it through and decide out loud.
-- **A bot's chat** (opened from VeneerBots) — the phone button in the header calls that bot.
+Explicit spoken instructions use the real runner's message-steering path. An active agent can receive work while the voice conversation continues; providers without live steering retain it in the normal queue. Thinking aloud and hypothetical discussion should not dispatch work. The voice model is instructed to clarify ambiguity and dispatch only explicit requests.
 
-The call route is `#/bots/talk/<conversationId>` with an optional `?decision=<id>`. The original all-agents coordinator, Henry, remains reachable at `#/voice` but no longer has entry points on the Chats or Tools screens.
+The runner's delivery disposition distinguishes queued, running, steered, and delivered messages. These are delivery states, not proof of task completion. The voice service watches visible replies, status changes, structured questions, and bot decisions. Each notification includes fresh visible agent messages and current status, so the voice can report from new evidence rather than reuse an earlier tool response. Notifications wait while the user is speaking, including when they arrive during another response. It relays actual results and questions during the call. Approval prompts still require the existing approval UI; voice does not grant tool permissions or handle secrets.
 
-This is a LiveKit/OpenAI voice session that speaks *for* the bot from its real chat, decisions and pending questions. It is not the bot's own model on the line: the bot keeps working in its chat, and the voice line relays what you say to it, reads its replies aloud when they arrive, and records the decisions you state explicitly. Saved conversation history is kept per bot, separately from Henry's.
+## Access and persistence
 
-## Setup
+Directly signed-in staff can call conversations they can access. Private conversations, business membership, and viewer restrictions use the same checks as ordinary chat. Structured question answers use the existing conversation-management permission; bot decisions still require the assigned approver and current proposal version. Agent bearer tokens cannot open human voice calls. The older unscoped Henry coordinator remains limited to owner/consultant sessions and their accessible owned chats.
 
-Create a project at [LiveKit Cloud](https://cloud.livekit.io). In the connected runtime Doppler configuration (currently `main/prd`), supply these names through secure secret cards or Settings → Credentials → Vault:
+Voice transcripts are isolated by **caller and conversation**, including shared team threads. Reconnecting loads bounded saved history. A spoken instruction sent into the actual thread is visible there under the caller's identity. Persistent instruction receipts suppress retries with the same instruction ID. An uncertain delivery is not automatically retried: check the source chat before resending. No raw audio recordings are saved.
 
-| Name | Source |
+The database and legacy API field `bot_conversation_id` / `botConversationId` now also accept ordinary conversation IDs. Existing bot call links and saved history remain compatible.
+
+## Controls and iPhone behavior
+
+- **Start voice** begins audio activation and microphone permission inside the tap handler.
+- **Mute** keeps the call connected while disabling microphone transmission.
+- **Standby** disconnects the room and microphone. Resume creates a new connection using saved history.
+- **End** stops audio; the close button also dismisses the panel.
+- **Enable audio** appears when browser playback needs another user gesture.
+- A previous call from another tab can be ended before reconnecting. Calls expire after 55 minutes; missing heartbeats release abandoned sessions.
+
+Dictation is preserved. Live voice and dictation cannot capture the microphone together. Close the voice panel to return to composer dictation.
+
+Connect AirPods before starting and select the output in iPhone Control Center. Keep Veneer in the foreground. Screen lock, switching apps, phone calls, or Bluetooth changes can interrupt browser audio. A wake lock is requested when supported; this is not an uninterrupted background PWA calling service.
+
+## Configuration
+
+The runtime vault needs these names; never paste their values into chat or source files:
+
+| Name | Purpose |
 | --- | --- |
-| `LIVEKIT_URL` | Project URL, `wss://…livekit.cloud` |
-| `LIVEKIT_API_KEY` | Project Settings → Keys |
-| `LIVEKIT_API_SECRET` | Matching LiveKit API secret |
-| `OPENAI_API_KEY` | [OpenAI API keys](https://platform.openai.com/api-keys) |
+| `LIVEKIT_URL` | `wss://…livekit.cloud` project URL |
+| `LIVEKIT_API_KEY` | LiveKit project API key |
+| `LIVEKIT_API_SECRET` | Matching LiveKit secret |
+| `OPENAI_API_KEY` | OpenAI API access |
 
-Do not paste keys in chat or commit them. Runtime Doppler refreshes periodically; **Check setup again** refreshes the displayed availability. Calls use OpenAI `gpt-realtime`, the Marin voice, and input transcription. Both providers may bill usage separately from subscriptions. No paid account or plan is purchased by the implementation.
+All four names were present during this build. The implementation uses the existing LiveKit Agents OpenAI Realtime integration (`gpt-realtime`, Marin, semantic turn detection). See the [OpenAI Realtime documentation](https://developers.openai.com/api/docs/guides/realtime) and [LiveKit OpenAI integration](https://docs.livekit.io/agents/models/realtime/plugins/openai/). API usage is separately metered; this change purchases no account or plan. Configuration errors point to Settings → Credentials and explain missing names or an invalid project URL.
 
-The first trial accepts LiveKit Cloud project URLs only. A self-hosted media server needs separate networking/TLS work; the existing Cloudflare web tunnel is not a substitute for WebRTC media transport.
+## Verification
 
-## iPhone and AirPods
+Repository typecheck and production build passed. The full suite passed: 2,041 server tests (5 skipped), 825 web tests, 21 installer tests, and 40 browser-manager tests.
 
-1. Connect AirPods before opening the call. Select the desired route in iPhone Control Center.
-2. Tap **Call *bot*** and allow microphone access. **Enable *bot*'s audio** appears if Safari blocks playback.
-3. Speak normally and interrupt when needed. On a bot call the voice line reads the bot's chat and open decisions first, then tells you what it is working on or waiting on.
-4. **Mute** disables microphone transmission but leaves the call connected. **Standby** disconnects the voice session and microphone; resume starts a new connection with saved reference history.
-5. Keep the page open during this trial. Screen lock, app switching, calls from other apps, or Bluetooth changes can interrupt audio. A screen wake lock is requested when available; it is not a background-audio guarantee.
+Automated coverage includes real runner question resolution, ordinary-thread dispatch receipts, uncertain-delivery deduplication, staff/private/business access, transcript isolation, access revocation, source-thread pinning in worker dispatch, active-call preservation during work, actual reply notifications, and room cleanup. The browser panel was inspected at 390 × 844 and 1440 × 1000, including navigation pinning and an actionable missing-microphone error.
 
-Calls stop after 55 minutes; tap to continue. An absent browser heartbeat ends an abandoned call after approximately 90–105 seconds. A stuck startup is ended after approximately 45–60 seconds. Only one active call per user is allowed. Leaving the voice screen ends that call. An **End previous call** control recovers a connection left by another tab.
+The opt-in smoke check sends synthesized PCM speech through real LiveKit/OpenAI services and receives remote audio. It routes the spoken instruction through the real conversation manager into a deterministic provider fixture, then checks that an unpredictable reference number from the fixture result is relayed during the same call. This live service check passed on September 21, 2026. It uses an in-memory database and does not act on customer tickets:
 
-## What a bot call can do
+```sh
+NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live
+```
 
-- Read the bot's recent visible chat messages and status (`read_chat`), and relay what you say into that chat (`send_message`, prefixed `[Voice call]`) the same way the composer would. When the bot replies during the call, the voice line is told and reads the reply aloud.
-- List and read the bot's decisions (`list_decisions`, `read_decision`), post into a decision's discussion thread (`discuss_decision`, which wakes the bot but approves nothing), and record an explicit approve / reject / defer / withdraw with your reasoning (`answer_decision`). The decision's version is checked, only the assigned approver can answer, and the answer goes through the same VeneerBots service and wake-up the web form uses.
-- Answer the bot's structured pending questions (`list_blockers`, `answer_question`).
-- Newly raised decisions and new questions are mentioned briefly while you are both listening.
+Physical iPhone/AirPods testing remains required: two-way audio quality, barge-in, mute, standby/resume, Bluetooth route changes, lock-screen recovery, and a staff member's real agent workflow. A successful automated fixture does not establish those device or customer-service outcomes.
 
-A bot call is scoped to that one bot: other chats, other bots and the Henry chat list are not available on it.
+## Changed implementation files
 
-## What Henry can do
-
-- Review up to 100 pending ordinary structured question requests across the user's own chats, including multiple prompts per request.
-- Read recent visible conversation messages and current agent status. Tool output, reasoning, and secret cards are excluded.
-- Save and deliver explicit answers through the existing runner's option validation and durable question resolution. Delivery is not proof that the agent completed the ticket.
-- Briefly mention newly arriving questions while listening during an active call.
-- Resume from saved final transcripts and decision receipts. History supplied to the model is bounded; it is not unlimited conversational memory.
-
-Voice cannot grant tool approvals, enter/reveal credentials, independently send customer messages, start arbitrary agent work, or discover blockers that agents never recorded as questions. A source-chat link is provided for those workflows. The trial is restricted to directly signed-in owners and consultants, scoped to their own chats; agent tokens and member accounts cannot start calls.
-
-No raw audio recordings are saved by this implementation. Final text transcripts and decision receipts are stored in SQLite. Recognizable credential patterns are redacted from transcript capture. Interrupted/incomplete utterances may not be saved. Do not speak passwords or API keys to Henry.
-
-## Verification and remaining checks
-
-Verified locally: real runner question validation/resolution, cross-user isolation, exclusion of secret requests, idempotent repeat decisions, persisted history, startup failure cleanup, heartbeat cleanup, missing/invalid configuration, worker/native SDK initialization on Node 24 arm64, mobile/desktop layout, and browser microphone-denial recovery. Full repository typecheck, tests, and production build are required before restart.
-
-A real LiveKit/OpenAI media session and physical iPhone/AirPods behavior still require the LiveKit credentials and device acceptance test. Check two-way audio, interruption, mute, standby/resume, Bluetooth route changes, screen lock/recovery, a real pending question, and the source agent receiving its answer. Never describe those checks as passed merely because the UI renders or automated tests pass.
-
-## Implementation files
-
-- [Voice workspace and decision routing](/Users/archerclawdington/veneer-os/server/src/voice/workspace.ts)
-- [Call lifecycle and room tokens](/Users/archerclawdington/veneer-os/server/src/voice/service.ts)
-- [Isolated LiveKit voice worker](/Users/archerclawdington/veneer-os/server/src/voice/worker.ts)
-- [Authenticated voice routes](/Users/archerclawdington/veneer-os/server/src/routes/liveVoice.ts)
-- [Voice migration](/Users/archerclawdington/veneer-os/server/src/db/migrations/0090_live_voice.sql)
-- [Application context](/Users/archerclawdington/veneer-os/server/src/context.ts)
-- [API mounting](/Users/archerclawdington/veneer-os/server/src/routes/api.ts)
-- [Startup and shutdown](/Users/archerclawdington/veneer-os/server/src/index.ts)
-- [Call screen, bot and coordinator modes](/Users/archerclawdington/veneer-os/web/src/screens/LiveVoice.tsx)
-- [VeneerBots entry points](/Users/archerclawdington/veneer-os/web/src/screens/Bots.tsx)
-- [Bot chat header entry point](/Users/archerclawdington/veneer-os/web/src/screens/Chat.tsx)
-- [Bot-scoped history migration](/Users/archerclawdington/veneer-os/server/src/db/migrations/0093_voice_bot_calls.sql)
-- [Browser API client](/Users/archerclawdington/veneer-os/web/src/lib/liveVoice.ts)
-- [Lazy-loaded application route](/Users/archerclawdington/veneer-os/web/src/App.tsx)
-- [Workspace and HTTP tests](/Users/archerclawdington/veneer-os/server/test/liveVoice.test.ts)
-- [Call lifecycle tests](/Users/archerclawdington/veneer-os/server/test/liveVoiceService.test.ts)
-- [Server dependencies](/Users/archerclawdington/veneer-os/server/package.json), [browser dependencies](/Users/archerclawdington/veneer-os/web/package.json), [lockfile](/Users/archerclawdington/veneer-os/package-lock.json)
-
-The full test run also exposed an existing simultaneous-boot race in [migration initialization](/Users/archerclawdington/veneer-os/server/src/db/migrate.ts), fixed by rechecking under an immediate write transaction, and a millisecond-sensitive [snapshot test](/Users/archerclawdington/veneer-os/server/test/snapshot-merge.test.ts), fixed by pinning its clock.
+- [Workspace, permissions, and delivery receipts](/Users/archerclawdington/veneer-os/server/src/voice/workspace.ts)
+- [Call service and status notifications](/Users/archerclawdington/veneer-os/server/src/voice/service.ts)
+- [Realtime worker](/Users/archerclawdington/veneer-os/server/src/voice/worker.ts)
+- [Human voice routes](/Users/archerclawdington/veneer-os/server/src/routes/liveVoice.ts)
+- [Dispatch receipt migration](/Users/archerclawdington/veneer-os/server/src/db/migrations/0095_voice_dispatches.sql)
+- [Workspace and access tests](/Users/archerclawdington/veneer-os/server/test/liveVoice.test.ts)
+- [Call service tests](/Users/archerclawdington/veneer-os/server/test/liveVoiceService.test.ts)
+- [Pinned voice provider](/Users/archerclawdington/veneer-os/web/src/components/VoiceProvider.tsx)
+- [Floating panel and audio lifecycle](/Users/archerclawdington/veneer-os/web/src/screens/LiveVoice.tsx)
+- [Composer entry point](/Users/archerclawdington/veneer-os/web/src/screens/Chat.tsx)
+- [Bot entry points](/Users/archerclawdington/veneer-os/web/src/screens/Bots.tsx)
+- [Staff call availability](/Users/archerclawdington/veneer-os/web/src/App.tsx)
+- [Provider mounting above navigation](/Users/archerclawdington/veneer-os/web/src/main.tsx)
+- [Microphone conflict prevention](/Users/archerclawdington/veneer-os/web/src/lib/stt.ts)
+- [Opt-in live media smoke check](/Users/archerclawdington/veneer-os/scripts/smoke-live-voice.mjs)

@@ -1,6 +1,6 @@
+import { useLiveVoice } from '@/components/VoiceProvider';
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
 import { withSideParam } from '../lib/sideChat';
-import { botCallHash } from '@/lib/liveVoice';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -628,6 +628,7 @@ export function Chat({
 
   // Voice dictation (the server-selected provider, proxied at /ws/stt). While
   // recording, `draft` is kept as dictationBase + live/committed speech text.
+  const liveVoice = useLiveVoice();
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [sendingAfterDictation, setSendingAfterDictation] = useState(false);
@@ -660,7 +661,7 @@ export function Chat({
   }, []);
 
   const toggleDictation = useCallback(() => {
-    if (transcribing) return;
+    if (transcribing || liveVoice.pinnedId) return;
     if (recording || micDictation.isActive) {
       micDictation.stop();
       return;
@@ -697,7 +698,7 @@ export function Chat({
         setTranscribing(false);
         finishPendingDictationSend('unexpected');
       });
-  }, [draft, recording, transcribing, finishPendingDictationSend]);
+  }, [draft, recording, transcribing, finishPendingDictationSend, liveVoice.pinnedId]);
 
   // Don't leave the mic hot if the user navigates away mid-recording.
   useEffect(
@@ -2315,7 +2316,7 @@ export function Chat({
                 variant="ghost"
                 size="icon-lg"
                 className="relative rounded-full text-muted-foreground"
-                onPointerUp={() => onNavigate(botCallHash(conversationId))}
+                onPointerUp={() => liveVoice.open(conversationId)}
                 aria-label={`Talk with ${title?.trim() || agentName}`}
                 title="Talk with this bot"
               >
@@ -3105,6 +3106,13 @@ export function Chat({
           >
             <Paperclip className="h-5 w-5" />
           </button>
+          <button type="button" aria-label="Live voice" title={conversationId === 'new' ? 'Send a message to create this conversation first' : 'Live voice'}
+            disabled={conversationId === 'new' || recording || transcribing || creatingNewChat}
+            onPointerUp={() => liveVoice.open(conversationId)}
+            onClick={event => { if (event.detail === 0) liveVoice.open(conversationId); }}
+            className="flex size-12 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground disabled:opacity-40">
+            <Phone className="size-5" />
+          </button>
           <button
             // pointerup, not click: the iOS spell-check callout eats taps
             // that mousedown/click would need (Veneer lesson).
@@ -3112,7 +3120,7 @@ export function Chat({
             onPointerUp={() => toggleDictation()}
             aria-label={transcribing ? 'Finishing dictation' : recording ? 'Stop dictation' : 'Dictate message'}
             aria-pressed={recording}
-            disabled={transcribing || creatingNewChat}
+            disabled={transcribing || creatingNewChat || !!liveVoice.pinnedId}
             className={cn(
               'relative flex shrink-0 items-center justify-center rounded-full transition-[width,height,color] duration-[360ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
               enlargeMic ? 'size-10' : 'size-9',

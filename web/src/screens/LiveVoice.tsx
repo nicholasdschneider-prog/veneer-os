@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Room, RoomEvent, Track, createLocalAudioTrack, type LocalAudioTrack } from 'livekit-client';
-import { ArrowLeft, Mic, MicOff, Phone, PhoneOff, Pause, Volume2 } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Phone, PhoneOff, Pause, Volume2, X } from 'lucide-react';
+import { micDictation } from '../lib/stt';
 import { Button } from '@/components/ui/button';
 import { BotAvatar } from '@/components/BotIdentity';
 import { decisionLabel } from '@/lib/bots';
@@ -12,8 +13,8 @@ type State = 'ready' | 'connecting' | 'connected' | 'reconnecting' | 'standby' |
  * (its chat, decisions and questions); without it, the Henry coordinator
  * across every pending question.
  */
-export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate }: {
-  botConversationId?: string; decisionId?: string | null; onBack: () => void; onNavigate?: (hash: string) => void;
+export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, compact = false }: {
+  compact?: boolean; botConversationId?: string; decisionId?: string | null; onBack: () => void; onNavigate?: (hash: string) => void;
 }) {
   const [snapshot, setSnapshot] = useState<VoiceSnapshot | null>(null);
   const [state, setState] = useState<State>('ready');
@@ -36,11 +37,12 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate }:
   }, [query]);
   const end = useCallback((next: State = 'ended') => {
     generation.current++;
+    if (roomRef.current) micDictation.liveVoiceActive = false;
     const id = callId.current; callId.current = null;
     const room = roomRef.current; roomRef.current = null;
     room?.removeAllListeners();
     micRef.current?.stop(); micRef.current = null;
-    void room?.disconnect();
+    void room?.disconnect().catch(() => {});
     audioHost.current?.replaceChildren();
     void wakeLock.current?.release(); wakeLock.current = null;
     if (id) void voiceRequest(`/calls/${id}/end`, {}, true).catch(() => {});
@@ -53,10 +55,10 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate }:
     const timer = window.setInterval(() => {
       const epoch = generation.current;
       void refresh().then(next => {
-        if (epoch === generation.current && callId.current && (!next.call || next.call.state === 'failed')) {
+        if (epoch === generation.current && callId.current && (!next.call || next.call.id !== callId.current || next.call.state === 'failed')) {
           setError(next.call?.error ?? 'The call ended. Tap Call to continue.'); end();
         }
-      }).catch(() => {});
+      }).catch(e => { if (epoch === generation.current) { setError(e.message); end(); } });
       if (callId.current) void voiceRequest(`/calls/${callId.current}/heartbeat`, {}).catch(() => {
         if (epoch !== generation.current) return;
         setError('Connection lost. Your saved conversation is still here.'); end();
@@ -66,7 +68,12 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate }:
     const visibility = () => {
       if (document.visibilityState === 'visible' && roomRef.current) {
         void roomRef.current.startAudio().catch(() => setAudioBlocked(true));
-        if ('wakeLock' in navigator) void navigator.wakeLock.request('screen').then(lock => { wakeLock.current = lock; }).catch(() => {});
+        if ('wakeLock' in navigator) {
+          const currentRoom = roomRef.current;
+          void navigator.wakeLock.request('screen').then(lock => {
+            if (currentRoom && roomRef.current === currentRoom) wakeLock.current = lock; else void lock.release();
+          }).catch(() => {});
+        }
       }
     };
     window.addEventListener('pagehide', pagehide);
@@ -79,12 +86,14 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate }:
 
   async function start() {
     if (roomRef.current) return;
+    if (micDictation.isActive || micDictation.isFinalizing || micDictation.liveVoiceActive) { setError('Finish dictation or the other voice call first.'); return; }
+    micDictation.liveVoiceActive = true;
     const epoch = ++generation.current;
     setError(null); setState('connecting');
     const room = new Room({ adaptiveStream: true, dynacast: true });
     roomRef.current = room;
     // These begin in the actual tap handler, before any network await (iOS).
-    const audioReady = room.startAudio().catch(() => { if (mounted.current) setAudioBlocked(true); });
+    const audioReady = room.startAudio().catch(() => { if (mounted.current && generation.current === epoch) setAudioBlocked(true); });
     const micReady = createLocalAudioTrack({ echoCancellation: true, noiseSuppression: true, autoGainControl: true });
     room.on(RoomEvent.TrackSubscribed, track => {
       if (track.kind === Track.Kind.Audio) {
@@ -116,7 +125,12 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate }:
       await room.localParticipant.publishTrack(mic);
       if (generation.current !== epoch) return;
       setState('connected');
-      if ('wakeLock' in navigator) void navigator.wakeLock.request('screen').then(lock => { wakeLock.current = lock; }).catch(() => {});
+      if ('wakeLock' in navigator) {
+          const currentRoom = roomRef.current;
+          void navigator.wakeLock.request('screen').then(lock => {
+            if (currentRoom && roomRef.current === currentRoom) wakeLock.current = lock; else void lock.release();
+          }).catch(() => {});
+        }
       void refresh().catch(() => {});
     } catch (e) {
       if (generation.current === epoch) {
@@ -137,11 +151,32 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate }:
   }
   const active = state === 'connected' || state === 'connecting' || state === 'reconnecting';
   const status = state === 'connected' ? muted ? 'Microphone muted' : snapshot?.call?.state === 'speaking' ? `${name} is speaking` : snapshot?.call?.state === 'thinking' ? `${name} is checking` : 'Listening' :
-    state === 'standby' ? 'On standby · microphone off' : state === 'connecting' ? 'Connecting…' : state === 'reconnecting' ? 'Reconnecting…' : 'Ready when you are';
+    state === 'ended' ? 'Call ended · microphone off' : state === 'standby' ? 'On standby · microphone off' : state === 'connecting' ? 'Connecting…' : state === 'reconnecting' ? 'Reconnecting…' : 'Ready when you are';
   const bot = snapshot?.bot ?? null;
   const focused = snapshot?.decision ?? null;
   const open = (snapshot?.decisions ?? []).filter(d => d.state === 'needs_input' && d.decisionId !== focused?.decisionId);
   const missingBot = !!botConversationId && !!snapshot && !bot;
+  if (compact) return <section aria-label={`Live voice · ${name}`} className="flex max-h-[65dvh] flex-col gap-3 overflow-y-auto rounded-2xl border bg-background p-4 text-base sm:text-sm">
+    <header className="flex items-center justify-between gap-3">
+      <div className="min-w-0"><p className="font-semibold">Live voice · {name}</p><p className="truncate text-muted-foreground">{bot?.title}</p><a className="underline underline-offset-4" href={`#/chat/${botConversationId}`}>Open pinned conversation</a></div>
+      <Button variant="ghost" className="size-12 shrink-0" aria-label="Close and end voice" onClick={() => { end(); onBack(); }}><X className="size-4" /></Button>
+    </header>
+    <p role="status" aria-live="polite">{status}</p>
+    {error && <p role="alert" className="text-destructive">{error}</p>}
+    {snapshot && !snapshot.configuration.ready && <p role="alert">Voice setup needs attention. Ask your administrator to check {snapshot.configuration.missing.join(', ') || 'LIVEKIT_URL'} in Settings → Credentials.</p>}
+    <div className="flex flex-wrap gap-2">
+      {!active ? <Button className="min-h-12 flex-1" disabled={!snapshot?.configuration.ready || !bot?.canMessage} onClick={() => void start()}><Phone className="size-4" />{state === 'standby' ? 'Resume' : 'Start voice'}</Button> : <>
+        <Button variant="outline" className="min-h-12 flex-1" disabled={state !== 'connected'} aria-pressed={muted} onClick={() => void toggleMute()}>{muted ? <MicOff className="size-4" /> : <Mic className="size-4" />}{muted ? 'Unmute' : 'Mute'}</Button>
+        <Button variant="outline" className="min-h-12 flex-1" onClick={() => end('standby')}><Pause className="size-4" />Standby</Button>
+        <Button variant="outline" className="min-h-12 flex-1 text-destructive" onClick={() => end()}><PhoneOff className="size-4" />End</Button>
+      </>}
+    </div>
+    {audioBlocked && active && <Button variant="outline" className="min-h-12" onClick={() => void roomRef.current?.startAudio().catch(() => setError('Tap again to enable audio.'))}><Volume2 className="size-4" />Enable audio</Button>}
+    {!active && snapshot?.call && <Button variant="outline" className="min-h-12" onClick={() => void voiceRequest(`/calls/${snapshot.call!.id}/end`, {}).then(refresh).catch(e => setError(e.message))}>End previous call</Button>}
+    <p className="text-pretty text-muted-foreground">Keep Veneer open. AirPods output is controlled by your iPhone. You can keep talking while the agent works.</p>
+    <details><summary className="cursor-pointer">Saved voice conversation</summary><ol role="list" className="flex flex-col gap-3 pt-3">{snapshot?.history.slice(-12).map(entry => <li key={entry.id}><p className="font-medium">{entry.role === 'user' ? 'You' : entry.role === 'decision' ? 'Decision delivered' : name}</p><p className="whitespace-pre-wrap break-words text-muted-foreground">{entry.text}</p></li>)}</ol></details>
+    <div ref={audioHost} className="hidden" />
+  </section>;
   return <div className="h-full overflow-y-auto px-4 py-6 sm:px-8">
     <main className="mx-auto flex max-w-3xl flex-col gap-8 pb-[env(safe-area-inset-bottom)]">
       <header className="flex flex-col gap-4">

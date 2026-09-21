@@ -9,14 +9,15 @@ export function createLiveVoiceRouter(ctx: AppContext): Router {
   router.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
     // Calls are interactive human sessions, never accessible through agent tokens.
-    if (req.agentConversationId || req.user?.role === 'member') {
-      res.status(403).json({ ok: false, error: 'Live voice requires an owner or consultant signed in directly.' }); return;
+    if (req.agentConversationId) {
+      res.status(403).json({ ok: false, error: 'Live voice requires a human signed in directly.' }); return;
     }
     next();
   });
   router.get('/', (req, res) => {
     const query = z.object({ bot: id.optional(), decision: id.optional() }).safeParse(req.query);
     if (!query.success) { res.status(400).json({ ok: false, error: 'Invalid bot.' }); return; }
+    if (req.user?.role === 'member' && !query.data.bot) { res.status(403).json({ error: 'Open voice from an accessible conversation.' }); return; }
     const workspace = new VoiceWorkspace(ctx, req.user!.id, query.data.bot ?? null);
     let bot: ReturnType<VoiceWorkspace['bot']> | null = null;
     let decision: ReturnType<VoiceWorkspace['readDecision']> | null = null;
@@ -31,6 +32,7 @@ export function createLiveVoiceRouter(ctx: AppContext): Router {
   router.post('/calls', (req, res) => {
     const body = z.object({ contextConversationId: id.optional(), botConversationId: id.optional(), decisionId: id.optional() }).safeParse(req.body);
     if (!body.success) { res.status(400).json({ ok: false, error: 'Invalid call request.' }); return; }
+    if (req.user?.role === 'member' && !body.data.botConversationId) { res.status(403).json({ error: 'Open voice from an accessible conversation.' }); return; }
     if (!ctx.liveVoice) { res.status(503).json({ ok: false, error: 'Live voice is not available.' }); return; }
     void ctx.liveVoice.start(req.user!.id, body.data)
       .then(call => res.json({ ok: true, ...call }))

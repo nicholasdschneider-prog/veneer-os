@@ -45,7 +45,7 @@ beforeEach(() => {
     resolveQuestion: async (id: string, answers: Record<string,string[]>) => runtime.resolveQuestion(id, answers),
     snapshot: async (id: string) => runtime.snapshot(db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow),
     statusOf: async (id: string) => runtime.statusOf(id),
-    postMessage: async (id: string, text: string, actorUserId?: number) => { posted.push({ id, text, actorUserId }); return { ok: true, queued: true }; },
+    steerMessage: async (id: string, text: string, actorUserId?: number) => { posted.push({ id, text, actorUserId }); return { ok: true, queued: true }; },
   } } as unknown as AppContext;
   workspace = new VoiceWorkspace(ctx, 1);
 });
@@ -90,6 +90,47 @@ describe('Henry voice workspace', () => {
   });
 });
 
+describe('ordinary thread voice and staff permissions', () => {
+  it('persists a dispatch receipt across reconnects and never repeats uncertain work', async () => {
+    const call = new VoiceWorkspace(ctx, 1, 'own');
+    await call.sendMessage('Review this order', 'order-1');
+    await new VoiceWorkspace(ctx, 1, 'own').sendMessage('Review this order', 'order-1');
+    expect(posted).toHaveLength(1);
+    await expect(call.sendMessage('Different action', 'order-1')).rejects.toThrow('different text');
+    db.prepare("INSERT INTO voice_dispatches(user_id,conversation_id,instruction_id,text) VALUES(1,'own','uncertain','Check status')").run();
+    expect(await call.sendMessage('Check status','uncertain')).toMatchObject({ok:false});
+    expect(posted).toHaveLength(1);
+  });
+  it('lets staff use shared threads but isolates transcripts by both user and thread', async () => {
+    const staff = new VoiceWorkspace(ctx, 3, 'own');
+    expect(staff.bot().canMessage).toBe(true);
+    await staff.sendMessage('Check the order', 'staff-1');
+    expect(posted[0]?.actorUserId).toBe(3);
+    staff.record('call','user','Staff private voice history');
+    expect(new VoiceWorkspace(ctx, 1, 'own').history()).toEqual([]);
+    expect(new VoiceWorkspace(ctx, 3, 'other').history()).toEqual([]);
+    expect(staff.history()).toHaveLength(1);
+    db.prepare("UPDATE conversations SET visibility='private' WHERE id='own'").run();
+    expect(() => staff.history()).toThrow('not found');
+    await expect(staff.sendMessage('Again','staff-2')).rejects.toThrow('not found');
+  });
+  it('respects business membership and viewer permissions without granting staff question approval', async () => {
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('team','Support',1)").run();
+    db.prepare("UPDATE conversations SET business_team_id='team' WHERE id='own'").run();
+    const staff = new VoiceWorkspace(ctx,3,'own');
+    expect(() => staff.bot()).toThrow();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('team',3,'viewer')").run();
+    expect(staff.bot().canMessage).toBe(false);
+    await expect(staff.sendMessage('Do it','viewer-1')).rejects.toThrow();
+    db.prepare("UPDATE business_team_members SET role='member' WHERE user_id=3").run();
+    expect(staff.bot().canMessage).toBe(true);
+    expect(staff.blockers()).toHaveLength(1);
+    await expect(staff.answer('call',{requestId,answers:{q1:['replace']}})).rejects.toThrow('cannot answer');
+    db.prepare("UPDATE users SET status='disabled' WHERE id=3").run();
+    await expect(staff.readChat('own')).rejects.toThrow();
+  });
+});
+
 describe('bot voice calls', () => {
   const owner = () => db.prepare('SELECT * FROM users WHERE id=1').get() as import('../src/db/db.js').UserRow;
   function registerBot() {
@@ -106,8 +147,8 @@ describe('bot voice calls', () => {
     expect(call.blockers()).toMatchObject([{ requestId, conversationId: 'own' }]);
     expect(call.decisions()).toMatchObject([{ decisionId: decision.id, state: 'needs_input', canAnswer: true, question: 'Refund the duplicate order?' }]);
     expect(call.readDecision(decision.id)).toMatchObject({ decisionId: decision.id, discussion: [] });
-    await expect(call.readChat('other')).rejects.toThrow('Only the bot');
-    expect(() => new VoiceWorkspace(ctx, 1, 'other').bot()).toThrow();
+    await expect(call.readChat('other')).rejects.toThrow('Only the conversation');
+    expect(new VoiceWorkspace(ctx, 1, 'other').bot()).toMatchObject({ conversationId: 'other' });
     db.prepare("UPDATE conversations SET visibility='private' WHERE id='own'").run();
     expect(() => new VoiceWorkspace(ctx, 2, 'own').bot()).toThrow();
     expect(() => new VoiceWorkspace(ctx, 1, 'missing').bot()).toThrow();
@@ -115,7 +156,7 @@ describe('bot voice calls', () => {
   it('relays messages, discussion and explicit decisions to the bot', async () => {
     const decision = registerBot();
     const call = new VoiceWorkspace(ctx, 1, 'own');
-    await expect(call.sendMessage('Go ahead and refund the customer')).resolves.toMatchObject({ ok: true });
+    await expect(call.sendMessage('Go ahead and refund the customer', 'refund-1')).resolves.toMatchObject({ ok: true });
     expect(posted).toEqual([{ id: 'own', text: '[Voice call] Go ahead and refund the customer', actorUserId: 1 }]);
     expect(call.discuss('call1', decision.id, 'What did the customer actually pay?')).toMatchObject({ ok: true });
     expect(call.readDecision(decision.id).discussion).toMatchObject([{ from: 'Owner', text: '[Voice call] What did the customer actually pay?' }]);
@@ -130,7 +171,7 @@ describe('bot voice calls', () => {
   it('refuses relays for bots the caller cannot message', async () => {
     registerBot();
     db.prepare("UPDATE conversations SET archived=1 WHERE id='own'").run();
-    await expect(new VoiceWorkspace(ctx, 1, 'own').sendMessage('hello')).rejects.toThrow();
+    await expect(new VoiceWorkspace(ctx, 1, 'own').sendMessage('hello', 'hello-1')).rejects.toThrow();
     expect(posted).toEqual([]);
   });
 });
@@ -150,15 +191,19 @@ describe('live voice HTTP boundary', () => {
   });
   it('describes a bot call and hides bots the caller cannot see', async () => {
     const url = await base();
-    expect((await fetch(`${url}?bot=own`)).status).toBe(404);
+    expect((await fetch(`${url}?bot=own`)).status).toBe(200);
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,active,registered_by) VALUES('own','Grant',1,1)").run();
     expect(await (await fetch(`${url}?bot=own`)).json()).toMatchObject({ bot: { name: 'Grant' }, decisions: [], blockers: [{ requestId }], chats: [] });
+    db.prepare("UPDATE conversations SET visibility='private' WHERE id='other'").run();
     expect((await fetch(`${url}?bot=other`)).status).toBe(404);
   });
-  it('refuses agent tokens and member accounts', async () => {
+  it('refuses agent tokens and unscoped member calls but permits accessible staff threads', async () => {
     const url = await base(); agentConversationId = 'own';
     expect((await fetch(url)).status).toBe(403);
     agentConversationId = undefined; identity = 'member@example.com';
     expect((await fetch(url)).status).toBe(403);
+    expect((await fetch(`${url}?bot=own`)).status).toBe(200);
+    db.prepare("UPDATE conversations SET visibility='private' WHERE id='own'").run();
+    expect((await fetch(`${url}?bot=own`)).status).toBe(404);
   });
 });
