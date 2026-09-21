@@ -12,9 +12,9 @@ const evidence = {
 const proposal = {
   type: 'object',
   properties: {
-    question: str,
-    recommendation: str,
-    consequence: str,
+    question: { type: 'string', description: 'A short plain-English customer issue and the decision needed. Write for a customer-service teammate, not an engineer. Include the order number when known; keep case keys in source_key.' },
+    recommendation: { type: 'string', description: 'In 1–3 short sentences, say what you propose to do and why. Preserve verified facts, uncertainty and meaningful dates. Do not include lease, CAS, provider, CASE LOG or execution-protocol jargon. Do not paste the full customer email here.' },
+    consequence: { type: 'string', description: 'Plain-English impact and limits: exact amount/currency if relevant, what approval does and does not authorize, unresolved facts, and estimates versus confirmed dates. Keep every material condition; do not turn an estimate into a promise or task completion into case resolution.' },
     assignee_id: { type: 'integer' },
     team: str,
     deadline: {
@@ -22,7 +22,7 @@ const proposal = {
       description: 'Real ISO deadline, or null.',
     },
     evidence,
-    blocked_action: str,
+    blocked_action: { type: 'string', description: 'Complete action, execution requirements and approval conditions. Put internal protocol here, not in the human-facing fields. If proposing an exact customer message, append EXACT DRAFT: followed by the complete verbatim message at the end. Nothing after the draft except the draft itself; the UI displays it separately.' },
     blocks_scope: { type: 'string', enum: ['task', 'workload'] },
     shopify_order: { type: 'object', description: 'For Shopify cases include the verified merchant order number and direct Shopify admin order URL. Do not substitute a case ID or invent an order ID.', properties: { number: str, url: str }, required: ['number', 'url'], additionalProperties: false },
   },

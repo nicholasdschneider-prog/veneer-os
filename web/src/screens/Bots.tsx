@@ -6,6 +6,7 @@ import { BotConversationRail } from '@/components/BotConversationRail';
 import { BotActions, BOT_PREFERENCES_CHANGED } from '@/components/BotActions';
 import { BotAvatar, BotName, BotPresence, BotWorkingIndicator } from '@/components/BotIdentity';
 import { BotOrderLink } from '@/components/BotOrderLink';
+import { BotProposalSummary } from '@/components/BotProposalSummary';
 import { BotComposer } from '@/components/BotComposer';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -707,20 +708,7 @@ export function Bots({
                     {d.state === 'needs_input' ? 'Approval still needed · Approve here or explicitly approve during a call.' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
-                  <p className="mt-2 break-all text-xs text-muted-foreground">
-                    {d.id} · Proposal v{d.version}
-                  </p>
-                  <div className="mt-5 rounded-xl bg-muted/60 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Recommendation
-                    </p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm">
-                      {d.proposal.recommendation}
-                    </p>
-                    <p className="mt-3 text-sm font-medium">
-                      {d.proposal.consequence}
-                    </p>
-                  </div>
+                  <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} showIdentifiers /></div>
                   <dl className="mt-4 grid gap-3 text-sm">
                     <div>
                       <dt className="text-muted-foreground">{d.answer ? 'Answered by' : 'Handling'}</dt>
@@ -730,18 +718,8 @@ export function Bots({
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">
-                        Dependent action
-                      </dt>
-                      <dd>
-                        {d.proposal.blocked_action}{' '}
-                        <span className="text-muted-foreground">
-                          · Blocks{' '}
-                          {d.proposal.blocks_scope === 'task'
-                            ? 'this task only'
-                            : 'the whole workload'}
-                        </span>
-                      </dd>
+                      <dt className="font-medium">Approval scope</dt>
+                      <dd className="text-muted-foreground">{d.proposal.blocks_scope === 'task' ? 'This approval applies to one task. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Timing</dt>
@@ -875,6 +853,7 @@ export function Bots({
                         <h3 className="font-medium">
                           Your decision · v{d.version}
                         </h3>
+                        <p className="mt-2 text-base text-muted-foreground sm:text-sm">Review the proposed action, customer reply, and full conditions above before approving.</p>
                         <label className="mt-3 block text-sm">
                           Answer or reasoning
                           <textarea
@@ -1047,56 +1026,28 @@ export function Bots({
 }
 export function DecisionCard({ d, onOpen, onCall }: { d: BotDecision; onOpen: () => void; onCall?: () => void }) {
   return (
-    <div data-decision-id={d.id} className="relative w-full min-w-0 rounded-2xl border bg-card [overflow-wrap:anywhere] transition-colors hover:border-foreground/30 focus-within:ring-2 focus-within:ring-ring">
-      <div className={cn('px-4', onCall && 'pr-16')}><BotOrderLink order={d.order_reference} /></div>
-      {onCall && (
-        <Button
-          variant="outline"
-          size="icon-lg"
-          className="absolute right-3 top-3 z-10 rounded-full"
-          aria-label={`Talk with ${d.bot_name} about this`}
-          title={`Talk with ${d.bot_name} about this`}
-          onClick={(event) => { event.stopPropagation(); onCall(); }}
-        >
-          <Phone className="size-4" />
-        </Button>
-      )}
-    <button
-      onClick={onOpen}
-      className="w-full min-w-0 rounded-2xl p-4 text-left focus-visible:outline-none"
-    >
-      <div className={cn('mb-3 flex flex-wrap items-center justify-between gap-2', onCall && 'pr-12')}>
-        <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
-        <State state={d.state} label={decisionStatusLabel(d)} />
+    <article data-decision-id={d.id} className="min-w-0 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</div>
+        <div className="flex items-center gap-2">
+          <State state={d.state} label={decisionStatusLabel(d)} />
+          {onCall && <Button variant="outline" size="icon-lg" className="rounded-full" aria-label={`Talk with ${d.bot_name} about this`} onClick={onCall}><Phone className="size-4" /></Button>}
+        </div>
       </div>
-      <h3 className="font-medium leading-snug">{d.proposal.question}</h3>
-      <p className="mt-2 text-sm">Task: {d.proposal.blocked_action}</p>
-      {d.result && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{d.result.evidence}</p>}
-      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-        {d.proposal.recommendation}
-      </p>
-      <p className="mt-3 text-sm font-medium">{d.proposal.consequence}</p>
-      <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        <span>{d.answered_by ? `Answered by ${d.answered_by}` : d.shared_queue ? (d.handler_name ? `${d.handler_name} is handling this` : 'Shared queue · Available') : d.assignee_name}</span>
+      <BotOrderLink order={d.order_reference} />
+      <h3 className="mt-4 text-base font-semibold text-balance">
+        <button onClick={onOpen} className="w-full rounded text-left hover:underline focus-visible:outline focus-visible:outline-ring">{d.proposal.question}</button>
+      </h3>
+      <div className="mt-4"><BotProposalSummary decision={d} compact /></div>
+      {d.result && <div className="mt-3 space-y-1 text-base sm:text-sm"><p className="font-medium">Latest update</p><p className="whitespace-pre-wrap text-pretty text-muted-foreground">{d.result.evidence}</p></div>}
+      <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span>{d.answered_by ? `Answered by ${d.answered_by}` : d.shared_queue ? (d.handler_name ? `With ${d.handler_name}` : 'Available for a teammate') : `For ${d.assignee_name}`}</span>
         <span>{when(d.created_at)}</span>
-        <span>
-          {d.proposal.deadline
-            ? `Due ${new Date(d.proposal.deadline).toLocaleString()}`
-            : 'No deadline'}
-        </span>
+        {d.proposal.deadline && <span>Due {new Date(d.proposal.deadline).toLocaleString()}</span>}
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        {d.proposal.blocks_scope === 'task'
-          ? d.state === 'needs_input'
-            ? 'One task waiting · Other work can continue'
-            : 'Task scope'
-          : d.state === 'needs_input'
-            ? 'Whole workload waiting'
-            : 'Workload scope'}{' '}
-        · v{d.version}
-      </p>
-    </button>
-    </div>
+      {d.state === 'needs_input' && <p className="mt-2 text-sm text-muted-foreground">{d.proposal.blocks_scope === 'task' ? 'Other work can continue while this waits.' : 'All work for this bot is waiting for an answer.'}</p>}
+      <Button variant="outline" className="mt-4 w-full" onClick={onOpen}>{d.state === 'needs_input' ? 'Review & decide' : 'View decision'}</Button>
+    </article>
   );
 }
 

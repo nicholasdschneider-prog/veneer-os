@@ -1,4 +1,17 @@
-import { decisionLabel, type BotDecision } from './bots';
+import { decisionLabel, type BotDecision, type BotProposal } from './bots';
+
+/** Separate only an explicit draft label. Never summarize or reinterpret approval conditions. */
+export function decisionCopy(proposal: BotProposal) {
+  const markers = [...proposal.blocked_action.matchAll(/\bEXACT DRAFT:\s*/gi)];
+  const marker = markers.length === 1 ? markers[0] : undefined;
+  const draft = marker ? proposal.blocked_action.slice(marker.index! + marker[0].length).trim() : '';
+  return {
+    proposedAction: proposal.recommendation,
+    limits: proposal.consequence,
+    draft: draft || null,
+    instructions: draft && marker ? proposal.blocked_action.slice(0, marker.index).trim() : proposal.blocked_action,
+  };
+}
 
 type DecisionStatus = Pick<BotDecision, 'state' | 'answer'>;
 export function decisionSection(d: DecisionStatus) {

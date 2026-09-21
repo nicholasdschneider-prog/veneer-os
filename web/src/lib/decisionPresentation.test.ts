@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { decisionSection, decisionStatusLabel } from './decisionPresentation';
+import { decisionCopy, decisionSection, decisionStatusLabel } from './decisionPresentation';
 import type { BotDecision } from './bots';
+
+describe('readable proposal copy', () => {
+  const base = { recommendation: 'Ask the customer for photos.', consequence: '$0 message only. No replacement approved. Delivery is an estimate.', blocked_action: 'Check both parcels. EXACT DRAFT: Hi Branden, UPS has not received the second parcel. We cannot confirm a delivery date.' } as BotDecision['proposal'];
+  it('separates an explicitly labeled draft without rewriting facts or conditions', () => {
+    expect(decisionCopy(base)).toEqual({ proposedAction: base.recommendation, limits: base.consequence, instructions: 'Check both parcels.', draft: 'Hi Branden, UPS has not received the second parcel. We cannot confirm a delivery date.' });
+    expect(base.blocked_action).toContain('EXACT DRAFT:');
+  });
+  it('keeps unknown or ambiguous formats whole instead of guessing a reply', () => {
+    for (const blocked_action of ['Send only after approval. No refund.', 'EXACT DRAFT:', 'EXACT DRAFT: old. EXACT DRAFT: new.']) {
+      expect(decisionCopy({ ...base, blocked_action })).toMatchObject({ draft: null, instructions: blocked_action });
+    }
+  });
+});
 
 describe('decision-specific lifecycle presentation', () => {
   it.each([
