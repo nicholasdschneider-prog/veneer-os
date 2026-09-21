@@ -157,10 +157,8 @@ export class VoiceWorkspace {
     return result;
   }
 
-  decisions() {
-    const id = this.botConversationId;
-    if (!id) return [];
-    return this.bots.list(this.actor).filter(d => d.conversation_id === id).slice(0, 40).map(d => ({
+  private decisionSummary(d: ReturnType<ReturnType<typeof createBotService>['view']>) {
+    return {
       decisionId: d.id, version: d.version, state: d.state, createdAt: d.created_at, updatedAt: d.updated_at,
       canAnswer: d.can_answer, assignee: d.assignee_name,
       question: clip(d.proposal.question, 2000), recommendation: clip(d.proposal.recommendation, 2000),
@@ -168,7 +166,41 @@ export class VoiceWorkspace {
       blocksScope: d.proposal.blocks_scope, deadline: d.proposal.deadline,
       answer: d.answer ? { action: d.answer.action, scope: d.answer.scope, text: clip(d.answer.text, 1000) } : null,
       result: d.result ? { state: d.result.state, evidence: clip(d.result.evidence, 1000) } : null,
-    }));
+    };
+  }
+
+  decisions() {
+    if (!this.botConversationId) return [];
+    this.visibleChat(this.botConversationId);
+    return this.bots.list(this.actor).filter(d => d.conversation_id === this.botConversationId)
+      .slice(0, 40).map(d => this.decisionSummary(d));
+  }
+
+  decisionCatalog(offset = 0) {
+    if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid decision cursor.');
+    if (!this.botConversationId) return { items: [], total: 0, nextOffset: null };
+    this.visibleChat(this.botConversationId);
+    const all = this.bots.list(this.actor).filter(d => d.conversation_id === this.botConversationId);
+    return { items: all.slice(offset, offset + 10).map(d => ({
+      decisionId: d.id, version: d.version, state: d.state, canAnswer: d.can_answer,
+      question: clip(d.proposal.question, 180), detailRequired: true,
+    })), total: all.length, nextOffset: offset + 10 < all.length ? offset + 10 : null };
+  }
+
+  /** Page proposal fields together; never label clipped constraints as the full proposal. */
+  voiceDecision(decisionId: string, offset = 0) {
+    if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid decision cursor.');
+    const summary = this.readDecision(decisionId);
+    const d = this.bots.view(this.actor, this.bots.read(this.actor, decisionId));
+    const fields = { question: d.proposal.question, recommendation: d.proposal.recommendation,
+      consequence: d.proposal.consequence, blockedAction: d.proposal.blocked_action };
+    const clean = Object.fromEntries(Object.entries(fields).map(([k,v]) => [k, sanitizeMemoryText(String(v ?? ''))]));
+    const length = Math.max(...Object.values(clean).map(v => v.length));
+    return { ...summary, ...Object.fromEntries(Object.entries(clean).map(([k,v]) => [k,v.slice(offset,offset+1500)])),
+      evidence: summary.evidence.slice(0,8), discussion: summary.discussion.slice(-4).map(m => ({...m,text:m.text.slice(0,1000)})),
+      coverage: { proposalOffset: offset, nextOffset: offset + 1500 < length ? offset + 1500 : null,
+        evidenceTotal: summary.evidence.length, discussionTotal: summary.discussionCoverage.totalMessages,
+        note: 'Proposal fields are paged. Read remaining pages before advising approval; discussion and evidence are recent excerpts. Open the decision thread for complete discussion.' } };
   }
 
   readDecision(decisionId: string) {
@@ -177,8 +209,9 @@ export class VoiceWorkspace {
     const decision = this.bots.view(this.actor, this.bots.read(this.actor, decisionId));
     if (decision.conversation_id !== id) throw new Error('That decision belongs to another bot.');
     const thread = this.bots.thread(this.actor, decisionId);
-    const summary = this.decisions().find(d => d.decisionId === decisionId)!;
-    return { ...summary, evidence: (decision.proposal.evidence as { label: string }[]).map(e => clip(e.label, 300)),
+    this.visibleChat(id);
+    const summary = this.decisionSummary(decision);
+    return { ...summary, discussionCoverage: { totalMessages: thread.messages.length, recentLimit: 20, charactersPerMessage: 2000 }, evidence: (decision.proposal.evidence as { label: string }[]).map(e => clip(e.label, 300)),
       discussion: (thread.messages as { actor_name: string; actor_conversation_id: string | null; text: string; created_at: string }[])
         .slice(-20).map(m => ({ from: m.actor_conversation_id ? decision.bot_name : m.actor_name, text: clip(m.text, 2000), at: m.created_at })) };
   }

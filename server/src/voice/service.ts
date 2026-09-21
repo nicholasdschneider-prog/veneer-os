@@ -5,6 +5,8 @@ import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import type { AppContext } from '../context.js';
 import { VoiceWorkspace } from './workspace.js';
 
+import { voiceFailureMessage } from './failure.js';
+
 interface Call {
   id: string; userId: number; room: string; child: ChildProcess; client: RoomServiceClient;
   state: string; error: string | null; lastSeen: number; expiresAt: number;
@@ -34,10 +36,10 @@ function botInstructions(bot: { name: string; role: string | null; subteam: stri
 The real work happens in ${bot.name}'s own chat; you speak for it from that chat's actual messages, its open decisions, and its pending questions. Fresh currentConversation messages and status are provided below before this call starts. Use them immediately for greetings and recaps. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done or a clean slate. Summarize completed work from the actual messages when asked what you did. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fresh updates use read_chat. Its coverage describes a bounded window: if older history is needed, call read_chat with beforeMessage=coverage.olderBefore. If messages are clipped or missing, acknowledge the limit instead of inventing details.
 Do not dispatch thinking aloud, hypothetical examples, or ambiguous intentions. Ask a short clarifying question first. Only use send_message for an explicit instruction or a request to relay a message. Keep the same instructionId when retrying. The dispatch disposition is authoritative: queued means waiting, running means started, steered means forwarded into the active turn; none means completed. Completion or failure must come from actual agent results. Tool approval policies still apply in the underlying chat.
 When the user wants ${bot.name} to do something or wants to tell it something, use send_message to relay it in the user's words; ${bot.name} then replies in its chat. When you are told a reply arrived, read it with read_chat and summarize it aloud.
-For decisions: read_decision gives the full proposal and discussion. discuss_decision posts a message into that decision's thread (it wakes the bot but approves nothing). answer_decision records approve, reject, defer or withdraw only after the user explicitly states that decision; repeat their decision back first. Use the exact decisionId and version from list_decisions.
+For decisions: read_decision gives paged proposal fields and recent discussion excerpts. Catalog questions are previews only. Read all proposal pages using coverage.nextOffset before advising approval; never treat omitted constraints as absent. list_decisions accepts offset for the next catalog page. discuss_decision posts a message into that decision's thread (it wakes the bot but approves nothing). answer_decision records approve, reject, defer or withdraw only after the user explicitly states that decision; repeat their decision back first. Use the exact decisionId and version from list_decisions.
 Structured pending questions from ${bot.name} are in list_blockers; deliver those with answer_question using exact option values.
 You cannot start unrelated work, send email, or act as any other bot. Keep to ${bot.name}'s work.
-${decisionId ? `The user opened this call from decision ${decisionId}. Read it first with read_decision and lead with it.\n` : ''}` + SHARED_RULES;
+${decisionId ? `The user opened this call from decision ${decisionId}. Its first proposal page is supplied as focusedDecision; lead with it and retrieve remaining pages as needed.\n` : ''}` + SHARED_RULES;
 }
 
 export class LiveVoiceService {
@@ -74,7 +76,7 @@ export class LiveVoiceService {
         // request to call read_chat (it may otherwise reuse an old tool result).
         const currentConversation = call.bot ? await workspace.readChat(call.bot.conversationId) : null;
         call.child.send({ type: 'notice', kind: call.bot ? 'update' : 'question',
-          context: { currentConversation, blockers, decisions } });
+          context: { currentConversation, blockers, decisions: workspace.decisionCatalog(), focusedDecision: call.decisionId ? workspace.voiceDecision(call.decisionId) : null } });
       }
       keys.forEach(key => call.seenKeys.add(key));
       call.replies = replies;
@@ -120,7 +122,7 @@ export class LiveVoiceService {
         try { bot = workspace.bot(); }
         catch { setupError = 'That bot is not available to call.'; throw new Error(setupError); }
         if (options.decisionId) {
-          try { focus = workspace.readDecision(options.decisionId); }
+          try { focus = workspace.voiceDecision(options.decisionId); }
           catch { setupError = 'That decision is not available on this call.'; throw new Error(setupError); }
         }
       }
@@ -159,7 +161,7 @@ export class LiveVoiceService {
         const message = raw as Record<string, unknown>;
         if (message.type === 'ready') { call.state = 'listening'; call.ready = true; }
         if (message.type === 'state' && typeof message.state === 'string') call.state = message.state;
-        if (message.type === 'failure') { call.state = 'failed'; call.error = 'Voice connection failed. Check LiveKit/OpenAI credentials and account credit, then reconnect.'; }
+        if (message.type === 'failure') { call.state = 'failed'; call.error = voiceFailureMessage(message.code); }
         if (message.type === 'transcript' && typeof message.text === 'string' && (message.role === 'user' || message.role === 'assistant')) {
           try { workspace.record(call.id, message.role, message.text); } catch { this.end(userId, call.id); }
         }
@@ -173,8 +175,8 @@ export class LiveVoiceService {
               case 'read_chat': return workspace.readChat(bot ? bot.conversationId : String(args.conversationId), typeof args.beforeMessage === 'number' ? args.beforeMessage : undefined);
               case 'answer': return workspace.answer(call.id, args);
               case 'send_message': return workspace.sendMessage(String(args.text ?? ''), String(args.instructionId ?? ''));
-              case 'decisions': return workspace.decisions();
-              case 'read_decision': return workspace.readDecision(String(args.decisionId ?? ''));
+              case 'decisions': return workspace.decisionCatalog(typeof args.offset === 'number' ? args.offset : 0);
+              case 'read_decision': return workspace.voiceDecision(String(args.decisionId ?? ''), typeof args.offset === 'number' ? args.offset : 0);
               case 'discuss_decision': return workspace.discuss(call.id, String(args.decisionId ?? ''), String(args.text ?? ''));
               case 'answer_decision': return workspace.answerDecision(call.id, args);
               default: return { error: 'Unknown tool.' };
@@ -185,11 +187,12 @@ export class LiveVoiceService {
       });
       const failed = () => { if (this.calls.get(userId) === call) { call.state = 'failed'; call.error ??= 'Call disconnected. Your saved conversation and decisions are retained.'; } };
       child.on('error', failed); child.on('exit', failed);
-      const history = workspace.history(16).map(item => ({ ...item, text: item.text.slice(0,1000) }));
+      const catalog = workspace.decisionCatalog();
+      const history = workspace.history(6).map(item => ({ ...item, text: item.text.slice(0,600) }));
       child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), participantIdentity,
         mode: bot ? 'bot' : 'coordinator', agentName: bot?.name ?? 'Henry',
         instructions: (bot ? botInstructions(bot, options.decisionId ?? null) : HENRY_INSTRUCTIONS)
-          + JSON.stringify({ history, currentConversation: context, blockers: workspace.blockers(), decisions: bot ? workspace.decisions() : [], focusedDecision: focus }) });
+          + JSON.stringify({ history, currentConversation: context, historyCoverage: { recentEntries: 6, charactersPerEntry: 600, olderEntriesRetained: true }, blockers: workspace.blockers(), decisions: catalog.items, decisionCoverage: { total: catalog.total, nextOffset: catalog.nextOffset }, focusedDecision: focus }) });
       return { id: call.id, url, token: browserToken, expiresAt: call.expiresAt };
     } catch (error) {
       this.end(userId);

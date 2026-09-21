@@ -29,6 +29,45 @@ beforeEach(() => {
 });
 afterEach(() => { service.close(); db.close(); vi.useRealTimers(); });
 describe('live voice lifecycle', () => {
+  it('bounds large bot context and preserves an older selected decision in startup and notices', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('large',1,1,'Large bot','codex','large')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('large','Grant',1)").run();
+    for (let i=0;i<45;i++) {
+      db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id,created_at,updated_at) VALUES(?,'large',?,?,?,1,?,?)")
+        .run('d'+i,'s'+i,'p'+i,JSON.stringify({question:i===0?'Selected reference 719362':'Question '.repeat(1000),
+          recommendation:'Recommendation '.repeat(1000),consequence:'Consequence '.repeat(1000),
+          blocked_action:'Constraint '.repeat(1000)+'FINAL CONSTRAINT',blocks_scope:'task',deadline:null,evidence:[]}),
+          new Date(1700000000000+i*1000).toISOString(),new Date(1700000000000+i*1000).toISOString());
+    }
+    await service.start(1,{botConversationId:'large',decisionId:'d0'});
+    const start = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
+    expect(start.instructions.length).toBeLessThan(18000);
+    const data = JSON.parse(start.instructions.slice(start.instructions.indexOf('{"history":')));
+    expect(data.focusedDecision).toMatchObject({decisionId:'d0',version:1,canAnswer:true,question:'Selected reference 719362',coverage:{nextOffset:1500}});
+    expect(data.decisions).toHaveLength(10);
+    expect(data.decisionCoverage).toEqual({total:45,nextOffset:10});
+    child.emit('message',{type:'ready'});
+    child.emit('message',{type:'tool',id:'page',name:'decisions',args:{offset:40}});
+    child.emit('message',{type:'tool',id:'detail',name:'read_decision',args:{decisionId:'d0',offset:10000}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({id:'page',result:expect.objectContaining({total:45,nextOffset:null})}));
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({id:'detail',result:expect.objectContaining({blockedAction:expect.stringContaining('FINAL CONSTRAINT')})}));
+    manager.snapshot.mockResolvedValue([{type:'text_final',markdown:'Actual completed work'}]);
+    await vi.advanceTimersByTimeAsync(5000);
+    const notice = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(JSON.stringify(notice).length).toBeLessThan(18000);
+    expect(notice.context.focusedDecision.decisionId).toBe('d0');
+    expect(manager.steerMessage).not.toHaveBeenCalled();
+  });
+  it('reports only approved error categories, never worker diagnostics', async () => {
+    await service.start(1);
+    child.emit('message',{type:'failure',code:'context_limit',message:'private-provider-body'});
+    expect(service.status(1)?.error).toContain('context');
+    child.emit('message',{type:'failure',code:'private-provider-body'});
+    expect(JSON.stringify(service.status(1))).not.toContain('private-provider-body');
+    expect(service.status(1)?.error).not.toContain('credentials');
+  });
+
   it('fails closed on missing credentials or unsafe room endpoints', async () => {
     delete secrets.OPENAI_API_KEY;
     expect(service.configuration()).toEqual({ready:false,missing:['OPENAI_API_KEY'],invalidUrl:false});

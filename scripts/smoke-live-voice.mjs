@@ -24,10 +24,24 @@ migrate(db, path.resolve('server/src/db/migrations'));
 db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'voice-smoke@example.invalid','Voice smoke','member')").run();
 db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('voice-smoke',1,1,'Voice verification fixture','codex','voice-smoke')").run();
 const conversation = db.prepare("SELECT * FROM conversations WHERE id='voice-smoke'").get();
+const decisions = process.argv.includes('--decisions');
 const recap = process.argv.includes('--recap');
 const events = [];
 const reference = String(randomInt(100000, 999999));
 if (recap) events.push({type:'text_final',turnId:'prior-work',markdown:`Completed the onboarding checklist export. Delivery reference ${reference}. The export is saved and ready for staff.`,at:new Date().toISOString()});
+let focusId;
+if (decisions) {
+  db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('voice-smoke','Fixture Grant',1)").run();
+  for (let i = 0; i < 45; i++) {
+    const id = 'fixture-decision-' + i;
+    if (i === 0) focusId = id;
+    const proposal = {question: i === 0 ? 'Review the synthetic shipping exception, reference ' + reference : 'Review synthetic case ' + i + '. ' + 'Long synthetic case context. '.repeat(100),
+      recommendation: 'Only discuss this synthetic case. '.repeat(100), consequence: 'No customer action is permitted. '.repeat(100),
+      blocked_action: 'Do not change tickets. '.repeat(100), blocks_scope:'task', deadline:null, evidence:[]};
+    db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id,created_at,updated_at) VALUES(?,'voice-smoke',?,?,?,1,?,?)")
+      .run(id,id,id,JSON.stringify(proposal),new Date(1700000000000+i*1000).toISOString(),new Date(1700000000000+i*1000).toISOString());
+  }
+}
 let dispatches = 0;
 const manager = createConversationManager({ db, adapters: { codex: {
   id: 'codex', mintSessionId: () => 'voice-smoke', readTranscript: async () => events,
@@ -60,7 +74,7 @@ room.on(RoomEvent.TrackSubscribed, track => {
 });
 try {
   const wav = path.join(directory, 'instruction.wav');
-  execFileSync('/usr/bin/say', ['-o', wav, '--file-format=WAVE', '--data-format=LEI16@24000', recap ? 'Give me the TLDR on what you already completed in this thread, including the delivery reference number. Do not start any new work.' : 'Please ask the agent to run the verification and tell me the reference number it returns. Send that instruction now.'], { stdio: 'ignore' });
+  execFileSync('/usr/bin/say', ['-o', wav, '--file-format=WAVE', '--data-format=LEI16@24000', decisions ? 'What is the reference number of the selected shipping exception? Only discuss it. Do not approve anything or send any instructions.' : recap ? 'Give me the TLDR on what you already completed in this thread, including the delivery reference number. Do not start any new work.' : 'Please ask the agent to run the verification and tell me the reference number it returns. Send that instruction now.'], { stdio: 'ignore' });
   const buffer = readFileSync(wav);
   let pcm;
   for (let offset = 12; offset + 8 <= buffer.length;) {
@@ -69,7 +83,7 @@ try {
     offset += 8 + size + (size % 2);
   }
   if (!pcm) throw new Error('Audio fixture unavailable');
-  const call = await service.start(1, { botConversationId: conversation.id });
+  const call = await service.start(1, { botConversationId: conversation.id, decisionId: focusId });
   heartbeat = setInterval(() => service.heartbeat(1, call.id), 10000);
   await room.connect(call.url, call.token);
   const track = LocalAudioTrack.createAudioTrack('smoke-microphone', source);
@@ -91,14 +105,16 @@ try {
     workingDuringCall ||= dispatches > 0 && manager.statusOf(conversation.id) === 'working' && service.status(1)?.state !== 'failed';
     const rows = db.prepare('SELECT role,text FROM voice_entries').all();
     const lastUser = rows.findLastIndex(row => row.role === 'user');
+    const decisionsUnchanged = db.prepare("SELECT count(*) AS n FROM bot_decisions WHERE state!='needs_input'").get().n === 0 &&
+      db.prepare('SELECT count(*) AS n FROM bot_decision_events').get().n === 0;
     const relayedResult = lastUser >= 0 && rows.slice(lastUser + 1).some(row => row.role === 'assistant' && row.text.includes(reference));
-    if ((recap ? dispatches === 0 : workingDuringCall && events.length) && relayedResult && rows.some(row => row.role === 'user')) { success = true; break; }
+    if (decisionsUnchanged && ((recap || decisions) ? dispatches === 0 : workingDuringCall && events.length) && relayedResult && rows.some(row => row.role === 'user')) { success = true; break; }
     if (service.status(1)?.state === 'failed') break;
     await delay(500);
   }
-  console.log(JSON.stringify({ passed: success, mode: recap ? 'startup-recap' : 'dispatch', receivedAudio: samples > 0, transcribedSpeech: db.prepare("SELECT count(*) AS n FROM voice_entries WHERE role='user'").get().n > 0, dispatches, workingDuringCall, fixtureCompleted: events.length > 0 }));
+  console.log(JSON.stringify({ passed: success, failure: service.status(1)?.error ?? null, mode: decisions ? 'many-decisions' : recap ? 'startup-recap' : 'dispatch', receivedAudio: samples > 0, transcribedSpeech: db.prepare("SELECT count(*) AS n FROM voice_entries WHERE role='user'").get().n > 0, dispatches, workingDuringCall, fixtureCompleted: events.length > 0 }));
 } catch {
-  console.log(JSON.stringify({ passed: false, error: 'Live media smoke failed. Check service configuration, credit, connectivity, and worker status. No credentials or provider diagnostics are printed.' }));
+  console.log(JSON.stringify({ passed: false, status: service.status(1)?.error, error: 'Live media smoke failed. Check service configuration, credit, connectivity, and worker status. No credentials or provider diagnostics are printed.' }));
 } finally {
   clearInterval(silence); clearInterval(heartbeat); service.close();
   await source.close(); await room.disconnect();

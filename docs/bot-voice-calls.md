@@ -14,6 +14,16 @@ Context includes up to 24 recent visible user/assistant messages, with a 36,000-
 
 The reported call was pinned to the correct thread. Its saved voice transcript incorrectly described a clean slate, while the runner retained the conversation and deployment summary. The corrected context reader was checked against that real thread and includes the deployed voice feature summary.
 
+## Large bot decision queues
+
+Calls load a catalog of ten short decision previews plus the selected decision's first proposal page. Further catalog pages are available through `list_decisions.offset`. The selected decision is read directly with the caller's permissions, including decisions older than the UI's first forty items. Startup and live update notices use the same bounded decision representation.
+
+Proposal question, recommendation, consequence, and blocked action are retrieved in 1,500-character pages through `read_decision.offset`; coverage provides the next offset. The voice instructions require reading remaining proposal constraints before advising approval. Evidence is limited to eight labels and discussion to four recent excerpts of up to 1,000 characters; coverage makes those limits explicit and directs users to the decision thread for complete discussion. The full decision and audit records remain persisted. Existing assignee, version, explicit-answer, and task-approval checks remain in force.
+
+Saved voice context contains six recent entries of up to 600 characters each; older entries remain saved. Current thread context still uses the existing 24-message/36,000-character reader. On the reported Grant call, a read-only measurement found approximately 123,000 startup characters, including 107,000 decision characters. After the change, a fresh Grant snapshot measured approximately 22,000 characters (the live decision queue had also grown).
+
+Worker failures expose only fixed error categories, including recognized context limits, authentication, quota, rate limits, and a generic connection fallback. Raw provider messages, request bodies, and secrets are never returned or logged. Fatal errors outside the SDK session event also terminate the isolated worker with sanitized reporting. Unknown failures no longer tell users to replace credentials that may already work.
+
 ## Access and persistence
 
 Directly signed-in staff can call conversations they can access. Private conversations, business membership, and viewer restrictions use the same checks as ordinary chat. Structured question answers use the existing conversation-management permission; bot decisions still require the assigned approver and current proposal version. Agent bearer tokens cannot open human voice calls. The older unscoped Henry coordinator remains limited to owner/consultant sessions and their accessible owned chats.
@@ -50,7 +60,7 @@ All four names were present during this build. The implementation uses the exist
 
 ## Verification
 
-Repository typecheck and production build passed. The full suite passed: 2,044 server tests (5 skipped), 825 web tests, 21 installer tests, and 40 browser-manager tests.
+Repository typecheck and production build passed. The full suite passed: 2,048 server tests (5 skipped), 825 web tests, 21 installer tests, and 40 browser-manager tests.
 
 Automated coverage includes real runner question resolution, ordinary-thread dispatch receipts, uncertain-delivery deduplication, staff/private/business access, transcript isolation, access revocation, source-thread pinning in worker dispatch, active-call preservation during work, actual reply notifications, and room cleanup. The browser panel was inspected at 390 × 844 and 1440 × 1000, including navigation pinning and an actionable missing-microphone error.
 
@@ -59,9 +69,12 @@ The opt-in smoke check sends synthesized PCM speech through real LiveKit/OpenAI 
 ```sh
 NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live
 NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live --recap
+NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live --decisions
 ```
 
 The `--recap` check seeds completed work with an unpredictable delivery reference before the call begins, with no pending questions or decisions. It asks for a recap through real spoken audio and requires the reference in the assistant’s response after that question, with zero new task dispatches.
+
+The `--decisions` check creates 45 long synthetic proposals and selects the oldest one. Real speech asks for its unpredictable reference number; the reply must contain it with zero task dispatches. This passed, as did ordinary startup recap and background dispatch/result audio checks. Reintroducing the old oversized catalog in the isolated fixture reproduced failure before user speech transcription. The provider failure fell back to a generic category, so the test does not establish a specific provider context-limit error code. No real customer decisions or tickets were changed.
 
 Physical iPhone/AirPods testing remains required: two-way audio quality, barge-in, mute, standby/resume, Bluetooth route changes, lock-screen recovery, and a staff member's real agent workflow. A successful automated fixture does not establish those device or customer-service outcomes.
 
@@ -82,3 +95,6 @@ Physical iPhone/AirPods testing remains required: two-way audio quality, barge-i
 - [Provider mounting above navigation](/Users/archerclawdington/veneer-os/web/src/main.tsx)
 - [Microphone conflict prevention](/Users/archerclawdington/veneer-os/web/src/lib/stt.ts)
 - [Opt-in live media smoke check](/Users/archerclawdington/veneer-os/scripts/smoke-live-voice.mjs)
+
+- [Sanitized worker failure categories](/Users/archerclawdington/veneer-os/server/src/voice/failure.ts)
+- [Failure redaction tests](/Users/archerclawdington/veneer-os/server/test/voiceFailure.test.ts)
