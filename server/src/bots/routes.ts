@@ -257,14 +257,18 @@ export function createBotsRouter(ctx: AppContext) {
     '/decisions/:id/thread',
     run((req, res) => {
       const p = z
-        .object({ request_key: key, text: z.string().trim().min(1).max(12000) })
+        .object({ request_key: key, text: z.string().trim().min(1).max(12000), expected_version: z.number().int().positive().optional() })
         .strict()
         .parse(req.body);
       res.json({
-        decision: s.reply(actor(req), req.params.id!, p.request_key, p.text),
+        decision: s.reply(actor(req), req.params.id!, p.request_key, p.text, p.expected_version),
       });
     }),
   );
+  router.post('/decisions/:id/discussion-decision', run((req, res) => {
+    const p = z.object({ message_id: key, expected_version: z.number().int().positive(), action: z.enum(['approve', 'reject', 'defer', 'withdraw']) }).strict().parse(req.body);
+    res.json({ decision: s.recordDiscussionDecision(actor(req), req.params.id!, p.message_id, p.expected_version, p.action) });
+  }));
   router.post(
     '/decisions/:id/result',
     run((req, res) => {

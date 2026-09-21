@@ -707,7 +707,7 @@ export function Bots({
                   </h2>
                   <BotOrderLink order={d.order_reference} />
                   <p role="status" className="mt-3 rounded-xl border p-3 text-sm font-medium">
-                    {d.state === 'needs_input' ? 'Approval still needed · Approve here or explicitly approve during a call.' :
+                    {d.state === 'needs_input' ? 'Approval still needed · Give a clear decision in discussion, approve here, or approve during a call.' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
                   <div className="mt-5"><BotCaseTimeline entries={d.proposal.case_timeline} /></div>
@@ -807,7 +807,7 @@ export function Bots({
 
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Replies go to this bot’s existing conversation.
+                      Clear directions here can record your decision without another click. Questions stay in discussion; the bot will clarify ambiguous instructions.
                     </p>
                     <div className="my-4 space-y-3">
                       {detail?.messages.map((m) => (
@@ -835,10 +835,10 @@ export function Bots({
                       key={d.id}
                       conversationId={d.conversation_id}
                       botName={d.bot_name}
-                      busy={busy}
+                      busy={busy || stale}
                       onSend={(text) =>
                         act(async () => {
-                          await send(d.id, 'thread', { text });
+                          await send(d.id, 'thread', { text, expected_version: d.version });
                         })
                       }
                     />

@@ -101,9 +101,15 @@ export const BOT_TOOL_DEFINITIONS = [
   ),
   definition(
     'reply_to_decision',
-    'Reply in a dedicated decision thread as the SAME permanent bot. Discussion never grants execution authority.',
+    'Reply in a dedicated decision thread as the SAME permanent bot. Your own reply never grants execution authority. Clear eligible human directions can be recorded with record_discussion_decision.',
     { decision_id: str, request_key: str, text: str },
     ['decision_id', 'request_key', 'text'],
+  ),
+  definition(
+    'record_discussion_decision',
+    'Record a clear authorized HUMAN instruction from THIS decision thread, without a duplicate UI click. First list_decisions(decision_id) and read the entire message and current proposal. Requires the exact human message ID with instruction_version; server rechecks author, version, latest message, handler and idempotency. Interpret the whole message, never a keyword or quoted fragment. Approve only unconditional explicit consent to the current scope; reject/withdraw only clear directions. A clear request to investigate/revise first may defer the current proposal, without execution authority; perform that follow-up then ask about materially changed proposals. Questions, quoted customer statements, negations, conditional or ambiguous messages require clarification via reply_to_decision, not this tool. No historic replay, no invented human identity, no standing authority. Report the recorded state, never completion. Existing financial and action safeguards still apply.',
+    { decision_id: str, message_id: str, expected_version: { type: 'integer' }, action: { type: 'string', enum: ['approve', 'reject', 'defer', 'withdraw'] } },
+    ['decision_id', 'message_id', 'expected_version', 'action'],
   ),
   definition(
     'record_decision_result',
@@ -155,6 +161,7 @@ export async function callBotTool({
     update_decision: `${target}/proposal`,
     reply_to_decision: `${target}/thread`,
     record_decision_result: `${target}/result`,
+    record_discussion_decision: `${target}/discussion-decision`,
     park_decision_work: `${target}/park`,
   };
   const result =

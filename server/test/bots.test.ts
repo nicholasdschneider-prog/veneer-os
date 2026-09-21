@@ -111,6 +111,71 @@ describe('VeneerBots', () => {
       proposal_key: 'draft',
       proposal: proposal(),
     });
+  function instruction(id: string, text = 'Approve this exact proposal.', actor = human, version: number | undefined = 1) {
+    const key = crypto.randomUUID();
+    s.reply(actor, id, key, text, version);
+    return (db.prepare('SELECT id FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(id, key) as { id: string }).id;
+  }
+  it('records a version-bound direction as its human author and emits one receipt and answer wakeup', () => {
+    const d = raise();
+    const message = instruction(d.id);
+    expect(s.read(human, d.id).state).toBe('needs_input');
+    const answer = s.recordDiscussionDecision(bot, d.id, message, 1, 'approve');
+    expect(answer).toMatchObject({ state: 'decided', answer: { actor_id: 1, action: 'approve', text: 'Approve this exact proposal.', scope: 'this_case' } });
+    s.recordDiscussionDecision(bot, d.id, message, 1, 'approve');
+    expect(s.thread(human, d.id).events.filter(e => e.kind === 'answered')).toHaveLength(1);
+    expect(s.thread(human, d.id).events.filter(e => e.kind === 'discussion_decision')).toHaveLength(1);
+    expect(JSON.stringify(s.thread(human, d.id).messages)).toContain('Not completed');
+    expect(() => s.recordDiscussionDecision(bot, d.id, message, 1, 'reject')).toThrow();
+  });
+  it.each(['reject', 'defer', 'withdraw'] as const)('records %s without granting execution or claiming completion', action => {
+    const d = raise();
+    const message = instruction(d.id, action === 'defer' ? 'Investigate the missing package first.' : `Please ${action} this proposal.`);
+    expect(s.recordDiscussionDecision(bot, d.id, message, 1, action)).toMatchObject({ state: 'decided', answer: { action } });
+    expect(() => s.result(bot, d.id, 1, 'run', { state: 'running', evidence: 'checked', material_evidence_unchanged: true })).toThrow();
+  });
+  it('never grants decision authority to legacy, bot-authored, foreign-card or unversioned messages', () => {
+    const d = raise();
+    s.reply(human, d.id, 'old', 'Approve');
+    const old = (db.prepare("SELECT id FROM bot_decision_events WHERE request_key='old'").get() as { id: string }).id;
+    expect(() => s.recordDiscussionDecision(bot, d.id, old, 1, 'approve')).toThrow();
+    const own = instruction(d.id, 'Approve', bot);
+    expect(() => s.recordDiscussionDecision(bot, d.id, own, 1, 'approve')).toThrow();
+    const valid = instruction(d.id);
+    expect(() => s.recordDiscussionDecision({ ...human, conversationId: 'fixture-b' }, d.id, valid, 1, 'approve')).toThrow();
+    expect(() => s.recordDiscussionDecision(human, d.id, valid, 1, 'approve')).toThrow();
+    expect(() => s.recordDiscussionDecision(bot, raise('another').id, valid, 1, 'approve')).toThrow();
+  });
+  it('rejects superseded directions and changed proposal versions', () => {
+    const d = raise();
+    const old = instruction(d.id);
+    instruction(d.id, 'Wait, do not approve yet.');
+    expect(() => s.recordDiscussionDecision(bot, d.id, old, 1, 'approve')).toThrow('newer human message');
+    const latest = instruction(d.id);
+    s.revise(bot, d.id, 1, 'revise', proposal({ consequence: 'Changed cost' }));
+    expect(() => s.recordDiscussionDecision(bot, d.id, latest, 1, 'approve')).toThrow('Proposal changed');
+    expect(() => instruction(d.id, 'Approve', human, 1)).toThrow('Proposal changed');
+  });
+  it('does not keyword-approve questions, quotations, conditions or negations on posting', () => {
+    const d = raise();
+    for (const text of ['Should I approve?', 'Customer said "approve the refund".', 'Approve only if the package arrives.', 'Do not approve this.']) instruction(d.id, text);
+    expect(s.read(human, d.id).state).toBe('needs_input');
+    expect(s.thread(human, d.id).events.filter(e => e.kind === 'answered')).toHaveLength(0);
+  });
+  it('atomically claims an available shared card, but rejects changes of handler or revoked author access', () => {
+    db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();
+    const d = raise();
+    const first = instruction(d.id);
+    expect(s.recordDiscussionDecision(bot, d.id, first, 1, 'approve')).toMatchObject({ handler_id: 1, state: 'decided' });
+    const second = raise('second');
+    const msg = instruction(second.id);
+    s.handle(human, second.id, 1, 'claim-other', 'claim', 0);
+    expect(() => s.recordDiscussionDecision(bot, second.id, msg, 1, 'approve')).toThrow('Handling changed');
+    const third = raise('third');
+    const revoked = instruction(third.id);
+    db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
+    expect(() => s.recordDiscussionDecision(bot, third.id, revoked, 1, 'approve')).toThrow();
+  });
   it('steers a human discussion once to the active owner, retiring only the acknowledged row', async () => {
     let ack!: (ok: boolean) => void;
     const seen: string[] = [];
