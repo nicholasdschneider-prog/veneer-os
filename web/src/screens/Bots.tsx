@@ -1,4 +1,4 @@
-import { decisionSection, decisionStatusLabel, discussionTimestamp } from '@/lib/decisionPresentation';
+import { decisionCopy, decisionSection, decisionStatusLabel, discussionTimestamp } from '@/lib/decisionPresentation';
 import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
@@ -484,6 +484,27 @@ export function Bots({
                     onNavigate('#/bots/' + item.id);
                   }}
                   onCall={canCall ? () => liveVoice.open(item.conversation_id, item.id) : undefined}
+                  busy={busy || stale}
+                  onApprove={() =>
+                    act(async () => {
+                      let current = item;
+                      if (current.shared_queue && !current.handler_id && current.can_handle) {
+                        const claimed = (await send(current.id, 'handling', {
+                          expected_version: current.version,
+                          expected_handling_revision: current.handling_revision,
+                          action: 'claim',
+                        })) as { decision: BotDecision };
+                        current = claimed.decision;
+                      }
+                      await send(current.id, 'answer', {
+                        expected_version: current.version,
+                        ...(current.shared_queue ? { expected_handling_revision: current.handling_revision } : {}),
+                        action: 'approve',
+                        text: QUEUE_APPROVAL_NOTE,
+                        scope: 'this_case',
+                      });
+                    })
+                  }
                 />
               );
               const inputSection = (
@@ -1027,7 +1048,17 @@ export function Bots({
     </div>
   );
 }
-export function DecisionCard({ d, onOpen, onCall, selected = false }: { d: BotDecision; selected?: boolean; onOpen: () => void; onCall?: () => void }) {
+/** Recorded as the answer text when a proposal is approved straight from the queue card. */
+export const QUEUE_APPROVAL_NOTE = 'Approved as proposed.';
+
+/** One-click approval is offered when the viewer can answer now, or can claim a shared question and then answer it. */
+export function canApproveFromQueue(d: BotDecision) {
+  return d.state === 'needs_input' && (d.can_answer || Boolean(d.shared_queue && !d.handler_id && d.can_handle));
+}
+
+export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selected = false }: { d: BotDecision; selected?: boolean; busy?: boolean; onOpen: () => void; onCall?: () => void; onApprove?: () => void }) {
+  const quickApprove = onApprove && canApproveFromQueue(d);
+  const hasDraft = Boolean(decisionCopy(d.proposal).draft);
   return (
     <article data-decision-id={d.id} aria-current={selected ? "true" : undefined} className={cn("min-w-0 rounded-2xl border p-4 [overflow-wrap:anywhere]", selected ? "border-blue-500 bg-blue-100 dark:bg-blue-900 ring-2 ring-blue-500" : "bg-card")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1050,7 +1081,14 @@ export function DecisionCard({ d, onOpen, onCall, selected = false }: { d: BotDe
         {d.proposal.deadline && <span>Due {new Date(d.proposal.deadline).toLocaleString()}</span>}
       </div>
       {d.state === 'needs_input' && <p className="mt-2 text-sm text-muted-foreground">{d.proposal.blocks_scope === 'task' ? 'Other work can continue while this waits.' : 'All work for this bot is waiting for an answer.'}</p>}
-      <Button variant="outline" className="mt-4 w-full" onClick={onOpen}>{d.state === 'needs_input' ? 'Review & decide' : 'View decision'}</Button>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        {quickApprove && (
+          <Button className="min-h-11 w-full sm:flex-1" disabled={busy} onClick={onApprove}>
+            {hasDraft ? 'Approve & send reply' : 'Approve as proposed'}
+          </Button>
+        )}
+        <Button variant="outline" className="min-h-11 w-full sm:flex-1" onClick={onOpen}>{d.state === 'needs_input' ? 'Review & decide' : 'View decision'}</Button>
+      </div>
     </article>
   );
 }
