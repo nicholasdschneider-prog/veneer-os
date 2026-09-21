@@ -431,6 +431,48 @@ describe('VeneerBots', () => {
     await flush();
     expect(runs).toHaveLength(0);
   });
+  it('orders bots by activity with personal pins and preserves personal unread state', async () => {
+    let requestActor = human;
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      req.user = requestActor.user;
+      req.agentConversationId = requestActor.conversationId;
+      next();
+    });
+    app.use('/api/bots', createBotsRouter({ db, manager: { statusOf: async () => 'idle' } } as unknown as AppContext));
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/bots`;
+    const list = async () => (await (await fetch(base)).json()).bots as { conversation_id: string; pinned: boolean; unread: boolean }[];
+    const patch = (id: string, body: object) => fetch(`${base}/preferences/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    try {
+      db.prepare("UPDATE conversations SET last_active_at='2026-09-20 10:00:00' WHERE id='fixture-a'").run();
+      db.prepare("UPDATE conversations SET last_active_at='2026-09-21 10:00:00' WHERE id='fixture-b'").run();
+      expect((await list()).map(b => b.conversation_id)).toEqual(['fixture-b', 'fixture-a']);
+      expect((await patch('fixture-a', { pinned: true, unread: true })).status).toBe(200);
+      expect((await list())[0]).toMatchObject({ conversation_id: 'fixture-a', pinned: true, unread: true });
+      await patch('fixture-a', { unread: false });
+      expect((await list())[0]).toMatchObject({ pinned: true, unread: false });
+      requestActor = { user: db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow };
+      expect((await list())[0]).toMatchObject({ conversation_id: 'fixture-b', pinned: false, unread: false });
+      requestActor = human;
+      await patch('fixture-a', { pinned: false, unread: true });
+      expect((await list())[1]).toMatchObject({ pinned: false, unread: true });
+      db.prepare("UPDATE conversations SET last_active_at='2026-09-22 10:00:00' WHERE id='fixture-a'").run();
+      expect((await list())[0].conversation_id).toBe('fixture-a');
+      expect((await patch('fixture-a', { pinned: 'yes' })).status).toBe(400);
+      requestActor = bot;
+      expect((await patch('fixture-a', { pinned: true })).status).toBe(403);
+      db.prepare("UPDATE conversations SET visibility='private' WHERE id='fixture-a'").run();
+      requestActor = { user: db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow };
+      expect((await patch('fixture-a', { unread: false })).status).toBe(404);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  });
   it('rejects bot spoofing and HTTP stale answers; human visibility alone is insufficient', async () => {
     let requestActor = human;
     const app = express();

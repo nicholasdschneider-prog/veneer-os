@@ -1,6 +1,6 @@
 import { createTeamService } from './teams.js';
 import express from 'express';
-import { isUnread } from '../conversations/unread.js';
+import { isUnread, markSeen } from '../conversations/unread.js';
 import { canViewConversation } from '../conversations/access.js';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
@@ -99,6 +99,7 @@ export function createBotsRouter(ctx: AppContext) {
           title: c.title,
           updated_at: c.last_active_at,
           unread: isUnread(ctx.db, a.user.id, c.id),
+          pinned: Boolean((ctx.db.prepare('SELECT bot_pinned FROM conversation_last_seen WHERE user_id=? AND conversation_id=?').get(a.user.id, c.id) as { bot_pinned: number } | undefined)?.bot_pinned),
           provider: c.provider,
           archived: Boolean(c.archived),
           can_manage: !c.business_team_id && !a.conversationId && c.user_id === a.user.id,
@@ -115,8 +116,7 @@ export function createBotsRouter(ctx: AppContext) {
                     : 'available',
         });
       }
-      const rank = (role?: string) => role === 'coordinator' ? 0 : role === 'lead' ? 1 : 2;
-      bots.sort((x,y) => rank(x.membership?.role) - rank(y.membership?.role) || (x.membership?.subteam ?? '~').localeCompare(y.membership?.subteam ?? '~') || x.name.localeCompare(y.name));
+      bots.sort((x, y) => Number(y.pinned) - Number(x.pinned) || y.updated_at.localeCompare(x.updated_at) || x.name.localeCompare(y.name) || x.conversation_id.localeCompare(y.conversation_id));
       const ownerChat = a.conversationId ? s.chat(a, a.conversationId) : null;
       const approvers = ownerChat
         ? (
@@ -130,6 +130,25 @@ export function createBotsRouter(ctx: AppContext) {
       res.json({ bots, decisions, approvers, teams: teams.list(a) });
     }),
   );
+  router.patch('/preferences/:id', run((req, res) => {
+    if (req.agentConversationId) throw new BotError(403, 'Only a user can change bot preferences');
+    const c = s.chat(actor(req), req.params.id!);
+    const patch = z.object({ pinned: z.boolean().optional(), unread: z.boolean().optional() }).strict().parse(req.body);
+    ctx.db.transaction(() => {
+      if (patch.pinned !== undefined) {
+        ctx.db.prepare(`INSERT INTO conversation_last_seen (user_id, conversation_id, bot_pinned)
+          VALUES (?, ?, ?) ON CONFLICT(user_id, conversation_id) DO UPDATE SET bot_pinned=excluded.bot_pinned`)
+          .run(req.user!.id, c.id, Number(patch.pinned));
+      }
+      if (patch.unread === false) markSeen(ctx.db, req.user!.id, c.id);
+      if (patch.unread === true) {
+        ctx.db.prepare(`INSERT INTO conversation_last_seen (user_id, conversation_id, unread)
+          VALUES (?, ?, 1) ON CONFLICT(user_id, conversation_id) DO UPDATE SET unread=1`)
+          .run(req.user!.id, c.id);
+      }
+    })();
+    res.json({ ok: true });
+  }));
   router.get(
     '/candidates',
     run((req, res) => {

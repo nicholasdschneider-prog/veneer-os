@@ -3,6 +3,7 @@ import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
 import { BotConversationRail } from '@/components/BotConversationRail';
+import { BotActions, BOT_PREFERENCES_CHANGED } from '@/components/BotActions';
 import { BotAvatar, BotName, BotPresence } from '@/components/BotIdentity';
 import { BotComposer } from '@/components/BotComposer';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -199,6 +200,12 @@ export function Bots({
   }, [filter, decisionId, business]);
   useEffect(() => {
     let active = true;
+    const preferencesChanged = () => {
+      void botsApi.list(filter, business)
+        .then((list) => { if (active) setBots(list.bots); })
+        .catch((e) => { if (active) setError(e.message); });
+    };
+    window.addEventListener(BOT_PREFERENCES_CHANGED, preferencesChanged);
     void refresh().catch((e) => {
       if (active) {
         setError(e.message);
@@ -230,6 +237,7 @@ export function Bots({
     return () => {
       active = false;
       clearInterval(timer);
+      window.removeEventListener(BOT_PREFERENCES_CHANGED, preferencesChanged);
     };
   }, [refresh, filter]);
   useEffect(() => {
@@ -568,6 +576,7 @@ export function Bots({
               )}
               <div className="divide-y rounded-2xl border bg-card">
                 {bots.map((bot) => (
+                  <BotActions key={bot.conversation_id} bot={bot}>
                   <div
                     key={bot.conversation_id}
                     className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
@@ -579,7 +588,10 @@ export function Bots({
                         onNavigate(`#/chat/${bot.conversation_id}?from=bots`)
                       }
                     >
-                      <BotName name={bot.name} title={bot.title} />
+                      <span className="flex items-baseline gap-2">
+                        <BotName name={bot.name} title={bot.title} />
+                        {bot.unread && <span aria-label="Unread messages" className="size-2 shrink-0 rounded-full bg-primary" />}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {bot.archived ? 'Archived · ' : ''}
                         <BotPresence id={bot.conversation_id} state={bot.state} /> · {bot.questions} waiting{' '}
@@ -618,6 +630,7 @@ export function Bots({
                       </button>
                     )}
                   </div>
+                  </BotActions>
                 ))}
               </div>
               </>

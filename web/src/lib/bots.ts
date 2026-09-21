@@ -40,6 +40,7 @@ export interface Bot {
   title?: string | null;
   updated_at?: string | null;
   unread?: boolean;
+  pinned?: boolean;
   conversation_id: string;
   name: string;
   state: string;
@@ -68,6 +69,8 @@ export interface BotThread {
   }[];
 }
 export const botsApi = {
+  preferences: (id: string, patch: { pinned?: boolean; unread?: boolean }) =>
+    requestJson(`/api/bots/preferences/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   manageTeam: (body: Record<string, unknown>) => requestJson('/api/bots/teams/manage', { method: 'POST', body: JSON.stringify(body) }),
   list: (filter: string, business?: string) =>
     requestJson<{ bots: Bot[]; decisions: BotDecision[]; teams: BusinessTeam[] }>(

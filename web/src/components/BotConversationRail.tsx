@@ -6,6 +6,7 @@ import { botsApi, type Bot } from '@/lib/bots';
 import { BotAvatar, BotName, BotPresence } from './BotIdentity';
 import { cn } from '@/lib/utils';
 import { Hand } from 'lucide-react';
+import { BotActions, BOT_PREFERENCES_CHANGED } from './BotActions';
 
 export function BotConversationRail({
   selectedId,
@@ -42,10 +43,12 @@ export function BotConversationRail({
           if (active) setError('Could not refresh bots');
         });
     refresh();
+    window.addEventListener(BOT_PREFERENCES_CHANGED, refresh);
     const timer = setInterval(refresh, 5000);
     return () => {
       active = false;
       clearInterval(timer);
+      window.removeEventListener(BOT_PREFERENCES_CHANGED, refresh);
     };
   }, [business]);
   return (
@@ -106,6 +109,9 @@ export function BotConversationRail({
             `${bot.name} ${bot.title ?? ''}`.toLowerCase().includes(query.toLowerCase()),
           )
           .map((bot) => (
+            <BotActions key={bot.conversation_id} bot={bot} onMarkedUnread={() => {
+              if (selectedId === bot.conversation_id) onNavigate('#/bots');
+            }}>
             <button
               key={bot.conversation_id}
               aria-current={selectedId === bot.conversation_id ? 'page' : undefined}
@@ -150,6 +156,7 @@ export function BotConversationRail({
                 )}
               </span>
             </button>
+            </BotActions>
           ))}
         {!bots.length && !error && (
           <p className="p-3 text-sm text-muted-foreground">
