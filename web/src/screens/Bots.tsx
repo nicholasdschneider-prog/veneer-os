@@ -4,9 +4,10 @@ import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSel
 import type { BusinessTeam } from '@/lib/bots';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { BotActions, BOT_PREFERENCES_CHANGED } from '@/components/BotActions';
-import { BotAvatar, BotName, BotPresence } from '@/components/BotIdentity';
+import { BotAvatar, BotName, BotPresence, BotWorkingIndicator } from '@/components/BotIdentity';
+import { BotOrderLink } from '@/components/BotOrderLink';
 import { BotComposer } from '@/components/BotComposer';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -122,6 +123,18 @@ export function Bots({
   onNavigate: (hash: string) => void;
 }) {
   const currentRoute = useRef(decisionId);
+  const queuePane = useRef<HTMLDivElement>(null);
+  const detailPane = useRef<HTMLElement>(null);
+  const selectedOffset = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (detailPane.current) detailPane.current.scrollTop = 0;
+    const queue = queuePane.current;
+    if (queue && decisionId && selectedOffset.current !== null) {
+      const card = queue.querySelector<HTMLElement>(`[data-decision-id="${CSS.escape(decisionId)}"]`);
+      if (card) queue.scrollTop += card.getBoundingClientRect().top - queue.getBoundingClientRect().top - selectedOffset.current;
+    }
+    selectedOffset.current = null;
+  }, [decisionId]);
   currentRoute.current = decisionId;
   const reviewedVersion = useRef<number | null>(null);
   const pendingRequests = useRef(new Map<string, string>());
@@ -274,7 +287,7 @@ export function Bots({
   // of them scroll together; each column keeps its own heading pinned.
   const wide = useMediaQuery('(min-width: 1024px)');
   const columns = wide && !decisionId;
-  const stickyHeader = columns ? 'sticky top-0 z-10 -mx-1 w-auto bg-background px-1 pt-1 pb-2' : undefined;
+  const stickyHeader = wide ? 'sticky top-0 z-10 -mx-1 w-auto bg-background px-1 pt-1 pb-2' : undefined;
   const sections = [
     ['execution', 'Following through'],
     ['attention', 'Needs attention'],
@@ -293,8 +306,8 @@ export function Bots({
   return (
     <div className="flex h-full min-h-0">
       <div className="hidden w-72 shrink-0 md:block"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
-    <div className="h-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-background">
-      <div className="mx-auto max-w-6xl px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-8">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 gap-4 overflow-hidden bg-background">
+      <div ref={queuePane} aria-label="Decision queues" className={cn('mx-auto h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-6', decisionId ? 'hidden lg:block' : 'max-w-6xl')}>
         {/* One thin toolbar: business picker and conversation drawer on mobile,
             plus the access manager for owners. Everything opens in place so the
             page header stays near the top. */}
@@ -453,7 +466,6 @@ export function Bots({
         <div
           className={cn(
             'grid gap-6',
-            decisionId && 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]',
           )}
         >
           <div className={cn('min-w-0', decisionId && 'hidden lg:block')}>
@@ -463,7 +475,11 @@ export function Bots({
                 <DecisionCard
                   key={item.id}
                   d={item}
-                  onOpen={() => onNavigate('#/bots/' + item.id)}
+                  onOpen={() => {
+                    const card = queuePane.current?.querySelector<HTMLElement>(`[data-decision-id="${CSS.escape(item.id)}"]`);
+                    selectedOffset.current = card && queuePane.current ? card.getBoundingClientRect().top - queuePane.current.getBoundingClientRect().top : null;
+                    onNavigate('#/bots/' + item.id);
+                  }}
                   onCall={canCall ? () => liveVoice.open(item.conversation_id, item.id) : undefined}
                 />
               );
@@ -507,7 +523,7 @@ export function Bots({
                       if (!items.length && key !== 'history') return null;
                       return (
                         <section key={key} className="mt-7" aria-label={title}>
-                          <SectionToggle id={`section-${key}`} title={title} count={items.length} open={!collapsed[key]} onToggle={() => toggleSection(key)} />
+                          <SectionToggle id={`section-${key}`} title={title} count={items.length} open={!collapsed[key]} onToggle={() => toggleSection(key)} className={stickyHeader} />
                           {collapsed[key] ? null : (
                             <>
                               {key === 'history' && historyNote}
@@ -641,9 +657,12 @@ export function Bots({
               )}
             </section>
           </div>
+        </div>
+      </div>
           {decisionId && (
             <section
-              className="min-w-0 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere] sm:p-5"
+              ref={detailPane}
+              className="h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain border-l bg-card p-4 [overflow-wrap:anywhere] sm:p-5"
               aria-label="Decision thread"
             >
               <button
@@ -683,6 +702,11 @@ export function Bots({
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
                     {d.proposal.question}
                   </h2>
+                  <BotOrderLink order={d.order_reference} />
+                  <p role="status" className="mt-3 rounded-xl border p-3 text-sm font-medium">
+                    {d.state === 'needs_input' ? 'Approval still needed · Approve here or explicitly approve during a call.' :
+                      d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
+                  </p>
                   <p className="mt-2 break-all text-xs text-muted-foreground">
                     {d.id} · Proposal v{d.version}
                   </p>
@@ -825,7 +849,9 @@ export function Bots({
                         </div>
                       ))}
                     </div>
+                    <div className="mb-3"><BotWorkingIndicator id={d.conversation_id} name={d.bot_name} replyStatus={d.reply_status} /></div>
                     <BotComposer
+                      key={d.id}
                       conversationId={d.conversation_id}
                       botName={d.bot_name}
                       busy={busy}
@@ -838,7 +864,7 @@ export function Bots({
                   </div>
                   {d.state === 'needs_input' && d.shared_queue && (
                     <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border p-3">
-                      <p className="text-sm">{d.handler_name ? `${d.handler_name} is handling this` : 'Available for you or a teammate'}</p>
+                      <p className="text-sm">{d.handler_name ? `${d.handler_name} is handling this` : 'Any authorized teammate can approve this proposal. An extra owner approval click is not required.'}</p>
                       {!d.handler_id && d.can_handle && <Button disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'claim' }))}>Handle this</Button>}
                       {d.can_release && <Button variant="outline" disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'release' }))}>Release question</Button>}
                     </div>
@@ -1015,15 +1041,14 @@ export function Bots({
               )}
             </section>
           )}
-        </div>
       </div>
-    </div>
     </div>
   );
 }
 export function DecisionCard({ d, onOpen, onCall }: { d: BotDecision; onOpen: () => void; onCall?: () => void }) {
   return (
-    <div className="relative w-full min-w-0 rounded-2xl border bg-card [overflow-wrap:anywhere] transition-colors hover:border-foreground/30 focus-within:ring-2 focus-within:ring-ring">
+    <div data-decision-id={d.id} className="relative w-full min-w-0 rounded-2xl border bg-card [overflow-wrap:anywhere] transition-colors hover:border-foreground/30 focus-within:ring-2 focus-within:ring-ring">
+      <div className={cn('px-4', onCall && 'pr-16')}><BotOrderLink order={d.order_reference} /></div>
       {onCall && (
         <Button
           variant="outline"

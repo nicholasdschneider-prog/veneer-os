@@ -189,6 +189,40 @@ describe('bot voice calls', () => {
     await expect(new VoiceWorkspace(ctx, 1, 'own').sendMessage('hello', 'hello-1')).rejects.toThrow();
     expect(posted).toEqual([]);
   });
+  it('claims and approves shared cards by phone for staff, with atomic retries and no owner click', () => {
+    const decision = registerBot();
+    db.prepare("UPDATE conversations SET visibility='team' WHERE id='own'").run();
+    db.prepare('INSERT INTO employee_workspaces(user_id) VALUES(3)').run();
+    db.prepare("INSERT INTO employee_bot_access VALUES(3,'own')").run();
+    db.prepare("INSERT INTO shared_bot_queues VALUES('own')").run();
+    const staff = new VoiceWorkspace(ctx, 3, 'own');
+    expect(staff.readDecision(decision.id).canAnswer).toBe(true);
+    const input = { decisionId: decision.id, version: 1, action: 'approve', text: 'Approve this proposal', scope: 'this_case' };
+    expect(() => staff.answerDecision('call', { ...input, version: 99 })).toThrow('Proposal changed');
+    expect(db.prepare('SELECT handler_id FROM bot_decisions WHERE id=?').get(decision.id)).toEqual({ handler_id: null });
+    expect(staff.answerDecision('call', input)).toMatchObject({ ok: true, state: 'decided', alreadyRecorded: false });
+    expect(staff.answerDecision('call', input)).toMatchObject({ ok: true, alreadyRecorded: true });
+    expect(db.prepare('SELECT handler_id, json_extract(answer_json,\'$.actor_id\') AS actor FROM bot_decisions WHERE id=?').get(decision.id)).toEqual({ handler_id: 3, actor: 3 });
+    expect(db.prepare("SELECT count(*) AS n FROM conversation_wakeups WHERE conversation_id='own'").get()).toEqual({ n: 1 });
+    expect(staff.history().filter(e => e.role === 'decision')).toHaveLength(1);
+    expect(() => staff.answerDecision('call', { ...input, text: 'Different approval' })).toThrow('Idempotency');
+    db.prepare("DELETE FROM employee_bot_access WHERE user_id=3").run();
+    expect(() => staff.answerDecision('call', input)).toThrow();
+  });
+  it('does not take over another teammate’s phone approval or turn discussion into approval', () => {
+    const decision = registerBot();
+    db.prepare("INSERT INTO shared_bot_queues VALUES('own')").run();
+    const user = db.prepare('SELECT * FROM users WHERE id=1').get() as import('../src/db/db.js').UserRow;
+    createBotService(db).handle({ user }, decision.id, 1, 'claim', 'claim', 0);
+    db.prepare("UPDATE conversations SET visibility='team' WHERE id='own'").run();
+    db.prepare('INSERT INTO employee_workspaces VALUES(3)').run();
+    db.prepare("INSERT INTO employee_bot_access VALUES(3,'own')").run();
+    const staff = new VoiceWorkspace(ctx, 3, 'own');
+    expect(() => staff.answerDecision('call', { decisionId: decision.id, version: 1, action: 'approve', text: 'Yes' })).toThrow('Claim');
+    const call = new VoiceWorkspace(ctx, 1, 'own');
+    call.discuss('call', decision.id, 'Would a refund help?');
+    expect(call.readDecision(decision.id)).toMatchObject({ state: 'needs_input', answer: null });
+  });
 });
 
 describe('live voice HTTP boundary', () => {

@@ -9,6 +9,7 @@ export function isEmployee(db: Database.Database, userId: number): boolean {
 // denied by default; project files, credentials, tools and admin APIs are not inherited.
 export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'GET') return [
+    /^\/live-voice\/?$/,
     /^\/bots\/?$/,
     /^\/bots\/teams\/?$/,
     /^\/bots\/decisions\/[^/]+\/?$/,
@@ -20,6 +21,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
   ].some(pattern => pattern.test(path));
   if (method === 'PATCH') return /^\/bots\/preferences\/[^/]+\/?$/.test(path);
   if (method === 'POST') return [
+    /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|end))?\/?$/,
     /^\/bots\/decisions\/[^/]+\/(answer|thread|handling|dismiss)\/?$/,
     /^\/conversations\/[^/]+\/messages\/?$/,
   ].some(pattern => pattern.test(path));

@@ -94,7 +94,7 @@ process.on('message', (raw: unknown) => {
         parameters: z.object({ decisionId: z.string(), offset: z.number().int().nonnegative().optional() }), execute: async args => call('read_decision', args) });
       tools.discuss_decision = llm.tool({ description: `Post a message from the user into a decision’s discussion thread. This wakes ${name} to respond but approves nothing.`,
         parameters: z.object({ decisionId: z.string(), text: z.string() }), execute: async args => call('discuss_decision', args) });
-      tools.answer_decision = llm.tool({ description: 'Record the user’s explicit decision on a proposal and deliver it to the bot. Only after they clearly state approve, reject, defer or withdraw and you repeated it back. Use the exact decisionId and version from list_decisions. text is their reasoning in their words.',
+      tools.answer_decision = llm.tool({ description: 'Required for explicit spoken approval: atomically claim an available shared card and record the caller’s decision, with no further UI click. Do not post an approval as discussion instead. Only after they clearly state approve, reject, defer or withdraw and you repeated it back. Use the exact decisionId and version from read_decision. text is their reasoning in their words; conditional future actions do not widen the current approval.',
         parameters: z.object({ decisionId: z.string(), version: z.number().int(), action: z.enum(['approve', 'reject', 'defer', 'withdraw']), text: z.string(), scope: z.enum(['this_case', 'standing_rule']).default('this_case') }),
         execute: async args => call('answer_decision', args) });
     } else {

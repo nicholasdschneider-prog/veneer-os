@@ -24,6 +24,7 @@ const proposal = {
     evidence,
     blocked_action: str,
     blocks_scope: { type: 'string', enum: ['task', 'workload'] },
+    shopify_order: { type: 'object', description: 'For Shopify cases include the verified merchant order number and direct Shopify admin order URL. Do not substitute a case ID or invent an order ID.', properties: { number: str, url: str }, required: ['number', 'url'], additionalProperties: false },
   },
   required: [
     'question',
@@ -62,7 +63,7 @@ function definition(
 }
 export const BOT_TOOL_DEFINITIONS = [
   definition('manage_business_team', 'Manage an owned business and explicit membership/delegation. Human owner or owner-authenticated Platform Dev only; the native actor is audited. create is idempotent by owner/name. delegate allows only explicit owned chat IDs; empty allowed_ids revokes. employee requires a verified member email, explicit conversation_ids and optional activate to approve atomically; access stays restricted after grants are removed. No financial/customer authority is granted.', {
-    action: { type: 'string', enum: ['create','member','employee','delegate','remove_bot'] }, email: str, conversation_ids: { type: 'array', items: str }, activate: { type: 'boolean' }, name: str, team_id: str, user_id: { type: 'integer' }, role: { type: ['string','null'], enum: ['viewer','member','manager',null] }, conversation_id: str, allowed_ids: { type: 'array', items: str },
+    action: { type: 'string', enum: ['create','member','employee','delegate','remove_bot','shopify'] }, shopify_store: { type: ['string', 'null'], description: 'Verified Shopify admin store handle for this business, used only for order links.' }, email: str, conversation_ids: { type: 'array', items: str }, activate: { type: 'boolean' }, name: str, team_id: str, user_id: { type: 'integer' }, role: { type: ['string','null'], enum: ['viewer','member','manager',null] }, conversation_id: str, allowed_ids: { type: 'array', items: str },
   }, ['action']),
   definition('enroll_business_bots', 'Preview or apply reversible enrollment of explicit EXISTING native bot chat IDs. Requires an active owner-granted delegation to THIS conversation and its exact allowlist. preview uses request_key and bots; apply uses returned preview_id and team_id. Apply rechecks ownership, delegation, membership and metadata; changed previews require fresh review. Retries are idempotent. No new chats or executors, no model/project/history changes, no finance or customer authority.', {
     mode: { type: 'string', enum: ['preview','apply'] }, team_id: str, request_key: str, preview_id: str,

@@ -9,6 +9,7 @@ export interface BotProposal {
   evidence: { label: string; conversation_id: string }[];
   blocked_action: string;
   blocks_scope: 'task' | 'workload';
+  shopify_order?: { number: string; url: string } | null;
 }
 export interface BotDecision {
   id: string;
@@ -41,6 +42,8 @@ export interface BotDecision {
   dismissed: boolean;
   bot_name: string;
   assignee_name: string;
+  order_reference?: { number: string; url: string | null; direct: boolean } | null;
+  reply_status?: 'queued' | 'not_delivered' | 'awaiting_reply' | null;
 }
 export interface BusinessTeam { id: string; name: string; can_manage: boolean; members: { user_id: number; role: string; display_name: string; restricted?: boolean }[] }
 export interface Bot {

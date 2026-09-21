@@ -98,10 +98,18 @@ describe('restricted employee workspace', () => {
     decisions.handle(ali, d.id, 1, 'claim', 'claim', 0);
     decisions.answer(ali, d.id, 1, 'answer', answer, 1);
     expect(decisions.view(owner, decisions.read(owner, d.id)).answer.actor_id).toBe(2);
+    const wake = db.prepare("SELECT reason FROM conversation_wakeups WHERE wake_key LIKE 'bot-decision:%' ORDER BY rowid DESC LIMIT 1").get() as { reason: string };
+    expect(wake.reason).toContain('do not request a duplicate owner approval');
     expect(decisions.thread(owner, d.id).messages).toMatchObject([{ actor_name: 'Ali' }]);
     const revised = decisions.revise({ ...owner, conversationId: 'grant' }, d.id, 1, 'revise', { ...d.proposal, question: 'Updated question?' });
     expect(revised.handler_id).toBeNull(); expect(revised.handling_revision).toBe(2);
     expect(() => decisions.handle(ali, d.id, 1, 'old-proposal', 'claim', 2)).toThrow('Proposal changed');
+  });
+  it('allows pinned employee voice while keeping unrelated APIs closed', () => {
+    expect(employeeRouteAllowed('GET', '/live-voice')).toBe(true);
+    for (const route of ['/live-voice/calls', '/live-voice/calls/abc/heartbeat', '/live-voice/calls/abc/end']) expect(employeeRouteAllowed('POST', route)).toBe(true);
+    expect(employeeRouteAllowed('POST', '/live-voice/admin')).toBe(false);
+    expect(employeeRouteAllowed('GET', '/live-voice/other')).toBe(false);
   });
 
   it('keeps viewer, revoked, foreign evidence, and owner-development authority separate', () => {

@@ -21,7 +21,7 @@ export function EmployeeWorkspace({ hash, onNavigate, email }: { hash: string; o
     </header>
     <main className="min-h-0 flex-1 overflow-auto">
       {chatId ? <EmployeeChat key={chatId} id={chatId} onBack={() => onNavigate('#/bots')} /> :
-        <Bots restricted decisionId={decisionId} onNavigate={onNavigate} />}
+        <Bots restricted canCall decisionId={decisionId} onNavigate={onNavigate} />}
     </main>
   </div>;
 }

@@ -160,7 +160,9 @@ export class VoiceWorkspace {
   private decisionSummary(d: ReturnType<ReturnType<typeof createBotService>['view']>) {
     return {
       decisionId: d.id, version: d.version, state: d.state, createdAt: d.created_at, updatedAt: d.updated_at,
-      canAnswer: d.can_answer, assignee: d.assignee_name,
+      canAnswer: d.can_answer || (d.can_handle && !d.handler_id), assignee: d.shared_queue ? 'Authorized teammates' : d.assignee_name,
+      handler: d.handler_name, handlingRevision: d.handling_revision, sharedQueue: d.shared_queue,
+      order: d.order_reference,
       question: clip(d.proposal.question, 2000), recommendation: clip(d.proposal.recommendation, 2000),
       consequence: clip(d.proposal.consequence, 1000), blockedAction: clip(d.proposal.blocked_action, 1000),
       blocksScope: d.proposal.blocks_scope, deadline: d.proposal.deadline,
@@ -182,7 +184,7 @@ export class VoiceWorkspace {
     this.visibleChat(this.botConversationId);
     const all = this.bots.list(this.actor).filter(d => d.conversation_id === this.botConversationId);
     return { items: all.slice(offset, offset + 10).map(d => ({
-      decisionId: d.id, version: d.version, state: d.state, canAnswer: d.can_answer,
+      decisionId: d.id, version: d.version, state: d.state, canAnswer: d.can_answer || (d.can_handle && !d.handler_id),
       question: clip(d.proposal.question, 180), detailRequired: true,
     })), total: all.length, nextOffset: offset + 10 < all.length ? offset + 10 : null };
   }
@@ -226,12 +228,21 @@ export class VoiceWorkspace {
 
   answerDecision(sessionId: string, input: unknown) {
     const { decisionId, version, action, text, scope } = DecisionAnswerSchema.parse(input);
-    const current = this.readDecision(decisionId);
-    if (!current.canAnswer) throw new Error('Only the assigned approver can answer this decision.');
-    if (current.state !== 'needs_input') throw new Error('This decision already has an answer.');
-    const decision = this.bots.answer(this.actor, decisionId, version, `voice:${sessionId}:answer:${version}`, { action, text, scope });
-    this.record(sessionId, 'decision', `${decision.bot_name}: ${action} — ${text}${scope === 'standing_rule' ? ' (standing rule requested)' : ''}`);
-    return { ok: true, decisionId, state: decision.state, delivery: 'Decision recorded and delivered to the bot. Execution is tracked separately; it has not been verified.' };
+    return this.ctx.db.transaction(() => {
+      this.readDecision(decisionId); // Recheck caller access and the pinned bot.
+      let d = this.bots.view(this.actor, this.bots.read(this.actor, decisionId));
+      const key = `voice:${sessionId}:answer:${version}`;
+      const prior = this.ctx.db.prepare('SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(decisionId, key);
+      if (!prior && d.state !== 'needs_input') throw new Error('This decision already has an answer.');
+      if (!prior && d.shared_queue && !d.handler_id && d.can_handle) {
+        d = this.bots.handle(this.actor, decisionId, version, key + ':claim', 'claim', d.handling_revision);
+      }
+      // Existing service checks version, handler, access and identical retry payloads.
+      const decision = this.bots.answer(this.actor, decisionId, version, key, { action, text, scope }, d.handling_revision);
+      if (!prior) this.record(sessionId, 'decision', `${decision.bot_name}: ${action} — ${text}${scope === 'standing_rule' ? ' (standing rule requested)' : ''}`);
+      return { ok: true, decisionId, state: decision.state, action: decision.answer.action, alreadyRecorded: Boolean(prior),
+        delivery: action === 'approve' ? 'Approval recorded. The bot is queued to carry out this approved proposal after its required checks. No further approval click is needed. This is not yet a completion receipt.' : 'Decision recorded; no execution is authorized.' };
+    })();
   }
 
   history(limit = 40): { id: number; role: string; text: string; createdAt: string }[] {

@@ -160,25 +160,33 @@ export function BotWorkingIndicator({
   id,
   name,
   compact = false,
+  replyStatus,
 }: {
   id: string;
   name: string;
   compact?: boolean;
+  replyStatus?: 'queued' | 'not_delivered' | 'awaiting_reply' | null;
 }) {
   const { typing, liveState } = useBotLiveStatus(id);
-  if (!typing && liveState !== 'working') return null;
-  const label = typing ? `${name} is writing a reply` : `${name} is working`;
+  const active = typing || liveState === 'working';
+  if (!active && !replyStatus) return null;
+  const label = typing ? `${name} is typing…` : liveState === 'working' ? `${name} is thinking / working…` :
+    replyStatus === 'queued' ? `Message queued for ${name} · Waiting to start` :
+    replyStatus === 'not_delivered' ? 'Message was not delivered · Check bot availability' :
+    liveState === 'needs input' ? `${name} needs input · Reply still pending` :
+    liveState === 'failed' ? `${name} hit an error · Reply still pending` :
+    liveState === 'Reconnecting' ? 'Reconnecting · Reply status unavailable' : `Waiting for ${name} to reply`;
   if (compact)
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2 py-0.5 text-[0.6875rem] font-medium text-sky-700 dark:text-sky-300">
-        <BotWorkingDots label={label} />
+        {active && <BotWorkingDots label={label} />}
         {typing ? 'Writing' : 'Working'}
       </span>
     );
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
-      <BotWorkingDots label={label} />
-      <span>{typing ? `${name} is writing a reply…` : `${name} is working…`}</span>
+    <div role="status" className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+      {active && <BotWorkingDots label={label} />}
+      <span>{label}</span>
     </div>
   );
 }

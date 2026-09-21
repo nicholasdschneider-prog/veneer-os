@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { canonicalSha256 } from './canonical.js';
+import { orderReference, shopifyOrderSchema } from './orderReference.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 
@@ -20,6 +21,7 @@ export const proposalSchema = z
     evidence: z.array(evidenceSchema).max(30).default([]),
     blocked_action: text,
     blocks_scope: z.enum(['task', 'workload']).default('task'),
+    shopify_order: shopifyOrderSchema.nullable().optional(),
   })
   .strict();
 /**
@@ -263,7 +265,7 @@ export function createBotService(db: Database.Database) {
         409,
         'Restore the bot chat before sending a decision or message',
       );
-    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. Revalidate material evidence and call record_decision_result with state running and this version before executing. Revise changed proposals with update_decision. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
+    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. Revalidate material evidence and call record_decision_result with state running and this version before executing. Revise changed proposals with update_decision. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
     db.prepare(
       'INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)',
     ).run(
@@ -319,10 +321,23 @@ export function createBotService(db: Database.Database) {
           }
         : null,
     };
+    const proposal = parse(d.proposal_json);
+    const botReplies = db.prepare(`SELECT t.text FROM bot_decision_threads t JOIN bot_decision_events e ON e.id=t.id
+      WHERE t.decision_id=? AND e.version=? AND t.actor_conversation_id=? ORDER BY t.rowid`)
+      .all(d.id, d.version, d.conversation_id) as { text: string }[];
+    const store = c.business_team_id ? (db.prepare('SELECT shopify_store FROM business_teams WHERE id=?').get(c.business_team_id) as { shopify_store: string | null } | undefined)?.shopify_store : null;
+    const latestDiscussion = db.prepare(`SELECT w.status FROM bot_decision_events e
+      LEFT JOIN conversation_wakeups w ON w.id=e.id WHERE e.decision_id=? AND e.version=? AND e.kind='message'
+      AND e.actor_conversation_id IS NULL AND NOT EXISTS (
+        SELECT 1 FROM bot_decision_threads t WHERE t.decision_id=e.decision_id AND t.actor_conversation_id IS NOT NULL
+        AND t.rowid > (SELECT rowid FROM bot_decision_threads WHERE id=e.id)) ORDER BY e.rowid DESC LIMIT 1`)
+      .get(d.id, d.version) as { status: string | null } | undefined;
     return {
       ...d,
       answer_bridge: answerBridge,
-      proposal: parse(d.proposal_json),
+      proposal,
+      order_reference: orderReference(proposal, [proposal.question, proposal.recommendation, proposal.consequence, proposal.blocked_action, ...botReplies.map(r => r.text)], store),
+      reply_status: latestDiscussion ? (latestDiscussion.status === 'pending' ? 'queued' : latestDiscussion.status === 'cancelled' ? 'not_delivered' : 'awaiting_reply') : null,
       answer: parse(d.answer_json),
       result: parse(d.result_json),
       parked: parse(d.parked_json),

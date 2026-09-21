@@ -26,6 +26,7 @@ export const bulkSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('apply'), team_id: id, preview_id: id }).strict(),
 ]);
 const manageSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('shopify'), team_id: id, shopify_store: z.string().regex(/^[a-z0-9-]+$/).max(100).nullable() }).strict(),
   z.object({ action: z.literal('employee'), team_id: id, user_id: z.number().int().positive(), email: z.string().email(), conversation_ids: z.array(id).min(1).max(100), activate: z.boolean().default(false) }).strict(),
   z.object({ action: z.literal('create'), name: z.string().trim().min(1).max(120) }).strict(),
   z
@@ -203,7 +204,7 @@ export function createTeamService(db: Database.Database) {
     },
     manage(actor: Actor, raw: Record<string, unknown>) {
       const input = manageSchema.parse(raw) as Record<string, unknown>;
-      const action = z.enum(['create', 'member', 'employee', 'delegate', 'remove_bot']).parse(input.action);
+      const action = z.enum(['create', 'member', 'employee', 'delegate', 'remove_bot', 'shopify']).parse(input.action);
       return db.transaction(() => {
         if (action === 'create') {
           admin(actor);
@@ -225,7 +226,9 @@ export function createTeamService(db: Database.Database) {
         }
         const t = team(id.parse(input.team_id));
         admin(actor, t);
-        if (action === 'employee') {
+        if (action === 'shopify') {
+          db.prepare('UPDATE business_teams SET shopify_store=? WHERE id=?').run(input.shopify_store, t.id);
+        } else if (action === 'employee') {
           const userId = z.number().int().positive().parse(input.user_id);
           const email = z.string().email().parse(input.email).toLowerCase();
           const target = db.prepare('SELECT * FROM users WHERE id=?').get(userId) as { email: string; role: string; status: string } | undefined;

@@ -431,6 +431,21 @@ describe('VeneerBots', () => {
     await flush();
     expect(runs).toHaveLength(0);
   });
+  it('reports pending discussion delivery until the bot replies to that decision', () => {
+    const d = raise();
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBeNull();
+    s.reply(human, d.id, 'ask-order', 'Which order is this?');
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBe('queued');
+    db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE conversation_id=?").run(d.conversation_id);
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBe('awaiting_reply');
+    s.reply(bot, d.id, 'order-reply', 'Shopify order #100121631, Shopify order ID 6123856527512.');
+    const replied = s.view(human, s.read(human, d.id));
+    expect(replied.reply_status).toBeNull();
+    expect(replied.order_reference).toMatchObject({ number: '100121631' });
+    s.reply(human, d.id, 'follow-up', 'Please check it.');
+    db.prepare("UPDATE conversation_wakeups SET status='cancelled' WHERE status='pending'").run();
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBe('not_delivered');
+  });
   it('orders bots by activity with personal pins and preserves personal unread state', async () => {
     let requestActor = human;
     const app = express();
