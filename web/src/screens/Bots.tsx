@@ -1062,6 +1062,14 @@ export function canApproveFromQueue(d: BotDecision) {
 export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selected = false }: { d: BotDecision; selected?: boolean; busy?: boolean; onOpen: () => void; onCall?: () => void; onApprove?: () => void }) {
   const quickApprove = onApprove && canApproveFromQueue(d);
   const hasDraft = Boolean(decisionCopy(d.proposal).draft);
+  // First tap arms the button; a second tap within a few seconds sends. Guards against stray taps on a phone.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const timer = setTimeout(() => setArmed(false), 8000);
+    return () => clearTimeout(timer);
+  }, [armed]);
+  useEffect(() => { setArmed(false); }, [d.id, d.version]);
   return (
     <article data-decision-id={d.id} aria-current={selected ? "true" : undefined} className={cn("min-w-0 rounded-2xl border p-4 [overflow-wrap:anywhere]", selected ? "border-blue-500 bg-blue-100 dark:bg-blue-900 ring-2 ring-blue-500" : "bg-card")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1085,10 +1093,18 @@ export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selec
       </div>
       {d.state === 'needs_input' && <p className="mt-2 text-sm text-muted-foreground">{d.proposal.blocks_scope === 'task' ? 'Other work can continue while this waits.' : 'All work for this bot is waiting for an answer.'}</p>}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        {quickApprove && (
-          <Button className="min-h-11 w-full sm:flex-1" disabled={busy} onClick={onApprove}>
+        {quickApprove && !armed && (
+          <Button className="min-h-11 w-full sm:flex-1" disabled={busy} onClick={() => setArmed(true)}>
             {hasDraft ? 'Approve & send reply' : 'Approve as proposed'}
           </Button>
+        )}
+        {quickApprove && armed && (
+          <div className="flex w-full gap-2 sm:flex-1" role="group" aria-label="Confirm approval">
+            <Button className="min-h-11 flex-1 bg-green-700 text-white hover:bg-green-800" disabled={busy} onClick={() => { setArmed(false); onApprove(); }}>
+              {hasDraft ? 'Tap again to send' : 'Tap again to approve'}
+            </Button>
+            <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => setArmed(false)}>Cancel</Button>
+          </div>
         )}
         <Button variant="outline" className="min-h-11 w-full sm:flex-1" onClick={onOpen}>{d.state === 'needs_input' ? 'Review & decide' : 'View decision'}</Button>
       </div>

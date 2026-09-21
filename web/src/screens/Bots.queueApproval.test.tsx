@@ -22,6 +22,7 @@ describe('one-click approval from the queue', () => {
     expect(html).toContain('Review &amp; decide');
     const noDraft = renderToStaticMarkup(<DecisionCard d={{ ...base, can_answer: true, proposal: { ...base.proposal, blocked_action: 'Just do it.' } }} onOpen={() => {}} onApprove={() => {}} />);
     expect(noDraft).toContain('Approve as proposed');
+    expect(html).not.toContain('Tap again');
     const cannot = renderToStaticMarkup(<DecisionCard d={{ ...base, can_answer: false }} onOpen={() => {}} onApprove={() => {}} />);
     expect(cannot).not.toContain('Approve');
   });
