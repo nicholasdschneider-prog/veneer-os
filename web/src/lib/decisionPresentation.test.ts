@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decisionCopy, decisionSection, decisionStatusLabel } from './decisionPresentation';
+import { discussionTimestamp, decisionCopy, decisionSection, decisionStatusLabel } from './decisionPresentation';
 import type { BotDecision } from './bots';
 
 describe('readable proposal copy', () => {
@@ -39,5 +39,16 @@ describe('decision-specific lifecycle presentation', () => {
     d.state = 'verified_completed';
     expect(decisionSection(d)).toBe('history');
     expect(decisionStatusLabel(d)).not.toMatch(/running|executing/i);
+  });
+});
+
+describe('discussion timestamp', () => {
+  it('treats SQLite UTC and ISO timestamps as the same instant and includes seconds and date', () => {
+    const result = discussionTimestamp('2026-09-21 15:37:44');
+    expect(result).toBe(discussionTimestamp('2026-09-21T15:37:44Z'));
+    expect(result).toBe(discussionTimestamp('2026-09-21T11:37:44-04:00'));
+    expect(result).toContain('2026');
+    expect(result).toContain(':37:44');
+    expect(discussionTimestamp('bad')).toBe('Time unavailable');
   });
 });

@@ -129,6 +129,39 @@ export class VoiceWorkspace {
         olderBefore: start > 0 ? start : null, clippedMessages: page.filter(m => m.text.length > 4000).length } };
   }
 
+  /** Direct read-only lookup: no message dispatch or wait for the bot's next turn. */
+  async searchContext(query: string) {
+    const bot = this.bot();
+    const terms = z.string().trim().min(2).max(200).parse(query).toLowerCase().split(/\s+/).filter(Boolean);
+    const events = await this.ctx.manager.snapshot(bot.conversationId);
+    this.visibleChat(bot.conversationId);
+    const records = events.flatMap(event => event.type === 'text_final'
+      ? [{ source: 'bot chat', role: 'assistant', at: event.at, text: sanitizeMemoryText(event.markdown) }]
+      : event.type === 'turn_started' ? [{ source: 'bot chat', role: 'user', at: event.at, text: sanitizeMemoryText(event.text ?? '') }] : []);
+    for (const d of this.bots.list(this.actor).filter(d => d.conversation_id === bot.conversationId)) {
+      records.push({ source: `decision ${d.id}`, role: 'proposal', at: d.updated_at,
+        text: sanitizeMemoryText(JSON.stringify(d.proposal)) });
+      const thread = this.bots.thread(this.actor, d.id);
+      for (const m of thread.messages as { actor_conversation_id: string | null; created_at: string; text: string }[]) records.push({ source: `discussion ${d.id}`, role: m.actor_conversation_id ? 'assistant' : 'user', at: m.created_at, text: sanitizeMemoryText(m.text) });
+    }
+    const matches = records.filter(r => terms.every(t => r.text.toLowerCase().includes(t)))
+      .sort((a, b) => Date.parse(b.at.includes('T') ? b.at : b.at.replace(' ', 'T') + 'Z') - Date.parse(a.at.includes('T') ? a.at : a.at.replace(' ', 'T') + 'Z'));
+    return { matches: matches.slice(0, 8).map(r => {
+      const index = r.text.toLowerCase().indexOf(terms[0]!);
+      const start = Math.max(0, index - 500);
+      return { ...r, text: r.text.slice(start, start + 5000), excerpt: start > 0 || r.text.length > 5000 };
+    }), totalMatches: matches.length, source: 'Previously recorded conversation and decision evidence, not a fresh external-system lookup.',
+    guidance: 'Attribute facts to their source and date. User requests are not verified evidence. Missing records are unknown, not proof of absence. If facts are missing or stale, request a targeted fresh check with discuss_decision; never infer package-to-product mapping.' };
+  }
+
+  /** Discussion replies can arrive without a chat text_final or status change. */
+  discussionRevision() {
+    if (!this.botConversationId) return 0;
+    this.visibleChat(this.botConversationId);
+    return (this.ctx.db.prepare(`SELECT COALESCE(MAX(t.rowid),0) AS revision FROM bot_decision_threads t
+      JOIN bot_decisions d ON d.id=t.decision_id WHERE d.conversation_id=?`).get(this.botConversationId) as { revision: number }).revision;
+  }
+
   /** Number of bot replies so far; the call loop uses it to notice a new reply. */
   async replyCount(): Promise<number> {
     if (!this.botConversationId) return 0;
@@ -161,6 +194,7 @@ export class VoiceWorkspace {
     return {
       decisionId: d.id, version: d.version, state: d.state, createdAt: d.created_at, updatedAt: d.updated_at,
       canAnswer: d.can_answer || (d.can_handle && !d.handler_id), assignee: d.shared_queue ? 'Authorized teammates' : d.assignee_name,
+      replyStatus: d.reply_status,
       handler: d.handler_name, handlingRevision: d.handling_revision, sharedQueue: d.shared_queue,
       order: d.order_reference,
       question: clip(d.proposal.question, 2000), recommendation: clip(d.proposal.recommendation, 2000),
@@ -218,11 +252,11 @@ export class VoiceWorkspace {
         .slice(-20).map(m => ({ from: m.actor_conversation_id ? decision.bot_name : m.actor_name, text: clip(m.text, 2000), at: m.created_at })) };
   }
 
-  discuss(sessionId: string, decisionId: string, text: string) {
+  discuss(sessionId: string, decisionId: string, text: string, factCheck = false) {
     this.readDecision(decisionId);
     const clean = clip(text, 12000).trim();
     if (!clean) throw new Error('Nothing to send.');
-    const decision = this.bots.reply(this.actor, decisionId, `voice:${sessionId}:${Date.now()}`, `[Voice call] ${clean}`);
+    const decision = this.bots.reply(this.actor, decisionId, `voice:${sessionId}:${Date.now()}`, `[Voice call] ${clean}${factCheck ? '\n[Live-call fact check: prioritize a brief factual reply in this decision thread before unrelated work. Read-only investigation; no customer messages, order changes or approval. State sources, freshness, and unknowns. Do not guess package-to-item mapping.]' : ''}`);
     return { ok: true, decisionId: decision.id, delivery: 'Discussion message posted; it wakes the bot but does not approve anything.' };
   }
 

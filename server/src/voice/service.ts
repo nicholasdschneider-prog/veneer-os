@@ -11,7 +11,7 @@ interface Call {
   id: string; userId: number; room: string; child: ChildProcess; client: RoomServiceClient;
   state: string; error: string | null; lastSeen: number; expiresAt: number;
   createdAt: number; ready: boolean; seenKeys: Set<string>; replies: number; workStatus: string | null;
-  bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean;
+  bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number;
 }
 export interface CallOptions { contextConversationId?: string; botConversationId?: string; decisionId?: string }
 const SECRET_NAMES = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'OPENAI_API_KEY'] as const;
@@ -33,7 +33,7 @@ You can read chats and answer structured pending questions, but cannot independe
 function botInstructions(bot: { name: string; role: string | null; subteam: string | null; team: string | null }, decisionId: string | null) {
   const title = [bot.role, bot.subteam, bot.team].filter(Boolean).join(', ');
   return `You are the voice line for ${bot.name}${title ? ` (${title})` : ''}, the agent in the pinned conversation. Introduce yourself as ${bot.name}.
-The real work happens in ${bot.name}'s own chat; you speak for it from that chat's actual messages, its open decisions, and its pending questions. Fresh currentConversation messages and status are provided below before this call starts. Use them immediately for greetings and recaps. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done or a clean slate. Summarize completed work from the actual messages when asked what you did. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fresh updates use read_chat. Its coverage describes a bounded window: if older history is needed, call read_chat with beforeMessage=coverage.olderBefore. If messages are clipped or missing, acknowledge the limit instead of inventing details.
+The real work happens in ${bot.name}'s own chat; you speak for it from that chat's actual messages, its open decisions, and its pending questions. Fresh currentConversation messages and status are provided below before this call starts. Use them immediately for greetings and recaps. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done or a clean slate. Summarize completed work from the actual messages when asked what you did. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fact questions, first use search_context with an exact order number, tracking number or short identifying phrase. It searches existing evidence directly without waiting for the working bot. Say when evidence was recorded; it is not a fresh external-system lookup. If missing or stale, ask one targeted question through discuss_decision, request a brief factual answer before unrelated work, and tell the caller the check is pending. Never claim to have retrieved current external data from this search. For fresh updates use read_chat. Its coverage describes a bounded window: if older history is needed, call read_chat with beforeMessage=coverage.olderBefore. If messages are clipped or missing, acknowledge the limit instead of inventing details.
 Do not dispatch thinking aloud, hypothetical examples, or ambiguous intentions. Ask a short clarifying question first. Only use send_message for an explicit instruction or a request to relay a message. Keep the same instructionId when retrying. The dispatch disposition is authoritative: queued means waiting, running means started, steered means forwarded into the active turn; none means completed. Completion or failure must come from actual agent results. Tool approval policies still apply in the underlying chat.
 When the user wants ${bot.name} to do something or wants to tell it something, use send_message to relay it in the user's words; ${bot.name} then replies in its chat. When you are told a reply arrived, read it with read_chat and summarize it aloud.
 For decisions: read_decision gives paged proposal fields and recent discussion excerpts. Catalog questions are previews only. Read all proposal pages using coverage.nextOffset before advising approval; never treat omitted constraints as absent. list_decisions accepts offset for the next catalog page. discuss_decision posts a message into that decision's thread (it wakes the bot but approves nothing). answer_decision records approve, reject, defer or withdraw only after the user explicitly states that decision; repeat their decision back first. Use the exact decisionId and version from list_decisions.
@@ -55,7 +55,7 @@ export class LiveVoiceService {
         catch { this.end(call.userId, call.id); continue; }
         if (call.state === 'listening' && call.child.connected) void this.notice(call);
       }
-    }, 5_000);
+    }, 1_000);
     this.timer.unref();
   }
   /** Tell a listening worker about new questions, decisions, or bot replies since the call started. */
@@ -70,7 +70,8 @@ export class LiveVoiceService {
         ...decisions.filter(d => d.state === 'needs_input').map(d => `d:${d.decisionId}:${d.version}`)];
       const replies = call.bot ? await workspace.replyCount() : 0;
       const status = call.bot ? await this.ctx.manager.statusOf(call.bot.conversationId) : null;
-      const changed = keys.some(key => !call.seenKeys.has(key)) || replies > call.replies ||
+      const discussionRevision = workspace.discussionRevision();
+      const changed = discussionRevision !== (call.discussionRevision ?? 0) || keys.some(key => !call.seenKeys.has(key)) || replies > call.replies ||
         (call.workStatus !== null && status !== call.workStatus);
       if (changed && this.calls.get(call.userId) === call && call.child.connected) {
         // Include fresh evidence rather than relying on the model to obey a
@@ -81,6 +82,7 @@ export class LiveVoiceService {
       }
       keys.forEach(key => call.seenKeys.add(key));
       call.replies = replies;
+      call.discussionRevision = discussionRevision;
       call.workStatus = status;
     } catch { this.end(call.userId, call.id); }
     finally { call.checking = false; }
@@ -177,8 +179,9 @@ export class LiveVoiceService {
               case 'answer': return workspace.answer(call.id, args);
               case 'send_message': return workspace.sendMessage(String(args.text ?? ''), String(args.instructionId ?? ''));
               case 'decisions': return workspace.decisionCatalog(typeof args.offset === 'number' ? args.offset : 0);
+              case 'search_context': return workspace.searchContext(String(args.query ?? ''));
               case 'read_decision': return workspace.voiceDecision(String(args.decisionId ?? ''), typeof args.offset === 'number' ? args.offset : 0);
-              case 'discuss_decision': return workspace.discuss(call.id, String(args.decisionId ?? ''), String(args.text ?? ''));
+              case 'discuss_decision': return workspace.discuss(call.id, String(args.decisionId ?? ''), String(args.text ?? ''), args.factCheck === true);
               case 'answer_decision': return workspace.answerDecision(call.id, args);
               default: return { error: 'Unknown tool.' };
             }

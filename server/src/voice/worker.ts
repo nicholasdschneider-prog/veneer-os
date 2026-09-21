@@ -34,7 +34,7 @@ async function stop() {
   process.exit(0);
 }
 const NOTICES: Record<string, string> = {
-  update: 'Conversation activity changed. The currentConversation below is freshly read from the actual agent thread. Report new results or questions from this evidence, rather than reusing older tool results or guessing what the agent probably did. Working means running; idle alone does not prove success. Be brief and continue the conversation.',
+  update: 'Conversation activity changed. The currentConversation below is freshly read from the actual agent thread. Also inspect focusedDecision.discussion for new replies: these can arrive without a chat reply. Report new results or questions from this evidence, rather than reusing older tool results or guessing what the agent probably did. Working means running; idle alone does not prove success. Be brief and continue the conversation.',
   question: 'A new pending question arrived. Briefly let the user know and ask if they want to review it. Do not interrupt their current topic with details.',
   decision: 'A new decision needing the user’s input was raised. Briefly mention it and offer to go through it. Do not interrupt their current topic with details.',
   reply: 'The bot just replied in its chat. Read the latest reply with read_chat and summarize it aloud in a sentence or two, then continue.',
@@ -86,14 +86,16 @@ process.on('message', (raw: unknown) => {
         execute: async args => call('answer', { requestId: args.requestId, answers: Object.fromEntries(args.answers.map(a => [a.questionId, a.values])) }) }),
     };
     if (bot) {
+      tools.search_context = llm.tool({ description: 'Fast read-only search of this bot’s existing chat and decision evidence. Use an exact order/tracking number or short phrase before dispatching a fact-gathering task. This does not fetch fresh external data. Results include source, author, date and excerpt coverage.',
+        parameters: z.object({ query: z.string().min(2).max(200) }), execute: async args => call('search_context', args) });
       tools.send_message = llm.tool({ description: `Relay something the user said into ${name}’s chat, in the user's words, so ${name} acts on it or answers. ${name} replies in its chat; you will be told when a reply arrives.`,
         parameters: z.object({ text: z.string(), instructionId: z.string().describe('Unique stable ID for this explicit instruction; reuse on retry, never reuse for different text.') }), execute: async args => call('send_message', args) });
       tools.list_decisions = llm.tool({ description: `List ${name}’s decisions: open ones needing the user's input, plus recent answered, running and completed ones. Read fresh before discussing or answering.`,
         parameters: z.object({ offset: z.number().int().nonnegative().optional() }), execute: async args => call('decisions', args) });
       tools.read_decision = llm.tool({ description: 'Read one decision: paged proposal fields and recent discussion excerpts. Follow coverage.nextOffset until all proposal constraints are read before advising approval.',
         parameters: z.object({ decisionId: z.string(), offset: z.number().int().nonnegative().optional() }), execute: async args => call('read_decision', args) });
-      tools.discuss_decision = llm.tool({ description: `Post a message from the user into a decision’s discussion thread. This wakes ${name} to respond but approves nothing.`,
-        parameters: z.object({ decisionId: z.string(), text: z.string() }), execute: async args => call('discuss_decision', args) });
+      tools.discuss_decision = llm.tool({ description: `Post a message from the user into a decision’s discussion thread. This wakes ${name} to respond but approves nothing. Use factCheck=true for missing or stale facts needed during the live call; ask one targeted question.`,
+        parameters: z.object({ decisionId: z.string(), text: z.string(), factCheck: z.boolean().optional() }), execute: async args => call('discuss_decision', args) });
       tools.answer_decision = llm.tool({ description: 'Required for explicit spoken approval: atomically claim an available shared card and record the caller’s decision, with no further UI click. Do not post an approval as discussion instead. Only after they clearly state approve, reject, defer or withdraw and you repeated it back. Use the exact decisionId and version from read_decision. text is their reasoning in their words; conditional future actions do not widen the current approval.',
         parameters: z.object({ decisionId: z.string(), version: z.number().int(), action: z.enum(['approve', 'reject', 'defer', 'withdraw']), text: z.string(), scope: z.enum(['this_case', 'standing_rule']).default('this_case') }),
         execute: async args => call('answer_decision', args) });

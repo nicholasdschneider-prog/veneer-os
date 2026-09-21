@@ -1,4 +1,4 @@
-import { decisionSection, decisionStatusLabel } from '@/lib/decisionPresentation';
+import { decisionSection, decisionStatusLabel, discussionTimestamp } from '@/lib/decisionPresentation';
 import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
@@ -476,6 +476,7 @@ export function Bots({
                 <DecisionCard
                   key={item.id}
                   d={item}
+                  selected={item.id === decisionId}
                   onOpen={() => {
                     const card = queuePane.current?.querySelector<HTMLElement>(`[data-decision-id="${CSS.escape(item.id)}"]`);
                     selectedOffset.current = card && queuePane.current ? card.getBoundingClientRect().top - queuePane.current.getBoundingClientRect().top : null;
@@ -819,7 +820,7 @@ export function Bots({
                             {m.actor_conversation_id
                               ? d.bot_name
                               : m.actor_name}{' '}
-                            · {when(m.created_at)}
+                            · <time dateTime={m.created_at.replace(" ", "T") + (/[zZ]|[+-]\d\d:\d\d$/.test(m.created_at) ? "" : "Z")}>{discussionTimestamp(m.created_at)}</time>
                           </p>
                           <p className="whitespace-pre-wrap break-words">
                             {m.text}
@@ -1024,13 +1025,14 @@ export function Bots({
     </div>
   );
 }
-export function DecisionCard({ d, onOpen, onCall }: { d: BotDecision; onOpen: () => void; onCall?: () => void }) {
+export function DecisionCard({ d, onOpen, onCall, selected = false }: { d: BotDecision; selected?: boolean; onOpen: () => void; onCall?: () => void }) {
   return (
-    <article data-decision-id={d.id} className="min-w-0 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
+    <article data-decision-id={d.id} aria-current={selected ? "true" : undefined} className={cn("min-w-0 rounded-2xl border p-4 [overflow-wrap:anywhere]", selected ? "border-blue-500 bg-blue-100 dark:bg-blue-900 ring-2 ring-blue-500" : "bg-card")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</div>
         <div className="flex items-center gap-2">
           <State state={d.state} label={decisionStatusLabel(d)} />
+          {selected && <span className="text-sm font-semibold text-blue-700 dark:text-blue-200">Selected</span>}
           {onCall && <Button variant="outline" size="icon-lg" className="rounded-full" aria-label={`Talk with ${d.bot_name} about this`} onClick={onCall}><Phone className="size-4" /></Button>}
         </div>
       </div>

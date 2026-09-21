@@ -35,3 +35,12 @@ export function decisionStatusLabel(d: DecisionStatus): string {
   }
   return decisionLabel(d.state);
 }
+
+/** SQLite timestamps are UTC; display in the viewer's local time, with seconds. */
+export function discussionTimestamp(value: string): string {
+  const normalized = value.replace(' ', 'T');
+  const date = new Date(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(normalized) ? normalized : normalized + 'Z');
+  return Number.isNaN(date.getTime()) ? 'Time unavailable' : new Intl.DateTimeFormat(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
+  }).format(date);
+}

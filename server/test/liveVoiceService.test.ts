@@ -133,6 +133,19 @@ describe('live voice lifecycle', () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(service.status(1)).toBeNull();
   });
+  it('notifies a call about a decision discussion reply even when chat and run status do not change', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Grant','codex','s1')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('thread','Grant',1)").run();
+    db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES('d','thread','s','p',?,1)").run(JSON.stringify({ question: 'Check order?', recommendation: 'Check facts', consequence: 'No action', blocked_action: 'Read only', blocks_scope: 'task', deadline: null, evidence: [] }));
+    await service.start(1, { botConversationId: 'thread', decisionId: 'd' });
+    child.emit('message', { type: 'ready' });
+    await vi.advanceTimersByTimeAsync(1000);
+    child.send.mockClear();
+    db.prepare("INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,actor_conversation_id,payload_json,request_key) VALUES('reply','d',1,'message',1,'thread','{}','reply')").run();
+    db.prepare("INSERT INTO bot_decision_threads(id,decision_id,actor_id,actor_conversation_id,text) VALUES('reply','d',1,'thread','Verified: package weight is unavailable.')").run();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'notice', context: expect.objectContaining({ focusedDecision: expect.objectContaining({ discussion: [expect.objectContaining({ text: 'Verified: package weight is unavailable.' })] }) }) }));
+  });
   it('reaps an abandoned phone connection even if its worker stays alive', async () => {
     await service.start(1); child.emit('message',{type:'ready'});
     vi.advanceTimersByTime(111_000);

@@ -75,6 +75,22 @@ describe('Henry voice workspace', () => {
     await expect(workspace.readChat('own',-1)).rejects.toThrow('cursor');
     await expect(new VoiceWorkspace(ctx,2).readChat('own',7)).rejects.toThrow();
   });
+  it('searches recorded facts directly without waking a bot or leaking hidden tool data', async () => {
+    ctx.manager.snapshot = async () => [
+      { type: 'text_final', turnId: 'a', at: '2026-09-21T15:00:00Z', markdown: 'Order 100121722: the second parcel has no carrier acceptance. Weight is unknown.' },
+      { type: 'tool_finished', turnId: 'a', toolId: 'secret', ok: true, resultPreview: 'PRIVATE 100121722' },
+    ];
+    const pinned = new VoiceWorkspace(ctx, 1, 'own');
+    const result = await pinned.searchContext('100121722');
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]).toMatchObject({ role: 'assistant', at: '2026-09-21T15:00:00Z', excerpt: false });
+    expect(result.source).toContain('not a fresh');
+    expect(JSON.stringify(result)).not.toContain('PRIVATE');
+    expect(posted).toEqual([]);
+    expect((await pinned.searchContext('absent-order')).matches).toEqual([]);
+    db.prepare("UPDATE users SET status='disabled' WHERE id=2").run();
+    await expect(new VoiceWorkspace(ctx, 2, 'own').searchContext('100121722')).rejects.toThrow();
+  });
   it('validates answers in the real runner, saves the decision and releases the waiting question', async () => {
     expect(runtime.statusOf('own')).toBe('needs_you');
     await expect(workspace.answer('call1', { requestId, answers: { q1: ['bogus'] } })).rejects.toThrow('valid answers');
@@ -167,6 +183,16 @@ describe('bot voice calls', () => {
     db.prepare("UPDATE conversations SET visibility='private' WHERE id='own'").run();
     expect(() => new VoiceWorkspace(ctx, 2, 'own').bot()).toThrow();
     expect(() => new VoiceWorkspace(ctx, 1, 'missing').bot()).toThrow();
+  });
+  it('queues a live fact check without changing the proposal or approving an action', () => {
+    const decision = registerBot();
+    const call = new VoiceWorkspace(ctx, 1, 'own');
+    call.discuss('call-facts', decision.id, 'Confirm the package weight.', true);
+    const current = call.readDecision(decision.id);
+    expect(current).toMatchObject({ version: 1, state: 'needs_input', answer: null });
+    expect(current.discussion[0]?.text).toContain('Read-only investigation');
+    expect(current.discussion[0]?.text).toContain('Confirm the package weight.');
+    expect(call.discussionRevision()).toBeGreaterThan(0);
   });
   it('relays messages, discussion and explicit decisions to the bot', async () => {
     const decision = registerBot();
