@@ -1605,7 +1605,7 @@ export function createConversationManager({
         settingsPath: spawnConfig.settingsPath,
         developerInstructions: spawnConfig.developerInstructions,
         refreshDeveloperInstructions:
-          conv.provider === 'codex' &&
+          (conv.provider === 'codex' || conv.provider === 'grok') &&
           !firstTurn &&
           Boolean(spawnConfig.instructionHash) &&
           conv.provider_instruction_hash !== spawnConfig.instructionHash,

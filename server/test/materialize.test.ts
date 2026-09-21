@@ -13,6 +13,7 @@ import {
 import { createMaterializer } from '../src/toolbox/materialize.js';
 import { writeDopplerMetadata } from '../src/secrets/doppler.js';
 import { writeClaudePreferences } from '../src/providers/claude/preferences.js';
+import { proCodexHome } from '../src/homes.js';
 
 const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
 const silent = { warn: () => undefined, error: () => undefined };
@@ -43,7 +44,7 @@ describe('materializer', () => {
 
   function addConversation(
     id: string,
-    provider: 'claude' | 'openrouter' | 'codex' = 'codex',
+    provider: 'claude' | 'openrouter' | 'codex' | 'grok' = 'codex',
     projectId: string | null = null,
     assistantId = 1,
   ) {
@@ -128,6 +129,22 @@ describe('materializer', () => {
     expect(fresh.developerInstructions).toContain('Latest agent brief.');
     expect(fresh.developerInstructions).toContain('Latest project brief.');
     expect(fresh.developerInstructions).not.toContain('First project brief.');
+  });
+
+  it.each(['codex', 'claude', 'grok'] as const)('supplies Jev discovery to an existing %s chat without editing its snapshot', (provider) => {
+    addConversation('existing', provider);
+    const mat = materializer();
+    mat.prepare(target(), 'token', 'existing', 1);
+    const saved = db.prepare('SELECT instruction_snapshot_json FROM conversations WHERE id = ?').get('existing');
+    db.prepare("UPDATE assistants SET instructions = 'A later persona edit.' WHERE id = 1").run();
+
+    const resumed = mat.prepare(target(), 'token', 'existing', 1);
+    expect(resumed.developerInstructions).toContain(path.join(proCodexHome(), 'skills', 'veneer-jev', 'SKILL.md'));
+    expect(resumed.developerInstructions).toContain('Be kind to the customer.');
+    expect(resumed.developerInstructions).not.toContain('A later persona edit.');
+    expect(db.prepare('SELECT instruction_snapshot_json FROM conversations WHERE id = ?').get('existing')).toEqual(saved);
+    expect(fs.existsSync(path.join(workspaceDir, 'AGENTS.md'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceDir, 'CLAUDE.md'))).toBe(false);
   });
 
   it('keeps memory as labeled user reference data instead of policy', () => {

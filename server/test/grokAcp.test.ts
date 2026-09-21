@@ -380,6 +380,24 @@ describe('canonical Grok ACP adapter', () => {
     expect(prompt?.prompt?.[0]?.text).toBe(`${TEST_DEVELOPER_INSTRUCTIONS}\n\n---\n\nhi`);
   });
 
+  it.each([false, true])('refreshes instructions on a loaded session only when requested (%s)', async (refreshDeveloperInstructions) => {
+    const dir = tmpDir();
+    dirs.push(dir);
+    const requestLog = path.join(dir, 'requests.jsonl');
+    process.env.REQUEST_LOG = requestLog;
+    const adapter = adapterIn(dir);
+    await adapter.runTurn(turnSpec({
+      cwd: dir, firstTurn: false, refreshDeveloperInstructions,
+      developerInstructions: 'Current shared guidance: veneer-jev',
+    }), () => undefined).done;
+    const prompt = readLog(requestLog).find((r) => r.method === 'session/prompt')?.params as {
+      prompt?: { text?: string }[];
+    };
+    expect(prompt.prompt?.[0]?.text).toBe(refreshDeveloperInstructions
+      ? 'Current shared guidance: veneer-jev\n\n---\n\nhi'
+      : 'hi');
+  });
+
   it('captures files when Grok labels command and edit calls generically', async () => {
     const dir = tmpDir();
     dirs.push(dir);

@@ -3,8 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
 import type { ConversationRow } from '../db/db.js';
+import { proCodexHome } from '../homes.js';
 
-export const CORE_INSTRUCTIONS_VERSION = 11;
+export const CORE_INSTRUCTIONS_VERSION = 12;
 export const CHAT_SNAPSHOT_VERSION = 1;
 export const CONVERSATION_DEBUG_CONTEXT_FILENAME = 'debug-context.json';
 export const LEGACY_GENERATED_INSTRUCTION_MARKER =
@@ -250,6 +251,7 @@ export function coreVeneerRules(target: InstructionTarget): string {
     '- Chats run headless: saying you will check back, wait, monitor, or retry later does nothing once the turn ends. Before ending a turn that needs a later follow-up, call `schedule_wakeup` (or `schedule_task` for recurring work). Never use provider-native schedulers for this.',
     '- Treat trusted wake-up continuations as user-authorized platform messages.',
     '- Follow the detailed instructions on each tool for operation-specific behavior. Keep user-facing answers clear and concise.',
+    `- For batches of semantic classification, ranking, or filtering, proactively consider the veneer-jev skill without waiting for the user to mention Jev. Read ${path.join(proCodexHome(), 'skills', 'veneer-jev', 'SKILL.md')} when it fits (this shared copy is readable by every provider). Prefer deterministic rules for explicit facts and direct reasoning for small tasks; preserve existing data and action permissions.`,
     '- Reference every file you create or change for the user as a Markdown link whose target is the raw absolute path, for example `[stale-files-report.md](/Users/you/Projects/Crew Seating/out/stale-files-report.md)`. Keep spaces as spaces (no %20) and do not wrap the path in inline code; the chat UI opens such links in its file preview, while a bare path is much harder to open.',
     '- To display an image inline in chat, use `![Description](/absolute/path/image.png)` with the absolute path to an image created in this chat. Veneer routes detected chat files through authenticated image URLs; viewing a file with `view_image` alone does not display it to the user. Keep lasting deliverables in the project rather than `/tmp`, which can be cleaned up. Use a published page when the user needs to share images outside Veneer.',
     '- In Markdown report files, keep images beside the report or in a subfolder and embed them with `![Description](./image.png)`. Wrap destinations containing spaces in angle brackets, for example `![Description](<./screenshots/My Image.png>)`; keep spaces literal. Markdown previews authenticate image access through the report and refuse images outside its folder tree. Absolute paths within that tree also work. Link the report itself with a raw absolute-path Markdown link.',

@@ -12,6 +12,7 @@ export const PLATFORM_SKILL_NAMES = [
   'veneer-publish-page',
   'veneer-todos',
   'veneer-paper-design',
+  'veneer-jev',
   // Design/UI family shipped with the product (originally ui.sh + personal skills).
   'design',
   'add-dark-mode',

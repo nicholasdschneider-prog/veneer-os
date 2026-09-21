@@ -50,7 +50,7 @@ function recordingAdapter({
   steerResult?: SteerOutcome | SteerFactory;
   supportsSteer?: boolean;
   compaction?: boolean;
-  provider?: 'claude' | 'codex';
+  provider?: 'claude' | 'codex' | 'grok';
   transcript?: ConversationEvent[];
 } = {}) {
   const runs: {
@@ -261,16 +261,18 @@ describe('turn auto-resume', () => {
     expect(full.runs[0]?.dangerous).toBe(true);
   });
 
-  it('supplies required developer context and refreshes a resumed Codex thread once', () => {
-    db.prepare("UPDATE conversations SET provider = 'codex', provider_instruction_hash = 'old-hash' WHERE id = 'conv-1'").run();
+  it.each(['codex', 'grok'] as const)('supplies required developer context and refreshes a resumed %s thread once', async (provider) => {
+    db.prepare("UPDATE conversations SET provider = ?, provider_instruction_hash = 'old-hash' WHERE id = 'conv-1'").run(provider);
     db.prepare("INSERT INTO settings (key, value_json) VALUES ('turn_ran:conv-1', 'true')").run();
-    const codexConv = db.prepare("SELECT * FROM conversations WHERE id = 'conv-1'").get() as ConversationRow;
-    const { adapter, runs } = recordingAdapter({ provider: 'codex' });
-    makeManager(db, adapter).postMessage(codexConv, 'resume safely');
+    const resumedConv = db.prepare("SELECT * FROM conversations WHERE id = 'conv-1'").get() as ConversationRow;
+    const { adapter, runs } = recordingAdapter({ provider });
+    const manager = makeManager(db, adapter);
+    manager.postMessage(resumedConv, 'resume safely');
 
     expect(runs[0]?.firstTurn).toBe(false);
     expect(runs[0]?.developerInstructions).toContain('# Core Veneer rules');
     expect(runs[0]?.developerInstructions).toContain('# Fixed chat context');
+    expect(runs[0]?.developerInstructions).toContain('veneer-jev');
     expect(runs[0]?.refreshDeveloperInstructions).toBe(true);
     runs[0]!.establish();
     const stored = db.prepare("SELECT provider_instruction_hash FROM conversations WHERE id = 'conv-1'").get() as {
@@ -278,6 +280,11 @@ describe('turn auto-resume', () => {
     };
     expect(stored.provider_instruction_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(stored.provider_instruction_hash).not.toBe('old-hash');
+    runs[0]!.finish();
+    await flush();
+    manager.postMessage(resumedConv, 'continue');
+    expect(runs[1]?.refreshDeveloperInstructions).toBe(false);
+    runs[1]!.finish();
   });
 
   it('keeps marked skill turns visible while sending Codex native syntax', () => {
