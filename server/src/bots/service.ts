@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import type { ConversationRow, UserRow } from '../db/db.js';
-import { canViewConversation, sameBusiness } from '../conversations/access.js';
+import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 
 const text = z.string().trim().min(1).max(12000);
 export const evidenceSchema = z
@@ -31,6 +31,8 @@ export type Decision = {
   state: string;
   proposal_json: string;
   assignee_id: number;
+  handler_id: number | null;
+  handling_revision: number;
   answer_json: string | null;
   result_json: string | null;
   parked_json: string | null;
@@ -88,10 +90,26 @@ export function createBotService(db: Database.Database) {
     if (actor.conversationId)
       throw new BotError(403, 'A human answer is required');
   }
+  function shared(d: Decision) {
+    if (!db.prepare('SELECT 1 FROM shared_bot_queues WHERE conversation_id=?').get(d.conversation_id)) return false;
+    const c = conversation(d.conversation_id)!;
+    // An opt-in queue shares only decisions addressed to its owner or its
+    // explicitly authorized staff, never unrelated approvers' authority.
+    return d.assignee_id === c.user_id || Boolean(db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(d.assignee_id, c.id));
+  }
+  function eligible(actor: Actor, d: Decision) {
+    if (actor.conversationId) return false;
+    const c = conversation(d.conversation_id)!;
+    if (!canSendToConversation(actor.user, c, db)) return false;
+    if (!shared(d)) return actor.user.id === d.assignee_id;
+    return actor.user.id === c.user_id || Boolean(db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(actor.user.id, c.id));
+  }
   function approver(actor: Actor, d: Decision) {
     human(actor);
-    if (actor.user.id !== d.assignee_id)
-      throw new BotError(403, 'Only the assigned approver may answer');
+    if (!eligible(actor, d)) throw new BotError(403, shared(d) ? 'Only an authorized teammate may answer' : 'Only the assigned approver may answer');
+  }
+  function handlingCas(d: Decision, revision: number | undefined) {
+    if (revision !== d.handling_revision) throw new BotError(409, 'Handling changed. Reload before continuing.');
   }
   function validateProposal(actor: Actor, p: Proposal, botId: string) {
     evidenceAllowed(actor, p, botId);
@@ -249,7 +267,14 @@ export function createBotService(db: Database.Database) {
       answer_json: undefined,
       result_json: undefined,
       parked_json: undefined,
-      can_answer: !actor.conversationId && actor.user.id === d.assignee_id,
+      answered_by: answered ? (db.prepare('SELECT display_name FROM users WHERE id=?').get(answered.actor_id) as { display_name: string } | undefined)?.display_name ?? null : null,
+      shared_queue: shared(d),
+      handler_name: d.handler_id ? (db.prepare('SELECT display_name FROM users WHERE id=?').get(d.handler_id) as { display_name: string } | undefined)?.display_name ?? null : null,
+      can_handle: eligible(actor, d) && shared(d) && d.state === 'needs_input',
+      can_release: eligible(actor, d) && shared(d) && d.handler_id !== null && (d.handler_id === actor.user.id || c.user_id === actor.user.id),
+      handling_mine: d.handler_id === actor.user.id,
+      can_answer: eligible(actor, d) && (!shared(d) || d.handler_id === actor.user.id),
+      can_amend: eligible(actor, d) && actor.user.id === c.user_id && (!shared(d) || d.handler_id === actor.user.id),
       can_manage: !actor.conversationId && actor.user.id === c.user_id,
       dismissed,
       bot_name: (
@@ -296,7 +321,7 @@ export function createBotService(db: Database.Database) {
             d.conversation_id !== actor.conversationId
           )
             return [];
-          if (filter === 'me' && d.assignee_id !== actor.user.id) return [];
+          if (filter === 'me' && d.assignee_id !== actor.user.id && !(shared(d) && eligible(actor, d))) return [];
           if (
             filter === 'team' &&
             chat(actor, d.conversation_id).visibility !== 'team'
@@ -353,7 +378,10 @@ export function createBotService(db: Database.Database) {
       return db.transaction(() => {
         const d = read(actor, id);
         if (actor.conversationId) owner(actor, d);
-        else approver(actor, d);
+        else {
+          approver(actor, d);
+          if (shared(d) && (actor.user.id !== d.assignee_id || d.handler_id !== actor.user.id)) throw new BotError(403, 'Only the assigned handler can amend this proposal');
+        }
         if (replay(actor, d, key, 'revised', p)) return view(actor, d);
         cas(d, version);
         if (d.state === 'running')
@@ -368,11 +396,30 @@ export function createBotService(db: Database.Database) {
           );
         validateProposal(actor, p, d.conversation_id);
         db.prepare(
-          "UPDATE bot_decisions SET version=version+1,state='needs_input',proposal_json=?,assignee_id=?,answer_json=NULL,result_json=NULL,parked_json=NULL,updated_at=datetime('now') WHERE id=?",
+          "UPDATE bot_decisions SET version=version+1,handler_id=NULL,handling_revision=handling_revision+1,state='needs_input',proposal_json=?,assignee_id=?,answer_json=NULL,result_json=NULL,parked_json=NULL,updated_at=datetime('now') WHERE id=?",
         ).run(JSON.stringify(p), p.assignee_id, id);
         const revised = read(actor, id);
         event(actor, revised, 'revised', p, key);
         return view(actor, revised);
+      })();
+    },
+    handle(actor: Actor, id: string, version: number, key: string, action: 'claim' | 'release', revision: number) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        approver(actor, d);
+        if (!shared(d)) throw new BotError(403, 'This decision is not in a shared queue');
+        const payload = { action, revision, version };
+        if (replay(actor, d, key, 'handling', payload)) return view(actor, d);
+        cas(d, version);
+        handlingCas(d, revision);
+        if (d.state !== 'needs_input') throw new BotError(409, 'This question has already been answered');
+        if (action === 'claim' && d.handler_id !== null) throw new BotError(409, 'This question is already being handled');
+        if (action === 'release' && (d.handler_id === null || (d.handler_id !== actor.user.id && conversation(d.conversation_id)!.user_id !== actor.user.id)))
+          throw new BotError(403, 'Only the handler or owner can release this question');
+        db.prepare("UPDATE bot_decisions SET handler_id=?,handling_revision=handling_revision+1,updated_at=datetime('now') WHERE id=?")
+          .run(action === 'claim' ? actor.user.id : null, id);
+        event(actor, d, 'handling', payload, key);
+        return view(actor, read(actor, id));
       })();
     },
     answer(
@@ -381,12 +428,17 @@ export function createBotService(db: Database.Database) {
       version: number,
       key: string,
       payload: { action: string; text: string; scope: string },
+      handlingRevision?: number,
     ) {
       return db.transaction(() => {
         const d = read(actor, id);
         approver(actor, d);
         if (replay(actor, d, key, 'answered', payload)) return view(actor, d);
         cas(d, version);
+        if (shared(d)) {
+          handlingCas(d, handlingRevision);
+          if (d.handler_id !== actor.user.id) throw new BotError(409, 'Claim this question before answering');
+        }
         if (d.state !== 'needs_input')
           throw new BotError(409, 'This proposal already has an answer');
         db.prepare(
@@ -434,6 +486,7 @@ export function createBotService(db: Database.Database) {
       return db.transaction(() => {
         const d = read(actor, id);
         if (actor.conversationId) owner(actor, d);
+        else if (!canSendToConversation(actor.user, conversation(d.conversation_id)!, db)) throw new BotError(403, 'Read-only access');
         if (replay(actor, d, key, 'message', message)) return view(actor, d);
         const ev = event(actor, d, 'message', message, key);
         db.prepare(

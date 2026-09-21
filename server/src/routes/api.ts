@@ -1,3 +1,4 @@
+import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
 import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
 import { createBotsRouter } from '../bots/routes.js';
 import crypto from 'node:crypto';
@@ -768,6 +769,7 @@ export function createApiRouter(ctx: AppContext): Router {
         displayName: user.display_name,
         role: user.role,
         status: user.status,
+        employeeWorkspace: isEmployee(db, user.id),
       },
     });
   });
@@ -815,6 +817,8 @@ export function createApiRouter(ctx: AppContext): Router {
     req.user = user;
     next();
   });
+
+  router.use(employeeApiBoundary(db));
 
   router.use(
     '/recent-conversations',
@@ -4559,6 +4563,16 @@ export function createApiRouter(ctx: AppContext): Router {
     status: u.status,
     createdAt: u.created_at,
     lastSeenAt: u.last_seen_at,
+    employeeWorkspace: isEmployee(db, u.id),
+    allowedBotIds: (db.prepare('SELECT conversation_id FROM employee_bot_access WHERE user_id=?').all(u.id) as { conversation_id: string }[]).map(row => row.conversation_id),
+  });
+
+  admin.post('/users', (req, res) => {
+    const body = z.object({ email: z.string().trim().email(), displayName: z.string().trim().min(1).max(80) }).strict().safeParse(req.body);
+    if (!body.success) { res.status(400).json({ error: 'Name and work email required' }); return; }
+    const email = body.data.email.toLowerCase();
+    db.prepare("INSERT INTO users(email,display_name,role,status) VALUES(?,?,'member','pending') ON CONFLICT(email) DO NOTHING").run(email, body.data.displayName);
+    res.json({ user: shapeUser(findUserByEmail(db, email)!) });
   });
 
   admin.get('/users', (_req, res) => {
@@ -4576,6 +4590,9 @@ export function createApiRouter(ctx: AppContext): Router {
     if (!target) {
       res.status(404).json({ ok: false, error: 'User not found' });
       return;
+    }
+    if (body.data.role === 'owner' && isEmployee(db, target.id)) {
+      res.status(409).json({ error: 'Restricted employee accounts cannot be made administrators.' }); return;
     }
     if (target.id === req.user!.id) {
       res.status(403).json({ ok: false, error: 'You cannot modify your own account' });
@@ -4612,6 +4629,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     vals.push(target.id);
     db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+    for (const c of db.prepare('SELECT id FROM conversations').all() as { id: string }[]) manager.bus?.emit('access', c.id);
     const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(target.id) as UserRow;
     res.json({ ok: true, user: shapeUser(updated) });
   });

@@ -1,3 +1,4 @@
+import { EmployeeWorkspace } from './screens/EmployeeWorkspace';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { Bots } from './screens/Bots';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -204,7 +205,7 @@ export function App() {
   const isActiveUser = Boolean(me && !me.setupRequired && !me.pending);
   const activeCanManage = me?.user?.role === 'owner' || me?.user?.role === 'consultant';
   useEffect(() => {
-    if (!isActiveUser) return;
+    if (!isActiveUser || me?.user?.employeeWorkspace) return;
     let alive = true;
     void api
       .navigation()
@@ -275,6 +276,8 @@ export function App() {
   if (me.pending) {
     return <PendingApproval email={me.email ?? ''} onRecheck={loadMe} />;
   }
+
+  if (me.user?.employeeWorkspace) return <EmployeeWorkspace hash={hash} onNavigate={navigate} email={me.user.email} />;
 
   const role = me.user?.role ?? 'member';
   const canManage = role === 'owner' || role === 'consultant';

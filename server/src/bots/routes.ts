@@ -51,6 +51,9 @@ export function createBotsRouter(ctx: AppContext) {
   router.post('/teams/manage', run((req, res) => {
     const result = teams.manage(actor(req), req.body);
     changed(result.id);
+    if (req.body.action === 'employee') {
+      for (const c of ctx.db.prepare('SELECT id FROM conversations').all() as { id: string }[]) ctx.manager.bus?.emit('access', c.id);
+    }
     if (req.body.action === 'remove_bot') ctx.manager.bus?.emit('access', req.body.conversation_id);
     res.json({ team: result });
   }));
@@ -222,11 +225,16 @@ export function createBotsRouter(ctx: AppContext) {
       });
     }),
   );
+  router.post('/decisions/:id/handling', run((req, res) => {
+    const p = mutation.extend({ action: z.enum(['claim', 'release']), expected_handling_revision: z.number().int().nonnegative() }).strict().parse(req.body);
+    res.json({ decision: s.handle(actor(req), req.params.id!, p.expected_version, p.request_key, p.action, p.expected_handling_revision) });
+  }));
   router.post(
     '/decisions/:id/answer',
     run((req, res) => {
       const p = mutation
         .extend({
+          expected_handling_revision: z.number().int().nonnegative().optional(),
           action: z.enum(['approve', 'reject', 'defer', 'withdraw']),
           text: z.string().trim().min(1).max(12000),
           scope: z.enum(['this_case', 'standing_rule']),
@@ -240,6 +248,7 @@ export function createBotsRouter(ctx: AppContext) {
           p.expected_version,
           p.request_key,
           { action: p.action, text: p.text, scope: p.scope },
+          p.expected_handling_revision,
         ),
       });
     }),

@@ -28,12 +28,21 @@ export interface BotDecision {
   parked: { released_leases: string[]; evidence: string } | null;
   created_at: string;
   updated_at: string;
+  answered_by?: string | null;
+  shared_queue?: boolean;
+  handler_id?: number | null;
+  handler_name?: string | null;
+  handling_revision?: number;
+  handling_mine?: boolean;
+  can_handle?: boolean;
+  can_release?: boolean;
+  can_amend?: boolean;
   can_answer: boolean;
   dismissed: boolean;
   bot_name: string;
   assignee_name: string;
 }
-export interface BusinessTeam { id: string; name: string; can_manage: boolean; members: { user_id: number; role: string; display_name: string }[] }
+export interface BusinessTeam { id: string; name: string; can_manage: boolean; members: { user_id: number; role: string; display_name: string; restricted?: boolean }[] }
 export interface Bot {
   business_team_id?: string | null;
   membership?: { role: string; subteam: string; reports_to: string | null } | null;
@@ -81,7 +90,7 @@ export const botsApi = {
   candidates: () =>
     requestJson<{
       conversations: { id: string; title: string | null }[];
-      users: { id: number; display_name: string }[];
+      users: { id: number; display_name: string; restricted?: boolean }[];
     }>('/api/bots/candidates'),
   register: (id: string, name: string, active: boolean) =>
     requestJson('/api/bots/registrations/' + encodeURIComponent(id), {

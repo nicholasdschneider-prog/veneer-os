@@ -1,3 +1,4 @@
+import { isEmployee } from '../bots/employeeAccess.js';
 import type { Request, Response, Router } from 'express';
 import express from 'express';
 import type { AppContext } from '../context.js';
@@ -44,7 +45,7 @@ export function createLocalMiniAppsRouter(ctx: AppContext): Router {
       }
       const identity = await ctx.resolveIdentity(req);
       const user = identity ? findUserByEmail(ctx.db, identity.email) : undefined;
-      if (!identity || !user || user.status !== 'active') {
+      if (!identity || !user || user.status !== 'active' || isEmployee(ctx.db, user.id)) {
         res.status(403).type('text').send('Forbidden');
         return;
       }

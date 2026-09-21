@@ -42,7 +42,7 @@ export function BusinessAccess({ team, onChanged }: { team: BusinessTeam; onChan
       {team.members.map((m) => (
         <div key={m.user_id} className="flex items-center justify-between gap-3 py-2 text-sm">
           <span>
-            {m.display_name} · {m.role}
+            {m.display_name} · {m.restricted ? 'Assigned bots only' : m.role}
           </span>
           <Button
             variant="ghost"

@@ -26,6 +26,7 @@ export const bulkSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('apply'), team_id: id, preview_id: id }).strict(),
 ]);
 const manageSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('employee'), team_id: id, user_id: z.number().int().positive(), email: z.string().email(), conversation_ids: z.array(id).min(1).max(100), activate: z.boolean().default(false) }).strict(),
   z.object({ action: z.literal('create'), name: z.string().trim().min(1).max(120) }).strict(),
   z
     .object({
@@ -194,7 +195,7 @@ export function createTeamService(db: Database.Database) {
             t.owner_id === actor.user.id && !actor.conversationId
               ? db
                   .prepare(
-                    'SELECT bm.user_id,bm.role,u.display_name FROM business_team_members bm JOIN users u ON u.id=bm.user_id WHERE bm.team_id=?',
+                    'SELECT bm.user_id,bm.role,u.display_name,EXISTS(SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=u.id) AS restricted FROM business_team_members bm JOIN users u ON u.id=bm.user_id WHERE bm.team_id=?',
                   )
                   .all(t.id)
               : [],
@@ -202,7 +203,7 @@ export function createTeamService(db: Database.Database) {
     },
     manage(actor: Actor, raw: Record<string, unknown>) {
       const input = manageSchema.parse(raw) as Record<string, unknown>;
-      const action = z.enum(['create', 'member', 'delegate', 'remove_bot']).parse(input.action);
+      const action = z.enum(['create', 'member', 'employee', 'delegate', 'remove_bot']).parse(input.action);
       return db.transaction(() => {
         if (action === 'create') {
           admin(actor);
@@ -224,7 +225,28 @@ export function createTeamService(db: Database.Database) {
         }
         const t = team(id.parse(input.team_id));
         admin(actor, t);
-        if (action === 'member') {
+        if (action === 'employee') {
+          const userId = z.number().int().positive().parse(input.user_id);
+          const email = z.string().email().parse(input.email).toLowerCase();
+          const target = db.prepare('SELECT * FROM users WHERE id=?').get(userId) as { email: string; role: string; status: string } | undefined;
+          if (!target || target.email !== email || target.role !== 'member' || userId === t.owner_id || target.status === 'disabled')
+            throw new BotError(400, 'Choose the correct pending or active member account');
+          const ids = z.array(id).min(1).max(100).parse(input.conversation_ids);
+          for (const chatId of ids) {
+            const c = chat(chatId);
+            if (!c || c.business_team_id !== t.id || c.user_id !== t.owner_id || c.visibility !== 'team' || c.archived ||
+              !db.prepare('SELECT 1 FROM business_bot_members bm JOIN bot_registrations br ON br.conversation_id=bm.conversation_id WHERE bm.conversation_id=? AND bm.team_id=? AND br.active=1').get(chatId, t.id))
+              throw new BotError(400, 'Employee access requires active, shared bots in this business');
+          }
+          db.prepare('INSERT OR IGNORE INTO employee_workspaces(user_id) VALUES(?)').run(userId);
+          db.prepare('DELETE FROM employee_bot_access WHERE user_id=? AND conversation_id IN (SELECT id FROM conversations WHERE business_team_id=?)').run(userId, t.id);
+          for (const chatId of ids) {
+            db.prepare('INSERT OR IGNORE INTO employee_bot_access VALUES(?,?)').run(userId, chatId);
+            db.prepare('INSERT OR IGNORE INTO shared_bot_queues VALUES(?)').run(chatId);
+          }
+          db.prepare("INSERT INTO business_team_members VALUES(?,?,'member') ON CONFLICT(team_id,user_id) DO UPDATE SET role='member'").run(t.id, userId);
+          if (input.activate === true) db.prepare("UPDATE users SET status='active' WHERE id=?").run(userId);
+        } else if (action === 'member') {
           const userId = z.number().int().positive().parse(input.user_id);
           const role = z.enum(['viewer', 'member', 'manager']).nullable().parse(input.role);
           if (!db.prepare("SELECT 1 FROM users WHERE id=? AND status='active'").get(userId))
@@ -233,11 +255,13 @@ export function createTeamService(db: Database.Database) {
             db.prepare(
               'INSERT INTO business_team_members(team_id,user_id,role) VALUES(?,?,?) ON CONFLICT(team_id,user_id) DO UPDATE SET role=excluded.role',
             ).run(t.id, userId, role);
-          else
+          else {
+            db.prepare('DELETE FROM employee_bot_access WHERE user_id=? AND conversation_id IN (SELECT id FROM conversations WHERE business_team_id=?)').run(userId, t.id);
             db.prepare('DELETE FROM business_team_members WHERE team_id=? AND user_id=?').run(
               t.id,
               userId,
             );
+          }
         } else if (action === 'delegate') {
           const chatId = id.parse(input.conversation_id);
           const c = chat(chatId);
@@ -283,6 +307,8 @@ export function createTeamService(db: Database.Database) {
             ).n > 1
           )
             throw new BotError(409, 'Remove other members before the coordinator');
+          db.prepare('DELETE FROM employee_bot_access WHERE conversation_id=?').run(chatId);
+          db.prepare('DELETE FROM shared_bot_queues WHERE conversation_id=?').run(chatId);
           db.prepare('DELETE FROM business_bot_members WHERE team_id=? AND conversation_id=?').run(
             t.id,
             chatId,

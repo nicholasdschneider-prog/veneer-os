@@ -1,0 +1,1 @@
+PASS: six-bot default, hidden owner work, shared ownership, conflicting claim rejected, attributed answer, mobile layout, bot chat, forbidden chat and People access selection.

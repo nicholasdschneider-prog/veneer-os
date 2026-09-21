@@ -1,3 +1,4 @@
+import { isEmployee } from '../bots/employeeAccess.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -241,11 +242,13 @@ export function getGeneratedFile(ctx: AppContext, user: UserRow, id: string, sou
   const { db } = ctx;
   const row = db.prepare(`${SELECT_JOIN} WHERE g.id = ?`).get(id) as GeneratedFileJoinRow | undefined;
   if (!row) return null;
+  if (isEmployee(db, user.id) && !row.conversation_visibility) return null;
   if (!sameBusiness(db, sourceId, { user_id: row.conversation_user_id ?? row.user_id ?? -1, visibility: row.conversation_visibility ?? 'private', business_team_id: row.business_team_id })) return null;
   if (row.conversation_visibility) {
     if (
       row.conversation_user_id === null ||
       !canViewConversation(user, {
+        id: row.conversation_id ?? undefined,
         user_id: row.conversation_user_id,
         visibility: row.conversation_visibility,
         business_team_id: row.business_team_id,

@@ -60,6 +60,14 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
     })().catch(() => socket.destroy());
   });
 
+  function stillAllowed(sub: Sub, conversationId: string) {
+    const row = ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(conversationId) as ConversationRow | undefined;
+    if (row && canViewConversation(sub.user, row, ctx.db)) return true;
+    sub.conversations.delete(conversationId);
+    sub.observers.delete(conversationId);
+    return false;
+  }
+
   wss.on('connection', (ws: WebSocket, _req: IncomingMessage, user: UserRow) => {
     const sub: Sub = { socket: ws, user, conversations: new Set(), observers: new Set() };
     subs.add(sub);
@@ -92,7 +100,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
         sub.conversations.delete(row.id);
         sub.observers.add(row.id);
         void ctx.manager.statusOf(row.id).then(status => {
-          if (sub.observers.has(row.id)) send(ws, { kind: 'status', conversationId: row.id, status });
+          if (sub.observers.has(row.id) && stillAllowed(sub, row.id)) send(ws, { kind: 'status', conversationId: row.id, status });
         }).catch(() => send(ws, { kind: 'error', conversationId: row.id, message: 'Activity unavailable' }));
         return;
       }
@@ -146,6 +154,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       }
     }
     for (const sub of subs) {
+      if (!stillAllowed(sub, conversationId)) continue;
       if (sub.observers.has(conversationId)) {
         // Presence observers receive no transcript content and never mark a chat read.
         send(sub.socket, { kind: 'presence', conversationId, event: { type: event.type, ...(event.type === 'text_delta' ? { text: event.text.trim() ? '…' : '' } : {}) } });
@@ -165,6 +174,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
     activity: ConversationActivity = null,
   ) => {
     for (const sub of subs) {
+      if (!stillAllowed(sub, conversationId)) continue;
       if (sub.conversations.has(conversationId) || sub.observers.has(conversationId)) {
         send(sub.socket, { kind: 'status', conversationId, status, activity });
       }
@@ -172,6 +182,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
   });
   ctx.manager.bus.on('queue', (conversationId: string, queue: ConversationQueueSnapshot) => {
     for (const sub of subs) {
+      if (!stillAllowed(sub, conversationId)) continue;
       if (sub.conversations.has(conversationId)) {
         send(sub.socket, { kind: 'queue', conversationId, queue: presentConversationQueueForUser(ctx.db, sub.user, queue) });
       }
@@ -179,6 +190,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
   });
   ctx.manager.bus.on('wakeups', (conversationId: string, wakeups: ConversationWakeupRow[]) => {
     for (const sub of subs) {
+      if (!stillAllowed(sub, conversationId)) continue;
       if (sub.conversations.has(conversationId)) {
         send(sub.socket, { kind: 'wakeups', conversationId, wakeups });
       }

@@ -111,12 +111,14 @@ export function Bots({
   decisionId,
   registrationRequested = false,
   canCall = false,
+  restricted = false,
   onNavigate,
 }: {
   decisionId?: string;
   registrationRequested?: boolean;
   /** Direct human sessions can call bots within their normal conversation access. */
   canCall?: boolean;
+  restricted?: boolean;
   onNavigate: (hash: string) => void;
 }) {
   const currentRoute = useRef(decisionId);
@@ -139,7 +141,8 @@ export function Bots({
     return result;
   };
   const [stale, setStale] = useState(false);
-  const { business, select } = useBusinessSelection();
+  const { business: savedBusiness, select } = useBusinessSelection();
+  const business = restricted ? '' : savedBusiness;
   const [teams, setTeams] = useState<BusinessTeam[]>([]);
   const [filter, setFilter] = useState('me');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
@@ -263,6 +266,7 @@ export function Bots({
   const mutate = (kind: string, body: Record<string, unknown>) =>
     send(decisionId!, kind, {
       expected_version: detail!.decision.version,
+      ...((kind === 'answer' || kind === 'handling') && detail!.decision.shared_queue ? { expected_handling_revision: detail!.decision.handling_revision } : {}),
       ...body,
     });
   const needs = decisions.filter((d) => decisionSection(d) === 'input');
@@ -312,14 +316,14 @@ export function Bots({
               <BotIcon className="size-4" /> Your operational team
             </div>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              VeneerBots
+              {restricted ? 'Customer Service' : 'VeneerBots'}
             </h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
               A home for your ongoing work. Answer a question; your bot picks up
               where it left off.
             </p>
           </div>
-          {teams.length === 0 && <Button
+          {!restricted && teams.length === 0 && <Button
             className="min-h-11"
             variant="outline"
             onClick={openRegistration}
@@ -420,7 +424,7 @@ export function Bots({
           aria-label="Decision filters"
         >
           {[
-            ['me', 'For me'],
+            ['me', 'For me & shared'],
             ['team', 'My team'],
             ['all', 'All I can access'],
           ].map(([value, label]) => (
@@ -695,9 +699,9 @@ export function Bots({
                   </div>
                   <dl className="mt-4 grid gap-3 text-sm">
                     <div>
-                      <dt className="text-muted-foreground">Waiting on</dt>
+                      <dt className="text-muted-foreground">{d.answer ? 'Answered by' : 'Handling'}</dt>
                       <dd>
-                        {d.assignee_name}
+                        {d.answered_by ? `Answered by ${d.answered_by}` : d.shared_queue ? (d.handler_name ? `${d.handler_name} is handling this` : 'Shared queue · Available') : d.assignee_name}
                         {d.proposal.team && ` · ${d.proposal.team}`}
                       </dd>
                     </div>
@@ -832,6 +836,13 @@ export function Bots({
                       }
                     />
                   </div>
+                  {d.state === 'needs_input' && d.shared_queue && (
+                    <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border p-3">
+                      <p className="text-sm">{d.handler_name ? `${d.handler_name} is handling this` : 'Available for you or a teammate'}</p>
+                      {!d.handler_id && d.can_handle && <Button disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'claim' }))}>Handle this</Button>}
+                      {d.can_release && <Button variant="outline" disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'release' }))}>Release question</Button>}
+                    </div>
+                  )}
                   {d.state === 'needs_input' &&
                     (d.can_answer ? (
                       <div className="mt-6 border-t pt-5">
@@ -892,7 +903,7 @@ export function Bots({
                             ),
                           )}
                         </div>
-                        <button
+                        {d.can_amend !== false && !restricted && <button
                           className="mt-4 text-sm underline"
                           onClick={() => {
                             setEditing(!editing);
@@ -903,7 +914,7 @@ export function Bots({
                           }}
                         >
                           Amend proposal
-                        </button>
+                        </button>}
                         {editing && (
                           <div className="mt-3 space-y-3">
                             <label className="block text-sm">
@@ -975,7 +986,7 @@ export function Bots({
                       </div>
                     ) : (
                       <p className="mt-5 rounded-xl bg-muted p-3 text-sm">
-                        Only {d.assignee_name} can answer this proposal.
+                        {d.shared_queue ? (d.handler_name ? 'The current handler can submit the answer. You can both join the discussion.' : 'Choose Handle this before submitting an answer.') : `Only ${d.assignee_name} can answer this proposal.`}
                       </p>
                     ))}
                   <details className="mt-6 border-t pt-4">
@@ -1041,7 +1052,7 @@ export function DecisionCard({ d, onOpen, onCall }: { d: BotDecision; onOpen: ()
       </p>
       <p className="mt-3 text-sm font-medium">{d.proposal.consequence}</p>
       <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        <span>{d.assignee_name}</span>
+        <span>{d.answered_by ? `Answered by ${d.answered_by}` : d.shared_queue ? (d.handler_name ? `${d.handler_name} is handling this` : 'Shared queue · Available') : d.assignee_name}</span>
         <span>{when(d.created_at)}</span>
         <span>
           {d.proposal.deadline

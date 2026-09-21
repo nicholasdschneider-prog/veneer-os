@@ -25,6 +25,7 @@ import type { UserRow } from '../src/db/db.js';
 function usersDb(): Database.Database {
   const db = new Database(':memory:');
   db.exec(`CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT, display_name TEXT, role TEXT, status TEXT, created_at TEXT, last_seen_at TEXT)`);
+  db.exec('CREATE TABLE employee_workspaces (user_id INTEGER PRIMARY KEY REFERENCES users(id))');
   db.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value_json TEXT NOT NULL)');
   db.prepare("INSERT INTO users VALUES (1, 'a@x.test', 'A', 'owner', 'active', '2026-01-01', NULL)").run();
   db.prepare("INSERT INTO users VALUES (2, 'b@x.test', 'B', 'member', 'disabled', '2026-01-01', NULL)").run();

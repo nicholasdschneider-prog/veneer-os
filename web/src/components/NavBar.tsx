@@ -63,7 +63,7 @@ const USAGE_HASH = '#/settings/usage';
  * business. Polled slowly; a route change or tab focus re-probes so the badge
  * clears right after an answer. Failures keep the last known count.
  */
-function useBotInputCount(current: NavSelection): number {
+export function useBotInputCount(current: NavSelection): number {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let active = true;

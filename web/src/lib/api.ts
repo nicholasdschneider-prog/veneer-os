@@ -299,6 +299,7 @@ export const api = {
   // Team/users admin (owner only). List everyone who's signed in; PATCH sends
   // only changed fields (approve = status:'active'). Errors: 403 editing your
   // own account, 409 removing the last active admin.
+  adminCreateUser: (email: string, displayName: string) => requestJson<{ user: AdminUser }>('/api/admin/users', { method: 'POST', body: JSON.stringify({ email, displayName }) }),
   adminListUsers: () => requestJson<{ users: AdminUser[] }>('/api/admin/users'),
   adminUpdateUser: (id: number, patch: { role?: 'owner' | 'member'; status?: AdminUserStatus; displayName?: string }) =>
     requestJson<{ user: AdminUser }>(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
@@ -1514,6 +1515,8 @@ export interface AdminUser {
   status: AdminUserStatus;
   createdAt: string;
   lastSeenAt: string | null;
+  employeeWorkspace?: boolean;
+  allowedBotIds?: string[];
 }
 
 export interface ProbeResult {

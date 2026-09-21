@@ -1,3 +1,4 @@
+import { isEmployee } from '../bots/employeeAccess.js';
 import path from 'node:path';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
@@ -35,7 +36,7 @@ export interface ViewerUpgrade {
  */
 export async function openVeneerBrowserViewer(ctx: AppContext, upgrade: ViewerUpgrade): Promise<void> {
   const { req, socket, head, wss, url, user, conversationId } = upgrade;
-  if (user.status !== 'active' || !ID.test(conversationId)) throw new Error('Forbidden');
+  if (user.status !== 'active' || isEmployee(ctx.db, user.id) || !ID.test(conversationId)) throw new Error('Forbidden');
   const settings = readVeneerBrowserSettings(ctx.db);
   const thumbnail = url.searchParams.get('viewer') === 'thumbnail';
   const frameScale = thumbnail ? 1 : veneerBrowserFrameScale(settings.resolution, url.searchParams.get('dpr'));
