@@ -636,3 +636,130 @@ describe('VeneerBots', () => {
     ).toThrow('delivery');
   });
 });
+
+describe('AutoShip answer bridge readback (v1, fixtures only)', () => {
+  let db: Database.Database;
+  let s: ReturnType<typeof createBotService>;
+  let human: Actor;
+  let bot: Actor;
+  let manager: ReturnType<typeof createConversationManager>;
+  let scheduler: ReturnType<typeof createConversationWakeupScheduler>;
+  const runs: { prompt: string; finish: () => void }[] = [];
+  beforeEach(() => {
+    db = new Database(':memory:');
+    db.pragma('foreign_keys=ON');
+    migrate(db, fileURLToPath(new URL('../src/db/migrations', import.meta.url)));
+    db.prepare('INSERT INTO users(id,email,display_name,role) VALUES(?,?,?,?)').run(1, 'fixture1@example.test', 'Person 1', 'owner');
+    db.prepare(
+      "INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility) VALUES(?,1,1,?,'claude',?,'team')",
+    ).run('fixture-a', 'fixture-a', 'native-fixture-a');
+    s = createBotService(db);
+    human = { user: db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow };
+    bot = { ...human, conversationId: 'fixture-a' };
+    s.register(human, 'fixture-a', 'Fixture Atlas', true);
+    runs.length = 0;
+    const adapter: ProviderAdapter = {
+      id: 'claude',
+      mintSessionId: () => '',
+      readTranscript: async () => [],
+      runTurn(spec, onEvent) {
+        let finish!: () => void;
+        const done = new Promise<void>((r) => {
+          finish = () => {
+            onEvent({ type: 'turn_done', turnId: spec.turnId });
+            r();
+          };
+        });
+        runs.push({ prompt: spec.prompt, finish });
+        return { done, kill: finish, respondToApproval: () => true };
+      },
+    };
+    manager = createConversationManager({
+      db,
+      steerAckWaitMs: 5,
+      adapters: { claude: adapter },
+      resolveWorkspace: () => ({ workspaceDir: '/tmp', assistantSlug: 'assistant', elevated: false, fullAccess: false }),
+      log: { warn: vi.fn(), error: vi.fn() },
+    });
+    scheduler = createConversationWakeupScheduler({ db, manager, log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } });
+  });
+  afterEach(async () => {
+    scheduler.stop();
+    manager.shutdown();
+    await flush();
+    db.close();
+  });
+  const proposal = (extra = {}) =>
+    proposalSchema.parse({
+      question: 'Package for order 100121927 line 1?',
+      recommendation: 'Use one box 12x10x8 in, 4 lb.',
+      consequence: 'Fixture only; no customer, provider or shipping action.',
+      assignee_id: 1,
+      blocked_action: 'Set package version (fixture)',
+      ...extra,
+    });
+  const raise = () => s.raise(bot, { source_key: 'order-100121927', proposal_key: 'package', proposal: proposal() });
+  const bridge = (id: string) => s.view(bot, s.read(bot, id)).answer_bridge;
+
+  it('reports no answer and no delivered version before the human answers', () => {
+    const d = raise();
+    expect(bridge(d.id)).toEqual({
+      contract: 'autoship-answer-bridge/v1',
+      current_version: 1,
+      delivered_version: null,
+      answer: null,
+    });
+    expect(() => s.read(bot, 'unknown-decision')).toThrow();
+  });
+
+  it('exposes the raw answer with actor attribution and request key, and delivered_version only after native delivery', async () => {
+    const d = raise();
+    s.answer(human, d.id, 1, 'req-1', { action: 'approve', text: '12 x 10 x 8 inches, 4 lb, one parcel', scope: 'this_case' });
+    let b = bridge(d.id);
+    expect(b.current_version).toBe(1);
+    expect(b.delivered_version).toBeNull();
+    expect(b.answer).toMatchObject({
+      raw: { action: 'approve', text: '12 x 10 x 8 inches, 4 lb, one parcel', scope: 'this_case' },
+      actor_id: 1,
+      actor_conversation_id: null,
+      request_key: 'req-1',
+    });
+    expect(typeof b.answer!.answered_at).toBe('string');
+    // Replaying the same request key returns the same event, never a second answer.
+    s.answer(human, d.id, 1, 'req-1', { action: 'approve', text: '12 x 10 x 8 inches, 4 lb, one parcel', scope: 'this_case' });
+    expect(db.prepare("SELECT count(*) n FROM bot_decision_events WHERE kind='answered'").get()).toEqual({ n: 1 });
+    // A stale answer against the current version is rejected as today.
+    expect(() => s.answer(human, d.id, 1, 'req-2', { action: 'reject', text: 'No', scope: 'this_case' })).toThrow('already');
+
+    scheduler.tick();
+    await flush();
+    expect(runs).toHaveLength(1);
+    b = bridge(d.id);
+    expect(b.delivered_version).toBe(1);
+    expect(s.read(bot, d.id).state).toBe('action_pending');
+
+    s.result(bot, d.id, 1, 'start', { state: 'running', evidence: 'Fixture material unchanged', material_evidence_unchanged: true });
+    expect(s.read(bot, d.id).state).toBe('running');
+    expect(bridge(d.id)).toMatchObject({ current_version: 1, delivered_version: 1 });
+    // No double handoff: a second running record for the same version is a replay of the same key or rejected.
+    expect(() =>
+      s.result(bot, d.id, 1, 'start-again', { state: 'running', evidence: 'Fixture material unchanged', material_evidence_unchanged: true }),
+    ).toThrow();
+    runs[0]!.finish();
+  });
+
+  it('drops the answer and keeps delivered_version behind current_version after a revision', async () => {
+    const d = raise();
+    s.answer(human, d.id, 1, 'req-1', { action: 'approve', text: '12x10x8 in, 4 lb', scope: 'this_case' });
+    scheduler.tick();
+    await flush();
+    expect(bridge(d.id).delivered_version).toBe(1);
+    s.revise(bot, d.id, 1, 'revise-1', proposal({ recommendation: 'Two boxes: 12x10x8 in 4 lb and 6x6x6 in 1 lb.' }));
+    const b = bridge(d.id);
+    expect(b.current_version).toBe(2);
+    expect(b.delivered_version).toBe(1);
+    expect(b.answer).toBeNull();
+    expect(s.read(bot, d.id).state).toBe('needs_input');
+    runs[0]?.finish();
+  });
+});

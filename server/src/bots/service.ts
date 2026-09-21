@@ -204,8 +204,43 @@ export function createBotService(db: Database.Database) {
         .get(d.id, actor.user.id, d.version),
     );
     const parse = (s: string | null) => (s ? JSON.parse(s) : null);
+    // Answer-bridge readback (docs/autoship-answer-bridge.md, v1): the highest
+    // version whose human answer finished native delivery, and the current
+    // version's raw answer with its actor attribution and request key. Read
+    // only; parsing the answer into shipping facts belongs to the consumer.
+    const delivered = db
+      .prepare(
+        `SELECT max(e.version) AS version FROM bot_decision_events e
+         JOIN conversation_wakeups w ON w.id=e.id
+         WHERE e.decision_id=? AND e.kind='answered' AND w.status='delivered'`,
+      )
+      .get(d.id) as { version: number | null };
+    const answered = db
+      .prepare(
+        `SELECT actor_id, actor_conversation_id, created_at, request_key, payload_json
+         FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='answered'
+         ORDER BY rowid DESC LIMIT 1`,
+      )
+      .get(d.id, d.version) as
+      | { actor_id: number; actor_conversation_id: string | null; created_at: string; request_key: string; payload_json: string }
+      | undefined;
+    const answerBridge = {
+      contract: 'autoship-answer-bridge/v1',
+      current_version: d.version,
+      delivered_version: delivered.version ?? null,
+      answer: answered
+        ? {
+            raw: (parse(answered.payload_json) as { text?: string; action?: string; scope?: string }),
+            actor_id: answered.actor_id,
+            actor_conversation_id: answered.actor_conversation_id,
+            answered_at: answered.created_at,
+            request_key: answered.request_key,
+          }
+        : null,
+    };
     return {
       ...d,
+      answer_bridge: answerBridge,
       proposal: parse(d.proposal_json),
       answer: parse(d.answer_json),
       result: parse(d.result_json),
