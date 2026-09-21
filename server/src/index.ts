@@ -224,10 +224,28 @@ if (!desktopCdp) {
 }
 
 // Static web build (production): server serves web/dist with SPA fallback.
+// Hashed bundles under /assets are immutable, so they get a long cache life
+// and a real 404 when missing. Answering a missing bundle with index.html
+// (the old catch-all behavior) made a browser holding a pre-deploy shell
+// receive HTML in place of its stylesheet or module, which renders the app
+// unstyled instead of failing in a way it can recover from.
 const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');
 if (fs.existsSync(webDist)) {
-  app.use(express.static(webDist));
-  app.get(/^\/(?!api\/|ws$).*/, (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
+  const noStore = (res: express.Response) => res.setHeader('Cache-Control', 'no-cache');
+  app.use('/assets', express.static(path.join(webDist, 'assets'), { immutable: true, maxAge: '1y' }));
+  app.all('/assets/*', (_req, res) => res.status(404).type('text').send('Not found'));
+  app.use(
+    express.static(webDist, {
+      index: false,
+      setHeaders: (res, file) => {
+        if (file.endsWith('.html') || file.endsWith('sw.js') || file.endsWith('.webmanifest')) noStore(res);
+      },
+    }),
+  );
+  app.get(/^\/(?!api\/|ws$).*/, (_req, res) => {
+    noStore(res);
+    res.sendFile(path.join(webDist, 'index.html'));
+  });
 }
 
 const server = http.createServer(app);

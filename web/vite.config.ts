@@ -11,6 +11,12 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  build: {
+    // Keep the previous deploys' hashed bundles in dist/assets. A tab that
+    // still holds a pre-deploy index.html must be able to load the bundles
+    // it names; scripts/prune-web-assets.mjs drops old ones after the build.
+    emptyOutDir: false,
+  },
   server: {
     proxy: {
       '/api': 'http://127.0.0.1:3100',
