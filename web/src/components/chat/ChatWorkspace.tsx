@@ -25,6 +25,8 @@ import type { ProjectFileLocation } from '../../lib/projectFilesRoute';
 const ARTIFACT_HISTORY_STATE = 'veneerArtifactPanel';
 
 interface ChatWorkspaceProps {
+  /** Assigned-bot chat only; keep platform files and browser tools unavailable. */
+  restricted?: boolean;
   conversationId: string;
   projectId?: string | null;
   todoId?: string | null;
@@ -79,6 +81,7 @@ function pushHash(hash: string): void {
 }
 
 export function ChatWorkspace({
+  restricted = false,
   conversationId,
   projectId = null,
   todoId = null,
@@ -105,7 +108,7 @@ export function ChatWorkspace({
     setDockAvailable,
   } = useFloatingDesktop();
   const isNew = conversationId === 'new';
-  const [artifacts, setArtifacts] = useState<Artifact[] | null>(isNew ? [] : null);
+  const [artifacts, setArtifacts] = useState<Artifact[] | null>(isNew || restricted ? [] : null);
   const [citations, setCitations] = useState<Citation[] | null>(null);
   const [revision, setRevision] = useState(0);
   const artifactMemoryCheckedRef = useRef(false);
@@ -115,7 +118,7 @@ export function ChatWorkspace({
   const alternativePanelSelected = Boolean(artifactParam || projectFilesId || citations || sideChatOpen);
 
   useEffect(() => {
-    if (isNew || projectBrowserId) return;
+    if (restricted || isNew || projectBrowserId) return;
     let alive = true;
     const check = () => {
       void api.veneerBrowserConversation(conversationId).then(({ session }) => {
@@ -135,7 +138,7 @@ export function ChatWorkspace({
     check();
     const timer = window.setInterval(check, 3_000);
     return () => { alive = false; window.clearInterval(timer); };
-  }, [alternativePanelSelected, conversationId, isNew, onOpenProjectBrowser, projectBrowserId, projectId]);
+  }, [restricted, alternativePanelSelected, conversationId, isNew, onOpenProjectBrowser, projectBrowserId, projectId]);
 
   const dismissConversationBrowser = useCallback(() => {
     browserDismissedRef.current = Date.now();
@@ -157,7 +160,7 @@ export function ChatWorkspace({
   }, [conversationId, onOpenProjectBrowser, projectId]);
 
   const refreshArtifacts = useCallback(async (): Promise<Artifact[]> => {
-    if (isNew) return [];
+    if (restricted || isNew) return [];
     try {
       const result = await api.conversationArtifacts(conversationId);
       setArtifacts(result.artifacts);
@@ -166,18 +169,18 @@ export function ChatWorkspace({
       setArtifacts((current) => current ?? []);
       return [];
     }
-  }, [conversationId, isNew]);
+  }, [conversationId, isNew, restricted]);
 
   useEffect(() => {
-    setArtifacts(isNew ? [] : null);
+    setArtifacts(isNew || restricted ? [] : null);
     setCitations(null);
     void refreshArtifacts();
-  }, [isNew, refreshArtifacts]);
+  }, [isNew, restricted, refreshArtifacts]);
 
   useEffect(() => {
-    setDockAvailable(isDesktop);
+    setDockAvailable(isDesktop && !restricted);
     return () => setDockAvailable(false);
-  }, [isDesktop, setDockAvailable]);
+  }, [isDesktop, restricted, setDockAvailable]);
 
   const selected = useMemo(
     () => artifactFromHash(artifactParam, artifacts ?? []),
@@ -185,7 +188,7 @@ export function ChatWorkspace({
   );
 
   useEffect(() => {
-    if (isNew) return;
+    if (isNew || restricted) return;
     const firstCheck = !artifactMemoryCheckedRef.current;
     const remembered = syncChatArtifactMemory(
       conversationId,
@@ -196,7 +199,7 @@ export function ChatWorkspace({
     artifactMemoryCheckedRef.current = true;
     previousArtifactParamRef.current = artifactParam;
     if (remembered) pushHash(hashWithArtifact(remembered));
-  }, [artifactParam, conversationId, isNew]);
+  }, [artifactParam, conversationId, isNew, restricted]);
 
   // A stale or malformed deep link should quietly return to the chat once the
   // artifact list has resolved. Synthetic bare-URL artifacts resolve locally.
@@ -263,7 +266,7 @@ export function ChatWorkspace({
     [artifactParam, isDesktop, openArtifact, refreshArtifacts],
   );
 
-  const desktopPanelOpen = shouldDockDesktop(desktopState, isDesktop);
+  const desktopPanelOpen = !restricted && shouldDockDesktop(desktopState, isDesktop);
   const conversationBrowserOpen = Boolean(projectBrowserId && !isNew);
   const panelOpen = Boolean(sideChatOpen || conversationBrowserOpen || desktopPanelOpen || citations || projectFilesId || artifactParam);
   const [agentName, setAgentName] = useState('the agent');
@@ -359,7 +362,8 @@ export function ChatWorkspace({
         onPublishArtifact={handlePublish}
         onOpenCitations={openCitations}
         onOpenProjectFile={openProjectFile}
-        onOpenBrowser={openConversationBrowser}
+        onOpenBrowser={restricted ? undefined : openConversationBrowser}
+        sideChatButton={!restricted}
         onNavigate={onNavigate}
         onToast={onToast}
       />

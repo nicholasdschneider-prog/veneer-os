@@ -10,12 +10,15 @@ import { BotActions, BOT_PREFERENCES_CHANGED } from './BotActions';
 
 export function BotConversationRail({
   selectedId,
+  restricted = false,
   onNavigate,
 }: {
   selectedId?: string | null;
+  restricted?: boolean;
   onNavigate: (hash: string) => void;
 }) {
-  const { business, select } = useBusinessSelection();
+  const { business: savedBusiness, select } = useBusinessSelection();
+  const business = restricted ? '' : savedBusiness;
   const [teams, setTeams] = useState<BusinessTeam[]>([]);
   useEffect(() => {
     if (!selectedId) return;
@@ -57,7 +60,7 @@ export function BotConversationRail({
         <button className="text-lg font-semibold hover:underline" onClick={() => onNavigate('#/bots')} title="Back to the VeneerBots overview">
           VeneerBots
         </button>
-        <BusinessSelector teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} />
+        {!restricted && <BusinessSelector teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} />}
         <p className="text-xs text-muted-foreground">
           {bots.length} bots · Your existing conversations
         </p>
@@ -68,7 +71,7 @@ export function BotConversationRail({
           onChange={(e) => setQuery(e.target.value)}
           className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
         />
-        {teams.length === 0 && <button
+        {!restricted && teams.length === 0 && <button
           className="text-sm text-primary underline"
           onClick={() => onNavigate('#/bots?register=1')}
         >
@@ -160,7 +163,7 @@ export function BotConversationRail({
           ))}
         {!bots.length && !error && (
           <p className="p-3 text-sm text-muted-foreground">
-            Register an existing chat to add your operational bots here.
+            {restricted ? 'No bots have been assigned to your account yet.' : 'Register an existing chat to add your operational bots here.'}
           </p>
         )}
       </nav>

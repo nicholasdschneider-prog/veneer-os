@@ -277,7 +277,7 @@ export function App() {
     return <PendingApproval email={me.email ?? ''} onRecheck={loadMe} />;
   }
 
-  if (me.user?.employeeWorkspace) return <EmployeeWorkspace hash={hash} onNavigate={navigate} email={me.user.email} />;
+  if (me.user?.employeeWorkspace) return <><EmployeeWorkspace hash={hash} onNavigate={navigate} email={me.user.email} onToast={showToast} />{toastNode}</>;
 
   const role = me.user?.role ?? 'member';
   const canManage = role === 'owner' || role === 'consultant';

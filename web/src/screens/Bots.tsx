@@ -307,7 +307,7 @@ export function Bots({
   }, [registrationRequested]);
   return (
     <div className="flex h-full min-h-0">
-      <div className="hidden w-72 shrink-0 md:block"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
+      <div className="hidden w-72 shrink-0 md:block"><BotConversationRail restricted={restricted} selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
     <div className="flex h-full min-h-0 min-w-0 flex-1 gap-4 overflow-hidden bg-background">
       <div ref={queuePane} aria-label="Decision queues" className={cn('mx-auto h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-6', decisionId ? 'hidden lg:block' : 'max-w-6xl')}>
         {/* One thin toolbar: business picker and conversation drawer on mobile,
@@ -321,7 +321,7 @@ export function Bots({
             <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium">
               <MessageSquare className="size-3.5" /> Conversations
             </summary>
-            <div className="mt-2 h-[min(65dvh,32rem)] overflow-hidden rounded-xl border"><BotConversationRail selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
+            <div className="mt-2 h-[min(65dvh,32rem)] overflow-hidden rounded-xl border"><BotConversationRail restricted={restricted} selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
           </details>
           {teams.find(t => t.id === business && t.can_manage) && <BusinessAccess team={teams.find(t => t.id === business)!} onChanged={() => { void refresh(); }} />}
         </div>
