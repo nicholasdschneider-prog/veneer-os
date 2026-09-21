@@ -56,11 +56,11 @@ The runtime vault needs these names; never paste their values into chat or sourc
 | `LIVEKIT_API_SECRET` | Matching LiveKit secret |
 | `OPENAI_API_KEY` | OpenAI API access |
 
-All four names were present during this build. The implementation uses the existing LiveKit Agents OpenAI Realtime integration (`gpt-realtime`, Marin, semantic turn detection). See the [OpenAI Realtime documentation](https://developers.openai.com/api/docs/guides/realtime) and [LiveKit OpenAI integration](https://docs.livekit.io/agents/models/realtime/plugins/openai/). API usage is separately metered; this change purchases no account or plan. Configuration errors point to Settings → Credentials and explain missing names or an invalid project URL.
+All four names were present during this build. The implementation uses the existing LiveKit Agents OpenAI Realtime integration (`gpt-realtime`, Marin, server voice activity detection). See the [OpenAI Realtime documentation](https://developers.openai.com/api/docs/guides/realtime) and [LiveKit OpenAI integration](https://docs.livekit.io/agents/models/realtime/plugins/openai/). API usage is separately metered; this change purchases no account or plan. Configuration errors point to Settings → Credentials and explain missing names or an invalid project URL.
 
 ## Verification
 
-Repository typecheck and production build passed. The full suite passed: 2,048 server tests (5 skipped), 825 web tests, 21 installer tests, and 40 browser-manager tests.
+Repository typecheck and production build passed. The full suite passed: 2,096 server tests (5 skipped), 840 web tests, 21 installer tests, and 40 browser-manager tests.
 
 Automated coverage includes real runner question resolution, ordinary-thread dispatch receipts, uncertain-delivery deduplication, staff/private/business access, transcript isolation, access revocation, source-thread pinning in worker dispatch, active-call preservation during work, actual reply notifications, and room cleanup. The browser panel was inspected at 390 × 844 and 1440 × 1000, including navigation pinning and an actionable missing-microphone error.
 
@@ -98,3 +98,24 @@ Physical iPhone/AirPods testing remains required: two-way audio quality, barge-i
 
 - [Sanitized worker failure categories](/Users/archerclawdington/veneer-os/server/src/voice/failure.ts)
 - [Failure redaction tests](/Users/archerclawdington/veneer-os/server/test/voiceFailure.test.ts)
+
+
+## Incidental noise and interruptions
+
+The voice worker now requests OpenAI near-field input noise reduction for phone/headset microphones. Server VAD uses a 0.7 activation threshold, 300 ms of preceding audio, and 650 ms of silence to end a user turn. Automatic responses and spoken interruptions remain enabled. The existing browser microphone requests echo cancellation, noise suppression, and automatic gain control.
+
+This replaces semantic VAD because its eagerness controls when a user finishes a turn, not how much ambient noise triggers an interruption. In this LiveKit pipeline the Realtime provider owns interruption onset; local AgentSession minimum-duration/word settings do not gate it. See the [official OpenAI VAD guide](https://developers.openai.com/api/docs/guides/realtime-vad).
+
+The higher threshold and provider noise filter aim to reduce incidental interruptions. Quiet speech or a microphone far from the speaker may be harder to detect; sufficiently loud coughs or nearby voices can still interrupt. Silence-based endpointing can also respond during a thinking pause longer than 650 ms. This is a calibrated default, not a guarantee that every cough is distinguishable from speech.
+
+Run the opt-in, metered regression through actual LiveKit/OpenAI media:
+
+```sh
+NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live --interruptions
+```
+
+It asks the voice to count, sends synthetic ambient hiss plus two short louder bursts while the voice is speaking, checks continued speaking state and audible output, then sends deliberate interrupting speech. It requires playback to yield within 2.5 seconds, an accurate reply with an unpredictable prior-work reference, and no task dispatch. These generated bursts are not human cough recordings. The measured interruption time starts when PCM is submitted (excluding speech synthesis), so it includes media/network delay and any leading silence in the fixture. The check passed with a measured 569 ms deliberate interruption; ordinary startup recap and live background dispatch/result checks are also retained. Physical iPhone/AirPods noise and microphone-route testing remains unverified by the agent.
+
+- [Voice interruption and noise defaults](/Users/archerclawdington/veneer-os/server/src/voice/worker.ts)
+- [Live media regression entry point](/Users/archerclawdington/veneer-os/scripts/smoke-live-voice.mjs)
+- [Synthetic noise and spoken interruption fixture](/Users/archerclawdington/veneer-os/scripts/voice-interruption-fixture.mjs)

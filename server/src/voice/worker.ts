@@ -71,7 +71,13 @@ process.on('message', (raw: unknown) => {
       instructions: z.string(), participantIdentity: z.string(),
       mode: z.enum(['coordinator', 'bot']).default('coordinator'), agentName: z.string().default('Henry') }).parse(message);
     const model = new realtime.RealtimeModel({ apiKey: config.apiKey, model: 'gpt-realtime', voice: 'marin',
-      turnDetection: { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true },
+      // OpenAI owns interruption onset in this pipeline; AgentSession's local
+      // minimum-duration/word settings do not gate server speech_started events.
+      // Near-field filtering suits phone/headset mics. A higher onset threshold
+      // rejects more incidental noise, while padding preserves initial syllables.
+      inputAudioNoiseReduction: { type: 'near_field' },
+      turnDetection: { type: 'server_vad', threshold: 0.7, prefix_padding_ms: 300,
+        silence_duration_ms: 650, create_response: true, interrupt_response: true },
       inputAudioTranscription: { model: 'gpt-4o-mini-transcribe' }, maxSessionDuration: 50 * 60 * 1000 });
     session = new voice.AgentSession({ llm: model });
     const bot = config.mode === 'bot';

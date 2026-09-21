@@ -24,11 +24,12 @@ migrate(db, path.resolve('server/src/db/migrations'));
 db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'voice-smoke@example.invalid','Voice smoke','member')").run();
 db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('voice-smoke',1,1,'Voice verification fixture','codex','voice-smoke')").run();
 const conversation = db.prepare("SELECT * FROM conversations WHERE id='voice-smoke'").get();
+const interruptions = process.argv.includes('--interruptions');
 const decisions = process.argv.includes('--decisions');
 const recap = process.argv.includes('--recap');
 const events = [];
 const reference = String(randomInt(100000, 999999));
-if (recap) events.push({type:'text_final',turnId:'prior-work',markdown:`Completed the onboarding checklist export. Delivery reference ${reference}. The export is saved and ready for staff.`,at:new Date().toISOString()});
+if (recap || interruptions) events.push({type:'text_final',turnId:'prior-work',markdown:`Completed the onboarding checklist export. Delivery reference ${reference}. The export is saved and ready for staff.`,at:new Date().toISOString()});
 let focusId;
 if (decisions) {
   db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('voice-smoke','Fixture Grant',1)").run();
@@ -65,12 +66,16 @@ const room = new Room();
 const source = new AudioSource(24000, 1);
 const directory = mkdtempSync(path.join(tmpdir(), 'veneer-voice-smoke-'));
 let samples = 0;
+let audibleSamples = 0;
 let heartbeat;
 let silence;
 let success = false;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 room.on(RoomEvent.TrackSubscribed, track => {
-  void (async () => { for await (const frame of new AudioStream(track)) samples += frame.samplesPerChannel; })().catch(() => {});
+  void (async () => { for await (const frame of new AudioStream(track)) {
+    samples += frame.samplesPerChannel;
+    if (frame.data.some(sample => Math.abs(sample) > 100)) audibleSamples += frame.samplesPerChannel;
+  } })().catch(() => {});
 });
 try {
   const wav = path.join(directory, 'instruction.wav');
@@ -89,6 +94,10 @@ try {
   const track = LocalAudioTrack.createAudioTrack('smoke-microphone', source);
   const options = new TrackPublishOptions(); options.source = TrackSource.SOURCE_MICROPHONE;
   await room.localParticipant.publishTrack(track, options);
+  if (interruptions) {
+    const { runInterruptionSmoke } = await import('./voice-interruption-fixture.mjs');
+    success = await runInterruptionSmoke({ source, service, db, directory, reference, getSamples: () => samples, getAudibleSamples: () => audibleSamples });
+  } else {
   const deadline = Date.now() + 75000;
   while (samples === 0 && Date.now() < deadline && service.status(1)?.state !== 'failed') await delay(500);
   if (!samples) throw new Error('No remote audio');
@@ -113,6 +122,7 @@ try {
     await delay(500);
   }
   console.log(JSON.stringify({ passed: success, failure: service.status(1)?.error ?? null, mode: decisions ? 'many-decisions' : recap ? 'startup-recap' : 'dispatch', receivedAudio: samples > 0, transcribedSpeech: db.prepare("SELECT count(*) AS n FROM voice_entries WHERE role='user'").get().n > 0, dispatches, workingDuringCall, fixtureCompleted: events.length > 0 }));
+  }
 } catch {
   console.log(JSON.stringify({ passed: false, status: service.status(1)?.error, error: 'Live media smoke failed. Check service configuration, credit, connectivity, and worker status. No credentials or provider diagnostics are printed.' }));
 } finally {
