@@ -19,6 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { botCallHash } from '@/lib/liveVoice';
+import { sideChatHash } from '@/lib/sideChat';
 import {
   botsApi,
   decisionLabel,
@@ -573,15 +574,25 @@ export function Bots({
                     <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
                     <State state={d.state} label={decisionStatusLabel(d)} />
                   </div>
-                  {canCall && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {canCall && (
+                      <Button
+                        className="min-h-11 flex-1 sm:flex-none"
+                        onClick={() => onNavigate(botCallHash(d.conversation_id, d.id))}
+                      >
+                        <Phone className="size-4" />
+                        Talk with {d.bot_name} about this
+                      </Button>
+                    )}
                     <Button
-                      className="mt-4 min-h-11 w-full sm:w-auto"
-                      onClick={() => onNavigate(botCallHash(d.conversation_id, d.id))}
+                      variant="outline"
+                      className="min-h-11 flex-1 sm:flex-none"
+                      onClick={() => onNavigate(sideChatHash(d.conversation_id, 'bots'))}
                     >
-                      <Phone className="size-4" />
-                      Talk with {d.bot_name} about this
+                      <MessageSquare className="size-4" />
+                      Side chat with {d.bot_name}
                     </Button>
-                  )}
+                  </div>
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
                     {d.proposal.question}
                   </h2>

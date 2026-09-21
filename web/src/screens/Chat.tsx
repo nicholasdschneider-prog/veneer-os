@@ -1,9 +1,10 @@
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
+import { withSideParam } from '../lib/sideChat';
 import { botCallHash } from '@/lib/liveVoice';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, Mic, Paperclip, Phone, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
+import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Phone, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
 import { api, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
 import { chatDeleteConfirmation, chatHeaderMenuLabels, copyChatShareUrl } from '../lib/chatDeletion';
 import type { Artifact, PublishedArtifact } from '../lib/artifacts';
@@ -396,6 +397,7 @@ export function Chat({
   onOpenBrowser,
   onNavigate,
   onToast,
+  sideChatButton = true,
 }: {
   conversationId: string; // 'new' for a not-yet-created conversation
   // For a new chat, the project (folder) it will be created in (from the route);
@@ -417,6 +419,8 @@ export function Chat({
   onOpenBrowser?: () => void;
   onNavigate: (hash: string) => void;
   onToast: (message: string, action?: ToastAction) => void;
+  /** Hidden when this chat is itself rendered inside a side chat panel. */
+  sideChatButton?: boolean;
 }) {
   const isNew = conversationId === 'new';
   const { show: showDesktop } = useFloatingDesktop();
@@ -2293,6 +2297,19 @@ export function Chat({
         </div>
         {!isNew ? (
           <div className="flex shrink-0 items-center gap-1">
+            {sideChatButton && canSend ? (
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="relative rounded-full text-muted-foreground"
+                onPointerUp={() => onNavigate(withSideParam(window.location.hash, 'open'))}
+                aria-label={`Side chat about this conversation`}
+                title="Side chat — ask without interrupting"
+              >
+                <MessagesSquare className="size-4" aria-hidden="true" />
+                <span className="pointer-fine:hidden absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true" />
+              </Button>
+            ) : null}
             {backHash === '#/bots' && canManage ? (
               <Button
                 variant="ghost"

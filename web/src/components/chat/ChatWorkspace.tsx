@@ -16,6 +16,8 @@ import { SplitView } from '../layout/SplitView';
 import { ArtifactPanel } from './ArtifactPanel';
 import { DesktopPanel, shouldDockDesktop, useFloatingDesktop } from '../desktop/FloatingDesktop';
 import { CitationPanel } from './CitationPanel';
+import { SideChatPanel } from './SideChatPanel';
+import { withSideParam } from '../../lib/sideChat';
 import { ConversationBrowserPanel } from '../browser/ConversationBrowserPanel';
 import type { Citation } from '../../lib/citations';
 import type { ProjectFileLocation } from '../../lib/projectFilesRoute';
@@ -29,6 +31,8 @@ interface ChatWorkspaceProps {
   backHash?: string | null;
   focusMessageId?: string | null;
   artifactParam: string | null;
+  /** `side` query value: a side chat docked beside this one (see SideChatPanel). */
+  sideParam?: string | null;
   projectFilesId: string | null;
   projectFile: ProjectFileLocation | null;
   projectBrowserId: string | null;
@@ -81,6 +85,7 @@ export function ChatWorkspace({
   backHash = null,
   focusMessageId = null,
   artifactParam,
+  sideParam = null,
   projectFilesId,
   projectFile,
   projectBrowserId,
@@ -106,7 +111,8 @@ export function ChatWorkspace({
   const artifactMemoryCheckedRef = useRef(false);
   const previousArtifactParamRef = useRef<string | null>(artifactParam);
   const browserDismissedRef = useRef(rememberedConversationBrowserDismissal(conversationId));
-  const alternativePanelSelected = Boolean(artifactParam || projectFilesId || citations);
+  const sideChatOpen = Boolean(sideParam && !isNew);
+  const alternativePanelSelected = Boolean(artifactParam || projectFilesId || citations || sideChatOpen);
 
   useEffect(() => {
     if (isNew || projectBrowserId) return;
@@ -259,7 +265,15 @@ export function ChatWorkspace({
 
   const desktopPanelOpen = shouldDockDesktop(desktopState, isDesktop);
   const conversationBrowserOpen = Boolean(projectBrowserId && !isNew);
-  const panelOpen = Boolean(conversationBrowserOpen || desktopPanelOpen || citations || projectFilesId || artifactParam);
+  const panelOpen = Boolean(sideChatOpen || conversationBrowserOpen || desktopPanelOpen || citations || projectFilesId || artifactParam);
+  const [agentName, setAgentName] = useState('the agent');
+  useEffect(() => {
+    if (!sideChatOpen) return;
+    void api.conversation(conversationId).then((r) => setAgentName(r.conversation.assistantName)).catch(() => undefined);
+  }, [conversationId, sideChatOpen]);
+  const closeSideChat = useCallback(() => {
+    replaceHash(withSideParam(window.location.hash, null), false);
+  }, []);
   const deletable = Boolean(
     selected &&
       selected.type !== 'app' &&
@@ -277,7 +291,9 @@ export function ChatWorkspace({
       maxWidth={1200}
       detailMinWidth={300}
       separatorLabel={
-        conversationBrowserOpen
+        sideChatOpen
+          ? 'Resize side chat'
+          : conversationBrowserOpen
           ? 'Resize Veneer Browser'
           : desktopPanelOpen
           ? 'Resize Agent Browser'
@@ -288,7 +304,16 @@ export function ChatWorkspace({
               : 'Resize artifact preview'
       }
       sidebar={
-        conversationBrowserOpen ? (
+        sideChatOpen && sideParam ? (
+          <SideChatPanel
+            parentId={conversationId}
+            agentName={agentName}
+            sideParam={sideParam}
+            onNavigate={onNavigate}
+            onToast={onToast}
+            onClose={closeSideChat}
+          />
+        ) : conversationBrowserOpen ? (
           <ConversationBrowserPanel conversationId={conversationId} onClose={closeConversationBrowser} onToast={onToast} />
         ) : desktopPanelOpen ? (
           <DesktopPanel onMinimize={() => showDesktop('mini')} onHide={hideDesktop} />

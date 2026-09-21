@@ -185,6 +185,8 @@ export interface ConversationRow {
   provider_instruction_hash: string | null;
   /** Chat whose agent spawned this one (handoff etc.); NULL = human-created. No FK — orphans render top-level. */
   origin_conversation_id: string | null;
+  /** Parent chat when this is a side chat opened beside it; hidden from the main list. */
+  side_chat_of?: string | null;
   channel: 'web' | 'email' | 'automation';
   archived: number;
   /** Manual pin position (migration 0016): NULL = not pinned; lower sorts first. */

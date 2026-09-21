@@ -481,6 +481,7 @@ export function App() {
     : chatId && params.get('from') === 'bots' ? '#/bots' : null;
   const chatFocusMessageId = chatId ? params.get('message') : null;
   const artifactParam = chatId ? params.get('artifact') : null;
+  const sideParam = chatId ? params.get('side') : null;
   // Only an explicit #/project/:id route shows the standalone project view. A
   // chat opened from a project (?project=) keeps the expandable Chats list in
   // the sidebar — projects expand inline there, so there's no need to swap it
@@ -588,7 +589,7 @@ export function App() {
           storageKey="split:chats"
           mobileShows={chatId || projectFilesId || projectBrowserId ? 'detail' : 'sidebar'}
           sidebarHidden={Boolean(
-            chatBackHash !== '#/bots' && chatId && (desktopState === 'full' || artifactParam || projectFilesId || projectBrowserId) && !hasThreePaneRoom,
+            chatBackHash !== '#/bots' && chatId && (desktopState === 'full' || artifactParam || sideParam || projectFilesId || projectBrowserId) && !hasThreePaneRoom,
           )}
           sidebar={sidebar}
         >
@@ -601,6 +602,7 @@ export function App() {
               backHash={chatBackHash}
               focusMessageId={chatFocusMessageId}
               artifactParam={artifactParam}
+              sideParam={sideParam}
               projectFilesId={projectFilesId}
               projectFile={projectFile}
               projectBrowserId={projectBrowserId}

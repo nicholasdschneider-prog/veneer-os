@@ -399,6 +399,8 @@ export interface Conversation {
   projectId: string | null;
   /** Chat whose agent spawned this one (handoff etc.); null = human-created. */
   originConversationId: string | null;
+  /** Parent chat when this conversation is a side chat opened beside it. */
+  sideChatOf?: string | null;
   archived: boolean;
   /** Manual pin position; null = not pinned. Lower sorts first. */
   pinOrder: number | null;
