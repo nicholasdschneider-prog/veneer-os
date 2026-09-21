@@ -3,6 +3,7 @@ import type { ChatHeaderMenuLabels } from '../../lib/chatDeletion';
 import { cn } from '@/lib/utils';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ChatInfoMenuItem } from './ChatContextDialog';
+import { MoveChatMenuItem } from './MoveChatDialog';
 
 interface ChatHeaderMenuItemsProps {
   labels: ChatHeaderMenuLabels;
@@ -14,6 +15,9 @@ interface ChatHeaderMenuItemsProps {
   onOpenBrowser?: () => void;
   onCompact: () => void;
   onTogglePin: () => void;
+  /** Opens the move-to-project picker; omitted when the chat cannot move now. */
+  onMove?: () => void;
+  moveDisabled?: boolean;
   onDelete: () => void;
 }
 
@@ -27,6 +31,8 @@ export function ChatHeaderMenuItems({
   onOpenBrowser,
   onCompact,
   onTogglePin,
+  onMove,
+  moveDisabled,
   onDelete,
 }: ChatHeaderMenuItemsProps) {
   return (
@@ -78,6 +84,7 @@ export function ChatHeaderMenuItems({
             <Pin className={cn('size-4', pinned && 'fill-current')} />
             {labels.manage.pin}
           </DropdownMenuItem>
+          {onMove ? <MoveChatMenuItem disabled={moveDisabled} onSelect={onMove} /> : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={onDelete}>
             <Trash2 className="size-4" />

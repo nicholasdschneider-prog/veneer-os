@@ -60,7 +60,7 @@ function renderList(
   );
 }
 
-function renderRowMenu(conversation: Conversation, compacting = false) {
+function renderRowMenu(conversation: Conversation, compacting = false, onMove?: () => void) {
   return renderToStaticMarkup(
     <DropdownMenuPrimitive.Root open>
       <DropdownMenuPrimitive.Content forceMount>
@@ -70,6 +70,7 @@ function renderRowMenu(conversation: Conversation, compacting = false) {
           onTogglePin={vi.fn()}
           onMarkUnread={vi.fn()}
           onCompact={vi.fn()}
+          onMove={onMove}
           onArchive={vi.fn()}
           onDelete={vi.fn()}
         />
@@ -100,6 +101,16 @@ describe('ConversationList pins', () => {
     expect(compact).toBeLessThan(archive);
     expect(archive).toBeLessThan(separator);
     expect(separator).toBeLessThan(deleteChat);
+  });
+
+  it('offers Move to project only when a handler is given and the chat is idle', () => {
+    expect(renderRowMenu(baseConversation)).not.toContain('Move to project…');
+    const idle = renderRowMenu(baseConversation, false, vi.fn());
+    const working = renderRowMenu({ ...baseConversation, status: 'working' }, false, vi.fn());
+    const move = idle.indexOf('Move to project…');
+    expect(move).toBeGreaterThan(idle.indexOf('Compact context'));
+    expect(move).toBeLessThan(idle.indexOf('Archive chat'));
+    expect(working).toMatch(/data-disabled=""[^>]*>[^<]*<svg[^>]*lucide-folder-input/);
   });
 
   it('shows explicit disabled compaction states for unavailable and running chats', () => {

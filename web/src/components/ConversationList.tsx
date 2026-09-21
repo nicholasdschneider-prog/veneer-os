@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { AgentActivityOrb } from './AgentActivityOrb';
 import { CreatorAvatar } from './CreatorAvatar';
 import { AgentWakeupClock } from './chat/AgentWakeupClock';
+import { MoveChatDialog, MoveChatMenuItem } from './chat/MoveChatDialog';
 import { useChatAppearance, type ChatListIconMode } from '../lib/chatAppearance';
 import {
   Dialog,
@@ -267,6 +268,7 @@ export function ConversationRowMenuItems({
   onTogglePin,
   onMarkUnread,
   onCompact,
+  onMove,
   onArchive,
   onDelete,
 }: {
@@ -275,6 +277,8 @@ export function ConversationRowMenuItems({
   onTogglePin: () => void;
   onMarkUnread: () => void;
   onCompact: () => void;
+  /** Opens the move-to-project picker (active view only). */
+  onMove?: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }) {
@@ -318,6 +322,7 @@ export function ConversationRowMenuItems({
             ? 'Compact context'
             : 'Context compaction unavailable'}
       </DropdownMenuItem>
+      {onMove ? <MoveChatMenuItem disabled={turnRunning} onSelect={onMove} /> : null}
       <DropdownMenuItem onSelect={onArchive}>
         <Archive className="size-4" />
         {labels.archive}
@@ -341,6 +346,7 @@ function Row({
   onTogglePin,
   onMarkUnreadAction,
   onCompactAction,
+  onMoveAction,
   onArchiveAction,
   onDeleteAction,
   onUndoArchive,
@@ -358,6 +364,8 @@ function Row({
   onTogglePin: (c: Conversation) => void;
   onMarkUnreadAction: (c: Conversation) => void;
   onCompactAction: (c: Conversation) => void;
+  /** Opens the move-to-project picker (active view only). */
+  onMoveAction?: (c: Conversation) => void;
   /** Active view: archives immediately. Archived view: opens the restore/delete dialog. */
   onArchiveAction: (c: Conversation) => void;
   /** Opens the permanent-delete confirmation from an active chat's action menu. */
@@ -516,6 +524,7 @@ function Row({
                 onTogglePin={() => onTogglePin(c)}
                 onMarkUnread={() => onMarkUnreadAction(c)}
                 onCompact={() => onCompactAction(c)}
+                onMove={onMoveAction ? () => onMoveAction(c) : undefined}
                 onArchive={() => onArchiveAction(c)}
                 onDelete={() => onDeleteAction(c)}
               />
@@ -612,6 +621,7 @@ export function ConversationList({
   // Restore/delete dialog — archived view only.
   const [actionFor, setActionFor] = useState<Conversation | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [moveFor, setMoveFor] = useState<Conversation | null>(null);
   const [busy, setBusy] = useState(false);
   const [compactingIds, setCompactingIds] = useState<Set<string>>(new Set());
   const compactingRef = useRef<Set<string>>(new Set());
@@ -811,6 +821,7 @@ export function ConversationList({
                   onTogglePin={(x) => void togglePin(x)}
                   onMarkUnreadAction={(x) => void markUnread(x)}
                   onCompactAction={(x) => void compactContext(x)}
+                  onMoveAction={archivedView ? undefined : setMoveFor}
                   onArchiveAction={(x) => startArchive(x)}
                   onDeleteAction={confirmDeleteFor}
                   onUndoArchive={(x) => undoArchive(x)}
@@ -845,6 +856,7 @@ export function ConversationList({
                   onTogglePin={(x) => void togglePin(x)}
                   onMarkUnreadAction={(x) => void markUnread(x)}
                   onCompactAction={(x) => void compactContext(x)}
+                  onMoveAction={archivedView ? undefined : setMoveFor}
                   onArchiveAction={(x) => startArchive(x)}
                   onDeleteAction={confirmDeleteFor}
                   onUndoArchive={(x) => undoArchive(x)}
@@ -882,6 +894,7 @@ export function ConversationList({
                   focusedId={focusedId}
                   onTogglePin={(x) => void togglePin(x)}
                   onMarkUnreadAction={(x) => void markUnread(x)}
+                  onMoveAction={archivedView ? undefined : setMoveFor}
                   onCompactAction={(x) => void compactContext(x)}
                   onArchiveAction={archivedView ? setActionFor : (x) => startArchive(x)}
                   onDeleteAction={confirmDeleteFor}
@@ -896,6 +909,12 @@ export function ConversationList({
         </section>
       ))}
 
+      <MoveChatDialog
+        conversation={moveFor}
+        onOpenChange={(open) => !open && setMoveFor(null)}
+        onMoved={(moved) => onRemoved(moved.id)}
+        onToast={onToast}
+      />
       <Dialog open={actionFor !== null} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent showCloseButton={!confirmDelete}>
           {confirmDelete && deleteConfirmation ? (

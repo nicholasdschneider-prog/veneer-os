@@ -350,6 +350,8 @@ export const api = {
       effort?: string | null;
       approval_mode?: ApprovalMode | null;
       pinned?: boolean;
+      /** Move the chat to another project; null unfiles it. */
+      projectId?: string | null;
     },
     // keepalive lets the write complete during a page unload (used to flush a
     // deferred archive when the tab is refreshed/closed mid grace-period).

@@ -262,6 +262,11 @@ const PatchConversationSchema = z.object({
   effort: z.string().trim().min(1).max(40).nullable().optional(),
   approval_mode: ApprovalModeSchema.nullable().optional(),
   pinned: z.boolean().optional(),
+  // Move the chat (and its side chats) to another project; null unfiles it.
+  // The runner derives the working folder from the row every turn, and the
+  // fixed instruction snapshot is re-frozen against the new project on the
+  // next turn, so history is kept while future turns use the new project.
+  projectId: z.string().trim().min(1).max(100).nullable().optional(),
 });
 // Drag-reorder of the pinned chats: the full pinned list in its new order.
 const ReorderPinsSchema = z.object({ ids: z.array(z.string().min(1)).min(1).max(500) });
@@ -836,6 +841,36 @@ export function createApiRouter(ctx: AppContext): Router {
     res.set('Cache-Control', 'no-store');
     res.json({ ok: true, usage: readSystemUsage() });
   });
+
+  /**
+   * Reassign a chat and its side chats to another project (null = unfiled).
+   * Generated files follow the chat. The fixed instruction snapshot and the
+   * provider instruction hash are cleared so the next turn re-freezes the new
+   * project's instructions and re-sends them; the working folder is resolved
+   * from the row each turn, so it moves on its own. Browser profile bindings
+   * are project-scoped and are dropped.
+   */
+  function moveConversationToProject(database: typeof db, conversationId: string, projectId: string | null): void {
+    const sideChats = database
+      .prepare('SELECT id FROM conversations WHERE side_chat_of = ?')
+      .all(conversationId) as { id: string }[];
+    const ids = [conversationId, ...sideChats.map((chat) => chat.id)];
+    database.transaction(() => {
+      const update = database.prepare(
+        `UPDATE conversations
+            SET project_id = ?, instruction_snapshot_json = NULL, instruction_snapshot_at = NULL,
+                provider_instruction_hash = NULL
+          WHERE id = ?`,
+      );
+      const moveFiles = database.prepare('UPDATE generated_files SET project_id = ? WHERE conversation_id = ?');
+      const dropProfile = database.prepare('DELETE FROM veneer_browser_conversation_profiles WHERE conversation_id = ?');
+      for (const id of ids) {
+        update.run(projectId, id);
+        moveFiles.run(projectId, id);
+        dropProfile.run(id);
+      }
+    })();
+  }
 
   function conversationFor(req: Request, res: Response, manage = false): ConversationRow | null {
     const row = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id) as
@@ -3646,85 +3681,106 @@ export function createApiRouter(ctx: AppContext): Router {
         return;
       }
     }
-    if (body.data.title !== undefined) {
-      db.prepare('UPDATE conversations SET title = ?, title_auto = 0 WHERE id = ?').run(body.data.title, row.id);
-    }
-    if (body.data.visibility !== undefined && body.data.visibility !== row.visibility) {
-      db.prepare('UPDATE conversations SET visibility = ? WHERE id = ?').run(body.data.visibility, row.id);
-      // Re-check every live browser subscriber now. A teammate who already had
-      // the Team chat open must stop receiving events as soon as it is Private.
-      manager.bus?.emit('access', row.id);
-    }
-    if (body.data.archived !== undefined) {
-      if (body.data.archived) {
-        db.prepare('UPDATE conversations SET archived = 1 WHERE id = ?').run(row.id);
-      } else {
-        db.prepare(
-          "UPDATE conversations SET archived = 0, last_user_activity_at = datetime('now') WHERE id = ?",
-        ).run(row.id);
-      }
-      // Archiving means "done with this" — stop any agent still working in it (same as delete does).
-      // Provider-agnostic: interrupt() → entry.kill() stops Claude, OpenRouter, or Codex, and is a
-      // safe no-op if the conversation is idle. Unarchiving does not touch the runner.
-      if (body.data.archived) {
-        void manager.interrupt(row.id);
-      }
-      // Archiving also unpins — the archived view has no pinned section, and a
-      // restored chat shouldn't jump back to the top of the list unasked.
-      if (body.data.archived) db.prepare('UPDATE conversations SET pin_order = NULL WHERE id = ?').run(row.id);
-      // A scratch-pad todo fired off into this chat rides along: archiving the
-      // chat marks its todo 'done', restoring the chat reopens it to 'active'.
-      // Only touches todos whose state matches, so a manually-moved todo isn't
-      // yanked back by a later archive/unarchive.
-      if (body.data.archived) {
-        db.prepare(
-          `UPDATE todos SET state = 'done', updated_at = datetime('now')
-           WHERE conversation_id = ? AND state = 'active'`,
-        ).run(row.id);
-      } else {
-        db.prepare(
-          `UPDATE todos SET state = 'active', updated_at = datetime('now')
-           WHERE conversation_id = ? AND state = 'done'`,
-        ).run(row.id);
-      }
-    }
-    if (body.data.pinned !== undefined) {
-      if (body.data.pinned) {
-        // New pins land on top: MIN-1 across all pins. (Global, not per-user:
-        // each user only sees their own rows interleaved, so relative order holds.)
-        db.prepare(
-          `UPDATE conversations
-           SET pin_order = COALESCE((SELECT MIN(pin_order) FROM conversations), 1) - 1
-           WHERE id = ?`,
-        ).run(row.id);
-      } else {
-        db.prepare('UPDATE conversations SET pin_order = NULL WHERE id = ?').run(row.id);
-      }
-    }
-    if (body.data.model !== undefined) {
-      if (row.provider === 'openrouter' && !readModelPrefs().openrouterModels.includes(body.data.model)) {
-        res.status(400).json({ ok: false, error: 'Choose a configured OpenRouter model' });
+    const targetProjectId = body.data.projectId;
+    const movingProject = targetProjectId !== undefined && targetProjectId !== (row.project_id ?? null);
+    if (movingProject) {
+      if (row.side_chat_of) {
+        res.status(400).json({ ok: false, error: 'Side chats move with their parent chat' });
         return;
       }
-      if (!canUserAccessModel(req.user!.email, row.provider, body.data.model)) {
-        res.status(400).json({ ok: false, error: 'This model is not available' });
+      if (targetProjectId && !db.prepare('SELECT id FROM projects WHERE id = ?').get(targetProjectId)) {
+        res.status(404).json({ ok: false, error: 'Project not found' });
         return;
       }
-      db.prepare('UPDATE conversations SET model = ? WHERE id = ?').run(body.data.model, row.id);
     }
-    if (body.data.effort !== undefined) {
-      db.prepare('UPDATE conversations SET effort = ? WHERE id = ?').run(body.data.effort, row.id);
-    }
-    if (body.data.approval_mode !== undefined) {
-      db.prepare('UPDATE conversations SET approval_mode = ? WHERE id = ?').run(body.data.approval_mode, row.id);
-    }
-    const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(row.id) as ConversationRow;
-    const browserStopped = body.data.archived
-      ? (manager.veneerBrowserConversationStop?.(req.user!.id, row.id) ?? Promise.resolve(null)).catch(() => null)
-      : Promise.resolve(null);
-    void browserStopped.then(() => conversationView(ctx, fresh, req.user!))
-      .then((conversation) => res.json({ ok: true, conversation }))
-      .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+    void (async () => {
+      if (movingProject) {
+        const status = await manager.statusOf(row.id);
+        if (status === 'working' || status === 'needs_you') {
+          res.status(409).json({ ok: false, error: 'Wait for the current reply to finish before moving this chat' });
+          return;
+        }
+      }
+      if (body.data.title !== undefined) {
+        db.prepare('UPDATE conversations SET title = ?, title_auto = 0 WHERE id = ?').run(body.data.title, row.id);
+      }
+      if (body.data.visibility !== undefined && body.data.visibility !== row.visibility) {
+        db.prepare('UPDATE conversations SET visibility = ? WHERE id = ?').run(body.data.visibility, row.id);
+        // Re-check every live browser subscriber now. A teammate who already had
+        // the Team chat open must stop receiving events as soon as it is Private.
+        manager.bus?.emit('access', row.id);
+      }
+      if (body.data.archived !== undefined) {
+        if (body.data.archived) {
+          db.prepare('UPDATE conversations SET archived = 1 WHERE id = ?').run(row.id);
+        } else {
+          db.prepare(
+            "UPDATE conversations SET archived = 0, last_user_activity_at = datetime('now') WHERE id = ?",
+          ).run(row.id);
+        }
+        // Archiving means "done with this" — stop any agent still working in it (same as delete does).
+        // Provider-agnostic: interrupt() → entry.kill() stops Claude, OpenRouter, or Codex, and is a
+        // safe no-op if the conversation is idle. Unarchiving does not touch the runner.
+        if (body.data.archived) {
+          void manager.interrupt(row.id);
+        }
+        // Archiving also unpins — the archived view has no pinned section, and a
+        // restored chat shouldn't jump back to the top of the list unasked.
+        if (body.data.archived) db.prepare('UPDATE conversations SET pin_order = NULL WHERE id = ?').run(row.id);
+        // A scratch-pad todo fired off into this chat rides along: archiving the
+        // chat marks its todo 'done', restoring the chat reopens it to 'active'.
+        // Only touches todos whose state matches, so a manually-moved todo isn't
+        // yanked back by a later archive/unarchive.
+        if (body.data.archived) {
+          db.prepare(
+            `UPDATE todos SET state = 'done', updated_at = datetime('now')
+             WHERE conversation_id = ? AND state = 'active'`,
+          ).run(row.id);
+        } else {
+          db.prepare(
+            `UPDATE todos SET state = 'active', updated_at = datetime('now')
+             WHERE conversation_id = ? AND state = 'done'`,
+          ).run(row.id);
+        }
+      }
+      if (body.data.pinned !== undefined) {
+        if (body.data.pinned) {
+          // New pins land on top: MIN-1 across all pins. (Global, not per-user:
+          // each user only sees their own rows interleaved, so relative order holds.)
+          db.prepare(
+            `UPDATE conversations
+             SET pin_order = COALESCE((SELECT MIN(pin_order) FROM conversations), 1) - 1
+             WHERE id = ?`,
+          ).run(row.id);
+        } else {
+          db.prepare('UPDATE conversations SET pin_order = NULL WHERE id = ?').run(row.id);
+        }
+      }
+      if (body.data.model !== undefined) {
+        if (row.provider === 'openrouter' && !readModelPrefs().openrouterModels.includes(body.data.model)) {
+          res.status(400).json({ ok: false, error: 'Choose a configured OpenRouter model' });
+          return;
+        }
+        if (!canUserAccessModel(req.user!.email, row.provider, body.data.model)) {
+          res.status(400).json({ ok: false, error: 'This model is not available' });
+          return;
+        }
+        db.prepare('UPDATE conversations SET model = ? WHERE id = ?').run(body.data.model, row.id);
+      }
+      if (body.data.effort !== undefined) {
+        db.prepare('UPDATE conversations SET effort = ? WHERE id = ?').run(body.data.effort, row.id);
+      }
+      if (body.data.approval_mode !== undefined) {
+        db.prepare('UPDATE conversations SET approval_mode = ? WHERE id = ?').run(body.data.approval_mode, row.id);
+      }
+      if (body.data.archived || movingProject) {
+        await (manager.veneerBrowserConversationStop?.(req.user!.id, row.id) ?? Promise.resolve(null)).catch(() => null);
+      }
+      if (movingProject) moveConversationToProject(db, row.id, targetProjectId ?? null);
+      const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(row.id) as ConversationRow;
+      const conversation = await conversationView(ctx, fresh, req.user!);
+      res.json({ ok: true, conversation });
+    })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
 
   router.delete('/conversations/:id', (req, res) => {

@@ -178,6 +178,7 @@ import { AutomationStrip } from '../components/chat/AutomationStrip';
 import { ChatContextDialog } from '../components/chat/ChatContextDialog';
 import { ChatArchiveButton } from '../components/chat/ChatArchiveButton';
 import { ChatHeaderMenuItems } from '../components/chat/ChatHeaderMenuItems';
+import { MoveChatDialog } from '../components/chat/MoveChatDialog';
 import { QuestionCard } from '../components/chat/QuestionCard';
 import { RevealSecretCard } from '../components/chat/RevealSecretCard';
 import { SecretCard } from '../components/chat/SecretCard';
@@ -558,6 +559,7 @@ export function Chat({
   const [conversationActivity, setConversationActivity] = useState<ConversationActivity>(null);
   const [visibilityDialogOpen, setVisibilityDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState('');
   const [contextDialogOpen, setContextDialogOpen] = useState(false);
@@ -2410,6 +2412,8 @@ export function Chat({
                   onOpenBrowser={onOpenBrowser}
                   onCompact={() => void compactContext()}
                   onTogglePin={() => void togglePin()}
+                  onMove={() => setMoveDialogOpen(true)}
+                  moveDisabled={menuBusy || working}
                   onDelete={() => setDeleteDialogOpen(true)}
                 />
               </DropdownMenuContent>
@@ -3312,6 +3316,12 @@ export function Chat({
         </DialogContent>
       </Dialog>
 
+      <MoveChatDialog
+        conversation={moveDialogOpen && !isNew ? { id: conversationId, title, projectId } : null}
+        onOpenChange={setMoveDialogOpen}
+        onMoved={(moved) => setProjectId(moved.projectId)}
+        onToast={onToast}
+      />
       <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => !menuBusy && setDeleteDialogOpen(open)}>
         <AlertDialogContent>
           <AlertDialogHeader>
