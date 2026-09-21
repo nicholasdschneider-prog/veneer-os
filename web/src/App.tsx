@@ -1,6 +1,7 @@
 import { EmployeeWorkspace } from './screens/EmployeeWorkspace';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { Bots } from './screens/Bots';
+import { Huddles } from './screens/Huddles';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from './lib/api';
 import type { Me, WorkspaceNavigation } from './lib/types';
@@ -320,6 +321,15 @@ export function App() {
             : /^#\/(settings|connectors|toolbox|skills)/.test(routePath)
               ? 'settings'
               : 'chats';
+
+  if (routePath === '#/huddles' || routePath.startsWith('#/huddles/')) {
+    const huddleId = routePath.split('/')[2];
+    return (
+      <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+        <Huddles huddleId={huddleId ? decodeURIComponent(huddleId) : undefined} onNavigate={navigate} />
+      </NavShell>
+    );
+  }
 
   if (routePath === '#/bots' || routePath.startsWith('#/bots/')) {
     const botsSegments = routePath.split('/');

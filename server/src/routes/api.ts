@@ -1,6 +1,7 @@
 import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
 import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
 import { createBotsRouter } from '../bots/routes.js';
+import { createHuddlesRouter } from '../huddles/routes.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -840,6 +841,7 @@ export function createApiRouter(ctx: AppContext): Router {
   });
   router.use('/live-voice', createLiveVoiceRouter(ctx));
   router.use('/bots', createBotsRouter(ctx));
+  router.use('/huddles', createHuddlesRouter(ctx));
 
   router.get('/system/usage', (_req, res) => {
     res.set('Cache-Control', 'no-store');

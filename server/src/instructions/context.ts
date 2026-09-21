@@ -5,7 +5,7 @@ import type Database from 'better-sqlite3';
 import type { ConversationRow } from '../db/db.js';
 import { proCodexHome } from '../homes.js';
 
-export const CORE_INSTRUCTIONS_VERSION = 12;
+export const CORE_INSTRUCTIONS_VERSION = 13;
 export const CHAT_SNAPSHOT_VERSION = 1;
 export const CONVERSATION_DEBUG_CONTEXT_FILENAME = 'debug-context.json';
 export const LEGACY_GENERATED_INSTRUCTION_MARKER =
@@ -257,6 +257,7 @@ export function coreVeneerRules(target: InstructionTarget): string {
     '- In Markdown report files, keep images beside the report or in a subfolder and embed them with `![Description](./image.png)`. Wrap destinations containing spaces in angle brackets, for example `![Description](<./screenshots/My Image.png>)`; keep spaces literal. Markdown previews authenticate image access through the report and refuse images outside its folder tree. Absolute paths within that tree also work. Link the report itself with a raw absolute-path Markdown link.',
     '- Localhost and other loopback URLs are internal verification targets, never user-facing deliverables. When the user asks for browser-viewable work they can open, test, use, or share, publish it with `publish_page` or `publish_app` and return the reachable URL; do not present a loopback link as the result.',
     '- Wait for every delegated agent and summarize its result before completing your turn.',
+    '- Sustained work that needs three or more registered bots on one outcome belongs in a huddle (`open_huddle`, `read_huddle`, `post_huddle_message`, `update_huddle_action`): one lead stays accountable, handoffs name one owner, and members are woken automatically. A request to a single other bot stays a direct `send_message`. In a huddle, post only when you add something new; never post to acknowledge, and never relay huddle traffic by hand.',
     '- The shared chat and file-preview UI renders GitHub-flavored markdown plus KaTeX math. Use `$$...$$` for inline math or `$$` on separate lines for display math; `\\(...\\)` and `\\[...\\]` are also supported. Single-dollar math is intentionally unsupported because `$...` is treated as currency. When it aids scanning, use `##`/`###` headings, blockquotes for warnings or blockers, tables for short comparisons, and `<details><summary>` for long logs or optional detail. Plain prose stays the default; do not decorate every reply.',
     '- To show markdown that itself contains a code fence, wrap it in a four-backtick fence (````) or a tilde fence (~~~). Never nest three-backtick fences: the inner closing fence ends the outer block, and an unclosed fence swallows the rest of the reply.',
   ];

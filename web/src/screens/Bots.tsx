@@ -21,6 +21,7 @@ import {
   Phone,
   Plus,
   RefreshCw,
+  Users,
 } from 'lucide-react';
 import { useLiveVoice } from '@/components/VoiceProvider';
 import { sideChatHash } from '@/lib/sideChat';
@@ -326,6 +327,15 @@ export function Bots({
             </summary>
             <div className="mt-2 h-[min(65dvh,32rem)] overflow-hidden rounded-xl border"><BotConversationRail restricted={restricted} selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
           </details>
+          {!restricted && (
+            <button
+              type="button"
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium md:hidden"
+              onClick={() => onNavigate('#/huddles')}
+            >
+              <Users className="size-3.5" /> Huddles
+            </button>
+          )}
           {teams.find(t => t.id === business && t.can_manage) && <BusinessAccess team={teams.find(t => t.id === business)!} onChanged={() => { void refresh(); }} />}
         </div>
         <header className="mb-7 flex flex-wrap items-start justify-between gap-4">

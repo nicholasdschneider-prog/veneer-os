@@ -1,4 +1,5 @@
 import { BOT_TOOL_DEFINITIONS, callBotTool } from './botTools.js';
+import { HUDDLE_TOOL_DEFINITIONS, callHuddleTool } from './huddleTools.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -86,6 +87,7 @@ const TOOLS: ToolDef[] = [
   ...PROJECT_TOOL_DEFINITIONS,
   ...CONVERSATION_DISCOVERY_TOOL_DEFINITIONS,
   ...BOT_TOOL_DEFINITIONS,
+  ...HUDDLE_TOOL_DEFINITIONS,
   ...TODO_TOOL_DEFINITIONS,
   GMAIL_DRAFT_TOOL,
   {
@@ -932,6 +934,8 @@ async function callTool(
     if (renameConversationResult) return renameConversationResult;
     const todoResult = await callTodoTool({ name, args, callApi });
     if (todoResult) return todoResult;
+    const huddleResult = await callHuddleTool({ name, args, callApi });
+    if (huddleResult) return huddleResult;
     const gmailDraftResult = await callGmailDraftTool({ name, args, callApi });
     if (gmailDraftResult) return gmailDraftResult;
     if (name === 'list_skills') {

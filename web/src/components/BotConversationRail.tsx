@@ -3,9 +3,10 @@ import { BusinessSelector, useBusinessSelection } from './BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
 import { useEffect, useState } from 'react';
 import { botsApi, type Bot } from '@/lib/bots';
+import { huddlesApi } from '@/lib/huddles';
 import { BotAvatar, BotName, BotPresence } from './BotIdentity';
 import { cn } from '@/lib/utils';
-import { Hand } from 'lucide-react';
+import { Hand, Users } from 'lucide-react';
 import { BotActions, BOT_PREFERENCES_CHANGED } from './BotActions';
 
 export function BotConversationRail({
@@ -27,6 +28,7 @@ export function BotConversationRail({
     return () => { active = false; };
   }, [selectedId]);
   const [bots, setBots] = useState<Bot[]>([]);
+  const [openHuddles, setOpenHuddles] = useState(0);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const pendingQuestions = bots.reduce((sum, bot) => sum + bot.questions, 0);
@@ -45,9 +47,20 @@ export function BotConversationRail({
         .catch(() => {
           if (active) setError('Could not refresh bots');
         });
+    const refreshHuddles = () =>
+      void huddlesApi
+        .list('open', business)
+        .then((result) => {
+          if (active) setOpenHuddles(result.huddles.length);
+        })
+        .catch(() => {});
     refresh();
+    refreshHuddles();
     window.addEventListener(BOT_PREFERENCES_CHANGED, refresh);
-    const timer = setInterval(refresh, 5000);
+    const timer = setInterval(() => {
+      refresh();
+      refreshHuddles();
+    }, 5000);
     return () => {
       active = false;
       clearInterval(timer);
@@ -107,6 +120,29 @@ export function BotConversationRail({
             </span>
           )}
         </button>
+        {!restricted && (
+          <button
+            aria-current={window.location.hash.startsWith('#/huddles') ? 'page' : undefined}
+            onClick={() => onNavigate('#/huddles')}
+            className={cn(
+              'mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring',
+              window.location.hash.startsWith('#/huddles') && 'bg-muted',
+            )}
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <Users className="size-5 text-primary" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-medium">Huddles</span>
+              <span className="block text-xs text-muted-foreground">Bots working together on one outcome</span>
+            </span>
+            {openHuddles > 0 && (
+              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums">
+                {openHuddles}
+              </span>
+            )}
+          </button>
+        )}
         {bots
           .filter((bot) =>
             `${bot.name} ${bot.title ?? ''}`.toLowerCase().includes(query.toLowerCase()),

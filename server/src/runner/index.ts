@@ -16,6 +16,7 @@ import { createClaudeLimitResetManager } from '../usage/claudeLimitReset.js';
 import { createIpcServer } from './ipcServer.js';
 import { createScheduledTaskScheduler } from '../scheduled/scheduler.js';
 import { createConversationWakeupScheduler } from '../scheduled/wakeups.js';
+import { createHuddleReconciler, createHuddleService } from '../huddles/service.js';
 import { createBuildQueueCoordinator } from '../buildQueue/coordinator.js';
 import { createShutdown } from '../shutdown.js';
 import { writePidFile } from '../servicePid.js';
@@ -106,6 +107,9 @@ await veneerBrowser.reconcile();
 const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000 });
 const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bus, tickMs: 2_000 });
 const buildQueue = createBuildQueueCoordinator({ db, manager });
+// Huddle delivery rides on conversation_wakeups; this loop only repairs cursors
+// and re-wakes members whose wake was lost, so it can run after the scheduler.
+const huddles = createHuddleReconciler({ service: createHuddleService(db), tickMs: 5_000 });
 // fill_email_code reads the configured help mailbox through the shared Gmail
 // connector, in this process. The binding is checked once here so a missing
 // or ambiguous connector shows up in the log at boot, by row id and label only.
@@ -162,6 +166,7 @@ server.listen(config.runnerPort, '127.0.0.1', () => {
   scheduled.start();
   wakeups.start();
   buildQueue.start();
+  huddles.start();
 });
 
 // Clean shutdown: drain in-flight IPC, kill in-flight turn child processes,
@@ -175,6 +180,7 @@ const shutdown = createShutdown({
     scheduled.stop();
     wakeups.stop();
     buildQueue.stop();
+    huddles.stop();
     veneerBrowser.shutdown();
     manager.shutdown();
     doppler.stop();
