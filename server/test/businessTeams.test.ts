@@ -271,3 +271,75 @@ describe('business fleet enrollment and permissions', () => {
     );
   });
 });
+
+describe('enrolling a chat that inherited the business id before membership', () => {
+  // An agent-created chat (handoff/child inside the business) carries the
+  // business id from creation. It is owned, unarchived, web, non-platform and
+  // has no membership, so it must be enrollable; anything else stays rejected.
+  const addChat = (id: string, team: string | null, owner = 1) =>
+    db
+      .prepare(
+        "INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,model,effort,business_team_id) VALUES(?,1,?,?, 'claude',?,'team','worker-model','medium',?)",
+      )
+      .run(id, owner, id, `native-${id}`, team);
+  const worker = { conversation_id: 'worker', name: 'AutoShip Worker', role: 'bot', subteam: 'CS', reports_to: 'grant' };
+  const previewWorker = (request_key = 'worker-preview') =>
+    s.bulk(bot, { mode: 'preview', team_id: teamId, request_key, bots: [worker] });
+
+  it('enrolls an owned same-team unenrolled chat and keeps its business id and prior registration', () => {
+    apply(preview().preview_id);
+    addChat('worker', teamId);
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,active,registered_by) VALUES('worker','Prior Worker',0,1)").run();
+    s.manage(human, { action: 'delegate', team_id: teamId, conversation_id: 'henry', allowed_ids: ['henry', 'grant', 'nora', 'worker'] });
+    const p = previewWorker();
+    expect(p.verified[0]).toMatchObject({ id: 'worker', registration: { name: 'Prior Worker', active: 0 } });
+    // Replaying the same request key returns the same preview.
+    expect(previewWorker().preview_id).toBe(p.preview_id);
+    const receipt = s.bulk(bot, { mode: 'apply', team_id: teamId, preview_id: p.preview_id });
+    expect(receipt.enrolled).toEqual([worker]);
+    expect(db.prepare("SELECT name,active FROM bot_registrations WHERE conversation_id='worker'").get()).toEqual({ name: 'AutoShip Worker', active: 1 });
+    expect(db.prepare("SELECT team_id,role,subteam,reports_to,prior_registration_json FROM business_bot_members WHERE conversation_id='worker'").get()).toEqual({
+      team_id: teamId, role: 'bot', subteam: 'CS', reports_to: 'grant', prior_registration_json: JSON.stringify({ name: 'Prior Worker', active: 0 }),
+    });
+    expect(db.prepare("SELECT business_team_id FROM conversations WHERE id='worker'").get()).toEqual({ business_team_id: teamId });
+    // No schedules, questions or dispatch come from enrollment itself.
+    expect(db.prepare('SELECT count(*) n FROM scheduled_tasks').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT count(*) n FROM bot_decisions').get()).toEqual({ n: 0 });
+    // remove_bot restores the pre-enrollment registration and leaves the id cleared as today.
+    s.manage(human, { action: 'remove_bot', team_id: teamId, conversation_id: 'worker' });
+    expect(db.prepare("SELECT name,active FROM bot_registrations WHERE conversation_id='worker'").get()).toEqual({ name: 'Prior Worker', active: 0 });
+  });
+
+  it('still rejects other-business, already-enrolled, non-allowlisted, foreign and platform chats', () => {
+    apply(preview().preview_id);
+    const other = s.manage(human, { action: 'create', name: 'Other Co' }).id;
+    addChat('elsewhere', other);
+    addChat('worker', teamId);
+    addChat('foreign-worker', teamId, 3);
+    // Delegation itself refuses other-business and foreign chats, so those two
+    // negatives are exercised as the human owner (no allowlist); the bot actor
+    // covers the allowlist and membership guards.
+    const previewOf = (conversation_id: string, key: string, actor: Actor = bot) =>
+      s.bulk(actor, { mode: 'preview', team_id: teamId, request_key: key, bots: [{ ...worker, conversation_id }] });
+    expect(() => previewOf('elsewhere', 'k1', human)).toThrow('already belongs');
+    expect(() => previewOf('nora', 'k2')).toThrow('already belongs');
+    expect(() => previewOf('worker', 'k3')).toThrow('delegated allowlist');
+    expect(() => previewOf('foreign-worker', 'k4', human)).toThrow('Foreign');
+    const pdAssistant = db.prepare("SELECT id FROM assistants WHERE slug='platform-dev'").get() as { id: number };
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,model,effort,business_team_id) VALUES('pd',?,1,'pd','claude','native-pd','team','m','medium',?)").run(pdAssistant.id, teamId);
+    s.manage(human, { action: 'delegate', team_id: teamId, conversation_id: 'henry', allowed_ids: ['henry', 'grant', 'nora', 'pd'] });
+    expect(() => previewOf('pd', 'k5')).toThrow('operational');
+    expect(db.prepare('SELECT count(*) n FROM business_bot_members').get()).toEqual({ n: 3 });
+  });
+
+  it('invalidates a same-team preview when the chat becomes a member before apply', () => {
+    apply(preview().preview_id);
+    addChat('worker', teamId);
+    s.manage(human, { action: 'delegate', team_id: teamId, conversation_id: 'henry', allowed_ids: ['henry', 'grant', 'nora', 'worker'] });
+    const p = previewWorker('race');
+    // Membership lands between preview and apply (another actor enrolled it): fingerprint no longer matches.
+    db.prepare("INSERT INTO business_bot_members(conversation_id,team_id,role,subteam,reports_to,prior_registration_json) VALUES('worker',?, 'bot','CS','grant',NULL)").run(teamId);
+    expect(() => s.bulk(bot, { mode: 'apply', team_id: teamId, preview_id: p.preview_id })).toThrow('already belongs');
+    expect(db.prepare("SELECT count(*) n FROM bot_registrations WHERE conversation_id='worker'").get()).toEqual({ n: 0 });
+  });
+});

@@ -126,8 +126,11 @@ export function createTeamService(db: Database.Database) {
       };
       if (c.archived || c.channel !== 'web' || a.slug === 'platform-dev')
         throw new BotError(409, 'Only active operational native chats may enroll');
+      // A chat an agent created inside this business inherits its business id
+      // before enrollment (routes/api.ts handoff/child creation), so a same-team
+      // id alone is not membership. Membership rows and other businesses still are.
       if (
-        c.business_team_id ||
+        (c.business_team_id && c.business_team_id !== t.id) ||
         db.prepare('SELECT 1 FROM business_bot_members WHERE conversation_id=?').get(c.id)
       )
         throw new BotError(409, 'Chat already belongs to a business');
