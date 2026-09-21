@@ -6,6 +6,7 @@ import { BotConversationRail } from '@/components/BotConversationRail';
 import { BotActions, BOT_PREFERENCES_CHANGED } from '@/components/BotActions';
 import { BotAvatar, BotName, BotPresence, BotWorkingIndicator } from '@/components/BotIdentity';
 import { BotOrderLink } from '@/components/BotOrderLink';
+import { BotCaseTimeline } from '@/components/BotCaseTimeline';
 import { BotProposalSummary } from '@/components/BotProposalSummary';
 import { BotComposer } from '@/components/BotComposer';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -709,6 +710,7 @@ export function Bots({
                     {d.state === 'needs_input' ? 'Approval still needed · Approve here or explicitly approve during a call.' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
+                  <div className="mt-5"><BotCaseTimeline entries={d.proposal.case_timeline} /></div>
                   <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} showIdentifiers /></div>
                   <dl className="mt-4 grid gap-3 text-sm">
                     <div>

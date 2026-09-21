@@ -1,4 +1,13 @@
 import { requestJson } from './api';
+export interface CaseTimelineEntry {
+  when: string | null;
+  actor: string;
+  bot?: string | null;
+  channel?: string | null;
+  kind: 'event' | 'request' | 'promise' | 'proposal';
+  summary: string;
+  source: string;
+}
 export interface BotProposal {
   question: string;
   recommendation: string;
@@ -9,6 +18,7 @@ export interface BotProposal {
   evidence: { label: string; conversation_id: string }[];
   blocked_action: string;
   blocks_scope: 'task' | 'workload';
+  case_timeline?: CaseTimelineEntry[];
   shopify_order?: { number: string; url: string } | null;
 }
 export interface BotDecision {

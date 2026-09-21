@@ -24,6 +24,17 @@ const proposal = {
     evidence,
     blocked_action: { type: 'string', description: 'Complete action, execution requirements and approval conditions. Put internal protocol here, not in the human-facing fields. If proposing an exact customer message, append EXACT DRAFT: followed by the complete verbatim message at the end. Nothing after the draft except the draft itself; the UI displays it separately.' },
     blocks_scope: { type: 'string', enum: ['task', 'workload'] },
+    case_timeline: { type: 'array', maxItems: 12,
+      description: 'Include 3–8 short case-history highlights when supported by the evidence, oldest first. Cover initial contact, email/SMS or related tickets, replies, refund requests, commitments and verified outcomes. One event per bullet. Never turn a request, promise or proposed action into a completed action. Preserve amounts, uncertainty and the exact known date precision. Do not invent a year, time, actor or bot. This is customer history, not card creation/audit history. Omit if history is unavailable; do not revise a live proposal solely to add presentation data.',
+      items: { type: 'object', additionalProperties: false, properties: {
+        when: { type: ['string', 'null'], description: 'Evidence-supported date/time label, e.g. Sep 21, 2026 or Aug 24 (year unknown). Include timezone if time is known. Null if date is unknown.' },
+        actor: { type: 'string', description: 'Who performed or reported this event: customer name, teammate or bot. Use Unknown if the source does not identify them.' },
+        bot: { type: ['string', 'null'], description: 'Bot that actually handled this event, only if supported; otherwise null. Do not attribute every past event to the current card owner.' },
+        channel: { type: ['string', 'null'], description: 'Email, SMS, phone or other channel when known.' },
+        kind: { type: 'string', enum: ['event', 'request', 'promise', 'proposal'] },
+        summary: { type: 'string', description: 'One brief plain-English factual highlight. Distinguish customer reports from independently verified facts.' },
+        source: { type: 'string', description: 'Traceable source: message/ticket reference, conversation reference, or precise evidence citation. Required for each highlight.' },
+      }, required: ['when', 'actor', 'kind', 'summary', 'source'] } },
     shopify_order: { type: 'object', description: 'For Shopify cases include the verified merchant order number and direct Shopify admin order URL. Do not substitute a case ID or invent an order ID.', properties: { number: str, url: str }, required: ['number', 'url'], additionalProperties: false },
   },
   required: [

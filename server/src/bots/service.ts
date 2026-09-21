@@ -10,6 +10,15 @@ const text = z.string().trim().min(1).max(12000);
 export const evidenceSchema = z
   .object({ label: text, conversation_id: z.string().min(1) })
   .strict();
+export const caseTimelineEntrySchema = z.object({
+  when: z.string().trim().min(1).max(100).nullable(),
+  actor: z.string().trim().min(1).max(160),
+  bot: z.string().trim().min(1).max(120).nullable().optional(),
+  channel: z.string().trim().min(1).max(80).nullable().optional(),
+  kind: z.enum(['event', 'request', 'promise', 'proposal']),
+  summary: z.string().trim().min(1).max(400),
+  source: z.string().trim().min(1).max(600),
+}).strict();
 export const proposalSchema = z
   .object({
     question: text,
@@ -22,6 +31,7 @@ export const proposalSchema = z
     blocked_action: text,
     blocks_scope: z.enum(['task', 'workload']).default('task'),
     shopify_order: shopifyOrderSchema.nullable().optional(),
+    case_timeline: z.array(caseTimelineEntrySchema).max(12).optional(),
   })
   .strict();
 /**
