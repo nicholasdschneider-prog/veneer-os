@@ -29,6 +29,7 @@ import {
 } from '@/lib/bots';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 const field =
   'w-full rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring';
 const COLLAPSED_KEY = 'veneer:bots-collapsed';
@@ -40,6 +41,7 @@ function SectionToggle({
   icon,
   open,
   onToggle,
+  className,
 }: {
   id: string;
   title: string;
@@ -47,13 +49,14 @@ function SectionToggle({
   icon?: ReactNode;
   open: boolean;
   onToggle: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="mb-3 flex min-h-10 w-full items-center gap-2 text-left"
+      className={cn('mb-3 flex min-h-10 w-full items-center gap-2 text-left', className)}
     >
       {icon}
       <h2 id={id} className="text-lg font-semibold">
@@ -255,6 +258,11 @@ export function Bots({
       ...body,
     });
   const needs = decisions.filter((d) => decisionSection(d) === 'input');
+  // Wide screens with nothing open show the three groups side by side so all
+  // of them scroll together; each column keeps its own heading pinned.
+  const wide = useMediaQuery('(min-width: 1024px)');
+  const columns = wide && !decisionId;
+  const stickyHeader = columns ? 'sticky top-0 z-10 -mx-1 w-auto bg-background px-1 pt-1 pb-2' : undefined;
   const sections = [
     ['execution', 'Following through'],
     ['attention', 'Needs attention'],
@@ -437,57 +445,118 @@ export function Bots({
           )}
         >
           <div className={cn('min-w-0', decisionId && 'hidden lg:block')}>
-            <section aria-labelledby="raised-hands">
-              <SectionToggle
-                id="raised-hands"
-                title="Needs your input"
-                count={needs.length}
-                icon={<Hand className="size-5 text-amber-600 dark:text-amber-300" />}
-                open={!collapsed.input}
-                onToggle={() => toggleSection('input')}
-              />
-              {collapsed.input ? null : loading ? (
-                <p className="py-8 text-muted-foreground">Loading your team…</p>
-              ) : needs.length === 0 ? (
-                <div className="rounded-2xl border border-dashed p-6">
-                  <Check className="mb-2 size-5 text-muted-foreground" />
-                  <p className="font-medium">No questions waiting here</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Questions stay here until someone gives an explicit answer.
-                  </p>
-                </div>
-              ) : (
-                <div
-                  className={cn('grid gap-3', !decisionId && 'md:grid-cols-2')}
-                >
-                  {needs.map((item) => (
-                    <DecisionCard
-                      key={item.id}
-                      d={item}
-                      onOpen={() => onNavigate('#/bots/' + item.id)}
-                      onCall={canCall ? () => liveVoice.open(item.conversation_id, item.id) : undefined}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-            {sections.map(([key, title]) => {
-              const items = decisions.filter(item => decisionSection(item) === key);
-              if (!items.length && key !== 'history') return null;
-              return (
-                <section key={key} className="mt-7" aria-label={title}>
-                  <SectionToggle id={`section-${key}`} title={title} count={items.length} open={!collapsed[key]} onToggle={() => toggleSection(key)} />
-                  {collapsed[key] ? null : (
-                    <>
-                      {key === 'history' && <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>}
-                      <div className="grid gap-3">
-                        {items.map(item => <DecisionCard key={item.id} d={item} onOpen={() => onNavigate('#/bots/' + item.id)} onCall={canCall ? () => liveVoice.open(item.conversation_id, item.id) : undefined} />)}
-                      </div>
-                    </>
+            {(() => {
+              const byKey = (key: string) => decisions.filter((item) => decisionSection(item) === key);
+              const card = (item: BotDecision) => (
+                <DecisionCard
+                  key={item.id}
+                  d={item}
+                  onOpen={() => onNavigate('#/bots/' + item.id)}
+                  onCall={canCall ? () => liveVoice.open(item.conversation_id, item.id) : undefined}
+                />
+              );
+              const inputSection = (
+                <section aria-labelledby="raised-hands" className="min-w-0">
+                  <SectionToggle
+                    id="raised-hands"
+                    title="Needs your input"
+                    count={needs.length}
+                    icon={<Hand className="size-5 text-amber-600 dark:text-amber-300" />}
+                    open={!collapsed.input}
+                    onToggle={() => toggleSection('input')}
+                    className={stickyHeader}
+                  />
+                  {collapsed.input ? null : loading ? (
+                    <p className="py-8 text-muted-foreground">Loading your team…</p>
+                  ) : needs.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed p-6">
+                      <Check className="mb-2 size-5 text-muted-foreground" />
+                      <p className="font-medium">No questions waiting here</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Questions stay here until someone gives an explicit answer.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className={cn('grid gap-3', !decisionId && !columns && 'md:grid-cols-2')}>
+                      {needs.map(card)}
+                    </div>
                   )}
                 </section>
               );
-            })}
+              const historyNote = (
+                <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>
+              );
+              if (!columns) {
+                return (
+                  <>
+                    {inputSection}
+                    {sections.map(([key, title]) => {
+                      const items = byKey(key);
+                      if (!items.length && key !== 'history') return null;
+                      return (
+                        <section key={key} className="mt-7" aria-label={title}>
+                          <SectionToggle id={`section-${key}`} title={title} count={items.length} open={!collapsed[key]} onToggle={() => toggleSection(key)} />
+                          {collapsed[key] ? null : (
+                            <>
+                              {key === 'history' && historyNote}
+                              <div className="grid gap-3">{items.map(card)}</div>
+                            </>
+                          )}
+                        </section>
+                      );
+                    })}
+                  </>
+                );
+              }
+              // Three columns: questions · attention (with follow-through and
+              // deferred beneath) · history. Empty groups still show so the
+              // headings stay in the same place from visit to visit.
+              const attention = byKey('attention');
+              const execution = byKey('execution');
+              const deferred = byKey('deferred');
+              const history = byKey('history');
+              const middleCount = attention.length + execution.length + deferred.length;
+              const subgroup = (title: string, items: BotDecision[]) =>
+                items.length ? (
+                  <div key={title}>
+                    <h3 className="sticky top-12 z-10 -mx-1 bg-background px-1 py-2 text-sm font-medium text-muted-foreground">
+                      {title} <span className="ml-1 text-xs">{items.length}</span>
+                    </h3>
+                    <div className="grid gap-3">{items.map(card)}</div>
+                  </div>
+                ) : null;
+              const empty = (text: string) => (
+                <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">{text}</p>
+              );
+              return (
+                <div className="grid grid-cols-3 items-start gap-5">
+                  {inputSection}
+                  <section aria-label="Needs attention" className="min-w-0">
+                    <SectionToggle id="section-attention" title="Needs attention" count={middleCount} open={!collapsed.attention} onToggle={() => toggleSection('attention')} className={stickyHeader} />
+                    {collapsed.attention ? null : middleCount === 0 ? (
+                      empty('Nothing needs attention right now.')
+                    ) : (
+                      <div className="grid gap-5">
+                        {attention.length > 0 && <div className="grid gap-3">{attention.map(card)}</div>}
+                        {subgroup('Following through', execution)}
+                        {subgroup('Deferred', deferred)}
+                      </div>
+                    )}
+                  </section>
+                  <section aria-label="Completed / History" className="min-w-0">
+                    <SectionToggle id="section-history" title="Completed / History" count={history.length} open={!collapsed.history} onToggle={() => toggleSection('history')} className={stickyHeader} />
+                    {collapsed.history ? null : history.length === 0 ? (
+                      empty('Completed work will collect here.')
+                    ) : (
+                      <>
+                        {historyNote}
+                        <div className="grid gap-3">{history.map(card)}</div>
+                      </>
+                    )}
+                  </section>
+                </div>
+              );
+            })()}
             <section className="mt-8" aria-labelledby="bot-roster">
               <SectionToggle id="bot-roster" title="Your bots" count={bots.length} open={!collapsed.bots} onToggle={() => toggleSection('bots')} />
               {collapsed.bots ? null : (
