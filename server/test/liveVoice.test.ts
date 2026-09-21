@@ -60,6 +60,21 @@ describe('Henry voice workspace', () => {
     await expect(workspace.readChat('other')).rejects.toThrow('not found');
     expect(new VoiceWorkspace(ctx, 2).blockers()).toEqual([]);
   });
+  it('pages older visible context and reports clipping without leaking hidden events', async () => {
+    ctx.manager.snapshot = async () => [
+      ...Array.from({length:30}, (_,i) => ({type:'text_final' as const,turnId:`t${i}`,markdown:`Result ${i}`,at:new Date().toISOString()})),
+      {type:'text_final' as const,turnId:'long',markdown:'a'.repeat(4500)+'FINAL RECEIPT',at:new Date().toISOString()},
+    ];
+    const latest = await workspace.readChat('own');
+    expect(latest.coverage).toEqual({totalMessages:31,returnedMessages:24,olderBefore:7,clippedMessages:1});
+    expect(latest.messages.at(-1)?.text).toContain('FINAL RECEIPT');
+    expect(latest.messages.at(-1)?.text).toContain('omitted');
+    const older = await workspace.readChat('own',latest.coverage.olderBefore!);
+    expect(older.coverage.olderBefore).toBeNull();
+    expect(older.messages.map(m=>m.text)).toEqual(Array.from({length:7},(_,i)=>`Result ${i}`));
+    await expect(workspace.readChat('own',-1)).rejects.toThrow('cursor');
+    await expect(new VoiceWorkspace(ctx,2).readChat('own',7)).rejects.toThrow();
+  });
   it('validates answers in the real runner, saves the decision and releases the waiting question', async () => {
     expect(runtime.statusOf('own')).toBe('needs_you');
     await expect(workspace.answer('call1', { requestId, answers: { q1: ['bogus'] } })).rejects.toThrow('valid answers');

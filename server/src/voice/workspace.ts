@@ -102,15 +102,31 @@ export class VoiceWorkspace {
     return row;
   }
 
-  async readChat(conversationId: string) {
+  async readChat(conversationId: string, beforeMessage?: number) {
     const row = this.visibleChat(conversationId);
+    if (beforeMessage !== undefined && (!Number.isSafeInteger(beforeMessage) || beforeMessage < 0)) throw new Error('Invalid history cursor.');
     const events = await this.ctx.manager.snapshot(row.id);
-    const messages = events.flatMap(event => {
-      if (event.type === 'turn_started') return [{ role: 'user', text: clip(event.text ?? '', 2000) }];
-      if (event.type === 'text_final') return [{ role: 'assistant', text: clip(event.markdown, 2000) }];
+    // Recheck after the runner read in case access changed while it was pending.
+    this.visibleChat(conversationId);
+    const all = events.flatMap(event => {
+      if (event.type === 'turn_started') return [{ role: 'user', text: sanitizeMemoryText(event.text ?? '') }];
+      if (event.type === 'text_final') return [{ role: 'assistant', text: sanitizeMemoryText(event.markdown) }];
       return [];
-    }).filter(m => m.text).slice(-12);
-    return { conversationId, title: row.title, status: await this.ctx.manager.statusOf(row.id), messages };
+    }).filter(m => m.text);
+    const end = Math.min(beforeMessage ?? all.length, all.length);
+    let start = end;
+    let chars = 0;
+    while (start > 0 && end - start < 24) {
+      const size = Math.min(all[start - 1]!.text.length, 4000);
+      if (chars + size > 36000) break;
+      chars += size; start--;
+    }
+    const page = all.slice(start, end);
+    const messages = page.map(m => ({ ...m, text: m.text.length <= 4000 ? m.text :
+      m.text.slice(0, 3100) + '\n[Middle of message omitted]\n' + m.text.slice(-800) }));
+    return { conversationId, title: row.title, status: await this.ctx.manager.statusOf(row.id), messages,
+      coverage: { totalMessages: all.length, returnedMessages: messages.length,
+        olderBefore: start > 0 ? start : null, clippedMessages: page.filter(m => m.text.length > 4000).length } };
   }
 
   /** Number of bot replies so far; the call loop uses it to notice a new reply. */

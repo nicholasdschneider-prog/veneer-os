@@ -24,8 +24,10 @@ migrate(db, path.resolve('server/src/db/migrations'));
 db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'voice-smoke@example.invalid','Voice smoke','member')").run();
 db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('voice-smoke',1,1,'Voice verification fixture','codex','voice-smoke')").run();
 const conversation = db.prepare("SELECT * FROM conversations WHERE id='voice-smoke'").get();
+const recap = process.argv.includes('--recap');
 const events = [];
 const reference = String(randomInt(100000, 999999));
+if (recap) events.push({type:'text_final',turnId:'prior-work',markdown:`Completed the onboarding checklist export. Delivery reference ${reference}. The export is saved and ready for staff.`,at:new Date().toISOString()});
 let dispatches = 0;
 const manager = createConversationManager({ db, adapters: { codex: {
   id: 'codex', mintSessionId: () => 'voice-smoke', readTranscript: async () => events,
@@ -58,7 +60,7 @@ room.on(RoomEvent.TrackSubscribed, track => {
 });
 try {
   const wav = path.join(directory, 'instruction.wav');
-  execFileSync('/usr/bin/say', ['-o', wav, '--file-format=WAVE', '--data-format=LEI16@24000', 'Please ask the agent to run the verification and tell me the reference number it returns. Send that instruction now.'], { stdio: 'ignore' });
+  execFileSync('/usr/bin/say', ['-o', wav, '--file-format=WAVE', '--data-format=LEI16@24000', recap ? 'Give me the TLDR on what you already completed in this thread, including the delivery reference number. Do not start any new work.' : 'Please ask the agent to run the verification and tell me the reference number it returns. Send that instruction now.'], { stdio: 'ignore' });
   const buffer = readFileSync(wav);
   let pcm;
   for (let offset = 12; offset + 8 <= buffer.length;) {
@@ -88,12 +90,13 @@ try {
   while (Date.now() < deadline) {
     workingDuringCall ||= dispatches > 0 && manager.statusOf(conversation.id) === 'working' && service.status(1)?.state !== 'failed';
     const rows = db.prepare('SELECT role,text FROM voice_entries').all();
-    const relayedResult = rows.some(row => row.role === 'assistant' && row.text.includes(reference));
-    if (workingDuringCall && events.length && relayedResult) { success = true; break; }
+    const lastUser = rows.findLastIndex(row => row.role === 'user');
+    const relayedResult = lastUser >= 0 && rows.slice(lastUser + 1).some(row => row.role === 'assistant' && row.text.includes(reference));
+    if ((recap ? dispatches === 0 : workingDuringCall && events.length) && relayedResult && rows.some(row => row.role === 'user')) { success = true; break; }
     if (service.status(1)?.state === 'failed') break;
     await delay(500);
   }
-  console.log(JSON.stringify({ passed: success, receivedAudio: samples > 0, transcribedSpeech: db.prepare("SELECT count(*) AS n FROM voice_entries WHERE role='user'").get().n > 0, dispatches, workingDuringCall, fixtureCompleted: events.length > 0 }));
+  console.log(JSON.stringify({ passed: success, mode: recap ? 'startup-recap' : 'dispatch', receivedAudio: samples > 0, transcribedSpeech: db.prepare("SELECT count(*) AS n FROM voice_entries WHERE role='user'").get().n > 0, dispatches, workingDuringCall, fixtureCompleted: events.length > 0 }));
 } catch {
   console.log(JSON.stringify({ passed: false, error: 'Live media smoke failed. Check service configuration, credit, connectivity, and worker status. No credentials or provider diagnostics are printed.' }));
 } finally {

@@ -6,6 +6,14 @@ Explicit spoken instructions use the real runner's message-steering path. An act
 
 The runner's delivery disposition distinguishes queued, running, steered, and delivered messages. These are delivery states, not proof of task completion. The voice service watches visible replies, status changes, structured questions, and bot decisions. Each notification includes fresh visible agent messages and current status, so the voice can report from new evidence rather than reuse an earlier tool response. Notifications wait while the user is speaking, including when they arrive during another response. It relays actual results and questions during the call. Approval prompts still require the existing approval UI; voice does not grant tool permissions or handle secrets.
 
+## Thread context at call startup
+
+A pinned call now loads the authorized thread's actual messages before creating the room or starting the voice worker. An unavailable thread fails with a context-loading error rather than opening a contextless call. The greeting and recap instructions use that supplied context; empty question or decision lists do not imply an empty conversation or no completed work. Current thread evidence takes precedence over potentially mistaken earlier voice replies.
+
+Context includes up to 24 recent visible user/assistant messages, with a 36,000-character page budget. Long messages retain their beginning and ending within a 4,000-character limit. Coverage reports omitted older messages and clipped messages. The voice can retrieve older pages using `read_chat.beforeMessage` and the returned `coverage.olderBefore` cursor. Hidden reasoning and tool output remain excluded, and permissions are checked again after the runner snapshot returns.
+
+The reported call was pinned to the correct thread. Its saved voice transcript incorrectly described a clean slate, while the runner retained the conversation and deployment summary. The corrected context reader was checked against that real thread and includes the deployed voice feature summary.
+
 ## Access and persistence
 
 Directly signed-in staff can call conversations they can access. Private conversations, business membership, and viewer restrictions use the same checks as ordinary chat. Structured question answers use the existing conversation-management permission; bot decisions still require the assigned approver and current proposal version. Agent bearer tokens cannot open human voice calls. The older unscoped Henry coordinator remains limited to owner/consultant sessions and their accessible owned chats.
@@ -42,7 +50,7 @@ All four names were present during this build. The implementation uses the exist
 
 ## Verification
 
-Repository typecheck and production build passed. The full suite passed: 2,041 server tests (5 skipped), 825 web tests, 21 installer tests, and 40 browser-manager tests.
+Repository typecheck and production build passed. The full suite passed: 2,044 server tests (5 skipped), 825 web tests, 21 installer tests, and 40 browser-manager tests.
 
 Automated coverage includes real runner question resolution, ordinary-thread dispatch receipts, uncertain-delivery deduplication, staff/private/business access, transcript isolation, access revocation, source-thread pinning in worker dispatch, active-call preservation during work, actual reply notifications, and room cleanup. The browser panel was inspected at 390 × 844 and 1440 × 1000, including navigation pinning and an actionable missing-microphone error.
 
@@ -50,7 +58,10 @@ The opt-in smoke check sends synthesized PCM speech through real LiveKit/OpenAI 
 
 ```sh
 NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live
+NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live --recap
 ```
+
+The `--recap` check seeds completed work with an unpredictable delivery reference before the call begins, with no pending questions or decisions. It asks for a recap through real spoken audio and requires the reference in the assistant’s response after that question, with zero new task dispatches.
 
 Physical iPhone/AirPods testing remains required: two-way audio quality, barge-in, mute, standby/resume, Bluetooth route changes, lock-screen recovery, and a staff member's real agent workflow. A successful automated fixture does not establish those device or customer-service outcomes.
 

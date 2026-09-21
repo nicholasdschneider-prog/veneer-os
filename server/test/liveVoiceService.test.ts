@@ -50,6 +50,29 @@ describe('live voice lifecycle', () => {
     service.end(1,call.id); expect(child.kill).toHaveBeenCalledWith('SIGTERM');
     expect(fakes.deleteRoom).toHaveBeenCalled(); expect(service.status(1)).toBeNull();
   });
+  it('loads existing work before starting audio, even without blockers or decisions', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Live voice work','codex','s1')").run();
+    db.prepare("INSERT INTO voice_entries(user_id,session_id,role,text,bot_conversation_id) VALUES(1,'old','assistant','We have a clean slate.','thread')").run();
+    let resolveSnapshot!: (value: unknown[]) => void;
+    manager.snapshot.mockReturnValue(new Promise(resolve => { resolveSnapshot = resolve; }));
+    const starting = service.start(1,{botConversationId:'thread'});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fakes.createRoom).not.toHaveBeenCalled();
+    resolveSnapshot([{type:'text_final',turnId:'old-work',markdown:'Deployed floating voice panels. Reference 913824.'}]);
+    await starting;
+    const start = child.send.mock.calls.map(args => args[0]).find(m => m.type === 'start');
+    const context = JSON.parse(start.instructions.slice(start.instructions.indexOf('{"history":')));
+    expect(context).toMatchObject({blockers:[],decisions:[],currentConversation:{conversationId:'thread',status:'idle',messages:[{role:'assistant',text:'Deployed floating voice panels. Reference 913824.'}]}});
+    expect(start.instructions).toContain('current thread evidence takes precedence');
+    expect(manager.steerMessage).not.toHaveBeenCalled();
+  });
+  it('does not open a contextless call when the thread cannot be loaded', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();
+    manager.snapshot.mockRejectedValue(new Error('Runner unavailable'));
+    await expect(service.start(1,{botConversationId:'thread'})).rejects.toThrow('Could not load the conversation context');
+    expect(fakes.createRoom).not.toHaveBeenCalled();
+    expect(fakes.fork).not.toHaveBeenCalled();
+  });
   it('keeps a normal thread call alive through task dispatch and reports real replies', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();
     const call = await service.start(1,{botConversationId:'thread'});

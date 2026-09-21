@@ -31,7 +31,7 @@ You can read chats and answer structured pending questions, but cannot independe
 function botInstructions(bot: { name: string; role: string | null; subteam: string | null; team: string | null }, decisionId: string | null) {
   const title = [bot.role, bot.subteam, bot.team].filter(Boolean).join(', ');
   return `You are the voice line for ${bot.name}${title ? ` (${title})` : ''}, the agent in the pinned conversation. Introduce yourself as ${bot.name}.
-The real work happens in ${bot.name}'s own chat; you speak for it from that chat's actual messages, its open decisions, and its pending questions. Start by reading read_chat and list_decisions so you know the current state before speaking to it.
+The real work happens in ${bot.name}'s own chat; you speak for it from that chat's actual messages, its open decisions, and its pending questions. Fresh currentConversation messages and status are provided below before this call starts. Use them immediately for greetings and recaps. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done or a clean slate. Summarize completed work from the actual messages when asked what you did. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fresh updates use read_chat. Its coverage describes a bounded window: if older history is needed, call read_chat with beforeMessage=coverage.olderBefore. If messages are clipped or missing, acknowledge the limit instead of inventing details.
 Do not dispatch thinking aloud, hypothetical examples, or ambiguous intentions. Ask a short clarifying question first. Only use send_message for an explicit instruction or a request to relay a message. Keep the same instructionId when retrying. The dispatch disposition is authoritative: queued means waiting, running means started, steered means forwarded into the active turn; none means completed. Completion or failure must come from actual agent results. Tool approval policies still apply in the underlying chat.
 When the user wants ${bot.name} to do something or wants to tell it something, use send_message to relay it in the user's words; ${bot.name} then replies in its chat. When you are told a reply arrived, read it with read_chat and summarize it aloud.
 For decisions: read_decision gives the full proposal and discussion. discuss_decision posts a message into that decision's thread (it wakes the bot but approves nothing). answer_decision records approve, reject, defer or withdraw only after the user explicitly states that decision; repeat their decision back first. Use the exact decisionId and version from list_decisions.
@@ -124,7 +124,12 @@ export class LiveVoiceService {
           catch { setupError = 'That decision is not available on this call.'; throw new Error(setupError); }
         }
       }
-      const context = !bot && options.contextConversationId ? await workspace.readChat(options.contextConversationId) : null;
+      let context: Awaited<ReturnType<VoiceWorkspace['readChat']>> | null = null;
+      const contextId = bot?.conversationId ?? options.contextConversationId;
+      if (contextId) {
+        try { context = await workspace.readChat(contextId); }
+        catch { setupError = 'Could not load the conversation context. Reopen the chat and try again.'; throw new Error(setupError); }
+      }
       const participantIdentity = `user-${userId}`;
       client = new RoomServiceClient(url.replace(/^wss:/, 'https:'), get('LIVEKIT_API_KEY'), get('LIVEKIT_API_SECRET'));
       await client.createRoom({ name: room, emptyTimeout: 60, departureTimeout: 20, maxParticipants: 2 });
@@ -165,7 +170,7 @@ export class LiveVoiceService {
             switch (message.name) {
               case 'blockers': return workspace.blockers();
               case 'chats': return bot ? { error: 'Only this bot’s chat is available on this call.' } : workspace.chats();
-              case 'read_chat': return workspace.readChat(bot ? bot.conversationId : String(args.conversationId));
+              case 'read_chat': return workspace.readChat(bot ? bot.conversationId : String(args.conversationId), typeof args.beforeMessage === 'number' ? args.beforeMessage : undefined);
               case 'answer': return workspace.answer(call.id, args);
               case 'send_message': return workspace.sendMessage(String(args.text ?? ''), String(args.instructionId ?? ''));
               case 'decisions': return workspace.decisions();
@@ -184,7 +189,7 @@ export class LiveVoiceService {
       child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), participantIdentity,
         mode: bot ? 'bot' : 'coordinator', agentName: bot?.name ?? 'Henry',
         instructions: (bot ? botInstructions(bot, options.decisionId ?? null) : HENRY_INSTRUCTIONS)
-          + JSON.stringify(bot ? { history, focusedDecision: focus } : { history, selectedChat: context }) });
+          + JSON.stringify({ history, currentConversation: context, blockers: workspace.blockers(), decisions: bot ? workspace.decisions() : [], focusedDecision: focus }) });
       return { id: call.id, url, token: browserToken, expiresAt: call.expiresAt };
     } catch (error) {
       this.end(userId);
