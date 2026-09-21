@@ -264,6 +264,35 @@ approval flags above:
   `npm run restart` warns when it sees that; fix it by quitting the app and
   reopening it from the Dock or Finder.
 
+## Codex paginated fork preparation failure (0.153.4, observed 2026-09-21)
+
+- `thread/fork` can fail with `failed to prepare paginated fork: thread-store
+  internal error: thread history projection for <thread> expected ordinal N,
+  got N-1` when the rollout contains a duplicated ordinal (the app-server wrote
+  two lines with the same ordinal at a turn boundary). Codex's
+  `thread_history_1.sqlite` projection freezes at that byte offset while the
+  rollout keeps growing; `thread/resume` reads the rollout directly and keeps
+  working. `codex migrate-rollouts --thread <id> --json` reports
+  `already_paginated` and offers no repair. Deterministic: retrying the fork
+  fails identically.
+- Veneer forks a thread once when the durable developer-instruction hash
+  changes (`refreshDeveloperInstructions`). Only that classified preparation
+  failure falls back to `thread/resume` on the same native id, sending the
+  current `developerInstructions` on the resume request, then starting exactly
+  one turn with the unchanged user prompt. Any other fork error still
+  propagates; a rejected or unanswered resume starts no turn and leaves the
+  refresh pending.
+- What the app-server does **not** expose (verified with an isolated
+  `CODEX_HOME`): `instructionSources` on start/resume/fork responses is `[]`
+  even when `developerInstructions` was supplied; `thread/read` returns thread
+  metadata only, no settings; `thread/settings/update {developerInstructions}`
+  returns `{}` and emits no `thread/settings/updated`; the rollout records the
+  start-time developer message once and nothing for resume- or fork-time
+  instructions. A successful resume (or fork) response is therefore API
+  acceptance, not verified model adoption, and Veneer records it as such.
+- `thread/close` is not a 0.153.4 method (`-32600 unknown variant`); the
+  writer-lock release above relies on that call being rejected harmlessly.
+
 ## Not verified here (deferred, per spec §16)
 
 - LONG_LIVED strategy (multiple user messages over one process's stdin).

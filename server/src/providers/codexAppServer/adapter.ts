@@ -50,6 +50,10 @@ const MODELS_CACHE_TTL_MS = 5 * 60_000;
 const threadOwners = new Map<string, AppServerClient>();
 const liveClients = new Set<AppServerClient>();
 const WRITER_LOCKED_RE = /already has an active writer/i;
+// Codex 0.153.x `thread/fork` prepares a paginated copy of the thread-store
+// projection first; a rollout with a duplicated ordinal freezes that projection
+// ("expected ordinal N, got N-1") even though `thread/resume` keeps working.
+const PAGINATED_FORK_PREPARATION_RE = /failed to prepare paginated fork/i;
 const THREAD_CLOSE_TIMEOUT_MS = 5_000;
 
 /** Ask `holders` to unload `threadId`; failures are expected (not loaded there) and ignored. */
@@ -74,6 +78,9 @@ async function releaseThreadEverywhere(threadId: string, client: AppServerClient
 
 function isWriterLocked(err: unknown): boolean {
   return WRITER_LOCKED_RE.test((err as Error)?.message ?? '');
+}
+function isPaginatedForkPreparationFailure(err: unknown): boolean {
+  return PAGINATED_FORK_PREPARATION_RE.test((err as Error)?.message ?? '');
 }
 const CODEX_BROWSER_TOOL_NAME = 'agent_browser';
 const desktopUrl = sharedDesktopUrl();
@@ -1354,6 +1361,20 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           onSessionId?.(res.thread.id);
           return res.thread.id;
         };
+        const resume = async (): Promise<string> => {
+          const res = (await client.request('thread/resume', {
+            threadId: spec.nativeSessionId,
+            sandbox,
+            approvalPolicy,
+            config,
+            developerInstructions: spec.developerInstructions ?? undefined,
+            // Accepted by current app-server builds even though older schema
+            // snapshots omitted it; refreshes the host tool on resumed chats.
+            dynamicTools: [CODEX_BROWSER_TOOL],
+          })) as { thread?: { id: string } } | null;
+          if (!res || typeof res !== 'object') throw new Error('thread/resume returned no result');
+          return res.thread?.id ?? spec.nativeSessionId;
+        };
         if (spec.firstTurn) {
           const res = (await client.request('thread/start', {
             cwd: spec.cwd,
@@ -1373,21 +1394,38 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           // a new native id is returned, and the next turn cannot run with stale
           // or missing Core Veneer rules.
           await releaseThreadOwner(spec.nativeSessionId, client);
-          threadId = await fork();
+          try {
+            threadId = await fork();
+          } catch (err) {
+            // Only the classified pre-execution preparation failure (a frozen
+            // paginated projection) falls back; nothing has run yet, so there
+            // is no turn to replay. Every other fork error propagates as before.
+            if (!isPaginatedForkPreparationFailure(err)) throw err;
+            // Resume the same native thread and send the current developer
+            // instructions on the documented resume parameter. The app-server
+            // returns no readback of adopted instructions (see protocol-notes),
+            // so a successful resume response is API acceptance — the same
+            // standard the fork path already relies on — never verified model
+            // adoption. Any rejection propagates: no session id is reported (the
+            // pending refresh stays pending) and no turn is started.
+            try {
+              threadId = await resume();
+            } catch (resumeErr) {
+              if (!isWriterLocked(resumeErr)) throw resumeErr;
+              await releaseThreadEverywhere(spec.nativeSessionId, client);
+              // Still locked → propagate; never fork a second time here.
+              threadId = await resume();
+            }
+            log.warn(
+              `[codex] thread/fork could not prepare paginated history for ${spec.nativeSessionId}; resumed in place and sent the current developer instructions with the resume request (accepted by the API, adoption not independently verified)`,
+            );
+            onSessionId?.(threadId);
+            onEvent({
+              type: 'notice',
+              message: 'Codex could not fork this thread; Veneer resumed it in place and sent the current instructions with the resume request.',
+            });
+          }
         } else {
-          const resume = async (): Promise<string> => {
-            const res = (await client.request('thread/resume', {
-              threadId: spec.nativeSessionId,
-              sandbox,
-              approvalPolicy,
-              config,
-              developerInstructions: spec.developerInstructions ?? undefined,
-              // Accepted by current app-server builds even though older schema
-              // snapshots omitted it; refreshes the host tool on resumed chats.
-              dynamicTools: [CODEX_BROWSER_TOOL],
-            })) as { thread?: { id: string } };
-            return res.thread?.id ?? spec.nativeSessionId;
-          };
           // The process that last loaded this thread holds its writer lock
           // until it closes the thread (see threadOwners).
           await releaseThreadOwner(spec.nativeSessionId, client);

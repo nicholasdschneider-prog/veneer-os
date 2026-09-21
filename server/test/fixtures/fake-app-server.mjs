@@ -84,6 +84,13 @@ rl.on('line', (line) => {
       break;
     case 'thread/resume': {
       const threadId = m.params?.threadId ?? 't1';
+      if (process.env.RESUME_HANG === '1') break; // never resolves — test times out mid-start
+      // RESUME_ERROR_FILE is read per request (the child's env is fixed at
+      // spawn), so a test can clear the failure between activations.
+      if (process.env.RESUME_ERROR_FILE && fs.existsSync(process.env.RESUME_ERROR_FILE)) {
+        send({ id: m.id, error: { code: -32603, message: fs.readFileSync(process.env.RESUME_ERROR_FILE, 'utf8').trim() } });
+        break;
+      }
       if (process.env.COMPACT_MODE === 'stale') {
         send({ id: m.id, error: { code: -32602, message: 'thread not found' } });
       } else if (process.env.WRITER_LOCK_FILE && fs.existsSync(process.env.WRITER_LOCK_FILE)) {
@@ -99,6 +106,12 @@ rl.on('line', (line) => {
       send({ id: m.id, result: {} });
       break;
     case 'thread/fork':
+      // FORK_ERROR_MESSAGE models a fork the app-server cannot prepare (for
+      // example a frozen paginated projection); the thread itself stays usable.
+      if (process.env.FORK_ERROR_MESSAGE) {
+        send({ id: m.id, error: { code: -32603, message: process.env.FORK_ERROR_MESSAGE } });
+        break;
+      }
       send({ id: m.id, result: { thread: { id: 't-forked' }, instructionSources: [] } });
       break;
     case 'thread/compact/start': {

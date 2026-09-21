@@ -1178,3 +1178,165 @@ describe('Codex thread writer locks across app-server processes', () => {
     expect(events.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'completed' });
   });
 });
+
+describe('Codex paginated fork preparation failure (resume in place, option A)', () => {
+  // Real 0.153.4 signature from a rollout whose ordinal 587 was written twice:
+  // the thread-store projection froze at 588 while resume kept working.
+  const DUPLICATE_587_EXPECTED_588 =
+    'failed to prepare paginated fork: thread-store internal error: thread history projection for stale-thread expected ordinal 588, got 587';
+  const dirs: string[] = [];
+  afterEach(() => {
+    delete process.env.FORK_ERROR_MESSAGE;
+    delete process.env.RESUME_ERROR_FILE;
+    delete process.env.RESUME_HANG;
+    delete process.env.COMPLETE_TURNS;
+    delete process.env.REQUEST_LOG;
+    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+  });
+
+  function readRequests(requestLog: string): Array<{ method?: string; params?: Record<string, unknown> }> {
+    if (!fs.existsSync(requestLog)) return [];
+    return fs.readFileSync(requestLog, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  }
+
+  function setup(turnTimeoutMs = 5_000) {
+    const dir = tmpDir();
+    dirs.push(dir);
+    const requestLog = path.join(dir, 'requests.jsonl');
+    process.env.REQUEST_LOG = requestLog;
+    process.env.COMPLETE_TURNS = '1';
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs, transcriptsDir: dir, log: silent });
+    return { dir, requestLog, adapter };
+  }
+
+  it('resumes the same thread with the current instructions when fork preparation fails, then starts exactly one turn', async () => {
+    process.env.FORK_ERROR_MESSAGE = DUPLICATE_587_EXPECTED_588;
+    const { requestLog, adapter } = setup();
+    const events: ConversationEvent[] = [];
+    const nativeIds: string[] = [];
+    await adapter.runTurn(
+      turnSpec({ firstTurn: false, nativeSessionId: 'stale-thread', refreshDeveloperInstructions: true, prompt: 'current user turn' }),
+      (e) => events.push(e),
+      (id) => nativeIds.push(id),
+    ).done;
+
+    const requests = readRequests(requestLog);
+    const methods = requests.map((r) => r.method);
+    expect(methods.filter((m) => m === 'thread/fork')).toHaveLength(1);
+    expect(methods.filter((m) => m === 'thread/resume')).toHaveLength(1);
+    expect(methods.filter((m) => m === 'turn/start')).toHaveLength(1);
+    expect(methods.indexOf('thread/resume')).toBeGreaterThan(methods.indexOf('thread/fork'));
+    expect(methods.indexOf('turn/start')).toBeGreaterThan(methods.indexOf('thread/resume'));
+    const resume = requests.find((r) => r.method === 'thread/resume')?.params;
+    expect(resume?.threadId).toBe('stale-thread');
+    expect(resume?.developerInstructions).toBe(TEST_DEVELOPER_INSTRUCTIONS);
+    // Instructions travel on the resume request only; the user turn is untouched.
+    expect(requests.find((r) => r.method === 'turn/start')?.params).toMatchObject({
+      threadId: 'stale-thread',
+      input: [{ type: 'text', text: 'current user turn' }],
+    });
+    expect(nativeIds).toEqual(['stale-thread']);
+    expect(events.some((e) => e.type === 'notice' && /resumed it in place/.test(e.message))).toBe(true);
+    expect(events.some((e) => e.type === 'error')).toBe(false);
+    expect(events.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'completed' });
+  });
+
+  it('propagates unrelated fork errors without resuming or starting a turn', async () => {
+    process.env.FORK_ERROR_MESSAGE = 'thread stale-thread is archived';
+    const { requestLog, adapter } = setup();
+    const events: ConversationEvent[] = [];
+    const nativeIds: string[] = [];
+    await adapter.runTurn(
+      turnSpec({ firstTurn: false, nativeSessionId: 'stale-thread', refreshDeveloperInstructions: true }),
+      (e) => events.push(e),
+      (id) => nativeIds.push(id),
+    ).done;
+
+    const methods = readRequests(requestLog).map((r) => r.method);
+    expect(methods).toContain('thread/fork');
+    expect(methods).not.toContain('thread/resume');
+    expect(methods).not.toContain('turn/start');
+    expect(nativeIds).toEqual([]);
+    expect(events.some((e) => e.type === 'error' && /Could not start the assistant: thread stale-thread is archived/.test(e.message))).toBe(true);
+    expect(events.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'failed' });
+  });
+
+  it('keeps the refresh pending when the fallback resume is rejected, and retries the whole sequence next activation', async () => {
+    process.env.FORK_ERROR_MESSAGE = DUPLICATE_587_EXPECTED_588;
+    const { dir, requestLog, adapter } = setup();
+    const resumeErrorFile = path.join(dir, 'resume-error.txt');
+    fs.writeFileSync(resumeErrorFile, 'thread store unavailable');
+    process.env.RESUME_ERROR_FILE = resumeErrorFile;
+    const events: ConversationEvent[] = [];
+    const nativeIds: string[] = [];
+    await adapter.runTurn(
+      turnSpec({ firstTurn: false, nativeSessionId: 'stale-thread', refreshDeveloperInstructions: true }),
+      (e) => events.push(e),
+      (id) => nativeIds.push(id),
+    ).done;
+
+    let methods = readRequests(requestLog).map((r) => r.method);
+    expect(methods.filter((m) => m === 'thread/fork')).toHaveLength(1);
+    expect(methods.filter((m) => m === 'thread/resume')).toHaveLength(1);
+    expect(methods).not.toContain('turn/start');
+    expect(nativeIds).toEqual([]);
+    expect(events.some((e) => e.type === 'error' && /Could not start the assistant: thread store unavailable/.test(e.message))).toBe(true);
+    expect(events.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'failed' });
+
+    // The hash was never marked adopted, so the next activation refreshes again:
+    // fork → resume → one turn once the store answers.
+    fs.rmSync(resumeErrorFile);
+    const events2: ConversationEvent[] = [];
+    await adapter.runTurn(
+      turnSpec({ firstTurn: false, nativeSessionId: 'stale-thread', refreshDeveloperInstructions: true, turnId: 'turn-2' }),
+      (e) => events2.push(e),
+      (id) => nativeIds.push(id),
+    ).done;
+    methods = readRequests(requestLog).map((r) => r.method);
+    expect(methods.filter((m) => m === 'thread/fork')).toHaveLength(2);
+    expect(methods.filter((m) => m === 'thread/resume')).toHaveLength(2);
+    expect(methods.filter((m) => m === 'turn/start')).toHaveLength(1);
+    expect(nativeIds).toEqual(['stale-thread']);
+    expect(events2.at(-1)).toMatchObject({ type: 'turn_done', turnId: 'turn-2', outcome: 'completed' });
+  });
+
+  it('starts no turn and reports no session when the fallback resume never answers', async () => {
+    process.env.FORK_ERROR_MESSAGE = DUPLICATE_587_EXPECTED_588;
+    process.env.RESUME_HANG = '1';
+    const { requestLog, adapter } = setup(1_000);
+    const events: ConversationEvent[] = [];
+    const nativeIds: string[] = [];
+    await adapter.runTurn(
+      turnSpec({ firstTurn: false, nativeSessionId: 'stale-thread', refreshDeveloperInstructions: true }),
+      (e) => events.push(e),
+      (id) => nativeIds.push(id),
+    ).done;
+
+    const methods = readRequests(requestLog).map((r) => r.method);
+    expect(methods).toContain('thread/resume');
+    expect(methods).not.toContain('turn/start');
+    expect(nativeIds).toEqual([]);
+    expect(events.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'timed_out' });
+  }, 20_000);
+
+  it('runs exactly one turn per activation across repeated recoveries', async () => {
+    process.env.FORK_ERROR_MESSAGE = DUPLICATE_587_EXPECTED_588;
+    const { requestLog, adapter } = setup();
+    const nativeIds: string[] = [];
+    for (const turnId of ['turn-a', 'turn-b']) {
+      const events: ConversationEvent[] = [];
+      await adapter.runTurn(
+        turnSpec({ firstTurn: false, nativeSessionId: 'stale-thread', refreshDeveloperInstructions: true, turnId, prompt: `prompt ${turnId}` }),
+        (e) => events.push(e),
+        (id) => nativeIds.push(id),
+      ).done;
+      expect(events.at(-1)).toMatchObject({ type: 'turn_done', turnId, outcome: 'completed' });
+    }
+    const requests = readRequests(requestLog);
+    const starts = requests.filter((r) => r.method === 'turn/start');
+    expect(starts).toHaveLength(2);
+    expect(starts.map((r) => (r.params?.input as Array<{ text: string }>)[0]?.text)).toEqual(['prompt turn-a', 'prompt turn-b']);
+    expect(requests.filter((r) => r.method === 'thread/resume')).toHaveLength(2);
+    expect(nativeIds).toEqual(['stale-thread', 'stale-thread']);
+  });
+});
