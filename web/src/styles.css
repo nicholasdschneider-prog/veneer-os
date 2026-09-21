@@ -357,6 +357,11 @@ body {
 
 #root {
   height: 100%;
+  /* The shell is a fixed-height column and every screen scrolls inside its own
+     container. Clip here so a stray absolutely positioned descendant (an
+     sr-only label inside an unpositioned scroll pane, for example) can never
+     grow the document and let the window scroll the app off screen. */
+  overflow: clip;
 }
 
 /*

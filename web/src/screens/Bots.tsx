@@ -309,7 +309,10 @@ export function Bots({
     <div className="flex h-full min-h-0">
       <div className="hidden w-72 shrink-0 md:block"><BotConversationRail restricted={restricted} selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
     <div className="flex h-full min-h-0 min-w-0 flex-1 gap-4 overflow-hidden bg-background">
-      <div ref={queuePane} aria-label="Decision queues" className={cn('mx-auto h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-6', decisionId ? 'hidden lg:block' : 'max-w-6xl')}>
+      {/* `relative` keeps the sr-only section labels (position: absolute)
+          inside this scroll pane; otherwise they resolve against the shell's
+          <main> and stretch the document by the pane's full scroll height. */}
+      <div ref={queuePane} aria-label="Decision queues" className={cn('relative mx-auto h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-6', decisionId ? 'hidden lg:block' : 'max-w-6xl')}>
         {/* One thin toolbar: business picker and conversation drawer on mobile,
             plus the access manager for owners. Everything opens in place so the
             page header stays near the top. */}
