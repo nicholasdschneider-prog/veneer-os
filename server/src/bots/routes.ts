@@ -5,7 +5,7 @@ import { canViewConversation } from '../conversations/access.js';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
-import { BotError, createBotService, proposalSchema } from './service.js';
+import { BotError, createBotService, proposalInputSchema } from './service.js';
 const key = z.string().min(1).max(200);
 const mutation = z.object({
   expected_version: z.number().int().positive(),
@@ -190,7 +190,7 @@ export function createBotsRouter(ctx: AppContext) {
         .object({
           source_key: key,
           proposal_key: key,
-          proposal: proposalSchema,
+          proposal: proposalInputSchema,
         })
         .strict()
         .parse(req.body);
@@ -211,7 +211,7 @@ export function createBotsRouter(ctx: AppContext) {
     '/decisions/:id/proposal',
     run((req, res) => {
       const p = mutation
-        .extend({ proposal: proposalSchema })
+        .extend({ proposal: proposalInputSchema })
         .strict()
         .parse(req.body);
       res.json({

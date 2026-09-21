@@ -12,6 +12,14 @@ const EnvSchema = z.object({
   VP_IDENTITY: z.enum(['cloudflare', 'dev']).default('cloudflare'),
   VP_CF_TEAM_DOMAIN: z.string().optional(),
   VP_CF_AUD: z.string().optional(),
+  // AutoShip verifier (option A): a second Cloudflare Access application with
+  // its own audience and exactly one Service Auth token. Non-secret identity
+  // values; all three absent disables the verifier and it fails closed.
+  VP_AUTOSHIP_VERIFIER_CF_AUD: z.string().trim().optional(),
+  VP_AUTOSHIP_VERIFIER_CLIENT_ID: z.string().trim().optional(),
+  // The verified AutoShip worker registration the verifier binds to (a chat id
+  // with a bot_registrations row), never a name.
+  VP_AUTOSHIP_WORKER_CHAT_ID: z.string().trim().optional(),
   // The identity every request is attributed to under VP_IDENTITY=dev.
   VP_DEV_EMAIL: z.string().trim().min(1).default('owner@example.com'),
   VP_CLAUDE_BIN: z.string().default('claude'),
@@ -119,6 +127,9 @@ export interface Config {
   identity: 'cloudflare' | 'dev';
   cfTeamDomain: string | null;
   cfAud: string | null;
+  autoshipVerifierCfAud: string | null;
+  autoshipVerifierClientId: string | null;
+  autoshipWorkerChatId: string | null;
   claudeBin: string;
   codexBin: string;
   grokBin: string;
@@ -242,6 +253,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     identity: parsed.VP_IDENTITY,
     cfTeamDomain: parsed.VP_CF_TEAM_DOMAIN ?? null,
     cfAud: parsed.VP_CF_AUD ?? null,
+    autoshipVerifierCfAud: parsed.VP_AUTOSHIP_VERIFIER_CF_AUD || null,
+    autoshipVerifierClientId: parsed.VP_AUTOSHIP_VERIFIER_CLIENT_ID || null,
+    autoshipWorkerChatId: parsed.VP_AUTOSHIP_WORKER_CHAT_ID || null,
     claudeBin: parsed.VP_CLAUDE_BIN,
     codexBin: parsed.VP_CODEX_BIN,
     grokBin: parsed.VP_GROK_BIN,

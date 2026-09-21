@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import { canonicalSha256 } from './canonical.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 
@@ -21,7 +22,69 @@ export const proposalSchema = z
     blocks_scope: z.enum(['task', 'workload']).default('task'),
   })
   .strict();
-export type Proposal = z.infer<typeof proposalSchema>;
+/**
+ * AutoShip package decisions (docs/autoship-answer-bridge.md, option A): the
+ * server-owned proposal variant the verifier can validate. Every binding field
+ * is explicit so a consumer can match its own expected order, lines, material,
+ * composition and package versions byte-for-byte. `binding_hash` must equal the
+ * canonical SHA-256 of `autoshipBinding(proposal)`; `scope: 'order'` requires
+ * `allow_solo_templates: false`, so an order approval can never widen into a
+ * shared-template write.
+ */
+export const autoshipLineSchema = z
+  .object({ line_id: z.string().trim().min(1).max(200), sku: z.string().trim().min(1).max(200), quantity: z.number().int().positive() })
+  .strict();
+export const autoshipProposalSchema = proposalSchema
+  .extend({
+    kind: z.literal('autoship_package'),
+    scope: z.enum(['order', 'shared_template']),
+    allow_solo_templates: z.boolean(),
+    order_id: z.string().trim().min(1).max(200),
+    merchant_order_number: z.string().trim().min(1).max(200),
+    orderops_id: z.string().trim().min(1).max(200),
+    shopify_order_id: z.string().trim().min(1).max(200),
+    lines: z.array(autoshipLineSchema).min(1).max(200),
+    material_version: z.string().trim().min(1).max(200),
+    composition_key: z.string().trim().min(1).max(200),
+    composition_version: z.string().trim().min(1).max(200),
+    composition_source_hash: z.string().trim().regex(/^[0-9a-f]{64}$/),
+    package_version: z.number().int().nonnegative(),
+    package_teaching_key: z.string().trim().min(1).max(200),
+    binding_hash: z.string().trim().regex(/^[0-9a-f]{64}$/),
+  })
+  .strict()
+  .superRefine((p, ctx) => {
+    if (p.scope === 'order' && p.allow_solo_templates)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allow_solo_templates'], message: 'order scope cannot allow solo template writes' });
+    if (p.binding_hash !== canonicalSha256(autoshipBinding(p)))
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['binding_hash'], message: 'binding_hash does not match the canonical binding' });
+  });
+export type AutoshipProposal = z.infer<typeof autoshipProposalSchema>;
+/** Accepted on raise/revise: the AutoShip variant, else the generic proposal. */
+export const proposalInputSchema = z.union([autoshipProposalSchema, proposalSchema]);
+export type Proposal = z.infer<typeof proposalInputSchema>;
+export function isAutoshipProposal(p: unknown): p is AutoshipProposal {
+  return Boolean(p && typeof p === 'object' && (p as { kind?: unknown }).kind === 'autoship_package');
+}
+/** The exact binding fields a consumer must match (permission fields included). */
+export function autoshipBinding(p: Omit<AutoshipProposal, 'binding_hash'>) {
+  return {
+    kind: p.kind,
+    scope: p.scope,
+    allow_solo_templates: p.allow_solo_templates,
+    order_id: p.order_id,
+    merchant_order_number: p.merchant_order_number,
+    orderops_id: p.orderops_id,
+    shopify_order_id: p.shopify_order_id,
+    lines: p.lines.map((l) => ({ line_id: l.line_id, sku: l.sku, quantity: l.quantity })),
+    material_version: p.material_version,
+    composition_key: p.composition_key,
+    composition_version: p.composition_version,
+    composition_source_hash: p.composition_source_hash,
+    package_version: p.package_version,
+    package_teaching_key: p.package_teaching_key,
+  };
+}
 export type Decision = {
   id: string;
   conversation_id: string;

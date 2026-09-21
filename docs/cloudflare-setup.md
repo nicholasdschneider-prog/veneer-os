@@ -274,6 +274,28 @@ api -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/ap
 To add someone later, `PUT` the policy with the extended `include` array, then approve them in
 **Settings → People & access** once they have signed in once.
 
+**AutoShip verifier application (option A, optional).** A second self-hosted application on the
+same hostname, scoped to the verifier path, with a Service Auth policy for exactly one service
+token. Its `aud` becomes `VP_AUTOSHIP_VERIFIER_CF_AUD` and the token's client id becomes
+`VP_AUTOSHIP_VERIFIER_CLIENT_ID`; the client secret goes straight into the OrderOps Doppler config
+and is never displayed. The owner application above is not changed.
+
+```sh
+TOKEN=$(api -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/service_tokens" \
+  --data '{"name":"orderops-autoship-verifier","duration":"8760h"}')
+echo "$TOKEN" | jq -r '.result.client_id'      # -> VP_AUTOSHIP_VERIFIER_CLIENT_ID
+# .result.client_secret -> Doppler ervp/prd AUTOSHIP_VERIFIER_CF_ACCESS_CLIENT_SECRET (pipe, never print)
+VAPP=$(api -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps" \
+  --data "{\"name\":\"Veneer AutoShip Verifier\",\"domain\":\"$HOSTNAME/api/autoship/verifier\",\"type\":\"self_hosted\",\"session_duration\":\"0s\"}")
+VAPP_ID=$(echo "$VAPP" | jq -r '.result.id')
+echo "$VAPP" | jq -r '.result.aud'              # -> VP_AUTOSHIP_VERIFIER_CF_AUD
+api -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps/$VAPP_ID/policies" \
+  --data "{\"name\":\"OrderOps verifier\",\"decision\":\"non_identity\",\"include\":[{\"service_token\":{\"token_id\":\"$(echo "$TOKEN" | jq -r '.result.id')\"}}]}"
+```
+
+Rotate by creating a new token, updating the policy include and the Doppler keys, then deleting
+the old token. Deleting the application or token revokes the verifier entirely.
+
 ---
 
 ## Optional Cloudflare pieces, later

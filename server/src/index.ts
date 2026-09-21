@@ -18,6 +18,7 @@ import { createRunnerClient } from './runner/client.js';
 import { ensureFileSyncBackfill, syncConversationFiles } from './files/generatedFiles.js';
 import { createApiRouter } from './routes/api.js';
 import { createComposioWebhookRouter } from './routes/composioWebhook.js';
+import { createAutoshipVerifierRouter } from './bots/verifierRoutes.js';
 import { attachWebSocket } from './channels/webSocket.js';
 import { attachSpeechToText } from './channels/speechToText.js';
 import { attachTerminal } from './channels/terminal.js';
@@ -189,6 +190,10 @@ app.get('/healthz', async (_req, res) => {
 // Provider ingress is public by design and authenticates with Composio's HMAC
 // signature, not a human Cloudflare Access identity.
 app.use('/webhooks/composio', createComposioWebhookRouter(ctx));
+// AutoShip verifier (option A): its own Cloudflare Access application and
+// service identity, mounted ahead of the human /api identity gate so the
+// service JWT is accepted here and nowhere else. Disabled (404) unless configured.
+app.use('/api/autoship/verifier', createAutoshipVerifierRouter({ db, config }));
 app.use('/api', createApiRouter(ctx));
 // Cloudflare-runtime apps are intercepted at the edge. Local-runtime apps have
 // no Worker route, fall through the tunnel, and are authenticated + proxied here.
