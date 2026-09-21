@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { botsApi, type Bot } from '@/lib/bots';
 import { BotAvatar, BotName, BotPresence } from './BotIdentity';
 import { cn } from '@/lib/utils';
+import { Hand } from 'lucide-react';
 
 export function BotConversationRail({
   selectedId,
@@ -24,6 +25,7 @@ export function BotConversationRail({
   const [bots, setBots] = useState<Bot[]>([]);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
+  const pendingQuestions = bots.reduce((sum, bot) => sum + bot.questions, 0);
   useEffect(() => {
     let active = true;
     const refresh = () =>
@@ -49,7 +51,7 @@ export function BotConversationRail({
   return (
     <aside aria-label="Bot conversations" className="flex h-full min-h-0 flex-col border-r bg-card">
       <div className="space-y-3 border-b p-4">
-        <button className="text-lg font-semibold" onClick={() => onNavigate('#/bots')}>
+        <button className="text-lg font-semibold hover:underline" onClick={() => onNavigate('#/bots')} title="Back to the VeneerBots overview">
           VeneerBots
         </button>
         <BusinessSelector teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} />
@@ -76,6 +78,29 @@ export function BotConversationRail({
         </p>
       )}
       <nav aria-label="Bots" className="flex-1 overflow-y-auto p-2">
+        {/* The overview is where questions, follow-through and history live.
+            Once a bot is open it is the only way back, so it gets a real row. */}
+        <button
+          aria-current={!selectedId ? 'page' : undefined}
+          onClick={() => onNavigate('#/bots')}
+          className={cn(
+            'mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring',
+            !selectedId && 'bg-muted',
+          )}
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+            <Hand className="size-5 text-amber-600 dark:text-amber-300" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Overview</span>
+            <span className="block text-xs text-muted-foreground">Questions, follow-through, history</span>
+          </span>
+          {pendingQuestions > 0 && (
+            <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-semibold text-black tabular-nums">
+              {pendingQuestions}
+            </span>
+          )}
+        </button>
         {bots
           .filter((bot) =>
             `${bot.name} ${bot.title ?? ''}`.toLowerCase().includes(query.toLowerCase()),
