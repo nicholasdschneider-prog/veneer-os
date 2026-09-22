@@ -3258,8 +3258,14 @@ export function createApiRouter(ctx: AppContext): Router {
   // first, then steer the active provider turn when possible. If steering
   // cannot be acknowledged, the runner keeps it in the ordinary durable queue.
   router.post('/conversations/:id/steer', (req, res) => {
-    const row = conversationFor(req, res, true);
+    const row = conversationFor(req, res);
     if (!row) return;
+    // Asking another team bot for evidence is message authority, not authority
+    // to manage that bot's configuration or lifecycle.
+    if (!canSendToConversation(req.user!, row, db)) {
+      res.status(404).json({ ok: false, error: 'Conversation not found' });
+      return;
+    }
     const body = MessageSchema.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ ok: false, error: 'text required' });

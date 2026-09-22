@@ -35,6 +35,9 @@ const manageSchema = z.discriminatedUnion('action', [
       team_id: id,
       user_id: z.number().int().positive(),
       role: z.enum(['viewer', 'member', 'manager']).nullable(),
+      // Supplying the verified email explicitly promotes a restricted employee
+      // to the normal business workspace. Ordinary membership edits do not.
+      email: z.string().trim().email().optional(),
     })
     .strict(),
   z
@@ -255,8 +258,22 @@ export function createTeamService(db: Database.Database) {
         } else if (action === 'member') {
           const userId = z.number().int().positive().parse(input.user_id);
           const role = z.enum(['viewer', 'member', 'manager']).nullable().parse(input.role);
-          if (!db.prepare("SELECT 1 FROM users WHERE id=? AND status='active'").get(userId))
+          const target = db.prepare("SELECT email,role FROM users WHERE id=? AND status='active'").get(userId) as { email: string; role: string } | undefined;
+          if (!target)
             throw new BotError(400, 'Active user required');
+          if (input.email !== undefined) {
+            const email = z.string().trim().email().parse(input.email).toLowerCase();
+            if (target.email !== email || target.role !== 'member' || !['member', 'manager'].includes(role ?? ''))
+              throw new BotError(400, 'Full workspace access requires the verified member email and member or manager role');
+            if (!db.prepare('SELECT 1 FROM business_team_members WHERE team_id=? AND user_id=?').get(t.id, userId))
+              throw new BotError(400, 'Full workspace access requires existing membership in this business');
+            // The employee restriction is account-wide. A business owner must
+            // not clear a restriction for someone belonging to another owner.
+            if (db.prepare('SELECT 1 FROM business_team_members m JOIN business_teams t ON t.id=m.team_id WHERE m.user_id=? AND t.owner_id<>?').get(userId, actor.user.id))
+              throw new BotError(403, 'Another business owner must review account-wide workspace access');
+            db.prepare('DELETE FROM employee_bot_access WHERE user_id=?').run(userId);
+            db.prepare('DELETE FROM employee_workspaces WHERE user_id=?').run(userId);
+          }
           if (role)
             db.prepare(
               'INSERT INTO business_team_members(team_id,user_id,role) VALUES(?,?,?) ON CONFLICT(team_id,user_id) DO UPDATE SET role=excluded.role',

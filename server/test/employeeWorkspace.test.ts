@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { WebSocket } from 'ws';
-import { beforeEach, afterEach, describe, expect, it } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import { createTeamService } from '../src/bots/teams.js';
 import { createBotService, proposalSchema, type Actor } from '../src/bots/service.js';
@@ -70,6 +70,47 @@ describe('restricted employee workspace', () => {
     expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(2)}`).all()).toEqual([]);
     teams.manage(owner, { action: 'member', team_id: teamId, user_id: 2, role: 'manager' });
     expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(2)}`).all()).toEqual([]);
+  });
+
+  it('explicitly promotes a verified employee without granting platform administration', async () => {
+    grant(['nora']);
+    const input = { action: 'member', team_id: teamId, user_id: 2, email: 'ali@fixture.test', role: 'member' };
+    expect(() => teams.manage(owner, { ...input, email: 'wrong@fixture.test' })).toThrow('verified member email');
+    expect(() => teams.manage(owner, { ...input, role: null })).toThrow('verified member email');
+    expect(() => teams.manage({ ...owner, conversationId: 'grant' }, input)).toThrow('Platform Dev');
+    expect(db.prepare('SELECT * FROM employee_workspaces').all()).toHaveLength(1);
+    teams.manage(owner, input);
+    expect(db.prepare('SELECT * FROM employee_workspaces').all()).toHaveLength(0);
+    expect(db.prepare('SELECT * FROM employee_bot_access WHERE user_id=2').all()).toHaveLength(0);
+    expect(actor(2).user.role).toBe('member');
+    expect(db.prepare("SELECT payload_json FROM business_audit WHERE action='member' ORDER BY id DESC LIMIT 1").get()).toBeDefined();
+
+    const steerMessage = vi.fn(async () => ({ disposition: 'delivered', messageId: 1 }));
+    const ctx = { db, resolveIdentity: async () => ({ email: 'ali@fixture.test', agentConversationId: 'nora' }), manager: {
+      bus: new EventEmitter(), statusOf: async () => 'idle', snapshot: async () => [], steerMessage,
+    } } as unknown as AppContext;
+    const app = express(); app.use('/api', createApiRouter(ctx)); const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(r => server.once('listening', r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+    try {
+      expect((await (await fetch(base + '/me')).json()).user.employeeWorkspace).toBe(false);
+      expect((await fetch(base + '/conversations/grant/transcript')).status).toBe(200);
+      expect((await fetch(base + '/conversations/grant/steer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Provide the CS evidence for this accounting case.' }) })).status).toBe(200);
+      expect(steerMessage).toHaveBeenCalledOnce();
+      expect((await fetch(base + '/admin/users')).status).toBe(403);
+      teams.manage(owner, { action: 'member', team_id: teamId, user_id: 2, role: 'viewer' });
+      expect((await fetch(base + '/conversations/grant/steer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Viewer cannot send.' }) })).status).toBe(404);
+      expect(steerMessage).toHaveBeenCalledOnce();
+    } finally { await new Promise<void>(r => server.close(() => r())); }
+  });
+
+  it('does not lift account-wide restrictions across a different business owner', () => {
+    grant();
+    db.prepare("UPDATE users SET role='owner' WHERE id=3").run();
+    const other = teams.manage(actor(3), { action: 'create', name: 'Other' });
+    teams.manage(actor(3), { action: 'member', team_id: other.id, user_id: 2, role: 'member' });
+    expect(() => teams.manage(owner, { action: 'member', team_id: teamId, user_id: 2, email: 'ali@fixture.test', role: 'member' })).toThrow('Another business owner');
+    expect(db.prepare('SELECT * FROM employee_workspaces').all()).toHaveLength(1);
   });
 
   it('shares owner questions in both notification queries and serializes claim, release, and answers', () => {
