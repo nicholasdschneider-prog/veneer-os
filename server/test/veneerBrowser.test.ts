@@ -112,6 +112,81 @@ describe('Veneer Browser manager', () => {
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
+  function shareBusinessBrowser() {
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('business','Business',1)").run();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('business',3,'member')").run();
+    db.prepare("UPDATE conversations SET visibility='team',business_team_id='business' WHERE id='conv-1'").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,active,registered_by) VALUES('conv-1','Accounting',1,1)").run();
+    db.prepare("INSERT INTO business_bot_members(conversation_id,team_id,role) VALUES('conv-1','business','bot')").run();
+  }
+
+  it('lets business teammates navigate and capture the bot-assigned browser without managing saved logins', async () => {
+    shareBusinessBrowser();
+    const profile = await manager.createProfile(1, 'project-1', 'Assigned accounting login');
+    const privateProfile = await manager.createProfile(1, 'project-1', 'Unrelated private login');
+    manager.selectForConversation(1, 'conv-1', profile.id);
+    expect(manager.listProfilesForConversation(3, 'conv-1').map(p => p.id)).toEqual([profile.id]);
+    await manager.runCommand(3, 'conv-1', ['open', 'https://example.com/evidence']);
+    await manager.runCommand(3, 'conv-1', ['screenshot']);
+    expect(runBrowser).toHaveBeenCalledTimes(2);
+    expect(remote.open.mock.calls[0]?.slice(0, 2)).toEqual(['project-1', profile.id]);
+    expect((await manager.conversationSession(3, 'conv-1')).canUpdateProfile).toBe(false);
+    expect(await manager.viewerTicketForConversation(3, 'conv-1')).toHaveProperty('ticket');
+    expect(db.prepare("SELECT actor_user_id FROM veneer_browser_audit WHERE action='command.executed'").all()).toEqual([{ actor_user_id: 3 }, { actor_user_id: 3 }]);
+    expect(() => manager.selectForConversation(3, 'conv-1', privateProfile.id)).toThrow('one of your chats');
+    await expect(manager.updateConversationProfile(3, 'conv-1')).rejects.toThrow('one of your chats');
+    await expect(manager.saveConversationAsProfile(3, 'conv-1', 'Copy')).rejects.toThrow('one of your chats');
+    expect(() => manager.setCaptureGrant(3, 'conv-1', true)).toThrow('one of your chats');
+  });
+
+  it('does not inherit the chat creator default login when no profile was assigned', async () => {
+    shareBusinessBrowser();
+    await manager.createProfile(1, 'project-1', 'Private default');
+    expect(manager.listProfilesForConversation(3, 'conv-1')).toEqual([]);
+    await manager.runCommand(3, 'conv-1', ['screenshot']);
+    expect(remote.open).not.toHaveBeenCalled();
+    expect(remote.createTemporary).toHaveBeenCalledOnce();
+    expect((await manager.conversationSession(3, 'conv-1')).fresh).toBe(true);
+  });
+
+  it('rejects revoked, viewer, restricted, disabled, private and non-business browser access', async () => {
+    shareBusinessBrowser();
+    const profile = await manager.createProfile(1, 'project-1', 'Assigned');
+    manager.selectForConversation(1, 'conv-1', profile.id);
+    for (const [change, restore] of [
+      ["UPDATE business_team_members SET role='viewer' WHERE user_id=3", "UPDATE business_team_members SET role='member' WHERE user_id=3"],
+      ["UPDATE users SET status='disabled' WHERE id=3", "UPDATE users SET status='active' WHERE id=3"],
+      ["UPDATE conversations SET visibility='private' WHERE id='conv-1'", "UPDATE conversations SET visibility='team' WHERE id='conv-1'"],
+      ["UPDATE bot_registrations SET active=0 WHERE conversation_id='conv-1'", "UPDATE bot_registrations SET active=1 WHERE conversation_id='conv-1'"],
+      ["INSERT INTO employee_workspaces(user_id) VALUES(3)", "DELETE FROM employee_workspaces WHERE user_id=3"],
+    ]) {
+      db.prepare(change!).run();
+      await expect(manager.runCommand(3, 'conv-1', ['screenshot'])).rejects.toThrow('one of your chats');
+      db.prepare(restore!).run();
+    }
+    await expect(manager.runCommand(3, 'conv-2', ['screenshot'])).rejects.toThrow('one of your chats');
+    db.prepare('DELETE FROM business_team_members WHERE user_id=3').run();
+    await expect(manager.conversationSession(3, 'conv-1')).rejects.toThrow('one of your chats');
+    expect(runBrowser).not.toHaveBeenCalled();
+  });
+
+  it('rechecks membership after a shared browser command waits for the chat lane', async () => {
+    shareBusinessBrowser();
+    let release!: () => void;
+    let entered!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    runBrowser.mockImplementationOnce(async () => { entered(); await new Promise<void>(resolve => { release = resolve; }); return { args: [], stdout: '', stderr: '', exitCode: 0 }; });
+    const first = manager.runCommand(1, 'conv-1', ['get', 'title']);
+    await started;
+    const waiting = manager.runCommand(3, 'conv-1', ['screenshot']);
+    const rejected = expect(waiting).rejects.toThrow('one of your chats');
+    db.prepare('DELETE FROM business_team_members WHERE user_id=3').run();
+    release();
+    await first;
+    await rejected;
+    expect(runBrowser).toHaveBeenCalledOnce();
+  });
+
   it('reads URLs in the selected working copy and serializes with interactive commands', async () => {
     const profile = await manager.createProfile(1, 'project-1', 'Personal');
     manager.selectForConversation(1, 'conv-1', profile.id);

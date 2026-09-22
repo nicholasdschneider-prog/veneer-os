@@ -16,6 +16,8 @@ import {
   type BrowserRunResult,
 } from '../mcp/agentBrowser.js';
 import { createSerialQueue, type SerialQueue } from '../mcp/serialQueue.js';
+import { canSendToConversation } from '../conversations/access.js';
+import { isEmployee } from '../bots/employeeAccess.js';
 import { ReadUrlSchema, readBrowserUrl, readUrlFailure, type ReadUrlResult } from './readUrl.js';
 import { hasLiveSecretField } from './secretFill.js';
 import {
@@ -114,6 +116,7 @@ interface ConversationContext extends ConversationRow {
   project_slug: string | null;
   project_root_dir: string | null;
   assistant_slug: string;
+  browser_actor_id?: number;
 }
 
 interface ConversationRuntime {
@@ -556,7 +559,11 @@ export class VeneerBrowserManager {
   }
 
   listProfilesForConversation(userId: number, conversationId: string): VeneerBrowserProfileView[] {
-    const context = this.conversation(conversationId, userId);
+    const context = this.conversation(conversationId, userId, true);
+    if (context.user_id !== userId) {
+      const selected = this.selectedProfile(context);
+      return selected ? [this.view(selected)] : [];
+    }
     return this.profilesInScope(this.scopeId(context), userId);
   }
 
@@ -709,16 +716,30 @@ export class VeneerBrowserManager {
     this.audit(profile.project_id, profile.id, 'profile.attached', userId, conversationId);
   }
 
-  private conversation(conversationId: string, userId?: number): ConversationContext {
+  private conversation(conversationId: string, userId?: number, sharedBrowser = false): ConversationContext {
     const row = this.db.prepare(
       `SELECT c.*, p.slug AS project_slug, p.root_dir AS project_root_dir, a.slug AS assistant_slug
        FROM conversations c JOIN assistants a ON a.id = c.assistant_id
        LEFT JOIN projects p ON p.id = c.project_id WHERE c.id = ?`,
     ).get(conversationId) as ConversationContext | undefined;
-    if (!row || (userId !== undefined && row.user_id !== userId)) {
+    if (!row) {
       throw new Error('Veneer Browser requires one of your chats.');
     }
-    return row;
+    if (userId !== undefined && row.user_id !== userId) {
+      // A shared business bot's explicitly assigned browser is operational
+      // context for its authorized teammates. This grants no profile management
+      // or access to the creator's other saved logins/default profile.
+      const user = this.db.prepare('SELECT * FROM users WHERE id=?').get(userId) as UserRow | undefined;
+      const bot = this.db.prepare('SELECT 1 FROM bot_registrations r JOIN business_bot_members m ON m.conversation_id=r.conversation_id WHERE r.conversation_id=? AND r.active=1 AND m.team_id=?').get(row.id, row.business_team_id);
+      if (!sharedBrowser || !row.business_team_id || !bot || !user || isEmployee(this.db, userId) || !canSendToConversation(user, row, this.db)) {
+        throw new Error('Veneer Browser requires one of your chats.');
+      }
+      const copy = this.cloneSession(row.id);
+      if (copy?.source_profile_id && copy.source_profile_id !== this.selectedProfile(row)?.id) {
+        throw new Error('The chat owner must assign this browser profile before teammates can use it.');
+      }
+    }
+    return { ...row, browser_actor_id: userId };
   }
 
   private selectedProfile(context: ConversationContext): VeneerBrowserProfileRow | null {
@@ -733,7 +754,8 @@ export class VeneerBrowserManager {
   }
 
   private effectiveProfile(context: ConversationContext): VeneerBrowserProfileRow | null {
-    return this.selectedProfile(context) ?? this.defaultProfile(this.scopeId(context), context.user_id);
+    return this.selectedProfile(context) ?? (context.browser_actor_id !== undefined && context.browser_actor_id !== context.user_id
+      ? null : this.defaultProfile(this.scopeId(context), context.user_id));
   }
 
   async createForConversation(userId: number, conversationId: string, nameValue: unknown): Promise<VeneerBrowserSessionView> {
@@ -1086,8 +1108,9 @@ export class VeneerBrowserManager {
     userId: number,
     conversationId: string,
   ): Promise<{ ticket: string; caFile: string | null }> {
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
+      context = this.conversation(conversationId, userId, true);
       const stored = this.cloneSession(context.id);
       const copy = stored ? await this.refreshCloneSession(stored) : null;
       if (!copy || copy.status !== 'active') {
@@ -1185,11 +1208,11 @@ export class VeneerBrowserManager {
   async fetchUrl(userId: number, conversationId: string, input: unknown): Promise<ReadUrlResult> {
     const parsed = ReadUrlSchema.safeParse(input);
     if (!parsed.success) return readUrlFailure('invalid_request', 'Supply an HTTP(S) URL, valid readiness options, and supported timeout/output limits.');
-    const context = this.conversation(conversationId, userId);
+    const context = this.conversation(conversationId, userId, true);
     try {
       return await this.queue(`conversation:${context.id}`).run(async () => {
         // Recheck after waiting; chat ownership may have changed in the queue.
-        const currentContext = this.conversation(conversationId, userId);
+        const currentContext = this.conversation(conversationId, userId, true);
         const user = this.db.prepare('SELECT status FROM users WHERE id = ?').get(userId) as { status: string } | undefined;
         if (user?.status !== 'active') return readUrlFailure('access_denied', 'An active chat owner is required.');
         const runtime = await this.conversationRuntime(currentContext);
@@ -1218,8 +1241,9 @@ export class VeneerBrowserManager {
     timeoutMs?: number,
     options: { redact?: string[] } = {},
   ): Promise<BrowserRunResult> {
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
+      context = this.conversation(conversationId, userId, true);
       const runtime = await this.conversationRuntime(context);
       const step = await this.runInSlot(context, userId, runtime, args, {
         recover: true,
@@ -1252,8 +1276,9 @@ export class VeneerBrowserManager {
     if (!Array.isArray(commands) || !commands.length) {
       throw new Error('A browser sequence needs at least one command.');
     }
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
+      context = this.conversation(conversationId, userId, true);
       let runtime = await this.conversationRuntime(context);
       // A redacted sequence must not hand its own argv back either: the steps
       // and the failure record both carry the command line verbatim.
@@ -1331,7 +1356,7 @@ export class VeneerBrowserManager {
    */
   async probeCommand(userId: number, conversationId: string, args: string[]): Promise<string | null> {
     try {
-      const context = this.conversation(conversationId, userId);
+      const context = this.conversation(conversationId, userId, true);
       const row = this.cloneSession(context.id);
       if (!row || row.status !== 'active') return null;
       const last = this.probeAddresses.get(context.id);
@@ -1403,7 +1428,7 @@ export class VeneerBrowserManager {
   }
 
   async conversationSession(userId: number, conversationId: string): Promise<VeneerBrowserSessionView> {
-    const context = this.conversation(conversationId, userId);
+    const context = this.conversation(conversationId, userId, true);
     if (!this.configured()) return this.emptySession(context, false);
     const storedCopy = this.cloneSession(context.id);
     const copy = storedCopy ? await this.refreshCloneSession(storedCopy) : null;
@@ -1421,7 +1446,7 @@ export class VeneerBrowserManager {
         inUseByAnotherChat: false,
         temporaryClone: true,
         fresh: copy.mode === 'fresh',
-        canUpdateProfile: copy.mode === 'profile',
+        canUpdateProfile: copy.mode === 'profile' && context.user_id === userId,
         startedAt: copy.created_at,
         lastUsedAt: copy.last_used_at,
         error: copy.last_error,
@@ -1448,16 +1473,18 @@ export class VeneerBrowserManager {
   }
 
   async openConversation(userId: number, conversationId: string): Promise<VeneerBrowserSessionView> {
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
+      context = this.conversation(conversationId, userId, true);
       await this.startForContext(context);
       return this.conversationSession(userId, conversationId);
     });
   }
 
   async openFreshConversation(userId: number, conversationId: string): Promise<VeneerBrowserSessionView> {
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
+      context = this.conversation(conversationId, userId, true);
       const row = await this.ensureFreshCopy(context);
       await this.queue(row.clone_profile_id).run(() => this.startWorkingCopy(context, row));
       return this.conversationSession(userId, conversationId);
@@ -1574,8 +1601,9 @@ export class VeneerBrowserManager {
   }
 
   async stopConversation(userId: number, conversationId: string): Promise<VeneerBrowserSessionView> {
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
+      context = this.conversation(conversationId, userId, true);
       this.runtimeCache.delete(context.id);
       const copy = this.cloneSession(context.id);
       if (copy) {
@@ -1597,8 +1625,9 @@ export class VeneerBrowserManager {
   }
 
   async downloads(userId: number, conversationId: string): Promise<string[]> {
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
+      context = this.conversation(conversationId, userId, true);
       const runtime = await this.startForContext(context);
       const items = await this.remote.downloads(runtime.row.project_id, runtime.row.clone_profile_id);
       const outputDir = path.join(
