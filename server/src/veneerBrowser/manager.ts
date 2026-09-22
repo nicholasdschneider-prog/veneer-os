@@ -1,3 +1,4 @@
+import { activeLoginGrants, authorizeLoginSecret, guardedLoginScript } from './loginGrants.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1040,7 +1041,7 @@ export class VeneerBrowserManager {
     context: ConversationContext,
     runtime: ConversationRuntime,
     args: unknown,
-    options: { timeoutMs?: number; redact?: string[] } = {},
+    options: { timeoutMs?: number; redact?: string[]; beforeCommand?: () => void } = {},
   ): Promise<BrowserRunResult> {
     const ticket = await this.agentTicket(context.id, runtime.row);
     this.probeAddresses.set(context.id, {
@@ -1271,7 +1272,7 @@ export class VeneerBrowserManager {
     userId: number,
     conversationId: string,
     commands: string[][],
-    options: { timeoutMs?: number; redact?: string[] } = {},
+    options: { timeoutMs?: number; redact?: string[]; beforeCommand?: () => void } = {},
   ): Promise<BrowserSequenceResult> {
     if (!Array.isArray(commands) || !commands.length) {
       throw new Error('A browser sequence needs at least one command.');
@@ -1291,6 +1292,7 @@ export class VeneerBrowserManager {
       let held: { button: string; index: number } | null = null;
 
       for (let index = 0; index < commands.length; index += 1) {
+        options.beforeCommand?.();
         const args = commands[index]!;
         const auditCommand = sequenceAuditName(args);
         let step: { runtime: ConversationRuntime; result: BrowserRunResult | null; thrown: unknown };
@@ -1446,7 +1448,7 @@ export class VeneerBrowserManager {
         inUseByAnotherChat: false,
         temporaryClone: true,
         fresh: copy.mode === 'fresh',
-        canUpdateProfile: copy.mode === 'profile' && context.user_id === userId,
+        canUpdateProfile: copy.mode === 'profile' && (context.user_id === userId || activeLoginGrants(this.db,userId,conversationId).some(g => g.allow_save === 1)),
         startedAt: copy.created_at,
         lastUsedAt: copy.last_used_at,
         error: copy.last_error,
@@ -1491,15 +1493,41 @@ export class VeneerBrowserManager {
     });
   }
 
+  async fillGrantedLogin(userId: number, conversationId: string, args: Record<string, unknown>, kind: 'password' | 'totp', value: string): Promise<void> {
+    const grant = authorizeLoginSecret(this.db, userId, conversationId, args, kind);
+    const script = guardedLoginScript(String(args.target ?? ''), value, JSON.parse(grant.origins_json), kind);
+    try {
+      const result = await this.runCommands(userId, conversationId, [['eval', script]], {
+        redact: [value, script],
+        beforeCommand: () => {
+          const current = authorizeLoginSecret(this.db, userId, conversationId, args, kind);
+          if (current.id !== grant.id || current.origins_json !== grant.origins_json || this.captureGrantActive(conversationId)) throw new Error('Login grant changed or capture is enabled');
+        },
+      });
+      if (result.failure) throw new Error('Login fill failed');
+      this.audit(grant.project_id, grant.profile_id, 'credential.used', userId, conversationId, { grantId: grant.id, kind });
+    } catch {
+      this.audit(grant.project_id, grant.profile_id, 'credential.refused', userId, conversationId, { grantId: grant.id, kind });
+      throw new Error('Granted login fill refused. Check the current approved login page, CSS input selector, grant and capture setting.');
+    }
+  }
+
   async updateConversationProfile(userId: number, conversationId: string): Promise<VeneerBrowserSessionView> {
-    const context = this.conversation(conversationId, userId);
+    let context = this.conversation(conversationId, userId, true);
+    const authorizeSave = () => {
+      context = this.conversation(conversationId, userId, true);
+      if (context.user_id !== userId && !activeLoginGrants(this.db,userId,conversationId).some(g => g.allow_save === 1)) throw new Error('The chat owner must grant permission to save this assigned login profile.');
+    };
+    authorizeSave();
     return this.queue(`conversation:${context.id}`).run(async () => {
+      authorizeSave();
       const copy = this.cloneSession(context.id);
       if (!copy || copy.mode !== 'profile' || !copy.source_profile_id || !copy.source_generation) {
         throw new Error('This chat does not have a saved profile working copy to update.');
       }
-      const profile = this.profile(copy.project_id, copy.source_profile_id, userId);
+      const profile = this.profile(copy.project_id, copy.source_profile_id, context.user_id);
       await this.queue(profile.id).run(async () => {
+        authorizeSave();
         await this.stopWorkingCopy(copy);
         let generation: number;
         try {

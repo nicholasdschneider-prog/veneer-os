@@ -246,6 +246,7 @@ describe('Veneer Browser credential tools', () => {
     released: false,
   }));
   const captureGrantActive = vi.fn(() => false);
+  const fillGrantedLogin = vi.fn(async (..._args: unknown[]) => undefined);
 
   beforeAll(async () => {
     db = new Database(':memory:');
@@ -258,6 +259,7 @@ describe('Veneer Browser credential tools', () => {
     memberToken = mintAgentToken(db, 'member@example.com', 'member-chat');
     const manager = {
       conversationSession,
+      fillGrantedLogin,
       runCommand,
       runCommands,
       captureGrantActive,
@@ -324,6 +326,32 @@ describe('Veneer Browser credential tools', () => {
     expect(listed.tools.find((tool) => tool.name === 'fill')?.description).toContain('fill_secret');
     expect(listed.tools.find((tool) => tool.name === 'find')?.description).toContain('fill_totp');
     expect(listed.tools.find((tool) => tool.name === 'type')?.description).toContain('fill_secret');
+  });
+
+  it('lists and uses only the exact delegated credential without returning its value', async () => {
+    db.exec(`INSERT INTO projects(id,slug,name) VALUES('granted-project','granted-project','Granted');
+      INSERT INTO business_teams(id,name,owner_id) VALUES('granted-team','Granted',1);
+      INSERT INTO business_team_members(team_id,user_id,role) VALUES('granted-team',2,'member');
+      UPDATE conversations SET user_id=1,project_id='granted-project',business_team_id='granted-team',visibility='team' WHERE id='member-chat';
+      INSERT INTO bot_registrations(conversation_id,name,registered_by,active) VALUES('member-chat','Granted',1,1);
+      INSERT INTO business_bot_members(conversation_id,team_id,role) VALUES('member-chat','granted-team','bot');
+      INSERT INTO veneer_browser_profiles(id,client_scope,project_id,name,created_by,owner_user_id) VALUES('granted-profile','client','granted-project','Granted',1,1);
+      INSERT INTO veneer_browser_conversation_profiles(conversation_id,client_scope,project_id,profile_id) VALUES('member-chat','client','granted-project','granted-profile');
+      INSERT INTO browser_login_grants(conversation_id,project_id,profile_id,granted_by,secret_project,secret_config,secret_name,kind,origins_json)
+      VALUES('member-chat','granted-project','granted-profile',1,'ervp','prd','ACME_PASSWORD','password','["https://accounts.shopify.com"]');`);
+    try {
+      const listed=await memberRpc('tools/list',{});
+      expect(listed.tools.map((t:{name:string})=>t.name)).toContain('fill_secret');
+      expect(listed.tools.map((t:{name:string})=>t.name)).not.toContain('fill_totp');
+      const result=await memberRpc('tools/call',{name:'fill_secret',arguments:{project:'ervp',config:'prd',secret_name:'ACME_PASSWORD',target:'input[type=password]'}});
+      expect(result.isError).not.toBe(true);
+      expect(fillGrantedLogin).toHaveBeenCalledOnce();
+      expect(JSON.stringify(result)).not.toContain(String(fillGrantedLogin.mock.calls[0]?.[4]));
+      readSecret.mockClear();
+      const denied=await memberRpc('tools/call',{name:'fill_secret',arguments:{project:'main',config:'prd',secret_name:'OTHER',target:'input[type=password]'}});
+      expect(denied.isError).toBe(true);
+      expect(readSecret).not.toHaveBeenCalled();
+    } finally { db.exec("DELETE FROM browser_login_grants; UPDATE conversations SET user_id=2,project_id=NULL,business_team_id=NULL WHERE id='member-chat'"); }
   });
 
   it('hides the credential tools from a member turn and refuses the call anyway', async () => {

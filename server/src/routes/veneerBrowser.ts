@@ -1,3 +1,4 @@
+import { LoginGrantSchema, activeLoginGrants } from '../veneerBrowser/loginGrants.js';
 import express, { type Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
@@ -28,6 +29,40 @@ function safeError(error: unknown): string {
 
 export function createVeneerBrowserRouter(ctx: AppContext): Router {
   const router = express.Router();
+
+  router.get('/conversations/:conversationId/login-grants', (req, res) => {
+    res.json({ ok: true, grants: activeLoginGrants(ctx.db,req.user!.id,req.params.conversationId) });
+  });
+
+  router.put('/conversations/:conversationId/login-grants', (req, res) => {
+    const parsed = LoginGrantSchema.safeParse(req.body);
+    if (!parsed.success) return void res.status(400).json({ok:false,error:'Supply exact credential names, an assigned profile, and approved HTTPS login origins.'});
+    const g = parsed.data;
+    const row = ctx.db.prepare(`SELECT c.project_id,c.business_team_id FROM conversations c
+      JOIN veneer_browser_conversation_profiles cp ON cp.conversation_id=c.id
+      JOIN veneer_browser_profiles p ON p.id=cp.profile_id AND p.project_id=c.project_id
+      WHERE c.id=? AND c.user_id=? AND p.owner_user_id=? AND p.id=? AND c.archived=0`).get(req.params.conversationId,req.user!.id,req.user!.id,g.profileId) as {project_id:string;business_team_id:string|null} | undefined;
+    if (req.user!.role === 'member' || !row?.business_team_id) return void res.status(403).json({ok:false,error:'The chat and assigned profile owner must authorize login grants.'});
+    const grant = ctx.db.transaction(() => {
+      const result = ctx.db.prepare(`INSERT INTO browser_login_grants(conversation_id,project_id,profile_id,granted_by,secret_project,secret_config,secret_name,kind,origins_json,allow_save)
+        VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(conversation_id,profile_id,secret_project,secret_config,secret_name,kind)
+        DO UPDATE SET origins_json=excluded.origins_json,allow_save=excluded.allow_save,granted_by=excluded.granted_by RETURNING id`).get(req.params.conversationId,row.project_id,g.profileId,req.user!.id,g.secretProject,g.secretConfig,g.secretName,g.kind,JSON.stringify(g.origins),g.allowSave?1:0) as {id:number};
+      ctx.db.prepare('INSERT INTO business_audit(team_id,actor_id,actor_chat,action,payload_json) VALUES(?,?,?,?,?)').run(row.business_team_id,req.user!.id,req.agentConversationId??null,'browser.login_granted',JSON.stringify({grantId:result.id,...g}));
+      return result;
+    })();
+    res.json({ok:true,grantId:grant.id});
+  });
+
+  router.delete('/conversations/:conversationId/login-grants/:grantId', (req,res) => {
+    const row = ctx.db.prepare(`SELECT g.id,c.business_team_id FROM browser_login_grants g JOIN conversations c ON c.id=g.conversation_id
+      WHERE g.id=? AND g.conversation_id=? AND c.user_id=?`).get(req.params.grantId,req.params.conversationId,req.user!.id) as {id:number;business_team_id:string} | undefined;
+    if (req.user!.role === 'member' || !row) return void res.status(403).json({ok:false,error:'The chat owner must revoke login grants.'});
+    ctx.db.transaction(() => {
+      ctx.db.prepare('DELETE FROM browser_login_grants WHERE id=?').run(row.id);
+      ctx.db.prepare('INSERT INTO business_audit(team_id,actor_id,actor_chat,action,payload_json) VALUES(?,?,?,?,?)').run(row.business_team_id,req.user!.id,req.agentConversationId??null,'browser.login_revoked',JSON.stringify({grantId:row.id}));
+    })();
+    res.json({ok:true});
+  });
 
   router.get('/settings', (_req, res) => {
     res.json({ ok: true, settings: readVeneerBrowserSettings(ctx.db) });

@@ -1,3 +1,6 @@
+import { activeLoginGrants, authorizeLoginSecret } from './loginGrants.js';
+import { readSecretValue } from '../secrets/readSecret.js';
+import { generateTotp, parseTotpSeed } from './totp.js';
 import fs from 'node:fs';
 import type http from 'node:http';
 import type Database from 'better-sqlite3';
@@ -9,6 +12,7 @@ import { pointerCommands, pointerSummary } from './pointer.js';
 import {
   assertNoSecretReadback,
   clearSecretFields,
+  rememberSecretField,
   fillSecretTool,
   fillEmailCodeTool,
   fillSmsCodeTool,
@@ -682,7 +686,20 @@ export async function handleVeneerBrowserMcp(
   const method = String(message.method ?? '');
   if (method === 'notifications/initialized') { res.writeHead(202); res.end(); return; }
   if (method === 'initialize') return void sendJson(res, 200, { jsonrpc: '2.0', id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'veneer-browser', version: '1.0.0' }, instructions: INSTRUCTIONS } });
-  if (method === 'tools/list') return void sendJson(res, 200, { jsonrpc: '2.0', id, result: { tools: listedTools(smsCodeAvailable(secrets, memberActor), emailCodeAvailable(emailCodes, memberActor), memberActor) } });
+  if (method === 'tools/list') {
+    const listed = listedTools(smsCodeAvailable(secrets, memberActor), emailCodeAvailable(emailCodes, memberActor), memberActor);
+    if (memberActor) {
+      const grants = activeLoginGrants(db,user.id,tokenContext.conversationId);
+      for (const [toolName, kind] of [['fill_secret','password'],['fill_totp','totp']] as const) {
+        const matching = grants.filter(g => g.kind === kind);
+        if (matching.length) {
+          const tool = TOOLS.find(t => t.name === toolName)!;
+          listed.push({ ...tool, description: 'Use a granted credential on its approved top-level login origin. Target MUST be a CSS input selector (not @ref); submit must be omitted. Click the login button separately. Approved grants: ' + JSON.stringify(matching.map(g => ({project:g.secret_project,config:g.secret_config,secret_name:g.secret_name,origins:JSON.parse(g.origins_json)}))) });
+        }
+      }
+    }
+    return void sendJson(res, 200, { jsonrpc: '2.0', id, result: { tools: listed } });
+  }
   if (method !== 'tools/call') return void sendJson(res, 200, { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } });
 
   const params = (message.params ?? {}) as Record<string, unknown>;
@@ -701,12 +718,32 @@ export async function handleVeneerBrowserMcp(
     const pointerPlan = pointerCommands(name, args);
     // Checked on the call path as well as in tools/list, because a cached tool
     // list would otherwise still reach a member's turn.
-    if (memberActor && CREDENTIAL_TOOLS.has(name)) throw new Error(CREDENTIAL_TOOLS_MEMBER_REFUSAL);
+    if (memberActor && CREDENTIAL_TOOLS.has(name) && !['fill_secret','fill_totp'].includes(name)) throw new Error(CREDENTIAL_TOOLS_MEMBER_REFUSAL);
+    if (memberActor && ['fill_secret','fill_totp'].includes(name) && !activeLoginGrants(db,user.id,conversationId).length) throw new Error(CREDENTIAL_TOOLS_MEMBER_REFUSAL);
+    if (memberActor && ['fill_secret','fill_totp'].includes(name)) authorizeLoginSecret(db,user.id,conversationId,args,name === 'fill_secret' ? 'password' : 'totp');
     const session = await manager.conversationSession(user.id, conversationId);
     // Read-only here. The grant is written solely by the authenticated user's
     // HTTP route; nothing on this path may create or widen one.
     const captureGranted = manager.captureGrantActive(conversationId);
-    if (name === 'fill_secret' || name === 'fill_totp') {
+    if (memberActor && (name === 'fill_secret' || name === 'fill_totp')) {
+      const kind = name === 'fill_secret' ? 'password' : 'totp';
+      const grant = authorizeLoginSecret(db,user.id,conversationId,args,kind);
+      if (!secrets || captureGranted) throw new Error('Granted login filling requires secret storage and Advanced capture off.');
+      if (args.submit === true) throw new Error('Fill the granted login field, then click the login button separately.');
+      try {
+        const secret = await readSecretValue(secrets,{name:grant.secret_name,project:grant.secret_project,config:grant.secret_config});
+        let value = secret.value;
+        if (kind === 'totp') {
+          const seed = parseTotpSeed(value);
+          let code = generateTotp(seed);
+          if (code.secondsRemaining < 3) { await new Promise(resolve => setTimeout(resolve, code.secondsRemaining * 1000 + 250)); code = generateTotp(seed); }
+          value = code.code;
+        }
+        await manager.fillGrantedLogin(user.id,conversationId,args,kind,value);
+        rememberSecretField(conversationId,String(args.target));
+        result = textResult('Approved login field filled. Click the login button; then update the saved profile after successful sign-in.');
+      } catch { throw new Error('Granted login could not be filled. Check secret setup, approved origin, field selector and active grant.'); }
+    } else if (name === 'fill_secret' || name === 'fill_totp') {
       const secretDeps: SecretToolDeps = {
         manager, userId: user.id, conversationId, captureGranted, secrets: secrets ?? null,
       };

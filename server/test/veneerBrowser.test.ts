@@ -134,9 +134,40 @@ describe('Veneer Browser manager', () => {
     expect(await manager.viewerTicketForConversation(3, 'conv-1')).toHaveProperty('ticket');
     expect(db.prepare("SELECT actor_user_id FROM veneer_browser_audit WHERE action='command.executed'").all()).toEqual([{ actor_user_id: 3 }, { actor_user_id: 3 }]);
     expect(() => manager.selectForConversation(3, 'conv-1', privateProfile.id)).toThrow('one of your chats');
-    await expect(manager.updateConversationProfile(3, 'conv-1')).rejects.toThrow('one of your chats');
+    await expect(manager.updateConversationProfile(3, 'conv-1')).rejects.toThrow('grant permission');
     await expect(manager.saveConversationAsProfile(3, 'conv-1', 'Copy')).rejects.toThrow('one of your chats');
     expect(() => manager.setCaptureGrant(3, 'conv-1', true)).toThrow('one of your chats');
+  });
+
+  it('uses exact granted credentials and saves only the assigned profile, with revocation enforced', async () => {
+    shareBusinessBrowser();
+    const profile = await manager.createProfile(1,'project-1','Accounting');
+    manager.selectForConversation(1,'conv-1',profile.id);
+    db.prepare(`INSERT INTO browser_login_grants(conversation_id,project_id,profile_id,granted_by,secret_project,secret_config,secret_name,kind,origins_json,allow_save)
+      VALUES('conv-1','project-1',?,1,'ervp','prd','PASSWORD','password','["https://accounts.shopify.com"]',1)`).run(profile.id);
+    const args={project:'ervp',config:'prd',secret_name:'PASSWORD',target:'input[type=password]'};
+    await manager.fillGrantedLogin(3,'conv-1',args,'password','test-secret');
+    expect(runBrowser.mock.calls[0]?.[1].redact).toContain('test-secret');
+    expect((await manager.conversationSession(3,'conv-1')).canUpdateProfile).toBe(true);
+    await manager.updateConversationProfile(3,'conv-1');
+    expect(remote.promote).toHaveBeenCalledOnce();
+    db.prepare('DELETE FROM browser_login_grants').run();
+    await expect(manager.fillGrantedLogin(3,'conv-1',args,'password','test-secret')).rejects.toThrow('No active');
+    await expect(manager.updateConversationProfile(3,'conv-1')).rejects.toThrow('grant permission');
+  });
+
+  it('rechecks credential grants after waiting for the browser lane', async () => {
+    shareBusinessBrowser();
+    const profile=await manager.createProfile(1,'project-1','Accounting');manager.selectForConversation(1,'conv-1',profile.id);
+    db.prepare(`INSERT INTO browser_login_grants(conversation_id,project_id,profile_id,granted_by,secret_project,secret_config,secret_name,kind,origins_json)
+      VALUES('conv-1','project-1',?,1,'ervp','prd','PASSWORD','password','["https://accounts.shopify.com"]')`).run(profile.id);
+    let release!:()=>void;let entered!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;});
+    runBrowser.mockImplementationOnce(async()=>{entered();await new Promise<void>(resolve=>{release=resolve;});return {args:[],stdout:'',stderr:'',exitCode:0};});
+    const first=manager.runCommand(1,'conv-1',['get','title']);await started;
+    const pending=manager.fillGrantedLogin(3,'conv-1',{project:'ervp',config:'prd',secret_name:'PASSWORD',target:'input[type=password]'},'password','test-secret');
+    const rejected=expect(pending).rejects.toThrow('refused');
+    db.prepare('DELETE FROM browser_login_grants').run();release();await first;await rejected;
+    expect(runBrowser).toHaveBeenCalledOnce();
   });
 
   it('does not inherit the chat creator default login when no profile was assigned', async () => {
