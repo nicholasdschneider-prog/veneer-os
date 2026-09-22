@@ -485,7 +485,11 @@ function HuddleDetail({ id, onNavigate }: { id: string; onNavigate: (hash: strin
       setError('');
       if (r.huddle.last_seq !== lastSeq.current) {
         lastSeq.current = r.huddle.last_seq;
-        requestAnimationFrame(() => { if (list.current) list.current.scrollTop = list.current.scrollHeight; });
+        // Markdown finishes laying out after the first frame, so pin the
+        // bottom twice: once now and once after the bubbles have their height.
+        const toBottom = () => { if (list.current) list.current.scrollTop = list.current.scrollHeight; };
+        requestAnimationFrame(toBottom);
+        setTimeout(toBottom, 250);
       }
     } catch (e) {
       setError((e as Error).message);
