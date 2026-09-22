@@ -192,6 +192,57 @@ export function createBotService(db: Database.Database) {
   function handlingCas(d: Decision, revision: number | undefined) {
     if (revision !== d.handling_revision) throw new BotError(409, 'Handling changed. Reload before continuing.');
   }
+  function reconcileDiscussionHandling(
+    actor: Actor, d: Decision, messageId: string,
+    source: { actor_id: number; handling_revision: number }, key: string,
+  ) {
+    if (source.handling_revision === d.handling_revision) return;
+    const reject = () => { throw new BotError(409, 'Handling changed. This instruction cannot be safely reconciled; request a new current instruction.'); };
+    if (!shared(d) || d.handler_id !== null || d.answer_json !== null || d.state !== 'needs_input' ||
+      source.handling_revision >= d.handling_revision) reject();
+    // Immutable event order, not timestamps, must account for EVERY revision
+    // after the instruction. Only same-author claim/release transitions ending
+    // unowned qualify. A leading release also needs proof of the original claim.
+    const history = db.prepare(`SELECT id,kind,version,actor_id,actor_conversation_id,payload_json
+      FROM bot_decision_events WHERE decision_id=? AND rowid >
+      (SELECT rowid FROM bot_decision_events WHERE id=?)
+      AND kind IN ('handling','answered','revised') ORDER BY rowid`).all(d.id, messageId) as {
+        id: string; kind: string; version: number; actor_id: number;
+        actor_conversation_id: string | null; payload_json: string;
+      }[];
+    if (history.length === 0 ||
+      history.length !== d.handling_revision - source.handling_revision) reject();
+    const initiallyOwned = history.length % 2 !== 0;
+    let originalClaimId: string | null = null;
+    if (initiallyOwned) {
+      const prior = db.prepare(`SELECT id,version,actor_id,actor_conversation_id,payload_json
+        FROM bot_decision_events WHERE decision_id=? AND kind='handling' AND rowid <
+        (SELECT rowid FROM bot_decision_events WHERE id=?) ORDER BY rowid DESC LIMIT 1`)
+        .get(d.id, messageId) as (typeof history)[number] | undefined;
+      let claim: { action?: unknown; revision?: unknown; version?: unknown } | null = null;
+      try { if (prior) claim = JSON.parse(prior.payload_json); } catch { reject(); }
+      if (!prior || prior.version !== d.version || prior.actor_id !== source.actor_id ||
+        prior.actor_conversation_id !== null || claim?.action !== 'claim' ||
+        claim.revision !== source.handling_revision - 1 || claim.version !== d.version) reject();
+      originalClaimId = prior!.id;
+    }
+    const transitions = history.map((e, index) => {
+      let payload: { action?: unknown; revision?: unknown; version?: unknown } | null;
+      try { payload = JSON.parse(e.payload_json); } catch { return reject(); }
+      const revision = source.handling_revision + index;
+      const action = (index + Number(initiallyOwned)) % 2 === 0 ? 'claim' : 'release';
+      if (e.kind !== 'handling' || e.version !== d.version || e.actor_id !== source.actor_id ||
+        e.actor_conversation_id !== null || payload?.action !== action ||
+        payload.revision !== revision || payload.version !== d.version) return reject();
+      return { event_id: e.id, actor_id: e.actor_id, action, from_revision: revision, to_revision: revision + 1 };
+    });
+    event(actor, d, 'discussion_handling_reconciled', {
+      message_id: messageId, author_id: source.actor_id, version: d.version,
+      original_handling_revision: source.handling_revision,
+      original_handler_claim_event_id: originalClaimId,
+      reconciled_handling_revision: d.handling_revision, transitions,
+    }, key + ':handling-reconciliation');
+  }
   function validateProposal(actor: Actor, p: Proposal, botId: string) {
     evidenceAllowed(actor, p, botId);
     const user = db
@@ -577,7 +628,7 @@ export function createBotService(db: Database.Database) {
         const latest = db.prepare('SELECT id FROM bot_decision_threads WHERE decision_id=? AND actor_conversation_id IS NULL ORDER BY rowid DESC LIMIT 1').get(id) as { id: string };
         if (latest.id !== messageId) throw new BotError(409, 'A newer human message supersedes this instruction. Read the thread again.');
         if (d.state !== 'needs_input') throw new BotError(409, 'This proposal already has an answer');
-        handlingCas(d, source.handling_revision);
+        reconcileDiscussionHandling(actor, d, messageId, source, key);
         // Reuse the same human authorization, shared-queue claim and answer flow as the UI.
         const service = createBotService(db);
         if (shared(d) && d.handler_id === null) {
@@ -589,7 +640,7 @@ export function createBotService(db: Database.Database) {
         service.reply(actor, id, key + ':receipt', `Decision recorded from ${user.display_name}’s discussion message (proposal v${version}): ${label}`);
         event(actor, d, 'discussion_decision', { message_id: messageId, action, author_id: user.id, version }, key + ':source');
         return view(actor, read(actor, id));
-      })();
+      }).immediate();
     },
     thread(actor: Actor, id: string) {
       const d = read(actor, id);

@@ -1,6 +1,9 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { migrate } from '../src/db/migrate.js';
 import {
   createBotService,
@@ -175,6 +178,149 @@ describe('VeneerBots', () => {
     const revoked = instruction(third.id);
     db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
     expect(() => s.recordDiscussionDecision(bot, third.id, revoked, 1, 'approve')).toThrow();
+  });
+  function reconciliationFixture() {
+    db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();
+    db.prepare('INSERT INTO employee_workspaces VALUES(2)').run();
+    db.prepare("INSERT INTO employee_bot_access VALUES(2,'fixture-a')").run();
+    const author: Actor = { user: db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow };
+    const d = raise();
+    const message = instruction(d.id, 'ok i approve.', author);
+    s.handle(author, d.id, 1, 'author-claim', 'claim', 0);
+    s.handle(author, d.id, 1, 'author-release', 'release', 1);
+    return { d, message, author };
+  }
+  it('reconciles only complete same-author handling cycles and preserves the immutable instruction', () => {
+    const { d, message, author } = reconciliationFixture();
+    s.handle(author, d.id, 1, 'author-claim-2', 'claim', 2);
+    s.handle(author, d.id, 1, 'author-release-2', 'release', 3);
+    const binding = db.prepare('SELECT * FROM bot_discussion_instructions WHERE message_id=?').get(message);
+    const result = s.recordDiscussionDecision(bot, d.id, message, 1, 'approve');
+    expect(result).toMatchObject({ state: 'decided', handler_id: 2, handling_revision: 5,
+      answer: { actor_id: 2, action: 'approve', text: 'ok i approve.', scope: 'this_case' } });
+    expect(db.prepare('SELECT * FROM bot_discussion_instructions WHERE message_id=?').get(message)).toEqual(binding);
+    const audits = s.thread(human, d.id).events.filter(e => e.kind === 'discussion_handling_reconciled');
+    expect(audits).toHaveLength(1);
+    expect(JSON.parse(audits[0]!.payload_json)).toMatchObject({ message_id: message, author_id: 2, version: 1,
+      original_handling_revision: 0, reconciled_handling_revision: 4,
+      transitions: [0, 1, 2, 3].map((revision) => ({ actor_id: 2, action: revision % 2 ? 'release' : 'claim', from_revision: revision, to_revision: revision + 1 })) });
+    const before = s.thread(human, d.id);
+    expect(s.recordDiscussionDecision(bot, d.id, message, 1, 'approve').state).toBe('decided');
+    expect(s.thread(human, d.id)).toEqual(before);
+    expect(() => s.recordDiscussionDecision(bot, d.id, message, 1, 'reject')).toThrow('Idempotency');
+    expect(s.thread(human, d.id)).toEqual(before);
+    expect(runs).toHaveLength(0);
+  });
+  it.each(['foreign_history', 'foreign_owner', 'same_author_owner', 'superseded', 'revoked_grant', 'disabled', 'answered', 'missing_history'])(
+    'rejects reconciliation with %s without any partial mutations', scenario => {
+      const { d, message, author } = reconciliationFixture();
+      if (scenario === 'foreign_history' || scenario === 'foreign_owner') {
+        s.handle(human, d.id, 1, 'foreign-claim', 'claim', 2);
+        if (scenario === 'foreign_history') s.handle(human, d.id, 1, 'foreign-release', 'release', 3);
+      } else if (scenario === 'same_author_owner') s.handle(author, d.id, 1, 'still-owned', 'claim', 2);
+      else if (scenario === 'superseded') instruction(d.id, 'Wait, do not approve.', author);
+      else if (scenario === 'revoked_grant') db.prepare('DELETE FROM employee_bot_access WHERE user_id=2').run();
+      else if (scenario === 'disabled') db.prepare("UPDATE users SET status='disabled' WHERE id=2").run();
+      else if (scenario === 'answered') {
+        s.handle(author, d.id, 1, 'answer-claim', 'claim', 2);
+        s.answer(author, d.id, 1, 'independent-answer', { action: 'reject', text: 'Reject instead', scope: 'this_case' }, 3);
+      } else db.prepare('UPDATE bot_decisions SET handling_revision=4 WHERE id=?').run(d.id); // isolated corrupt-history fixture
+      const before = s.thread(human, d.id);
+      const decision = s.read(human, d.id);
+      expect(() => s.recordDiscussionDecision(bot, d.id, message, 1, 'approve')).toThrow();
+      expect(s.thread(human, d.id)).toEqual(before);
+      expect(s.read(human, d.id)).toEqual(decision);
+    },
+  );
+  it('requires audit proof that a leading release relinquished the instruction author’s own claim', () => {
+    const { d, author } = reconciliationFixture();
+    s.handle(author, d.id, 1, 'original-claim', 'claim', 2);
+    const message = instruction(d.id, 'Approve while I am handling this', author);
+    s.handle(author, d.id, 1, 'original-release', 'release', 3);
+    s.handle(author, d.id, 1, 'claim-again', 'claim', 4);
+    s.handle(author, d.id, 1, 'release-again', 'release', 5);
+    expect(s.recordDiscussionDecision(bot, d.id, message, 1, 'approve').answer).toMatchObject({ actor_id: 2 });
+    const audit = s.thread(human, d.id).events.find(e => e.kind === 'discussion_handling_reconciled')!;
+    expect(JSON.parse(audit.payload_json)).toMatchObject({ original_handling_revision: 3, reconciled_handling_revision: 6,
+      original_handler_claim_event_id: expect.any(String), transitions: [
+        { action: 'release', from_revision: 3, to_revision: 4 },
+        { action: 'claim', from_revision: 4, to_revision: 5 },
+        { action: 'release', from_revision: 5, to_revision: 6 },
+      ] });
+  });
+  it('rejects a release by the owner when the original claim belonged to someone else', () => {
+    const { d, author } = reconciliationFixture();
+    s.handle(author, d.id, 1, 'foreign-original-claim', 'claim', 2);
+    const message = instruction(d.id, 'Approve', human);
+    s.handle(human, d.id, 1, 'owner-release', 'release', 3);
+    expect(() => s.recordDiscussionDecision(bot, d.id, message, 1, 'approve')).toThrow('Handling changed');
+    expect(s.read(human, d.id)).toMatchObject({ handler_id: null, answer_json: null, state: 'needs_input' });
+  });
+  it('never carries a v3 instruction or its handling reconciliation onto v4', () => {
+    const { d, author } = reconciliationFixture();
+    s.revise(bot, d.id, 1, 'v2', proposal());
+    s.revise(bot, d.id, 2, 'v3', proposal());
+    const message = instruction(d.id, 'Approve version three', author, 3);
+    const revision = s.read(human, d.id).handling_revision;
+    s.handle(author, d.id, 3, 'v3-claim', 'claim', revision);
+    s.handle(author, d.id, 3, 'v3-release', 'release', revision + 1);
+    s.revise(bot, d.id, 3, 'v4', proposal({ recommendation: 'Materially different proposal' }));
+    const before = s.thread(human, d.id);
+    expect(() => s.recordDiscussionDecision(bot, d.id, message, 3, 'approve')).toThrow('Proposal changed');
+    expect(() => s.recordDiscussionDecision(bot, d.id, message, 4, 'approve')).toThrow('version-bound');
+    expect(s.thread(human, d.id)).toEqual(before);
+    expect(s.read(human, d.id)).toMatchObject({ version: 4, state: 'needs_input', answer_json: null });
+  });
+  it('rolls back reconciliation, claim, answer and wakeup together if the receipt fails', () => {
+    const { d, message } = reconciliationFixture();
+    const before = s.thread(human, d.id);
+    const wakeups = db.prepare('SELECT * FROM conversation_wakeups ORDER BY id').all();
+    db.exec(`CREATE TRIGGER fail_receipt BEFORE INSERT ON bot_decision_threads
+      WHEN NEW.actor_conversation_id IS NOT NULL BEGIN SELECT RAISE(ABORT, 'fixture receipt failure'); END`);
+    expect(() => s.recordDiscussionDecision(bot, d.id, message, 1, 'approve')).toThrow('fixture receipt failure');
+    expect(s.thread(human, d.id)).toEqual(before);
+    expect(s.read(human, d.id)).toMatchObject({ handler_id: null, handling_revision: 2, state: 'needs_input', answer_json: null });
+    expect(db.prepare('SELECT * FROM conversation_wakeups ORDER BY id').all()).toEqual(wakeups);
+  });
+  it('excludes a competing connection throughout reconciliation and rejects its stale claim afterward', async () => {
+    const { d, message } = reconciliationFixture();
+    const dir = mkdtempSync(join(tmpdir(), 'discussion-reconciliation-'));
+    const path = join(dir, 'fixture.sqlite');
+    await db.backup(path);
+    const competing = new Database(path, { timeout: 0 });
+    const competitor = createBotService(competing);
+    let earlyAttempt = false;
+    let earlyError: unknown;
+    const primary = new Database(path, { timeout: 0, verbose(sql) {
+      // Try a real competing writer before the first decision read. The outer
+      // IMMEDIATE transaction must already own the write reservation.
+      if (!earlyAttempt && sql.startsWith('SELECT * FROM bot_decisions WHERE id=')) {
+        earlyAttempt = true;
+        try { competitor.handle(human, d.id, 1, 'early-racing-claim', 'claim', 2); }
+        catch (error) { earlyError = error; }
+      }
+    } });
+    try {
+      const service = createBotService(primary);
+      let attempted = false;
+      primary.function('competing_claim', () => {
+        attempted = true;
+        expect(() => competitor.handle(human, d.id, 1, 'racing-claim', 'claim', 2)).toThrow(/locked/);
+        return 1;
+      });
+      primary.exec(`CREATE TRIGGER race_reconciliation BEFORE INSERT ON bot_decision_events
+        WHEN NEW.kind='discussion_handling_reconciled' BEGIN SELECT competing_claim(); END`);
+      expect(service.recordDiscussionDecision(bot, d.id, message, 1, 'approve').state).toBe('decided');
+      expect(earlyAttempt).toBe(true);
+      expect(earlyError).toMatchObject({ code: 'SQLITE_BUSY' });
+      expect(attempted).toBe(true);
+      expect(() => competitor.handle(human, d.id, 1, 'racing-claim', 'claim', 2)).toThrow('Handling changed');
+      expect(competitor.recordDiscussionDecision(bot, d.id, message, 1, 'approve').state).toBe('decided');
+      expect(service.thread(human, d.id).events.filter(e => e.kind === 'answered')).toHaveLength(1);
+      expect(service.thread(human, d.id).events.filter(e => e.kind === 'discussion_handling_reconciled')).toHaveLength(1);
+    } finally {
+      primary.close(); competing.close(); rmSync(dir, { recursive: true, force: true });
+    }
   });
   it('steers a human discussion once to the active owner, retiring only the acknowledged row', async () => {
     let ack!: (ok: boolean) => void;
