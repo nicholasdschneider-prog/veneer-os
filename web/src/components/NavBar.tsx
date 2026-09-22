@@ -1,3 +1,4 @@
+import { WorkspaceSearchButton } from './BotWorkflows';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bot,
@@ -427,6 +428,7 @@ export function NavShell({
           mobileHidden && !isDesktop && 'hidden',
         )}
       >
+        <div className="flex shrink-0 items-center justify-center"><WorkspaceSearchButton /></div>
         {/* Desktop: the account menu at the top of the rail. */}
         <div className={cn('text-foreground', isDesktop ? 'order-[-2] mx-auto mb-1 flex h-8 w-12 items-center justify-center' : 'hidden')}>
           <AccountMenu

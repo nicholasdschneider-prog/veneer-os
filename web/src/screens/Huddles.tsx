@@ -77,13 +77,13 @@ export function HuddleMessageRow({ message, names }: { message: HuddleMessage; n
   const targets = message.targets.map((t) => names.get(t) ?? t);
   if (system)
     return (
-      <li data-kind="system" className="mx-auto max-w-[36rem] whitespace-pre-wrap rounded-xl bg-muted/60 px-3 py-1.5 text-center text-xs text-muted-foreground [overflow-wrap:anywhere]" title={clock(message.created_at)}>
+      <li id={`huddle-message-${message.id}`} data-kind="system" className="mx-auto max-w-[36rem] whitespace-pre-wrap rounded-xl bg-muted/60 px-3 py-1.5 text-center text-xs text-muted-foreground [overflow-wrap:anywhere]" title={clock(message.created_at)}>
         {message.body}
       </li>
     );
   const person = message.author.user_id !== null;
   return (
-    <li data-kind={message.kind} className="flex gap-2.5">
+    <li id={`huddle-message-${message.id}`} data-kind={message.kind} className="flex gap-2.5">
       <span className="mt-4 shrink-0 [&>svg]:size-8 [&>svg]:rounded-lg">
         {authorId ? (
           <BotAvatar id={authorId} name={message.author.name} />
@@ -487,7 +487,7 @@ function HuddleDetail({ id, onNavigate }: { id: string; onNavigate: (hash: strin
         lastSeq.current = r.huddle.last_seq;
         // Markdown finishes laying out after the first frame, so pin the
         // bottom twice: once now and once after the bubbles have their height.
-        const toBottom = () => { if (list.current) list.current.scrollTop = list.current.scrollHeight; };
+        const toBottom = () => { const focus = new URLSearchParams(window.location.hash.split('?')[1]).get('message'); if (focus) { document.getElementById(`huddle-message-${focus}`)?.scrollIntoView({ block: 'center' }); return; } if (list.current) list.current.scrollTop = list.current.scrollHeight; };
         requestAnimationFrame(toBottom);
         setTimeout(toBottom, 250);
       }

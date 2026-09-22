@@ -1,3 +1,4 @@
+import { BotWorkflowDialogs, WorkspaceSearch } from './components/BotWorkflows';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { VoiceProvider } from './components/VoiceProvider';
@@ -18,7 +19,7 @@ applyColorMode(getColorMode());
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <FloatingDesktopProvider>
-      <VoiceProvider><App /></VoiceProvider>
+      <VoiceProvider><App /><BotWorkflowDialogs /><WorkspaceSearch /></VoiceProvider>
     </FloatingDesktopProvider>
     <PwaUpdatePrompt />
   </StrictMode>,

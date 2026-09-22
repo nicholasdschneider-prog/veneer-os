@@ -25,6 +25,7 @@
     "marked": "^15.0.12",
     "node-pty": "^1.1.0",
     "undici": "^7.29.0",
+    "web-push": "^3.6.7",
     "ws": "^8.18.0",
     "zod": "^3.24.1"
   },
@@ -32,6 +33,7 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/express": "^4.17.21",
     "@types/node": "^24.13.3",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.5.13",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",

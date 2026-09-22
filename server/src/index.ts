@@ -1,3 +1,5 @@
+import { createBotEventsWebhook } from './botWorkflows/routes.js';
+import { startBotWorkflows } from './botWorkflows/background.js';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -176,6 +178,8 @@ setTimeout(() => void ensureFileSyncBackfill(ctx), 10_000).unref?.();
 
 const app = express();
 app.disable('x-powered-by');
+app.use('/webhooks/bot-events', createBotEventsWebhook(ctx));
+const stopBotWorkflows = startBotWorkflows(ctx);
 app.get('/healthz', async (_req, res) => {
   try {
     const response = await fetch(`http://127.0.0.1:${config.runnerPort}/healthz`, {
@@ -284,6 +288,7 @@ const shutdown = createShutdown({
     codexConnect.shutdown();
     grokConnect.shutdown();
     codexUsage.shutdown();
+    stopBotWorkflows();
     doppler.stop();
     memoryProvisioner.stop();
       pageExpiry.close();

@@ -1,3 +1,4 @@
+import { createBotWorkflowsRouter } from '../botWorkflows/routes.js';
 import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
 import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
 import { createBotsRouter } from '../bots/routes.js';
@@ -840,6 +841,7 @@ export function createApiRouter(ctx: AppContext): Router {
     next();
   });
   router.use('/live-voice', createLiveVoiceRouter(ctx));
+  router.use('/bot-workflows', createBotWorkflowsRouter(ctx));
   router.use('/bots', createBotsRouter(ctx));
   router.use('/huddles', createHuddlesRouter(ctx));
 

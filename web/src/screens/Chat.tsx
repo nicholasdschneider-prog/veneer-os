@@ -1,3 +1,4 @@
+import { workspaceSearchFocusKey } from '@/lib/workspaceSearch';
 import { useLiveVoice } from '@/components/VoiceProvider';
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
 import { withSideParam } from '../lib/sideChat';
@@ -1940,7 +1941,7 @@ export function Chat({
     () => transcriptItemsForDisplay(transcript.items),
     [transcript.items],
   );
-  const focusedMessageKey = agentMessageFocusKey(focusMessageId);
+  const focusedMessageKey = workspaceSearchFocusKey(focusMessageId, items) ?? agentMessageFocusKey(focusMessageId);
   const focusedMessageReady = Boolean(
     focusedMessageKey && items.some((item) => item.key === focusedMessageKey),
   );

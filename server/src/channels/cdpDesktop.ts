@@ -1,3 +1,4 @@
+import { teachingProbe } from '../botWorkflows/teaching.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -241,6 +242,7 @@ export function attachCdpDesktop(server: Server, ctx: AppContext): void {
 }
 
 export interface ViewerOptions {
+  teaching?: { active(): boolean; record(step: unknown): void };
   cdpPort?: number;
   cdpWebSocketUrl?: string;
   /** Pinned certificate when cdpWebSocketUrl is the browser VM's LAN address. */
@@ -713,6 +715,14 @@ export async function runViewerSession(ws: WebSocket, options: ViewerOptions): P
       msg = JSON.parse(raw.toString('utf8'));
     } catch {
       return;
+    }
+    if (options.teaching?.active() && sessionId && (
+      (msg.t === 'mouse' && (msg.type === 'mousePressed' || msg.type === 'mouseWheel')) ||
+      msg.t === 'insert' || (msg.t === 'key' && ['keyDown','rawKeyDown'].includes(String(msg.type))) || msg.t === 'navigate'
+    )) {
+      const action = msg.t === 'insert' || (msg.t === 'key' && !['Enter','Tab','Escape'].includes(String(msg.key))) ? 'input' : msg.t === 'mouse' ? (msg.type === 'mouseWheel' ? 'scroll' : 'click') : msg.t === 'navigate' ? 'navigate' : 'key';
+      void cdp.send('Runtime.evaluate', { expression: teachingProbe(action, msg.t === 'mouse' ? Number(msg.x) : undefined, msg.t === 'mouse' ? Number(msg.y) : undefined), returnByValue: true }, sessionId)
+        .then((result: any) => { if (result?.result?.value) options.teaching?.record(action === 'key' ? { ...result.result.value, target: `${String(msg.key)} on ${result.result.value.target ?? ''}` } : result.result.value); }).catch(() => {});
     }
     switch (msg.t) {
       case 'ack':

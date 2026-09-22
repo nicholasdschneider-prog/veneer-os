@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { routineWakeAllowed } from '../botWorkflows/routines.js';
 import type Database from 'better-sqlite3';
 import type {
   ConversationRow,
@@ -12,6 +13,7 @@ export function botWakeAllowed(
   w: ConversationWakeupRow,
   c: ConversationRow,
 ): boolean {
+  if (!routineWakeAllowed(db, w)) return false;
   if (!w.wake_key.startsWith('bot-decision:')) return true;
   const e = db
     .prepare('SELECT * FROM bot_decision_events WHERE id=?')

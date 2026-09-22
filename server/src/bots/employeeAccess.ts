@@ -9,6 +9,7 @@ export function isEmployee(db: Database.Database, userId: number): boolean {
 // denied by default; project files, credentials, tools and admin APIs are not inherited.
 export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'GET') return [
+    /^\/bot-workflows\/(search|push|bots\/[^/]+)\/?$/,
     /^\/live-voice\/?$/,
     /^\/bots\/?$/,
     /^\/bots\/teams\/?$/,
@@ -19,8 +20,11 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/conversations\/[^/]+\/transcript\/?$/,
     /^\/generated-files(?:\/.*)?$/,
   ].some(pattern => pattern.test(path));
+  if (method === 'PUT') return /^\/bot-workflows\/bots\/[^/]+\/notifications\/?$/.test(path);
+  if (method === 'DELETE') return /^\/bot-workflows\/push\/[^/]+\/?$/.test(path);
   if (method === 'PATCH') return /^\/bots\/preferences\/[^/]+\/?$/.test(path);
   if (method === 'POST') return [
+    /^\/bot-workflows\/push\/?$/,
     /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|end))?\/?$/,
     /^\/bots\/decisions\/[^/]+\/(answer|thread|handling|dismiss)\/?$/,
     /^\/conversations\/[^/]+\/messages\/?$/,

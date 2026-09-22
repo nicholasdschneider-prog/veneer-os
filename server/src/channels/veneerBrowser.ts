@@ -1,3 +1,4 @@
+import { recording, recordTeachingStep } from '../botWorkflows/teaching.js';
 import { isEmployee } from '../bots/employeeAccess.js';
 import path from 'node:path';
 import type { IncomingMessage, Server } from 'node:http';
@@ -45,6 +46,7 @@ export async function openVeneerBrowserViewer(ctx: AppContext, upgrade: ViewerUp
   wss.handleUpgrade(req, socket, head, (ws) => {
     ws.pause();
     void runViewerSession(ws, {
+      teaching: { active: () => Boolean(recording(ctx, conversationId, user.id)), record: (step) => recordTeachingStep(ctx, conversationId, user.id, step) },
       cdpWebSocketUrl,
       cdpCaFile: caFile,
       downloadDir: '/downloads',

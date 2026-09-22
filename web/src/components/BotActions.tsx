@@ -1,3 +1,4 @@
+import { openBotWorkflows } from './BotWorkflows';
 import { useState, type ReactNode } from 'react';
 import { Mail, MailOpen, MoreHorizontal, Pin, PinOff } from 'lucide-react';
 import { botsApi, type Bot } from '@/lib/bots';
@@ -40,6 +41,7 @@ export function BotActions({ bot, children, onMarkedUnread }: {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              <DropdownMenuItem onSelect={() => openBotWorkflows(bot.conversation_id, bot.name)}>Bot settings and routines</DropdownMenuItem>
               <DropdownMenuItem disabled={busy} onSelect={() => void change({ pinned: !bot.pinned })}>
                 {bot.pinned ? <PinOff /> : <Pin />} {bot.pinned ? 'Unpin' : 'Pin'}
               </DropdownMenuItem>

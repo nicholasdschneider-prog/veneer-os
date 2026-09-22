@@ -1,3 +1,5 @@
+import { openBotWorkflows } from '../BotWorkflows';
+import { requestJson } from '@/lib/api';
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrowserStartingState } from './BrowserStartingState';
 import { Check, ChevronDown, CircleStop, Globe, Loader2, Plus, Radar, Save, ShieldCheck, X } from 'lucide-react';
@@ -762,6 +764,7 @@ export function ConversationBrowserPanel({
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const [session, setSession] = useState<VeneerBrowserSession | null>(initialSession);
   const [profiles, setProfiles] = useState<VeneerBrowserProfile[]>(initialProfiles);
+  const [canTeach, setCanTeach] = useState(false);
   const [capture, setCapture] = useState(initialCapture);
   const [busy, setBusy] = useState(false);
   // Only an open shows the start-up screen; other busy actions keep their buttons.
@@ -800,6 +803,8 @@ export function ConversationBrowserPanel({
     // than breaking the panel; writes surface their errors through action().
     const grant = await fetchConversationCaptureGrant(conversationId).catch(() => null);
     if (grant) setCapture(grant.active);
+    const workflow = await requestJson<{ canTeach: boolean }>(`/api/bot-workflows/bots/${conversationId}`).catch(() => null);
+    setCanTeach(Boolean(workflow?.canTeach));
   }, [conversationId]);
 
   useEffect(() => {
@@ -1127,6 +1132,7 @@ export function ConversationBrowserPanel({
 
       {!session ? <div className="flex flex-1 items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : null}
       {session && !session.configured ? <div className="m-4 rounded-xl border p-4 text-sm text-muted-foreground">Veneer Browser is not configured on this client.</div> : null}
+      {canTeach && <div className="flex shrink-0 justify-end border-b px-2"><Button variant="ghost" size="sm" onClick={() => openBotWorkflows(conversationId, 'Bot', 'teach')}>Teach a task</Button></div>}
       {(error || session?.error) ? <div className="m-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error ?? session?.error}</div> : null}
 
       {session && showingViewer ? (
