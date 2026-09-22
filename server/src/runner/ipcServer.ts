@@ -369,7 +369,7 @@ export function createIpcServer({
         return void sendJson(
           res,
           200,
-          buildQueue.enqueue(String(body.convId ?? ''), String(body.title ?? ''), String(body.brief ?? '')),
+          buildQueue.enqueue(String(body.convId ?? ''), String(body.title ?? ''), String(body.brief ?? ''), typeof body.actorUserId === 'number' ? body.actorUserId : undefined),
         );
       case '/rpc/listBuildQueue':
         return void sendJson(res, 200, { jobs: buildQueue.list() });

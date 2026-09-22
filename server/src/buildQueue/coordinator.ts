@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
 import type { BuildQueueRow, ConversationRow } from '../db/db.js';
 import type { ConversationEvent, ConversationStatus, MessageOrigin } from '../runtime/events.js';
+import { canManageConversation, canTrainBusinessBot } from '../conversations/access.js';
 import { PLATFORM_DEV_VALIDATION_GUIDANCE } from './guidance.js';
 
 interface QueueManager {
@@ -23,7 +24,7 @@ export interface BuildQueueCoordinator {
   start(): void;
   stop(): void;
   tick(): void;
-  enqueue(conversationId: string, title: string, brief: string): EnqueueBuildResult;
+  enqueue(conversationId: string, title: string, brief: string, actorUserId?: number): EnqueueBuildResult;
   list(): BuildQueueRow[];
   resolve(jobId: number, action: 'retry' | 'skip'): ResolveBuildResult;
 }
@@ -159,7 +160,7 @@ export function createBuildQueueCoordinator({
         const conv = conversation.get(job.conversation_id) as
           | (ConversationRow & { assistant_slug: string })
           | undefined;
-        if (!conv || scopeFor(conv) !== job.scope_key) {
+        if (!conv || scopeFor(conv) !== job.scope_key || !(canManageConversation({ id: job.user_id }, conv, db) || canTrainBusinessBot({ id: job.user_id }, conv, db))) {
           db.prepare(
             "UPDATE build_queue SET status = 'failed', error = ?, finished_at = datetime('now') WHERE id = ?",
           ).run('The originating chat or workspace is no longer available', job.id);
@@ -178,7 +179,7 @@ export function createBuildQueueCoordinator({
         if (claimed.changes === 0) continue;
 
         try {
-          manager.postMessage(conv, promptFor(job, conv), conv.user_id, messageOriginFor(conv));
+          manager.postMessage(conv, promptFor(job, conv), job.user_id, messageOriginFor(conv));
         } catch (err) {
           db.prepare(
             "UPDATE build_queue SET status = 'failed', error = ?, finished_at = datetime('now') WHERE id = ?",
@@ -312,16 +313,20 @@ export function createBuildQueueCoordinator({
       manager.bus.off('status', onStatus);
     },
     tick,
-    enqueue(conversationId, title, brief) {
+    enqueue(conversationId, title, brief, actorUserId) {
       const conv = conversation.get(conversationId) as
         | (ConversationRow & { assistant_slug: string })
         | undefined;
       if (!conv) return { ok: false, error: 'not_found' };
+      const actor = { id: actorUserId ?? conv.user_id };
+      if (!(canManageConversation(actor, conv, db) || canTrainBusinessBot(actor, conv, db))) return { ok: false, error: 'not_found' };
       const scopeKey = scopeFor(conv);
       if (!scopeKey) return { ok: false, error: 'not_queueable' };
 
       const existing = activeByConversation.get(conv.id) as BuildQueueRow | undefined;
       if (existing) {
+        // Never append a teammate's brief to a job that will run as another user.
+        if (existing.user_id !== actor.id) return { ok: true, job: existing, position: positionFor(existing), disposition: 'existing' };
         // A failed/stopped job would otherwise deadlock: it blocks its scope,
         // yet its agent's turn is already dead. Re-enqueueing from the same
         // conversation revives it in place instead of refusing.
@@ -356,7 +361,7 @@ export function createBuildQueueCoordinator({
       const info = db.prepare(
         `INSERT INTO build_queue (user_id, conversation_id, scope_key, title, brief)
          VALUES (?, ?, ?, ?, ?)`,
-      ).run(conv.user_id, conv.id, scopeKey, title, brief);
+      ).run(actor.id, conv.id, scopeKey, title, brief);
       const job = jobById.get(Number(info.lastInsertRowid)) as BuildQueueRow;
       const position = positionFor(job);
       tick();

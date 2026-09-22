@@ -1,7 +1,7 @@
 import express, { type Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
-import { canManageConversation, canViewConversation } from '../conversations/access.js';
+import { canManageConversation, canTrainBusinessBot, canViewConversation, sameBusiness } from '../conversations/access.js';
 import { createConversationReactivator } from './conversationActivity.js';
 
 const EnqueueSchema = z.object({
@@ -93,11 +93,11 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
       return;
     }
     const conv = ctx.db
-      .prepare('SELECT id, user_id, visibility, business_team_id FROM conversations WHERE id = ?')
+      .prepare('SELECT id, user_id, visibility, business_team_id, project_id FROM conversations WHERE id = ?')
       .get(body.data.sourceConversationId) as
-      | { id: string; user_id: number; visibility: 'team' | 'private' }
+      | { id: string; user_id: number; visibility: 'team' | 'private'; business_team_id: string | null; project_id: string | null }
       | undefined;
-    if (!conv || !canManageConversation(req.user!, conv, ctx.db)) {
+    if (!conv || !sameBusiness(ctx.db, req.agentConversationId, conv) || !(canManageConversation(req.user!, conv, ctx.db) || canTrainBusinessBot(req.user!, conv, ctx.db))) {
       res.status(404).json({ ok: false, error: 'Conversation not found' });
       return;
     }
@@ -105,7 +105,7 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     // the coordinator's active-conversation guard can reserve the workspace.
     reactivateConversation(conv.id);
     void ctx.manager
-      .enqueueBuild(conv.id, body.data.title, body.data.brief)
+      .enqueueBuild(conv.id, body.data.title, body.data.brief, req.user!.id)
       .then((result) => {
         if (!result.ok) {
           res.status(result.error === 'not_queueable' ? 400 : 404).json({
@@ -116,6 +116,10 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
           });
           return;
         }
+        if (conv.business_team_id) ctx.db.prepare('INSERT INTO business_audit(team_id,actor_id,actor_chat,action,payload_json) VALUES(?,?,?,?,?)').run(
+          conv.business_team_id, req.user!.id, req.agentConversationId ?? null, 'build.enqueued',
+          JSON.stringify({ jobId: result.job.id, conversationId: conv.id, disposition: result.disposition }),
+        );
         res.status(result.disposition === 'enqueued' ? 201 : 200).json({
           ok: true,
           job: result.job,

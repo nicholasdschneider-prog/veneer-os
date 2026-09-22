@@ -69,11 +69,13 @@ beforeAll(async () => {
   db.pragma('foreign_keys = ON');
   migrate(db, MIGRATIONS);
   db.prepare("INSERT INTO projects (id, slug, name) VALUES ('p1', 'proj-one', 'Proj One')").run();
+  for (const user of Object.values(USERS)) db.prepare('INSERT INTO users(id,email,display_name,role) VALUES(?,?,?,?)').run(user.id,user.email,user.display_name,user.role);
 
   const ctx = { config: { dataDir, sourceDir }, db } as unknown as AppContext;
   const app = express();
   app.use(express.json({ limit: '1mb' }));
   app.use((req, _res, next) => {
+    req.agentConversationId = req.headers['x-test-chat'] as string | undefined;
     req.user = USERS[String(req.headers['x-test-user'] ?? 'owner')];
     next();
   });
@@ -125,6 +127,47 @@ async function call(method: string, url: string, user: string, body?: unknown) {
 }
 
 describe('skills routes', () => {
+  it('allows audited project training by business members, without global or linked-skill writes', async () => {
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('training-team','Training',2)").run();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('training-team',3,'member')").run();
+    db.prepare(`INSERT INTO conversations(id,assistant_id,user_id,project_id,business_team_id,visibility,provider,native_session_id,channel)
+      SELECT 'training-chat',id,2,'p1','training-team','team','codex','training-native','web' FROM assistants WHERE slug='assistant'`).run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by,active) VALUES('training-chat','Training',2,1)").run();
+    db.prepare("INSERT INTO business_bot_members(conversation_id,team_id,role) VALUES('training-chat','training-team','bot')").run();
+    try {
+      const created = await call('POST', '/api/skills/project:p1', 'member', { name: 'training', description: 'Accounting training', body: 'Original' });
+      expect(created.status).toBe(200);
+      const saved = await call('PUT', '/api/skills/project:p1/training', 'member', { body: 'Durable correction' });
+      expect(saved.status).toBe(200);
+      expect(saved.json!.skill.body).toContain('Durable correction');
+      expect(db.prepare("SELECT actor_id,action FROM business_audit WHERE team_id='training-team'").all()).toEqual([{actor_id:3,action:'skill.created'},{actor_id:3,action:'skill.updated'}]);
+      expect((await call('POST', '/api/skills/source', 'member', {name:'blocked',description:'d'})).status).toBe(403);
+      const wrongChat = await fetch(`${base}/api/skills/project:p1/training`, {method:'PUT', headers:{'Content-Type':'application/json','x-test-user':'member','x-test-chat':'other-chat'},body:JSON.stringify({body:'Wrong chat'})});
+      expect(wrongChat.status).toBe(403);
+      await call('POST', '/api/skills/global', 'owner', {name:'global-rule',description:'d',body:'Private'});
+      const localRoot = path.dirname(created.json!.skill.canonicalDir);
+      fs.symlinkSync(path.join(gReal(),'global-rule'),path.join(localRoot,'linked-rule'));
+      expect((await call('PUT', '/api/skills/project:p1/linked-rule', 'member', {body:'Overwrite'})).status).toBe(403);
+      fs.symlinkSync(created.json!.skill.canonicalDir,path.join(gReal(),'training'));
+      expect((await call('PUT', '/api/skills/project:p1/training', 'member', {body:'Global overwrite'})).status).toBe(403);
+      fs.unlinkSync(path.join(gReal(),'training'));
+      for (const [change,restore] of [
+        ["UPDATE business_team_members SET role='viewer' WHERE user_id=3", "UPDATE business_team_members SET role='member' WHERE user_id=3"],
+        ["UPDATE users SET status='disabled' WHERE id=3", "UPDATE users SET status='active' WHERE id=3"],
+        ["UPDATE conversations SET visibility='private' WHERE id='training-chat'", "UPDATE conversations SET visibility='team' WHERE id='training-chat'"],
+        ["INSERT INTO employee_workspaces(user_id) VALUES(3)", "DELETE FROM employee_workspaces WHERE user_id=3"],
+      ]) {
+        db.prepare(change!).run();
+        expect((await call('PUT', '/api/skills/project:p1/training', 'member', {body:'Denied'})).status).toBe(403);
+        db.prepare(restore!).run();
+      }
+      db.prepare("DELETE FROM business_team_members WHERE team_id='training-team'").run();
+      expect((await call('PUT', '/api/skills/project:p1/training', 'member', {body:'Revoked'})).status).toBe(403);
+    } finally {
+      db.prepare("DELETE FROM business_team_members WHERE team_id='training-team'").run();
+    }
+  });
+
   it('sandboxes every scope root inside the test temp dir (never the real home)', async () => {
     // macOS: os.tmpdir() is /var/... but roots may come back canonicalized as /private/var/...
     const bases = [tmp, fs.realpathSync(tmp)];

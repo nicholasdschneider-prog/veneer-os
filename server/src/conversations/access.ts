@@ -84,3 +84,16 @@ export function canManageConversation(
 export function canChangeConversationVisibility(user: Pick<UserRow, 'id'>, c: AccessRow): boolean {
   return c.user_id === user.id;
 }
+
+/** Training and queued project work in a shared business bot, without granting chat administration. */
+export function canTrainBusinessBot(
+  user: Pick<UserRow, 'id'>,
+  c: AccessRow & { project_id?: string | null },
+  db: Database.Database,
+): boolean {
+  return Boolean(c.id && c.project_id && c.business_team_id && !isEmployee(db, user.id)
+    && canSendToConversation(user, c, db)
+    && db.prepare(`SELECT 1 FROM bot_registrations r
+      JOIN business_bot_members m ON m.conversation_id=r.conversation_id
+      WHERE r.conversation_id=? AND r.active=1 AND m.team_id=?`).get(c.id, c.business_team_id));
+}

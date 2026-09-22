@@ -1,11 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { canTrainBusinessBot } from '../conversations/access.js';
+import type { ConversationRow } from '../db/db.js';
 import express, { type Request, type Response, type Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { createSkillStore, SkillError, type Role } from '../skills/store.js';
 
 /**
- * Skills Manager API (spec §4). Reads are open to every known user; every
- * mutating route inline-checks `role === 'member'` (the /model-prefs pattern,
+ * Skills Manager API (spec §4). Reads are open to every known user; project training permits authorized business
+ * teammates to create and update local skills. Other mutations check `role === 'member'` (the /model-prefs pattern,
  * NOT a whole-router gate — members may read). The store owns all fs logic and
  * throws typed `{ code }` errors mapped to HTTP below.
  */
@@ -50,6 +54,45 @@ export function createSkillsRouter(ctx: AppContext): Router {
       return true;
     }
     return false;
+  }
+
+  function trainingContext(req: Request, scope: string): ConversationRow | undefined {
+    if (!scope.startsWith('project:')) return undefined;
+    const rows = ctx.db.prepare('SELECT * FROM conversations WHERE project_id=? AND archived=0').all(scope.slice(8)) as ConversationRow[];
+    return rows.find(c => (!req.agentConversationId || req.agentConversationId === c.id) && canTrainBusinessBot(req.user!, c, ctx.db));
+  }
+
+  function authorizeTraining(req: Request, scope: string, name?: string): ConversationRow | undefined {
+    if (req.user!.role !== 'member') return undefined;
+    const conversation = trainingContext(req, scope);
+    if (!conversation) throw new SkillError('forbidden', 'Project training access required');
+    const project = ctx.db.prepare('SELECT slug,root_dir FROM projects WHERE id=?').get(conversation.project_id) as { slug: string; root_dir: string | null };
+    const projectPath = project.root_dir ?? path.join(ctx.config.dataDir, 'workspaces', 'projects', project.slug);
+    const root = fs.existsSync(projectPath) ? fs.realpathSync(projectPath) : path.resolve(projectPath);
+    for (const directory of ['.agents', '.agents/skills', '.claude', '.claude/skills']) {
+      const candidate = path.join(root, directory);
+      if (!fs.existsSync(candidate)) continue;
+      const relative = path.relative(root, fs.realpathSync(candidate));
+      if (relative.startsWith('..') || path.isAbsolute(relative)) throw new SkillError('forbidden', 'Training skill paths must stay inside the project');
+    }
+    if (name) {
+      const skill = store().read(scope, name);
+      const relative = path.relative(root, fs.realpathSync(skill.canonicalDir));
+      // A linked skill can change other projects or global instructions. Only
+      // standalone local project skills are writable through training access.
+      if (relative.startsWith('..') || path.isAbsolute(relative) || skill.entryKind !== 'original'
+        || skill.source || skill.dependents.some(d => d.scope !== scope)) {
+        throw new SkillError('forbidden', 'Shared skill originals require administrator access');
+      }
+    }
+    return conversation;
+  }
+
+  function auditTraining(req: Request, conversation: ConversationRow | undefined, scope: string, name: string, action: string): void {
+    if (!conversation) return;
+    ctx.db.prepare('INSERT INTO business_audit(team_id,actor_id,actor_chat,action,payload_json) VALUES(?,?,?,?,?)').run(
+      conversation.business_team_id, req.user!.id, req.agentConversationId ?? null, action, JSON.stringify({ scope, name }),
+    );
   }
 
   function fail(res: Response, err: unknown): void {
@@ -107,7 +150,6 @@ export function createSkillsRouter(ctx: AppContext): Router {
   });
 
   router.post('/:scope', (req, res) => {
-    if (denyMembers(req, res)) return;
     const p = params(req, res);
     if (!p) return;
     const body = CreateSkillSchema.safeParse(req.body);
@@ -116,7 +158,9 @@ export function createSkillsRouter(ctx: AppContext): Router {
       return;
     }
     try {
+      const training = authorizeTraining(req, p.scope);
       const { skill, crossScopeDuplicates } = store().create(p.scope, body.data.name, body.data.description, body.data.body);
+      auditTraining(req, training, p.scope, body.data.name, 'skill.created');
       res.json({ ok: true, skill, crossScopeDuplicates });
     } catch (err) {
       fail(res, err);
@@ -124,7 +168,6 @@ export function createSkillsRouter(ctx: AppContext): Router {
   });
 
   router.put('/:scope/:name', (req, res) => {
-    if (denyMembers(req, res)) return;
     const p = params(req, res);
     if (!p) return;
     const body = SaveSkillSchema.safeParse(req.body);
@@ -133,7 +176,10 @@ export function createSkillsRouter(ctx: AppContext): Router {
       return;
     }
     try {
-      res.json({ ok: true, skill: store().save(p.scope, p.name, body.data) });
+      const training = authorizeTraining(req, p.scope, p.name);
+      const skill = store().save(p.scope, p.name, body.data);
+      auditTraining(req, training, p.scope, p.name, 'skill.updated');
+      res.json({ ok: true, skill });
     } catch (err) {
       fail(res, err);
     }

@@ -118,6 +118,22 @@ afterAll(() => {
 });
 
 describe('build queue routes', () => {
+  it('allows shared business bot training queues and audits the member, denying viewers and outsiders', async () => {
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('training','Training',1)").run();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('training',2,'member')").run();
+    db.prepare(`INSERT INTO conversations(id,assistant_id,user_id,project_id,business_team_id,visibility,provider,native_session_id,channel)
+      SELECT 'training-chat',id,1,'project-1','training','team','codex','training-native','web' FROM assistants WHERE slug='assistant'`).run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by,active) VALUES('training-chat','Training',1,1)").run();
+    db.prepare("INSERT INTO business_bot_members(conversation_id,team_id,role) VALUES('training-chat','training','bot')").run();
+    const enqueue = () => fetch(`${base}/api/build-queue`, {method:'POST',headers:{'Content-Type':'application/json','x-user':'2'},body:JSON.stringify({sourceConversationId:'training-chat',title:'Save training',brief:'Preserve correction'})});
+    expect((await enqueue()).status).toBe(201);
+    expect(db.prepare("SELECT actor_id,action FROM business_audit WHERE team_id='training'").get()).toEqual({actor_id:2,action:'build.enqueued'});
+    db.prepare("UPDATE business_team_members SET role='viewer' WHERE team_id='training'").run();
+    expect((await enqueue()).status).toBe(404);
+    db.prepare("DELETE FROM business_team_members WHERE team_id='training'").run();
+    expect((await enqueue()).status).toBe(404);
+  });
+
   it('enriches the existing queue with chat and project context', async () => {
     const response = await fetch(`${base}/api/build-queue`);
     expect(response.status).toBe(200);

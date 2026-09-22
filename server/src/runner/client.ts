@@ -113,7 +113,7 @@ export interface RunnerClient {
   cancelWakeup(convId: string, wakeupId: string): Promise<CancelWakeupResult>;
   rescheduleWakeup(convId: string, wakeupId: string, scheduledFor: string): Promise<RescheduleWakeupResult>;
   fireWakeup(convId: string, wakeupId: string): Promise<FireWakeupResult>;
-  enqueueBuild(convId: string, title: string, brief: string): Promise<EnqueueBuildResult>;
+  enqueueBuild(convId: string, title: string, brief: string, actorUserId?: number): Promise<EnqueueBuildResult>;
   listBuildQueue(): Promise<BuildQueueRow[]>;
   resolveBuild(jobId: number, action: 'retry' | 'skip'): Promise<ResolveBuildResult>;
   veneerBrowserProfiles(
@@ -323,7 +323,7 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     rescheduleWakeup: (convId, wakeupId, scheduledFor) =>
       rpc('/rpc/rescheduleWakeup', { convId, wakeupId, scheduledFor }),
     fireWakeup: (convId, wakeupId) => rpc('/rpc/fireWakeup', { convId, wakeupId }),
-    enqueueBuild: (convId, title, brief) => rpc('/rpc/enqueueBuild', { convId, title, brief }),
+    enqueueBuild: (convId, title, brief, actorUserId) => rpc('/rpc/enqueueBuild', { convId, title, brief, actorUserId }),
     listBuildQueue: () => rpc<{ jobs: BuildQueueRow[] }>('/rpc/listBuildQueue', {}).then((r) => r.jobs),
     resolveBuild: (jobId, action) => rpc('/rpc/resolveBuild', { jobId, action }),
     veneerBrowserProfiles: (userId, role, projectId) =>

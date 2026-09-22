@@ -2,7 +2,7 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { ConversationRow } from '../src/db/db.js';
 import { createBuildQueueCoordinator, type BuildQueueCoordinator } from '../src/buildQueue/coordinator.js';
@@ -93,6 +93,36 @@ describe('Platform Dev build queue', () => {
   afterEach(() => {
     coordinator?.stop();
     db.close();
+  });
+
+  it('preserves the requester at dispatch and refuses revoked access or cross-actor merges', () => {
+    db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(2,'trainer@example.com','Trainer','member')").run();
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('training','Training',1)").run();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('training',2,'member')").run();
+    db.prepare("UPDATE conversations SET business_team_id='training' WHERE id LIKE 'project-a-%'").run();
+    for (const id of ['project-a-1','project-a-2']) {
+      db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by,active) VALUES(?,?,1,1)").run(id,id);
+      db.prepare("INSERT INTO business_bot_members(conversation_id,team_id,role) VALUES(?,'training','bot')").run(id);
+    }
+    const manager = fakeManager(db);
+    const post = vi.spyOn(manager,'postMessage');
+    manager.live.add('project-a-1');
+    coordinator = createBuildQueueCoordinator({db,manager});
+    const queued = coordinator.enqueue('project-a-1','Training','Correction',2);
+    expect(queued).toMatchObject({ok:true,job:{user_id:2}});
+    expect(coordinator.enqueue('project-a-1','Other actor','Do not merge',1)).toMatchObject({disposition:'existing',job:{brief:'Correction'}});
+    manager.live.delete('project-a-1');
+    coordinator.tick();
+    expect(post.mock.calls[0]?.[2]).toBe(2);
+    manager.live.add('project-a-2');
+    const revoked = coordinator.enqueue('project-a-2','Training','Correction',2);
+    expect(revoked.ok).toBe(true);
+    db.prepare("UPDATE build_queue SET status='done' WHERE conversation_id='project-a-1'").run();
+    db.prepare("DELETE FROM business_team_members WHERE user_id=2").run();
+    manager.live.delete('project-a-2');
+    coordinator.tick();
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(db.prepare("SELECT status FROM build_queue WHERE conversation_id='project-a-2'").get()).toEqual({status:'failed'});
   });
 
   it('waits for the enqueueing planning turn, then dispatches FIFO one at a time', () => {
