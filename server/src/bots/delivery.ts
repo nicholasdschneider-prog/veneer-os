@@ -116,6 +116,11 @@ export function botDiscussionWake(db: Database.Database, wakeupId: string): Conv
 }
 
 export function recordDiscussionDelivery(db: Database.Database, wakeupId: string, stage: string, reason?: string) {
+  if (stage === 'queued') {
+    db.prepare(`UPDATE queued_messages SET discussion_message_id=? WHERE (conversation_id,id) IN
+      (SELECT conversation_id,message_id FROM hub_inbound_messages WHERE idempotency_key=? AND source_kind='wakeup')`)
+      .run(wakeupId, `wakeup:${wakeupId}`);
+  }
   db.prepare(`INSERT OR IGNORE INTO bot_decision_events
     (id,decision_id,version,kind,actor_id,payload_json,request_key)
     SELECT ?,decision_id,version,'discussion_delivery',actor_id,?,? FROM bot_decision_events
@@ -127,7 +132,6 @@ export function recordDiscussionDelivery(db: Database.Database, wakeupId: string
 
 /** New deliveries only: never sweep/re-steer older already-delivered incident messages. */
 export function queuedDiscussionWake(db: Database.Database, conversationId: string, messageId: number): ConversationWakeupRow | undefined {
-  return db.prepare(`SELECT w.* FROM hub_inbound_messages h JOIN conversation_wakeups w ON h.idempotency_key='wakeup:' || w.id
-    JOIN bot_decision_events e ON e.request_key='discussion-delivery:' || w.id || ':queued'
-    WHERE h.conversation_id=? AND h.message_id=? AND h.source_kind='wakeup' AND e.kind='discussion_delivery'`).get(conversationId, messageId) as ConversationWakeupRow | undefined;
+  return db.prepare(`SELECT w.* FROM queued_messages q JOIN conversation_wakeups w ON w.id=q.discussion_message_id
+    WHERE q.conversation_id=? AND q.id=?`).get(conversationId, messageId) as ConversationWakeupRow | undefined;
 }

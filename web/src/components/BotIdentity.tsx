@@ -152,37 +152,23 @@ export function BotWorkingDots({ label }: { label: string }) {
   );
 }
 
-/**
- * "Grant is working…" while the bot's conversation is mid-turn. Renders
- * nothing when the bot is idle so it can sit inline anywhere.
- */
+/** Activity for this decision only. General bot presence belongs in the rail. */
 export function BotWorkingIndicator({
-  id,
   name,
-  compact = false,
   replyStatus,
+  unavailable = false,
 }: {
-  id: string;
   name: string;
-  compact?: boolean;
-  replyStatus?: 'queued' | 'not_delivered' | 'awaiting_reply' | null;
+  replyStatus?: 'queued' | 'not_delivered' | 'awaiting_reply' | 'responding' | null;
+  unavailable?: boolean;
 }) {
-  const { typing, liveState } = useBotLiveStatus(id);
-  const active = typing || liveState === 'working';
-  if (!active && !replyStatus) return null;
-  const label = typing ? `${name} is typing…` : liveState === 'working' ? `${name} is thinking / working…` :
-    replyStatus === 'queued' ? `Message queued for ${name} · Waiting to start` :
-    replyStatus === 'not_delivered' ? 'Message was not delivered · Check bot availability' :
-    liveState === 'needs input' ? `${name} needs input · Reply still pending` :
-    liveState === 'failed' ? `${name} hit an error · Reply still pending` :
-    liveState === 'Reconnecting' ? 'Reconnecting · Reply status unavailable' : `Waiting for ${name} to reply`;
-  if (compact)
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2 py-0.5 text-[0.6875rem] font-medium text-sky-700 dark:text-sky-300">
-        {active && <BotWorkingDots label={label} />}
-        {typing ? 'Writing' : 'Working'}
-      </span>
-    );
+  if (!replyStatus && !unavailable) return null;
+  const active = !unavailable && replyStatus === 'responding';
+  const label = unavailable ? 'Ticket activity unavailable · Reconnecting…' :
+    active ? `${name} is responding to this ticket…` :
+    replyStatus === 'queued' ? `Your message for this ticket is queued for ${name}` :
+    replyStatus === 'not_delivered' ? 'Your message for this ticket was not delivered' :
+    `Waiting for ${name} to reply to this ticket`;
   return (
     <div role="status" className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
       {active && <BotWorkingDots label={label} />}

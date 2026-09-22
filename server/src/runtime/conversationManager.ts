@@ -761,6 +761,9 @@ export function createConversationManager({
   // A turn records itself here on start and clears itself on completion; a row
   // that survives a restart is an interrupted turn to re-run at boot.
   const MAX_RESUME_ATTEMPTS = 3;
+  // A persisted prompt can resume after a crash, but its previous focus cannot.
+  db.prepare('UPDATE pending_turns SET discussion_message_id=NULL').run();
+  const clearDiscussionActivity = db.prepare('UPDATE pending_turns SET discussion_message_id=NULL WHERE conversation_id=?');
   const recordPendingTurnStmt = db.prepare(
     `INSERT INTO pending_turns (conversation_id, prompt, actor_user_id, origin_json, attempts, status, error)
      VALUES (?, ?, ?, ?, 1, 'pending', NULL)
@@ -768,6 +771,7 @@ export function createConversationManager({
        prompt = excluded.prompt,
        actor_user_id = excluded.actor_user_id,
        origin_json = excluded.origin_json,
+       discussion_message_id = NULL,
        attempts = pending_turns.attempts + 1,
        status = 'pending',
        error = NULL`,
@@ -1400,11 +1404,15 @@ export function createConversationManager({
     // On a fresh turn there's no prior row (attempts→1); on a resume the row
     // survives and attempts increments, so a turn that keeps crashing gives up.
     recordPendingTurnStmt.run(conv.id, text, actorUserId, messageOriginJson(origin));
+    if (discussion) db.prepare('UPDATE pending_turns SET discussion_message_id=? WHERE conversation_id=?').run(discussion.id, conv.id);
 
     // Has this native session ever run a turn? First turn uses --session-id.
     const firstTurn = isFirstTurn(conv.id);
 
     const emit = (event: ConversationEvent): void => {
+      if (['turn_done', 'error', 'approval_requested', 'question_asked'].includes(event.type)) {
+        clearDiscussionActivity.run(conv.id);
+      }
       if (event.type === 'turn_started') {
         let eventOrigin = event.origin;
         let eventMessageId = event.messageId;
@@ -1878,6 +1886,10 @@ export function createConversationManager({
       if (entry.turn.actorUserId !== actorUserId) return queued('other_actor');
       if (!steer) return queued('no_steer_support');
 
+      // Once another input enters this turn, exclusive discussion focus is unknown.
+      // Even a failed steer must not restore a potentially stale activity claim.
+      clearDiscussionActivity.run(conv.id);
+
       // The origin is consumed when the provider replays the line as a synthetic
       // turn_started, which may be long after this call returns. Keep it pending
       // until the acknowledgement settles either way.
@@ -2350,6 +2362,7 @@ export function createConversationManager({
       }
     },
     interrupt(conversationId, reason = 'user') {
+      clearDiscussionActivity.run(conversationId);
       const entry = live.get(conversationId);
       if (!entry) return false;
       const kill = entry.turn ? entry.kill : entry.maintenance?.kill;
@@ -2376,6 +2389,7 @@ export function createConversationManager({
       return true;
     },
     shutdown() {
+      db.prepare('UPDATE pending_turns SET discussion_message_id=NULL').run();
       for (const [conversationId, entry] of live) {
         const kill = entry.turn ? entry.kill : entry.maintenance?.kill;
         if (!kill) continue;

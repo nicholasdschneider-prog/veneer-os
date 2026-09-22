@@ -53,7 +53,7 @@ export interface BotDecision {
   bot_name: string;
   assignee_name: string;
   order_reference?: { number: string; url: string | null; direct: boolean } | null;
-  reply_status?: 'queued' | 'not_delivered' | 'awaiting_reply' | null;
+  reply_status?: 'queued' | 'not_delivered' | 'awaiting_reply' | 'responding' | null;
 }
 export interface BusinessTeam { id: string; name: string; can_manage: boolean; members: { user_id: number; role: string; display_name: string; restricted?: boolean }[] }
 export interface Bot {

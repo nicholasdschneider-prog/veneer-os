@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { BotAvatar, BotName, botJobTitle, replyActivity } from './BotIdentity';
+import { BotAvatar, BotName, BotWorkingIndicator, botJobTitle, replyActivity } from './BotIdentity';
+
+describe('ticket discussion activity', () => {
+  it('shows activity only for a confirmed ticket response', () => {
+    const render = (replyStatus: 'responding' | 'queued' | 'awaiting_reply' | 'not_delivered' | null) =>
+      renderToStaticMarkup(<BotWorkingIndicator name="Grant" replyStatus={replyStatus} />);
+    expect(render(null)).toBe('');
+    expect(render('responding')).toContain('Grant is responding to this ticket');
+    expect(render('responding')).toContain('animate-bounce');
+    for (const status of ['queued', 'awaiting_reply', 'not_delivered'] as const) {
+      expect(render(status)).toContain('this ticket');
+      expect(render(status)).not.toContain('animate-bounce');
+      expect(render(status)).not.toContain('is responding');
+    }
+  });
+  it('hides stale active claims when the status refresh fails', () => {
+    const html = renderToStaticMarkup(<BotWorkingIndicator name="Grant" replyStatus="responding" unavailable />);
+    expect(html).toContain('Ticket activity unavailable');
+    expect(html).not.toContain('animate-bounce');
+    expect(html).not.toContain('is responding');
+  });
+});
 
 describe('bot reply activity', () => {
   it('distinguishes streamed replies from work and clears at execution boundaries', () => {

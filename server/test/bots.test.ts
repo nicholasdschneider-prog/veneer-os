@@ -193,10 +193,13 @@ describe('VeneerBots', () => {
     expect(seen[0]).toContain('Please clarify in this decision.');
     expect(db.prepare('SELECT count(*) AS n FROM queued_messages').get()).toEqual({ n: 1 });
     expect(s.thread(human, d.id).events.some(e => e.payload_json.includes('written_awaiting_ack'))).toBe(true);
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBe('queued');
     ack(true);
     await flush();
     expect(db.prepare('SELECT count(*) AS n FROM queued_messages').get()).toEqual({ n: 0 });
     expect(s.thread(human, d.id).events.some(e => e.payload_json.includes('provider_consumed'))).toBe(true);
+    // Consumption inside an unrelated turn is not proof of ticket focus.
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBe('awaiting_reply');
     const w = db.prepare('SELECT id FROM conversation_wakeups').get() as { id: string };
     expect(manager.deliverWakeup(conv, seen[0]!, w.id).disposition).toBe('duplicate');
     expect(seen).toHaveLength(1);
@@ -510,6 +513,44 @@ describe('VeneerBots', () => {
     s.reply(human, d.id, 'follow-up', 'Please check it.');
     db.prepare("UPDATE conversation_wakeups SET status='cancelled' WHERE status='pending'").run();
     expect(s.view(human, s.read(human, d.id)).reply_status).toBe('not_delivered');
+  });
+  it('tracks a dedicated ticket response from queue to completion without lighting up another ticket', async () => {
+    const first = raise('first');
+    const second = raise('second');
+    const status = (id: string) => s.view(human, s.read(human, id)).reply_status;
+    const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+    manager.postMessage(conv, 'Unrelated work'); await flush();
+    s.reply(human, first.id, 'first-question', 'Please investigate this ticket');
+    scheduler.tick(); await flush();
+    expect(status(first.id)).toBe('queued');
+    expect(status(second.id)).toBeNull();
+    runs[0]!.finish(); await flush();
+    expect(status(first.id)).toBe('responding');
+    expect(status(second.id)).toBeNull();
+    // Browsing a different discussion as a human does not change bot focus.
+    s.thread(human, second.id);
+    expect(status(first.id)).toBe('responding');
+    runs[1]!.finish(); await flush();
+    expect(status(first.id)).toBe('awaiting_reply');
+    manager.postMessage(conv, 'Another unrelated task'); await flush();
+    expect(status(first.id)).toBe('awaiting_reply');
+    s.reply(bot, first.id, 'answer-first', 'Here are the findings.');
+    expect(status(first.id)).toBeNull();
+  });
+  it.each(['steer', 'other_ticket', 'interrupt', 'shutdown'])('drops the ticket activity claim on %s', async change => {
+    steer = async () => true;
+    const first = raise('first');
+    const second = raise('second');
+    s.reply(human, first.id, 'question', 'Check this ticket'); scheduler.tick(); await flush();
+    const status = () => s.view(human, s.read(human, first.id)).reply_status;
+    expect(status()).toBe('responding');
+    if (change === 'steer') {
+      const conv = db.prepare('SELECT * FROM conversations WHERE id=?').get('fixture-a') as ConversationRow;
+      await manager.steerMessage(conv, 'Another topic');
+    } else if (change === 'other_ticket') s.thread(bot, second.id);
+    else if (change === 'interrupt') manager.interrupt('fixture-a');
+    else manager.shutdown();
+    expect(status()).toBe('awaiting_reply');
   });
   it('orders bots by activity with personal pins and preserves personal unread state', async () => {
     let requestActor = human;

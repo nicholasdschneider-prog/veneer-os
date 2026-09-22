@@ -147,6 +147,12 @@ export function createBotService(db: Database.Database) {
     if (!d) throw new BotError(404, 'Decision not found');
     chat(actor, d.conversation_id);
     evidenceAllowed(actor, JSON.parse(d.proposal_json), d.conversation_id);
+    // Reading or changing another decision means the response turn has switched
+    // scope. Human browsing must never affect the bot's activity.
+    if (actor.conversationId) {
+      db.prepare(`UPDATE pending_turns SET discussion_message_id=NULL WHERE conversation_id=?
+        AND discussion_message_id IN (SELECT id FROM bot_decision_events WHERE decision_id<>?)`).run(actor.conversationId, d.id);
+    }
     return d;
   }
   function owner(actor: Actor, d: Decision) {
@@ -336,18 +342,29 @@ export function createBotService(db: Database.Database) {
       WHERE t.decision_id=? AND e.version=? AND t.actor_conversation_id=? ORDER BY t.rowid`)
       .all(d.id, d.version, d.conversation_id) as { text: string }[];
     const store = c.business_team_id ? (db.prepare('SELECT shopify_store FROM business_teams WHERE id=?').get(c.business_team_id) as { shopify_store: string | null } | undefined)?.shopify_store : null;
-    const latestDiscussion = db.prepare(`SELECT w.status FROM bot_decision_events e
+    const latestDiscussion = db.prepare(`SELECT w.status,
+      EXISTS (SELECT 1 FROM pending_turns p WHERE p.conversation_id=w.conversation_id
+        AND p.discussion_message_id=e.id AND p.status='pending') AS responding,
+      EXISTS (SELECT 1 FROM queued_messages q
+        WHERE q.conversation_id=w.conversation_id AND q.discussion_message_id=e.id) AS queued,
+      EXISTS (SELECT 1 FROM bot_decision_events delivery
+        WHERE delivery.request_key='discussion-delivery:' || e.id || ':cancelled') AS cancelled
+      FROM bot_decision_events e
       LEFT JOIN conversation_wakeups w ON w.id=e.id WHERE e.decision_id=? AND e.version=? AND e.kind='message'
       AND e.actor_conversation_id IS NULL AND NOT EXISTS (
         SELECT 1 FROM bot_decision_threads t WHERE t.decision_id=e.decision_id AND t.actor_conversation_id IS NOT NULL
         AND t.rowid > (SELECT rowid FROM bot_decision_threads WHERE id=e.id)) ORDER BY e.rowid DESC LIMIT 1`)
-      .get(d.id, d.version) as { status: string | null } | undefined;
+      .get(d.id, d.version) as { status: string | null; responding: number; queued: number; cancelled: number } | undefined;
     return {
       ...d,
       answer_bridge: answerBridge,
       proposal,
       order_reference: orderReference(proposal, [proposal.question, proposal.recommendation, proposal.consequence, proposal.blocked_action, ...botReplies.map(r => r.text)], store),
-      reply_status: latestDiscussion ? (latestDiscussion.status === 'pending' ? 'queued' : latestDiscussion.status === 'cancelled' ? 'not_delivered' : 'awaiting_reply') : null,
+      reply_status: latestDiscussion
+        ? latestDiscussion.status === 'cancelled' || latestDiscussion.cancelled ? 'not_delivered'
+          : latestDiscussion.responding ? 'responding'
+            : latestDiscussion.status === 'pending' || latestDiscussion.queued ? 'queued' : 'awaiting_reply'
+        : null,
       answer: parse(d.answer_json),
       result: parse(d.result_json),
       parked: parse(d.parked_json),

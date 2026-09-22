@@ -194,6 +194,7 @@ export function Bots({
   const [amendQuestion, setAmendQuestion] = useState('');
   const [amendConsequence, setAmendConsequence] = useState('');
   const [amendAction, setAmendAction] = useState('');
+  const [activityUnavailable, setActivityUnavailable] = useState(false);
   const refresh = useCallback(async () => {
     const [list, thread] = await Promise.all([
       botsApi.list(filter, business),
@@ -215,6 +216,7 @@ export function Bots({
     setTeams(list.teams ?? []);
     setDecisions(list.decisions);
     setDetail(thread);
+    setActivityUnavailable(false);
     setLoading(false);
   }, [filter, decisionId, business]);
   useEffect(() => {
@@ -227,6 +229,7 @@ export function Bots({
     window.addEventListener(BOT_PREFERENCES_CHANGED, preferencesChanged);
     void refresh().catch((e) => {
       if (active) {
+        setActivityUnavailable(true);
         setError(e.message);
         setLoading(false);
       }
@@ -238,6 +241,7 @@ export function Bots({
       ])
         .then(([list, thread]) => {
           if (active && currentRoute.current === decisionId) {
+            setActivityUnavailable(false);
             setBots(list.bots);
     setTeams(list.teams ?? []);
             setDecisions(list.decisions);
@@ -248,6 +252,7 @@ export function Bots({
         })
         .catch((e) => {
           if (active) {
+            setActivityUnavailable(true);
             setError(e.message);
             if (e.status === 403 || e.status === 404) setDetail(null);
           }
@@ -864,7 +869,7 @@ export function Bots({
                         </div>
                       ))}
                     </div>
-                    <div className="mb-3"><BotWorkingIndicator id={d.conversation_id} name={d.bot_name} replyStatus={d.reply_status} /></div>
+                    <div className="mb-3"><BotWorkingIndicator name={d.bot_name} replyStatus={d.reply_status} unavailable={activityUnavailable || stale} /></div>
                     <BotComposer
                       key={d.id}
                       conversationId={d.conversation_id}
