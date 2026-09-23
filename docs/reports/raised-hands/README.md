@@ -64,3 +64,9 @@ Root typecheck passed; full tests passed: 2,286 server (5 skipped), 865 web, 21 
 - [overview-414-light.png](/Users/archerclawdington/veneer-os/docs/reports/raised-hands/overview-414-light.png)
 - [overview-768-dark.png](/Users/archerclawdington/veneer-os/docs/reports/raised-hands/overview-768-dark.png)
 - [overview-768-light.png](/Users/archerclawdington/veneer-os/docs/reports/raised-hands/overview-768-light.png)
+
+## Deployment and remaining access limit
+
+Implementation **4452251** committed/pushed; root restart followed all passing checks. Read-only post-restart health checks returned 200 for web, runner, app-runner, terminal and browser-manager. The live opt-in table contains exactly seven queues, all bound to the verified ERVP business. Deployed guide New entry and resumed instructions are present.
+
+Live read-only service checks: Nicholas sees 12 current opted-in raised hands, all answerable. Ali sees one, answerable. **The other 11 cards fail existing evidence-conversation access checks across five source chats**, not handler ownership or comment filtering. This build deliberately does not bypass those evidence ACLs or grant access to private source chats. Full identical visibility across the requested humans is therefore **not yet achieved**: the owner must resolve legitimate source-evidence access for Ali and identify/provision Mackenzie's native account through supported access management. The UI simplification and claim-exclusivity repair are deployed; they are not a claim that all teammate access is now configured. No live decision was answered, revised, dismissed or otherwise mutated during verification.
