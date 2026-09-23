@@ -17,4 +17,4 @@ for label,headers,path in [
  try:
   parsed=json.loads(body);message=parsed.get('error') if isinstance(parsed,dict) else None
  except Exception:pass
- print(json.dumps({'check':label,'status':status,'expectedNativeMissingClaim':message=='Claim not found','pageTitle':re.findall(b'<title>([^<]{0,150})</title>',body)[0].decode() if re.findall(b'<title>([^<]{0,150})</title>',body) else None}))
+ print(json.dumps({'check':label,'status':status,'expectedNativeMissingClaim':message=='Claim not found','nativeError':message if isinstance(message,str) and len(message)<120 else None,'pageTitle':re.findall(b'<title>([^<]{0,150})</title>',body)[0].decode() if re.findall(b'<title>([^<]{0,150})</title>',body) else None}))

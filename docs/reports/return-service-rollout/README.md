@@ -51,3 +51,22 @@ Changed artifacts:
 - [Living capability catalog](/Users/archerclawdington/veneer-os/server/src/featureGuide/catalog.ts).
 
 Final checks, restart and post-restart authentication results are recorded below.
+
+## Post-restart result
+
+Implementation/setup commit **9877182**, pushed origin main. Root typecheck, full tests (server2311 passed/5skipped, web865, browser40, installer21) and production build passed before complete detached root restart. All five service health endpoints returned200.
+
+Public read-only synthetic-key checks after restart:
+- Dedicated service → native404 **Claim not found**: Cloudflare and native verifier authentication both succeeded.
+- No identity →401.
+- Fake human JWT →401.
+- Dedicated return token on AutoShip path →403.
+
+No live claim lookup key was used. All native trust/mapping/claim/ack tables remain empty. Read-only verification still finds active Nicholas user1 as ERVP owner. Shared CS hands now13 for Nicholas and13 for Ali; count growth reflects newly arriving work, not a test mutation.
+
+Avery provided her own authenticated capability receipt at2026-09-23T19:07:37Z:
+principalId veneer:cbf4e12b-b0ea-44fb-95fc-0e99613dc313, authorized=true, enforcementMode=required, oneActiveLeasePerPrincipal=true. Source endpoint https://orderops-dev-web-production.up.railway.app/api/cs/leases/capability. Her credential stayed in her custody. This proves current named principal only; it does not establish the source account/runtime binding. Source custodian was asked for that final proof before preparing owner enrollment.
+
+Authenticated Railway metadata independently confirms project71cc77d6-9c0d-4770-9d6d-62b8c4bb516c (OrderOps Production), production environment530025e2-352d-443c-a8ed-e589fc20621d and orderops-web serviceede1932e-b3f9-4e7b-b1be-45804dfbe842. These are deployment identifiers, not automatically an OrderOps account_id. The source custodian must define/verify that final binding; Platform Dev will not silently substitute a Railway or Cloudflare ID.
+
+The infrastructural rollout is operational. Owner enrollment remains pending source-custodian account/origin proof and then one genuine Nicholas-session POST; no infrastructure work is delegated to Nick. A follow-up will collect that proof and finish the exact nonsecret request rather than ask for another customer approval.
