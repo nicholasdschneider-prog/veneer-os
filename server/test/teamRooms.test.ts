@@ -113,6 +113,17 @@ describe("private team rooms", () => {
     expect(s.list(other)).toEqual([]);
     expect(() => s.read(other, r.id)).toThrow("not found");
   });
+  it("returns actual bounded previews only to current authorized members", () => {
+    const r = create();
+    expect(s.list(ali)[0]!.last_message).toBeNull();
+    post(r.id, owner, {text:"Earlier message"});
+    post(r.id, ali, {text:"Latest " + "x".repeat(300)});
+    expect(s.list(owner)[0]!.last_message).toMatchObject({text:"Latest " + "x".repeat(233),author_name:"Ali"});
+    expect(s.list(other)).toEqual([]);
+    s.update(owner, r.id, {expected_revision:1,members:["user:1","bot:bot-a"]});
+    expect(s.list(ali)).toEqual([]);
+    expect(wakes()).toHaveLength(0);
+  });
   it("rejects cross-business members and bots in human DMs", () => {
     expect(() => create(["user:3"])).toThrow();
     expect(() =>

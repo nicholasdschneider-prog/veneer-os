@@ -353,7 +353,8 @@ export function createRoomService(db: Database.Database) {
               )
               .get(r.id, m.seen_seq, actorKey(a)) as { n: number }
           ).n;
-          return [{ ...r, members: participants(r), unread }];
+          const last=db.prepare('SELECT substr(text,1,240) text,author_name,created_at FROM team_room_messages WHERE room_id=? ORDER BY seq DESC LIMIT 1').get(r.id) ?? null;
+          return [{ ...r, members: participants(r), unread, last_message:last }];
         } catch {
           return [];
         }

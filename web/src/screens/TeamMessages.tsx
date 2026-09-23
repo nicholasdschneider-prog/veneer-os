@@ -1,3 +1,5 @@
+import {BotConversationRail} from '@/components/BotConversationRail';
+import {GroupAvatar} from '@/components/GroupAvatar';
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -54,9 +56,13 @@ function Avatar({ name, bot = false }: { name: string; bot?: boolean }) {
 }
 export function TeamMessages({
   roomId,
+  fromBots = false,
+  restricted = false,
   onNavigate,
 }: {
   roomId?: string;
+  fromBots?: boolean;
+  restricted?: boolean;
   onNavigate: (hash: string) => void;
 }) {
   const [rooms, setRooms] = useState<TeamRoom[]>([]),
@@ -92,7 +98,7 @@ export function TeamMessages({
   }, [roomId, create]);
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <aside
+      {fromBots ? <div className="hidden w-72 shrink-0 md:block"><BotConversationRail restricted={restricted} selectedGroup={"room:"+roomId} onNavigate={onNavigate}/></div> : <aside
         className={`${roomId ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-r md:w-72`}
       >
         <header className="flex items-center justify-between border-b px-4 py-3">
@@ -100,7 +106,7 @@ export function TeamMessages({
           <Button
             variant="ghost"
             size="icon"
-            className="size-11 text-foreground"
+            className="size-[44px] text-foreground"
             aria-label="New message"
             onClick={() => setCreate(true)}
           >
@@ -134,7 +140,7 @@ export function TeamMessages({
               aria-current={r.id === roomId ? "page" : undefined}
               className={`flex min-h-16 w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted ${r.id === roomId ? "bg-muted" : ""}`}
             >
-              <Avatar name={roomTitle(r, directory?.self_key ?? "")} />
+              {r.kind==="group"?<GroupAvatar members={r.members}/>:<Avatar name={roomTitle(r, directory?.self_key ?? "")} />}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">
                   {roomTitle(r, directory?.self_key ?? "")}
@@ -159,11 +165,12 @@ export function TeamMessages({
         <p className="border-t px-4 py-3 text-xs text-muted-foreground">
           Private to the people and bots in each room.
         </p>
-      </aside>
+      </aside>}
       {roomId ? (
         <RoomConversation
           key={roomId}
           id={roomId}
+          backHash={fromBots?"#/bots":"#/messages"}
           directory={directory}
           onNavigate={onNavigate}
         />
@@ -181,7 +188,7 @@ export function TeamMessages({
         </div>
       )}
       <Dialog open={create} onOpenChange={setCreate}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="rounded-3xl sm:max-w-lg [&>[data-slot=dialog-close]]:size-[44px]">
           <DialogTitle>New message</DialogTitle>
           <DialogDescription>
             Choose a teammate, or create a group with people and bots.
@@ -417,10 +424,12 @@ function RoomEditor({
 }
 function RoomConversation({
   id,
+  backHash,
   directory,
   onNavigate,
 }: {
   id: string;
+  backHash: string;
   directory: RoomDirectory | null;
   onNavigate: (hash: string) => void;
 }) {
@@ -618,9 +627,9 @@ function RoomConversation({
         <Button
           variant="ghost"
           size="icon"
-          className="size-11 text-foreground"
-          aria-label="Back to messages"
-          onClick={() => onNavigate("#/messages")}
+          className="size-[44px] text-foreground"
+          aria-label={backHash==="#/bots"?"Back to bots":"Back to messages"}
+          onClick={() => onNavigate(backHash)}
         >
           <ArrowLeft />
         </Button>
@@ -629,7 +638,7 @@ function RoomConversation({
           onClick={() => setDetails(true)}
           disabled={!room}
         >
-          <Avatar name={room ? roomTitle(room, room.self_key) : "Team"} />
+          {room?.kind==="group"?<GroupAvatar members={room.members}/>:<Avatar name={room ? roomTitle(room, room.self_key) : "Team"} />}
           <span className="min-w-0">
             <span className="block truncate font-semibold">
               {room ? roomTitle(room, room.self_key) : "Messages"}
@@ -770,7 +779,7 @@ function RoomConversation({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-11 text-foreground"
+                  className="size-[44px] text-foreground"
                   aria-label={`Remove ${f.name}`}
                   disabled={busy}
                   onClick={() =>
@@ -846,7 +855,7 @@ function RoomConversation({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-11 text-foreground"
+                className="size-[44px] text-foreground"
                 aria-label="Attach files"
                 disabled={busy || uploading || !room.can_send}
                 onClick={() => fileInput.current?.click()}
@@ -856,7 +865,7 @@ function RoomConversation({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-11 text-foreground"
+                className="size-[44px] text-foreground"
                 aria-label="Mention a member"
                 disabled={busy || !room.can_send}
                 onClick={() => setMentionOpen(!mentionOpen)}
@@ -866,7 +875,7 @@ function RoomConversation({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-11 text-foreground"
+                className="size-[44px] text-foreground"
                 aria-label={recording ? "Stop dictation" : "Dictate message"}
                 disabled={busy || finalizing || !room.can_send}
                 onClick={dictate}
@@ -916,7 +925,7 @@ function RoomConversation({
           if (!open) setEdit(false);
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="rounded-3xl sm:max-w-lg [&>[data-slot=dialog-close]]:size-[44px]">
           <DialogTitle>
             {room ? roomTitle(room, room.self_key) : "Conversation details"}
           </DialogTitle>
@@ -938,12 +947,13 @@ function RoomConversation({
                 />
               ) : (
                 <>
-                  <div className="space-y-2">
+                  {room.kind==="group"&&<div className="flex justify-center py-4"><GroupAvatar members={room.members} large/></div>}
+                  <div className="divide-y rounded-2xl bg-muted/50 px-3">
                     {room.members.map((p) => (
                       <div key={p.key} className="flex items-center gap-3 py-2">
                         <Avatar name={p.name} bot={p.kind === "bot"} />
                         <span className="min-w-0 break-words">
-                          {p.name}
+                          {p.kind==="bot"&&p.available!==false?<button className="min-h-[44px] max-w-full truncate text-left hover:underline" onClick={()=>onNavigate('#/chat/'+p.key.slice(4)+'?from=bots')}>{p.name} ›</button>:p.name}
                           <span className="block text-xs text-muted-foreground">
                             {p.kind === "bot" ? "Bot" : "Person"}
                             {p.key === room.self_key ? " · You" : ""}
@@ -954,7 +964,7 @@ function RoomConversation({
                   </div>
                   {room.kind === "group" &&
                     (room.can_manage ? (
-                      <Button onClick={() => setEdit(true)}>Edit group</Button>
+                      <div className="flex flex-wrap gap-2"><Button className="min-h-[44px]" variant="outline" onClick={() => setEdit(true)}>Rename group</Button><Button className="min-h-[44px]" onClick={() => setEdit(true)}>Add member</Button></div>
                     ) : (
                       <Button
                         variant="outline"
@@ -964,7 +974,7 @@ function RoomConversation({
                               expected_revision: room.revision,
                               leave: true,
                             })
-                            .then(() => onNavigate("#/messages"))
+                            .then(() => onNavigate(backHash))
                             .catch((e) => setError(errorText(e)));
                         }}
                       >

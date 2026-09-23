@@ -28,7 +28,7 @@ export function EmployeeWorkspace({ hash, onNavigate, email, onToast }: { hash: 
       <span className="break-all text-xs text-muted-foreground">{email}</span>
     </header>
     <main className="min-h-0 flex-1 overflow-auto">
-      {path === '#/messages' || path.startsWith('#/messages/') ? <TeamMessages roomId={path.split('/')[2]} onNavigate={onNavigate} /> : path === '#/bot-guide' ? <BotGuide hash={hash} onNavigate={onNavigate} /> : existingChatId ? <SplitView
+      {path === '#/messages' || path.startsWith('#/messages/') ? <TeamMessages restricted roomId={path.split('/')[2]} fromBots={params.get("from")==="bots"} onNavigate={onNavigate} /> : path === '#/bot-guide' ? <BotGuide hash={hash} onNavigate={onNavigate} /> : existingChatId ? <SplitView
         storageKey="split:chats"
         mobileShows="detail"
         sidebar={<BotConversationRail selectedId={existingChatId} onNavigate={onNavigate} restricted />}

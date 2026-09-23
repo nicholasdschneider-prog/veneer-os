@@ -45,7 +45,7 @@ const browser = await chromium.launch({
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   headless: true,
 });
-const output = new URL("../docs/reports/team-messages/", import.meta.url)
+const output = process.argv[3] ?? new URL("../docs/reports/team-messages/", import.meta.url)
   .pathname;
 await mkdir(output, { recursive: true });
 const people = [
@@ -208,7 +208,7 @@ try {
     await page
       .getByRole("button", { name: /Customer Service.*Details/ })
       .click();
-    await page.getByRole("button", { name: "Edit group", exact: true }).click();
+    await page.getByRole("button", { name: "Rename group", exact: true }).click();
     await page
       .getByRole("textbox", { name: "Group name", exact: true })
       .fill("Customer care");

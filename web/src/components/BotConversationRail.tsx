@@ -1,20 +1,24 @@
+import {NewGroupChat} from './NewGroupChat';
+import {GroupConversationRow} from './GroupConversationRow';
+import {useBotGroups,mergeBotGroups} from '@/lib/botGroups';
 import { api } from '@/lib/api';
 import { BusinessSelector, useBusinessSelection } from './BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
 import { useEffect, useState } from 'react';
 import { botsApi, type Bot } from '@/lib/bots';
-import { huddlesApi } from '@/lib/huddles';
 import { BotAvatar, BotName, BotPresence } from './BotIdentity';
 import { cn } from '@/lib/utils';
-import { Hand, Users } from 'lucide-react';
+import { Hand } from 'lucide-react';
 import { BotActions, BOT_PREFERENCES_CHANGED } from './BotActions';
 
 export function BotConversationRail({
   selectedId,
+  selectedGroup,
   restricted = false,
   onNavigate,
 }: {
   selectedId?: string | null;
+  selectedGroup?: string;
   restricted?: boolean;
   onNavigate: (hash: string) => void;
 }) {
@@ -28,7 +32,7 @@ export function BotConversationRail({
     return () => { active = false; };
   }, [selectedId]);
   const [bots, setBots] = useState<Bot[]>([]);
-  const [openHuddles, setOpenHuddles] = useState(0);
+  const {groups,error:groupError}=useBotGroups(business,restricted);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const pendingQuestions = bots.reduce((sum, bot) => sum + bot.questions, 0);
@@ -47,19 +51,10 @@ export function BotConversationRail({
         .catch(() => {
           if (active) setError('Could not refresh bots');
         });
-    const refreshHuddles = () =>
-      void huddlesApi
-        .list('open', business)
-        .then((result) => {
-          if (active) setOpenHuddles(result.huddles.length);
-        })
-        .catch(() => {});
     refresh();
-    refreshHuddles();
     window.addEventListener(BOT_PREFERENCES_CHANGED, refresh);
     const timer = setInterval(() => {
       refresh();
-      refreshHuddles();
     }, 5000);
     return () => {
       active = false;
@@ -70,16 +65,16 @@ export function BotConversationRail({
   return (
     <aside aria-label="Bot conversations" className="flex h-full min-h-0 flex-col border-r bg-card">
       <div className="space-y-3 border-b p-4">
-        <button className="text-lg font-semibold hover:underline" onClick={() => onNavigate('#/bots')} title="Back to the VeneerBots overview">
+        <div className="flex items-center justify-between"><button className="text-lg font-semibold hover:underline" onClick={() => onNavigate('#/bots')} title="Back to the VeneerBots overview">
           VeneerBots
-        </button>
+        </button><NewGroupChat business={business} onNavigate={onNavigate}/></div>
         {!restricted && <BusinessSelector teams={teams} business={business} onSelect={id => { select(id); onNavigate('#/bots'); }} />}
         <p className="text-xs text-muted-foreground">
-          {bots.length} bots · Your existing conversations
+          {bots.length} bots · {groups.length} groups
         </p>
         <input
-          aria-label="Find a bot"
-          placeholder="Find a bot…"
+          aria-label="Find a bot or group"
+          placeholder="Find a bot or group…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
@@ -91,20 +86,20 @@ export function BotConversationRail({
           Register an existing chat
         </button>}
       </div>
-      {error && (
+      {(error || groupError) && (
         <p role="alert" className="p-4 text-sm text-destructive">
-          {error}
+          {error || groupError}
         </p>
       )}
       <nav aria-label="Bots" className="flex-1 overflow-y-auto p-2">
         {/* The overview is where questions, follow-through and history live.
             Once a bot is open it is the only way back, so it gets a real row. */}
         <button
-          aria-current={!selectedId ? 'page' : undefined}
+          aria-current={!selectedId && !selectedGroup ? 'page' : undefined}
           onClick={() => onNavigate('#/bots')}
           className={cn(
             'mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring',
-            !selectedId && 'bg-muted',
+            !selectedId && !selectedGroup && 'bg-muted',
           )}
         >
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
@@ -120,34 +115,10 @@ export function BotConversationRail({
             </span>
           )}
         </button>
-        {!restricted && (
-          <button
-            aria-current={window.location.hash.startsWith('#/huddles') ? 'page' : undefined}
-            onClick={() => onNavigate('#/huddles')}
-            className={cn(
-              'mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring',
-              window.location.hash.startsWith('#/huddles') && 'bg-muted',
-            )}
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-              <Users className="size-5 text-primary" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-medium">Huddles</span>
-              <span className="block text-xs text-muted-foreground">Bots working together on one outcome</span>
-            </span>
-            {openHuddles > 0 && (
-              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums">
-                {openHuddles}
-              </span>
-            )}
-          </button>
-        )}
-        {bots
-          .filter((bot) =>
-            `${bot.name} ${bot.title ?? ''}`.toLowerCase().includes(query.toLowerCase()),
-          )
-          .map((bot) => (
+        {mergeBotGroups(bots,groups,query).map(entry => {
+          if(entry.kind!=='bot')return <GroupConversationRow key={entry.kind+entry.id} group={entry} selected={selectedGroup===entry.kind+':'+entry.id} onNavigate={onNavigate}/>;
+          const bot=entry.bot;
+          return (
             <BotActions key={bot.conversation_id} bot={bot} onMarkedUnread={() => {
               if (selectedId === bot.conversation_id) onNavigate('#/bots');
             }}>
@@ -196,8 +167,8 @@ export function BotConversationRail({
               </span>
             </button>
             </BotActions>
-          ))}
-        {!bots.length && !error && (
+          );})}
+        {!bots.length && !groups.length && !error && (
           <p className="p-3 text-sm text-muted-foreground">
             {restricted ? 'No bots have been assigned to your account yet.' : 'Register an existing chat to add your operational bots here.'}
           </p>

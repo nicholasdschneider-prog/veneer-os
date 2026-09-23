@@ -18,6 +18,8 @@ export type RoomMessage = {
   mentions: string[];
 };
 export type TeamRoom = {
+  updated_at: string;
+  last_message?: {text:string;author_name:string;created_at:string}|null;
   id: string;
   team_id: string;
   kind: "dm" | "group";

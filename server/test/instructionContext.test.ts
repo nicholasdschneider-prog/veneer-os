@@ -48,6 +48,8 @@ describe('instruction context migration', () => {
     expect(result.developerInstructions).toContain('Listen beside Reply');
     expect(result.developerInstructions).toContain('read_team_room');
     expect(result.developerInstructions).toContain('post_team_room_message');
+    expect(result.developerInstructions).toContain('VeneerBots → + → choose members → Next');
+    expect(result.developerInstructions).toContain('Casual groups created with + use team rooms');
     expect(result.developerInstructions).toContain('Keep my original role.');
     expect(result.developerInstructions).not.toContain('A later unrelated role.');
     expect(ensureConversationInstructionSnapshot(db, 'existing')).toEqual(snapshot);

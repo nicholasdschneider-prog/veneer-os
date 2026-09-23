@@ -1,3 +1,6 @@
+import {NewGroupChat} from '@/components/NewGroupChat';
+import {GroupConversationRow} from '@/components/GroupConversationRow';
+import {useBotGroups,mergeBotGroups} from '@/lib/botGroups';
 import { DecisionChoices } from '../components/DecisionChoices';
 import { BotCommunication, VoiceBriefing } from '../components/BotCommunication';
 import { BotGuideNotice } from '@/components/BotGuideNotice';
@@ -162,6 +165,7 @@ export function Bots({
   const [stale, setStale] = useState(false);
   const { business: savedBusiness, select } = useBusinessSelection();
   const business = restricted ? '' : savedBusiness;
+  const {groups,error:groupError}=useBotGroups(business,restricted);
   const [teams, setTeams] = useState<BusinessTeam[]>([]);
   const [filter, setFilter] = useState('me');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
@@ -335,15 +339,7 @@ export function Bots({
             </summary>
             <div className="mt-2 h-[min(65dvh,32rem)] overflow-hidden rounded-xl border"><BotConversationRail restricted={restricted} selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
           </details>
-          {!restricted && (
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium md:hidden"
-              onClick={() => onNavigate('#/huddles')}
-            >
-              <Users className="size-3.5" /> Huddles
-            </button>
-          )}
+          <span className="md:hidden"><NewGroupChat business={business} onNavigate={onNavigate}/></span>
           {teams.find(t => t.id === business && t.can_manage) && <BusinessAccess team={teams.find(t => t.id === business)!} onChanged={() => { void refresh(); }} />}
         </div>
         <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
@@ -632,16 +628,20 @@ export function Bots({
               );
             })()}
             <section className="mt-8" aria-labelledby="bot-roster">
-              <SectionToggle id="bot-roster" title="Your bots" count={bots.length} open={!collapsed.bots} onToggle={() => toggleSection('bots')} />
+              <SectionToggle id="bot-roster" title="Your bots and groups" count={bots.length+groups.length} open={!collapsed.bots} onToggle={() => toggleSection('bots')} />
               {collapsed.bots ? null : (
               <>
-              {bots.length === 0 && !loading && (
+              {bots.length === 0 && !groups.length && !loading && (
                 <p className="rounded-2xl border p-5 text-sm text-muted-foreground">
                   Register an existing operational chat to give it a place here.
                 </p>
               )}
+              {groupError&&<p role="alert" className="p-3 text-sm text-destructive">{groupError}</p>}
               <div className="divide-y rounded-2xl border bg-card">
-                {bots.map((bot) => (
+                {mergeBotGroups(bots,groups).map(entry=>{
+                  if(entry.kind!=='bot')return <GroupConversationRow key={entry.kind+entry.id} group={entry} onNavigate={onNavigate}/>;
+                  const bot=entry.bot;
+                  return (
                   <BotActions key={bot.conversation_id} bot={bot}>
                   <div
                     key={bot.conversation_id}
@@ -697,7 +697,7 @@ export function Bots({
                     )}
                   </div>
                   </BotActions>
-                ))}
+                );})}
               </div>
               </>
               )}

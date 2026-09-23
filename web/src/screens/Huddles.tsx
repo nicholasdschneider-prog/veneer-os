@@ -520,7 +520,7 @@ function HuddleDetail({ id, onNavigate }: { id: string; onNavigate: (hash: strin
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-2 border-b bg-card px-2 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-3">
-        <Button variant="ghost" size="icon" aria-label="All huddles" onClick={() => onNavigate('#/huddles')}><ArrowLeft className="size-5" /></Button>
+        <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" aria-label="Back to bots" onClick={() => onNavigate('#/bots')}><ArrowLeft className="size-5" /></Button>
         <button type="button" className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-left hover:bg-muted" onClick={() => setPanel('details')} aria-label="Huddle details">
           {avatarStack(huddle.members)}
           <span className="min-w-0 flex-1">
@@ -597,7 +597,7 @@ export function Huddles({ huddleId, onNavigate }: { huddleId?: string; onNavigat
   return (
     <div className="flex h-full min-h-0">
       <div className="hidden w-72 shrink-0 md:block">
-        <BotConversationRail selectedId={null} onNavigate={onNavigate} />
+        <BotConversationRail selectedId={null} selectedGroup={huddleId?"huddle:"+huddleId:undefined} onNavigate={onNavigate} />
       </div>
       <div className="flex h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
         {huddleId ? (

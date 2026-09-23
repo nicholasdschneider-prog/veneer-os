@@ -331,8 +331,8 @@ export function App() {
   );
 
   if (routePath === '#/messages' || routePath.startsWith('#/messages/')) return (
-    <NavShell current="messages" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-      <TeamMessages roomId={routePath.split('/')[2]} onNavigate={navigate} />
+    <NavShell current={params.get("from")==="bots"?"bots":"messages"} canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <TeamMessages roomId={routePath.split('/')[2]} fromBots={params.get("from")==="bots"} onNavigate={navigate} />
     </NavShell>
   );
 
