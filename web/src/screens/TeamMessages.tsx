@@ -1,3 +1,4 @@
+import { isComposerSubmitKey } from '@/lib/composerKeys';
 import {BotConversationRail} from '@/components/BotConversationRail';
 import {GroupAvatar} from '@/components/GroupAvatar';
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +28,7 @@ import {
   type RoomFile,
 } from "@/lib/teamRooms";
 import { micDictation } from "@/lib/stt";
+const IS_TOUCH = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 const errorText = (e: unknown) =>
   e instanceof Error ? e.message : "Could not complete this request.";
 const inputStyle =
@@ -323,7 +325,10 @@ function RoomConversation({
     micOwn = useRef(false),
     base = useRef(""),
     sendAttempt = useRef<{ key: string; body: string } | null>(null),
-    loading = useRef(false);
+    loading = useRef(false),
+    sending = useRef(false),
+    composing = useRef(false),
+    mentionPicker = useRef<HTMLDivElement>(null);
   const refresh = async () => {
     if (loading.current) return;
     loading.current = true;
@@ -384,6 +389,8 @@ function RoomConversation({
   const send = async () => {
     if (
       !room ||
+      !room.can_send ||
+      sending.current ||
       busy ||
       uploading ||
       recording ||
@@ -391,6 +398,7 @@ function RoomConversation({
       (!draft.trim() && !files.length)
     )
       return;
+    sending.current = true;
     const body = {
       text: draft,
       mentions: mentions.map((m) => m.key),
@@ -415,6 +423,7 @@ function RoomConversation({
     } catch (e) {
       if (alive.current) setError(errorText(e));
     } finally {
+      sending.current = false;
       if (alive.current) setBusy(false);
     }
   };
@@ -696,6 +705,9 @@ function RoomConversation({
             <textarea
               ref={textarea}
               aria-label="Message"
+              aria-describedby="team-message-shortcuts"
+              onCompositionStart={() => { composing.current = true; }}
+              onCompositionEnd={() => { composing.current = false; }}
               placeholder={
                 room.can_send
                   ? "Message your team…"
@@ -711,9 +723,15 @@ function RoomConversation({
                 setMentionOpen(/@[^@\s]*$/.test(e.target.value));
               }}
               onKeyDown={(e) => {
+                if (composing.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                 if (e.key === "Escape") setMentionOpen(false);
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                if (isComposerSubmitKey(e) && (!IS_TOUCH || e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
+                  if (e.repeat) return;
+                  if (mentionOpen) {
+                    mentionPicker.current?.querySelector<HTMLButtonElement>('button[data-room-mention]:not(:disabled)')?.focus();
+                    return;
+                  }
                   void send();
                 }
               }}
@@ -722,9 +740,11 @@ function RoomConversation({
               <div
                 className="mb-2 max-h-40 overflow-auto rounded-xl border p-1"
                 aria-label="Choose who to mention"
+                ref={mentionPicker}
               >
                 <button
                   className="min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted"
+                  data-room-mention={"everyone".startsWith(mentionQuery) ? "" : undefined}
                   onClick={() => addMention(null)}
                 >
                   @everyone · All room members
@@ -737,6 +757,7 @@ function RoomConversation({
                     <button
                       key={m.key}
                       className="min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted"
+                      data-room-mention=""
                       onClick={() => addMention(m)}
                     >
                       @{m.name}{" "}
@@ -749,6 +770,7 @@ function RoomConversation({
                 {availableBots.map(bot => <button key={bot.key}
                   className="min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted disabled:opacity-50"
                   disabled={busy || !room.can_send || (room.kind === 'group' && !room.can_manage)}
+                  data-room-mention=""
                   onClick={() => beginInvite(bot)}>
                   @{bot.name} · {room.kind === 'dm' ? 'Start a group' : 'Invite to group'}
                 </button>)}
@@ -823,7 +845,8 @@ function RoomConversation({
               </Button>
             </div>
           </div>
-          <p className="px-2 pt-2 text-[11px] text-muted-foreground">
+          <p id="team-message-shortcuts" className="px-2 pt-2 text-[11px] text-muted-foreground">
+            {!IS_TOUCH && <>Enter to send · Shift+Enter for a new line. </>}
             Use @ to mention a member or invite a bot. Only addressed bots wake.
           </p>
         </div>
