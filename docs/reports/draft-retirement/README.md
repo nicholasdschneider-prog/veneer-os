@@ -69,3 +69,7 @@ Root typecheck, full tests (2,285 server passed plus 5 skipped; 864 web; 21 inst
 - [draft-768-light.png](/Users/archerclawdington/veneer-os/docs/reports/draft-retirement/screenshots/draft-768-light.png)
 - [retirement-desktop.png](/Users/archerclawdington/veneer-os/docs/reports/draft-retirement/screenshots/retirement-desktop.png)
 - [retirement-employee-mobile.png](/Users/archerclawdington/veneer-os/docs/reports/draft-retirement/screenshots/retirement-employee-mobile.png)
+
+## Deployment receipt
+
+Implementation **2d15fc3** committed and pushed to origin/main. Root restart ran after passing checks; the queue resumed this chat across restart. Read-only verification returned HTTP 200 from web, runner, app-runner, terminal and browser-manager health endpoints. The live database has `bot_message_retirements`; deployed tool definitions, dated New guide entry and resumed-agent instructions include `retire_message_draft`. No live retirement or customer acceptance was performed. LRVC5W remains for its actual owner to refresh and handle separately. Unrelated `.veneer-browser/`, `.veneer/` and `out/` were preserved.
