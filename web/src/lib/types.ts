@@ -191,7 +191,7 @@ export interface TokenUsage {
   contextPct?: number;
 }
 
-export type ConversationEvent =
+export type ConversationEvent = (
   | {
       type: 'turn_started';
       turnId: string;
@@ -301,7 +301,7 @@ export type ConversationEvent =
       }>;
     }
   | { type: 'error'; message: string; fatal: boolean }
-  | { type: string; [key: string]: unknown };
+  | { type: string; [key: string]: unknown }) & {displaySequence?:number;historyIndex?:number;streamRevision?:number};
 
 export type ConversationStatus = 'working' | 'needs_you' | 'idle' | 'failed';
 export type ConversationActivity = 'compacting' | null;

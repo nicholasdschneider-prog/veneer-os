@@ -15,7 +15,11 @@ import { toPendingWakeups, type WakeupRow } from './wakeups';
 const RECONNECT_BACKOFF_MS = [800, 2_000, 5_000, 10_000, 30_000];
 const PING_INTERVAL_MS = 25_000;
 
+export type HistoryWindow={token:string;before:number;hasOlder:boolean;total:number;nextSequence:number;streamRevision:number;oversized:number[]};
 export interface SubscriptionHandlers {
+  onHistory?:(events:ConversationEvent[],history:HistoryWindow)=>void;
+  onHistoryError?:(message:string)=>void;
+  onHistoryRecord?:(record:{token:string;index:number;offset:number;text:string;next:number|null})=>void;
   presenceOnly?: boolean;
   onSnapshot?: (
     events: ConversationEvent[],
@@ -23,6 +27,7 @@ export interface SubscriptionHandlers {
     queue: ConversationQueueSnapshot,
     activity: ConversationActivity,
     wakeups: PendingWakeup[],
+    history?:HistoryWindow,
   ) => void;
   onEvent?: (event: ConversationEvent) => void;
   onStatus?: (status: ConversationStatus, activity: ConversationActivity) => void;
@@ -39,9 +44,11 @@ export interface SubscriptionHandlers {
 export type GlobalFrameKind = 'usage_updated';
 
 export interface ServerFrame {
-  kind: 'snapshot' | 'presence' | 'event' | 'status' | 'queue' | 'wakeups' | 'error' | 'pong' | GlobalFrameKind;
+  kind: 'history' | 'history_record' | 'history_error' | 'snapshot' | 'presence' | 'event' | 'status' | 'queue' | 'wakeups' | 'error' | 'pong' | GlobalFrameKind;
   conversationId?: string;
   events?: ConversationEvent[];
+  history?:HistoryWindow;
+  token?:string;index?:number;offset?:number;text?:string;next?:number|null;
   event?: ConversationEvent;
   status?: ConversationStatus;
   activity?: ConversationActivity;
@@ -58,8 +65,12 @@ export function deliverServerFrame(frame: ServerFrame, handlers: SubscriptionHan
       frame.queue ?? { revision: 0, messages: [], failedTurn: null },
       frame.activity ?? null,
       toPendingWakeups(frame.wakeups),
+      frame.history,
     );
-  } else if (frame.kind === 'presence' && frame.event && handlers.presenceOnly) handlers.onEvent?.(frame.event);
+  } else if(frame.kind==='history'&&frame.history&&frame.events)handlers.onHistory?.(frame.events,frame.history);
+  else if(frame.kind==='history_error')handlers.onHistoryError?.(frame.message??'History unavailable');
+  else if(frame.kind==='history_record'&&frame.token&&frame.index!==undefined)handlers.onHistoryRecord?.({token:frame.token,index:frame.index,offset:frame.offset??0,text:frame.text??'',next:frame.next??null});
+  else if (frame.kind === 'presence' && frame.event && handlers.presenceOnly) handlers.onEvent?.(frame.event);
   else if (frame.kind === 'event' && frame.event) handlers.onEvent?.(frame.event);
   else if (frame.kind === 'status' && frame.status) handlers.onStatus?.(frame.status, frame.activity ?? null);
   else if (frame.kind === 'queue' && frame.queue) handlers.onQueue?.(frame.queue);
@@ -68,6 +79,8 @@ export function deliverServerFrame(frame: ServerFrame, handlers: SubscriptionHan
 }
 
 class WsBus {
+  history(conversationId:string,token:string,before:number){this.send({kind:'history',conversationId,token,before});}
+  historyRecord(conversationId:string,token:string,index:number,offset=0){this.send({kind:'history_record',conversationId,token,index,offset});}
   private socket: WebSocket | null = null;
   private subs = new Map<string, Set<SubscriptionHandlers>>();
   private globalHandlers = new Set<(kind: GlobalFrameKind) => void>();

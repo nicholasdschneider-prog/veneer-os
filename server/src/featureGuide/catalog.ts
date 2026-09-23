@@ -14,6 +14,15 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'bounded-chat-history',title:'Open long chats with recent history first',category:'Daily work',updated:'2026-09-23',
+    announcement:'Long chats open with a bounded recent window. Scroll up or choose Load earlier messages to retrieve older history without deleting it.',
+    audience:'People with access to the conversation',summary:'Keep the initial chat lightweight while preserving older work.',
+    steps:['Open an existing chat; recent history is loaded with event and byte limits even on a very busy day.', 'Scroll toward the top or choose Load earlier messages. Older pages preserve message order and your draft.', 'Use Large history records to read an oversized original in text pages. Calls older than loaded messages are explicitly grouped until their message context is loaded.'],
+    example:'Open Grant’s recent messages, then let me load older work as I scroll back.',
+    limits:'This changes UI history loading, not provider context, memory or retention. The provider normalization pass still reads the source transcript. A reconnect opens a fresh recent window; older history remains accessible. UI windows are temporary and may require reloading after expiry. Large individual records use a read-only paginated original view.',
+    agent:'The chat UI initially loads a bounded recent history window. Earlier messages remain available through Load earlier messages; never claim they were deleted or that provider memory was compacted. Use existing authorized history/search tools for agent work. History pagination and record viewing do not replay messages, approvals or tool actions. Calls remain chronological; earlier calls with unloaded message context are explicitly identified.',
+  },
+  {
     id:'cs-message-follow-through',title:'Follow CS messages without duplicate send approvals',category:'Daily work',updated:'2026-09-23',
     announcement:'Opted-in ERVP CS draft cards distinguish central questions, technical blockers, queued delivery and actual receipts. Exact original approvals stay separate from differing drafts.',
     audience:'Existing authorized ERVP CS readers and named owning bots',

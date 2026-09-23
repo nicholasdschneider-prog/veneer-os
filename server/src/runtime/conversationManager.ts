@@ -1,3 +1,4 @@
+import {HistoryPages,type HistoryPage} from './historyPages.js';
 import { queuedRoomWakeAllowed, roomSessionAllowed } from '../rooms/service.js';
 import { botDiscussionWake, botWakeAllowed, queuedDiscussionWake, recordDiscussionDelivery } from '../bots/delivery.js';
 import crypto from 'node:crypto';
@@ -260,6 +261,8 @@ export interface ConversationManager {
    * current turn's user message — and any events streamed before subscribe.
    */
   snapshot(conv: ConversationRow): Promise<ConversationEvent[]>;
+  historyPage(conv:ConversationRow,token?:string,before?:number):Promise<HistoryPage>;
+  historyRecord(conv:ConversationRow,token:string,index:number):ConversationEvent;
   switchProvider(conv: ConversationRow, selection: ModelSelection): Promise<SwitchProviderResult>;
   /**
    * Candidate deliverable files (CSV etc.) this conversation's agent created,
@@ -723,6 +726,10 @@ export function createConversationManager({
 }): ConversationManager {
   const live = new Map<string, LiveConversation>();
   const bus = new EventEmitter();
+  const historyPages=new HistoryPages(),snapshotRevisions=new WeakMap<ConversationEvent[],number>();
+  const streamEpoch=crypto.randomUUID();
+  let streamRevision=0;
+  bus.on('event',(_id:string,event:ConversationEvent)=>{Object.defineProperty(event,'streamRevision',{value:++streamRevision,enumerable:false,configurable:true});Object.defineProperty(event,'streamEpoch',{value:streamEpoch,enumerable:false,configurable:true});});
   bus.setMaxListeners(100);
   // HTTP mutation replies and runner WebSocket events use different transports.
   // Stamp snapshots when they are created so a delayed reply cannot overwrite a
@@ -2398,6 +2405,7 @@ export function createConversationManager({
       return true;
     },
     shutdown() {
+      historyPages.close();
       db.prepare('UPDATE pending_turns SET discussion_message_id=NULL').run();
       for (const [conversationId, entry] of live) {
         const kill = entry.turn ? entry.kill : entry.maintenance?.kill;
@@ -2494,6 +2502,12 @@ export function createConversationManager({
     resolveQuestion(requestId, answers) {
       return finalizeQuestion(requestId, 'answered', answers);
     },
+    async historyPage(conv,token,before) {
+      if(token)return historyPages.page(conv.id,token,before??0);
+      const events=await this.snapshot(conv);
+      return historyPages.open(conv.id,events,snapshotRevisions.get(events)??0,streamEpoch);
+    },
+    historyRecord(conv,token,index){return historyPages.record(conv.id,token,index);},
     async snapshot(conv) {
       const cwd = resolveWorkspace(conv).workspaceDir;
       const adapter = adapters[conv.provider];
@@ -2520,13 +2534,15 @@ export function createConversationManager({
         questions,
       ).map((event) => enrichConnectorToolEvent(event, connectorSources));
       const withAgentMessageReceipts = spliceAgentMessageReceipts(conv.id, merged);
-      return spliceTurnStops(
+      const complete = spliceTurnStops(
         conv.id,
         spliceTurnRecall(
           conv.id,
           spliceTurnOrigins(conv.id, guardLoopbackDeliverableEvents(withAgentMessageReceipts)),
         ),
       );
+      snapshotRevisions.set(complete,streamRevision);
+      return complete;
     },
     async listSessionFiles(conv) {
       const adapter = adapters[conv.provider];

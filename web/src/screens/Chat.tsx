@@ -1,3 +1,5 @@
+import {useChatHistory} from '../lib/useChatHistory';
+import {ChatHistoryControls} from '../components/ChatHistoryControls';
 import { CallButton, CallIcon } from '@/components/CallButton';
 import { useMessageListen } from '@/components/MessageAudioPlayer';
 import { MobileChatHeader } from '../components/chat/MobileChatHeader';
@@ -314,12 +316,18 @@ function connectorAvailableIn(install: ConnectorInstall, projectId: string | nul
   return Boolean(projectId && install.projects.some((project) => project.id === projectId));
 }
 const transcriptCache = new Map<string, CachedTranscript>();
-const TRANSCRIPT_CACHE_CAP = 25;
+const TRANSCRIPT_CACHE_CAP = 8;
 function cacheTranscript(id: string, entry: CachedTranscript) {
   // delete-then-set moves the entry to the newest slot (Map keeps insertion
   // order), giving us LRU eviction of the oldest untouched conversation.
   transcriptCache.delete(id);
-  transcriptCache.set(id, entry);
+  let bytes=0;
+  const recent:ChatItem[]=[];
+  for(let i=entry.transcript.items.length-1;i>=0&&recent.length<200;i--){
+    const item=entry.transcript.items[i]!;bytes+=JSON.stringify(item).length*2;
+    if(bytes>512*1024)break;recent.unshift(item);
+  }
+  transcriptCache.set(id, {...entry,transcript:{...entry.transcript,items:recent}});
   while (transcriptCache.size > TRANSCRIPT_CACHE_CAP) {
     const oldest = transcriptCache.keys().next().value;
     if (oldest === undefined) break;
@@ -443,6 +451,7 @@ export function Chat({
   const [transcript, setTranscript] = useState<TranscriptState>(
     () => (isNew ? emptyTranscript() : transcriptCache.get(conversationId)?.transcript ?? emptyTranscript()),
   );
+  const history = useChatHistory(conversationId,setTranscript);
   // Keys present the moment a snapshot loads (history) skip the typewriter
   // reveal; only assistant text that streams in live during this session animates.
   // Seed from the cached paint too, so a re-opened chat's history doesn't re-type.
@@ -1277,7 +1286,12 @@ export function Chat({
       return;
     }
     return wsBus.subscribe(conversationId, {
-      onSnapshot: (events, snapStatus, queue, activity, snapWakeups) => {
+      onHistory:history.page,
+      onHistoryError:history.fail,
+      onHistoryRecord:history.receiveRecord,
+      onDisconnect:()=>history.fail('Connection interrupted. Reconnecting opens a fresh history window; earlier history remains available.'),
+      onSnapshot: (events, snapStatus, queue, activity, snapWakeups, historyWindow) => {
+        history.snapshot(events,historyWindow);
         liveToolNamesRef.current.clear();
         const next = reduceEvents(emptyTranscript(), events);
         historicalKeysRef.current = new Set(next.items.map((i) => i.key));
@@ -1308,7 +1322,8 @@ export function Chat({
           })
           .catch(() => undefined);
       },
-      onEvent: (event) => {
+      onEvent: (incoming) => {
+        const event=history.event(incoming);
         if (event.type === 'tool_started') {
           const started = event as { toolId?: unknown; toolName?: unknown };
           liveToolNamesRef.current.set(String(started.toolId ?? ''), String(started.toolName ?? ''));
@@ -1954,6 +1969,9 @@ export function Chat({
   const focusedMessageReady = Boolean(
     focusedMessageKey && items.some((item) => item.key === focusedMessageKey),
   );
+  useEffect(()=>{
+    if(focusMessageId&&!focusedMessageReady&&history.window?.hasOlder&&!history.busy&&!history.error)history.load();
+  },[focusMessageId,focusedMessageReady,history.window?.before,history.busy,history.error,history.load]);
   const firstPromptKey = firstUserPromptKey(items, isCollapsibleUserPrompt);
   // A pending send is newer than every confirmed transcript row. Until it lands,
   // all confirmed prompts except the first are historical; otherwise the first
@@ -2194,13 +2212,17 @@ export function Chat({
     void refresh();const timer=setInterval(()=>void refresh(),8000);window.addEventListener('result-reactions-changed',refresh);return()=>{active=false;clearInterval(timer);window.removeEventListener('result-reactions-changed',refresh);};
   },[conversationId,isNew,items.length,messageThread,canSend]);
 
-  const liveItems = groupActivityRuns(items.slice(frozenLen));
+  const liveItems = useMemo(()=>groupActivityRuns(items.slice(frozenLen)),[items,frozenLen]);
   const pendingQuestionId = liveItems.find(isAnchoredPendingQuestion)?.key;
   const revealedStreamingText = useTypewriter(transcript.streamingText, true);
 
   const renderVoiceTimeline = useCallback((sessions: VoiceSession[], voiceCard: (session: VoiceSession) => ReactNode) => {
-                  const timeline = voiceTimeline(items, frozenLen, sessions);
+                  const times=items.flatMap(i=>'at' in i&&i.at&&Number.isFinite(Date.parse(i.at))?[Date.parse(i.at)]:[]);
+                  const earliest=history.window?.hasOlder&&times.length?Math.min(...times):null;
+                  const earlier=earliest===null?[]:sessions.filter(call=>call.started_ms<earliest);
+                  const timeline = voiceTimeline(items, frozenLen, earliest===null?sessions:sessions.filter(call=>call.started_ms>=earliest));
                   return <>
+                    {earlier.length>0&&<details className="rounded-xl border p-3"><summary>Voice chats before loaded message history ({earlier.length})</summary><p className="text-sm">Load earlier messages to see these calls alongside their original context.</p><div className="space-y-2">{[...earlier].reverse().map(voiceCard)}</div></details>}
                     {!timeline.hasMessageTimes && sessions.length > 0 && items.length > 0 && <p className="text-sm text-muted-foreground">Voice chats are dated below. These messages have no recorded times, so their relative position is unavailable.</p>}
                     {timeline.entries.map(segment => segment.kind === 'voice' ? (
                       <MessageScrollerItem key={segment.key}>{voiceCard(segment.session)}</MessageScrollerItem>
@@ -2216,7 +2238,7 @@ export function Chat({
                       </MessageScrollerItem>
                     ))}
                   </>;
-                }, [items, frozenLen, firstPromptKey, mostRecentPromptKey, onFrozenClick]);
+                }, [items, frozenLen, firstPromptKey, mostRecentPromptKey, onFrozenClick,history.window?.hasOlder]);
 
   // Header: the chat title leads, the agent name sits below it. Live status is
   // folded into the agent line so nothing important is lost off the top.
@@ -2558,6 +2580,7 @@ export function Chat({
             <MessageScrollerContent
               className={cn('gap-3 px-4 dark:pb-6', isNew ? 'py-0 md:py-4' : 'py-4')}
             >
+              {!isNew&&<ChatHistoryControls history={history}/>}
               {isNew && transcript.items.length === 0 ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center-safe text-center md:flex-none md:justify-start md:py-8">
                   <p className="text-lg font-semibold text-foreground md:text-xl">Let’s work on something together!</p>
@@ -3922,41 +3945,25 @@ const FrozenStaticSegment = memo(function FrozenStaticSegment({
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const keys = keysRef.current;
-    const versions = versionsRef.current;
-    const intact = keys.length <= items.length && keys.every((key, index) => (
-      items[index]!.key === key
-      && versions[index] === frozenItemVersion(items[index]!, firstPromptKey, mostRecentPromptKey)
-    ));
-    if (!intact) {
-      keys.length = 0;
-      versions.length = 0;
-      el.replaceChildren();
+    const existing=new Map(Array.from(el.children).map(node=>[(node as HTMLElement).dataset.messageId!,node]));
+    const oldVersions=new Map(keysRef.current.map((key,i)=>[key,versionsRef.current[i]]));
+    const newVersions=items.map(item=>JSON.stringify(item)+frozenItemVersion(item,firstPromptKey,mostRecentPromptKey));
+    let cursor=el.firstChild;
+    for(let i=0;i<items.length;i++){
+      const item=items[i]!;
+      let node=existing.get(item.key);
+      if(!node||oldVersions.get(item.key)!==newVersions[i]){
+        const template=document.createElement('template');
+        template.innerHTML=renderToStaticMarkup(<div data-message-id={item.key} className="min-w-0 data-[linked-focus=true]:rounded-xl data-[linked-focus=true]:bg-brand/5 data-[linked-focus=true]:ring-1 data-[linked-focus=true]:ring-brand/30"><ChatRow item={item} live={false} collapsePrompt={shouldCollapsePrompt(item,firstPromptKey,mostRecentPromptKey)}/></div>);
+        const replacement=template.content.firstElementChild!;
+        if(node){if(cursor===node)cursor=replacement;node.replaceWith(replacement);}
+        node=replacement;
+      }
+      if(node!==cursor)el.insertBefore(node,cursor);
+      cursor=node.nextSibling;existing.delete(item.key);
     }
-    if (items.length === keys.length) return;
-
-    const template = document.createElement('template');
-    template.innerHTML = items
-      .slice(keys.length)
-      .map((item) => renderToStaticMarkup(
-        <div
-          data-message-id={item.key}
-          className="min-w-0 data-[linked-focus=true]:rounded-xl data-[linked-focus=true]:bg-brand/5 data-[linked-focus=true]:ring-1 data-[linked-focus=true]:ring-brand/30"
-        >
-          <ChatRow
-            item={item}
-            live={false}
-            collapsePrompt={shouldCollapsePrompt(item, firstPromptKey, mostRecentPromptKey)}
-          />
-        </div>,
-      ))
-      .join('');
-    el.append(template.content);
-
-    for (let index = keys.length; index < items.length; index++) {
-      keys.push(items[index]!.key);
-      versions.push(frozenItemVersion(items[index]!, firstPromptKey, mostRecentPromptKey));
-    }
+    for(const node of existing.values())node.remove();
+    keysRef.current=items.map(i=>i.key);versionsRef.current=newVersions;
   }, [firstPromptKey, items, mostRecentPromptKey]);
 
   return (

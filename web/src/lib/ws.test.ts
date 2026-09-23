@@ -31,6 +31,7 @@ describe('conversation WebSocket activity', () => {
       { revision: 1, messages: [], failedTurn: null },
       'compacting',
       [],
+      undefined,
     );
 
     deliverServerFrame(

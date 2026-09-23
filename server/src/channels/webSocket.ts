@@ -1,3 +1,4 @@
+import {historyRecordText} from '../runtime/historyPages.js';
 import type { IncomingMessage, Server } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { z } from 'zod';
@@ -28,8 +29,9 @@ import type {
  */
 
 const ClientFrameSchema = z.object({
-  kind: z.enum(['subscribe', 'observe', 'unsubscribe', 'ping']),
+  kind: z.enum(['subscribe', 'observe', 'unsubscribe', 'ping','history','history_record']),
   conversationId: z.string().optional(),
+  token:z.string().uuid().optional(),before:z.number().int().nonnegative().optional(),index:z.number().int().nonnegative().optional(),offset:z.number().int().nonnegative().optional(),
 });
 
 interface Sub {
@@ -37,6 +39,10 @@ interface Sub {
   user: UserRow;
   conversations: Set<string>;
   observers: Set<string>;
+  loading:Map<string,ConversationEvent[]>;
+  watermarks:Map<string,{epoch:unknown;revision:number}>;
+  epochs:Map<string,number>;
+  historyTokens:Map<string,string>;
 }
 
 export function attachWebSocket(server: Server, ctx: AppContext): void {
@@ -61,6 +67,9 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
   });
 
   function stillAllowed(sub: Sub, conversationId: string) {
+    const currentUser=ctx.db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(sub.user.id) as UserRow|undefined;
+    if(!currentUser){sub.conversations.delete(conversationId);sub.observers.delete(conversationId);return false;}
+    sub.user=currentUser;
     const row = ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(conversationId) as ConversationRow | undefined;
     if (row && canViewConversation(sub.user, row, ctx.db)) return true;
     sub.conversations.delete(conversationId);
@@ -69,7 +78,7 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
   }
 
   wss.on('connection', (ws: WebSocket, _req: IncomingMessage, user: UserRow) => {
-    const sub: Sub = { socket: ws, user, conversations: new Set(), observers: new Set() };
+    const sub: Sub = { socket: ws, user, conversations: new Set(), observers: new Set(),loading:new Map(),watermarks:new Map(),epochs:new Map(),historyTokens:new Map() };
     subs.add(sub);
 
     ws.on('message', (data) => {
@@ -87,13 +96,33 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       if (frame.kind === 'unsubscribe') {
         sub.conversations.delete(frame.conversationId);
         sub.observers.delete(frame.conversationId);
+        sub.loading.delete(frame.conversationId);sub.historyTokens.delete(frame.conversationId);
+        sub.epochs.set(frame.conversationId,(sub.epochs.get(frame.conversationId)??0)+1);
         return;
       }
+      const currentUser=ctx.db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(sub.user.id) as UserRow|undefined;
+      if(!currentUser)return;
+      sub.user=currentUser;
+      const user=currentUser;
       const row = ctx.db.prepare('SELECT * FROM conversations WHERE id = ?').get(frame.conversationId) as
         | ConversationRow
         | undefined;
       if (!row || !canViewConversation(user, row, ctx.db)) {
         send(ws, { kind: 'error', conversationId: frame.conversationId, message: 'Conversation not found' });
+        return;
+      }
+      if(frame.kind==='history'||frame.kind==='history_record') {
+        if(!sub.conversations.has(row.id)||!frame.token||sub.historyTokens.get(row.id)!==frame.token)return;
+        const token=frame.token;
+        const task=frame.kind==='history'
+          ? ctx.manager.historyPage(row.id,token,frame.before).then(page=>{if(!stillAllowed(sub,row.id))throw new Error('Access changed');return {kind:'history',conversationId:row.id,...page,events:page.events.map(e=>presentConversationEventForUser(ctx.db,sub.user,e))};})
+          : ctx.manager.historyRecord(row.id,token,frame.index??-1).then(event=>{
+            if(!stillAllowed(sub,row.id))throw new Error('Access changed');
+            const text=historyRecordText(presentConversationEventForUser(ctx.db,sub.user,event)),offset=frame.offset??0;
+            return {kind:'history_record',conversationId:row.id,token,index:frame.index,offset,text:text.slice(offset,offset+32768),next:offset+32768<text.length?offset+32768:null};
+          });
+        void task.then(result=>{if(stillAllowed(sub,row.id)&&sub.historyTokens.get(row.id)===token)send(ws,result);})
+          .catch(()=>send(ws,{kind:'history_error',conversationId:row.id,message:'Could not load preserved history. Reload this conversation if its history window expired.'}));
         return;
       }
       if (frame.kind === 'observe') {
@@ -107,10 +136,12 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
       sub.observers.delete(row.id);
       sub.conversations.add(row.id);
       markSeen(ctx.db, user.id, row.id);
+      const epoch=(sub.epochs.get(row.id)??0)+1;sub.epochs.set(row.id,epoch);
+      sub.loading.set(row.id,[]);
       // The bus subscriptions below are already registered, so no live event is
       // lost while these RPCs are in flight.
       void Promise.all([
-        ctx.manager.snapshot(row.id),
+        ctx.manager.historyPage ? ctx.manager.historyPage(row.id) : ctx.manager.snapshot(row.id).then(events=>({events,history:undefined})),
         ctx.manager.statusOf(row.id),
         ctx.manager.activityOf(row.id),
         ctx.manager.queueSnapshot(row.id),
@@ -118,20 +149,25 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
         // right on first paint, not only after the next mutation.
         ctx.manager.listWakeups(row.id).catch(() => [] as ConversationWakeupRow[]),
       ])
-        .then(([events, status, activity, queue, wakeups]) => {
+        .then(([page, status, activity, queue, wakeups]) => {
           const current = ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(row.id) as ConversationRow | undefined;
-          if (!sub.conversations.has(row.id) || !current || !canViewConversation(user, current, ctx.db)) return;
+          if (sub.epochs.get(row.id)!==epoch || !stillAllowed(sub,row.id) || !sub.conversations.has(row.id) || !current || !canViewConversation(user, current, ctx.db)) return;
+          if(page.history){sub.historyTokens.set(row.id,page.history.token);sub.watermarks.set(row.id,{epoch:page.history.streamEpoch,revision:page.history.streamRevision});}
           send(ws, {
             kind: 'snapshot',
+            history:page.history,
             conversationId: row.id,
-            events: events.map((event) => presentConversationEventForUser(ctx.db, user, event)),
+            events: page.events.map((event) => presentConversationEventForUser(ctx.db, sub.user, event)),
             status,
             activity,
             queue: presentConversationQueueForUser(ctx.db, user, queue),
             wakeups: wakeups.filter((wake) => wake.status === 'pending'),
           });
+          const buffered=sub.loading.get(row.id)??[];sub.loading.delete(row.id);
+          for(const event of buffered) if(!page.history || (event as Record<string,unknown>).streamEpoch!==page.history.streamEpoch || typeof (event as Record<string,unknown>).streamRevision!=='number'||Number((event as Record<string,unknown>).streamRevision)>page.history.streamRevision)send(ws,{kind:'event',conversationId:row.id,event:presentConversationEventForUser(ctx.db,user,event)});
         })
         .catch((err: Error) => {
+          sub.loading.delete(row.id);
           send(ws, { kind: 'error', conversationId: row.id, message: err.message });
         });
     });
@@ -160,6 +196,11 @@ export function attachWebSocket(server: Server, ctx: AppContext): void {
         send(sub.socket, { kind: 'presence', conversationId, event: { type: event.type, ...(event.type === 'text_delta' ? { text: event.text.trim() ? '…' : '' } : {}) } });
       }
       if (sub.conversations.has(conversationId)) {
+        const buffered=sub.loading.get(conversationId);
+        if(buffered){buffered.push(event);continue;}
+        const watermark=sub.watermarks.get(conversationId), metadata=event as Record<string,unknown>;
+        if(watermark&&metadata.streamEpoch===watermark.epoch&&typeof metadata.streamRevision==='number'&&metadata.streamRevision<=watermark.revision)continue;
+        if(typeof metadata.streamRevision==='number')sub.watermarks.set(conversationId,{epoch:metadata.streamEpoch,revision:metadata.streamRevision});
         send(sub.socket, {
           kind: 'event',
           conversationId,

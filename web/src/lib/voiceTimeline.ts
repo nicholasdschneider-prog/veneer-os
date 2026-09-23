@@ -23,7 +23,11 @@ export function voiceTimeline(items: ChatItem[], frozenLength: number, sessions:
     const grouped = groupActivityRuns(items.slice(start, end));
     if (start < frozenLength) {
       for (const segment of segmentFrozenTranscript(grouped)) {
-        entries.push(segment.kind === 'static' ? { ...segment, key: `frozen-static-${segment.items[0]!.key}` } : segment);
+        if(segment.kind!=='static'){entries.push(segment);continue;}
+        let chunk:typeof segment.items=[];
+        const push=()=>{if(chunk.length)entries.push({kind:'static',key:`frozen-static-${chunk[0]!.key}`,items:chunk});chunk=[];};
+        for(const item of segment.items){if(item.kind==='user'&&chunk.length)push();chunk.push(item);}
+        push();
       }
     } else for (const item of grouped) entries.push({ kind: 'live', key: item.key, item });
     start = end;

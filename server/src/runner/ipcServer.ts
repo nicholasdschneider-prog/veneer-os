@@ -305,6 +305,14 @@ export function createIpcServer({
               : ((body.answers as Record<string, string[]>) ?? {}),
           ),
         );
+      case '/rpc/historyPage': {
+        const conv=readConv(body.convId);if(!conv)return void sendJson(res,404,{error:'conversation not found'});
+        return void sendJson(res,200,await manager.historyPage(conv,typeof body.token==='string'?body.token:undefined,typeof body.before==='number'?body.before:undefined));
+      }
+      case '/rpc/historyRecord': {
+        const conv=readConv(body.convId);if(!conv)return void sendJson(res,404,{error:'conversation not found'});
+        return void sendJson(res,200,manager.historyRecord(conv,String(body.token),Number(body.index)));
+      }
       case '/rpc/snapshot': {
         const conv = readConv(body.convId);
         if (!conv) return void sendJson(res, 404, { error: 'conversation not found' });
@@ -543,7 +551,7 @@ export function createIpcServer({
     }
   };
   manager.bus.on('event', (conversationId: string, event: ConversationEvent) =>
-    broadcast({ kind: 'event', conversationId, event }),
+    broadcast({ kind: 'event', conversationId, event:{...event,streamRevision:(event as Record<string,unknown>).streamRevision,streamEpoch:(event as Record<string,unknown>).streamEpoch} }),
   );
   manager.bus.on('status', (
     conversationId: string,

@@ -1,3 +1,4 @@
+import type {HistoryPage} from '../runtime/historyPages.js';
 import type { ModelSelection, SwitchProviderResult } from '../runtime/providerSwitch.js';
 import { EventEmitter } from 'node:events';
 import { WebSocket } from 'ws';
@@ -96,6 +97,8 @@ export interface RunnerClient {
   activityOf(convId: string): Promise<ConversationActivity>;
   isLive(convId: string): Promise<boolean>;
   snapshot(convId: string): Promise<ConversationEvent[]>;
+  historyPage(convId:string,token?:string,before?:number):Promise<HistoryPage>;
+  historyRecord(convId:string,token:string,index:number):Promise<ConversationEvent>;
   listSessionFiles(convId: string): Promise<CreatedFileRef[]>;
   listModels(provider: string): Promise<ModelOption[]>;
   /** Start an immediate run of a user-authorized scheduled task. */
@@ -310,6 +313,8 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
       rpc<{ activity: ConversationActivity }>('/rpc/activity', { convId }).then((r) => r.activity),
     isLive: (convId) => rpc<{ live: boolean }>('/rpc/isLive', { convId }).then((r) => r.live),
     snapshot: (convId) => rpc<{ events: ConversationEvent[] }>('/rpc/snapshot', { convId }).then((r) => r.events),
+    historyPage:(convId,token,before)=>rpc<HistoryPage>('/rpc/historyPage',{convId,token,before}),
+    historyRecord:(convId,token,index)=>rpc<ConversationEvent>('/rpc/historyRecord',{convId,token,index}),
     listSessionFiles: (convId) =>
       rpc<{ refs: CreatedFileRef[] }>('/rpc/listSessionFiles', { convId }).then((r) => r.refs),
     listModels: (provider) => rpc<{ models: ModelOption[] }>('/rpc/listModels', { provider }).then((r) => r.models),

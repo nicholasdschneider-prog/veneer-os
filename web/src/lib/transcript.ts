@@ -279,6 +279,7 @@ export function reduceEvents(state: TranscriptState, events: ConversationEvent[]
   let seq = items.length;
 
   for (const event of events) {
+    if(typeof event.displaySequence==='number'&&Number.isSafeInteger(event.displaySequence))seq=event.displaySequence;
     switch (event.type) {
       case 'turn_started':
         const origin = event.origin;

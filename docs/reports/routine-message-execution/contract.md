@@ -1,3 +1,5 @@
+> Current interface amendment: [BUILD275 native-context and authenticated dispatch claim](../cs-draft-follow-through/contract.md). The bot claim now reserves with `execute:false`; the source service alone may obtain first dispatch permission. The historical flow below is superseded on those points.
+
 # Standing routine message contract — BUILD261
 
 This is the native completion of the BUILD232/252 contract. **It does not establish a deployed OrderOps source adapter, activate a category in production, enroll a live policy, or authorize any affected customer draft.** BUILD258's return credentials, trust, source account and transaction authority are separate. The existing source owner remains `a4bc7b0c-e56a-4b90-b4bc-cb71cbc88e68`; no competing source builder is created.
