@@ -25,12 +25,12 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'return-exception-verifier',title:'Verify one exact return-window exception',category:'Automation',updated:'2026-09-23',
-    announcement:'A dedicated server contract can bind the retained Y4DYW5 approval to authoritative OrderOps item evidence and one submission claim. Separate service setup is required.',
+    announcement:'A dedicated service identity now protects the return verifier. Owner trust enrollment and the OrderOps consumer remain separate requirements before live use.',
     audience:'Authenticated business owner for trust enrollment; dedicated OrderOps service for mapping and claims',
     summary:'Preserve the original human approval while recording later exact source evidence and preventing reuse.',
     steps:['The business owner registers the verified dedicated service, account and named executor binding using the authenticated return-exception trust API described in the release contract.', 'The configured OrderOps service supplies complete current source evidence, maps the exact item, and obtains one claim for its durable pending submission.', 'Inspect same-key reconciliation and local acknowledgment after uncertainty. Code deployment is not proof of service setup or a completed return.'],
     example:'Verify this retained one-item return-window approval without granting a refund or repeating the customer action.',
-    limits:'Only the explicitly reviewed approval hash is supported. Dedicated Cloudflare service audience/client, owner trust enrollment and the OrderOps consumer must be configured separately. No live trust or acceptance is performed by the build. This is not generic approval export, routine email authority, a label purchase, or refund permission.',
+    limits:'Only the explicitly reviewed approval hash is supported. The dedicated Cloudflare service identity and native runtime identifiers are provisioned. Owner trust enrollment, verified source account/executor proof and the OrderOps consumer remain required; no live trust or acceptance was performed by the build. This is not generic approval export, routine email authority, a label purchase, or refund permission.',
     agent:'Do not use list_decisions or message delegation as a server return verifier. The dedicated /api/return-exception/verifier contract requires owner-enrolled service/account/executor trust and complete authoritative source mapping. Claim is single use; reconcile the same pending intent, never a new key or external effect. Preserve the raw approval and all local source gates. Guide: /#/bot-guide?feature=return-exception-verifier.',
   },
 

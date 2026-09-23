@@ -1,0 +1,11 @@
+{
+  "accountId": "c3c49db32586713c075a22a18d18cb11",
+  "origin": "https://nicksworld.dev",
+  "applicationId": "c3e0bcaf-ae99-406b-b9d8-00eeb6e66bea",
+  "audience": "073713d61889ab714ffac00a1974a1e8060c49a6054aedb9ec39448eeef13345",
+  "serviceTokenId": "b7d3c9bd-62fa-4261-8cdb-6673006ea535",
+  "serviceClientId": "5144f9c2536529951dbfad377d80bee1.access",
+  "policyId": "c5f60d73-6f5a-4efa-a9ab-aedd971e7c25",
+  "domain": "nicksworld.dev/api/return-exception/verifier",
+  "secretDestination": "ervp/prd/OO_RETURN_VERIFIER_CF_CLIENT_SECRET"
+}
