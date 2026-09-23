@@ -35,6 +35,7 @@ type Draft = {
   payload: Payload;
   state: string;
   stale: boolean;
+  cs_lifecycle?: {state:string;label:string;reason:string;owner_conversation_id:string;technical_owner:string;decision_id:string|null} | null;
   receipt: string | null;
   authorization_basis?: 'standing_policy' | 'human_draft' | 'approved_message_delegation';
   retirement?: {reason:string;evidence:string;created_at:string} | null;
@@ -144,14 +145,14 @@ export function VoiceBriefing({
     </section>
   );
 }
-function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
+export function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
   const [p, setP] = useState(draft.payload),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [confirm, setConfirm] = useState(false),
     [routineStatus, setRoutineStatus] = useState('');
   const dirty = JSON.stringify(p) !== JSON.stringify(draft.payload);
-  const editable = draft.state === 'draft' && !draft.stale;
+  const editable = draft.state === 'draft' && !draft.stale && !draft.cs_lifecycle;
   async function act(action: string) {
     setBusy(true);
     setError('');
@@ -179,7 +180,7 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
       <div className="flex flex-wrap justify-between gap-2">
         <h3 className="font-semibold">Message to {p.customer}</h3>
         <span className="text-sm capitalize">
-          {draft.stale && draft.state === 'draft'
+          {draft.cs_lifecycle ? draft.cs_lifecycle.label : draft.stale && draft.state === 'draft'
             ? 'Proposal changed'
             : draft.retirement ? 'Retired · not sent by this draft'
             : draft.state === 'sent'
@@ -194,6 +195,11 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
       <p className="text-sm text-muted-foreground">
         {p.channel} · {p.account} · Ticket {p.ticket}
       </p>
+      {draft.cs_lifecycle && <div role="status" className="space-y-2 rounded-lg border p-3 text-sm">
+        <p>{draft.cs_lifecycle.reason}</p>
+        <p className="text-xs text-muted-foreground">Follow-through: owning bot · Technical repair: {draft.cs_lifecycle.technical_owner}</p>
+        <a className="underline" href={draft.cs_lifecycle.decision_id ? `#/bots/${encodeURIComponent(draft.cs_lifecycle.decision_id)}` : '#/bots?view=work'}>Open central work overview</a>
+      </div>}
       {p.context && <p className="text-sm">{p.context}</p>}
       <label className="block text-sm">
         Recipients
@@ -357,7 +363,7 @@ export function BotCommunication({
   version?: number;
   mode?: 'all' | 'briefing' | 'drafts';
 }) {
-  const [data, setData] = useState<{ drafts: Draft[]; briefings: Briefing[] }>({
+  const [data, setData] = useState<{ drafts: Draft[]; briefings: Briefing[]; approved_obligations?: {decision_id:string;version:number;ready:boolean;reason:string}[] }>({
     drafts: [],
     briefings: [],
   });
@@ -395,6 +401,11 @@ export function BotCommunication({
   );
   return (
     <div className="space-y-3">
+      {mode !== 'briefing' && !decisionId && data.approved_obligations?.map(o => <div key={o.decision_id} className="space-y-2 rounded-lg border p-3 text-sm">
+        <p className="font-medium">Original approved message · {o.ready ? 'awaiting guarded delegation' : 'technically blocked'}</p>
+        <p>{o.reason}</p><p>This approval applies only to its exact saved scope, not a different ordinary draft below. No delivery is claimed.</p>
+        <a className="underline" href={`#/bots/${encodeURIComponent(o.decision_id)}`}>Review original approval · version {o.version}</a>
+      </div>)}
       {mode !== 'drafts' && (decisionId ? (
         <VoiceBriefing
           key={`${decisionId}:${version}`}

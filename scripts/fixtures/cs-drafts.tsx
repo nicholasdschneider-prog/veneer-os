@@ -1,0 +1,6 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {DraftCard} from '../../web/src/components/BotCommunication';
+import '../../web/src/styles.css';
+const payload={channel:'email',account:'fixture@example.test',recipients:['customer@example.test'],customer:'Synthetic customer',ticket:'FIXTURE',subject:'Update',body:'Exact fixture text only. No customer action.',attachments:[],context:''};
+createRoot(document.getElementById('root')!).render(<main className="mx-auto max-w-2xl space-y-4 p-4">{['Needs human decision','Business decision approved · message unbound','Routine-authorized · technically blocked','Queued for guarded delivery','Sending / awaiting receipt','Delivery needs reconciliation','Sent with receipt','Retired without delivery','ordinary'].map((label,i)=><DraftCard key={label} refresh={()=>{}} draft={{id:`fixture${i}`,version:1,decision_id:null,decision_version:null,payload,state:'draft',stale:false,receipt:null,cs_lifecycle:label==='ordinary'?null:{state:'blocked',label,reason:'Recorded state only; no execution authority. Exact scope and source checks remain required.',owner_conversation_id:'fixture',technical_owner:'Platform Dev / connected source owner',decision_id:null}}}/>)}</main>);

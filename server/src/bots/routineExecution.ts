@@ -34,6 +34,7 @@ type Policy = { id: string; business_id: string; policy_key: string; version: nu
 // checks across ALL channels before marking individual requested fields missing.
 export const routineCaptureSchema = z.object({
   schema_version: z.literal('routine-missing-information/v1'), trust_id: key, request_key: key,
+  native_context_revision: hash,
   captured_at: instant, adapter_digest: hash, account_id: key, principal_id: key,
   source_origin: z.string().url(), enrollment_revision: key, source_intent: key,
   lease: z.object({ case_id: key, principal_id: key, revision: key, expires_at: instant }).strict(),
@@ -120,9 +121,28 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
     return d;
   }
   function auth(id: string) { return db.prepare('SELECT * FROM routine_draft_authorizations WHERE draft_id=?').get(id) as Authorization | undefined; }
+  // Conservative complete native business coverage. Legacy decisions have no
+  // authoritative case/account binding: never guess from source keys or prose.
+  // They block instead of silently dropping a possible hold from this case.
+  function nativeContext(t: TrustInput, caseId: string) {
+    const p=policy(t.policy_id); executor(p,t.executor_id);
+    const rows=db.prepare(`SELECT d.id,d.version,d.state,d.proposal_json,d.answer_json,d.result_json,
+      (SELECT COALESCE(MAX(rowid),0) FROM bot_decision_events e WHERE e.decision_id=d.id) event_revision
+      FROM bot_decisions d JOIN conversations c ON c.id=d.conversation_id
+      WHERE c.business_team_id=? ORDER BY d.id`).all(p.business_id) as {id:string;version:number;state:string;answer_json:string|null}[];
+    // Complete scan includes all native decisions, not only visible assigned rows.
+    // Only verified completion clears uncertainty here; no synthetic completion.
+    const blockers=rows.filter(d=>d.state!=='verified_completed');
+    const binding={business_id:p.business_id,account_id:t.account_id,executor_id:t.executor_id,principal_id:t.principal_id,canonical_case:caseId};
+    return {...binding,coverage:'complete-native-business/v1',revision:canonicalSha256({binding,rows}),
+      ready:blockers.length===0,execute:false,blocking_count:blockers.length,
+      reason:blockers.length?'Unresolved native decisions or holds require exact scope resolution. Legacy unscoped records conservatively block this business; no prose-based exclusion is allowed.':null};
+  }
   function validate(t: TrustInput, c: Capture) {
     const p = policy(t.policy_id), m = c.material;
     executor(p, t.executor_id);
+    const native=nativeContext(t,m.case_id);
+    if(!native.ready || native.revision!==c.native_context_revision) fail('Native decision/hold coverage is blocked or changed; refresh native context.');
     if (c.adapter_digest !== t.adapter_digest || c.account_id !== t.account_id || c.source_origin !== t.source_origin || c.principal_id !== t.principal_id ||
       m.retained_principal_id !== t.principal_id || c.lease.principal_id !== t.principal_id || c.lease.case_id !== m.case_id) fail('Source account, adapter, retained owner or lease binding mismatch');
     const age = now() - Date.parse(c.captured_at);
@@ -143,6 +163,10 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
   function proofView(p: Proof) { return { proof_id: p.id, trust_id: p.trust_id, scope: JSON.parse(p.scope_json), scope_hash: p.scope_hash, material_hash: p.material_hash, execute: false }; }
   return {
     authorization: auth,
+    nativeContext(identity:RoutineIdentity,raw:unknown) {
+      const x=z.object({trust_id:key,canonical_case:key}).strict().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(x.trust_id,identity);return nativeContext(t,x.canonical_case);})();
+    },
     enroll(a: Actor, raw: unknown) {
       const t = routineTrustSchema.parse(raw);
       return db.transaction(() => {
@@ -220,14 +244,32 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
         if (d.state !== 'queued' || d.claim_key !== null || d.version !== grant.expected_version + 1 || canonicalSha256(JSON.parse(d.payload_json)) !== canonicalSha256(JSON.parse(p.scope_json).payload)) fail('Draft changed, claimed or retired');
         db.prepare('INSERT INTO routine_draft_claims(draft_id,proof_id,claim_key,scope_hash) VALUES(?,?,?,?)').run(d.id, p.id, x.claim_key, p.scope_hash);
         db.prepare("UPDATE bot_message_drafts SET state='sending',claim_key=?,updated_at=datetime('now') WHERE id=? AND state='queued' AND claim_key IS NULL").run(x.claim_key, d.id);
-        return { execute: true, draft_id: d.id, authorization_basis: 'standing_policy', scope: JSON.parse(p.scope_json), scope_hash: p.scope_hash, material_hash: p.material_hash, policy_id: t.policy_id, trust_id: p.trust_id, source_intent: c.source_intent, idempotency_key: `veneer-message:${d.id}`, instruction: 'Only the enrolled source dispatcher may send: atomically recheck current identity, policy, own lease, material, holds and duplicate/unknown effects immediately before provider dispatch. No direct legacy send fallback.' };
+        return { execute: false, source_dispatch_required: true, draft_id: d.id, authorization_basis: 'standing_policy', scope: JSON.parse(p.scope_json), scope_hash: p.scope_hash, material_hash: p.material_hash, policy_id: t.policy_id, trust_id: p.trust_id, source_intent: c.source_intent, idempotency_key: `veneer-message:${d.id}`, instruction: 'Reservation only, not send permission. The dedicated service must obtain its one-time dispatch-claim bound to its pre-existing durable source intent. Never trust forwarded bot JSON or dispatch from reconciliation.' };
+      }).immediate();
+    },
+    dispatchClaim(identity:RoutineIdentity,raw:unknown) {
+      const x=z.object({draft_id:key,claim_key:key,proof_id:key,source_intent:key,scope_hash:hash,material_hash:hash,request_key:key}).strict().parse(raw);
+      return db.transaction(()=>{
+        const grant=auth(x.draft_id); if(!grant) throw new BotError(404,'Routine authorization not found');
+        const {t}=loadTrust(grant.trust_id,identity);
+        const d=getDraft(x.draft_id);
+        const claim=db.prepare('SELECT claim_key,proof_id FROM routine_draft_claims WHERE draft_id=?').get(d.id) as {claim_key:string;proof_id:string}|undefined;
+        const old=db.prepare('SELECT binding_hash FROM routine_dispatch_claims WHERE draft_id=?').get(d.id) as {binding_hash:string}|undefined;
+        const h=canonicalSha256(x);
+        if(old) {if(old.binding_hash!==h) fail('Dispatch already associated under different binding');return {execute:false,draft_id:d.id,instruction:'Read-only reconciliation only. Lost first response is UNKNOWN; no dispatch or retry.'};}
+        if(!claim || claim.claim_key!==x.claim_key || claim.proof_id!==x.proof_id || grant.source_intent!==x.source_intent || grant.scope_hash!==x.scope_hash || grant.material_hash!==x.material_hash || d.state!=='sending' || d.claim_key!==x.claim_key) fail('Exact reserved native claim and source intent required');
+        const proof=getProof(x.proof_id), capture=routineCaptureSchema.parse(JSON.parse(proof.capture_json));
+        validate(t,capture);
+        if(proof.trust_id!==grant.trust_id || proof.scope_hash!==grant.scope_hash || proof.material_hash!==grant.material_hash || canonicalSha256(JSON.parse(d.payload_json))!==canonicalSha256(JSON.parse(proof.scope_json).payload)) fail('Dispatch material changed');
+        db.prepare('INSERT INTO routine_dispatch_claims(draft_id,request_key,binding_json,binding_hash) VALUES(?,?,?,?)').run(d.id,x.request_key,JSON.stringify(x),h);
+        return {execute:true,...x,trust_id:grant.trust_id,policy_id:t.policy_id,account_id:t.account_id,principal_id:t.principal_id,executor_id:t.executor_id,source_origin:t.source_origin,scope:JSON.parse(proof.scope_json),idempotency_key:`veneer-message:${d.id}`};
       }).immediate();
     },
     reconcile(identity: RoutineIdentity, id: string) {
       const g = auth(id); if (!g) throw new BotError(404, 'Routine authorization not found');
       loadTrust(g.trust_id, identity, false);
       const d = getDraft(id), receipt = db.prepare('SELECT receipt_json FROM routine_delivery_readbacks WHERE draft_id=?').get(id) as { receipt_json: string } | undefined;
-      return { draft_id: id, state: d.state, execute: false, claimed: !!d.claim_key, receipt: receipt ? JSON.parse(receipt.receipt_json) : null };
+      return { draft_id: id, state: d.state, execute: false, claimed: !!d.claim_key, claim: db.prepare('SELECT claim_key,proof_id,scope_hash FROM routine_draft_claims WHERE draft_id=?').get(id) ?? null, association: db.prepare('SELECT binding_json FROM routine_dispatch_claims WHERE draft_id=?').get(id) ?? null, scope_hash:g.scope_hash, material_hash:g.material_hash, source_intent:g.source_intent, trust_id:g.trust_id, idempotency_key:`veneer-message:${id}`, receipt: receipt ? JSON.parse(receipt.receipt_json) : null };
     },
     readback(identity: RoutineIdentity, raw: unknown) {
       const x = z.object({ draft_id: key, claim_key: key, scope_hash: hash, material_hash: hash, account_id: key, principal_id: key,
@@ -241,7 +283,7 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
         const h = canonicalSha256(x), prior = db.prepare('SELECT receipt_hash FROM routine_delivery_readbacks WHERE draft_id=?').get(d.id) as { receipt_hash: string } | undefined;
         if (prior) { if (prior.receipt_hash !== h) fail('Delivery readback conflict'); return { state: 'sent', execute: false }; }
         const age = now() - Date.parse(x.verified_at);
-        if (!claim || claim.claim_key !== x.claim_key || x.scope_hash !== grant.scope_hash || x.material_hash !== grant.material_hash || x.account_id !== t.account_id || x.principal_id !== t.principal_id || x.source_intent !== grant.source_intent || x.idempotency_key !== `veneer-message:${d.id}` || x.payload_hash !== canonicalSha256(JSON.parse(d.payload_json)) || age < -5000 || age > 30000) fail('Exact current provider readback does not match the claimed scope');
+        if (!db.prepare('SELECT 1 FROM routine_dispatch_claims WHERE draft_id=?').get(d.id) || !claim || claim.claim_key !== x.claim_key || x.scope_hash !== grant.scope_hash || x.material_hash !== grant.material_hash || x.account_id !== t.account_id || x.principal_id !== t.principal_id || x.source_intent !== grant.source_intent || x.idempotency_key !== `veneer-message:${d.id}` || x.payload_hash !== canonicalSha256(JSON.parse(d.payload_json)) || age < -5000 || age > 30000) fail('Exact current provider readback does not match the claimed scope');
         if (!['sending', 'uncertain'].includes(d.state)) fail('Draft is not awaiting delivery reconciliation');
         if (db.prepare("SELECT 1 FROM routine_delivery_readbacks WHERE json_extract(receipt_json,'$.account_id')=? AND json_extract(receipt_json,'$.provider_message_id')=?").get(x.account_id,x.provider_message_id)) fail('Provider message already bound to another draft');
         db.prepare('INSERT INTO routine_delivery_readbacks(draft_id,receipt_json,receipt_hash) VALUES(?,?,?)').run(d.id, JSON.stringify(x), h);

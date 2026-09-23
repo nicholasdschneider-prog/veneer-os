@@ -76,6 +76,21 @@ describe('reviewable bot communication', () => {
     server = undefined;
     db.close();
   });
+  it('limits central CS presentation and rejection to explicitly opted-in lane; never mutates drafts',()=>{
+    const business='5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86';
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES(?,'Fixture CS',1)").run(business);
+    db.prepare("UPDATE conversations SET business_team_id=? WHERE id='c1'").run(business);
+    db.prepare("INSERT INTO shared_bot_queues(conversation_id) VALUES('c1')").run();
+    db.prepare("INSERT INTO nonexclusive_bot_queues(conversation_id,business_id) VALUES('c1',?)").run(business);
+    const d=s.saveDraft(bot,'c1','cs',payload);
+    expect(s.list(human,'c1').drafts[0]?.cs_lifecycle).toMatchObject({state:'blocked',execute:false});
+    expect(()=>s.mutateDraft(human,d.id,d.version,'send')).toThrow('central');
+    expect(s.readDraft(bot,d.id)).toMatchObject({state:'draft',authorized_by:null,claim_key:null});
+    expect(()=>s.list(other,'c1')).toThrow();
+    db.prepare("DELETE FROM nonexclusive_bot_queues WHERE conversation_id='c1'").run();
+    expect(s.list(human,'c1').drafts[0]?.cs_lifecycle).toBeNull();
+    expect(s.mutateDraft(human,d.id,d.version,'send').state).toBe('queued');
+  });
   it('saves edits then queues one exact message, keeping business approval separate', () => {
     const d = bots.raise(bot, {
       source_key: 'case',

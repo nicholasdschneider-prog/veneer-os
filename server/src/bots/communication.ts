@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { csDraftState } from './csDraftState.js';
+import { approvedMessageSchema } from './draftPayload.js';
 import { routineExecutionService } from './routineExecution.js';
 import { messageDelegationService } from './messageDelegation.js';
 import crypto from 'node:crypto';
@@ -90,13 +92,28 @@ export function communicationService(db: Database.Database) {
         'Only the assigned approver or current handler can send this message',
       );
   }
+  function csLane(c: string) {
+    return !!db.prepare(`SELECT 1 FROM nonexclusive_bot_queues q JOIN conversations c ON c.id=q.conversation_id
+      JOIN bot_registrations b ON b.conversation_id=c.id AND b.active=1
+      WHERE c.id=? AND c.archived=0 AND c.business_team_id=q.business_id
+      AND q.business_id='5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86'`).get(c);
+  }
   function draftView(d: Draft) {
+    const retirement = db.prepare('SELECT expected_version,reason,evidence,actor_id,conversation_id,created_at FROM bot_message_retirements WHERE draft_id=?').get(d.id) ?? null;
+    const routine = !!routineExecutionService(db).authorization(d.id);
+    const decision = d.decision_id ? db.prepare('SELECT id,version,state,answer_json FROM bot_decisions WHERE id=?').get(d.decision_id) as {id:string;version:number;state:string;answer_json:string|null}|undefined : undefined;
+    const cs = csLane(d.conversation_id);
+    const lifecycle = cs ? { ...csDraftState(d,{retired:!!retirement,routine,delegated:!!d.delegation_id,
+      stale:!!decision && decision.version!==d.decision_version,
+      decision:decision && {...decision,answer:decision.answer_json?JSON.parse(decision.answer_json).action:null}}),
+      owner_conversation_id:d.conversation_id, technical_owner:'Platform Dev / connected source owner', decision_id:d.decision_id } : null;
     return {
       ...d,
       payload: JSON.parse(d.payload_json) as DraftPayload,
       payload_json: undefined,
-      authorization_basis: routineExecutionService(db).authorization(d.id) ? 'standing_policy' : (d.delegation_id ? 'approved_message_delegation' : 'human_draft'),
-      retirement: db.prepare('SELECT expected_version,reason,evidence,actor_id,conversation_id,created_at FROM bot_message_retirements WHERE draft_id=?').get(d.id) ?? null,
+      cs_lifecycle: lifecycle,
+      authorization_basis: routine ? 'standing_policy' : (d.delegation_id ? 'approved_message_delegation' : 'human_draft'),
+      retirement,
     };
   }
   return {
@@ -106,7 +123,23 @@ export function communicationService(db: Database.Database) {
     draftView,
     list(a: Actor, c: string) {
       access(a, c);
+      // Explicit structured executor binding only, never ticket/prose similarity.
+      const obligations: {decision_id:string;version:number;owner_conversation_id:string;ready:boolean;reason:string}[]=[];
+      if(csLane(c)) {
+        const rows=db.prepare(`SELECT d.id,d.version,d.conversation_id,d.proposal_json FROM bot_decisions d JOIN conversations o ON o.id=d.conversation_id
+          WHERE o.business_team_id=(SELECT business_team_id FROM conversations WHERE id=?)
+          AND json_extract(d.proposal_json,'$.message_delivery.executor_conversation_id')=?
+          AND json_extract(d.answer_json,'$.action')='approve' AND d.state IN ('decided','action_pending','blocked','running')`).all(c,c) as {id:string;version:number;conversation_id:string;proposal_json:string}[];
+        for(const row of rows) { try {
+          bots.read(a,row.id);
+          if(!approvedMessageSchema.safeParse(JSON.parse(row.proposal_json).message_delivery).success) continue;
+          let ready=false,reason='Original approval retained; exact proof and current authority require reconciliation.';
+          try { const check=delegated.inspect(a,row.id,row.version); ready=check.ready; reason=check.ready?'Exact approved scope is inspectable. Only owner delegation and named-executor acceptance can bind a draft; this is not delivery.':check.missing_proof!.join('; '); } catch(e) { if(e instanceof BotError) reason=e.message; else throw e; }
+          obligations.push({decision_id:row.id,version:row.version,owner_conversation_id:row.conversation_id,ready,reason});
+        } catch(e) { if(!(e instanceof BotError)) throw e; } }
+      }
       return {
+        approved_obligations: obligations,
         drafts: (
           db
             .prepare(
@@ -200,6 +233,7 @@ export function communicationService(db: Database.Database) {
       return db
         .transaction(() => {
           const d = readDraft(a, id);
+          if (csLane(d.conversation_id) && action === 'send') throw new BotError(409, 'CS messages use the central decision or exact standing-policy path, not a second per-draft human send approval.');
           authorize(a, d);
           if (d.version !== version)
             throw new BotError(
