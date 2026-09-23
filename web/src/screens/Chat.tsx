@@ -1,3 +1,4 @@
+import { CallButton, CallIcon } from '@/components/CallButton';
 import { useMessageListen } from '@/components/MessageAudioPlayer';
 import { MobileChatHeader } from '../components/chat/MobileChatHeader';
 import { voiceTimeline, type VoiceSession } from '../lib/voiceTimeline';
@@ -10,7 +11,7 @@ import { withSideParam } from '../lib/sideChat';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Plus, Phone, AudioLines, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
+import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Plus, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
 import { api, requestJson, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
 import { chatDeleteConfirmation, chatHeaderMenuLabels, copyChatShareUrl } from '../lib/chatDeletion';
 import type { Artifact, PublishedArtifact } from '../lib/artifacts';
@@ -2311,7 +2312,7 @@ export function Chat({
       ) : null}
       {!isNew && <MobileChatHeader id={conversationId} name={title?.trim() || agentName} status={`${creator?.displayName ?? ''} · ${liveStatus || status} · ${visibility}`} onBack={() => onNavigate(backHash ?? (projectId ? `#/?project=${projectId}` : '#/'))} onComputer={onOpenBrowser}>
         {sideChatButton && canSend && <DropdownMenuItem onSelect={() => onNavigate(withSideParam(window.location.hash, 'open'))}>Side chat</DropdownMenuItem>}
-        {canSend && <DropdownMenuItem onSelect={() => liveVoice.open(conversationId)}>Talk with this bot</DropdownMenuItem>}
+        {canSend && <DropdownMenuItem className="min-h-[44px]" onSelect={() => liveVoice.open(conversationId)}><span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white"><CallIcon className="size-4" /></span>Talk with this bot</DropdownMenuItem>}
         {canChangeVisibility && <DropdownMenuItem disabled={menuBusy} onSelect={() => setVisibilityDialogOpen(true)}>Change visibility · {visibility}</DropdownMenuItem>}
         <DropdownMenuItem disabled={menuBusy} onSelect={() => void markUnread()}>Mark as unread</DropdownMenuItem>
         {canManage && <DropdownMenuItem disabled={menuBusy} onSelect={() => void toggleArchive()}>{archived ? 'Restore chat' : 'Archive chat'}</DropdownMenuItem>}
@@ -2421,17 +2422,12 @@ export function Chat({
               </Button>
             ) : null}
             {backHash === '#/bots' && canManage ? (
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                className="relative rounded-full text-muted-foreground"
+              <CallButton
                 onPointerUp={() => liveVoice.open(conversationId)}
+                onClick={event => { if (event.detail === 0) liveVoice.open(conversationId); }}
                 aria-label={`Talk with ${title?.trim() || agentName}`}
                 title="Talk with this bot"
-              >
-                <Phone className="size-4" aria-hidden="true" />
-                <span className="pointer-fine:hidden absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true" />
-              </Button>
+              ></CallButton>
             ) : null}
             {canChangeVisibility ? (
               <Button
@@ -3214,13 +3210,10 @@ export function Chat({
               )}
             />
           </button>
-          <button type="button" aria-label="Live voice" title={conversationId === 'new' ? 'Send a message to create this conversation first' : 'Live voice'}
+          <CallButton type="button" aria-label="Live voice" title={conversationId === 'new' ? 'Send a message to create this conversation first' : 'Live voice'}
             disabled={conversationId === 'new' || recording || transcribing || creatingNewChat}
             onPointerUp={() => liveVoice.open(conversationId)}
-            onClick={event => { if (event.detail === 0) liveVoice.open(conversationId); }}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40">
-            <AudioLines className="size-5" />
-          </button>
+            onClick={event => { if (event.detail === 0) liveVoice.open(conversationId); }} />
           {/* While the agent is working with nothing staged to send, the send
               button quietly becomes a stop button — a turn is interruptible
               right where the thumb already is. Type anything and it flips back

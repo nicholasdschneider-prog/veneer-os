@@ -1,3 +1,4 @@
+import { CallButton } from '@/components/CallButton';
 import { DecisionImages } from '../components/DecisionImages';
 import { isPeopleConversation } from '@/lib/teamRooms';
 import {NewGroupChat} from '@/components/NewGroupChat';
@@ -26,7 +27,6 @@ import {
   ChevronDown,
   Hand,
   MessageSquare,
-  Phone,
   Plus,
   RefreshCw,
   Users,
@@ -615,16 +615,11 @@ export function Bots({
                       </span>
                     </button>
                     {canCall && !bot.archived ? (
-                      <Button
-                        variant="outline"
-                        size="icon-lg"
-                        className="rounded-full"
+                      <CallButton
                         aria-label={`Talk with ${bot.name}`}
                         title={`Talk with ${bot.name}`}
                         onClick={() => liveVoice.open(bot.conversation_id)}
-                      >
-                        <Phone className="size-4" />
-                      </Button>
+                      ></CallButton>
                     ) : (
                       <ArrowUpRight className="size-4 text-muted-foreground" />
                     )}
@@ -678,13 +673,9 @@ export function Bots({
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {canCall && (
-                      <Button
-                        className="min-h-11 flex-1 sm:flex-none"
+                      <CallButton className="flex-1 sm:flex-none"
                         onClick={() => liveVoice.open(d.conversation_id, d.id)}
-                      >
-                        <Phone className="size-4" />
-                        Call {d.bot_name}
-                      </Button>
+                      >Call {d.bot_name}</CallButton>
                     )}
                     <Button
                       variant="outline"
@@ -1041,7 +1032,7 @@ export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selec
         <div className="flex items-center gap-2">
           <State state={d.state} label={decisionStatusLabel(d)} />
           {selected && <span className="text-sm font-semibold text-blue-700 dark:text-blue-200">Selected</span>}
-          {onCall && <Button variant="outline" size="icon-lg" className="rounded-full" aria-label={`Talk with ${d.bot_name} about this`} onClick={onCall}><Phone className="size-4" /></Button>}
+          {onCall && <CallButton aria-label={`Talk with ${d.bot_name} about this`} onClick={onCall}></CallButton>}
         </div>
       </div>
       <BotOrderLink order={d.order_reference} />

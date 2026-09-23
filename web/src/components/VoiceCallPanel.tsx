@@ -1,5 +1,6 @@
+import { CallButton } from '@/components/CallButton';
 import { useState } from 'react';
-import { MessageSquare, Mic, MicOff, Phone, Settings2, X } from 'lucide-react';
+import { MessageSquare, Mic, MicOff, Settings2, X } from 'lucide-react';
 import { BotAvatar } from './BotIdentity';
 import type { VoiceSnapshot } from '@/lib/liveVoice';
 
@@ -21,7 +22,7 @@ export function VoiceCallPanel({ callerName, name, botId, status, active, connec
       <span aria-label={callerName ? `You · ${callerName}` : 'You'} className="flex size-10 shrink-0 items-center justify-center rounded-full border bg-background text-xs font-medium">{initials}</span>
     </div>
     <p role="status" className="mt-2 text-center text-xs text-muted-foreground">{status}</p>
-    {!active && <button type="button" disabled={!ready} onClick={onStart} className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-4 text-primary-foreground disabled:opacity-40"><Phone className="size-4" />Start voice</button>}
+    {!active && <CallButton className="mt-3" type="button" disabled={!ready} onClick={onStart}>Start voice</CallButton>}
     <div className="mt-3 flex justify-center gap-3">
       <button type="button" aria-label="Voice settings" aria-expanded={settings} onClick={() => setSettings(!settings)} className={`${circle} bg-muted text-foreground hover:bg-accent`}><Settings2 className="size-5" /></button>
       <button type="button" aria-label="Show transcript" aria-expanded={transcript} aria-pressed={transcript} onClick={() => setTranscript(!transcript)} className={`${circle} ${transcript ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-muted text-foreground hover:bg-accent'}`}><MessageSquare className="size-5" /></button>

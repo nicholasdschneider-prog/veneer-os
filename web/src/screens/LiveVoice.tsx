@@ -1,7 +1,8 @@
+import { CallButton } from '@/components/CallButton';
 import { VoiceCallPanel } from '../components/VoiceCallPanel';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Room, RoomEvent, Track, createLocalAudioTrack, type LocalAudioTrack } from 'livekit-client';
-import { ArrowLeft, Mic, MicOff, Phone, PhoneOff, Pause, Volume2 } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, PhoneOff, Pause, Volume2 } from 'lucide-react';
 import { micDictation } from '../lib/stt';
 import { Button } from '@/components/ui/button';
 import { BotAvatar } from '@/components/BotIdentity';
@@ -213,7 +214,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
           </select>
         </div>}
         <div className="flex flex-wrap gap-3">
-          {!active ? <Button className="min-h-12 flex-1" disabled={!snapshot?.configuration.ready || missingBot} onClick={() => void start()}><Phone className="size-4" />{state === 'standby' ? 'Resume conversation' : `Call ${bot?.name ?? (botConversationId ? 'bot' : 'Henry')}`}</Button> : <>
+          {!active ? <CallButton className="min-h-12 flex-1" disabled={!snapshot?.configuration.ready || missingBot} onClick={() => void start()}>{state === 'standby' ? 'Resume conversation' : `Call ${bot?.name ?? (botConversationId ? 'bot' : 'Henry')}`}</CallButton> : <>
             <Button variant="outline" className="min-h-12 flex-1" disabled={state !== 'connected'} aria-pressed={muted} onClick={() => void toggleMute()}>{muted ? <MicOff className="size-4" /> : <Mic className="size-4" />}{muted ? 'Unmute' : 'Mute'}</Button>
             <Button variant="outline" className="min-h-12 flex-1" onClick={() => end('standby')}><Pause className="size-4" />Standby</Button>
             <Button variant="destructive" className="min-h-12 flex-1" onClick={() => end()}><PhoneOff className="size-4" />End call</Button>

@@ -1,5 +1,6 @@
+import { CallButton } from '@/components/CallButton';
 import { useLiveVoice } from './VoiceProvider';
-import { AudioLines, ChevronDown, FileText, Mic, Paperclip, Plus, X } from 'lucide-react';
+import { ChevronDown, FileText, Mic, Paperclip, Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api, type ModelOption } from '@/lib/api';
 import { isComposerSubmitKey } from '@/lib/composerKeys';
@@ -353,7 +354,7 @@ export function BotComposer({
                 {recording ? <span className="absolute inset-1.5 animate-ping rounded-full bg-destructive/40" /> : null}
                 <Mic className="relative size-5" />
               </button>
-              <button type="button" aria-label="Live voice" disabled={busy || recording || transcribing} onPointerUp={() => liveVoice.open(conversationId, decisionId)} onClick={e => {if(e.detail===0)liveVoice.open(conversationId,decisionId)}} className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"><AudioLines className="size-5" /></button>
+              <CallButton type="button" aria-label="Live voice" disabled={busy || recording || transcribing} onPointerUp={() => liveVoice.open(conversationId, decisionId)} onClick={e => {if(e.detail===0)liveVoice.open(conversationId,decisionId)}} />
               <Button
                 size="icon-lg"
                 className="size-10 shrink-0 select-none rounded-full text-xl disabled:opacity-30"
