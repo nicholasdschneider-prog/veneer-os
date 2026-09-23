@@ -10,7 +10,9 @@ describe('bot guide discovery', () => {
   });
   it('combines search with release filtering and retains existing features in the full guide', () => {
     expect(filterBotFeatures(catalog, 'voice', false).some(feature => feature.id === 'voice')).toBe(true);
-    expect(filterBotFeatures(catalog, 'voice', true).some(feature => feature.id === 'voice')).toBe(false);
+    expect(filterBotFeatures(catalog, 'voice', true).some(feature => feature.id === 'voice')).toBe(true);
+    expect(filterBotFeatures(catalog, 'ongoing work', false).some(feature => feature.id === 'chat')).toBe(true);
+    expect(filterBotFeatures(catalog, 'ongoing work', true).some(feature => feature.id === 'chat')).toBe(false);
     expect(filterBotFeatures(catalog, '', true).every(feature => feature.isNew)).toBe(true);
     expect(filterBotFeatures(botFeatureCatalog(Date.parse('2027-01-01')), '', true)).toEqual([]);
   });

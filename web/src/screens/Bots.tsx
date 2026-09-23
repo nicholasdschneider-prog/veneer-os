@@ -1,3 +1,4 @@
+import { DecisionChoices } from '../components/DecisionChoices';
 import { BotCommunication, VoiceBriefing } from '../components/BotCommunication';
 import { BotGuideNotice } from '@/components/BotGuideNotice';
 import { decisionCopy, decisionSection, decisionStatusLabel, discussionTimestamp } from '@/lib/decisionPresentation';
@@ -289,7 +290,7 @@ export function Bots({
   const mutate = (kind: string, body: Record<string, unknown>) =>
     send(decisionId!, kind, {
       expected_version: detail!.decision.version,
-      ...((kind === 'answer' || kind === 'handling') && detail!.decision.shared_queue ? { expected_handling_revision: detail!.decision.handling_revision } : {}),
+      ...((kind === 'answer' || kind === 'choice' || kind === 'handling') && detail!.decision.shared_queue ? { expected_handling_revision: detail!.decision.handling_revision } : {}),
       ...body,
     });
   const needs = decisions.filter((d) => decisionSection(d) === 'input');
@@ -796,7 +797,7 @@ export function Bots({
                   {d.answer && (
                     <div className="mt-4 rounded-xl border p-3 text-sm">
                       <p className="font-medium">
-                        {d.answer.action} ·{' '}
+                        <Check className="mr-2 inline size-4 text-emerald-500" aria-label="Answer recorded" />{d.answer.choice_label ?? d.answer.action} ·{' '}
                         {d.answer.scope === 'this_case'
                           ? 'This case only'
                           : 'Standing rule requested'}
@@ -901,7 +902,7 @@ export function Bots({
                         </h3>
                         <p className="mt-2 text-base text-muted-foreground sm:text-sm">Review the proposed action, customer reply, and full conditions above before approving.</p>
                         <label className="mt-3 block text-sm">
-                          Answer or reasoning
+                          Add a note (optional)
                           <textarea
                             className={cn(field, 'mt-1')}
                             rows={3}
@@ -928,32 +929,10 @@ export function Bots({
                             financial approvals still apply.
                           </p>
                         )}
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {['approve', 'reject', 'defer', 'withdraw'].map(
-                            (action) => (
-                              <Button
-                                key={action}
-                                className="min-h-11"
-                                variant={
-                                  action === 'approve' ? 'default' : 'outline'
-                                }
-                                disabled={busy || stale || !answer.trim()}
-                                onClick={() =>
-                                  void act(async () => {
-                                    await mutate('answer', {
-                                      action,
-                                      text: answer,
-                                      scope,
-                                    });
-                                    setAnswer('');
-                                  })
-                                }
-                              >
-                                {action[0]!.toUpperCase() + action.slice(1)}
-                              </Button>
-                            ),
-                          )}
-                        </div>
+                        <DecisionChoices choices={d.proposal.choices} disabled={busy || stale} onChoose={choice_id => void act(async () => {
+                          await mutate('choice', { choice_id, note: answer, scope });
+                          setAnswer('');
+                        })} />
                         {d.can_amend !== false && !restricted && <button
                           className="mt-4 text-sm underline"
                           onClick={() => {
@@ -1075,7 +1054,7 @@ export const QUEUE_APPROVAL_NOTE = 'Approved as proposed.';
 
 /** One-click approval is offered when the viewer can answer now, or can claim a shared question and then answer it. */
 export function canApproveFromQueue(d: BotDecision) {
-  return d.state === 'needs_input' && (d.can_answer || Boolean(d.shared_queue && !d.handler_id && d.can_handle));
+  return !d.proposal.choices?.length && d.state === 'needs_input' && (d.can_answer || Boolean(d.shared_queue && !d.handler_id && d.can_handle));
 }
 
 export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selected = false }: { d: BotDecision; selected?: boolean; busy?: boolean; onOpen: () => void; onCall?: () => void; onApprove?: () => void }) {

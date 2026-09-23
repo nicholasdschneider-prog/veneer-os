@@ -22,6 +22,7 @@ const proposal = {
       description: 'Real ISO deadline, or null.',
     },
     evidence,
+    choices: { type: 'array', minItems: 2, maxItems: 6, description: 'Offer concise contextual buttons for a bounded human decision. Every choice explicitly maps to approve, reject, defer, or withdraw. Hold/Not now must never approve. Omit for default buttons.', items: { type: 'object', properties: { id: {type:'string', pattern:'^[a-zA-Z0-9_-]{1,64}$'}, label:{type:'string', maxLength:120}, description:{type:'string',maxLength:300}, action:{type:'string',enum:['approve','reject','defer','withdraw']} }, required:['id','label','action'], additionalProperties:false } },
     blocked_action: { type: 'string', description: 'Complete action, execution requirements and approval conditions. Put internal protocol here, not in the human-facing fields. If proposing an exact customer message, append EXACT DRAFT: followed by the complete verbatim message at the end. Nothing after the draft except the draft itself; the UI displays it separately.' },
     blocks_scope: { type: 'string', enum: ['task', 'workload'] },
     case_timeline: { type: 'array', maxItems: 12,

@@ -229,6 +229,15 @@ export function createBotsRouter(ctx: AppContext) {
     const p = mutation.extend({ action: z.enum(['claim', 'release']), expected_handling_revision: z.number().int().nonnegative() }).strict().parse(req.body);
     res.json({ decision: s.handle(actor(req), req.params.id!, p.expected_version, p.request_key, p.action, p.expected_handling_revision) });
   }));
+  router.post('/decisions/:id/choice', run((req, res) => {
+    const p = mutation.extend({
+      choice_id: z.string().min(1).max(64), note: z.string().trim().max(12000).default(''),
+      scope: z.enum(['this_case', 'standing_rule']),
+      expected_handling_revision: z.number().int().nonnegative().optional(),
+    }).strict().parse(req.body);
+    res.json({ decision: s.choose(actor(req), req.params.id!, p.expected_version, p.request_key,
+      p.choice_id, p.note, p.scope, p.expected_handling_revision) });
+  }));
   router.post(
     '/decisions/:id/answer',
     run((req, res) => {

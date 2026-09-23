@@ -6,7 +6,7 @@ import { withSideParam } from '../lib/sideChat';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Phone, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
+import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Phone, AudioLines, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
 import { api, requestJson, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
 import { chatDeleteConfirmation, chatHeaderMenuLabels, copyChatShareUrl } from '../lib/chatDeletion';
 import type { Artifact, PublishedArtifact } from '../lib/artifacts';
@@ -3130,13 +3130,6 @@ export function Chat({
           >
             <Paperclip className="h-5 w-5" />
           </button>
-          <button type="button" aria-label="Live voice" title={conversationId === 'new' ? 'Send a message to create this conversation first' : 'Live voice'}
-            disabled={conversationId === 'new' || recording || transcribing || creatingNewChat}
-            onPointerUp={() => liveVoice.open(conversationId)}
-            onClick={event => { if (event.detail === 0) liveVoice.open(conversationId); }}
-            className="flex size-12 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground disabled:opacity-40">
-            <Phone className="size-5" />
-          </button>
           <button
             // pointerup, not click: the iOS spell-check callout eats taps
             // that mousedown/click would need (Veneer lesson).
@@ -3159,6 +3152,13 @@ export function Chat({
                 enlargeMic ? 'size-6' : 'size-5',
               )}
             />
+          </button>
+          <button type="button" aria-label="Live voice" title={conversationId === 'new' ? 'Send a message to create this conversation first' : 'Live voice'}
+            disabled={conversationId === 'new' || recording || transcribing || creatingNewChat}
+            onPointerUp={() => liveVoice.open(conversationId)}
+            onClick={event => { if (event.detail === 0) liveVoice.open(conversationId); }}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40">
+            <AudioLines className="size-5" />
           </button>
           {/* While the agent is working with nothing staged to send, the send
               button quietly becomes a stop button — a turn is interruptible

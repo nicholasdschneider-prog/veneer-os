@@ -14,7 +14,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     if (!pinnedId) { setDecisionId(focus); setPinnedId(id); }
   } }}>
     {children}
-    {pinnedId && <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4rem)] z-50 sm:inset-x-auto sm:right-5 sm:w-96">
+    {pinnedId && <div className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+4rem)] z-50 w-[min(20rem,calc(100vw-1.5rem))] -translate-x-1/2">
       <Suspense fallback={<p role="status" className="rounded-xl border bg-background p-4">Opening voice…</p>}><LiveVoice key={pinnedId} compact botConversationId={pinnedId} decisionId={decisionId} onBack={() => setPinnedId(null)} /></Suspense>
     </div>}
   </VoiceContext.Provider>;

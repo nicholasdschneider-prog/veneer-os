@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import type { ChatItem } from '@/lib/transcript';
@@ -114,7 +115,7 @@ export function QuestionCard({ item }: { item: QuestionItem }) {
                         <p className="text-[0.9375rem] font-medium text-pretty text-foreground sm:text-[0.8125rem]">{question.question}</p>
                       </div>
 
-                      <div className="divide-y divide-border/50 border-y border-border/50">
+                      <div className="space-y-2">
                         {question.options.map((option, optionIndex) => {
                           const id = `question-${item.requestId}-${question.id}-${optionIndex}`;
                           const selected = (choices[question.id] ?? []).includes(option.value);
@@ -122,7 +123,7 @@ export function QuestionCard({ item }: { item: QuestionItem }) {
                             <label
                               key={`${option.value}-${optionIndex}`}
                               htmlFor={id}
-                              className="flex min-h-11 min-w-0 cursor-pointer items-start gap-2.5 py-2 text-[0.9375rem] sm:text-[0.8125rem]"
+                              className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2.5 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-[0.9375rem] has-[:checked]:border-primary sm:text-[0.8125rem]"
                             >
                               <span className="flex h-lh shrink-0 items-center">
                                 <input
@@ -131,8 +132,9 @@ export function QuestionCard({ item }: { item: QuestionItem }) {
                                   type={question.multi ? 'checkbox' : 'radio'}
                                   checked={selected}
                                   onChange={(event) => chooseOption(question, option.value, event.currentTarget.checked)}
-                                  className="size-5 shrink-0 accent-primary sm:size-4"
+                                  className="peer sr-only"
                                 />
+                                <span aria-hidden="true" className="flex size-7 items-center justify-center rounded border text-xs peer-focus-visible:outline-2 peer-checked:bg-primary peer-checked:text-primary-foreground">{String.fromCharCode(65 + optionIndex)}</span>
                               </span>
                               <span className="min-w-0 flex-1">
                                 <p className="font-medium text-foreground">{option.label}</p>
@@ -205,8 +207,8 @@ export function QuestionCard({ item }: { item: QuestionItem }) {
                     {item.status === 'answered' ? (
                       <ul role="list" className="space-y-1">
                         {(item.answers[question.id] ?? []).map((answer) => (
-                          <li key={answer} className="text-sm text-muted-foreground sm:text-[0.8125rem]">
-                            {answerLabel(question, answer)}
+                          <li key={answer} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border bg-muted/40 px-3 py-2 text-sm sm:text-[0.8125rem]">
+                            {answerLabel(question, answer)}<Check className="size-4 shrink-0 text-emerald-500" aria-label="Answer recorded" />
                           </li>
                         ))}
                       </ul>

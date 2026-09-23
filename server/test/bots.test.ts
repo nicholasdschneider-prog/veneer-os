@@ -119,6 +119,35 @@ describe('VeneerBots', () => {
     s.reply(actor, id, key, text, version);
     return (db.prepare('SELECT id FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(id, key) as { id: string }).id;
   }
+  it('derives a contextual choice on the server and records a single versioned answer without typing', () => {
+    const d = s.raise(bot, {source_key:'choices', proposal_key:'draft', proposal:proposal({choices:[
+      {id:'yes', label:'Yes — queue Auto-Ship', action:'approve'},
+      {id:'hold', label:'Hold order', action:'defer'},
+    ]})});
+    expect(() => s.choose(bot, d.id, 1, 'bot-click', 'yes', '', 'this_case')).toThrow();
+    expect(() => s.choose(human, d.id, 1, 'unknown', 'approve', '', 'this_case')).toThrow();
+    const answer = s.choose(human, d.id, 1, 'hold-click', 'hold', '', 'this_case');
+    expect(answer).toMatchObject({state:'decided', answer:{action:'defer', text:'Hold order', choice_id:'hold', choice_label:'Hold order', scope:'this_case'}});
+    s.choose(human, d.id, 1, 'hold-click', 'hold', '', 'this_case');
+    expect(s.thread(human, d.id).events.filter(e => e.kind === 'answered')).toHaveLength(1);
+    expect(() => s.choose(human, d.id, 1, 'hold-click', 'yes', '', 'this_case')).toThrow();
+    expect(() => s.result(bot, d.id, 1, 'execute', {state:'running', evidence:'checked', material_evidence_unchanged:true})).toThrow();
+  });
+  it('requires the current shared-queue claim for button answers', () => {
+    db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();
+    const d = raise();
+    expect(() => s.choose(human, d.id, 1, 'unclaimed', 'approve', '', 'this_case', 0)).toThrow();
+    s.handle(human, d.id, 1, 'claim', 'claim', 0);
+    expect(() => s.choose(human, d.id, 1, 'stale-handler', 'approve', '', 'this_case', 0)).toThrow();
+    expect(s.choose(human, d.id, 1, 'claimed', 'approve', '', 'this_case', 1)).toMatchObject({answer:{action:'approve'}});
+  });
+  it('rejects stale choices after a proposal revision and preserves optional notes', () => {
+    const d = raise();
+    s.revise(bot, d.id, 1, 'revision', proposal({recommendation:'Use draft B.'}));
+    expect(() => s.choose(human, d.id, 1, 'stale-click', 'approve', '', 'this_case')).toThrow();
+    expect(s.choose(human, d.id, 2, 'fresh-click', 'approve', 'Checked draft B.', 'this_case')).toMatchObject({version:2, answer:{action:'approve', text:'Checked draft B.'}});
+    expect(() => proposal({choices:[{id:'same',label:'Yes',action:'approve'},{id:'same',label:'Hold',action:'defer'}]})).toThrow();
+  });
   it('records a version-bound direction as its human author and emits one receipt and answer wakeup', () => {
     const d = raise();
     const message = instruction(d.id);

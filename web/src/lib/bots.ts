@@ -8,7 +8,14 @@ export interface CaseTimelineEntry {
   summary: string;
   source: string;
 }
+export const defaultDecisionChoices: NonNullable<BotProposal['choices']> = [
+  { id: 'approve', label: 'Approve as proposed', action: 'approve' },
+  { id: 'reject', label: 'Reject proposal', action: 'reject' },
+  { id: 'defer', label: 'Not now', action: 'defer' },
+  { id: 'withdraw', label: 'Withdraw request', action: 'withdraw' },
+];
 export interface BotProposal {
+  choices?: { id: string; label: string; description?: string; action: string }[];
   question: string;
   recommendation: string;
   consequence: string;
@@ -34,6 +41,8 @@ export interface BotDecision {
     text: string;
     scope: string;
     actor_id: number;
+    choice_id?: string;
+    choice_label?: string;
   } | null;
   result: { state: string; evidence: string } | null;
   parked: { released_leases: string[]; evidence: string } | null;
@@ -86,6 +95,8 @@ export interface BotThread {
     kind: string;
     version: number;
     actor_id: number;
+    choice_id?: string;
+    choice_label?: string;
     payload_json: string;
     created_at: string;
   }[];

@@ -1,6 +1,7 @@
+import { VoiceCallPanel } from '../components/VoiceCallPanel';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Room, RoomEvent, Track, createLocalAudioTrack, type LocalAudioTrack } from 'livekit-client';
-import { ArrowLeft, Mic, MicOff, Phone, PhoneOff, Pause, Volume2, X } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Phone, PhoneOff, Pause, Volume2 } from 'lucide-react';
 import { micDictation } from '../lib/stt';
 import { Button } from '@/components/ui/button';
 import { BotAvatar } from '@/components/BotIdentity';
@@ -22,6 +23,15 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const [muted, setMuted] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [contextId, setContextId] = useState('');
+  const [level, setLevel] = useState(0);
+  useEffect(() => {
+    if (state !== 'connected') { setLevel(0); return; }
+    const timer = window.setInterval(() => {
+      const room = roomRef.current;
+      setLevel(room ? Math.max(room.localParticipant.audioLevel, ...Array.from(room.remoteParticipants.values(), p => p.audioLevel)) : 0);
+    }, 120);
+    return () => window.clearInterval(timer);
+  }, [state]);
   const roomRef = useRef<Room | null>(null);
   const micRef = useRef<LocalAudioTrack | null>(null);
   const callId = useRef<string | null>(null);
@@ -52,18 +62,21 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   useEffect(() => {
     mounted.current = true;
     void refresh().catch(e => setError(e.message));
+    let ticks = 0;
     const timer = window.setInterval(() => {
+      ticks++;
+      if (!callId.current && ticks % 5 !== 0) return;
       const epoch = generation.current;
       void refresh().then(next => {
         if (epoch === generation.current && callId.current && (!next.call || next.call.id !== callId.current || next.call.state === 'failed')) {
           setError(next.call?.error ?? 'The call ended. Tap Call to continue.'); end();
         }
       }).catch(e => { if (epoch === generation.current) { setError(e.message); end(); } });
-      if (callId.current) void voiceRequest(`/calls/${callId.current}/heartbeat`, {}).catch(() => {
+      if (callId.current && ticks % 5 === 0) void voiceRequest(`/calls/${callId.current}/heartbeat`, {}).catch(() => {
         if (epoch !== generation.current) return;
         setError('Connection lost. Your saved conversation is still here.'); end();
       });
-    }, 10_000);
+    }, 2_000);
     const pagehide = () => end();
     const visibility = () => {
       if (document.visibilityState === 'visible' && roomRef.current) {
@@ -156,27 +169,13 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const focused = snapshot?.decision ?? null;
   const open = (snapshot?.decisions ?? []).filter(d => d.state === 'needs_input' && d.decisionId !== focused?.decisionId);
   const missingBot = !!botConversationId && !!snapshot && !bot;
-  if (compact) return <section aria-label={`Live voice · ${name}`} className="flex max-h-[65dvh] flex-col gap-3 overflow-y-auto rounded-2xl border bg-background p-4 text-base sm:text-sm">
-    <header className="flex items-center justify-between gap-3">
-      <div className="min-w-0"><p className="font-semibold">Live voice · {name}</p><p className="truncate text-muted-foreground">{bot?.title}</p><a className="underline underline-offset-4" href={`#/chat/${botConversationId}`}>Open pinned conversation</a></div>
-      <Button variant="ghost" className="size-12 shrink-0" aria-label="Close and end voice" onClick={() => { end(); onBack(); }}><X className="size-4" /></Button>
-    </header>
-    <p role="status" aria-live="polite">{status}</p>
-    {error && <p role="alert" className="text-destructive">{error}</p>}
-    {snapshot && !snapshot.configuration.ready && <p role="alert">Voice setup needs attention. Ask your administrator to check {snapshot.configuration.missing.join(', ') || 'LIVEKIT_URL'} in Settings → Credentials.</p>}
-    <div className="flex flex-wrap gap-2">
-      {!active ? <Button className="min-h-12 flex-1" disabled={!snapshot?.configuration.ready || !bot?.canMessage} onClick={() => void start()}><Phone className="size-4" />{state === 'standby' ? 'Resume' : 'Start voice'}</Button> : <>
-        <Button variant="outline" className="min-h-12 flex-1" disabled={state !== 'connected'} aria-pressed={muted} onClick={() => void toggleMute()}>{muted ? <MicOff className="size-4" /> : <Mic className="size-4" />}{muted ? 'Unmute' : 'Mute'}</Button>
-        <Button variant="outline" className="min-h-12 flex-1" onClick={() => end('standby')}><Pause className="size-4" />Standby</Button>
-        <Button variant="outline" className="min-h-12 flex-1 text-destructive" onClick={() => end()}><PhoneOff className="size-4" />End</Button>
-      </>}
-    </div>
-    {audioBlocked && active && <Button variant="outline" className="min-h-12" onClick={() => void roomRef.current?.startAudio().catch(() => setError('Tap again to enable audio.'))}><Volume2 className="size-4" />Enable audio</Button>}
-    {!active && snapshot?.call && <Button variant="outline" className="min-h-12" onClick={() => void voiceRequest(`/calls/${snapshot.call!.id}/end`, {}).then(refresh).catch(e => setError(e.message))}>End previous call</Button>}
-    <p className="text-pretty text-muted-foreground">Keep Veneer open. AirPods output is controlled by your iPhone. You can keep talking while the agent works.</p>
-    <details><summary className="cursor-pointer">Saved voice conversation</summary><ol role="list" className="flex flex-col gap-3 pt-3">{snapshot?.history.slice(-12).map(entry => <li key={entry.id}><p className="font-medium">{entry.role === 'user' ? 'You' : entry.role === 'decision' ? 'Decision delivered' : name}</p><p className="whitespace-pre-wrap break-words text-muted-foreground">{entry.text}</p></li>)}</ol></details>
+  if (compact) return <VoiceCallPanel name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && !!bot?.canMessage} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby')}>
+    {error && <p role="alert" className="mt-3 px-2 text-sm text-destructive">{error}</p>}
+    {snapshot && !snapshot.configuration.ready && <p role="alert" className="mt-3 px-2 text-sm">Voice setup needs attention. Ask your administrator to check {snapshot.configuration.missing.join(', ') || 'LIVEKIT_URL'} in Settings → Credentials.</p>}
+    {audioBlocked && active && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => void roomRef.current?.startAudio().catch(() => setError('Tap again to enable audio.'))}><Volume2 className="size-4" />Enable audio</Button>}
+    {!active && snapshot?.call && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => void voiceRequest(`/calls/${snapshot.call!.id}/end`, {}).then(refresh).catch(e => setError(e.message))}>End previous call</Button>}
     <div ref={audioHost} className="hidden" />
-  </section>;
+  </VoiceCallPanel>;
   return <div className="h-full overflow-y-auto px-4 py-6 sm:px-8">
     <main className="mx-auto flex max-w-3xl flex-col gap-8 pb-[env(safe-area-inset-bottom)]">
       <header className="flex flex-col gap-4">

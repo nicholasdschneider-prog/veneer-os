@@ -19,8 +19,21 @@ export const caseTimelineEntrySchema = z.object({
   summary: z.string().trim().min(1).max(400),
   source: z.string().trim().min(1).max(600),
 }).strict();
+export const decisionChoiceSchema = z.object({
+  id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  label: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(300).optional(),
+  action: z.enum(['approve', 'reject', 'defer', 'withdraw']),
+}).strict();
+export const defaultDecisionChoices = [
+  { id: 'approve', label: 'Approve as proposed', action: 'approve' },
+  { id: 'reject', label: 'Reject proposal', action: 'reject' },
+  { id: 'defer', label: 'Not now', action: 'defer' },
+  { id: 'withdraw', label: 'Withdraw request', action: 'withdraw' },
+] as const;
 export const proposalSchema = z
   .object({
+    choices: z.array(decisionChoiceSchema).min(2).max(6).refine(items => new Set(items.map(item => item.id)).size === items.length, "Choice IDs must be unique").optional(),
     question: text,
     recommendation: text,
     consequence: text,
@@ -578,12 +591,25 @@ export function createBotService(db: Database.Database) {
         return view(actor, read(actor, id));
       })();
     },
+    choose(actor: Actor, id: string, version: number, key: string, choiceId: string, note: string, scope: string, handlingRevision?: number): ReturnType<typeof view> {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        cas(d, version);
+        const proposal = proposalInputSchema.parse(JSON.parse(d.proposal_json));
+        const choice = (proposal.choices ?? defaultDecisionChoices).find(item => item.id === choiceId);
+        if (!choice) throw new BotError(409, 'This choice is no longer available. Review the current proposal.');
+        return createBotService(db).answer(actor, id, version, key, {
+          action: choice.action, text: note.trim() || choice.label, scope,
+          choice_id: choice.id, choice_label: choice.label,
+        }, handlingRevision);
+      })();
+    },
     answer(
       actor: Actor,
       id: string,
       version: number,
       key: string,
-      payload: { action: string; text: string; scope: string },
+      payload: { action: string; text: string; scope: string; choice_id?: string; choice_label?: string },
       handlingRevision?: number,
     ) {
       return db.transaction(() => {
