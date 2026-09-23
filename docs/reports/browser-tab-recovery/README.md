@@ -26,7 +26,7 @@ This repairs runtime recovery, not website authentication. No login, password/TO
 - Full root npm test passed: 2,357 server tests (5 skipped), 872 web tests, 40 browser-manager tests, 21 installer tests.
 - Expanded final broker regression suite: 31 passed, including redirect plus failed lookup, control rotation, duplicate URLs, closed targets, explicit selection, stale-reference rejection and no failed-command replay. Manager fixtures verify a failed lookup retains the same control address; parser fixtures cover blank/internal tabs and genuine multiline rows. Existing isolation, redaction and profile-generation tests passed.
 - Employee guide browser fixtures passed for full/restricted roles, desktop/mobile, New notice, search, navigation, refresh and failure recovery. Instruction-context tests verify resumed delivery.
-- Production build and deployment health are recorded below after completion.
+- Production build passed. Implementation `7b37402b0f6996aa804202ac62199189acdb8275` is pushed to origin/main. Root detached restart completed; web, runner, app-runner, terminal and browser-manager each returned HTTP 200 on September 23, 2026. No live login or profile recovery acceptance was performed.
 
 ![Full employee guide](./screenshots/desktop.png)
 ![Restricted employee guide](./screenshots/employee-mobile.png)
