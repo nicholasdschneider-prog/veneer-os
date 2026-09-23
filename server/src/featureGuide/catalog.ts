@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'message-listen', title: 'Listen to a full bot message', category: 'Daily work', updated: '2026-09-23',
+    announcement: 'Completed bot messages now have Listen beside Reply in Veneer chats and VeneerBots conversations.',
+    audience: 'Anyone who can read the conversation, including assigned employees',
+    summary: 'Play a full message without asking the bot to prepare a briefing.',
+    steps: ['Open a bot conversation and choose Listen below a completed response.', 'The first play prepares audio. Use the player to pause, seek, go Back 15s, or change Speed. Long responses play in sections; use Section to jump between them.', 'Continue navigating while the player stays open. Close it when finished. Choosing Listen again resumes the saved position on this browser.', 'For a shorter explanation, ask the bot to publish a voice briefing.'],
+    example: 'Tap Listen on a long response to hear the full message while moving around.',
+    limits: 'Uses the configured OpenAI voice connection and an AI voice. Audio is generated on demand and cached. Tables are read with their column labels; link labels and image descriptions are spoken. This is full-message reading, not a summary or interpretation of images. Position is stored locally when browser storage is available. Headphone and lock-screen controls depend on device/browser support; uninterrupted background playback is not guaranteed. End live voice before starting message playback. Listening never approves actions or expands chat access.',
+    agent: 'For users who want to hear an existing long response, point them to Listen beside Reply in their Veneer or VeneerBots conversation. No new briefing or agent turn is required for full-message playback. For a shorter explanation use save_voice_briefing. Do not claim lock-screen playback works on every device. The guide is /#/bot-guide?feature=message-listen.',
+  },
+  {
     id: 'team-messages', title: 'Message teammates and bots together', category: 'Teamwork', updated: '2026-09-23',
     announcement: 'Messages now supports private teammate conversations and named groups with people and bots, including attachments and explicit @ mentions.',
     audience: 'Active business teammates, including restricted employees',

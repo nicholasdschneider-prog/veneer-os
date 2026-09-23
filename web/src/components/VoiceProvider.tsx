@@ -11,7 +11,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const [decisionId, setDecisionId] = useState<string | undefined>();
   return <VoiceContext.Provider value={{ pinnedId, open: (id, focus) => {
     if (micDictation.isActive || micDictation.isFinalizing) return;
-    if (!pinnedId) { setDecisionId(focus); setPinnedId(id); }
+    if (!pinnedId) { window.dispatchEvent(new Event('veneer-live-voice-opening')); setDecisionId(focus); setPinnedId(id); }
   } }}>
     {children}
     {pinnedId && <div className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+4rem)] z-50 w-[min(20rem,calc(100vw-1.5rem))] -translate-x-1/2">

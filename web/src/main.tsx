@@ -1,3 +1,4 @@
+import { MessageAudioProvider } from './components/MessageAudioPlayer';
 import { BotWorkflowDialogs, WorkspaceSearch } from './components/BotWorkflows';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -19,7 +20,7 @@ applyColorMode(getColorMode());
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <FloatingDesktopProvider>
-      <VoiceProvider><App /><BotWorkflowDialogs /><WorkspaceSearch /></VoiceProvider>
+      <VoiceProvider><MessageAudioProvider><App /><BotWorkflowDialogs /><WorkspaceSearch /></MessageAudioProvider></VoiceProvider>
     </FloatingDesktopProvider>
     <PwaUpdatePrompt />
   </StrictMode>,

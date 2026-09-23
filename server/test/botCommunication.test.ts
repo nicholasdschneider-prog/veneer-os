@@ -182,7 +182,7 @@ describe('reviewable bot communication', () => {
     s.mutateDraft(human, b.id, 1, 'revise');
     expect(() => s.claim(bot, b.id, 'x')).toThrow();
   });
-  async function api() {
+  async function api(markdown = 'Fixture result') {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
@@ -199,7 +199,7 @@ describe('reviewable bot communication', () => {
               type: 'text_final',
               turnId: 'turn',
               at: '2026-09-23T01:00:00Z',
-              markdown: 'Fixture result',
+              markdown,
             },
           ],
         },
@@ -209,7 +209,7 @@ describe('reviewable bot communication', () => {
     server = app.listen(0, '127.0.0.1');
     await new Promise<void>((r) => server!.on('listening', r));
     const address = server.address() as { port: number };
-    return async (path: string, body?: unknown) => {
+    return async (path: string, body?: unknown, headers?: Record<string, string>) => {
       const r = await fetch(
         `http://127.0.0.1:${address.port}/api${path}`,
         body
@@ -218,11 +218,51 @@ describe('reviewable bot communication', () => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(body),
             }
-          : undefined,
+          : { headers },
       );
-      return { status: r.status, data: await r.json() };
+      return { status: r.status, data: r.headers.get('content-type')?.includes('application/json') ? await r.json() : await r.text() };
     };
   }
+  it('reads only real authorized messages, caches sections and rechecks access on playback', async () => {
+    const call = await api('Long message. '.repeat(500));
+    const original = globalThis.fetch;
+    const speech = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(url).startsWith('https://api.openai.com/')) return original(url, init);
+      const body = JSON.parse(String(init?.body));
+      expect(body.input.length).toBeLessThanOrEqual(2800);
+      return new Response(new Uint8Array([73, 68, 51]), { headers: { 'Content-Type': 'audio/mpeg' } });
+    });
+    vi.stubGlobal('fetch', speech);
+    const anchor = { turn: 'turn', at: '2026-09-23T01:00:00Z' };
+    expect((await call('/chats/c2/listen', anchor)).status).toBe(404);
+    expect((await call('/chats/c1/listen', { ...anchor, turn: 'invented' })).status).toBe(404);
+    expect((await call('/chats/c1/listen', { ...anchor, text: 'Injected' })).status).toBe(400);
+    const first = await call('/chats/c1/listen', anchor);
+    expect(first.status).toBe(200);
+    expect(first.data.parts).toBeGreaterThan(1);
+    expect((await call('/chats/c1/listen', anchor)).data.id).toBe(first.data.id);
+    const path = `/message-audio/${first.data.id}/0`;
+    expect((await call(path)).status).toBe(404);
+    const [a, b] = await Promise.all([call(path, {}), call(path, {})]);
+    expect(a.status).toBe(200); expect(b.status).toBe(200);
+    expect((await call(path)).status).toBe(200);
+    const range = await call(path, undefined, { Range: 'bytes=1-2' });
+    expect(range.status).toBe(206);
+    expect(range.data).toBe('D3');
+    expect((await call(path, undefined, { Range: 'bytes=100-200' })).status).toBe(416);
+    await call(path, {});
+    expect(speech.mock.calls.filter(([url]) => String(url).startsWith('https://api.openai.com/'))).toHaveLength(1);
+    expect((await call(`/message-audio/${first.data.id}/999`, {})).status).toBe(400);
+    // Read-only archived messages still support listening.
+    db.prepare('UPDATE conversations SET archived=1 WHERE id=?').run('c1');
+    expect((await call('/chats/c1/listen', anchor)).status).toBe(200);
+    human = other;
+    expect((await call(path)).status).toBe(404);
+    expect((await call(path, {})).status).toBe(404);
+    expect(employeeRouteAllowed('POST', '/bot-communication/chats/c1/listen')).toBe(true);
+    expect(employeeRouteAllowed('GET', `/bot-communication${path}`)).toBe(true);
+    expect(employeeRouteAllowed('POST', `/bot-communication${path}`)).toBe(true);
+  });
   it('anchors threads to real messages, persists replies/reactions and tracks unread without granting approval', async () => {
     const call = await api();
     expect(

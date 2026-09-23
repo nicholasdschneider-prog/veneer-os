@@ -9,6 +9,7 @@ export function isEmployee(db: Database.Database, userId: number): boolean {
 // denied by default; project files, credentials, tools and admin APIs are not inherited.
 export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'GET') return [
+    /^\/bot-communication\/message-audio\/[^/]+\/\d+\/?$/,
     /^\/team-rooms(?:\/[^/]+(?:\/files\/[^/]+)?)?\/?$/,
     /^\/bot-communication\/(chats\/[^/]+(?:\/threads)?|threads\/[^/]+|briefings\/[^/]+\/audio)\/?$/,
     /^\/bot-workflows\/(guide|search|push|bots\/[^/]+)\/?$/,
@@ -27,6 +28,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'PATCH' && /^\/team-rooms\/[^/]+\/?$/.test(path)) return true;
   if (method === 'PATCH') return /^\/bots\/preferences\/[^/]+\/?$/.test(path);
   if (method === 'POST') return [
+    /^\/bot-communication\/(chats\/[^/]+\/listen|message-audio\/[^/]+\/\d+)\/?$/,
     /^\/team-rooms(?:\/[^/]+\/(messages|seen|files))?\/?$/,
     /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,
     /^\/bot-workflows\/push\/?$/,

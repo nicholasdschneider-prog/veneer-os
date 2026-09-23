@@ -1,3 +1,4 @@
+import { useMessageListen } from '@/components/MessageAudioPlayer';
 import { MobileChatHeader } from '../components/chat/MobileChatHeader';
 import { VoiceSessions } from '../components/VoiceSessions';
 import { BotCommunication, MessageThreadDialog } from '../components/BotCommunication';
@@ -637,6 +638,7 @@ export function Chat({
   // Voice dictation (the server-selected provider, proxied at /ws/stt). While
   // recording, `draft` is kept as dictationBase + live/committed speech text.
   const liveVoice = useLiveVoice();
+  const listenToMessage = useMessageListen();
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [sendingAfterDictation, setSendingAfterDictation] = useState(false);
@@ -2086,6 +2088,13 @@ export function Chat({
   const onTranscriptClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       const target = event.target as HTMLElement;
+      const listenButton = target.closest<HTMLElement>('[data-message-listen]');
+      if (listenButton) {
+        event.preventDefault();
+        if (liveVoice.pinnedId) { onToast('End the voice call before listening to a message.'); return; }
+        try { listenToMessage({ chat: conversationId, ...JSON.parse(listenButton.dataset.messageListen!) }); } catch { /* Invalid anchor. */ }
+        return;
+      }
       const reactionButton=target.closest<HTMLButtonElement>('[data-result-reaction]');
       if(reactionButton){
         event.preventDefault();
@@ -2161,7 +2170,7 @@ export function Chat({
       }
       openBrowserLink(anchor.href);
     },
-    [artifacts, onNavigate, onOpenArtifact, onOpenCitations, openBrowserLink, openLocalPath, openProjectFileLink, showDesktop, canSend, conversationId, onToast],
+    [artifacts, onNavigate, onOpenArtifact, onOpenCitations, openBrowserLink, openLocalPath, openProjectFileLink, showDesktop, canSend, conversationId, onToast, listenToMessage, liveVoice.pinnedId],
   );
 
   useEffect(()=>{
@@ -3843,6 +3852,7 @@ const ChatRow = memo(function ChatRow({
           ) : null}
           <AssistantResponseMetadata at={item.at} usage={item.usage} />
           {item.turnId&&item.at&&<div className="flex flex-wrap items-center gap-1" aria-label="Result discussion and reactions">
+            <button type="button" data-message-listen={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Listen to full message" className="min-h-11 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted">▶ Listen</button>
             <button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Reply in thread" className="min-h-11 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted data-[unread=true]:bg-blue-600/10 data-[unread=true]:font-semibold data-[unread=true]:text-foreground">Reply</button>
             {['👍','❤️','👀'].map(emoji=><button key={emoji} type="button" data-result-reaction={emoji} data-result-anchor={JSON.stringify({turn:item.turnId,at:item.at})} aria-label={`React ${emoji} · does not approve`} aria-pressed={false} className="min-h-11 min-w-11 rounded-full px-2 text-xs hover:bg-muted aria-pressed:bg-blue-600/10 focus-visible:outline-2 focus-visible:outline-ring">{emoji}</button>)}
           </div>}

@@ -45,6 +45,7 @@ describe('instruction context migration', () => {
     expect(result.developerInstructions).toContain('Current Veneer bot capabilities');
     expect(result.developerInstructions).toContain('list_bot_routines before save_bot_routine');
     expect(result.developerInstructions).toContain('Teach a task');
+    expect(result.developerInstructions).toContain('Listen beside Reply');
     expect(result.developerInstructions).toContain('read_team_room');
     expect(result.developerInstructions).toContain('post_team_room_message');
     expect(result.developerInstructions).toContain('Keep my original role.');
