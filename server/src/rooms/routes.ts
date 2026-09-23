@@ -142,8 +142,21 @@ export function createRoomsRouter(ctx: AppContext) {
         .prepare("SELECT storage_path FROM team_room_files WHERE id=?")
         .get(file.id) as { storage_path: string };
       res.set("X-Content-Type-Options", "nosniff");
-      res.type("application/octet-stream");
-      res.download(row.storage_path, file.name);
+      // Only raster images may render inline; active documents remain downloads.
+      const imageTypes: Record<string, string> = {
+        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif', '.bmp': 'image/bmp',
+      };
+      const imageType = imageTypes[path.extname(file.name).toLowerCase()];
+      if (req.query.inline === '1' && imageType) {
+        res.set('Content-Security-Policy', "default-src 'none'; sandbox");
+        res.type(imageType);
+        res.set('Content-Disposition', 'inline');
+        res.sendFile(row.storage_path);
+      } else {
+        res.type("application/octet-stream");
+        res.download(row.storage_path, file.name);
+      }
     }),
   );
   return router;

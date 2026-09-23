@@ -206,3 +206,43 @@ it("allows employee-triggered worker replies only in room and denies outside API
     ).status,
   ).toBe(403);
 });
+it("previews images for authorized humans before and after an attachment-only send", async () => {
+  const id = await group();
+  const upload = await fetch(`${url}/team-rooms/${id}/files?name=pasted-image.png`, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream", "X-Test-User": "2" },
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', 'base64'),
+  });
+  expect(upload.status).toBe(200);
+  const { file } = await upload.json();
+  const previewUrl = file.url.replace('/api', '') + '?inline=1';
+  const staged = await req(previewUrl, 'GET', undefined, 2);
+  expect(staged.status).toBe(200);
+  expect(staged.headers.get('content-type')).toBe('image/png');
+  expect(staged.headers.get('content-disposition')).toBe('inline');
+  expect(staged.headers.get('x-content-type-options')).toBe('nosniff');
+  expect((await req(previewUrl)).status).toBe(404);
+  expect((await req(`/team-rooms/${id}/messages`, 'POST', {
+    text: '', attachments: [file.id], request_key: 'image-only',
+  }, 2)).status).toBe(200);
+  expect((await req(previewUrl)).status).toBe(200);
+  expect((await req(previewUrl, 'GET', undefined, 3)).status).toBe(404);
+  const download = await req(file.url.replace('/api', ''));
+  expect(download.headers.get('content-disposition')).toContain('attachment');
+  await req(`/team-rooms/${id}`, 'PATCH', { expected_revision: 1, members: ['user:1'] });
+  expect((await req(previewUrl, 'GET', undefined, 2)).status).toBe(404);
+});
+it("keeps active documents as downloads even when inline is requested", async () => {
+  const id = await group();
+  for (const name of ['page.html', 'image.svg']) {
+    const response = await fetch(`${url}/team-rooms/${id}/files?name=${name}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' },
+      body: '<svg onload="alert(1)"></svg>',
+    });
+    const { file } = await response.json();
+    const preview = await req(file.url.replace('/api', '') + '?inline=1');
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get('content-disposition')).toContain('attachment');
+    expect(preview.headers.get('content-type')).toBe('application/octet-stream');
+  }
+});

@@ -1,3 +1,4 @@
+import { handleComposerImagePaste } from '@/lib/composerPaste';
 import { isComposerSubmitKey } from '@/lib/composerKeys';
 import {BotConversationRail} from '@/components/BotConversationRail';
 import {GroupAvatar} from '@/components/GroupAvatar';
@@ -33,6 +34,20 @@ const errorText = (e: unknown) =>
   e instanceof Error ? e.message : "Could not complete this request.";
 const inputStyle =
   "w-full min-w-0 rounded-xl border bg-background px-3 py-2 text-base";
+function RoomAttachment({ file }: { file: RoomFile }) {
+  const [failed, setFailed] = useState(false);
+  const isImage = /\.(png|jpe?g|gif|webp|avif|bmp)$/i.test(file.name);
+  return <div className="min-w-0">
+    {isImage && !failed && <a href={`${file.url}?inline=1`} target="_blank" rel="noopener noreferrer" aria-label={`Open ${file.name}`}>
+      <img src={`${file.url}?inline=1`} alt={file.name} loading="lazy"
+        className="mt-2 max-h-64 max-w-full rounded-lg object-contain"
+        onError={() => setFailed(true)} />
+    </a>}
+    <a href={file.url} download className="mt-2 flex min-h-11 items-center gap-2 break-all text-sm underline">
+      <Paperclip className="size-4 shrink-0" />{file.name}
+    </a>
+  </div>;
+}
 function Avatar({ name, bot = false }: { name: string; bot?: boolean }) {
   return (
     <span
@@ -327,6 +342,7 @@ function RoomConversation({
     sendAttempt = useRef<{ key: string; body: string } | null>(null),
     loading = useRef(false),
     sending = useRef(false),
+    uploadActive = useRef(false),
     composing = useRef(false),
     mentionPicker = useRef<HTMLDivElement>(null);
   const refresh = async () => {
@@ -392,6 +408,7 @@ function RoomConversation({
       !room.can_send ||
       sending.current ||
       busy ||
+      uploadActive.current ||
       uploading ||
       recording ||
       finalizing ||
@@ -427,22 +444,33 @@ function RoomConversation({
       if (alive.current) setBusy(false);
     }
   };
-  const upload = async (list: FileList | null) => {
-    if (!list) return;
+  const upload = async (list: FileList | readonly File[] | null) => {
+    if (!list?.length || !room?.can_send || sending.current || busy) return;
+    if (uploadActive.current) {
+      setError("Files are still uploading. Try again when they finish.");
+      return;
+    }
+    uploadActive.current = true;
     setUploading(true);
     setError("");
     try {
       if (files.length + list.length > 10)
         throw new Error("Attach up to 10 files.");
-      for (const file of Array.from(list)) {
+      const selected = Array.from(list);
+      for (const file of selected) {
+        if (!file.size) throw new Error("Choose a nonempty file.");
         if (file.size > 20 * 1024 * 1024)
           throw new Error("Each file must be 20 MB or smaller.");
+      }
+      for (const file of selected) {
+        if (!alive.current) break;
         const f = await roomApi.upload(id, file);
         if (alive.current) setFiles((old) => [...old, f]);
       }
     } catch (e) {
       if (alive.current) setError(errorText(e));
     } finally {
+      uploadActive.current = false;
       if (alive.current) setUploading(false);
       if (fileInput.current) fileInput.current.value = "";
     }
@@ -622,17 +650,7 @@ function RoomConversation({
                   <p className="whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
                     {m.text}
                   </p>
-                  {m.attachments.map((f) => (
-                    <a
-                      key={f.id}
-                      href={f.url}
-                      download
-                      className="mt-2 flex min-h-11 items-center gap-2 break-all text-sm underline"
-                    >
-                      <Paperclip className="size-4 shrink-0" />
-                      {f.name}
-                    </a>
-                  ))}
+                  {m.attachments.map((f) => <RoomAttachment key={f.id} file={f} />)}
                 </div>
               </div>
             </article>
@@ -655,7 +673,15 @@ function RoomConversation({
             ↓ Latest messages
           </button>
           {mentions.some(m => m.kind === 'bot') && <p className="mb-2 text-sm text-muted-foreground">Connected account actions require the original bot chat: {mentions.filter(m => m.kind === 'bot').map(m => <button key={m.key} className="min-h-11 px-2 underline" onClick={() => onNavigate('#/chat/' + m.key.slice(4) + '?from=bots')}>Open {m.name}</button>)}</p>}
-          <div className="rounded-3xl border bg-card p-3 shadow-sm">
+          <div className="rounded-3xl border bg-card p-3 shadow-sm"
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes('Files')) e.preventDefault();
+            }}
+            onDrop={(e) => {
+              if (!e.dataTransfer.types.includes('Files')) return;
+              e.preventDefault();
+              void upload(e.dataTransfer.files);
+            }}>
             {(mentions.length > 0 || everyone) && (
               <div
                 className="mb-2 flex flex-wrap gap-1"
@@ -682,18 +708,19 @@ function RoomConversation({
                 ))}
               </div>
             )}
+            <div className="max-h-56 overflow-y-auto">
             {files.map((f) => (
               <div
                 key={f.id}
                 className="flex items-center justify-between gap-2 text-xs"
               >
-                <span className="truncate">{f.name}</span>
+                <RoomAttachment file={f} />
                 <Button
                   variant="ghost"
                   size="icon"
                   className="size-[44px] text-foreground"
                   aria-label={`Remove ${f.name}`}
-                  disabled={busy}
+                  disabled={busy || uploading}
                   onClick={() =>
                     setFiles((old) => old.filter((a) => a.id !== f.id))
                   }
@@ -702,6 +729,7 @@ function RoomConversation({
                 </Button>
               </div>
             ))}
+            </div>
             <textarea
               ref={textarea}
               aria-label="Message"
@@ -722,6 +750,7 @@ function RoomConversation({
                 setDraft(e.target.value);
                 setMentionOpen(/@[^@\s]*$/.test(e.target.value));
               }}
+              onPaste={(e) => { handleComposerImagePaste(e, (images) => void upload(images)); }}
               onKeyDown={(e) => {
                 if (composing.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                 if (e.key === "Escape") setMentionOpen(false);
@@ -847,7 +876,7 @@ function RoomConversation({
           </div>
           <p id="team-message-shortcuts" className="px-2 pt-2 text-[11px] text-muted-foreground">
             {!IS_TOUCH && <>Enter to send · Shift+Enter for a new line. </>}
-            Use @ to mention a member or invite a bot. Only addressed bots wake.
+            Paste an image or attach files (up to 10, 20 MB each). Use @ to mention a member or invite a bot. Only addressed bots wake.
           </p>
         </div>
       )}
