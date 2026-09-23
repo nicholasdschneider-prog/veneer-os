@@ -12,7 +12,7 @@ The login operator explicitly confirmed restart safe: SMS challenge completed, N
 
 Synthetic call-control browser fixtures passed 320/375/414/768/1440 widths, light/dark, keyboard activation exactly once, disabled controls, 44px targets and no overflow. Guide fixtures passed full/restricted employee access, desktop/mobile, notices, navigation, search and refresh. Existing instruction tests cover resumed guide delivery. Source audit found no remaining Phone handset for live-call entry; PhoneOff remains only for End call.
 
-Root typecheck and full tests passed: 2,358 server (5 skipped), 872 web, 40 browser-manager and 21 installer tests. Production build/deployment receipt is recorded after completion.
+Root typecheck and full tests passed: 2,358 server (5 skipped), 872 web, 40 browser-manager and 21 installer tests. Production build passed. Implementation `ced78c6e4b685c5fe98eaae83b227190f580ce55` is pushed to origin/main. Root restart completed after the operator confirmed safe readiness; web, runner, app-runner, terminal, and browser-manager all returned HTTP 200. No live call or business action was performed.
 
 <!-- Hallmark component refinement: philosophy4 hierarchy4 execution4 specificity5 restraint5 variety3. Existing Veneer palette and type retained; no page redesign. -->
 
