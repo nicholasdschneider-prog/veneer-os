@@ -216,13 +216,13 @@ export const BOT_FEATURES: BotFeature[] = [
     agent: 'Recommend Templates for similar roles; guide a manager through review. Never imply cloning grants authority, copies learned history, or connects credentials. Copied routines start paused.',
   },
   {
-    id: 'browser', title: 'Work in the bot’s computer', category: 'Daily work', updated: '2026-09-22',
-    announcement: 'Assigned browsers support scoped login and session recovery for authorized bots and teammates.',
+    id: 'browser', title: 'Work in the bot’s computer', category: 'Daily work', updated: '2026-09-23',
+    announcement: 'Browser recovery now refreshes tab state after failed lookups. After a reconnect, select the intended tab and take a fresh snapshot before interacting.',
     audience: 'Teammates with access to an assigned browser', summary: 'Watch browser work, take over when needed, and recover an expired login.',
     steps: ['Open the bot’s chat and its computer/browser panel.', 'Use the assigned browser to view or assist with the task. If sign-in is required, complete it in the browser or use the approved credential flow.', 'Return control to the bot and ask it to verify the expected account and page before continuing.'],
     example: 'Use your assigned browser to check this order. If the session expired, recover the authorized login and verify the account before continuing.',
-    limits: 'Browser access is scoped to the assigned bot/project. Credentials and one-time codes must never be pasted into chat. Some recovery steps require a human.',
-    agent: 'Use available browser tools and the assigned working copy. Recover authorized sessions with fill_secret/fill_totp/fill_sms_code when available. Do not expose credentials or use another identity; ask for human sign-in when required.',
+    limits: 'Browser access is scoped to the assigned bot/project. Credentials and one-time codes must never be pasted into chat. Some recovery steps require a human. Tab recovery does not restore an expired website login or save a working copy to its base profile.',
+    agent: 'Use available browser tools and the assigned working copy. If tab recovery is ambiguous, list tabs, explicitly select the intended tab, and take a fresh snapshot; never reuse old element references or blindly retry a failed mutation. Recover authorized sessions with fill_secret/fill_totp/fill_sms_code when available. Do not expose credentials or use another identity; ask for human sign-in when required.',
   },
   {
     id: 'training', title: 'Save reusable instructions', category: 'Automation', updated: '2026-09-22',

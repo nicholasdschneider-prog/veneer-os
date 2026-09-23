@@ -876,6 +876,20 @@ describe('Veneer Browser manager', () => {
       .toMatchObject({ status: 'active', last_error: 'Browser command failed.' });
   });
 
+  it('retains the control ticket after a missing element and explicit tab selection', async () => {
+    await manager.createProfile(1, 'project-1', 'Recovery fixture');
+    await manager.openConversation(1, 'conv-1');
+    await manager.runCommand(1, 'conv-1', ['tab', 't7']);
+    const address = runBrowser.mock.calls.at(-1)![1].remoteCdpUrl;
+    remote.ticket.mockClear();
+    runBrowser.mockResolvedValueOnce({ args: ['find', 'label', 'Password'], stdout: '', stderr: 'No element found', exitCode: 1 });
+    expect((await manager.runCommand(1, 'conv-1', ['find', 'label', 'Password'])).exitCode).toBe(1);
+    await manager.runCommand(1, 'conv-1', ['find', 'role', 'heading']);
+    expect(remote.ticket).not.toHaveBeenCalled();
+    expect(runBrowser.mock.calls.at(-1)![1].remoteCdpUrl).toBe(address);
+    expect(runBrowser.mock.calls.filter(([args]) => (args as string[]).includes('Password'))).toHaveLength(1);
+  });
+
   it('retries a page-level failure when the runtime behind it actually died', async () => {
     await manager.createProfile(1, 'project-1', 'Dead copy');
     await manager.openConversation(1, 'conv-1');

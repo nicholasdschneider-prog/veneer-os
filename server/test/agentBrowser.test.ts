@@ -469,6 +469,71 @@ describe('scoped Agent Browser commands', () => {
     }
   });
 
+  it.each(['duplicate', 'closed'])('refreshes failed lookups, rejects %s recovery, and never retries a mutation', async (mode) => {
+    const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vp-browser-recovery-'));
+    const binary = path.join(tmpHome, 'stub');
+    const config = path.join(tmpHome, 'config.json');
+    const log = path.join(tmpHome, 'commands');
+    const state = path.join(tmpHome, 'redirected');
+    const conflict = path.join(tmpHome, 'conflict');
+    const saved = [process.env.VP_SERVICE_HOME, process.env.VP_AGENT_BROWSER_BIN, process.env.VP_AGENT_BROWSER_CONFIG];
+    fs.writeFileSync(binary, [
+      '#!/bin/sh',
+      'all="$*"; session=""',
+      'while [ "$#" -gt 0 ]; do if [ "$1" = "--session" ]; then session="$2"; shift 2; else shift; fi; done',
+      `mkdir -p '${tmpHome}/.agent-browser'`,
+      // Rewriting the generation models a reconnect observed during the failed command.
+      `printf 111 > '${tmpHome}/.agent-browser/'"$session"'.pid'`,
+      `printf '%s\\n' "$all" >> '${log}'`,
+      'case " $all " in',
+      ` *" tab list "*) if [ -f '${conflict}' ]; then if [ '${mode}' = duplicate ]; then printf '→ [t1] Login - https://login.test/redirected\\n  [t7] Login - https://login.test/redirected\\n'; else printf '→ [t1] Blank - about:blank\\n'; fi; exit 0; fi ;;`,
+      'esac',
+      'case " $all " in',
+      ` *" find label Password "*) touch '${state}'; printf 'No element'; exit 1 ;;`,
+      ` *" tab list "*) if [ -f '${state}' ]; then printf '  [t1] Blank - about:blank\\n→ [t7] Login - https://login.test/redirected\\n'; else printf '  [t1] Blank - about:blank\\n→ [t7] Login - https://login.test/start\\n'; fi ;;`,
+      ' *) printf ok ;;',
+      'esac',
+    ].join('\n'), { mode: 0o700 });
+    fs.writeFileSync(config, '{}');
+    try {
+      process.env.VP_SERVICE_HOME = tmpHome;
+      process.env.VP_AGENT_BROWSER_BIN = binary;
+      process.env.VP_AGENT_BROWSER_CONFIG = config;
+      resetHomesCache();
+      const options = { conversationId: 'failed-lookup', remoteSessionId: 'copy', workspaceDir,
+        remoteCdpUrl: 'wss://browser.example.test/cdp/one/ws', trustedCdpOrigin: 'wss://browser.example.test/cdp/one/ws' };
+      await runAgentBrowser(['tab', 'list'], options);
+      await runAgentBrowser(['tab', 't7'], options);
+      expect((await runAgentBrowser(['find', 'label', 'Password'], options)).exitCode).toBe(1);
+      expect((await runAgentBrowser(['find', 'role', 'heading'], options)).exitCode).toBe(0);
+      expect(fs.readFileSync(log, 'utf8').match(/find label Password/g)).toHaveLength(1);
+      const rotated = { ...options, remoteCdpUrl: 'wss://browser.example.test/cdp/two/ws', trustedCdpOrigin: 'wss://browser.example.test/cdp/two/ws' };
+      expect((await runAgentBrowser(['find', 'label', 'Password'], rotated)).exitCode).toBe(1);
+      // A failed recovered read updates identity but cannot revive references.
+      expect((await runAgentBrowser(['click', '@e1'], rotated)).exitCode).toBe(1);
+      expect(fs.readFileSync(log, 'utf8')).not.toContain('click @e1');
+      expect(await runAgentBrowser(['snapshot', '-i'], rotated)).toMatchObject({exitCode: 0, stderr: ''});
+      expect((await runAgentBrowser(['click', '@e2'], rotated)).exitCode).toBe(0);
+      fs.writeFileSync(conflict, '1');
+      const third = { ...options, remoteCdpUrl: 'wss://browser.example.test/cdp/three/ws', trustedCdpOrigin: 'wss://browser.example.test/cdp/three/ws' };
+      expect((await runAgentBrowser(['find', 'role', 'button', 'click'], third)).exitCode).toBe(1);
+      expect(fs.readFileSync(log, 'utf8')).not.toContain('find role button click');
+      expect((await runAgentBrowser(['tab', 'list'], third)).exitCode).toBe(0);
+      if (mode === 'duplicate') {
+        expect((await runAgentBrowser(['tab', 't7'], third)).exitCode).toBe(0);
+        expect((await runAgentBrowser(['snapshot', '-i'], third)).exitCode).toBe(0);
+      }
+
+      await closeVeneerBrowserSession(options);
+    } finally {
+      for (const [index, key] of ['VP_SERVICE_HOME', 'VP_AGENT_BROWSER_BIN', 'VP_AGENT_BROWSER_CONFIG'].entries()) {
+        if (saved[index] === undefined) delete process.env[key]; else process.env[key] = saved[index];
+      }
+      resetHomesCache();
+      fs.rmSync(tmpHome, { recursive: true, force: true });
+    }
+  });
+
   it('allows shared browser commands when a legacy pause marker exists', async () => {
     const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vp-browser-home-'));
     const binary = path.join(tmpHome, 'agent-browser-stub');

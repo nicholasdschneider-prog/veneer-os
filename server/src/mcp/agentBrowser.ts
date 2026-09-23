@@ -40,6 +40,7 @@ interface VeneerBrowserBrokerState {
   cdpUrl: string | null;
   tabs: BrowserTab[];
   activeUrl: string | null;
+  refsExpired?: boolean;
 }
 const veneerBrowserStates = new Map<string, VeneerBrowserBrokerState>();
 
@@ -532,20 +533,28 @@ async function runAgentBrowserRaw(
       }
     }
 
+    if (previous?.refsExpired && hasElementReference(effectiveArgs)) {
+      return brokerFailure(normalized, 'Page references expired after browser recovery. Take a fresh snapshot before interacting.', options.remoteCdpUrl);
+    }
     const result = await execute(normalized);
-    if (result.exitCode !== 0) return result;
 
+    // Failed lookups can follow a redirect or reconnect too. Observe tabs even
+    // when the requested command fails; never retry that command. Otherwise a
+    // stale URL/generation causes the next read to enter recovery repeatedly.
     // Keep a private identity map outside the daemon. It is used only after a
     // crash to recover by URL and to remap stale tN aliases safely; it is never
     // persisted or returned beyond the normal tab-list output.
-    const listed = isTabList(effectiveArgs) ? result : await listTabs();
-    if (listed.exitCode === 0) {
+    const listed = isTabList(effectiveArgs) && result.exitCode === 0
+      ? result : await listTabs().catch(() => null);
+    if (listed?.exitCode === 0) {
       const tabs = parseTabList(listed.stdout);
       veneerBrowserStates.set(session, {
         generation: veneerBrowserDaemonGeneration(session),
         cdpUrl: options.remoteCdpUrl ?? null,
         tabs,
         activeUrl: currentTab(tabs)?.url ?? null,
+        refsExpired: effectiveArgs[0]?.toLowerCase() === 'snapshot' && result.exitCode === 0
+          ? false : restarted || previous?.refsExpired || false,
       });
     }
     return result;

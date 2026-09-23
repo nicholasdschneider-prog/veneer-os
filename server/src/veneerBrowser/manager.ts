@@ -1176,9 +1176,16 @@ export class VeneerBrowserManager {
       return null;
     });
     if (!result || result.exitCode !== 0) {
-      // Whatever this chat had cached is suspect the moment a command fails.
+      // A page-level failure is not a broken CDP connection. Keep its ticket
+      // while forcing the next runtime check: rotating it resets selected tabs
+      // and page references, turning an ordinary missing element into a loop.
+      const held = this.runtimeCache.get(context.id)?.ticket;
       this.runtimeCache.delete(context.id);
+      if (result && !LOST_CONNECTION.test(result.stderr) && held) {
+        this.runtimeCache.set(context.id, { activeCheckedAt: 0, ticket: held });
+      }
       if (options.recover && await this.workingCopyLost(context, result)) {
+        this.runtimeCache.delete(context.id);
         await this.closeCommandSession(current.row).catch(() => undefined);
         // The retry carries nothing forward: it re-opens the copy and takes a
         // new ticket. A second failure is the real answer, so it is not

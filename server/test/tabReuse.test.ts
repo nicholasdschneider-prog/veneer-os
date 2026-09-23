@@ -14,6 +14,15 @@ const TEXT_LIST = [
 ].join('\n');
 
 describe('parseTabList', () => {
+  it('does not borrow the following tab URL for a blank or internal tab', () => {
+    for (const url of ['about:blank', 'chrome://newtab/', '']) {
+      const tabs = parseTabList(`→ [t1] Blank - ${url}\n  [t7] Login - https://login.test/path`);
+      expect(tabs.map((tab) => tab.url)).toEqual(['', 'https://login.test/path']);
+      expect(tabs[0]?.current).toBe(true);
+    }
+    expect(parseTabList('[t7] Login\n  https://login.test/path')[0]?.url).toBe('https://login.test/path');
+  });
+
   it('reads text lines with current markers and urls', () => {
     expect(parseTabList(TEXT_LIST)).toEqual([
       { id: 't1', url: 'https://www.amazon.com/', title: 'Amazon.com', current: true },

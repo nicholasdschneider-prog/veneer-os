@@ -123,7 +123,7 @@ export function parseTabList(output: string): BrowserTab[] {
     if (!tab.url) {
       const next = lines[index + 1] ?? '';
       const urlMatch = next.match(HTTP_URL);
-      if (urlMatch) tab.url = urlMatch[0]!.replace(/[.,;]+$/, '');
+      if (urlMatch && !TAB_ID.test(next)) tab.url = urlMatch[0]!.replace(/[.,;]+$/, '');
     }
     tabs.push(tab);
   }
