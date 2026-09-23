@@ -127,7 +127,7 @@ export function BotConversationRail({
       aria-label="Chats"
       className="flex h-full min-h-0 flex-col border-r bg-card"
     >
-      <div className="space-y-2 border-b p-3">
+      <div className="shrink-0 space-y-2 border-b p-3">
         <div className="flex items-center justify-between">
           <button
             className="text-lg font-semibold hover:underline"
@@ -156,6 +156,30 @@ export function BotConversationRail({
           onChange={(e) => setQuery(e.target.value)}
           className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
         />
+        {/* The overview is where questions, follow-through and history live.
+            Once a bot is open it is the only way back, so it gets a real row. */}
+        <button
+          aria-current={undefined}
+          onClick={() => onNavigate("#/bots?view=work")}
+          className={cn(
+            "mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+          )}
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+            <Hand className="size-5 text-amber-600 dark:text-amber-300" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Bot work overview</span>
+            <span className="block text-xs text-muted-foreground">
+              Questions, follow-through, history
+            </span>
+          </span>
+          {pendingQuestions > 0 && (
+            <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-semibold text-black tabular-nums">
+              {pendingQuestions}
+            </span>
+          )}
+        </button>
         {!restricted && teams.length === 0 && (
           <button
             className="text-sm text-primary underline"
@@ -409,30 +433,7 @@ export function BotConversationRail({
             )}
           </div>
         )}
-        {/* The overview is where questions, follow-through and history live.
-            Once a bot is open it is the only way back, so it gets a real row. */}
-        <button
-          aria-current={undefined}
-          onClick={() => onNavigate("#/bots?view=work")}
-          className={cn(
-            "mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
-          )}
-        >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
-            <Hand className="size-5 text-amber-600 dark:text-amber-300" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium">Bot work overview</span>
-            <span className="block text-xs text-muted-foreground">
-              Questions, follow-through, history
-            </span>
-          </span>
-          {pendingQuestions > 0 && (
-            <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-semibold text-black tabular-nums">
-              {pendingQuestions}
-            </span>
-          )}
-        </button>
+
       </nav>
     </aside>
   );

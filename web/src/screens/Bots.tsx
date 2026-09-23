@@ -135,6 +135,14 @@ export function Bots({
   const currentRoute = useRef(decisionId);
   const queuePane = useRef<HTMLDivElement>(null);
   const detailPane = useRef<HTMLElement>(null);
+  const [queueWidth, setQueueWidth] = useState(0);
+  useEffect(() => {
+    const pane = queuePane.current;
+    if (!pane) return;
+    const observer = new ResizeObserver(([entry]) => setQueueWidth(entry?.contentRect.width ?? 0));
+    observer.observe(pane);
+    return () => observer.disconnect();
+  }, []);
   const selectedOffset = useRef<number | null>(null);
   useLayoutEffect(() => {
     if (detailPane.current) detailPane.current.scrollTop = 0;
@@ -302,7 +310,7 @@ export function Bots({
   // Wide screens with nothing open show the three groups side by side so all
   // of them scroll together; each column keeps its own heading pinned.
   const wide = useMediaQuery('(min-width: 1024px)');
-  const columns = wide && !decisionId;
+  const columns = queueWidth >= 1000 && !decisionId;
   const stickyHeader = wide ? 'sticky top-0 z-10 -mx-1 w-auto bg-background px-1 pt-1 pb-2' : undefined;
   const sections = [
     ['execution', 'Following through'],
@@ -548,7 +556,7 @@ export function Bots({
                       </p>
                     </div>
                   ) : (
-                    <div className={cn('grid gap-3', !decisionId && !columns && 'md:grid-cols-2')}>
+                    <div className={cn('grid gap-3', !decisionId && !columns && queueWidth >= 680 && 'grid-cols-2')}>
                       {needs.map(card)}
                     </div>
                   )}
@@ -1102,21 +1110,21 @@ export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selec
         {d.proposal.deadline && <span>Due {new Date(d.proposal.deadline).toLocaleString()}</span>}
       </div>
       {d.state === 'needs_input' && <p className="mt-2 text-sm text-muted-foreground">{d.proposal.blocks_scope === 'task' ? 'Other work can continue while this waits.' : 'All work for this bot is waiting for an answer.'}</p>}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4 flex flex-wrap gap-2">
         {quickApprove && !armed && (
-          <Button className="min-h-11 w-full sm:flex-1" disabled={busy} onClick={() => setArmed(true)}>
+          <Button className="min-h-[44px] h-auto min-w-0 flex-[1_1_14rem] whitespace-normal py-2" disabled={busy} onClick={() => setArmed(true)}>
             {hasDraft ? 'Approve & send reply' : 'Approve as proposed'}
           </Button>
         )}
         {quickApprove && armed && (
-          <div className="flex w-full gap-2 sm:flex-1" role="group" aria-label="Confirm approval">
-            <Button className="min-h-11 flex-1 bg-green-700 text-white hover:bg-green-800" disabled={busy} onClick={() => { setArmed(false); onApprove(); }}>
+          <div className="flex min-w-0 flex-[1_1_18rem] flex-wrap gap-2" role="group" aria-label="Confirm approval">
+            <Button className="min-h-[44px] h-auto min-w-0 flex-[1_1_12rem] whitespace-normal bg-green-700 py-2 text-white hover:bg-green-800" disabled={busy} onClick={() => { setArmed(false); onApprove(); }}>
               {hasDraft ? 'Tap again to send' : 'Tap again to approve'}
             </Button>
-            <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => setArmed(false)}>Cancel</Button>
+            <Button variant="outline" className="min-h-[44px]" disabled={busy} onClick={() => setArmed(false)}>Cancel</Button>
           </div>
         )}
-        <Button variant="outline" className="min-h-11 w-full sm:flex-1" onClick={onOpen}>{d.state === 'needs_input' ? 'Review & decide' : 'View decision'}</Button>
+        <Button variant="outline" className="min-h-[44px] h-auto min-w-0 flex-[1_1_14rem] whitespace-normal py-2" onClick={onOpen}>{d.state === 'needs_input' ? 'Review & decide' : 'View decision'}</Button>
       </div>
     </article>
   );
