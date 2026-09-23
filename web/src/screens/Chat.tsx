@@ -3841,8 +3841,15 @@ const ChatRow = memo(function ChatRow({
       <Message data-vp-mermaid-row={hasMermaid ? '' : undefined}>
         <MessageContent>
           <Bubble variant="muted" className="w-fit max-w-[94%]">
-            <BubbleContent data-message-quote="assistant" className="rounded-3xl border-0 px-4 py-3 text-base leading-relaxed">
-              <AssistantMarkdown markdown={item.markdown} live={live} citations={citations} />
+            <BubbleContent className="rounded-3xl border-0 px-4 py-3 text-base leading-relaxed">
+              <div data-message-quote="assistant">
+                <AssistantMarkdown markdown={item.markdown} live={live} citations={citations} />
+              </div>
+              {item.turnId&&item.at&&<div className="-mx-2 mt-1 flex flex-wrap items-center font-sans" role="group" aria-label="Result discussion and reactions">
+                <button type="button" data-message-listen={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Listen to full message" className="min-h-[44px] min-w-[44px] rounded-full px-2 text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring hover:bg-foreground/5 active:bg-foreground/10 disabled:opacity-50">▶ Listen</button>
+                <button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Reply in thread" className="min-h-[44px] min-w-[44px] rounded-full px-2 text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring hover:bg-foreground/5 active:bg-foreground/10 disabled:opacity-50 data-[unread=true]:bg-blue-600/10 data-[unread=true]:font-semibold data-[unread=true]:text-foreground">Reply</button>
+                {['👍','❤️','👀'].map(emoji=><button key={emoji} type="button" data-result-reaction={emoji} data-result-anchor={JSON.stringify({turn:item.turnId,at:item.at})} aria-label={`React ${emoji} · does not approve`} aria-pressed={false} className="min-h-[44px] min-w-[44px] rounded-full px-2 text-xs hover:bg-foreground/5 active:bg-foreground/10 disabled:opacity-50 aria-pressed:bg-blue-600/10 focus-visible:outline-2 focus-visible:outline-ring">{emoji}</button>)}
+              </div>}
             </BubbleContent>
           </Bubble>
           {citations.length ? (
@@ -3851,11 +3858,6 @@ const ChatRow = memo(function ChatRow({
             </MessageFooter>
           ) : null}
           <AssistantResponseMetadata at={item.at} usage={item.usage} />
-          {item.turnId&&item.at&&<div className="flex flex-wrap items-center gap-1" aria-label="Result discussion and reactions">
-            <button type="button" data-message-listen={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Listen to full message" className="min-h-11 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted">▶ Listen</button>
-            <button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Reply in thread" className="min-h-11 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted data-[unread=true]:bg-blue-600/10 data-[unread=true]:font-semibold data-[unread=true]:text-foreground">Reply</button>
-            {['👍','❤️','👀'].map(emoji=><button key={emoji} type="button" data-result-reaction={emoji} data-result-anchor={JSON.stringify({turn:item.turnId,at:item.at})} aria-label={`React ${emoji} · does not approve`} aria-pressed={false} className="min-h-11 min-w-11 rounded-full px-2 text-xs hover:bg-muted aria-pressed:bg-blue-600/10 focus-visible:outline-2 focus-visible:outline-ring">{emoji}</button>)}
-          </div>}
         </MessageContent>
       </Message>
     );
