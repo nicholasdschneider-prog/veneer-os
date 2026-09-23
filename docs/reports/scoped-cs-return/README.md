@@ -41,3 +41,19 @@ Hallmark component critique: Philosophy5, Hierarchy4, Execution4, Specificity5, 
 - [Contract](/Users/archerclawdington/veneer-os/docs/reports/scoped-cs-return/contract.md)
 
 Additional gallery/preview images and full/restricted guide captures in this report folder are synthetic fixture screenshots, not customer evidence.
+
+## Deployment receipt
+
+Implementation **f52eb47**, pushed to origin main. Root typecheck, full tests and production build passed before restart. The initial foreground restart was interrupted by its own runner restart; the same root `npm run restart` was then launched detached and completed normally. All four Node services and browser manager reported healthy; read-only HTTP checks returned 200 on 3100/3101/3102/3103/7300.
+
+Post-deploy read-only checks using the built service and native DB:
+- Nicholas user1: **12 raised hands, 12 answerable**.
+- Ali user2: **12 raised hands, 12 answerable**; 11 cards limited to attached decision context.
+- All five mixed-role source conversations still denied to Ali; her six explicit bot grants remain six.
+- New immutable bridge schema exists; trust, mappings, claims and acknowledgments each contain **zero** live records.
+- Unauthenticated dedicated verifier returns **401**.
+- Built catalog includes both new capabilities in refreshed/resumed agent instructions. Full/restricted guide access and rendering passed isolated route/browser tests.
+
+**Not configured:** `VP_RETURN_VERIFIER_CF_AUD` and `VP_RETURN_VERIFIER_CLIENT_ID` are both absent (presence-only check, no values disclosed). No trust is enrolled. Therefore the return producer is deployed but **not enabled for live use**. Required next owners/actions: Cloudflare/source service operator sets up the dedicated service path/identity; platform operator installs the two identifiers through protected runtime configuration; the authenticated native business owner enrolls verified account/principal/executor trust through the documented API; original OO owner completes its capture/transaction/dispatcher consumer and independent acceptance. The exact steps, HTTP bodies, and recovery semantics are in contract.md; this is not a request to reapprove the customer exception.
+
+No live business acceptance or customer effect was performed. No whole-chat permission expansion, new user, live approval change, label purchase or refund occurred. Unrelated untracked workspace directories were preserved.
