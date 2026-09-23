@@ -4,7 +4,7 @@ import { BotGuide } from './BotGuide';
 import { Bots } from './Bots';
 import { ChatWorkspace } from '@/components/chat/ChatWorkspace';
 import { BotConversationRail } from '@/components/BotConversationRail';
-import { SplitView } from '@/components/layout/SplitView';
+import { SplitView, SplitPlaceholder } from '@/components/layout/SplitView';
 import type { ToastAction } from '@/components/ui/toast';
 
 export function EmployeeWorkspace({ hash, onNavigate, email, onToast }: { hash: string; onNavigate: (hash: string) => void; email: string; onToast: (message: string, action?: ToastAction) => void }) {
@@ -49,7 +49,7 @@ export function EmployeeWorkspace({ hash, onNavigate, email, onToast }: { hash: 
           onToast={onToast}
         />
       </SplitView> :
-        (decisionId || params.get('view') === 'work') ? <Bots restricted canCall decisionId={decisionId} onNavigate={onNavigate} /> : <div className="mx-auto h-full max-w-3xl"><BotConversationRail restricted onNavigate={onNavigate} /></div>}
+        (decisionId || params.get('view') === 'work') ? <Bots restricted canCall decisionId={decisionId} onNavigate={onNavigate} /> : <SplitView storageKey="split:chats" sidebar={<BotConversationRail restricted onNavigate={onNavigate} />}><SplitPlaceholder title="Choose a conversation" hint="Your people, bots, and groups are on the left." /></SplitView>}
     </main>
   </div>;
 }

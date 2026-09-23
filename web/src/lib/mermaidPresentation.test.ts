@@ -73,7 +73,7 @@ describe('Mermaid presentation', () => {
     expect(css).toContain('margin-top: -3rem');
     expect(css).toContain('height: 3rem');
     expect(css).not.toContain('max-width: 64rem');
-    expect(chat).toContain('h-full max-w-2xl flex-col');
+    expect(chat).toContain('h-full w-full max-w-none flex-col');
     expect(chat).not.toContain('h-full max-w-5xl flex-col');
     expect(chat.match(/data-vp-mermaid-row/g)).toHaveLength(2);
     expect(css).toContain("[data-vp-mermaid-row] > [data-slot='message-content'] > [data-slot='bubble']");

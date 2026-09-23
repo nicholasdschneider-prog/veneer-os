@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { EmployeeWorkspace } from './EmployeeWorkspace';
 
 vi.mock('./Bots', () => ({ Bots: ({ restricted, decisionId }: { restricted: boolean; decisionId?: string }) => <div data-overview={restricted} data-decision={decisionId} /> }));
-vi.mock('@/components/layout/SplitView', () => ({ SplitView: ({ sidebar, children }: { sidebar: React.ReactNode; children: React.ReactNode }) => <>{sidebar}{children}</> }));
+vi.mock('@/components/layout/SplitView', () => ({ SplitPlaceholder: ({title}: {title:string}) => <div>{title}</div>, SplitView: ({ sidebar, children }: { sidebar: React.ReactNode; children: React.ReactNode }) => <>{sidebar}{children}</> }));
 vi.mock('@/components/BotConversationRail', () => ({ BotConversationRail: ({ selectedId, restricted }: { selectedId: string; restricted: boolean }) => <aside data-selected={selectedId} data-restricted={restricted} /> }));
 vi.mock('@/components/chat/ChatWorkspace', () => ({ ChatWorkspace: (props: { conversationId: string; restricted: boolean; backHash: string; focusMessageId: string | null; projectBrowserId: string | null; projectFilesId: string | null }) => <section data-native-chat={props.conversationId} data-restricted={props.restricted} data-back={props.backHash} data-message={props.focusMessageId} data-browser={props.projectBrowserId} data-files={props.projectFilesId} /> }));
 

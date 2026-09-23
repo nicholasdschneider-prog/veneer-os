@@ -347,7 +347,7 @@ export function App() {
 
   if (routePath === '#/messages' || (routePath === '#/bots' && !params.has('view') && !params.has('register'))) return (
     <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-      <div className="mx-auto h-full max-w-3xl"><BotConversationRail onNavigate={navigate} /></div>
+      <SplitView storageKey="split:chats" sidebar={<BotConversationRail onNavigate={navigate} />}><SplitPlaceholder title="Choose a conversation" hint="Your people, bots, and groups are on the left." /></SplitView>
     </NavShell>
   );
 

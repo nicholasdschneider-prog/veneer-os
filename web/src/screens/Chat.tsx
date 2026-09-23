@@ -2273,7 +2273,7 @@ export function Chat({
   return (
     <div
       ref={screenRef}
-      className="conversation-surface relative mx-auto flex h-full max-w-2xl flex-col overflow-hidden pt-[calc(env(safe-area-inset-top)+1.25rem)] md:pt-[env(safe-area-inset-top)]"
+      className="conversation-surface relative mx-auto flex h-full w-full max-w-none flex-col overflow-hidden pt-[calc(env(safe-area-inset-top)+1.25rem)] md:pt-[env(safe-area-inset-top)]"
     >
       {showComposer && !creatingNewChat ? <MessageSelection rootRef={screenRef} onAdd={(quote) => {
         setMessageQuote(quote);

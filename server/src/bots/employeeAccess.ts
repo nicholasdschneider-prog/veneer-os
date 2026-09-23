@@ -15,6 +15,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/bot-workflows\/(guide|search|push|bots\/[^/]+)\/?$/,
     /^\/live-voice(?:\/sessions(?:\/[^/]+)?)?\/?$/,
     /^\/bots\/?$/,
+    /^\/bots\/organization\/?$/,
     /^\/bots\/teams\/?$/,
     /^\/bots\/decisions\/[^/]+\/?$/,
     /^\/conversations\/?$/,
@@ -28,6 +29,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'PATCH' && /^\/team-rooms\/[^/]+\/?$/.test(path)) return true;
   if (method === 'PATCH') return /^\/bots\/preferences\/[^/]+\/?$/.test(path);
   if (method === 'POST') return [
+    /^\/bots\/organization\/?$/,
     /^\/bot-communication\/(chats\/[^/]+\/listen|message-audio\/[^/]+\/\d+)\/?$/,
     /^\/team-rooms(?:\/[^/]+\/(messages|seen|files|invite))?\/?$/,
     /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,

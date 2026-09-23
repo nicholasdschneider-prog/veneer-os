@@ -67,6 +67,7 @@ export interface BotDecision {
 export interface BusinessTeam { id: string; name: string; can_manage: boolean; members: { user_id: number; role: string; display_name: string; restricted?: boolean }[] }
 export interface Bot {
   business_team_id?: string | null;
+  last_reply?: {text:string;at:string}|null;
   membership?: { role: string; subteam: string; reports_to: string | null } | null;
   title?: string | null;
   updated_at?: string | null;

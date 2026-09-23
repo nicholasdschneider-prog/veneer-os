@@ -1,3 +1,4 @@
+import {createOrganizationService,latestBotPreview} from './organization.js';
 import { createTeamService } from './teams.js';
 import express from 'express';
 import { isUnread, markSeen } from '../conversations/unread.js';
@@ -15,6 +16,7 @@ export function createBotsRouter(ctx: AppContext) {
   const router = express.Router();
   const s = createBotService(ctx.db);
   const teams = createTeamService(ctx.db);
+  const organization=createOrganizationService(ctx.db);
   router.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
@@ -47,6 +49,8 @@ export function createBotsRouter(ctx: AppContext) {
   const changed = (teamId: string) => {
     for (const c of ctx.db.prepare('SELECT id FROM conversations WHERE business_team_id=?').all(teamId) as { id: string }[]) ctx.manager.bus?.emit('access', c.id);
   };
+  router.get('/organization',run((req,res)=>{if(req.agentConversationId)throw new BotError(403,'Personal organization requires a human session');res.json(organization.get(req.user!,z.string().max(200).parse(req.query.business??'')));}));
+  router.post('/organization',run((req,res)=>{if(req.agentConversationId)throw new BotError(403,'Personal organization requires a human session');res.json(organization.save(req.user!,z.string().max(200).parse(req.query.business??''),req.body));}));
   router.get('/teams', run((req, res) => res.json({ teams: teams.list(actor(req)) })));
   router.post('/teams/manage', run((req, res) => {
     const result = teams.manage(actor(req), req.body);
@@ -99,6 +103,7 @@ export function createBotsRouter(ctx: AppContext) {
           project_id: c.project_id,
           business_team_id: c.business_team_id,
           membership,
+          last_reply: latestBotPreview(ctx.db,c.id),
           title: c.title,
           updated_at: c.last_active_at,
           unread: isUnread(ctx.db, a.user.id, c.id),
