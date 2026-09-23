@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'provider-model-updates', title: 'Choose newly available Claude and Codex models', category: 'Getting started', updated: '2026-09-23',
+    announcement: 'Claude Opus 5.5, GPT-6 Sol, and GPT-6 Luna are available through connected provider model discovery. Existing chat and bot selections stay unchanged.',
+    audience: 'People with access to the conversation and permission to change its model',
+    summary: 'Use new provider models in a conversation without changing other chats or bot defaults.',
+    steps: ['Open the conversation and select its current provider/model chip.', 'Choose Claude or Codex, then select an available model under Model and a supported thinking level.', 'Choose Use model to apply the selection to that conversation. Ask an authorized manager to change a bot default when needed.'],
+    example: 'Use Claude Opus 5.5 for this conversation while keeping my other bot settings.',
+    limits: 'Requires a connected Claude or ChatGPT/Codex subscription and existing model access. Availability and usage limits come from the provider. Restricted employees may need their manager to change a model. Runtime maintenance does not migrate explicit conversation or bot selections, grant account access, or approve business actions.',
+    agent: 'Use list_agent_options for current connected provider/model discovery. Claude Opus 5.5, GPT-6 Sol, and GPT-6 Luna were verified on September 23, 2026. Recheck availability before selecting; never infer access from an announcement. Preserve explicit per-chat and per-bot model choices unless a change is authorized. Guide: /#/bot-guide?feature=provider-model-updates.',
+  },
+  {
     id:'approved-message-delegation',title:'Keep an exact approved message with its named executor',category:'Teamwork',updated:'2026-09-23',
     announcement:'Decision owners can explicitly delegate a fully structured, already approved customer message to its named bot without another approval click. Legacy prose is not imported as transport authority.',
     audience:'Authorized decision approvers and explicitly named bots in the same business',

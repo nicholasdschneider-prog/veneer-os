@@ -46,8 +46,11 @@ try {
     await page.getByRole('searchbox').fill('Listen to a full bot message');
     await page.getByRole('heading', { name: 'Listen to a full bot message', exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 1);
-    await page.getByRole('searchbox').fill('Chat with people');
+    await page.getByRole('searchbox').fill('Chat with people and bots in one place');
     await page.getByRole('heading', { name: 'Chat with people and bots in one place', exact: true }).waitFor();
+    assert.equal(await page.locator('article').count(), 1);
+    await page.getByRole('searchbox').fill('Choose newly available Claude and Codex models');
+    await page.getByRole('heading', { name: 'Choose newly available Claude and Codex models', exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 1);
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();

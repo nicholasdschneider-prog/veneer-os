@@ -47,7 +47,7 @@ const INERT_PRINT_MODE_TOOLS = [
 /**
  * The "Latest models comparison" table at
  * https://platform.claude.com/docs/en/about-claude/models/overview — one
- * model per family plus the previous Opus release, not the full catalog
+ * model per family plus retained previous Opus releases, not the full catalog
  * `GET /v1/models` returns (which also lists legacy/deprecated snapshots like
  * Fable 5, Opus 4.7/4.6, Sonnet 4.6/4.5, Opus 4.5/4.1). Excludes Claude
  * Mythos 5 (Project Glasswing-gated, not generally available). Update this
@@ -55,6 +55,7 @@ const INERT_PRINT_MODE_TOOLS = [
  * claude-api skill.
  */
 const LATEST_CLAUDE_MODEL_IDS = new Set([
+  'claude-opus-5-5',
   'claude-fable-5-1',
   'claude-opus-5',
   'claude-opus-4-8',
