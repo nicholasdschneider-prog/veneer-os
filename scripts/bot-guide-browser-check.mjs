@@ -62,6 +62,10 @@ try {
     assert.match(await page.locator('article').innerText(), /Record microphone narration/);
     assert.match(await page.locator('article').innerText(), /not screen video/);
     await page.screenshot({path:output + '/teach-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
+    await page.getByRole('searchbox').fill('Enroll bounded standing routine policies');
+    await page.getByRole('heading', {name:'Enroll bounded standing routine policies',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /All categories currently disabled/);
+    await page.screenshot({path:output + '/routine-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();
     assert.equal(await page.locator('article').count(), 1);

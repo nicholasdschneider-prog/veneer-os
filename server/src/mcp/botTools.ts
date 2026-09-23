@@ -80,6 +80,8 @@ function definition(
   };
 }
 export const BOT_TOOL_DEFINITIONS = [
+  definition('list_routine_policies', 'List immutable standing-policy enrollment for this exact business and named current bot. Enrollment is not source eligibility or send authority; all categories currently require a trusted source verifier. Never infer business ID from project/name.', {business_id:str}, ['business_id']),
+  definition('inspect_routine_message', 'Read-only standing-policy readiness for exact scope. Returns missing proof, never authorizes, claims or sends. Requires policy_id, bounded category and exact scope. Do not fabricate historical enrollment, infer eligibility from caller assertions or request duplicate per-email approval as a workaround. Current source/category verifier is not connected.', {policy_id:str,category:{type:'string',enum:['missing_information','no_order_catalog','unused_return','approved_status_restatement','factual_tracking']},scope:messageScope}, ['policy_id','category','scope']),
   definition('inspect_approved_message', 'Read-only preflight for an exact approved customer-message delegation. Requires current decision/version. Returns ready=false with concrete missing_proof for legacy prose or absent structural transport scope; do not infer authority, alter approval, or automatically request reapproval.', {decision_id:str,expected_version:{type:'integer'}}, ['decision_id','expected_version']),
   definition('delegate_approved_message', 'Only the active decision-owner bot may delegate an explicitly approved proposal.message_delivery to its exact named executor. Supply the scope verbatim from readback and a stable request key. Preserves original human approval; does not create or send a message, change decision state, or grant connections. One immutable binding per decision version. No legacy prose import. inspect_approved_message first; missing proof stops work.', {decision_id:str,expected_version:{type:'integer'},executor_conversation_id:str,request_key:str,scope:messageScope}, ['decision_id','expected_version','executor_conversation_id','request_key','scope']),
   definition('accept_approved_message', 'Only the named executor accepts an owner delegation, with exact scope and stable request key. Creates one queued draft under the original verified human authority, never a new approval or send. Does not inherit owner credentials. Read the returned draft. The decision owner must complete material checks and existing RUNNING transition before claim; claim needs fresh send_check. No acceptance after revocation or changed scope.', {delegation_id:str,request_key:str,scope:messageScope}, ['delegation_id','request_key','scope']),
@@ -185,6 +187,7 @@ export async function callBotTool({
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
   }
   const communicationRoutes: Record<string,string> = {
+    list_routine_policies: '/routine-policies/list', inspect_routine_message: '/routine-policies/inspect',
     inspect_approved_message: '/approved-messages/inspect', delegate_approved_message: '/approved-messages/delegate',
     accept_approved_message: '/approved-messages/accept', revoke_message_delegation: '/approved-messages/revoke',
     save_message_draft: '/chats/current/drafts', list_message_drafts: '/chats/current',

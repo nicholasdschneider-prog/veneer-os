@@ -146,7 +146,8 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
   const [p, setP] = useState(draft.payload),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    [confirm, setConfirm] = useState(false);
+    [confirm, setConfirm] = useState(false),
+    [routineStatus, setRoutineStatus] = useState('');
   const dirty = JSON.stringify(p) !== JSON.stringify(draft.payload);
   const editable = draft.state === 'draft' && !draft.stale;
   async function act(action: string) {
@@ -260,6 +261,18 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
           ))}
         </div>
       )}
+      <details className="rounded-lg border p-3 text-sm">
+        <summary className="cursor-pointer py-2">Standing routine authority</summary>
+        <p className="my-2 text-muted-foreground">Covered routine work uses policy-level authority. This draft is not certified as routine merely because a manager coordinates its bot.</p>
+        <Button variant="outline" disabled={busy} onClick={() => {
+          setBusy(true);
+          void requestJson<{message:string}>(`${root}/drafts/${draft.id}/routine-status`)
+            .then(result => setRoutineStatus(result.message))
+            .catch(e => setRoutineStatus(e instanceof Error ? e.message : 'Unable to check setup'))
+            .finally(() => setBusy(false));
+        }}>Check routine setup</Button>
+        {routineStatus && <p role="status" className="mt-2 break-words">{routineStatus}</p>}
+      </details>
       {draft.receipt && (
         <p role="status" className="break-words text-sm">
           Delivery receipt: {draft.receipt}

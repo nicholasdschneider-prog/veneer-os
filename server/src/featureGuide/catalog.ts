@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'routine-policy-enrollment', title:'Enroll bounded standing routine policies', category:'Automation', updated:'2026-09-23',
+    announcement:'Authenticated business owners can record immutable standing-policy enrollment. Draft cards explain routine setup; automated routine sends remain disabled pending trusted source eligibility verification.',
+    audience:'Authenticated business owners for enrollment; named bots for read-only inspection; authorized draft readers for setup status',
+    summary:'Separate policy-level authority from per-email human approval without inventing historical approvals.',
+    steps:['Open an outgoing draft, expand Standing routine authority, and select Check routine setup.', 'The business owner enrolls the exact policy, source reference, business, categories and named executors through the authenticated routine-policies API documented in the release contract. Enrollment records the current owner, not a guessed historical actor.', 'A named bot can list_routine_policies and inspect_routine_message for exact scope. Missing source or category verification remains blocked; no send is authorized by this inspection.'],
+    example:'Check the standing routine policy for this exact factual tracking reply and report missing source verification without asking for duplicate per-email approval.',
+    limits:'Enrollment API only; no policy editor yet. All categories currently disabled for execution: trusted source/principal binding and category eligibility verifier are not connected. No live policy was enrolled by the release. Bot membership or manager coordination does not grant enrollment or send authority. Financial/remedy/material exceptions retain human gates. No-contact completion is not extra-email authority.',
+    agent:'Use list_routine_policies with verified business_id and inspect_routine_message with policy_id, category and exact canonical case/executor/payload scope. Both are read-only. Currently ready=false and execute=false because a trusted source/category verifier is missing; do not claim routine delivery is enabled. Only an authenticated human business owner can enroll or revoke policies. Never parse historical prose into approval, invent authorized_by, use category/eligible assertions as proof, or request duplicate per-email approval as a workaround. Preserve leases, holds, exact scope, unknown-effect reconciliation and financial gates. Guide: /#/bot-guide?feature=routine-policy-enrollment.',
+  },
+  {
     id: 'voice-preferences', title: 'Teach voice your speaking preferences', category: 'Daily work', updated: '2026-09-23',
     announcement: 'Tell live voice to be more concise and it can remember your style across future calls, just for you.',
     audience: 'Signed-in employees with live voice access',

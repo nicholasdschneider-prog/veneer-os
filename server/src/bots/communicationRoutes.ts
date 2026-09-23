@@ -1,3 +1,4 @@
+import { routinePolicyService } from './routinePolicies.js';
 import { messageDelegationService, MissingMessageProof, sendCheckSchema, deliveryProofSchema } from './messageDelegation.js';
 import { approvedMessageSchema } from './draftPayload.js';
 import express from 'express';
@@ -54,6 +55,22 @@ export function createCommunicationRouter(ctx: AppContext) {
     req.params.chat === 'current'
       ? (req.agentConversationId ?? '')
       : req.params.chat!;
+  const routinePolicies = routinePolicyService(ctx.db);
+  r.post('/routine-policies/enroll', run((req,res) => res.json(routinePolicies.enroll(actor(req),req.body))));
+  r.post('/routine-policies/list', run((req,res) => {
+    const p=z.object({business_id:key}).strict().parse(req.body);
+    res.json(routinePolicies.list(actor(req),p.business_id));
+  }));
+  r.post('/routine-policies/revoke', run((req,res) => {
+    const p=z.object({policy_id:key,reason:z.string().trim().min(1).max(2000)}).strict().parse(req.body);
+    res.json(routinePolicies.revoke(actor(req),p.policy_id,p.reason));
+  }));
+  r.post('/routine-policies/inspect', run((req,res) => res.json(routinePolicies.inspect(actor(req),req.body))));
+  r.get('/drafts/:id/routine-status', run((req,res) => {
+    const d=s.readDraft(actor(req),req.params.id!);
+    res.json({ready:false,execute:false,draft_version:d.version,
+      message:'Standing-policy enrollment is available to the authenticated business owner. Routine sending is not enabled: a trusted source connection and category eligibility verifier are still required. A category label or manager coordination alone cannot authorize this draft. Do not request duplicate per-email approval as a workaround; retain exceptions and report the missing setup.'});
+  }));
   r.get(
     '/chats/:chat',
     run((req, res) => res.json(s.list(actor(req), current(req)))),
