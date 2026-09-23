@@ -1,3 +1,4 @@
+import { Teach, type Teaching } from './TeachTask';
 import { useCallback, useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { requestJson } from '@/lib/api';
@@ -25,16 +26,6 @@ interface Routine {
   timezone: string;
   enabled: number;
   next_run_at: string | null;
-}
-interface Teaching {
-  id: string;
-  name: string;
-  state: string;
-  steps_json: string;
-  draft: string;
-  expires_at: string;
-  skill_name: string | null;
-  test_requested_at: string | null;
 }
 interface Preference {
   input: boolean;
@@ -79,21 +70,23 @@ export function openBotWorkflows(id: string, name: string, tab?: string) {
   );
 }
 export function BotWorkflowDialogs() {
+  const [capturing,setCapturing]=useState(false);
+  useEffect(()=>{const change=(e:Event)=>setCapturing(!!(e as CustomEvent).detail);window.addEventListener('veneer:teaching-capture',change);return()=>window.removeEventListener('veneer:teaching-capture',change);},[]);
   const [bot, setBot] = useState<{
     id: string;
     name: string;
     tab?: string;
   } | null>(null);
   useEffect(() => {
-    const open = (e: Event) => setBot((e as CustomEvent).detail);
+    const open = (e: Event) => {if(!capturing)setBot((e as CustomEvent).detail);};
     window.addEventListener('veneer:bot-workflows', open);
     return () => window.removeEventListener('veneer:bot-workflows', open);
-  }, []);
+  }, [capturing]);
   return (
     <Dialog
       open={!!bot}
       onOpenChange={(open) => {
-        if (!open) setBot(null);
+        if (!open && !capturing) setBot(null);
       }}
     >
       <DialogContent className="max-h-[95dvh] overflow-y-auto sm:max-w-4xl">
@@ -101,15 +94,17 @@ export function BotWorkflowDialogs() {
         <DialogDescription>
           Routines, notifications, teaching, and reusable bot templates.
         </DialogDescription>
-        {bot && <BotSettings key={bot.id} bot={bot} />}
+        {bot && <BotSettings key={bot.id} bot={bot} capturing={capturing} />}
       </DialogContent>
     </Dialog>
   );
 }
 function BotSettings({
   bot,
+  capturing,
 }: {
   bot: { id: string; name: string; tab?: string };
+  capturing: boolean;
 }) {
   const [data, setData] = useState<Settings | null>(null),
     [tab, setTab] = useState(bot.tab ?? 'notifications'),
@@ -206,6 +201,7 @@ function BotSettings({
           <Button
             key={t}
             variant={tab === t ? 'secondary' : 'ghost'}
+            disabled={capturing && t!==tab}
             onClick={() => setTab(t)}
             aria-pressed={tab === t}
           >
@@ -622,196 +618,6 @@ function Routines({
             ))}
           </ul>
         </details>
-      )}
-    </div>
-  );
-}
-function Teach({
-  bot,
-  session,
-  busy,
-  act,
-  reload,
-}: {
-  bot: { id: string; name: string };
-  session: Teaching | null;
-  busy: boolean;
-  act: Act;
-  reload: () => Promise<void>;
-}) {
-  const [name, setName] = useState(''),
-    [outcome, setOutcome] = useState(''),
-    [draft, setDraft] = useState(''),
-    [skill, setSkill] = useState(''),
-    [example, setExample] = useState(''),
-    [clock, setClock] = useState(Date.now());
-  useEffect(() => {
-    setDraft(session?.draft ?? '');
-    setSkill(
-      session?.skill_name ??
-        session?.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '') ??
-        '',
-    );
-  }, [session?.id, session?.draft, session?.skill_name]);
-  const active = !!session && ['recording', 'paused'].includes(session.state);
-  useEffect(() => {
-    if (!active) return;
-    const timer = setInterval(() => {
-      setClock(Date.now());
-      void reload();
-    }, 2000);
-    return () => clearInterval(timer);
-  }, [active, reload]);
-  const action = (a: string, body?: unknown) =>
-    act(
-      () =>
-        requestJson(`${base}/teaching/${session!.id}/${a}`, json('POST', body)),
-      a === 'save'
-        ? 'Skill saved. Test it on a second example before scheduling.'
-        : 'Updated',
-    );
-  return (
-    <div className="min-w-0 space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Demonstrate one workflow in the browser below. Recording lasts up to 10
-        minutes. Typed values, passwords, and microphone audio are excluded.
-        Pause before signing in.
-      </p>
-      {!session || session.state === 'saved' ? (
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void act(
-              () =>
-                requestJson(
-                  `${base}/bots/${bot.id}/teach`,
-                  json('POST', { name, outcome }),
-                ),
-              'Recording started',
-            );
-          }}
-        >
-          <label className="block text-sm">
-            Task name
-            <input
-              required
-              className={field}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            Expected outcome
-            <textarea
-              required
-              rows={2}
-              className={field}
-              value={outcome}
-              onChange={(e) => setOutcome(e.target.value)}
-            />
-          </label>
-          <Button disabled={busy}>Start demonstration</Button>
-        </form>
-      ) : null}
-      {active && (
-        <>
-          <div className="flex flex-wrap items-center gap-2">
-            <span role="status" className="text-sm font-medium">
-              {clock >= Date.parse(session.expires_at)
-                ? 'Time limit reached'
-                : session.state === 'recording'
-                  ? 'Recording'
-                  : 'Paused'}{' '}
-              ·{' '}
-              {Math.max(
-                0,
-                Math.ceil((Date.parse(session.expires_at) - clock) / 1000),
-              )}
-              s remaining · {JSON.parse(session.steps_json).length} actions
-            </span>
-            <Button
-              variant="outline"
-              disabled={busy || clock >= Date.parse(session.expires_at)}
-              onClick={() =>
-                void action(session.state === 'paused' ? 'resume' : 'pause')
-              }
-            >
-              {session.state === 'paused' ? 'Resume' : 'Pause'}
-            </Button>
-            <Button disabled={busy} onClick={() => void action('stop')}>
-              Stop and review
-            </Button>
-          </div>
-          <iframe
-            title={`${bot.name} teaching browser`}
-            src={`/veneer-browser?conversation=${bot.id}&chrome=off`}
-            className="h-[55dvh] w-full rounded-lg border"
-          />
-        </>
-      )}
-      {session?.state === 'draft' && (
-        <>
-          <label className="block text-sm">
-            Skill name
-            <input
-              className={field}
-              value={skill}
-              onChange={(e) => setSkill(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            Review the skill
-            <textarea
-              className={`${field} font-mono`}
-              rows={15}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-            />
-          </label>
-          <Button
-            disabled={busy || !draft || !skill}
-            onClick={() => void action('save', { skillName: skill, draft })}
-          >
-            Save reviewed skill
-          </Button>
-        </>
-      )}
-      {session?.state === 'saved' && (
-        <div className="space-y-2 rounded-xl border p-3">
-          <p className="font-medium">Saved: {session.skill_name}</p>
-          <label className="block text-sm">
-            Second example and expected result
-            <textarea
-              className={field}
-              value={example}
-              onChange={(e) => setExample(e.target.value)}
-            />
-          </label>
-          <Button
-            disabled={busy || !example.trim()}
-            onClick={() => void action('test', { example })}
-          >
-            Ask {bot.name} to test
-          </Button>
-          {session.test_requested_at && (
-            <a className="block text-sm underline" href={`#/chat/${bot.id}`}>
-              Review the test in the bot conversation
-            </a>
-          )}
-        </div>
-      )}
-      {session && session.state !== 'saved' && (
-        <Button
-          variant="ghost"
-          disabled={busy}
-          onClick={() => void action('discard')}
-        >
-          Discard demonstration
-        </Button>
       )}
     </div>
   );

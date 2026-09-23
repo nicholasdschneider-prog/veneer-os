@@ -57,6 +57,11 @@ try {
     assert.equal(await page.locator('article').count(), 1);
     await page.getByRole('button', { name: 'Copy example for Teach voice your speaking preferences' }).click();
     assert.match(await page.evaluate(() => navigator.clipboard.readText()), /concise answers/);
+    await page.getByRole('searchbox').fill('Teach a browser task');
+    await page.getByRole('heading', {name:'Teach a browser task',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /Record microphone narration/);
+    assert.match(await page.locator('article').innerText(), /not screen video/);
+    await page.screenshot({path:output + '/teach-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();
     assert.equal(await page.locator('article').count(), 1);

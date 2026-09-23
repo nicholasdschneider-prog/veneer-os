@@ -45,6 +45,7 @@ describe('instruction context migration', () => {
     expect(result.developerInstructions).toContain('Current Veneer bot capabilities');
     expect(result.developerInstructions).toContain('list_bot_routines before save_bot_routine');
     expect(result.developerInstructions).toContain('Teach a task');
+    expect(result.developerInstructions).toContain('timestamped narration');
     expect(result.developerInstructions).toContain('manage_voice_preferences');
     expect(result.developerInstructions).toContain('Ordinary chat agents must not claim to save these settings themselves.');
     expect(result.developerInstructions).toContain('Listen beside Reply');

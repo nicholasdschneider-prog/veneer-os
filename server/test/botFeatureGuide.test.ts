@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('announces optional teaching narration with accurate access and review limits',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-23')).features.find(f=>f.id==='teach')!;
+    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('Record microphone narration');
+    expect(f.limits).toContain('not screen video');expect(f.limits).toContain('Restricted customer-service');
+    expect(f.agent).toContain('never permission');
+  });
   it('requires practical human and bot instructions, unique links, and valid release dates', () => {
     expect(new Set(BOT_FEATURES.map(feature => feature.id)).size).toBe(BOT_FEATURES.length);
     for (const feature of BOT_FEATURES) {

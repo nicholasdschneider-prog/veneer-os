@@ -1,3 +1,4 @@
+import { narrationText } from './teachingAudio.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -30,7 +31,10 @@ export function teachingSession(ctx: AppContext, user: UserRow, id: string) {
     .prepare('SELECT * FROM bot_teaching_sessions WHERE id=? AND user_id=?')
     .get(id, user.id) as Teaching | undefined;
   if (!t) throw new BotError(404, 'Teaching session not found');
-  routineChat(ctx.db, user, t.conversation_id);
+  const active = ctx.db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(user.id) as UserRow | undefined;
+  if (!active) throw new BotError(403, 'Training access revoked');
+  const c = routineChat(ctx.db, active, t.conversation_id);
+  if (!canManageConversation(active,c,ctx.db) && !canTrainBusinessBot(active,c,ctx.db)) throw new BotError(403,'Training access required');
   return t;
 }
 export function recording(
@@ -78,8 +82,9 @@ export function recordTeachingStep(
   if (!step.url) return;
   const steps = JSON.parse(t.steps_json) as (typeof step)[];
   if (steps.length >= 300) return;
-  if (JSON.stringify(steps.at(-1)) === JSON.stringify(step)) return;
-  steps.push(step);
+  const last = steps.at(-1);
+  if (last && last.action===step.action && last.target===step.target && last.url===step.url) return;
+  steps.push({ ...step, offset_ms: Math.max(0,Date.now()-Date.parse(t.started_at)) } as typeof step);
   ctx.db
     .prepare(
       "UPDATE bot_teaching_sessions SET steps_json=? WHERE id=? AND state='recording'",
@@ -106,8 +111,9 @@ export function teachingDraft(t: Teaching) {
     action: string;
     target: string;
     url: string;
+    offset_ms?: number;
   }[];
-  return `# ${t.name}\n\n## When to use\n${t.outcome}\n\n## Inputs and access\nUse the current authorized browser session. Replace example-specific inputs with values supplied for this task. Typed values and login steps were not recorded.\n\n## Demonstrated path\n${steps.map((s, i) => `${i + 1}. ${s.action === 'input' ? 'Enter the task-specific input in' : s.action === 'click' ? 'Select' : s.action} ${s.target || 'the demonstrated control'} on ${s.url}.`).join('\n') || 'No actions were captured. Add the workflow steps before saving.'}\n\n## Decision rules\nConfirm the current task scope and required inputs. Stop when the page or expected state differs. Follow existing approval requirements for external actions.\n\n## Validate the result\nCheck the result against the original request and cite the current source. Test on a second example before creating a routine.\n\n## Output\nReturn the verified result, source links, and any unresolved exceptions.\n`;
+  return `# ${t.name}\n\n## When to use\n${t.outcome}\n\n## Inputs and access\nUse the current authorized browser session. Replace example-specific inputs with values supplied for this task. Typed values and login steps were not recorded.\n\n## Demonstrated path\n${steps.map((s, i) => `${i + 1}. ${s.offset_ms === undefined ? '' : `[${(s.offset_ms / 1000).toFixed(1)}s] `}${s.action === 'input' ? 'Enter the task-specific input in' : s.action === 'click' ? 'Select' : s.action} ${s.target || 'the demonstrated control'} on ${s.url}.`).join('\n') || 'No actions were captured. Add the workflow steps before saving.'}\n\n## Decision rules\nConfirm the current task scope and required inputs. Stop when the page or expected state differs. Follow existing approval requirements for external actions.\n\n## Validate the result\nCheck the result against the original request and cite the current source. Test on a second example before creating a routine.\n\n## Output\nReturn the verified result, source links, and any unresolved exceptions.\n`;
 }
 export function startTeaching(
   ctx: AppContext,
@@ -117,6 +123,7 @@ export function startTeaching(
   outcome: string,
 ) {
   const c = routineChat(ctx.db, user, conversation);
+  if (user.status !== 'active' || (!canManageConversation(user,c,ctx.db) && !canTrainBusinessBot(user,c,ctx.db))) throw new BotError(403,'Training access required');
   if (!c.project_id)
     throw new BotError(400, 'Put this bot in a project before teaching');
   ctx.db
@@ -153,7 +160,7 @@ export function finishTeaching(ctx: AppContext, user: UserRow, id: string) {
   const t = teachingSession(ctx, user, id);
   if (!['recording', 'paused', 'draft'].includes(t.state))
     throw new BotError(409, 'Session already finished');
-  const draft = t.draft || teachingDraft(t);
+  const draft = teachingDraft(t) + narrationText(ctx,t.id);
   ctx.db
     .prepare(
       "UPDATE bot_teaching_sessions SET state='draft',draft=? WHERE id=?",
@@ -171,6 +178,9 @@ export function saveTeaching(
   const t = teachingSession(ctx, user, id);
   if (t.state !== 'draft')
     throw new BotError(409, 'Stop and review the demonstration first');
+  if (ctx.db.prepare('SELECT 1 FROM bot_teaching_audio WHERE session_id=? AND transcript IS NULL').get(id)) throw new BotError(409,'Transcribe, enter a transcript, or remove unavailable narration before saving');
+  const narration = narrationText(ctx,id);
+  if ((narration && !draft.includes(narration.trim())) || (!narration && draft.includes('## Narration (demonstration evidence)')))  throw new BotError(409,'Update the draft from the current narration before saving');
   const c = routineChat(ctx.db, user, t.conversation_id);
   if (
     !canManageConversation(user, c, ctx.db) &&

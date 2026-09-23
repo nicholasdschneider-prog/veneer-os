@@ -1,3 +1,4 @@
+import { teachingAudioRouter } from './teachingAudio.js';
 import { botFeatureCatalog } from '../featureGuide/catalog.js';
 import crypto from 'node:crypto';
 import express from 'express';
@@ -60,6 +61,7 @@ export function createBotWorkflowsRouter(ctx: AppContext) {
           else next(e);
         });
     };
+  router.use(teachingAudioRouter(ctx));
   router.get('/guide', (_req, res) => res.json(botFeatureCatalog()));
   router.get(
     '/search',
@@ -345,6 +347,7 @@ export function createBotWorkflowsRouter(ctx: AppContext) {
     '/bots/:id/teach',
     run(async (req, res) => {
       visible(req);
+      if(req.agentConversationId)throw new BotError(403,'A human must start a demonstration');
       if ((await ctx.manager.statusOf(req.params.id!)) === 'working')
         throw new BotError(
           409,
@@ -369,6 +372,7 @@ export function createBotWorkflowsRouter(ctx: AppContext) {
   router.post(
     '/teaching/:session/:action',
     run(async (req, res) => {
+      if (req.agentConversationId) throw new BotError(403,'The human teacher controls demonstration review');
       const t = teachingSession(ctx, req.user!, req.params.session!),
         action = req.params.action;
       if (action === 'stop') {
@@ -384,20 +388,21 @@ export function createBotWorkflowsRouter(ctx: AppContext) {
         ctx.db
           .prepare('UPDATE bot_teaching_sessions SET state=? WHERE id=?')
           .run(action === 'pause' ? 'paused' : 'recording', t.id);
-      } else if (action === 'discard')
+      } else if (action === 'discard') {
+        ctx.db.prepare('DELETE FROM bot_teaching_audio WHERE session_id=?').run(t.id);
         ctx.db
           .prepare(
             "UPDATE bot_teaching_sessions SET state='discarded',steps_json='[]',draft='' WHERE id=?",
           )
           .run(t.id);
-      else if (action === 'save') {
+      } else if (action === 'save') {
         const p = z
           .object({
             skillName: z
               .string()
               .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
               .max(64),
-            draft: text,
+            draft: z.string().trim().min(1).max(60000),
           })
           .strict()
           .parse(req.body);
