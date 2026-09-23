@@ -164,13 +164,27 @@ export function createBotService(db: Database.Database) {
       if (!sameBusiness(db, botId, c)) throw new BotError(403, 'Cross-business evidence is not allowed');
     }
   }
+  function decisionEvidenceAllowed(actor: Actor, p: Proposal, d: Decision) {
+    // Only an already-eligible human in the explicit CS queue may read the
+    // proposal's own context without access to every referenced source chat.
+    // This does not grant source history, links, images or file access.
+    if (!nonexclusive(d) || !eligible(actor,d)) return evidenceAllowed(actor,p,d.conversation_id);
+    if (p.images?.some(image => !image.sha256)) throw new BotError(400, 'Image evidence must be bound to its verified bytes');
+    const target=conversation(d.conversation_id)!;
+    for(const e of [...p.evidence,...(p.images ?? [])]) {
+      const source=conversation(e.conversation_id);
+      try { const accessible=chat(actor,e.conversation_id); if (!sameBusiness(db,d.conversation_id,accessible)) throw new BotError(403,'Cross-business evidence is not allowed'); continue; } catch { /* scoped fallback only below */ }
+      if(!source || source.business_team_id!==target.business_team_id || source.user_id!==target.user_id || source.visibility!=='team')
+        throw new BotError(404,'Decision evidence is outside shared business scope');
+    }
+  }
   function read(actor: Actor, id: string) {
     const d = db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(id) as
       | Decision
       | undefined;
     if (!d) throw new BotError(404, 'Decision not found');
     chat(actor, d.conversation_id);
-    evidenceAllowed(actor, JSON.parse(d.proposal_json), d.conversation_id);
+    decisionEvidenceAllowed(actor, JSON.parse(d.proposal_json), d);
     // Reading or changing another decision means the response turn has switched
     // scope. Human browsing must never affect the bot's activity.
     if (actor.conversationId) {
@@ -437,6 +451,11 @@ export function createBotService(db: Database.Database) {
       ...d,
       answer_bridge: answerBridge,
       proposal,
+      image_access: (proposal.images ?? []).map((e: {conversation_id:string}) => { try { chat(actor,e.conversation_id); return 'source_access'; } catch { return 'decision_context_only'; } }),
+      evidence_access: proposal.evidence.map((e: {conversation_id:string}) => {
+        try { chat(actor,e.conversation_id); return 'source_access'; }
+        catch { return 'decision_context_only'; }
+      }),
       order_reference: orderReference(proposal, [proposal.question, proposal.recommendation, proposal.consequence, proposal.blocked_action, ...botReplies.map(r => r.text)], store),
       reply_status: latestDiscussion
         ? latestDiscussion.status === 'cancelled' || latestDiscussion.cancelled ? 'not_delivered'
@@ -694,8 +713,8 @@ export function createBotService(db: Database.Database) {
       for (const e of events) {
         const p = JSON.parse(e.payload_json);
         try {
-          if (e.kind === 'raised') evidenceAllowed(actor, p.proposal, d.conversation_id);
-          if (e.kind === 'revised') evidenceAllowed(actor, p, d.conversation_id);
+          if (e.kind === 'raised') decisionEvidenceAllowed(actor, p.proposal, d);
+          if (e.kind === 'revised') decisionEvidenceAllowed(actor, p, d);
         } catch (error) {
           if (!(error instanceof BotError) || ![403, 404].includes(error.status)) throw error;
           e.payload_json = JSON.stringify({

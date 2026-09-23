@@ -1,3 +1,4 @@
+import { returnExceptionService } from './returnException.js';
 import { routinePolicyService } from './routinePolicies.js';
 import { messageDelegationService, MissingMessageProof, sendCheckSchema, deliveryProofSchema } from './messageDelegation.js';
 import { approvedMessageSchema } from './draftPayload.js';
@@ -55,6 +56,12 @@ export function createCommunicationRouter(ctx: AppContext) {
     req.params.chat === 'current'
       ? (req.agentConversationId ?? '')
       : req.params.chat!;
+  const returnBridge=returnExceptionService(ctx.db);
+  r.post('/return-exception/trust',run((req,res)=>res.json(returnBridge.enroll(actor(req),req.body))));
+  r.post('/return-exception/revoke',run((req,res)=>{
+    const p=z.object({trust_id:key,reason:z.string().trim().min(1).max(2000)}).strict().parse(req.body);
+    res.json(returnBridge.revoke(actor(req),p.trust_id,p.reason));
+  }));
   const routinePolicies = routinePolicyService(ctx.db);
   r.post('/routine-policies/enroll', run((req,res) => res.json(routinePolicies.enroll(actor(req),req.body))));
   r.post('/routine-policies/list', run((req,res) => {

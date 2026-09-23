@@ -157,6 +157,29 @@ describe('VeneerBots', () => {
     expect(s.list(ali,'me').filter(x=>x.id===d.id && x.state==='needs_input')).toHaveLength(1);
     expect(s.thread(ali,d.id).events.some(e=>e.kind==='answered')).toBe(true);
   });
+  it('shares only attached decision context across eleven CS cards and five restricted sources',()=>{
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('cs','Fixture CS',1)").run();
+    db.prepare("UPDATE conversations SET business_team_id='cs'").run();
+    db.prepare("INSERT INTO business_team_members VALUES('cs',2,'member')").run();
+    db.prepare("INSERT INTO employee_workspaces VALUES(2)").run();
+    db.prepare("INSERT INTO employee_bot_access VALUES(2,'fixture-a')").run();
+    db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();
+    db.prepare("INSERT INTO nonexclusive_bot_queues VALUES('fixture-a','cs')").run();
+    for(let i=0;i<5;i++) db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES(?,1,1,'Mixed role','claude',?,'team','cs')").run('source'+i,'session'+i);
+    const ali={user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow};
+    const ids=Array.from({length:11},(_,i)=>s.raise(bot,{source_key:'case'+i,proposal_key:'v1',proposal:proposal({evidence:[{conversation_id:'source'+i%5,label:'Attached case reference'}]})}).id);
+    const before=db.prepare('SELECT proposal_json,version FROM bot_decisions ORDER BY id').all();
+    expect(s.list(ali,'me').filter(x=>ids.includes(x.id))).toHaveLength(11);
+    for(const id of ids) { expect(s.view(ali,s.read(ali,id))).toMatchObject({can_answer:true,evidence_access:['decision_context_only']}); expect(s.thread(ali,id).events.length).toBeGreaterThan(0); }
+    for(let i=0;i<5;i++)expect(()=>s.chat(ali,'source'+i)).toThrow();
+    expect(db.prepare('SELECT proposal_json,version FROM bot_decisions ORDER BY id').all()).toEqual(before);
+    db.prepare("UPDATE conversations SET visibility='private' WHERE id='source0'").run();
+    expect(()=>s.read(ali,ids[0]!)).toThrow();
+    db.prepare("UPDATE conversations SET visibility='team',business_team_id=NULL WHERE id='source0'").run();
+    expect(()=>s.read(ali,ids[0]!)).toThrow();
+    db.prepare("DELETE FROM employee_bot_access WHERE user_id=2").run();
+    expect(s.list(ali,'me')).toHaveLength(0);
+  });
   it('requires the current shared-queue claim for button answers', () => {
     db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();
     const d = raise();

@@ -15,6 +15,8 @@ const EnvSchema = z.object({
   // AutoShip verifier (option A): a second Cloudflare Access application with
   // its own audience and exactly one Service Auth token. Non-secret identity
   // values; all three absent disables the verifier and it fails closed.
+  VP_RETURN_VERIFIER_CF_AUD: z.string().trim().optional(),
+  VP_RETURN_VERIFIER_CLIENT_ID: z.string().trim().optional(),
   VP_AUTOSHIP_VERIFIER_CF_AUD: z.string().trim().optional(),
   VP_AUTOSHIP_VERIFIER_CLIENT_ID: z.string().trim().optional(),
   // The verified AutoShip worker registration the verifier binds to (a chat id
@@ -127,6 +129,8 @@ export interface Config {
   identity: 'cloudflare' | 'dev';
   cfTeamDomain: string | null;
   cfAud: string | null;
+  returnVerifierCfAud?: string | null;
+  returnVerifierClientId?: string | null;
   autoshipVerifierCfAud: string | null;
   autoshipVerifierClientId: string | null;
   autoshipWorkerChatId: string | null;
@@ -253,6 +257,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     identity: parsed.VP_IDENTITY,
     cfTeamDomain: parsed.VP_CF_TEAM_DOMAIN ?? null,
     cfAud: parsed.VP_CF_AUD ?? null,
+    returnVerifierCfAud: parsed.VP_RETURN_VERIFIER_CF_AUD || null,
+    returnVerifierClientId: parsed.VP_RETURN_VERIFIER_CLIENT_ID || null,
     autoshipVerifierCfAud: parsed.VP_AUTOSHIP_VERIFIER_CF_AUD || null,
     autoshipVerifierClientId: parsed.VP_AUTOSHIP_VERIFIER_CLIENT_ID || null,
     autoshipWorkerChatId: parsed.VP_AUTOSHIP_WORKER_CHAT_ID || null,

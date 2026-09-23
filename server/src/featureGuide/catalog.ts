@@ -14,6 +14,27 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'scoped-decision-context',title:'Shared CS questions without private chat access',category:'Teamwork',updated:'2026-09-23',
+    announcement:'Already-authorized ERVP CS teammates can review the context attached to shared decisions even when a referenced source conversation is restricted.',
+    audience:'Existing eligible human handlers in opted-in ERVP CS queues',
+    summary:'See unresolved shared questions without receiving unrelated mixed-role chat history.',
+    steps:['Open Bot work overview → Needs your input. Existing shared cards use your current eligibility.', 'Read the attached proposal and discussion. Restricted source references are labeled and do not open the source conversation.', 'Images you cannot access say Image not shared with your account. Request a scoped copy if it is necessary before deciding.'],
+    example:'Show the shared CS question and its attached context without granting me the source bot’s private history.',
+    limits:'This shares only existing decision context, not every referenced file or chat. Same-business team-source restrictions, current eligibility and version checks remain. No new teammates or approval grants are created. Missing evidence remains missing; viewing does not authorize an action.',
+    agent:'Existing opted-in CS decision readers can see attached proposal context without unrelated source history. Preserve source provenance and explicit unavailable evidence; provide a bounded authorized excerpt when needed. Never claim restricted images were reviewed, grant whole-chat access, or revise an unchanged approval merely for visibility. Guide: /#/bot-guide?feature=scoped-decision-context.',
+  },
+  {
+    id:'return-exception-verifier',title:'Verify one exact return-window exception',category:'Automation',updated:'2026-09-23',
+    announcement:'A dedicated server contract can bind the retained Y4DYW5 approval to authoritative OrderOps item evidence and one submission claim. Separate service setup is required.',
+    audience:'Authenticated business owner for trust enrollment; dedicated OrderOps service for mapping and claims',
+    summary:'Preserve the original human approval while recording later exact source evidence and preventing reuse.',
+    steps:['The business owner registers the verified dedicated service, account and named executor binding using the authenticated return-exception trust API described in the release contract.', 'The configured OrderOps service supplies complete current source evidence, maps the exact item, and obtains one claim for its durable pending submission.', 'Inspect same-key reconciliation and local acknowledgment after uncertainty. Code deployment is not proof of service setup or a completed return.'],
+    example:'Verify this retained one-item return-window approval without granting a refund or repeating the customer action.',
+    limits:'Only the explicitly reviewed approval hash is supported. Dedicated Cloudflare service audience/client, owner trust enrollment and the OrderOps consumer must be configured separately. No live trust or acceptance is performed by the build. This is not generic approval export, routine email authority, a label purchase, or refund permission.',
+    agent:'Do not use list_decisions or message delegation as a server return verifier. The dedicated /api/return-exception/verifier contract requires owner-enrolled service/account/executor trust and complete authoritative source mapping. Claim is single use; reconcile the same pending intent, never a new key or external effect. Preserve the raw approval and all local source gates. Guide: /#/bot-guide?feature=return-exception-verifier.',
+  },
+
+  {
     id:'raised-hands',title:'One queue for raised hands',category:'Daily work',updated:'2026-09-23',
     announcement:'Bot work overview now has one Needs your input queue. Answered work moves out of your way into Progress & history.',
     audience:'People with access to bot decisions, including assigned employees',

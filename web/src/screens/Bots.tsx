@@ -923,7 +923,12 @@ export function Bots({
                       <h3 className="text-sm font-medium">
                         Evidence & context
                       </h3>
-                      {d.proposal.evidence.map((e, i) => (
+                      {d.proposal.evidence.map((e, i) => d.evidence_access?.[i] === 'decision_context_only' ? (
+                        <div key={i} className="mt-2 rounded-lg border p-3 text-sm">
+                          <p>{e.label}</p>
+                          <p className="mt-1 text-muted-foreground">Referenced source · restricted conversation. The context attached to this decision is shared; unrelated source history and files are not. Ask the bot for a decision-specific excerpt if more evidence is needed.</p>
+                        </div>
+                      ) : (
                         <a
                           key={i}
                           href={`#/chat/${e.conversation_id}?from=bots`}

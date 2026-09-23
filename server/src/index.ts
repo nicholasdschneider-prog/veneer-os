@@ -1,3 +1,4 @@
+import { returnExceptionRoutes } from './bots/returnExceptionRoutes.js';
 import { createBotEventsWebhook } from './botWorkflows/routes.js';
 import { startBotWorkflows } from './botWorkflows/background.js';
 import fs from 'node:fs';
@@ -197,6 +198,7 @@ app.use('/webhooks/composio', createComposioWebhookRouter(ctx));
 // AutoShip verifier (option A): its own Cloudflare Access application and
 // service identity, mounted ahead of the human /api identity gate so the
 // service JWT is accepted here and nowhere else. Disabled (404) unless configured.
+app.use('/api/return-exception/verifier', returnExceptionRoutes(ctx));
 app.use('/api/autoship/verifier', createAutoshipVerifierRouter({ db, config }));
 app.use('/api', createApiRouter(ctx));
 // Cloudflare-runtime apps are intercepted at the edge. Local-runtime apps have

@@ -51,6 +51,8 @@ export interface BotDecision {
   created_at: string;
   updated_at: string;
   answered_by?: string | null;
+  image_access?: ('source_access'|'decision_context_only')[];
+  evidence_access?: ('source_access' | 'decision_context_only')[];
   collaborative_answers?: boolean;
   shared_queue?: boolean;
   handler_id?: number | null;

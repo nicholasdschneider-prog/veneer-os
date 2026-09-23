@@ -1,4 +1,5 @@
-/* Hallmark · component: decision evidence gallery · genre: modern-minimal · theme: existing Veneer
+/* Hallmark · pre-emit critique: P5 H4 E4 S5 R5 V3
+ * component: decision evidence gallery · genre: modern-minimal · theme: existing Veneer
  * states: default · hover · focus · active · disabled · loading · error · success
  */
 import { useRef, useState } from 'react';
@@ -36,7 +37,9 @@ export function DecisionImages({ decision }: { decision: BotDecision }) {
     {images.length === 0 ? <p className="text-sm text-muted-foreground">No images attached to this proposal. Ask the bot to attach the relevant customer or case photos.</p> : <>
       <p className="text-xs text-muted-foreground">Supplied evidence for proposal v{decision.version}. Select an image to enlarge.</p>
       <div className="grid min-w-0 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
-        {images.map((item, index) => <ImageTile key={`${decision.version}-${index}`} image={item} url={url(index)} onOpen={button => { opener.current = button; setSelected(index); setZoom(false); setFailed(false); }} />)}
+        {images.map((item, index) => decision.image_access?.[index] === 'decision_context_only' ? <figure key={index} className="min-w-0 rounded-xl border bg-muted/20 p-4 [overflow-wrap:anywhere]">
+          <figcaption className="space-y-2 text-sm"><p className="font-medium">{item.label}</p><p className="text-xs text-muted-foreground">{item.source}</p><p>Image not shared with your account.</p><p className="text-xs text-muted-foreground">The decision context is shared, but this source file remains restricted. Request a scoped copy if it is needed to decide; do not assume you have seen it.</p></figcaption>
+        </figure> : <ImageTile key={`${decision.version}-${index}`} image={item} url={url(index)} onOpen={button => { opener.current = button; setSelected(index); setZoom(false); setFailed(false); }} />)}
       </div>
     </>}
     <Dialog open={!!image} onOpenChange={open => { if (!open) setSelected(null); }}>
