@@ -1075,7 +1075,7 @@ export const QUEUE_APPROVAL_NOTE = 'Approved as proposed.';
 
 /** One-click approval is offered when the viewer can answer now, or can claim a shared question and then answer it. */
 export function canApproveFromQueue(d: BotDecision) {
-  return !d.proposal.choices?.length && d.state === 'needs_input' && (d.can_answer || Boolean(d.shared_queue && !d.handler_id && d.can_handle));
+  return !d.proposal.message_delivery && !d.proposal.choices?.length && d.state === 'needs_input' && (d.can_answer || Boolean(d.shared_queue && !d.handler_id && d.can_handle));
 }
 
 export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selected = false }: { d: BotDecision; selected?: boolean; busy?: boolean; onOpen: () => void; onCall?: () => void; onApprove?: () => void }) {

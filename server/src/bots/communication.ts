@@ -1,28 +1,12 @@
+import { messageDelegationService } from './messageDelegation.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
-import { z } from 'zod';
 import { BotError, createBotService, type Actor } from './service.js';
 import { canSendToConversation } from '../conversations/access.js';
 import type { UserRow, ConversationWakeupRow } from '../db/db.js';
 
-const line = z.string().trim().min(1).max(500);
-export const draftPayload = z
-  .object({
-    channel: z.enum(['email', 'sms', 'slack', 'customer_portal']),
-    account: line,
-    recipients: z.array(line).min(1).max(20),
-    subject: z.string().max(998).default(''),
-    body: z.string().trim().min(1).max(12000),
-    attachments: z
-      .array(z.object({ name: line, reference: line }).strict())
-      .max(10)
-      .default([]),
-    customer: line,
-    ticket: line,
-    context: z.string().max(2000).default(''),
-  })
-  .strict();
-export type DraftPayload = z.infer<typeof draftPayload>;
+import { draftPayload, type DraftPayload } from './draftPayload.js';
+export { draftPayload, type DraftPayload } from './draftPayload.js';
 export type Draft = {
   id: string;
   conversation_id: string;
@@ -35,6 +19,7 @@ export type Draft = {
   authorized_by: number | null;
   receipt: string | null;
   claim_key: string | null;
+  delegation_id: string | null;
 };
 export type Briefing = {
   id: string;
@@ -46,6 +31,7 @@ export type Briefing = {
 };
 export function communicationService(db: Database.Database) {
   const bots = createBotService(db);
+  const delegated = messageDelegationService(db);
   function access(a: Actor, c: string, write = false) {
     const chat = bots.chat(a, c);
     if (write && (!canSendToConversation(a.user, chat, db) || chat.archived))
@@ -63,7 +49,8 @@ export function communicationService(db: Database.Database) {
     access(a, c);
     if (!id) return;
     const d = bots.read(a, id);
-    if (d.conversation_id !== c || d.version !== version)
+    if (d.conversation_id !== c) throw new BotError(409, 'Decision belongs to another bot. Ordinary drafts cannot import its approval; use an explicit approved-message delegation only with complete structured proof.');
+    if (d.version !== version)
       throw new BotError(
         409,
         'The proposal changed. Refresh and review its current version.',
@@ -256,12 +243,13 @@ export function communicationService(db: Database.Database) {
         })
         .immediate();
     },
-    claim(a: Actor, id: string, key: string) {
+    claim(a: Actor, id: string, key: string, sendCheck?: unknown) {
       return db
         .transaction(() => {
           const d = readDraft(a, id);
           access(a, d.conversation_id, true);
-          binding(a, d.conversation_id, d.decision_id, d.decision_version);
+          const bridge = d.delegation_id ? delegated.bound(a, d, true) : null;
+          if (!bridge) binding(a, d.conversation_id, d.decision_id, d.decision_version);
           if (a.conversationId !== d.conversation_id)
             throw new BotError(403, 'Only the owning bot can claim delivery');
           const user = db
@@ -269,7 +257,7 @@ export function communicationService(db: Database.Database) {
             .get(d.authorized_by) as UserRow | undefined;
           if (!user)
             throw new BotError(403, 'Send authorization is no longer valid');
-          authorize({ user }, d);
+          if (!bridge) authorize({ user }, d);
           if (d.state === 'sending' && d.claim_key === key)
             return {
               ...draftView(d),
@@ -283,6 +271,10 @@ export function communicationService(db: Database.Database) {
               409,
               'Delivery already claimed or closed; do not resend',
             );
+          if (bridge) {
+            delegated.checkSend(a, d, sendCheck);
+            delegated.record(a, bridge.g, 'claimed', key, {draft_id:id, send_check:sendCheck});
+          }
           db.prepare(
             "UPDATE bot_message_drafts SET state='sending',claim_key=?,updated_at=datetime('now') WHERE id=?",
           ).run(key, id);
@@ -290,7 +282,7 @@ export function communicationService(db: Database.Database) {
             ...draftView(readDraft(a, id)),
             execute: true,
             authorized_name: user.display_name,
-            approval_source: `Veneer draft ${id} v${d.version}`,
+            approval_source: bridge ? `Veneer decision ${d.decision_id} v${d.decision_version}; original approval ${bridge.approval.id}; delegation ${d.delegation_id}; draft ${id}` : `Veneer draft ${id} v${d.version}`,
             idempotency_key: `veneer-message:${id}`,
           };
         })
@@ -302,18 +294,25 @@ export function communicationService(db: Database.Database) {
       key: string,
       state: 'sent' | 'failed' | 'uncertain',
       receipt: string,
+      deliveryProof?: unknown,
     ) {
+      return db.transaction(() => {
       const d = readDraft(a, id);
       access(a, d.conversation_id, true);
       if (a.conversationId !== d.conversation_id || d.claim_key !== key)
         throw new BotError(403, 'Only the claiming bot can record delivery');
-      if (d.state === state && d.receipt === receipt) return draftView(d);
+      if (d.state === state && d.receipt === receipt) {
+        if (d.delegation_id) delegated.delivery(a, d, state, receipt, deliveryProof);
+        return draftView(d);
+      }
       if (!['sending', 'uncertain'].includes(d.state))
         throw new BotError(409, 'Delivery is already closed');
+      if (d.delegation_id) delegated.delivery(a, d, state, receipt, deliveryProof);
       db.prepare(
         "UPDATE bot_message_drafts SET state=?,receipt=?,updated_at=datetime('now') WHERE id=?",
       ).run(state, receipt, id);
       return draftView(readDraft(a, id));
+      }).immediate();
     },
     saveBriefing(
       a: Actor,

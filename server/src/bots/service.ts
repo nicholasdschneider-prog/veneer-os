@@ -1,3 +1,4 @@
+import { approvedMessageSchema } from './draftPayload.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -47,6 +48,7 @@ export const proposalSchema = z
     assignee_id: z.number().int().positive(),
     team: z.string().max(160).default(''),
     deadline: z.string().datetime({ offset: true }).nullable().default(null),
+    message_delivery: approvedMessageSchema.optional(),
     images: z.array(decisionImageSchema).max(12).optional(),
     evidence: z.array(evidenceSchema).max(30).default([]),
     blocked_action: text,

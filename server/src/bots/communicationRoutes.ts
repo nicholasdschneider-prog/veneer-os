@@ -1,3 +1,5 @@
+import { messageDelegationService, MissingMessageProof, sendCheckSchema, deliveryProofSchema } from './messageDelegation.js';
+import { approvedMessageSchema } from './draftPayload.js';
 import express from 'express';
 import { messageAudioRoutes } from './messageAudioRoutes.js';
 import crypto from 'node:crypto';
@@ -21,6 +23,7 @@ export function createCommunicationRouter(ctx: AppContext) {
     return Buffer.from(await response.arrayBuffer());
   }));
   const s = communicationService(ctx.db);
+  const delegations = messageDelegationService(ctx.db);
   const generating = new Map<string, Promise<void>>();
   const actor = (req: express.Request): Actor => ({
     user: req.user!,
@@ -37,7 +40,8 @@ export function createCommunicationRouter(ctx: AppContext) {
       Promise.resolve()
         .then(() => fn(req, res))
         .catch((e) => {
-          if (e instanceof BotError)
+          if (e instanceof MissingMessageProof) res.status(e.status).json({ error:e.message, missing_proof:e.missing_proof });
+          else if (e instanceof BotError)
             res.status(e.status).json({ error: e.message });
           else if (e instanceof z.ZodError)
             res
@@ -54,6 +58,23 @@ export function createCommunicationRouter(ctx: AppContext) {
     '/chats/:chat',
     run((req, res) => res.json(s.list(actor(req), current(req)))),
   );
+  r.post('/approved-messages/inspect', run((req,res) => {
+    const p=z.object({decision_id:key,expected_version:version}).strict().parse(req.body);
+    res.json(delegations.inspect(actor(req),p.decision_id,p.expected_version));
+  }));
+  r.post('/approved-messages/delegate', run((req,res) => {
+    const p=z.object({decision_id:key,expected_version:version,executor_conversation_id:key,request_key:key,scope:approvedMessageSchema}).strict().parse(req.body);
+    res.json(delegations.delegate(actor(req),p.decision_id,p.expected_version,p.executor_conversation_id,p.request_key,p.scope));
+  }));
+  r.post('/approved-messages/revoke', run((req,res) => {
+    const p=z.object({delegation_id:key,request_key:key,reason:z.string().trim().min(1).max(2000)}).strict().parse(req.body);
+    res.json(delegations.revoke(actor(req),p.delegation_id,p.request_key,p.reason));
+  }));
+  r.post('/approved-messages/accept', run((req,res) => {
+    const p=z.object({delegation_id:key,request_key:key,scope:approvedMessageSchema}).strict().parse(req.body);
+    const draft=delegations.accept(actor(req),p.delegation_id,p.request_key,p.scope);
+    res.json(s.draftView(s.readDraft(actor(req),draft.id)));
+  }));
   r.post(
     '/chats/:chat/drafts',
     run((req, res) => {
@@ -98,8 +119,8 @@ export function createCommunicationRouter(ctx: AppContext) {
   r.post(
     '/drafts/:id/claim',
     run((req, res) => {
-      const p = z.object({ claim_key: key }).strict().parse(req.body);
-      res.json(s.claim(actor(req), req.params.id!, p.claim_key));
+      const p = z.object({ claim_key: key, send_check: sendCheckSchema.optional() }).strict().parse(req.body);
+      res.json(s.claim(actor(req), req.params.id!, p.claim_key, p.send_check));
     }),
   );
   r.post(
@@ -110,6 +131,7 @@ export function createCommunicationRouter(ctx: AppContext) {
           claim_key: key,
           state: z.enum(['sent', 'failed', 'uncertain']),
           receipt: z.string().trim().min(1).max(2000),
+          delivery_proof: deliveryProofSchema.optional(),
         })
         .strict()
         .parse(req.body);

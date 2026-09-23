@@ -22,6 +22,7 @@ export interface BotProposal {
   assignee_id: number;
   team: string;
   deadline: string | null;
+  message_delivery?: {canonical_case:string;executor_conversation_id:string;payload:{channel:string;account:string;recipients:string[];subject:string;body:string;customer:string;ticket:string;context:string;attachments:{name:string;reference:string;sha256:string}[]}};
   images?: { conversation_id: string; path: string; label: string; source: string; sha256?: string }[];
   evidence: { label: string; conversation_id: string }[];
   blocked_action: string;

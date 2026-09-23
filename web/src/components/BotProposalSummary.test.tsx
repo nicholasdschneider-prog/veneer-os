@@ -32,4 +32,9 @@ describe('human decision review', () => {
     expect(html).not.toContain('line-clamp');
   });
 
+  it('shows every structured message authorization field and keeps exact body whitespace', () => {
+    const decision = { proposal: { recommendation:'Send the approved note.',consequence:'No financial actions.',blocked_action:'Verify source first.',message_delivery:{canonical_case:'fixture-case',executor_conversation_id:'fixture-nora',payload:{channel:'email',account:'Fixture support',recipients:['fixture@example.test'],subject:'Fixture subject',body:'Exact body.\nSecond line. ',customer:'Fixture customer',ticket:'fixture-case',context:'Fixture context',attachments:[{name:'evidence.pdf',reference:'retained-evidence',sha256:'a'.repeat(64)}]}}} } as BotDecision;
+    const html=renderToStaticMarkup(<BotProposalSummary decision={decision} />);
+    for(const text of ['Exact customer message to authorize','Fixture support','fixture@example.test','fixture-case','fixture-nora','Fixture subject','Exact body.\nSecond line. ','evidence.pdf','retained-evidence','a'.repeat(64)])expect(html).toContain(text);
+  });
 });
