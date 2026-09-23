@@ -21,7 +21,7 @@ export function GroupConversationRow({
         )
       }
     >
-      <GroupAvatar members={group.members} />
+      <GroupAvatar members={group.roomKind === "dm" ? group.members.filter(m => m.key !== group.selfKey) : group.members} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate font-medium">

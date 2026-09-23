@@ -1,4 +1,4 @@
-import { useRoomUnread } from '@/lib/teamRooms';
+import { ChatUnread, useChatUnread } from './ChatUnread';
 import { WorkspaceSearchButton } from './BotWorkflows';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -6,7 +6,6 @@ import {
   BookOpen,
   Ellipsis,
   MessageSquare,
-  MessagesSquare,
   Settings,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
@@ -56,9 +55,8 @@ export type NavSelection = NavKey | `app:${string}`;
 
 type Item = { key: NavSelection; label: string; icon: LucideIcon; hash: string };
 
-const MESSAGES: Item = { key: 'messages', label: 'Messages', icon: MessagesSquare, hash: '#/messages' };
-const CHATS: Item = { key: 'chats', label: 'Chats', icon: MessageSquare, hash: '#/' };
-const BOTS: Item = { key: 'bots', label: 'VeneerBots', icon: Bot, hash: '#/bots' };
+const CHATS: Item = { key: 'chats', label: 'Workspace', icon: MessageSquare, hash: '#/' };
+const BOTS: Item = { key: 'bots', label: 'Chats', icon: Bot, hash: '#/bots' };
 const GUIDE: Item = { key: 'guide', label: 'Bot guide', icon: BookOpen, hash: '#/bot-guide' };
 const SETTINGS: Item = { key: 'settings', label: 'Settings', icon: Settings, hash: '#/settings' };
 const SYSTEM_USAGE_POLL_MS = 5_000;
@@ -313,8 +311,7 @@ export function NavShell({
   const { usage, now } = useUsage(chatOpen);
   const claudeRing = claudeRingModel(usage, now);
   const codexRing = codexRingModel(usage, now);
-  const roomUnread = useRoomUnread();
-  const botInputCount = useBotInputCount(current);
+  const unread = useChatUnread();
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
   const clientLogoUrlRef = useRef<string | null>(null);
 
@@ -369,8 +366,8 @@ export function NavShell({
         hash: `#/apps/${encodeURIComponent(item.appId)}`,
       };
     });
-  const desktopItems = [CHATS, BOTS, MESSAGES, GUIDE, ...configuredItems];
-  // Mobile bar, left to right: Chats · VeneerBots · More · Claude ring ·
+  const desktopItems = [CHATS, BOTS, GUIDE, ...configuredItems];
+  // Mobile bar, left to right: Workspace · Chats · More · Claude ring ·
   // Settings. Every configured item, including Automations and pinned Mini Apps,
   // sits behind More so the
   // bar has room for the usage ring and stays comfortable for thumbs.
@@ -388,7 +385,7 @@ export function NavShell({
         aria-current={active ? 'page' : undefined}
         className={cn(
           'relative flex items-center justify-center transition-colors',
-          desktop ? 'flex-none py-2.5' : 'flex-1',
+          desktop ? 'flex-none flex-col py-2.5' : 'flex-1',
           active ? 'text-foreground' : 'text-muted-foreground active:text-foreground',
         )}
       >
@@ -405,13 +402,8 @@ export function NavShell({
           />
         ) : null}
         <Icon className="size-5 shrink-0" />
-        {it.key === 'messages' ? <NavCountBadge count={roomUnread} label={`${roomUnread} unread team messages`} /> : null}
-        {it.key === 'bots' ? (
-          <NavCountBadge
-            count={botInputCount}
-            label={`${botInputCount} ${botInputCount === 1 ? 'decision needs' : 'decisions need'} your input`}
-          />
-        ) : null}
+        {it.key === 'bots' && <span className="absolute bottom-0.5 md:relative md:bottom-auto md:mt-1"><ChatUnread {...unread} /></span>}
+
       </button>
     );
     return desktop ? (
@@ -468,7 +460,6 @@ export function NavShell({
           <div className={cn('min-w-0 flex-1 items-stretch', isDesktop ? 'hidden' : 'flex')}>
             {renderItem(CHATS)}
             {renderItem(BOTS)}
-            {renderItem(MESSAGES)}
             {mobileOverflow.length ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

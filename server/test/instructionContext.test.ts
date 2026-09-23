@@ -48,7 +48,9 @@ describe('instruction context migration', () => {
     expect(result.developerInstructions).toContain('Listen beside Reply');
     expect(result.developerInstructions).toContain('read_team_room');
     expect(result.developerInstructions).toContain('post_team_room_message');
-    expect(result.developerInstructions).toContain('VeneerBots → + → choose members → Next');
+    expect(result.developerInstructions).toContain('Chats → + (New conversation)');
+    expect(result.developerInstructions).toContain('reviewing shared context');
+    expect(result.developerInstructions).toContain('Room sessions do not inherit original external connections');
     expect(result.developerInstructions).toContain('Casual groups created with + use team rooms');
     expect(result.developerInstructions).toContain('Keep my original role.');
     expect(result.developerInstructions).not.toContain('A later unrelated role.');

@@ -21,7 +21,7 @@ export function BotGuide({ hash, onNavigate }: { hash: string; onNavigate: (hash
   return <div className="h-full overflow-y-auto bg-background">
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
       <header className="border-b pb-7">
-        <button className="mb-5 min-h-9 text-sm text-muted-foreground underline underline-offset-4" onClick={() => onNavigate('#/bots')}>Back to VeneerBots</button>
+        <button className="mb-5 min-h-9 text-sm text-muted-foreground underline underline-offset-4" onClick={() => onNavigate('#/bots')}>Back to Chats</button>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"><BookOpen className="size-4" /> The employee handbook</p>

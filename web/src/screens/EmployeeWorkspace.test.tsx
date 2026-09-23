@@ -2,7 +2,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { EmployeeWorkspace } from './EmployeeWorkspace';
 
-vi.mock('@/components/NavBar', () => ({ useBotInputCount: () => 2 }));
 vi.mock('./Bots', () => ({ Bots: ({ restricted, decisionId }: { restricted: boolean; decisionId?: string }) => <div data-overview={restricted} data-decision={decisionId} /> }));
 vi.mock('@/components/layout/SplitView', () => ({ SplitView: ({ sidebar, children }: { sidebar: React.ReactNode; children: React.ReactNode }) => <>{sidebar}{children}</> }));
 vi.mock('@/components/BotConversationRail', () => ({ BotConversationRail: ({ selectedId, restricted }: { selectedId: string; restricted: boolean }) => <aside data-selected={selectedId} data-restricted={restricted} /> }));
@@ -21,10 +20,15 @@ describe('employee bot navigation', () => {
     expect(html).not.toContain('data-overview');
   });
 
-  it.each(['#/chat/new', '#/settings', '#/chat/grant/extra'])('keeps %s in the restricted overview', hash => {
+  it.each(['#/bots', '#/messages', '#/chat/new', '#/settings', '#/chat/grant/extra'])('keeps %s in the restricted Chats list', hash => {
     const html = render(hash);
-    expect(html).toContain('data-overview="true"');
+    expect(html).toContain('<aside data-restricted="true"');
+    expect(html).not.toContain('data-overview');
     expect(html).not.toContain('data-native-chat');
+  });
+
+  it('keeps the bot work overview accessible', () => {
+    expect(render('#/bots?view=work')).toContain('data-overview="true"');
   });
 
   it('preserves decision links and does not open platform panels from query parameters', () => {

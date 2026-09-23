@@ -655,7 +655,7 @@ export function ChatList({
     <div className="mx-auto flex h-full max-w-2xl flex-col pt-[env(safe-area-inset-top)]">
       <header className="flex items-center justify-between gap-2 px-5 pb-3 pt-6">
         {view === 'active' ? (
-          <h1 className="min-w-0 truncate text-2xl font-semibold">Chats</h1>
+          <h1 className="min-w-0 truncate text-2xl font-semibold">Workspace</h1>
         ) : (
           <div className="flex min-w-0 items-center gap-2">
             <Button

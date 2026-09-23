@@ -63,3 +63,13 @@ Changed files:
 - [web/src/screens/BotGuide.tsx](/Users/archerclawdington/veneer-os/web/src/screens/BotGuide.tsx)
 - [web/src/screens/Bots.tsx](/Users/archerclawdington/veneer-os/web/src/screens/Bots.tsx)
 - [web/src/screens/EmployeeWorkspace.tsx](/Users/archerclawdington/veneer-os/web/src/screens/EmployeeWorkspace.tsx)
+
+## Unified Chats — September 23, 2026
+
+Chats replaces the separate VeneerBots and Messages destinations. The project conversation surface is labeled Workspace. People contains human DMs and groups with other people; Bots retains individual bots, team groupings, and bot-only groups. Blue person and violet bot badges count unread conversations for the signed-in user across businesses. The work overview remains accessible from Chats.
+
+The + button starts a human DM, opens an existing bot, or creates a group. Typing @ distinguishes current members from bots available to invite. Inviting a bot from a DM creates a separate group with explicitly reviewed text and the first request in one transaction. The original DM and its attachments stay intact. All humans must already have access to the bot. Existing groups retain creator-only membership management and disclose full-history access.
+
+Room bots still do not inherit their original connected accounts or private history. The UI, invitation dialog, wake instructions, and guide explain this limit; QuickBooks actions still use the original connected bot and existing approval flow. No financial integration or external action was enabled by this release.
+
+Verification and screenshots are recorded in [the implementation report](./reports/unified-chats/report.md). The guide browser checks cover full and restricted employee access, feature discovery, current steps, search, aging, and refresh. The instruction-context regression verifies that resumed bots receive the new Chats and invitation guidance without changing their frozen role snapshots.

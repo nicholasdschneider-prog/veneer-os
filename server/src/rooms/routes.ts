@@ -64,6 +64,9 @@ export function createRoomsRouter(ctx: AppContext) {
       res.json(s.update(actor(req), String(req.params.id), req.body)),
     ),
   );
+  router.post('/:id/invite', run((req, res) =>
+    res.json({ room: s.invite(actor(req), String(req.params.id), req.body) }),
+  ));
   router.post(
     "/:id/messages",
     run((req, res) =>

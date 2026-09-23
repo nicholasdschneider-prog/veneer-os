@@ -29,7 +29,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'PATCH') return /^\/bots\/preferences\/[^/]+\/?$/.test(path);
   if (method === 'POST') return [
     /^\/bot-communication\/(chats\/[^/]+\/listen|message-audio\/[^/]+\/\d+)\/?$/,
-    /^\/team-rooms(?:\/[^/]+\/(messages|seen|files))?\/?$/,
+    /^\/team-rooms(?:\/[^/]+\/(messages|seen|files|invite))?\/?$/,
     /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,
     /^\/bot-workflows\/push\/?$/,
     /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|connected|end))?\/?$/,

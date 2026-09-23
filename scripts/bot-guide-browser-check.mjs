@@ -30,13 +30,14 @@ try {
       if (path === '/api/page-brand') return route.fulfill({ json: { brand: {} } });
       return route.fulfill({ status: 404, json: { error: 'Not available in fixture' } });
     });
-    await page.goto('http://127.0.0.1:3298/#/bots');
+    await page.goto('http://127.0.0.1:3298/#/bots?view=work');
     if (!restricted) {
       await page.getByRole('button', { name: 'Bot guide', exact: true }).focus();
       await page.keyboard.press('Enter');
       await page.getByRole('heading', { name: 'Work with your VeneerBots' }).waitFor();
-      await page.getByRole('button', { name: 'Back to VeneerBots' }).click();
+      await page.getByRole('button', { name: 'Back to Chats' }).click();
     }
+    await page.goto('http://127.0.0.1:3298/#/bots?view=work');
     await page.getByRole('button', { name: /See what’s new/ }).click();
     await page.getByRole('heading', { name: 'Work with your VeneerBots' }).waitFor();
     assert.equal(await page.getByRole('button', { name: /^New features/ }).getAttribute('aria-pressed'), 'true');
@@ -45,8 +46,8 @@ try {
     await page.getByRole('searchbox').fill('Listen to a full bot message');
     await page.getByRole('heading', { name: 'Listen to a full bot message', exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 1);
-    await page.getByRole('searchbox').fill('Message teammates');
-    await page.getByRole('heading', { name: 'Message teammates and bots together', exact: true }).waitFor();
+    await page.getByRole('searchbox').fill('Chat with people');
+    await page.getByRole('heading', { name: 'Chat with people and bots in one place', exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 1);
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();

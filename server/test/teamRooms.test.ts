@@ -85,6 +85,46 @@ describe("private team rooms", () => {
     s = createRoomService(db);
   });
   afterEach(() => db.close());
+  it('allows human employees to invite bots without widening room-worker routes', () => {
+    expect(employeeRouteAllowed('POST', '/team-rooms/dm/invite')).toBe(true);
+  });
+  it('forks a DM with reviewed context and exactly one bot request on retries', () => {
+    const dm = s.create(owner, { team_id: 'one', kind: 'dm', name: 'DM', members: ['user:2'], request_key: 'dm' });
+    post(dm.id, owner, { text: 'Private detail that must not leak' });
+    const input = { bot_key: 'bot:bot-a', expected_revision: 1, context: 'Ali: What is this charge?\nNick: Software subscriptions.', text: '@Bot categorize the specified charge', request_key: 'invite' };
+    const group = s.invite(ali, dm.id, input);
+    expect(group.kind).toBe('group');
+    expect(group.members.map(m => m.key).sort()).toEqual(['bot:bot-a', 'user:1', 'user:2']);
+    expect(group.messages).toHaveLength(2);
+    expect(JSON.stringify(group.messages)).not.toContain('Private detail');
+    expect(s.read(owner, dm.id).members).toHaveLength(2);
+    expect(s.read(owner, dm.id).messages).toHaveLength(1);
+    expect(wakes()).toHaveLength(1);
+    expect(wakes()[0]!.actor_user_id).toBe(2);
+    expect(s.invite(ali, dm.id, input).id).toBe(group.id);
+    expect(wakes()).toHaveLength(1);
+    expect(() => s.invite(ali, dm.id, { ...input, text: 'Different action' })).toThrow('Send key');
+    expect(wakes()).toHaveLength(1);
+    expect(s.list(owner).find(r => r.id === dm.id)?.self_key).toBe('user:1');
+  });
+  it('rolls back invitations when any participant lacks bot access', () => {
+    const dm = s.create(owner, { team_id: 'one', kind: 'dm', name: 'DM', members: ['user:2'], request_key: 'dm' });
+    db.prepare("UPDATE conversations SET visibility='private' WHERE id='bot-a'").run();
+    const input = { bot_key: 'bot:bot-a', expected_revision: 1, context: '', text: 'Review', request_key: 'invite' };
+    expect(() => s.invite(owner, dm.id, input)).toThrow('Each person');
+    expect(s.list(owner)).toHaveLength(1);
+    expect(wakes()).toHaveLength(0);
+    expect(() => s.invite(other, dm.id, input)).toThrow('not found');
+  });
+  it('keeps read positions personal and specific to each conversation', () => {
+    const first = create(), second = create();
+    post(first.id, ali); post(second.id, ali);
+    s.seen(owner, first.id, 1);
+    expect(s.list(owner).find(r => r.id === first.id)?.unread).toBe(0);
+    expect(s.list(owner).find(r => r.id === second.id)?.unread).toBe(1);
+    post(first.id, owner);
+    expect(s.list(ali).find(r => r.id === first.id)?.unread).toBe(1);
+  });
   it("uses active business IDs and distinguishes humans/bots", () => {
     expect(s.directory(ali).teams[0]!.people.map((p) => p.key)).not.toContain(
       "user:3",

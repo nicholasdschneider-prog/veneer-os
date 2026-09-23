@@ -330,9 +330,9 @@ export function App() {
     </NavShell>
   );
 
-  if (routePath === '#/messages' || routePath.startsWith('#/messages/')) return (
-    <NavShell current={params.get("from")==="bots"?"bots":"messages"} canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-      <TeamMessages roomId={routePath.split('/')[2]} fromBots={params.get("from")==="bots"} onNavigate={navigate} />
+  if (routePath.startsWith('#/messages/')) return (
+    <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <TeamMessages roomId={routePath.split('/')[2]} fromBots={true} onNavigate={navigate} />
     </NavShell>
   );
 
@@ -344,6 +344,12 @@ export function App() {
       </NavShell>
     );
   }
+
+  if (routePath === '#/messages' || (routePath === '#/bots' && !params.has('view') && !params.has('register'))) return (
+    <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <div className="mx-auto h-full max-w-3xl"><BotConversationRail onNavigate={navigate} /></div>
+    </NavShell>
+  );
 
   if (routePath === '#/bots' || routePath.startsWith('#/bots/')) {
     const botsSegments = routePath.split('/');

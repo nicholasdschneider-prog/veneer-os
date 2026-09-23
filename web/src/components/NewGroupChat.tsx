@@ -62,7 +62,7 @@ export function NewGroupChat({
     try {
       const result = await roomApi.create({
         team_id: teamId,
-        kind: "group",
+        kind: members.length === 1 && members[0]?.kind === "human" ? "dm" : "group",
         name:
           name.trim() ||
           members
@@ -87,7 +87,7 @@ export function NewGroupChat({
       <Button
         variant="ghost"
         className="min-h-[44px] min-w-[44px] rounded-full"
-        aria-label="New group chat"
+        aria-label="New conversation"
         onClick={() => {
           setStep(1);
           setSelected([]);
@@ -122,21 +122,26 @@ export function NewGroupChat({
               {step === 1 ? <X /> : <ArrowLeft />}
             </Button>
             <DialogTitle className="min-w-0 flex-1 truncate">
-              New Group Chat
+              New conversation
             </DialogTitle>
             {step === 1 && (
               <Button
                 className="min-h-[44px] rounded-full bg-blue-600 text-white hover:bg-blue-700"
-                disabled={!members.length || !team?.can_create}
-                onClick={() => setStep(2)}
+                disabled={busy || !members.length || !team?.can_create}
+                onClick={() => {
+                  if (members.length === 1 && members[0]?.kind === 'bot') {
+                    setOpen(false);
+                    onNavigate('#/chat/' + members[0].key.slice(4) + '?from=bots');
+                  } else if (members.length === 1 && members[0]?.kind === 'human') void create();
+                  else setStep(2);
+                }}
               >
-                Next
+                {busy ? "Opening…" : members.length === 1 ? "Open chat" : "Next"}
               </Button>
             )}
           </header>
           <DialogDescription className="sr-only">
-            Choose members, then name your group. New members can read the group
-            history.
+            Choose a person for a direct message, a bot to open its chat, or several members for a group.
           </DialogDescription>
           {step === 1 ? (
             <>
@@ -190,7 +195,7 @@ export function NewGroupChat({
                 <input
                   aria-label="Add another member"
                   placeholder={
-                    members.length ? "Add another" : "Find a bot or person"
+                    members.length ? "Add another" : "Find a person or bot"
                   }
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}

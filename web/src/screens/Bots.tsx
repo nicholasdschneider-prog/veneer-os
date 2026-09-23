@@ -1,3 +1,4 @@
+import { isPeopleConversation } from '@/lib/teamRooms';
 import {NewGroupChat} from '@/components/NewGroupChat';
 import {GroupConversationRow} from '@/components/GroupConversationRow';
 import {useBotGroups,mergeBotGroups} from '@/lib/botGroups';
@@ -348,7 +349,7 @@ export function Bots({
               <BotIcon className="size-4" /> Your operational team
             </div>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {restricted ? 'Customer Service' : 'VeneerBots'}
+              Bot work overview
             </h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
               A home for your ongoing work. Answer a question; your bot picks up
@@ -638,7 +639,7 @@ export function Bots({
               )}
               {groupError&&<p role="alert" className="p-3 text-sm text-destructive">{groupError}</p>}
               <div className="divide-y rounded-2xl border bg-card">
-                {mergeBotGroups(bots,groups).map(entry=>{
+                {mergeBotGroups(bots,groups.filter(g => !isPeopleConversation(g))).map(entry=>{
                   if(entry.kind!=='bot')return <GroupConversationRow key={entry.kind+entry.id} group={entry} onNavigate={onNavigate}/>;
                   const bot=entry.bot;
                   return (

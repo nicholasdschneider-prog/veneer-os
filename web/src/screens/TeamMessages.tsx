@@ -6,12 +6,9 @@ import {
   ArrowUp,
   AtSign,
   Bot,
-  MessageCircle,
   Mic,
   Paperclip,
-  Plus,
   Square,
-  Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,160 +51,27 @@ function Avatar({ name, bot = false }: { name: string; bot?: boolean }) {
     </span>
   );
 }
-export function TeamMessages({
-  roomId,
-  fromBots = false,
-  restricted = false,
-  onNavigate,
-}: {
-  roomId?: string;
-  fromBots?: boolean;
-  restricted?: boolean;
-  onNavigate: (hash: string) => void;
+export function TeamMessages({ roomId, restricted = false, onNavigate }: {
+  roomId?: string; fromBots?: boolean; restricted?: boolean; onNavigate: (hash: string) => void;
 }) {
-  const [rooms, setRooms] = useState<TeamRoom[]>([]),
-    [directory, setDirectory] = useState<RoomDirectory | null>(null),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(true),
-    [create, setCreate] = useState(false);
+  const [directory, setDirectory] = useState<RoomDirectory | null>(null);
+  const [directoryError, setDirectoryError] = useState('');
   useEffect(() => {
-    let alive = true;
-    const refresh = () => {
-      if (document.hidden) return;
-      void Promise.all([roomApi.list(), roomApi.directory()])
-        .then(([r, d]) => {
-          if (alive) {
-            setRooms(r.rooms);
-            setDirectory(d);
-            setError("");
-          }
-        })
-        .catch((e) => {
-          if (alive) setError(errorText(e));
-        })
-        .finally(() => {
-          if (alive) setLoading(false);
-        });
-    };
+    let active = true;
+    const refresh = () => void roomApi.directory().then(d => {
+      if (active) { setDirectory(d); setDirectoryError(''); }
+    }).catch(e => { if (active) setDirectoryError(errorText(e)); });
     refresh();
-    const timer = setInterval(refresh, 5000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, [roomId, create]);
-  return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      {fromBots ? <div className="hidden w-72 shrink-0 md:block"><BotConversationRail restricted={restricted} selectedGroup={"room:"+roomId} onNavigate={onNavigate}/></div> : <aside
-        className={`${roomId ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-r md:w-72`}
-      >
-        <header className="flex items-center justify-between border-b px-4 py-3">
-          <h1 className="text-lg font-semibold">Messages</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-[44px] text-foreground"
-            aria-label="New message"
-            onClick={() => setCreate(true)}
-          >
-            <Plus />
-          </Button>
-        </header>
-        <div className="flex-1 overflow-y-auto p-2">
-          {loading && (
-            <p role="status" className="p-4 text-sm text-muted-foreground">
-              Loading messages…
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="p-3 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          {!loading && !rooms.length && (
-            <div className="p-4 text-sm text-muted-foreground">
-              <MessageCircle className="mb-3 size-7" />
-              <p>Keep your team’s conversations here.</p>
-              <Button className="mt-4" onClick={() => setCreate(true)}>
-                New message
-              </Button>
-            </div>
-          )}
-          {rooms.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => onNavigate("#/messages/" + r.id)}
-              aria-current={r.id === roomId ? "page" : undefined}
-              className={`flex min-h-16 w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted ${r.id === roomId ? "bg-muted" : ""}`}
-            >
-              {r.kind==="group"?<GroupAvatar members={r.members}/>:<Avatar name={roomTitle(r, directory?.self_key ?? "")} />}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">
-                  {roomTitle(r, directory?.self_key ?? "")}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {r.kind === "dm"
-                    ? "Direct message"
-                    : `${r.members.length} members`}
-                </span>
-              </span>
-              {r.unread > 0 && (
-                <span
-                  className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground"
-                  aria-label={`${r.unread} unread`}
-                >
-                  {r.unread}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        <p className="border-t px-4 py-3 text-xs text-muted-foreground">
-          Private to the people and bots in each room.
-        </p>
-      </aside>}
-      {roomId ? (
-        <RoomConversation
-          key={roomId}
-          id={roomId}
-          backHash={fromBots?"#/bots":"#/messages"}
-          directory={directory}
-          onNavigate={onNavigate}
-        />
-      ) : (
-        <div className="hidden flex-1 flex-col items-center justify-center gap-3 p-8 text-center md:flex">
-          <Users className="size-9 text-muted-foreground" />
-          <h2 className="text-xl font-semibold">
-            Your team, in one conversation
-          </h2>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Message a teammate or bring people and bots together in a named
-            group.
-          </p>
-          <Button onClick={() => setCreate(true)}>New message</Button>
-        </div>
-      )}
-      <Dialog open={create} onOpenChange={setCreate}>
-        <DialogContent className="rounded-3xl sm:max-w-lg [&>[data-slot=dialog-close]]:size-[44px]">
-          <DialogTitle>New message</DialogTitle>
-          <DialogDescription>
-            Choose a teammate, or create a group with people and bots.
-          </DialogDescription>
-          {directory ? (
-            <RoomEditor
-              directory={directory}
-              onDone={(id) => {
-                setCreate(false);
-                onNavigate("#/messages/" + id);
-              }}
-            />
-          ) : (
-            <p role="status">Loading your team…</p>
-          )}
-        </DialogContent>
-      </Dialog>
+    const timer = setInterval(refresh, 10000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
+  return <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
+    <div className={`${roomId ? 'hidden md:block md:w-72' : 'w-full'} shrink-0`}>
+      <BotConversationRail restricted={restricted} selectedGroup={roomId ? 'room:' + roomId : undefined} onNavigate={onNavigate} />
     </div>
-  );
+    {directoryError && <p role="alert" className="p-3 text-sm text-destructive">Could not load invitation choices: {directoryError}</p>}
+    {roomId && <RoomConversation key={roomId} id={roomId} backHash="#/bots" directory={directory} onNavigate={onNavigate} />}
+  </div>;
 }
 function RoomEditor({
   directory,
@@ -441,11 +305,16 @@ function RoomConversation({
     [mentions, setMentions] = useState<RoomPerson[]>([]),
     [everyone, setEveryone] = useState(false),
     [mentionOpen, setMentionOpen] = useState(false),
+    [inviting, setInviting] = useState<RoomPerson | null>(null),
+    [sharedContext, setSharedContext] = useState(''),
+    [inviteText, setInviteText] = useState(''),
+    [inviteError, setInviteError] = useState(''),
     [files, setFiles] = useState<RoomFile[]>([]),
     [busy, setBusy] = useState(false),
     [uploading, setUploading] = useState(false),
     [recording, setRecording] = useState(false),
     [finalizing, setFinalizing] = useState(false);
+  const inviteAttempt = useRef<{ key: string; body: string } | null>(null);
   const alive = useRef(true),
     roomRef = useRef<TeamRoom | null>(null),
     scroller = useRef<HTMLDivElement>(null),
@@ -621,6 +490,39 @@ function RoomConversation({
     setMentionOpen(false);
     textarea.current?.focus();
   };
+  const beginInvite = (person: RoomPerson) => {
+    if (!room) return;
+    setInviting(person);
+    setInviteError('');
+    setSharedContext(room.messages.slice(-6).map(m => `${m.author_name}: ${m.text}`).join('\n\n').slice(0, 6000));
+    setInviteText(draft.replace(/@[^@\s]*$/, '') + `@${person.name} `);
+    setMentionOpen(false);
+  };
+  const confirmInvite = async () => {
+    if (!room || !inviting || busy) return;
+    setBusy(true);
+    setInviteError('');
+    try {
+      if (room.kind === 'dm') {
+        const body = { bot_key: inviting.key, expected_revision: room.revision, context: sharedContext, text: inviteText };
+        const fingerprint = JSON.stringify(body);
+        if (inviteAttempt.current?.body !== fingerprint) inviteAttempt.current = { body: fingerprint, key: crypto.randomUUID() };
+        const result = await roomApi.invite(id, { ...body, request_key: inviteAttempt.current.key });
+        window.dispatchEvent(new Event('bot-groups-changed'));
+        onNavigate('#/messages/' + result.room.id + '?from=bots');
+      } else {
+        await roomApi.update(id, { expected_revision: room.revision, members: [...room.members.map(m => m.key), inviting.key] });
+        await refresh();
+        addMention(inviting);
+        window.dispatchEvent(new Event('bot-groups-changed'));
+      }
+      setInviting(null);
+    } catch (e) { setInviteError(errorText(e)); }
+    finally { setBusy(false); }
+  };
+  const mentionQuery = draft.match(/@([^@\s]*)$/)?.[1]?.toLowerCase() ?? '';
+  const availableBots = (directory?.teams.find(t => t.id === room?.team_id)?.bots ?? [])
+    .filter(b => !room?.members.some(m => m.key === b.key) && b.name.toLowerCase().includes(mentionQuery));
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col conversation-surface">
       <header className="flex min-h-16 items-center gap-3 border-b px-3">
@@ -628,7 +530,7 @@ function RoomConversation({
           variant="ghost"
           size="icon"
           className="size-[44px] text-foreground"
-          aria-label={backHash==="#/bots"?"Back to bots":"Back to messages"}
+          aria-label="Back to Chats"
           onClick={() => onNavigate(backHash)}
         >
           <ArrowLeft />
@@ -743,6 +645,7 @@ function RoomConversation({
           >
             ↓ Latest messages
           </button>
+          {mentions.some(m => m.kind === 'bot') && <p className="mb-2 text-sm text-muted-foreground">Connected account actions require the original bot chat: {mentions.filter(m => m.kind === 'bot').map(m => <button key={m.key} className="min-h-11 px-2 underline" onClick={() => onNavigate('#/chat/' + m.key.slice(4) + '?from=bots')}>Open {m.name}</button>)}</p>}
           <div className="rounded-3xl border bg-card p-3 shadow-sm">
             {(mentions.length > 0 || everyone) && (
               <div
@@ -828,7 +731,7 @@ function RoomConversation({
                 </button>
                 {room.members
                   .filter(
-                    (m) => m.available !== false && m.key !== room.self_key,
+                    (m) => m.available !== false && m.key !== room.self_key && m.name.toLowerCase().includes(mentionQuery),
                   )
                   .map((m) => (
                     <button
@@ -842,6 +745,14 @@ function RoomConversation({
                       </span>
                     </button>
                   ))}
+                {availableBots.length > 0 && <p className="px-3 pt-2 text-xs text-muted-foreground">Invite a bot</p>}
+                {availableBots.map(bot => <button key={bot.key}
+                  className="min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted disabled:opacity-50"
+                  disabled={busy || !room.can_send || (room.kind === 'group' && !room.can_manage)}
+                  onClick={() => beginInvite(bot)}>
+                  @{bot.name} · {room.kind === 'dm' ? 'Start a group' : 'Invite to group'}
+                </button>)}
+                {availableBots.length > 0 && room.kind === 'group' && !room.can_manage && <p className="px-3 py-2 text-sm text-muted-foreground">Ask the group creator to invite a bot.</p>}
               </div>
             )}
             <div className="flex items-center gap-1">
@@ -913,11 +824,32 @@ function RoomConversation({
             </div>
           </div>
           <p className="px-2 pt-2 text-[11px] text-muted-foreground">
-            Select @ to address bots. Other messages stay between people.
-            Dictation adds text; it is not a group call.
+            Use @ to mention a member or invite a bot. Only addressed bots wake.
           </p>
         </div>
       )}
+      <Dialog open={!!inviting} onOpenChange={open => { if (!open && !busy) setInviting(null); }}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
+          <DialogTitle>{room?.kind === 'dm' ? `Start a group with ${inviting?.name}` : `Invite ${inviting?.name}`}</DialogTitle>
+          <DialogDescription>
+            {room?.kind === 'dm' ? 'Your private conversation stays intact. The new group includes both people and this bot. Only the text below is shared; attachments are not copied.' : 'This bot will be able to read the full group history. Everyone in the group must have access to it.'}
+          </DialogDescription>
+          <p className="text-sm text-muted-foreground">Shared-chat bots do not inherit private connected accounts. For QuickBooks or other connected actions, use the original bot’s authorized workflow.</p>
+          {room?.kind === 'dm' && <>
+            <label className="space-y-1 text-sm">Context to share (review or remove)
+              <textarea aria-label="Context to share" className={inputStyle + ' min-h-32'} maxLength={6000} value={sharedContext} disabled={busy} onChange={e => setSharedContext(e.target.value)} />
+            </label>
+            <label className="space-y-1 text-sm">Your request to {inviting?.name}
+              <textarea aria-label="Request to invited bot" className={inputStyle + ' min-h-24'} maxLength={6000} value={inviteText} disabled={busy} onChange={e => setInviteText(e.target.value)} />
+            </label>
+            {files.length > 0 && <p role="alert" className="text-sm text-destructive">Send or remove the attachments in your private message before starting a group. They will not be copied.</p>}
+          </>}
+          {inviteError && <p role="alert" className="text-sm text-destructive">{inviteError}</p>}
+          <Button disabled={busy || (room?.kind === 'dm' && (!inviteText.trim() || files.length > 0))} onClick={() => void confirmInvite()}>
+            {busy ? 'Opening…' : room?.kind === 'dm' ? 'Create group and send request' : 'Invite and prepare mention'}
+          </Button>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={details}
         onOpenChange={(open) => {

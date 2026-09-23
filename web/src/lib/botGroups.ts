@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import type { Bot } from "./bots";
-import { roomApi, type RoomPerson } from "./teamRooms";
+import { roomApi, roomTitle, type RoomPerson } from "./teamRooms";
 import { huddlesApi } from "./huddles";
 export type BotGroup = {
   kind: "room" | "huddle";
+  roomKind?: "dm" | "group";
+  selfKey?: string;
   id: string;
   name: string;
   updated_at: string;
@@ -41,6 +43,14 @@ export function mergeBotGroups(
       );
     });
 }
+export function botSections(entries: BotListEntry[]) {
+  const sections = new Map<string, BotListEntry[]>();
+  for (const entry of entries) {
+    const name = entry.kind !== 'bot' ? 'Group chats' : entry.bot.pinned ? 'Pinned' : entry.bot.membership?.subteam || 'Unassigned';
+    sections.set(name, [...(sections.get(name) ?? []), entry]);
+  }
+  return [...sections].map(([name, entries]) => ({ name, entries }));
+}
 export function useBotGroups(business: string, restricted: boolean) {
   const [groups, setGroups] = useState<BotGroup[]>([]),
     [error, setError] = useState("");
@@ -58,12 +68,14 @@ export function useBotGroups(business: string, restricted: boolean) {
       const result: BotGroup[] = [];
       if (rooms.status === "fulfilled")
         for (const r of rooms.value.rooms) {
-          if (r.kind !== "group" || (business && r.team_id !== business))
+          if (business && r.team_id !== business)
             continue;
           result.push({
             kind: "room",
+            roomKind: r.kind,
+            selfKey: r.self_key,
             id: r.id,
-            name: r.name,
+            name: roomTitle(r, r.self_key),
             updated_at: r.updated_at ?? "",
             preview: r.last_message?.text || `${r.members.length} members`,
             unread: r.unread,
@@ -95,7 +107,11 @@ export function useBotGroups(business: string, restricted: boolean) {
             })),
           });
         }
-      setGroups(result);
+      setGroups(previous => [
+        ...result,
+        ...(rooms.status === 'rejected' ? previous.filter(g => g.kind === 'room') : []),
+        ...(huddles.status === 'rejected' ? previous.filter(g => g.kind === 'huddle') : []),
+      ]);
       setError(
         rooms.status === "rejected" || huddles.status === "rejected"
           ? "Some group conversations could not be loaded."
@@ -107,10 +123,14 @@ export function useBotGroups(business: string, restricted: boolean) {
       if (!document.hidden) void refresh();
     }, 5000);
     window.addEventListener("bot-groups-changed", refresh);
+    window.addEventListener("team-room-seen", refresh);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       active = false;
       clearInterval(timer);
       window.removeEventListener("bot-groups-changed", refresh);
+      window.removeEventListener("team-room-seen", refresh);
+      document.removeEventListener("visibilitychange", refresh);
     };
   }, [business, restricted]);
   return { groups, error };

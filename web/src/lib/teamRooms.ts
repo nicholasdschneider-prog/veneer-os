@@ -55,6 +55,7 @@ export const roomApi = {
       `${base}/${encodeURIComponent(id)}?after=${after}`,
     ),
   create: (body: unknown) => post<{ room: TeamRoom }>(base, body),
+  invite: (id: string, body: unknown) => post<{ room: TeamRoom }>(`${base}/${encodeURIComponent(id)}/invite`, body),
   update: (id: string, body: unknown) =>
     post(`${base}/${encodeURIComponent(id)}`, body, "PATCH"),
   send: (id: string, body: unknown) =>
@@ -83,6 +84,9 @@ export function roomTitle(
     ? (room.members.find((p) => p.key !== self)?.name ?? "Direct message")
     : room.name;
 }
+export function isPeopleConversation(room: { members: RoomPerson[] }) {
+  return room.members.filter(m => m.kind === 'human').length > 1;
+}
 export function useRoomUnread() {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -92,7 +96,7 @@ export function useRoomUnread() {
       void roomApi
         .list()
         .then((r) => {
-          if (alive) setCount(r.rooms.reduce((sum, r) => sum + r.unread, 0));
+          if (alive) setCount(r.rooms.filter(r => isPeopleConversation(r) && r.unread > 0).length);
         })
         .catch(() => {});
     };
