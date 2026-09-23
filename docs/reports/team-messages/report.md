@@ -52,7 +52,7 @@ Rooms refresh while open, and navigation shows unread counts. Room push notifica
 
 ## Release verification
 
-Root typecheck, the full test suite, and the production build passed before restart: 2,203 server tests passed (5 skipped), 850 web tests, 40 browser-manager tests, and 21 installer tests. Vite reports its existing large-chunk advisory; the build succeeds. Commit/push and live restart verification follow.
+Root typecheck, the full test suite, and the production build passed before restart: 2,203 server tests passed (5 skipped), 850 web tests, 40 browser-manager tests, and 21 installer tests. Vite reports its existing large-chunk advisory; the build succeeds. Implementation commit `c809752` is pushed to `origin/main` and deployed through root `npm run restart`. After restart, web, runner, app-runner, terminal, and browser-manager each returned HTTP 200. All six room tables are present. The authenticated live guide returns the team-messages announcement and five employee steps; built agent guidance contains `post_team_room_message`. The live ERVP directory includes Ali and 14 available bots, with no active Mackenzie match. There are zero live rooms: verification created no employee conversations or messages. Unrelated `.veneer-browser/`, `.veneer/`, and `out/` remain untouched.
 
 ## Changed files
 
