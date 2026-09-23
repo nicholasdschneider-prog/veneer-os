@@ -2,6 +2,10 @@
 
 BUILD275, September 23, 2026. The queue combined the separately requested performance task into the existing slot. CS draft authority work was completed first in `cb7fbff`; this is the subsequent, separate performance change. No provider context compaction, history deletion, real messages, calls, approvals or customer actions were used.
 
+## Deployment
+
+Deployed `c1ae1be` after CS implementation `cb7fbff`; both pushed to origin/main. Required checks passed before the root restart. Web, runner, app-runner, terminal and browser-manager all returned HTTP 200 on read-only health checks at September 23, 2026, 22:43:16 UTC. No customer delivery or source-adapter acceptance is implied.
+
 ## What changed
 
 The previous WebSocket subscription requested the complete normalized provider transcript and transmitted it to the browser. The browser reduced all supplied events and retained/rendered the resulting rows, even when offscreen. This source path confirms an unbounded initial browser workload; it does **not** establish a memory crash or diagnose Shopify/session behavior.
