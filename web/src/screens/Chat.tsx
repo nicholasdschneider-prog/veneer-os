@@ -1,5 +1,6 @@
 import { useMessageListen } from '@/components/MessageAudioPlayer';
 import { MobileChatHeader } from '../components/chat/MobileChatHeader';
+import { voiceTimeline, type VoiceSession } from '../lib/voiceTimeline';
 import { VoiceSessions } from '../components/VoiceSessions';
 import { BotCommunication, MessageThreadDialog } from '../components/BotCommunication';
 import { workspaceSearchFocusKey } from '@/lib/workspaceSearch';
@@ -7,7 +8,7 @@ import { useLiveVoice } from '@/components/VoiceProvider';
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
 import { withSideParam } from '../lib/sideChat';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
-import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Plus, Phone, AudioLines, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
 import { api, requestJson, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
@@ -72,7 +73,7 @@ import {
   type SubagentChatItem,
   type ToolChatItem,
 } from '../lib/activityRuns';
-import { containsMermaidFence, segmentFrozenTranscript } from '../lib/transcriptFreeze';
+import { containsMermaidFence } from '../lib/transcriptFreeze';
 import {
   agentBadge,
   contextWindowFor,
@@ -1987,10 +1988,7 @@ export function Chat({
   // scratch; the layout effect below rebuilds the container to match.
   if (frozenLenRef.current > items.length) frozenLenRef.current = 0;
   const frozenLen = frozenLenRef.current;
-  const frozenSegments = useMemo(
-    () => segmentFrozenTranscript(groupActivityRuns(items.slice(0, frozenLen))),
-    [frozenLen, items],
-  );
+
 
   // Static rows can't carry React handlers — tool-result thumbnails in frozen
   // turns open the lightbox through one delegated click on the container.
@@ -2198,6 +2196,26 @@ export function Chat({
   const liveItems = groupActivityRuns(items.slice(frozenLen));
   const pendingQuestionId = liveItems.find(isAnchoredPendingQuestion)?.key;
   const revealedStreamingText = useTypewriter(transcript.streamingText, true);
+
+  const renderVoiceTimeline = useCallback((sessions: VoiceSession[], voiceCard: (session: VoiceSession) => ReactNode) => {
+                  const timeline = voiceTimeline(items, frozenLen, sessions);
+                  return <>
+                    {!timeline.hasMessageTimes && sessions.length > 0 && items.length > 0 && <p className="text-sm text-muted-foreground">Voice chats are dated below. These messages have no recorded times, so their relative position is unavailable.</p>}
+                    {timeline.entries.map(segment => segment.kind === 'voice' ? (
+                      <MessageScrollerItem key={segment.key}>{voiceCard(segment.session)}</MessageScrollerItem>
+                    ) : segment.kind === 'static' ? (
+                      <MessageScrollerItem key={segment.key}>
+                        <FrozenStaticSegment items={segment.items} firstPromptKey={firstPromptKey} mostRecentPromptKey={mostRecentPromptKey} onClick={onFrozenClick}/>
+                      </MessageScrollerItem>
+                    ) : (
+                      <MessageScrollerItem key={segment.key} messageId={segment.item.key}
+                        className="data-[linked-focus=true]:rounded-xl data-[linked-focus=true]:bg-brand/5 data-[linked-focus=true]:ring-1 data-[linked-focus=true]:ring-brand/30"
+                        scrollAnchor={segment.kind === 'live' && isAnchoredPendingQuestion(segment.item)}>
+                        <ChatRow item={segment.item} live={segment.kind === 'live' && !historicalKeysRef.current.has(segment.item.key)} collapsePrompt={segment.kind === 'live' && shouldCollapsePrompt(segment.item, firstPromptKey, mostRecentPromptKey)}/>
+                      </MessageScrollerItem>
+                    ))}
+                  </>;
+                }, [items, frozenLen, firstPromptKey, mostRecentPromptKey, onFrozenClick]);
 
   // Header: the chat title leads, the agent name sits below it. Live status is
   // folded into the agent line so nothing important is lost off the top.
@@ -2640,39 +2658,9 @@ export function Chat({
                 </div>
               ) : null}
 
-              {/* Mermaid and image rows stay mounted so diagrams and images
-                  can finish loading after the transcript arrives. */}
-              {frozenSegments.map((segment) => (
-                segment.kind === 'static' ? (
-                  <MessageScrollerItem key={segment.key}>
-                    <FrozenStaticSegment
-                      items={segment.items}
-                      firstPromptKey={firstPromptKey}
-                      mostRecentPromptKey={mostRecentPromptKey}
-                      onClick={onFrozenClick}
-                    />
-                  </MessageScrollerItem>
-                ) : (
-                  <MessageScrollerItem key={segment.key} messageId={segment.item.key}>
-                    <ChatRow item={segment.item} live={false} collapsePrompt={false} />
-                  </MessageScrollerItem>
-                )
-              ))}
-
-              {liveItems.map((item) => (
-                <MessageScrollerItem
-                  key={item.key}
-                  messageId={item.key}
-                  className="data-[linked-focus=true]:rounded-xl data-[linked-focus=true]:bg-brand/5 data-[linked-focus=true]:ring-1 data-[linked-focus=true]:ring-brand/30"
-                  scrollAnchor={isAnchoredPendingQuestion(item)}
-                >
-                  <ChatRow
-                    item={item}
-                    live={!historicalKeysRef.current.has(item.key)}
-                    collapsePrompt={shouldCollapsePrompt(item, firstPromptKey, mostRecentPromptKey)}
-                  />
-                </MessageScrollerItem>
-              ))}
+              <VoiceSessions key={`voice-${conversationId}`} conversationId={isNew ? '' : conversationId}>
+                {renderVoiceTimeline}
+              </VoiceSessions>
 
               {transcript.streamingText ? (
                 <MessageScrollerItem>
@@ -2730,7 +2718,7 @@ export function Chat({
                   />
                 </MessageScrollerItem>
               ))}
-              {!isNew&&<MessageScrollerItem><BotCommunication key={conversationId} conversationId={conversationId}/><VoiceSessions key={`voice-${conversationId}`} conversationId={conversationId}/></MessageScrollerItem>}
+              {!isNew&&<MessageScrollerItem><BotCommunication key={conversationId} conversationId={conversationId}/></MessageScrollerItem>}
             </MessageScrollerContent>
           </MessageScrollerViewport>
           <MessageScrollerButton direction="end" className="size-11 rounded-full border bg-background shadow-sm" />

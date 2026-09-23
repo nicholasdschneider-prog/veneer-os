@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { mergeVoiceSessions, type VoiceSession as Session } from '../lib/voiceTimeline';
 import { AudioLines } from 'lucide-react';
 import { voiceRequest, type VoiceSnapshot } from '@/lib/liveVoice';
 import {
@@ -7,22 +8,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from './ui/dialog';
-type Session = {
-  id: string;
-  started_ms: number;
-  connected_ms: number | null;
-  duration_ms: number;
-  outcome: string;
-};
 export function voiceDuration(ms: number) {
   const seconds = Math.floor(Math.max(0, ms) / 1000);
   return `${Math.floor(seconds / 60)
     .toString()
     .padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 }
-export function VoiceSessions({ conversationId }: { conversationId: string }) {
+export function VoiceSessions({ conversationId, children }: { conversationId: string; children?: (sessions: Session[], card: (session: Session) => ReactNode) => ReactNode }) {
   const epoch = useRef(0);
   const earlierExhausted = useRef(false);
+  const listEpoch = useRef(0);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [hasEarlier, setHasEarlier] = useState(false);
   const [earlierBusy, setEarlierBusy] = useState(false);
@@ -34,21 +29,21 @@ export function VoiceSessions({ conversationId }: { conversationId: string }) {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
+    listEpoch.current++;
     const refresh = () =>
-      voiceRequest<{ sessions: Session[] }>(
+      conversationId ? voiceRequest<{ sessions: Session[] }>(
         `/sessions?bot=${encodeURIComponent(conversationId)}`,
       )
         .then((data) => {
           if (active) {
-            setSessions((old) => [
-              ...data.sessions,
-              ...old.filter((s) => !data.sessions.some((n) => n.id === s.id)),
-            ]);
+            setListError('');
+            setSessions((old) => mergeVoiceSessions(old, data.sessions));
             if (!earlierExhausted.current)
               setHasEarlier((old) => old || data.sessions.length === 50);
           }
         })
-        .catch(() => {});
+        .catch(() => { if (active) setListError('Could not refresh voice chats.'); }) : Promise.resolve();
+    setEarlierBusy(false);
     setSessions([]);
     setSelected(null);
     setHasEarlier(false);
@@ -59,6 +54,7 @@ export function VoiceSessions({ conversationId }: { conversationId: string }) {
     window.addEventListener('voice-session-ended', refresh);
     return () => {
       active = false;
+      listEpoch.current++;
       clearInterval(timer);
       window.removeEventListener('voice-session-ended', refresh);
     };
@@ -94,24 +90,24 @@ export function VoiceSessions({ conversationId }: { conversationId: string }) {
   async function earlier() {
     const last = sessions.at(-1);
     if (!last || earlierBusy) return;
+    const generation = listEpoch.current;
     setEarlierBusy(true);
     setListError('');
     try {
       const data = await voiceRequest<{ sessions: Session[] }>(
         `/sessions?bot=${encodeURIComponent(conversationId)}&before_ms=${last.started_ms}&before_id=${encodeURIComponent(last.id)}`,
       );
-      setSessions((old) => [
-        ...old,
-        ...data.sessions.filter((s) => !old.some((n) => n.id === s.id)),
-      ]);
+      if (generation !== listEpoch.current) return;
+      setSessions((old) => mergeVoiceSessions(old, data.sessions));
       earlierExhausted.current = data.sessions.length < 50;
       setHasEarlier(data.sessions.length === 50);
     } catch (e) {
+      if (generation !== listEpoch.current) return;
       setListError(
         e instanceof Error ? e.message : 'Could not load earlier calls.',
       );
     } finally {
-      setEarlierBusy(false);
+      if (generation === listEpoch.current) setEarlierBusy(false);
     }
   }
   async function more() {
@@ -136,9 +132,7 @@ export function VoiceSessions({ conversationId }: { conversationId: string }) {
       if (current === epoch.current) setBusy(false);
     }
   }
-  return (
-    <section aria-label="Your saved voice sessions" className="space-y-2">
-      {[...sessions].reverse().map((session) => (
+  const card = useCallback((session: Session) => (
         <button
           key={session.id}
           type="button"
@@ -163,7 +157,10 @@ export function VoiceSessions({ conversationId }: { conversationId: string }) {
             {voiceDuration(session.duration_ms)}
           </span>
         </button>
-      ))}
+  ), []);
+  const content = useMemo(() => children ? children(sessions, card) : <section aria-label="Your saved voice sessions" className="space-y-2">{[...sessions].reverse().map(card)}</section>, [children, sessions, card]);
+  return (
+    <>
       {hasEarlier && (
         <button
           type="button"
@@ -175,6 +172,7 @@ export function VoiceSessions({ conversationId }: { conversationId: string }) {
         </button>
       )}
       {listError && <p role="alert">{listError}</p>}
+      {content}
       <Dialog
         open={!!selected}
         onOpenChange={(open) => {
@@ -230,6 +228,6 @@ export function VoiceSessions({ conversationId }: { conversationId: string }) {
           )}
         </DialogContent>
       </Dialog>
-    </section>
+    </>
   );
 }
