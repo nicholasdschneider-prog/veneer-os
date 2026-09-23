@@ -49,7 +49,8 @@ describe('instruction context migration', () => {
     expect(result.developerInstructions).toContain('inspect_routine_message');
     expect(result.developerInstructions).toContain('retire_message_draft');
     expect(result.developerInstructions).toContain('An explicit recorded human answer lowers the hand');
-    expect(result.developerInstructions).toContain('Currently ready=false and execute=false');
+    expect(result.developerInstructions).toContain('Without a fresh trusted proof, ready=false and execute=false');
+    expect(result.developerInstructions).toContain('claim_routine_message');
     expect(result.developerInstructions).toContain('manage_voice_preferences');
     expect(result.developerInstructions).toContain('Ordinary chat agents must not claim to save these settings themselves.');
     expect(result.developerInstructions).toContain('Listen beside Reply');

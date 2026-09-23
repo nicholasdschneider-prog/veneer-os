@@ -6,9 +6,12 @@ import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 describe('living bot guide release contract', () => {
   it('labels policy enrollment separately from disabled execution and protects enrollment routes',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-23')).features.find(f=>f.id==='routine-policy-enrollment')!;
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('All categories currently disabled');
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('All categories currently disabled in production');
     expect(employeeRouteAllowed('GET','/bot-communication/drafts/fixture/routine-status')).toBe(true);
     expect(employeeRouteAllowed('POST','/bot-communication/routine-policies/enroll')).toBe(false);
+    expect(employeeRouteAllowed('POST','/bot-communication/routine-messages/trust')).toBe(false);
+    expect(f.agent).toContain('claim_routine_message');
+    expect(f.limits).toContain('return service credentials never');
   });
   it('announces optional teaching narration with accurate access and review limits',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-23')).features.find(f=>f.id==='teach')!;

@@ -1,3 +1,4 @@
+import { routineExecutionService } from './routineExecution.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -72,7 +73,7 @@ export function routinePolicyService(db:Database.Database){
    return (db.prepare('SELECT * FROM bot_routine_policies WHERE business_id=? ORDER BY version DESC LIMIT 100').all(business) as Row[]).filter(r=>!a.conversationId || (JSON.parse(r.snapshot_json) as Input).executor_ids.includes(a.conversationId)).map(view);
   },
   inspect(a:Actor,raw:unknown){
-   const p=z.object({policy_id:key,category:routineCategory,scope:approvedMessageSchema}).strict().parse(raw);
+   const p=z.object({policy_id:key,category:routineCategory,scope:approvedMessageSchema,proof_id:key.optional()}).strict().parse(raw);
    const r=read(p.policy_id);const c=executor(a,p.scope.executor_conversation_id,r.business_id);
    if(a.conversationId && (a.conversationId!==c.id || a.user.id!==c.user_id))throw new BotError(403,'Only the named own executor can inspect');
    if(!a.conversationId)owner(a,r.business_id);
@@ -80,8 +81,12 @@ export function routinePolicyService(db:Database.Database){
    if(!snapshot.executor_ids.includes(c.id) || !snapshot.categories.includes(p.category))throw new BotError(403,'Executor or category outside enrolled scope');
    const missing=status(r)==='enrolled_setup_required'?[]:[`Policy is ${status(r)}`];
    missing.push(...view(r).setup_required);
-   // No caller assertion, historical transcript or technical-access flag can supply this proof.
-   // There is deliberately no acceptance/claim minting path until a trusted adapter exists.
+   // Scope assertions alone never supply proof. A dedicated enrolled source may.
+   if(p.proof_id){
+    const verified=routineExecutionService(db).inspect(a,p.proof_id);
+    if(verified.policy_id!==r.id || verified.category!==p.category || canonicalSha256(verified.scope)!==canonicalSha256(p.scope))throw new BotError(409,'Routine proof does not match exact requested scope');
+    return {...verified,policy_version:r.version,policy_hash:r.snapshot_hash,missing_proof:[],enabled_categories:['missing_information']};
+   }
    return {ready:false,execute:false,authorization_basis:'standing_policy',policy_id:r.id,policy_version:r.version,policy_hash:r.snapshot_hash,scope_hash:canonicalSha256({policy_id:r.id,policy_hash:r.snapshot_hash,category:p.category,scope:p.scope}),missing_proof:missing,enabled_categories:[]};
   },
  };

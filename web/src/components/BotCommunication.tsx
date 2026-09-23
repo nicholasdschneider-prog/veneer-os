@@ -36,6 +36,7 @@ type Draft = {
   state: string;
   stale: boolean;
   receipt: string | null;
+  authorization_basis?: 'standing_policy' | 'human_draft' | 'approved_message_delegation';
   retirement?: {reason:string;evidence:string;created_at:string} | null;
 };
 export function VoiceBriefing({
@@ -265,7 +266,7 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
       )}
       <details className="rounded-lg border p-3 text-sm">
         <summary className="cursor-pointer py-2">Standing routine authority</summary>
-        <p className="my-2 text-muted-foreground">Covered routine work uses policy-level authority. This draft is not certified as routine merely because a manager coordinates its bot.</p>
+        <p className="my-2 text-muted-foreground">{draft.authorization_basis === 'standing_policy' ? 'Authorized by standing policy for this exact message. This is not a per-email human approval or proof of delivery.' : 'Covered routine work uses policy-level authority. This draft is not certified as routine merely because a manager coordinates its bot.'}</p>
         <Button variant="outline" disabled={busy} onClick={() => {
           setBusy(true);
           void requestJson<{message:string}>(`${root}/drafts/${draft.id}/routine-status`)

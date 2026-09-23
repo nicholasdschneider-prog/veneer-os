@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { routineExecutionService } from './routineExecution.js';
 import { messageDelegationService } from './messageDelegation.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -94,6 +95,7 @@ export function communicationService(db: Database.Database) {
       ...d,
       payload: JSON.parse(d.payload_json) as DraftPayload,
       payload_json: undefined,
+      authorization_basis: routineExecutionService(db).authorization(d.id) ? 'standing_policy' : (d.delegation_id ? 'approved_message_delegation' : 'human_draft'),
       retirement: db.prepare('SELECT expected_version,reason,evidence,actor_id,conversation_id,created_at FROM bot_message_retirements WHERE draft_id=?').get(d.id) ?? null,
     };
   }
@@ -277,6 +279,7 @@ export function communicationService(db: Database.Database) {
         .transaction(() => {
           const d = readDraft(a, id);
           access(a, d.conversation_id, true);
+          if (routineExecutionService(db).authorization(d.id)) throw new BotError(409, 'Use claim_routine_message with a fresh trusted source proof; ordinary send checks cannot authorize a routine draft');
           const bridge = d.delegation_id ? delegated.bound(a, d, true) : null;
           if (!bridge) binding(a, d.conversation_id, d.decision_id, d.decision_version);
           if (a.conversationId !== d.conversation_id)
@@ -330,6 +333,7 @@ export function communicationService(db: Database.Database) {
       access(a, d.conversation_id, true);
       if (a.conversationId !== d.conversation_id || d.claim_key !== key)
         throw new BotError(403, 'Only the claiming bot can record delivery');
+      if (routineExecutionService(db).authorization(d.id) && state !== 'uncertain') throw new BotError(409, 'Routine delivery requires trusted source SENT readback; do not infer sent or failed');
       if (d.state === state && d.receipt === receipt) {
         if (d.delegation_id) delegated.delivery(a, d, state, receipt, deliveryProof);
         return draftView(d);
