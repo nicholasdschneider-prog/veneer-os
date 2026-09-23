@@ -1,3 +1,4 @@
+import { routineHoldScopes, coverageEvidenceSchema, type ScopeTrust, type CoverageEvidence, type CoverageDecision } from './routineHoldScopes.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -35,6 +36,7 @@ type Policy = { id: string; business_id: string; policy_key: string; version: nu
 export const routineCaptureSchema = z.object({
   schema_version: z.literal('routine-missing-information/v1'), trust_id: key, request_key: key,
   native_context_revision: hash,
+  native_context_evidence: coverageEvidenceSchema.optional(),
   captured_at: instant, adapter_digest: hash, account_id: key, principal_id: key,
   source_origin: z.string().url(), enrollment_revision: key, source_intent: key,
   lease: z.object({ case_id: key, principal_id: key, revision: key, expires_at: instant }).strict(),
@@ -66,6 +68,7 @@ type Proof = { id: string; trust_id: string; capture_json: string; scope_json: s
 type Authorization = { draft_id: string; proof_id: string; trust_id: string; actor_id: number; executor_id: string; request_key: string; expected_version: number; scope_hash: string; material_hash: string; source_intent: string };
 export function routineExecutionService(db: Database.Database, options: { now?: () => number; identity?: RoutineIdentity | null } = {}) {
   const now = options.now ?? Date.now, bots = createBotService(db);
+  const holds=routineHoldScopes(db,now);
   const fail = (message: string): never => { throw new BotError(409, message); };
   function user(id: number) {
     const u = db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(id) as UserRow | undefined;
@@ -121,28 +124,32 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
     return d;
   }
   function auth(id: string) { return db.prepare('SELECT * FROM routine_draft_authorizations WHERE draft_id=?').get(id) as Authorization | undefined; }
-  // Conservative complete native business coverage. Legacy decisions have no
-  // authoritative case/account binding: never guess from source keys or prose.
-  // They block instead of silently dropping a possible hold from this case.
-  function nativeContext(t: TrustInput, caseId: string) {
+  function scopeTrust(t:TrustInput,trustId:string):ScopeTrust {
+    const p=policy(t.policy_id);executor(p,t.executor_id);
+    return {trust_id:trustId,business_id:p.business_id,account_id:t.account_id,source_origin:t.source_origin,principal_id:t.principal_id,executor_id:t.executor_id,adapter_digest:t.adapter_digest,owner_id:p.issuer_id};
+  }
+  function nativeContext(t: TrustInput, caseId: string, trustId:string, evidence?:CoverageEvidence) {
     const p=policy(t.policy_id); executor(p,t.executor_id);
-    const rows=db.prepare(`SELECT d.id,d.version,d.state,d.proposal_json,d.answer_json,d.result_json,
+    const rows=db.prepare(`SELECT d.id,d.version,d.state,d.proposal_json,d.answer_json,d.result_json,c.business_team_id business_id,
       (SELECT COALESCE(MAX(rowid),0) FROM bot_decision_events e WHERE e.decision_id=d.id) event_revision
       FROM bot_decisions d JOIN conversations c ON c.id=d.conversation_id
-      WHERE c.business_team_id=? ORDER BY d.id`).all(p.business_id) as {id:string;version:number;state:string;answer_json:string|null}[];
-    // Complete scan includes all native decisions, not only visible assigned rows.
-    // Only verified completion clears uncertainty here; no synthetic completion.
-    const blockers=rows.filter(d=>d.state!=='verified_completed');
+      WHERE c.business_team_id=? OR d.id IN (SELECT decision_id FROM routine_hold_bindings WHERE business_id=?) ORDER BY d.id`).all(p.business_id,p.business_id) as CoverageDecision[];
+    const coverage=holds.coverage(scopeTrust(t,trustId),caseId,rows,evidence);
+    const blockers=coverage.classifications.filter(d=>d.blocking);
     const binding={business_id:p.business_id,account_id:t.account_id,executor_id:t.executor_id,principal_id:t.principal_id,canonical_case:caseId};
-    return {...binding,coverage:'complete-native-business/v1',revision:canonicalSha256({binding,rows}),
-      ready:blockers.length===0,execute:false,blocking_count:blockers.length,
-      reason:blockers.length?'Unresolved native decisions or holds require exact scope resolution. Legacy unscoped records conservatively block this business; no prose-based exclusion is allowed.':null};
+    const ready=blockers.length===0 && (!evidence || coverage.target_valid);
+    return {...binding,coverage:evidence?'complete-native-scoped-holds/v1':'complete-native-business/v1',revision:canonicalSha256({binding,rows,coverage,scope_audit:holds.auditRevision(scopeTrust(t,trustId))}),
+      ready,execute:false,blocking_count:blockers.length,unbound_count:blockers.filter(d=>d.status==='unbound').length,
+      // No decision IDs/private source locators on the dedicated service response.
+      evidence: evidence?{...evidence,target_hash:coverage.target_evidence_hash,classification_hash:canonicalSha256(coverage.classifications)}:null,
+      reason:ready?null:'Native holds or unknown scope block execution. Current owner scope review and fresh complete source identity evidence are required; no prose-based exclusion is allowed.'};
   }
   function validate(t: TrustInput, c: Capture) {
     const p = policy(t.policy_id), m = c.material;
     executor(p, t.executor_id);
-    const native=nativeContext(t,m.case_id);
+    const native=nativeContext(t,m.case_id,c.trust_id,c.native_context_evidence);
     if(!native.ready || native.revision!==c.native_context_revision) fail('Native decision/hold coverage is blocked or changed; refresh native context.');
+    if(c.native_context_evidence)holds.validateTarget(scopeTrust(t,c.trust_id),c.native_context_evidence,m);
     if (c.adapter_digest !== t.adapter_digest || c.account_id !== t.account_id || c.source_origin !== t.source_origin || c.principal_id !== t.principal_id ||
       m.retained_principal_id !== t.principal_id || c.lease.principal_id !== t.principal_id || c.lease.case_id !== m.case_id) fail('Source account, adapter, retained owner or lease binding mismatch');
     const age = now() - Date.parse(c.captured_at);
@@ -163,9 +170,32 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
   function proofView(p: Proof) { return { proof_id: p.id, trust_id: p.trust_id, scope: JSON.parse(p.scope_json), scope_hash: p.scope_hash, material_hash: p.material_hash, execute: false }; }
   return {
     authorization: auth,
+    scopeEvidence(identity:RoutineIdentity,raw:unknown) {
+      const {trust_id}=z.object({trust_id:key}).passthrough().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(trust_id,identity);return holds.evidence(scopeTrust(t,trust_id),raw);}).immediate();
+    },
+    scopeInventory(a:Actor,raw:unknown) {
+      const x=z.object({trust_id:key}).strict().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(x.trust_id);return holds.inventory(a,scopeTrust(t,x.trust_id));})();
+    },
+    scopeReview(a:Actor,raw:unknown) {
+      const x=z.object({trust_id:key,decision_id:key}).strict().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(x.trust_id);return holds.review(a,scopeTrust(t,x.trust_id),x.decision_id);})();
+    },
+    bindScope(a:Actor,raw:unknown) {
+      const {trust_id}=z.object({trust_id:key}).passthrough().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(trust_id);return holds.bind(a,scopeTrust(t,trust_id),raw);}).immediate();
+    },
+    revokeScope(a:Actor,raw:unknown) {
+      const {trust_id}=z.object({trust_id:key}).passthrough().parse(raw);
+      return db.transaction(()=>{const {r,t}=loadTrust(trust_id,undefined,false);
+        const p=db.prepare('SELECT business_id FROM bot_routine_policies WHERE id=?').get(r.policy_id) as {business_id:string};
+        const b=db.prepare('SELECT owner_id FROM business_teams WHERE id=?').get(p.business_id) as {owner_id:number};
+        return holds.revoke(a,{...t,trust_id,business_id:p.business_id,owner_id:b.owner_id},raw);}).immediate();
+    },
     nativeContext(identity:RoutineIdentity,raw:unknown) {
-      const x=z.object({trust_id:key,canonical_case:key}).strict().parse(raw);
-      return db.transaction(()=>{const {t}=loadTrust(x.trust_id,identity);return nativeContext(t,x.canonical_case);})();
+      const x=z.object({trust_id:key,canonical_case:key,evidence:coverageEvidenceSchema.optional()}).strict().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(x.trust_id,identity);return nativeContext(t,x.canonical_case,x.trust_id,x.evidence);})();
     },
     enroll(a: Actor, raw: unknown) {
       const t = routineTrustSchema.parse(raw);

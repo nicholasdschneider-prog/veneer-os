@@ -1,0 +1,38 @@
+{
+  "status": "prepared-not-enrolled",
+  "registration_kind": "new-routine-source-registration-not-historical-identity",
+  "account_id": "orderops-routine-source-5a12b745-9946-44ad-98bf-195fba5d5f30",
+  "source_origin": "https://orderops-dev-web-production.up.railway.app",
+  "source_boundary": {
+    "railway_project": "71cc77d6-9c0d-4770-9d6d-62b8c4bb516c",
+    "railway_environment": "530025e2-352d-443c-a8ed-e589fc20621d",
+    "railway_service": "ede1932e-b3f9-4e7b-b1be-45804dfbe842"
+  },
+  "provenance": "Original OO owner a4bc7b0c confirmed proposed NEW account boundary during BUILD278/279 coordination using retained BUILD277 runtime metadata; not live enrollment.",
+  "retained_source": {
+    "commit": "6f3f2d8d01887ca888cdc2009a53ae1475f911b6",
+    "verified_at": "2026-09-23T23:23:04.482Z",
+    "adapter_digest": "4aa1ca889c2248b7a6df2f067b9b6e846e894dab17859ae5eb9539431f87ab05",
+    "usable_for_scope_exporter": false
+  },
+  "required_before_owner_submit": [
+    "Final deployed BUILD279 exporter artifact digest + exact runtime tuple receipt",
+    "Separately provisioned routine CF audience/client and verified protected native/source injection",
+    "Current authenticated native business owner/executor eligibility readback",
+    "Selected executor own authenticated principal capability + source credential-custody mapping",
+    "Owner policy receipt; then source trust receipt"
+  ],
+  "trust_request_template": {
+    "policy_id": null,
+    "executor_id": null,
+    "request_key": "routine-source-registration-v1-5a12b745",
+    "client_id": null,
+    "audience": null,
+    "account_id": "orderops-routine-source-5a12b745-9946-44ad-98bf-195fba5d5f30",
+    "principal_id": null,
+    "source_origin": "https://orderops-dev-web-production.up.railway.app",
+    "registration_reference": "NEW routine account; source boundary and current owner/principal proof packet must be finalized before submission",
+    "adapter_digest": null,
+    "contract": "routine-missing-information/v1"
+  }
+}

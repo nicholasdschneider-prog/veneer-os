@@ -66,6 +66,10 @@ export function createCommunicationRouter(ctx: AppContext) {
   }));
   const routinePolicies = routinePolicyService(ctx.db);
   const routineExecution = routineExecutionService(ctx.db, { identity: configuredRoutineIdentity(ctx.config) });
+  r.post('/routine-messages/hold-scopes/list', run((req,res)=>res.json(routineExecution.scopeInventory(actor(req),req.body))));
+  r.post('/routine-messages/hold-scopes/review', run((req,res)=>res.json(routineExecution.scopeReview(actor(req),req.body))));
+  r.post('/routine-messages/hold-scopes/bind', run((req,res)=>res.json(routineExecution.bindScope(actor(req),req.body))));
+  r.post('/routine-messages/hold-scopes/revoke', run((req,res)=>res.json(routineExecution.revokeScope(actor(req),req.body))));
   r.post('/routine-messages/trust', run((req,res) => res.json(routineExecution.enroll(actor(req),req.body))));
   r.post('/routine-messages/revoke', run((req,res) => {
     const p=z.object({trust_id:key,reason:z.string().min(1).max(2000)}).strict().parse(req.body);

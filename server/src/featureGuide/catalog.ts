@@ -23,6 +23,16 @@ export const BOT_FEATURES: BotFeature[] = [
     agent:'The chat UI initially loads a bounded recent history window. Earlier messages remain available through Load earlier messages; never claim they were deleted or that provider memory was compacted. Use existing authorized history/search tools for agent work. History pagination and record viewing do not replay messages, approvals or tool actions. Calls remain chronological; earlier calls with unloaded message context are explicitly identified.',
   },
   {
+    id:'routine-hold-scopes',title:'Keep routine-message holds scoped to verified cases',category:'Automation',updated:'2026-09-23',
+    announcement:'A current business owner can record supplemental decision scope using dedicated source identity evidence. Unknown scope stays blocked; original approvals are unchanged.',
+    audience:'Authenticated business owner and separately enrolled routine source operator',
+    summary:'Distinguish verified unrelated cases without dropping unbound legacy obligations.',
+    steps:['Have the source custodian supply a complete case, customer-alias, sister and explicit-order identity closure through the dedicated routine service.', 'The current signed-in business owner uses the supported hold-scopes list/review/bind endpoints to review the original decision and record its complete scope. Use unknown or business-wide when scope cannot be established.', 'Runtime clearance requires fresh matching source observations and unchanged native decisions. Viewing or classifying scope never approves a message.'],
+    example:'Show the exact source evidence and owner scope classification still needed for this routine-message hold.',
+    limits:'Native scope support is implemented; source exporter, dedicated configuration and genuine owner enrollment remain separate prerequisites. Unbound legacy records, same-case or related-identity overlap, revoked or stale evidence still block. The prior business-wide guard remains for callers without scoped evidence. No pre-marker historical send uncertainty or unsupported category is cleared.',
+    agent:'Never infer unrelatedness from different case UUIDs or prose. Only authenticated source scope-evidence plus genuine current-owner supplemental classification may scope native holds. Scoped native-context uses complete-native-scoped-holds/v1 and exact target/scope evidence IDs; captures carry native_context_evidence and revision. All unfinished native obligations remain covered. New events, unknown scope, alias/order overlap, revocation or stale evidence block. Bot claims remain execute=false; only the first dedicated service dispatch association permits its exact source intent. Do not enroll as the owner, close records to unblock, reuse return trust, or request duplicate customer approval. Guide: /#/bot-guide?feature=routine-hold-scopes.',
+  },
+  {
     id:'cs-message-follow-through',title:'Follow CS messages without duplicate send approvals',category:'Daily work',updated:'2026-09-23',
     announcement:'Opted-in ERVP CS draft cards distinguish central questions, technical blockers, queued delivery and actual receipts. Exact original approvals stay separate from differing drafts.',
     audience:'Existing authorized ERVP CS readers and named owning bots',

@@ -11,12 +11,12 @@ it('requires separate routine audience and service client; no human, AutoShip or
   for (const audience of ['human','autoship','return',null]) expect(configuredRoutineIdentity({ ...config, routineVerifierCfAud: audience })).toBeNull();
   for (const client of ['return-client','autoship-client',null]) expect(configuredRoutineIdentity({ ...config, routineVerifierClientId: client })).toBeNull();
 });
-it('rejects unauthenticated capture before touching source or business records', async () => {
+it.each(['captures','scope-evidence','native-context','dispatch-claims'])('rejects unauthenticated %s before touching source or business records', async path => {
   const db = new Database(':memory:'), app = express();
   app.use('/api/routine-message/verifier', routineVerifierRoutes({ db, config } as AppContext, async () => null));
   const server = app.listen(0, '127.0.0.1'); await new Promise<void>(resolve => server.once('listening', resolve));
   try {
-    const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/routine-message/verifier/captures`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eligible: true }) });
+    const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/routine-message/verifier/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eligible: true }) });
     expect(response.status).toBe(401); expect(response.headers.get('cache-control')).toBe('no-store');
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); db.close(); }
 });
