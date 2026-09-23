@@ -2,6 +2,7 @@ import { WorkspaceSearchButton } from './BotWorkflows';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bot,
+  BookOpen,
   Ellipsis,
   MessageSquare,
   Settings,
@@ -39,6 +40,7 @@ import { DESKTOP_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { useDocumentScrollLock } from '../hooks/useDocumentScrollLock';
 
 export type NavKey =
+  | 'guide'
   | 'bots'
   | 'chats'
   | 'automations'
@@ -53,6 +55,7 @@ type Item = { key: NavSelection; label: string; icon: LucideIcon; hash: string }
 
 const CHATS: Item = { key: 'chats', label: 'Chats', icon: MessageSquare, hash: '#/' };
 const BOTS: Item = { key: 'bots', label: 'VeneerBots', icon: Bot, hash: '#/bots' };
+const GUIDE: Item = { key: 'guide', label: 'Bot guide', icon: BookOpen, hash: '#/bot-guide' };
 const SETTINGS: Item = { key: 'settings', label: 'Settings', icon: Settings, hash: '#/settings' };
 const SYSTEM_USAGE_POLL_MS = 5_000;
 const BOT_INPUT_POLL_MS = 30_000;
@@ -361,12 +364,12 @@ export function NavShell({
         hash: `#/apps/${encodeURIComponent(item.appId)}`,
       };
     });
-  const desktopItems = [CHATS, BOTS, ...configuredItems];
+  const desktopItems = [CHATS, BOTS, GUIDE, ...configuredItems];
   // Mobile bar, left to right: Chats · VeneerBots · More · Claude ring ·
   // Settings. Every configured item, including Automations and pinned Mini Apps,
   // sits behind More so the
   // bar has room for the usage ring and stays comfortable for thumbs.
-  const mobileOverflow = configuredItems;
+  const mobileOverflow = [GUIDE, ...configuredItems];
   const renderItem = (it: Item, desktop = false) => {
     const active = it.key === current;
     const Icon = it.icon;
@@ -374,7 +377,7 @@ export function NavShell({
       <button
         key={desktop ? undefined : it.key}
         type="button"
-        onPointerUp={() => onNavigate(it.hash)}
+        onClick={() => onNavigate(it.hash)}
         aria-label={it.label}
         title={desktop ? undefined : it.label}
         aria-current={active ? 'page' : undefined}

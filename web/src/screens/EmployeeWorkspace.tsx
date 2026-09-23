@@ -1,3 +1,4 @@
+import { BotGuide } from './BotGuide';
 import { Bots } from './Bots';
 import { useBotInputCount } from '@/components/NavBar';
 import { ChatWorkspace } from '@/components/chat/ChatWorkspace';
@@ -19,10 +20,11 @@ export function EmployeeWorkspace({ hash, onNavigate, email, onToast }: { hash: 
       <button className="flex min-h-11 items-center gap-2 font-semibold" onClick={() => onNavigate('#/bots')}>
         Customer Service <span aria-label={`${count} questions needing input`} className="rounded-full bg-amber-500 px-2 py-0.5 text-xs text-black tabular-nums">{count}</span>
       </button>
+      <button className="min-h-11 text-sm underline underline-offset-4" onClick={() => onNavigate('#/bot-guide')}>Bot guide</button>
       <span className="break-all text-xs text-muted-foreground">{email}</span>
     </header>
     <main className="min-h-0 flex-1 overflow-auto">
-      {existingChatId ? <SplitView
+      {path === '#/bot-guide' ? <BotGuide hash={hash} onNavigate={onNavigate} /> : existingChatId ? <SplitView
         storageKey="split:chats"
         mobileShows="detail"
         sidebar={<BotConversationRail selectedId={existingChatId} onNavigate={onNavigate} restricted />}

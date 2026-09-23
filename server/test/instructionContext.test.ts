@@ -9,6 +9,7 @@ import {
   LEGACY_GENERATED_INSTRUCTION_MARKER,
   cleanupLegacyGeneratedInstructionsOnce,
   coreVeneerRules,
+  prepareConversationInstructions,
   ensureConversationInstructionSnapshot,
   initializeConversationInstructionSnapshots,
   removeLegacyGeneratedInstructionFiles,
@@ -34,6 +35,22 @@ function testDb() {
 }
 
 describe('instruction context migration', () => {
+  it('refreshes capability guidance for existing chats without changing their fixed snapshot', () => {
+    const db = testDb();
+    db.prepare("UPDATE assistants SET instructions = 'Keep my original role.' WHERE id=1").run();
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,provider,native_session_id) VALUES('existing',1,1,'codex','saved-session')").run();
+    const snapshot = ensureConversationInstructionSnapshot(db, 'existing');
+    db.prepare("UPDATE assistants SET instructions = 'A later unrelated role.' WHERE id=1").run();
+    const result = prepareConversationInstructions(db, { workspaceDir: '/repo', assistantSlug: 'assistant', elevated: false }, 'existing');
+    expect(result.developerInstructions).toContain('Current Veneer bot capabilities');
+    expect(result.developerInstructions).toContain('list_bot_routines before save_bot_routine');
+    expect(result.developerInstructions).toContain('Teach a task');
+    expect(result.developerInstructions).toContain('Keep my original role.');
+    expect(result.developerInstructions).not.toContain('A later unrelated role.');
+    expect(ensureConversationInstructionSnapshot(db, 'existing')).toEqual(snapshot);
+    expect(result.receipt?.core.content).toContain('/#/bot-guide');
+  });
+
   it('freezes active chats once during rollout', () => {
     const db = testDb();
     db.prepare("UPDATE assistants SET instructions = 'Instructions at rollout.' WHERE id = 1").run();

@@ -1,3 +1,4 @@
+import { BotGuideNotice } from '@/components/BotGuideNotice';
 import { decisionCopy, decisionSection, decisionStatusLabel, discussionTimestamp } from '@/lib/decisionPresentation';
 import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
@@ -366,6 +367,7 @@ export function Bots({
             Register a bot
           </Button>}
         </header>
+        <BotGuideNotice onNavigate={onNavigate} />
         {stale && (
           <div role="alert" className="mb-4 rounded-xl border p-3 text-sm">
             This proposal has changed.{' '}

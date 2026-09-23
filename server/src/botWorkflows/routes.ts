@@ -1,3 +1,4 @@
+import { botFeatureCatalog } from '../featureGuide/catalog.js';
 import crypto from 'node:crypto';
 import express from 'express';
 import { z } from 'zod';
@@ -59,6 +60,7 @@ export function createBotWorkflowsRouter(ctx: AppContext) {
           else next(e);
         });
     };
+  router.get('/guide', (_req, res) => res.json(botFeatureCatalog()));
   router.get(
     '/search',
     run((req, res) => {

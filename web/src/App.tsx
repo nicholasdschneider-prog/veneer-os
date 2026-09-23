@@ -1,3 +1,4 @@
+import { BotGuide } from './screens/BotGuide';
 import { EmployeeWorkspace } from './screens/EmployeeWorkspace';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { Bots } from './screens/Bots';
@@ -321,6 +322,12 @@ export function App() {
             : /^#\/(settings|connectors|toolbox|skills)/.test(routePath)
               ? 'settings'
               : 'chats';
+
+  if (routePath === '#/bot-guide') return (
+    <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <BotGuide hash={hash} onNavigate={navigate} />
+    </NavShell>
+  );
 
   if (routePath === '#/huddles' || routePath.startsWith('#/huddles/')) {
     const huddleId = routePath.split('/')[2];

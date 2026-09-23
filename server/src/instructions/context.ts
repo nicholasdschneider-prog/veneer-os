@@ -1,3 +1,4 @@
+import { botFeatureInstructions } from '../featureGuide/catalog.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -5,7 +6,7 @@ import type Database from 'better-sqlite3';
 import type { ConversationRow } from '../db/db.js';
 import { proCodexHome } from '../homes.js';
 
-export const CORE_INSTRUCTIONS_VERSION = 13;
+export const CORE_INSTRUCTIONS_VERSION = 14;
 export const CHAT_SNAPSHOT_VERSION = 1;
 export const CONVERSATION_DEBUG_CONTEXT_FILENAME = 'debug-context.json';
 export const LEGACY_GENERATED_INSTRUCTION_MARKER =
@@ -261,6 +262,7 @@ export function coreVeneerRules(target: InstructionTarget): string {
     '- The shared chat and file-preview UI renders GitHub-flavored markdown plus KaTeX math. Use `$$...$$` for inline math or `$$` on separate lines for display math; `\\(...\\)` and `\\[...\\]` are also supported. Single-dollar math is intentionally unsupported because `$...` is treated as currency. When it aids scanning, use `##`/`###` headings, blockquotes for warnings or blockers, tables for short comparisons, and `<details><summary>` for long logs or optional detail. Plain prose stays the default; do not decorate every reply.',
     '- To show markdown that itself contains a code fence, wrap it in a four-backtick fence (````) or a tilde fence (~~~). Never nest three-backtick fences: the inner closing fence ends the outer block, and an unclosed fence swallows the rest of the reply.',
   ];
+  common.push(botFeatureInstructions());
   if (target.veneerBrowserAvailable) {
     common.push(
       '- Use the `veneer_browser` tools as the default browser for web tasks. Use `agent_browser` only for apps running on the agent machine (for example localhost dev servers) or when the user asks for the shared visible desktop browser. Enter credentials in a page with `fill_secret` (a Doppler secret) and 2-step codes with `fill_totp`, or `fill_sms_code` where it is listed for a texted code; never type a secret yourself.',
@@ -269,6 +271,7 @@ export function coreVeneerRules(target: InstructionTarget): string {
   if (target.assistantSlug !== 'platform-dev' || target.sourceWorkspace === false) return common.join('\n');
   return [
     ...common,
+    '- Standing release requirement: whenever you add, change, or retire a Veneer bot capability, update server/src/featureGuide/catalog.ts in the same change with accurate employee steps, example request, access/setup limits, dated announcement, and agent usage instructions. This feeds /#/bot-guide, new-feature callouts, and current instructions for existing and new bots. Follow docs/bot-feature-guide.md and verify both employee access and resumed-agent delivery before calling the release complete. Do not ask the owner to write or relay the announcement.',
     '- You are Platform Dev. Your working folder is live Veneer Pro source or a project inside it. Preserve unrelated work and keep changes limited to the request.',
     '- For source changes, run `npm run typecheck` and `npm test` scoped to the changed area, then `npm run build`, then `npm run restart` from the root of the source checkout. `npm run restart` restarts the web, runner, app-runner, terminal, and browser-manager services; never call system service managers directly.',
     '- Typecheck, tests, and build must all pass before you restart: a failed check must not restart the product. Make a clear commit for the change. This is a single-Mac product, so there is no fleet, hub, or release step to run afterwards.',

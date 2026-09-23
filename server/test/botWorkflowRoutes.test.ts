@@ -82,6 +82,17 @@ describe('workflow HTTP boundaries', () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     db.close();
   });
+  it('serves the same noncached guide to authorized human and bot callers without business data', async () => {
+    const human = await fetch(`${url}/workflows/guide`, { headers: { 'x-test-user': '2' } });
+    expect(human.status).toBe(200);
+    expect(human.headers.get('cache-control')).toBe('no-store');
+    const body = await human.json();
+    expect(body.features.some((feature: { id: string }) => feature.id === 'routines')).toBe(true);
+    expect(body.features.every((feature: { isNew: unknown }) => typeof feature.isNew === 'boolean')).toBe(true);
+    const bot = await fetch(`${url}/workflows/guide`, { headers: { 'x-test-agent': 'a' } });
+    expect(await bot.json()).toEqual(body);
+    expect(JSON.stringify(body)).not.toContain('a@example.test');
+  });
   function signed(body: string, stamp = String(Math.floor(Date.now() / 1000))) {
     return {
       'Content-Type': 'application/json',

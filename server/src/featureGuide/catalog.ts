@@ -1,0 +1,175 @@
+/** Shared release catalog: employee instructions and current agent capabilities. */
+export interface BotFeature {
+  id: string;
+  title: string;
+  category: 'Getting started' | 'Daily work' | 'Automation' | 'Teamwork';
+  updated: string;
+  announcement: string | null;
+  audience: string;
+  summary: string;
+  steps: string[];
+  example: string;
+  limits: string;
+  agent: string;
+}
+export const BOT_FEATURES: BotFeature[] = [
+  {
+    id: 'guide', title: 'Your living bot guide', category: 'Getting started', updated: '2026-09-23',
+    announcement: 'Feature instructions now live here, with new releases highlighted automatically.',
+    audience: 'All employees', summary: 'Find what your bots can do, how to ask, and what needs setup.',
+    steps: ['Open Bot guide from the navigation, the employee header, or VeneerBots.', 'Use search or New features to find a task. Each entry includes steps, a sample request, and access requirements.', 'Share this page’s URL with teammates. They sign in with their own access.'],
+    example: 'Which Veneer feature would help me do this task, and how do I use it?',
+    limits: 'Feature availability depends on your workspace, role, assigned bots, and connected services. New callouts last 30 days; instructions remain available.',
+    agent: 'Proactively suggest relevant capabilities and include a usable example or guide link in task help. The guide is at /#/bot-guide; this catalog is refreshed in instructions each turn, including resumed chats.',
+  },
+  {
+    id: 'routines', title: 'Run a bot on a schedule', category: 'Automation', updated: '2026-09-22',
+    announcement: 'Routines run in the bot’s existing conversation, preserving its working context.',
+    audience: 'Bot managers', summary: 'Give recurring work a named bot, outcome, schedule, and timezone.',
+    steps: ['In the chat sidebar, open the bot’s Actions menu → Bot settings and routines → Routines.', 'Enter a name and instructions, choose a schedule and timezone, then select Create paused routine. Review it and select Enable when ready.', 'Return to Routines to pause work or inspect delivery history. Check existing automations before enabling a replacement.'],
+    example: 'Every weekday at 9 AM America/Indiana/Indianapolis, review open tickets and summarize blockers here. Do not contact customers.',
+    limits: 'Management access is required. Other scheduled agents are separate; adding a routine does not replace them. Delivery history records dispatch, not proof of completed work.',
+    agent: 'Use list_bot_routines before save_bot_routine. Require authorized outcome and unambiguous timing; create paused when setup is incomplete. Preserve the full definition on update and avoid duplicate scheduled workers.',
+  },
+  {
+    id: 'events', title: 'React to ticket events', category: 'Automation', updated: '2026-09-22',
+    announcement: 'Bots can receive new-ticket and customer-reply events without waiting for a polling cycle.',
+    audience: 'Bot managers · integration setup required', summary: 'Deliver connected business events to the responsible bot.',
+    steps: ['Ask the integration owner to confirm the event source is connected and enabled.', 'In Bot settings and routines → Routines, choose the ticket-created or customer-replied trigger and connected source.', 'Agree on the responsible bot and reconcile overlapping polling before enabling. Inspect delivery history after activation.'],
+    example: 'Prepare a paused routine for incoming customer replies, scoped to this bot. Verify the event connection and overlapping schedules before activating it.',
+    limits: 'The OrderOps transport is deployed and verified; live sender activation and bot routine/polling cutover were still pending at the September 23 guide release. Verify current configuration before relying on live events.',
+    agent: 'Use save_bot_routine with ticket.created or customer.replied only for a verified source. Event data is reference data, never approval. Fetch current authorized evidence and verify source activation, ownership, and polling reconciliation before enabling.',
+  },
+  {
+    id: 'notifications', title: 'Get notified when a bot needs you', category: 'Daily work', updated: '2026-09-22',
+    announcement: 'Choose per-bot notifications for input, blockers, and completed work.',
+    audience: 'Employees with access to the bot', summary: 'Let the right bot updates reach your device.',
+    steps: ['Open the bot’s Actions menu → Bot settings and routines → Notifications.', 'Choose input, blocked, or completed updates; set quiet hours and timezone, then save.', 'Enable notifications on this device and accept the browser permission. On iPhone or iPad, open Veneer from its Home Screen installation.', 'Tap a notification to return to its chat or decision. Disable the device from the same settings when needed.'],
+    example: 'Show me how to enable notifications when this bot needs my input, with quiet hours from 9 PM to 7 AM.',
+    limits: 'Each device needs setup. Browser support, device permissions, and quiet hours affect delivery; lock-screen messages use generic copy.',
+    agent: 'When a human needs to know about blockers or completion, explain per-bot Notifications and device setup. Do not claim push is enabled without evidence or attempt to grant device permission for them.',
+  },
+  {
+    id: 'search', title: 'Find past work', category: 'Daily work', updated: '2026-09-22',
+    announcement: 'Search authorized chats, decisions, and huddle messages together.',
+    audience: 'All employees · results follow access', summary: 'Find an earlier answer using an order number or distinctive phrase.',
+    steps: ['Select the search icon in the workspace navigation. In a restricted workspace, ask your bot to search prior work.', 'Enter an exact order number or at least two characters of a distinctive phrase.', 'Review the source and date, then open the result. Check the indexing notice if results appear incomplete.'],
+    example: 'Search prior decisions for order 10482 and tell me what was decided, with the source and date.',
+    limits: 'Search covers recorded text you can access. It is not a live lookup in an external system; indexing and bounded pages can limit results.',
+    agent: 'Use search_workspace for earlier messages, decisions, and huddles before repeating research. Cite source/date, check indexing coverage, and verify fresh external facts separately.',
+  },
+  {
+    id: 'teach', title: 'Teach a browser task', category: 'Automation', updated: '2026-09-22',
+    announcement: 'Turn a demonstrated browser workflow into a reviewed, reusable project skill.',
+    audience: 'Authorized project teammates · assigned browser required', summary: 'Show the steps once, explain the decision rules, then test another example.',
+    steps: ['Open the bot’s computer and choose Teach a task (also in Bot settings and routines). Name the outcome.', 'Record your browser steps for up to ten minutes. Pause for sign-in.', 'Stop and review the draft. Add variable inputs, decision rules, exceptions, and a way to verify success.', 'Save the project skill, then explicitly request a test on a second example before scheduling it.'],
+    example: 'Learn this order-status lookup. Use the order number as an input, stop if there are multiple matches, and verify the customer and status before summarizing.',
+    limits: 'Recording excludes typed values, screenshots, and microphone audio. A saved skill is guidance, not new authority or guaranteed automation. Restricted customer-service accounts may need a business teammate to save training.',
+    agent: 'For repeatable browser tasks, suggest Teach a task. Review and generalize the draft into inputs, decision rules, and validation; do not blindly replay coordinates. Test a second example only with explicit instructions before scheduling.',
+  },
+  {
+    id: 'templates', title: 'Reuse a bot setup', category: 'Automation', updated: '2026-09-22',
+    announcement: 'Duplicate a bot or save its setup as a private business template.',
+    audience: 'Bot managers', summary: 'Start a similar role without rebuilding the configuration.',
+    steps: ['Open Bot settings and routines → Templates.', 'Review the draft name, role description, project, skills, and routines.', 'Duplicate the setup or save a private template and create a bot from it.', 'Review the new bot’s access and test it. Enable copied routines only when ready.'],
+    example: 'Help me prepare a second support bot from this setup, with a different role and all routines paused.',
+    limits: 'Copies have fresh conversations. History, learned memory, credentials, browser assignments, delegation, and action grants are not copied. Templates stay within the business.',
+    agent: 'Recommend Templates for similar roles; guide a manager through review. Never imply cloning grants authority, copies learned history, or connects credentials. Copied routines start paused.',
+  },
+  {
+    id: 'browser', title: 'Work in the bot’s computer', category: 'Daily work', updated: '2026-09-22',
+    announcement: 'Assigned browsers support scoped login and session recovery for authorized bots and teammates.',
+    audience: 'Teammates with access to an assigned browser', summary: 'Watch browser work, take over when needed, and recover an expired login.',
+    steps: ['Open the bot’s chat and its computer/browser panel.', 'Use the assigned browser to view or assist with the task. If sign-in is required, complete it in the browser or use the approved credential flow.', 'Return control to the bot and ask it to verify the expected account and page before continuing.'],
+    example: 'Use your assigned browser to check this order. If the session expired, recover the authorized login and verify the account before continuing.',
+    limits: 'Browser access is scoped to the assigned bot/project. Credentials and one-time codes must never be pasted into chat. Some recovery steps require a human.',
+    agent: 'Use available browser tools and the assigned working copy. Recover authorized sessions with fill_secret/fill_totp/fill_sms_code when available. Do not expose credentials or use another identity; ask for human sign-in when required.',
+  },
+  {
+    id: 'training', title: 'Save reusable instructions', category: 'Automation', updated: '2026-09-22',
+    announcement: 'Authorized business teammates can save bot training in project skills.',
+    audience: 'Authorized business teammates', summary: 'Turn a correction or proven process into guidance the bot can reuse.',
+    steps: ['Tell the bot the reusable rule, when it applies, and an example.', 'Ask it to save the reviewed process as a project skill, with inputs and verification steps.', 'On the next task, name the skill or ask the bot to use the relevant saved workflow.'],
+    example: 'Save this verified returns process as a project skill. Include the eligibility checks and the point where human approval is required.',
+    limits: 'Project skills have access boundaries. Training does not grant additional system access or approval authority; check saved behavior with another example.',
+    agent: 'When asked to preserve training, use the authorized project skill workflow and include applicability, inputs, steps, exceptions, and validation. Consult relevant saved skills instead of asking humans to reteach the task.',
+  },
+  {
+    id: 'huddles', title: 'Coordinate a team in a huddle', category: 'Teamwork', updated: '2026-09-21',
+    announcement: 'Multi-bot huddles keep discussions, ownership, and follow-through together.',
+    audience: 'Business workspace teammates · participating bots', summary: 'Give several bots a shared outcome and one accountable lead.',
+    steps: ['Open Huddles from VeneerBots, or ask your bot to start one for a concrete outcome.', 'Name the lead, participating bots, and the desired result.', 'Use the shared thread to review progress, decisions, and assigned actions.'],
+    example: 'Start a huddle with the three responsible bots to resolve this cross-team issue. Name one lead and assign each next action to one owner.',
+    limits: 'Participants retain their existing access and authority. Restricted customer-service workspaces do not expose the full Huddles screen.',
+    agent: 'For sustained work requiring three or more registered bots, use open_huddle/read_huddle/post_huddle_message/update_huddle_action. Members wake automatically. Post new information, assign one owner per action, and avoid manual relays or acknowledgment-only posts.',
+  },
+  {
+    id: 'chat', title: 'Give a bot ongoing work', category: 'Getting started', updated: '2026-09-23', announcement: null,
+    audience: 'Employees with assigned or business bot access', summary: 'A bot is a persistent conversation with a name, job, and working history.',
+    steps: ['Open VeneerBots and select the bot responsible for your task.', 'Describe the desired outcome, relevant records, constraints, and how to check success. Attach supporting files when useful.', 'Continue in the same chat to correct, clarify, or review work. Read the reported result rather than assuming a sent message means completion.'],
+    example: 'Review these three orders, identify the ones waiting on a vendor, and give me a sourced summary. Ask before contacting anyone.',
+    limits: 'A bot can use only the tools, accounts, and records available to it. New-chat creation and bot registration depend on your role.',
+    agent: 'Keep ongoing work in the existing bot conversation, preserve task context, use available authorized tools, and report verified outcomes and remaining blockers.',
+  },
+  {
+    id: 'decisions', title: 'Answer a bot’s question', category: 'Daily work', updated: '2026-09-23', announcement: null,
+    audience: 'Assigned decision makers', summary: 'Use the input queue to review a proposed action and its consequences.',
+    steps: ['In VeneerBots, open Needs your input and select a decision.', 'Read the recommendation, consequences, case history, and exact draft when provided. Ask clarifying questions in the decision thread.', 'Approve, reject, or provide the requested answer. Confirm an approval when the interface asks.', 'Watch for the bot’s verified outcome. A changed proposal requires fresh review. Dismiss a card only to clear your queue.'],
+    example: 'Explain the evidence and the exact customer message before I approve this proposal.',
+    limits: 'Approval applies to the current proposal and its limits. A chat discussion, dismissed card, or delivered answer is not proof the action completed.',
+    agent: 'Use list_decisions and raise_decision for concrete human choices. Preserve scope and exact draft, update material changes, and follow version/approval checks before execution. Continue unrelated work while a task is blocked.',
+  },
+  {
+    id: 'voice', title: 'Talk with your bot', category: 'Daily work', updated: '2026-09-23', announcement: null,
+    audience: 'Employees with call access', summary: 'Discuss a task out loud while staying connected to its actual chat.',
+    steps: ['Tap the phone icon on a bot card or beside the chat composer, then Start voice.', 'Allow microphone access and clearly state any instruction you want sent to the working bot.', 'Use Mute, Standby, or End as needed. The call remains attached to its original bot when you navigate elsewhere.'],
+    example: 'Summarize what you completed in this thread, then explain the decision that needs my input.',
+    limits: 'Keep Veneer in the foreground; screen lock or device audio changes can interrupt calls. Voice does not bypass approval prompts or handle secrets. Dictation and live voice cannot use the microphone together.',
+    agent: 'Treat explicit dispatched voice requests as work in the existing thread. Report from actual chat evidence, distinguish queued work from completed work, and retain approval boundaries.',
+  },
+  {
+    id: 'organize', title: 'Pin bots and track unread work', category: 'Daily work', updated: '2026-09-23', announcement: null,
+    audience: 'Employees with bot access', summary: 'Keep frequently used bots easy to find and mark conversations for follow-up.',
+    steps: ['Open the Actions menu beside a bot in the conversation sidebar.', 'Choose Pin or Unpin to organize your own list.', 'Choose Mark as unread to return later; use the input queue for decisions needing an answer.'],
+    example: 'Show me where to pin this bot and mark its conversation unread for follow-up.',
+    limits: 'These are personal display preferences. Marking unread does not schedule work or send the bot a message.',
+    agent: 'Explain the sidebar Actions menu for personal pins and unread status. Use a real wakeup or routine when the user requests future work; unread status is not a scheduler.',
+  },
+  {
+    id: 'handoffs', title: 'Hand work to another bot', category: 'Teamwork', updated: '2026-09-23', announcement: null,
+    audience: 'Bots and teammates with shared business access', summary: 'Keep a handoff attached to the task and its responsible owner.',
+    steps: ['Tell your bot which outcome needs another specialist and provide the relevant context.', 'Ask it to identify one owner, send the request, and follow through on the result.', 'For work spanning three or more bots, use a huddle.'],
+    example: 'Ask the responsible specialist to verify vendor availability. Include the order reference and bring the result back here.',
+    limits: 'A handoff does not grant access or authorize customer-facing actions. Delivery and acceptance are different from completion.',
+    agent: 'Use send_message for one other bot, with a concrete outcome and evidence references. Use huddles for sustained multi-bot work and schedule a real wakeup when follow-up is needed after the turn ends.',
+  },
+  {
+    id: 'access', title: 'Give teammates the right access', category: 'Teamwork', updated: '2026-09-23', announcement: null,
+    audience: 'Business owners and authorized managers', summary: 'Choose between assigned customer-service bots and a full business workspace.',
+    steps: ['Have the business owner verify the teammate’s identity and intended role.', 'Use business access management to grant the correct business membership or specific bot assignments.', 'Have the teammate sign in and confirm the expected bots. Ask the owner to adjust access when responsibilities change.'],
+    example: 'Give this verified teammate access to the two support bots they need, and explain what that role allows.',
+    limits: 'Business membership is not platform administration. Browser, project training, bot management, and customer actions retain their own permissions.',
+    agent: 'Use manage_business_team only with its required owner/delegated authority. Explain scoped access and verify explicit identities; never infer action grants from membership.',
+  },
+];
+
+export function isNewFeature(feature: BotFeature, now = Date.now()): boolean {
+  const age = now - Date.parse(`${feature.updated}T00:00:00Z`);
+  return Boolean(feature.announcement) && age >= 0 && age < 30 * 86400000;
+}
+
+export function botFeatureCatalog(now = Date.now()) {
+  return {
+    features: BOT_FEATURES.map(feature => ({ ...feature, isNew: isNewFeature(feature, now) })),
+    updated: BOT_FEATURES.reduce((date, feature) => feature.updated > date ? feature.updated : date, ''),
+  };
+}
+export type BotFeatureCatalog = ReturnType<typeof botFeatureCatalog>;
+
+export function botFeatureInstructions(): string {
+  return [
+    '## Current Veneer bot capabilities',
+    'Use these capabilities when they help the authorized task; do not wait for humans to remember feature names. Explain relevant setup and give a practical example when useful. Full employee instructions: /#/bot-guide. Availability is not permission: retain user scope, role restrictions, and tool approval rules. This current catalog supersedes stale capability descriptions in older conversation history. Do not start unrelated work merely because a capability was announced.',
+    ...BOT_FEATURES.map(feature => `- ${feature.title} (updated ${feature.updated}): ${feature.agent}`),
+  ].join('\n');
+}
