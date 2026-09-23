@@ -1,3 +1,5 @@
+import { MobileChatHeader } from '../components/chat/MobileChatHeader';
+import { VoiceSessions } from '../components/VoiceSessions';
 import { BotCommunication, MessageThreadDialog } from '../components/BotCommunication';
 import { workspaceSearchFocusKey } from '@/lib/workspaceSearch';
 import { useLiveVoice } from '@/components/VoiceProvider';
@@ -6,7 +8,7 @@ import { withSideParam } from '../lib/sideChat';
 import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote } from '../components/chat/MessageSelection';
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Phone, AudioLines, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
+import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Plus, Phone, AudioLines, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
 import { api, requestJson, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
 import { chatDeleteConfirmation, chatHeaderMenuLabels, copyChatShareUrl } from '../lib/chatDeletion';
 import type { Artifact, PublishedArtifact } from '../lib/artifacts';
@@ -149,6 +151,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -2083,6 +2086,21 @@ export function Chat({
   const onTranscriptClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       const target = event.target as HTMLElement;
+      const reactionButton=target.closest<HTMLButtonElement>('[data-result-reaction]');
+      if(reactionButton){
+        event.preventDefault();
+        if(!canSend || reactionButton.disabled)return;
+        reactionButton.disabled=true;
+        try {
+          const anchor=JSON.parse(reactionButton.dataset.resultAnchor!);
+          void requestJson<{id:string}>(`/api/bot-communication/chats/${encodeURIComponent(conversationId)}/threads`,{method:'POST',body:JSON.stringify(anchor)})
+            .then(thread=>requestJson(`/api/bot-communication/threads/${thread.id}/reactions`,{method:'POST',body:JSON.stringify({emoji:reactionButton.dataset.resultReaction,active:reactionButton.getAttribute('aria-pressed')!=='true'})}))
+            .then(()=>window.dispatchEvent(new Event('result-reactions-changed')))
+            .catch(()=>onToast('Could not save reaction. Try again.'))
+            .finally(()=>{reactionButton.disabled=false});
+        }catch{reactionButton.disabled=false}
+        return;
+      }
       const threadButton=target.closest<HTMLElement>('[data-result-thread]');
       if(threadButton){event.preventDefault();try{setMessageThread(JSON.parse(threadButton.dataset.resultThread!));}catch{/* invalid anchor */}return;}
       // Memory panels use the browser's top-layer popover so paint containment
@@ -2143,21 +2161,30 @@ export function Chat({
       }
       openBrowserLink(anchor.href);
     },
-    [artifacts, onNavigate, onOpenArtifact, onOpenCitations, openBrowserLink, openLocalPath, openProjectFileLink, showDesktop],
+    [artifacts, onNavigate, onOpenArtifact, onOpenCitations, openBrowserLink, openLocalPath, openProjectFileLink, showDesktop, canSend, conversationId, onToast],
   );
 
   useEffect(()=>{
     if(isNew)return;
     let active=true;
-    const refresh=()=>requestJson<{threads:{anchor:string;count:number;unread:number}[]}>(`/api/bot-communication/chats/${encodeURIComponent(conversationId)}/threads`).then(({threads})=>{
+    const refresh=()=>requestJson<{threads:{anchor:string;count:number;unread:number;reactions:{emoji:string;count:number;mine:number}[]}[]}>(`/api/bot-communication/chats/${encodeURIComponent(conversationId)}/threads`).then(({threads})=>{
       if(!active)return;
       for(const button of screenRef.current?.querySelectorAll<HTMLElement>('[data-result-thread]')??[]){
         const t=threads.find(t=>t.anchor===button.dataset.resultThread);
-        button.textContent=t?.count?`Thread · ${t.count} replies${t.unread?` · ${t.unread} new`:''}`:'Reply in thread';
+        button.textContent=t?.count?`${t.count} ${t.count===1?'reply':'replies'}${t.unread?` · ${t.unread} new`:''}`:'Reply';
+        button.setAttribute('aria-label', t?.count ? `Open thread · ${button.textContent}` : 'Reply in thread');
+        button.dataset.unread = t?.unread ? 'true' : 'false';
+      }
+      for(const button of screenRef.current?.querySelectorAll<HTMLButtonElement>('[data-result-reaction]')??[]){
+        const t=threads.find(t=>t.anchor===button.dataset.resultAnchor);
+        const r=t?.reactions.find(r=>r.emoji===button.dataset.resultReaction);
+        button.textContent=`${button.dataset.resultReaction}${r?.count ? ` ${r.count}` : ''}`;
+        button.setAttribute('aria-pressed',r?.mine?'true':'false');
+        button.disabled=!canSend;
       }
     }).catch(()=>{});
-    void refresh();const timer=setInterval(()=>void refresh(),8000);return()=>{active=false;clearInterval(timer);};
-  },[conversationId,isNew,items.length,messageThread]);
+    void refresh();const timer=setInterval(()=>void refresh(),8000);window.addEventListener('result-reactions-changed',refresh);return()=>{active=false;clearInterval(timer);window.removeEventListener('result-reactions-changed',refresh);};
+  },[conversationId,isNew,items.length,messageThread,canSend]);
 
   const liveItems = groupActivityRuns(items.slice(frozenLen));
   const pendingQuestionId = liveItems.find(isAnchoredPendingQuestion)?.key;
@@ -2237,7 +2264,7 @@ export function Chat({
   return (
     <div
       ref={screenRef}
-      className="relative mx-auto flex h-full max-w-2xl flex-col overflow-hidden pt-[calc(env(safe-area-inset-top)+1.25rem)] md:pt-[env(safe-area-inset-top)]"
+      className="conversation-surface relative mx-auto flex h-full max-w-2xl flex-col overflow-hidden pt-[calc(env(safe-area-inset-top)+1.25rem)] md:pt-[env(safe-area-inset-top)]"
     >
       {showComposer && !creatingNewChat ? <MessageSelection rootRef={screenRef} onAdd={(quote) => {
         setMessageQuote(quote);
@@ -2255,9 +2282,44 @@ export function Chat({
           <X className="size-7" />
         </Button>
       ) : null}
+      {!isNew && <MobileChatHeader id={conversationId} name={title?.trim() || agentName} status={`${creator?.displayName ?? ''} · ${liveStatus || status} · ${visibility}`} onBack={() => onNavigate(backHash ?? (projectId ? `#/?project=${projectId}` : '#/'))} onComputer={onOpenBrowser}>
+        {sideChatButton && canSend && <DropdownMenuItem onSelect={() => onNavigate(withSideParam(window.location.hash, 'open'))}>Side chat</DropdownMenuItem>}
+        {canSend && <DropdownMenuItem onSelect={() => liveVoice.open(conversationId)}>Talk with this bot</DropdownMenuItem>}
+        {canChangeVisibility && <DropdownMenuItem disabled={menuBusy} onSelect={() => setVisibilityDialogOpen(true)}>Change visibility · {visibility}</DropdownMenuItem>}
+        <DropdownMenuItem disabled={menuBusy} onSelect={() => void markUnread()}>Mark as unread</DropdownMenuItem>
+        {canManage && <DropdownMenuItem disabled={menuBusy} onSelect={() => void toggleArchive()}>{archived ? 'Restore chat' : 'Archive chat'}</DropdownMenuItem>}
+                <ChatHeaderMenuItems
+                  labels={headerMenuLabels}
+                  pinned={pinned}
+                  compaction={{
+                    supported: compactionSupported,
+                    disabled: menuBusy || working || archived || !compactionSupported,
+                    busy: compacting,
+                    disabledReason: archived ? 'Restore this chat before compacting its context.' : undefined,
+                  }}
+                  onInfo={() => setContextDialogOpen(true)}
+                  onRename={openRenameDialog}
+                  onCopyLink={() => {
+                    void copyChatShareUrl(
+                      navigator.clipboard,
+                      window.location,
+                      conversationId,
+                      projectId,
+                    )
+                      .then(() => onToast('Link copied'))
+                      .catch(() => onToast('Could not copy link'));
+                  }}
+                  onOpenBrowser={onOpenBrowser}
+                  onCompact={() => void compactContext()}
+                  onTogglePin={() => void togglePin()}
+                  onMove={() => setMoveDialogOpen(true)}
+                  moveDisabled={menuBusy || working}
+                  onDelete={() => setDeleteDialogOpen(true)}
+                />
+      </MobileChatHeader>}
       <header
         className={cn(
-          'flex shrink-0 items-center gap-2 border-b px-3 py-2.5',
+          'hidden shrink-0 items-center gap-2 border-b px-3 py-2.5 md:flex',
           isNew && 'hidden',
         )}
       >
@@ -2659,10 +2721,10 @@ export function Chat({
                   />
                 </MessageScrollerItem>
               ))}
-              {!isNew&&<MessageScrollerItem><BotCommunication key={conversationId} conversationId={conversationId}/></MessageScrollerItem>}
+              {!isNew&&<MessageScrollerItem><BotCommunication key={conversationId} conversationId={conversationId}/><VoiceSessions key={`voice-${conversationId}`} conversationId={conversationId}/></MessageScrollerItem>}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton direction="end" className="rounded-full" />
+          <MessageScrollerButton direction="end" className="size-11 rounded-full border bg-background shadow-sm" />
         </MessageScroller>
       </MessageScrollerProvider>
       </MarkdownImageSourcesContext.Provider>
@@ -3043,6 +3105,18 @@ export function Chat({
             }}
           />
           <div className="flex min-w-0 items-center justify-between gap-1.5">
+<button
+            // pointerup, not click: the iOS spell-check callout eats taps
+            // that mousedown/click would need (Veneer lesson).
+            type="button"
+            onClick={event => { if(event.detail === 0) fileInputRef.current?.click(); }}
+            onPointerUp={() => fileInputRef.current?.click()}
+            disabled={creatingNewChat}
+            aria-label="Attach files"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
           {/* LEFT: model/thinking and approval-mode chips. Platform Dev stays
               elevated and intentionally has no approval control. */}
           {showChatControls && (chipLabel !== null || !isPlatformDev) ? (
@@ -3119,17 +3193,7 @@ export function Chat({
               send so the mic sits in the rightmost tap target; typing slides
               send back in. */}
           <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            // pointerup, not click: the iOS spell-check callout eats taps
-            // that mousedown/click would need (Veneer lesson).
-            type="button"
-            onPointerUp={() => fileInputRef.current?.click()}
-            disabled={creatingNewChat}
-            aria-label="Attach files"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Paperclip className="h-5 w-5" />
-          </button>
+
           <button
             // pointerup, not click: the iOS spell-check callout eats taps
             // that mousedown/click would need (Veneer lesson).
@@ -3767,8 +3831,8 @@ const ChatRow = memo(function ChatRow({
     return (
       <Message data-vp-mermaid-row={hasMermaid ? '' : undefined}>
         <MessageContent>
-          <Bubble variant="ghost">
-            <BubbleContent data-message-quote="assistant" className="text-base">
+          <Bubble variant="muted" className="w-fit max-w-[94%]">
+            <BubbleContent data-message-quote="assistant" className="rounded-3xl border-0 px-4 py-3 text-base leading-relaxed">
               <AssistantMarkdown markdown={item.markdown} live={live} citations={citations} />
             </BubbleContent>
           </Bubble>
@@ -3778,7 +3842,10 @@ const ChatRow = memo(function ChatRow({
             </MessageFooter>
           ) : null}
           <AssistantResponseMetadata at={item.at} usage={item.usage} />
-          {item.turnId&&item.at&&<button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} className="min-h-9 text-xs text-muted-foreground underline underline-offset-4">Reply in thread</button>}
+          {item.turnId&&item.at&&<div className="flex flex-wrap items-center gap-1" aria-label="Result discussion and reactions">
+            <button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Reply in thread" className="min-h-11 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted data-[unread=true]:bg-blue-600/10 data-[unread=true]:font-semibold data-[unread=true]:text-foreground">Reply</button>
+            {['👍','❤️','👀'].map(emoji=><button key={emoji} type="button" data-result-reaction={emoji} data-result-anchor={JSON.stringify({turn:item.turnId,at:item.at})} aria-label={`React ${emoji} · does not approve`} aria-pressed={false} className="min-h-11 min-w-11 rounded-full px-2 text-xs hover:bg-muted aria-pressed:bg-blue-600/10 focus-visible:outline-2 focus-visible:outline-ring">{emoji}</button>)}
+          </div>}
         </MessageContent>
       </Message>
     );

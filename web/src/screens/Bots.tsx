@@ -708,7 +708,7 @@ export function Bots({
           {decisionId && (
             <section
               ref={detailPane}
-              className="h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain border-l bg-card p-4 [overflow-wrap:anywhere] sm:p-5"
+              className="conversation-surface h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain border-l bg-card p-4 [overflow-wrap:anywhere] sm:p-5"
               aria-label="Decision thread"
             >
               <button
@@ -733,7 +733,7 @@ export function Bots({
                         onClick={() => liveVoice.open(d.conversation_id, d.id)}
                       >
                         <Phone className="size-4" />
-                        Talk with {d.bot_name} about this
+                        Call {d.bot_name}
                       </Button>
                     )}
                     <Button
@@ -742,151 +742,20 @@ export function Bots({
                       onClick={() => onNavigate(sideChatHash(d.conversation_id, 'bots'))}
                     >
                       <MessageSquare className="size-4" />
-                      Side chat with {d.bot_name}
+                      Side chat
                     </Button>
                   </div>
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
                     {d.proposal.question}
                   </h2>
                   <BotOrderLink order={d.order_reference} />
-                  <p role="status" className="mt-3 rounded-xl border p-3 text-sm font-medium">
-                    {d.state === 'needs_input' ? 'Approval still needed · Give a clear decision in discussion, approve here, or approve during a call.' :
+                  <p role="status" className="mt-2 text-sm text-muted-foreground">
+                    {d.state === 'needs_input' ? 'Approval still needed' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
-                  <BotCommunication key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
-                  <div className="mt-5"><BotCaseTimeline entries={d.proposal.case_timeline} /></div>
+                  <BotCommunication mode="briefing" key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
                   <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} showIdentifiers /></div>
-                  <dl className="mt-4 grid gap-3 text-sm">
-                    <div>
-                      <dt className="text-muted-foreground">{d.answer ? 'Answered by' : 'Handling'}</dt>
-                      <dd>
-                        {d.answered_by ? `Answered by ${d.answered_by}` : d.shared_queue ? (d.handler_name ? `${d.handler_name} is handling this` : 'Shared queue · Available') : d.assignee_name}
-                        {d.proposal.team && ` · ${d.proposal.team}`}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-medium">Approval scope</dt>
-                      <dd className="text-muted-foreground">{d.proposal.blocks_scope === 'task' ? 'This approval applies to one task. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Timing</dt>
-                      <dd>
-                        {when(d.created_at)} ·{' '}
-                        {d.proposal.deadline
-                          ? `Due ${new Date(d.proposal.deadline).toLocaleString()}`
-                          : 'No deadline'}
-                      </dd>
-                    </div>
-                  </dl>
-                  {d.proposal.evidence.length > 0 && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium">
-                        Evidence & context
-                      </h3>
-                      {d.proposal.evidence.map((e, i) => (
-                        <a
-                          key={i}
-                          href={`#/chat/${e.conversation_id}?from=bots`}
-                          className="mt-2 block text-sm underline"
-                        >
-                          {e.label} ↗
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                  {d.answer && (
-                    <div className="mt-4 rounded-xl border p-3 text-sm">
-                      <p className="font-medium">
-                        <Check className="mr-2 inline size-4 text-emerald-500" aria-label="Answer recorded" />{d.answer.choice_label ?? d.answer.action} ·{' '}
-                        {d.answer.scope === 'this_case'
-                          ? 'This case only'
-                          : 'Standing rule requested'}
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap">
-                        {d.answer.text}
-                      </p>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Recorded answer; execution is tracked separately.
-                      </p>
-                      {!d.dismissed && (
-                        <button
-                          className="mt-3 underline"
-                          disabled={busy}
-                          onClick={() =>
-                            void act(() =>
-                              botsApi.mutate(d.id, 'dismiss', {
-                                expected_version: d.version,
-                              }),
-                            )
-                          }
-                        >
-                          Dismiss from my input queue
-                        </button>
-                      )}
-                      {d.dismissed && (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Dismissed from your input queue. Execution remains
-                          visible.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {d.result && (
-                    <div className="mt-4 rounded-xl border p-3 text-sm">
-                      <State state={d.result.state} />
-                      <p className="mt-2 whitespace-pre-wrap">
-                        {d.result.evidence}
-                      </p>
-                    </div>
-                  )}
-                  {d.parked && (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Work parked: {d.parked.evidence}
-                    </p>
-                  )}
-                  <div className="mt-6 border-t pt-5">
-                    <h3 className="flex flex-wrap items-center gap-2 font-medium">
-                      <MessageSquare className="size-4" />
-                      Discussion with {d.bot_name}
-
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Clear directions here can record your decision without another click. Questions stay in discussion; the bot will clarify ambiguous instructions.
-                    </p>
-                    <div className="my-4 space-y-3">
-                      {detail?.messages.map((m) => (
-                        <div
-                          key={m.id}
-                          className={cn(
-                            'rounded-xl p-3 text-sm',
-                            m.actor_conversation_id ? 'bg-muted/60' : 'border',
-                          )}
-                        >
-                          <p className="mb-1 text-xs font-medium text-muted-foreground">
-                            {m.actor_conversation_id
-                              ? d.bot_name
-                              : m.actor_name}{' '}
-                            · <time dateTime={m.created_at.replace(" ", "T") + (/[zZ]|[+-]\d\d:\d\d$/.test(m.created_at) ? "" : "Z")}>{discussionTimestamp(m.created_at)}</time>
-                          </p>
-                          <p className="whitespace-pre-wrap break-words">
-                            {m.text}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mb-3"><BotWorkingIndicator name={d.bot_name} replyStatus={d.reply_status} unavailable={activityUnavailable || stale} /></div>
-                    <BotComposer
-                      key={d.id}
-                      conversationId={d.conversation_id}
-                      botName={d.bot_name}
-                      busy={busy || stale}
-                      onSend={(text) =>
-                        act(async () => {
-                          await send(d.id, 'thread', { text, expected_version: d.version });
-                        })
-                      }
-                    />
-                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">Approval scope: {d.proposal.blocks_scope === 'task' ? 'This task only. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</p>
                   {d.state === 'needs_input' && d.shared_queue && (
                     <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border p-3">
                       <p className="text-sm">{d.handler_name ? `${d.handler_name} is handling this` : 'Any authorized teammate can approve this proposal. An extra owner approval click is not required.'}</p>
@@ -900,9 +769,14 @@ export function Bots({
                         <h3 className="font-medium">
                           Your decision · v{d.version}
                         </h3>
-                        <p className="mt-2 text-base text-muted-foreground sm:text-sm">Review the proposed action, customer reply, and full conditions above before approving.</p>
-                        <label className="mt-3 block text-sm">
-                          Add a note (optional)
+                        <p className="mt-1 text-sm text-muted-foreground">Applies to: {scope === 'this_case' ? 'This case only' : 'Standing rule intent — existing approvals still apply'}</p>
+                        <DecisionChoices choices={d.proposal.choices} disabled={busy || stale} onChoose={choice_id => void act(async () => {
+                          await mutate('choice', { choice_id, note: answer, scope });
+                          setAnswer('');
+                        })} />
+                        <details className="mt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm">Add a note or change scope</summary>
+                        <label className="block text-sm">
+                          Note
                           <textarea
                             className={cn(field, 'mt-1')}
                             rows={3}
@@ -929,10 +803,8 @@ export function Bots({
                             financial approvals still apply.
                           </p>
                         )}
-                        <DecisionChoices choices={d.proposal.choices} disabled={busy || stale} onChoose={choice_id => void act(async () => {
-                          await mutate('choice', { choice_id, note: answer, scope });
-                          setAnswer('');
-                        })} />
+
+                        </details>
                         {d.can_amend !== false && !restricted && <button
                           className="mt-4 text-sm underline"
                           onClick={() => {
@@ -1019,6 +891,144 @@ export function Bots({
                         {d.shared_queue ? (d.handler_name ? 'The current handler can submit the answer. You can both join the discussion.' : 'Choose Handle this before submitting an answer.') : `Only ${d.assignee_name} can answer this proposal.`}
                       </p>
                     ))}
+                  {d.answer && (
+                    <div className="mt-4 rounded-xl border p-3 text-sm">
+                      <p className="font-medium">
+                        <Check className="mr-2 inline size-4 text-emerald-500" aria-label="Answer recorded" />{d.answer.choice_label ?? d.answer.action} ·{' '}
+                        {d.answer.scope === 'this_case'
+                          ? 'This case only'
+                          : 'Standing rule requested'}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap">
+                        {d.answer.text}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Recorded answer; execution is tracked separately.
+                      </p>
+                      {!d.dismissed && (
+                        <button
+                          className="mt-3 underline"
+                          disabled={busy}
+                          onClick={() =>
+                            void act(() =>
+                              botsApi.mutate(d.id, 'dismiss', {
+                                expected_version: d.version,
+                              }),
+                            )
+                          }
+                        >
+                          Dismiss from my input queue
+                        </button>
+                      )}
+                      {d.dismissed && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Dismissed from your input queue. Execution remains
+                          visible.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {d.result && (
+                    <div className="mt-4 rounded-xl border p-3 text-sm">
+                      <State state={d.result.state} />
+                      <p className="mt-2 whitespace-pre-wrap">
+                        {d.result.evidence}
+                      </p>
+                    </div>
+                  )}
+                  {d.parked && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Work parked: {d.parked.evidence}
+                    </p>
+                  )}
+                  <div className="mt-5"><BotCommunication mode="drafts" key={`drafts-${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} /></div>
+                  <details className="mt-5 rounded-2xl border px-4">
+                    <summary className="min-h-11 cursor-pointer py-3 font-medium">Case history, evidence & details</summary>
+                    <BotCaseTimeline entries={d.proposal.case_timeline} />
+                  <dl className="mt-4 grid gap-3 text-sm">
+                    <div>
+                      <dt className="text-muted-foreground">{d.answer ? 'Answered by' : 'Handling'}</dt>
+                      <dd>
+                        {d.answered_by ? `Answered by ${d.answered_by}` : d.shared_queue ? (d.handler_name ? `${d.handler_name} is handling this` : 'Shared queue · Available') : d.assignee_name}
+                        {d.proposal.team && ` · ${d.proposal.team}`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Approval scope</dt>
+                      <dd className="text-muted-foreground">{d.proposal.blocks_scope === 'task' ? 'This approval applies to one task. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Timing</dt>
+                      <dd>
+                        {when(d.created_at)} ·{' '}
+                        {d.proposal.deadline
+                          ? `Due ${new Date(d.proposal.deadline).toLocaleString()}`
+                          : 'No deadline'}
+                      </dd>
+                    </div>
+                  </dl>
+                  {d.proposal.evidence.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-medium">
+                        Evidence & context
+                      </h3>
+                      {d.proposal.evidence.map((e, i) => (
+                        <a
+                          key={i}
+                          href={`#/chat/${e.conversation_id}?from=bots`}
+                          className="mt-2 block text-sm underline"
+                        >
+                          {e.label} ↗
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  </details>
+                  <div className="mt-6 border-t pt-5">
+                    <h3 className="flex flex-wrap items-center gap-2 font-medium">
+                      <MessageSquare className="size-4" />
+                      Discussion with {d.bot_name}
+
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Clear directions here can record your decision without another click. Questions stay in discussion; the bot will clarify ambiguous instructions.
+                    </p>
+                    <div className="my-4 space-y-3" id="decision-discussion">
+                      {detail?.messages.map((m) => (
+                        <div
+                          key={m.id}
+                          className={cn(
+                            'rounded-xl p-3 text-sm',
+                            m.actor_conversation_id ? 'bg-muted/60' : 'border',
+                          )}
+                        >
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">
+                            {m.actor_conversation_id
+                              ? d.bot_name
+                              : m.actor_name}{' '}
+                            · <time dateTime={m.created_at.replace(" ", "T") + (/[zZ]|[+-]\d\d:\d\d$/.test(m.created_at) ? "" : "Z")}>{discussionTimestamp(m.created_at)}</time>
+                          </p>
+                          <p className="whitespace-pre-wrap break-words">
+                            {m.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mb-3"><BotWorkingIndicator name={d.bot_name} replyStatus={d.reply_status} unavailable={activityUnavailable || stale} /></div>
+                    <div className="flex justify-end"><button type="button" aria-label="Jump to latest discussion" className="mb-2 flex size-11 items-center justify-center rounded-full border bg-background" onClick={() => document.getElementById('decision-composer')?.scrollIntoView({block:'end',behavior:'instant'})}>↓</button></div>
+                    <div id="decision-composer"><BotComposer
+                      key={d.id}
+                      conversationId={d.conversation_id}
+                      botName={d.bot_name}
+                      decisionId={d.id}
+                      busy={busy || stale}
+                      onSend={(text) =>
+                        act(async () => {
+                          await send(d.id, 'thread', { text, expected_version: d.version });
+                        })
+                      }
+                    /></div>
+                  </div>
                   <details className="mt-6 border-t pt-4">
                     <summary className="cursor-pointer text-sm text-muted-foreground">
                       Decision history

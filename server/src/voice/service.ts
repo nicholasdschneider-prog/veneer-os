@@ -1,3 +1,4 @@
+import { finishVoiceSession } from './sessions.js';
 import { fork, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -48,9 +49,13 @@ export class LiveVoiceService {
   private starting = new Set<number>();
   private timer: NodeJS.Timeout;
   constructor(private ctx: AppContext) {
+    // A service restart cannot recover an in-memory call. Bound its duration by
+    // the last browser heartbeat instead of counting server downtime.
+    ctx.db.prepare("UPDATE voice_sessions SET ended_ms=last_seen_ms,outcome='interrupted' WHERE ended_ms IS NULL").run();
     this.timer = setInterval(() => {
       for (const call of this.calls.values()) {
-        if (Date.now() - call.lastSeen > 90_000 || Date.now() > call.expiresAt || (!call.ready && Date.now() - call.createdAt > 45_000)) { this.end(call.userId); continue; }
+        if (Date.now() - call.lastSeen > 90_000) { this.end(call.userId, call.id, 'interrupted', call.lastSeen); continue; }
+        if (Date.now() > call.expiresAt || (!call.ready && Date.now() - call.createdAt > 45_000)) { this.end(call.userId, call.id, 'interrupted'); continue; }
         try { if (call.bot) new VoiceWorkspace(this.ctx, call.userId, call.bot.conversationId).bot(); }
         catch { this.end(call.userId, call.id); continue; }
         if (call.state === 'listening' && call.child.connected) void this.notice(call);
@@ -105,7 +110,15 @@ export class LiveVoiceService {
   heartbeat(userId: number, id: string) {
     const call = this.calls.get(userId);
     if (!call || call.id !== id) return null;
-    call.lastSeen = Date.now(); return this.status(userId);
+    call.lastSeen = Date.now();
+    this.ctx.db.prepare('UPDATE voice_sessions SET last_seen_ms=? WHERE id=? AND ended_ms IS NULL').run(call.lastSeen, call.id);
+    return this.status(userId);
+  }
+  connected(userId: number, id: string) {
+    const call = this.calls.get(userId);
+    if (!call || call.id !== id) return false;
+    this.ctx.db.prepare('UPDATE voice_sessions SET connected_ms=coalesce(connected_ms,?),last_seen_ms=? WHERE id=? AND ended_ms IS NULL').run(Date.now(), Date.now(), id);
+    return true;
   }
   async start(userId: number, options: CallOptions = {}) {
     if (this.starting.has(userId) || this.calls.has(userId)) throw new Error('A voice call is already active. End it before starting another.');
@@ -158,6 +171,8 @@ export class LiveVoiceService {
         workspace.decisions().filter(d => d.state === 'needs_input').forEach(d => call.seenKeys.add(`d:${d.decisionId}:${d.version}`));
         call.replies = await workspace.replyCount().catch(() => 0);
       }
+      this.ctx.db.prepare('INSERT INTO voice_sessions(id,user_id,conversation_id,started_ms,last_seen_ms) VALUES(?,?,?,?,?)')
+        .run(call.id, userId, bot?.conversationId ?? options.contextConversationId ?? null, call.createdAt, call.createdAt);
       this.calls.set(userId, call);
       child.on('message', (raw: unknown) => {
         if (this.calls.get(userId) !== call) return;
@@ -204,9 +219,10 @@ export class LiveVoiceService {
       throw new Error(setupError ?? (this.configuration().ready ? 'Could not start the call. Check service credentials and account availability.' : 'Live voice setup is incomplete.'));
     } finally { this.starting.delete(userId); }
   }
-  end(userId: number, id?: string) {
+  end(userId: number, id?: string, outcome = 'ended', endedAt = Date.now()) {
     const call = this.calls.get(userId);
     if (!call || (id && call.id !== id)) return;
+    finishVoiceSession(this.ctx.db, call.id, endedAt, call.state === 'failed' ? 'failed' : outcome);
     this.calls.delete(userId);
     call.child.kill('SIGTERM');
     const timer = setTimeout(() => { if (call.child.exitCode === null) call.child.kill('SIGKILL'); }, 5000);

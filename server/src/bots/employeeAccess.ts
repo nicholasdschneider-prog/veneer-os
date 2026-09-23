@@ -11,7 +11,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'GET') return [
     /^\/bot-communication\/(chats\/[^/]+(?:\/threads)?|threads\/[^/]+|briefings\/[^/]+\/audio)\/?$/,
     /^\/bot-workflows\/(guide|search|push|bots\/[^/]+)\/?$/,
-    /^\/live-voice\/?$/,
+    /^\/live-voice(?:\/sessions(?:\/[^/]+)?)?\/?$/,
     /^\/bots\/?$/,
     /^\/bots\/teams\/?$/,
     /^\/bots\/decisions\/[^/]+\/?$/,
@@ -27,7 +27,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'POST') return [
     /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,
     /^\/bot-workflows\/push\/?$/,
-    /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|end))?\/?$/,
+    /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|connected|end))?\/?$/,
     /^\/bots\/decisions\/[^/]+\/(answer|choice|thread|handling|dismiss)\/?$/,
     /^\/conversations\/[^/]+\/messages\/?$/,
   ].some(pattern => pattern.test(path));

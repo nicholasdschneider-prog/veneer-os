@@ -257,6 +257,24 @@ describe('live voice HTTP boundary', () => {
     await new Promise<void>(resolve => { server = app.listen(0,'127.0.0.1',resolve); });
     return `http://127.0.0.1:${(server!.address() as AddressInfo).port}/api/live-voice`;
   }
+  it('keeps session transcripts caller-private and checks current chat access on every page', async () => {
+    const url=await base();
+    db.prepare("INSERT INTO voice_sessions(id,user_id,conversation_id,started_ms,connected_ms,last_seen_ms,ended_ms,outcome) VALUES('saved',1,'own',1000,2000,5000,6000,'ended')").run();
+    for(let i=0;i<205;i++)db.prepare("INSERT INTO voice_entries(user_id,session_id,bot_conversation_id,role,text) VALUES(1,'saved','own','user',?)").run('Line '+i);
+    expect(await(await fetch(url+'/sessions?bot=own')).json()).toMatchObject({sessions:[{id:'saved',duration_ms:4000}]});
+    expect((await(await fetch(url+'/sessions?bot=own&before_ms=1000&before_id=saved')).json()).sessions).toEqual([]);
+    expect((await fetch(url+'/sessions?bot=own&before_ms=1000')).status).toBe(400);
+    const first=await(await fetch(url+'/sessions/saved')).json();
+    expect(first.entries).toHaveLength(200);
+    expect((await(await fetch(url+'/sessions/saved?after='+first.next)).json()).entries).toHaveLength(5);
+    identity='other@example.com';
+    expect((await fetch(url+'/sessions/saved')).status).toBe(404);
+    identity='owner@example.com';agentConversationId='own';
+    expect((await fetch(url+'/sessions/saved')).status).toBe(403);
+    agentConversationId=undefined;
+    db.prepare("UPDATE conversations SET user_id=2,visibility='private' WHERE id='own'").run();
+    expect((await fetch(url+'/sessions/saved')).status).toBe(404);
+  });
   it('reports setup without exposing secrets and refuses unavailable calls', async () => {
     const url = await base();
     const result = await fetch(url);

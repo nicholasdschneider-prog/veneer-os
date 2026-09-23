@@ -245,6 +245,7 @@ describe('reviewable bot communication', () => {
     await call(`/threads/${t.id}/reactions`, { emoji: '👍', active: true });
     await call(`/threads/${t.id}/reactions`, { emoji: '👍', active: true });
     expect((await call(`/threads/${t.id}`)).data.reactions[0].count).toBe(1);
+    expect((await call('/chats/c1/threads')).data.threads[0].reactions).toEqual([{emoji:'👍',count:1,mine:1}]);
     expect(db.prepare('SELECT count(*) AS n FROM bot_decisions').get()).toEqual(
       { n: 0 },
     );

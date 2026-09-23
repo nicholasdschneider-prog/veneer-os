@@ -93,18 +93,19 @@ export function VoiceBriefing({
   return (
     <section
       aria-label="Voice briefing"
-      className="my-3 space-y-2 rounded-xl border bg-muted/30 p-3"
+      className="my-3 flex flex-wrap items-center gap-2 rounded-2xl bg-muted/40 p-3"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">Listen to the briefing</span>
+        <span className="text-sm font-medium">Briefing</span>
         <span className="text-xs text-muted-foreground">
-          AI voice · background and next step
+          AI voice
         </span>
       </div>
       {!url ? (
         <Button
           variant="outline"
           size="sm"
+          className="ml-auto"
           disabled={busy}
           onClick={() => void prepare()}
         >
@@ -124,7 +125,7 @@ export function VoiceBriefing({
         />
       )}
       {ready && (
-        <details className="text-sm">
+        <details className="basis-full text-sm">
           <summary className="min-h-9 cursor-pointer py-2">
             Read briefing transcript
           </summary>
@@ -324,6 +325,7 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
   );
 }
 export function BotCommunication({
+  mode = 'all',
   conversationId,
   decisionId,
   version,
@@ -331,6 +333,7 @@ export function BotCommunication({
   conversationId: string;
   decisionId?: string;
   version?: number;
+  mode?: 'all' | 'briefing' | 'drafts';
 }) {
   const [data, setData] = useState<{ drafts: Draft[]; briefings: Briefing[] }>({
     drafts: [],
@@ -370,7 +373,7 @@ export function BotCommunication({
   );
   return (
     <div className="space-y-3">
-      {decisionId ? (
+      {mode !== 'drafts' && (decisionId ? (
         <VoiceBriefing
           key={`${decisionId}:${version}`}
           decisionId={decisionId}
@@ -381,8 +384,8 @@ export function BotCommunication({
         briefings
           .slice(0, 5)
           .map((b) => <VoiceBriefing key={b.id} briefing={b} />)
-      )}
-      {drafts.map((d) => (
+      ))}
+      {mode !== 'briefing' && drafts.map((d) => (
         <DraftCard
           key={`${d.id}:${d.version}:${d.state}`}
           draft={d}

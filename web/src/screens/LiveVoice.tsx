@@ -55,7 +55,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
     void room?.disconnect().catch(() => {});
     audioHost.current?.replaceChildren();
     void wakeLock.current?.release(); wakeLock.current = null;
-    if (id) void voiceRequest(`/calls/${id}/end`, {}, true).catch(() => {});
+    if (id) void voiceRequest(`/calls/${id}/end`, {}, true).then(() => window.dispatchEvent(new Event('voice-session-ended'))).catch(() => {});
     if (mounted.current) { setState(next); setMuted(false); setAudioBlocked(false); }
   }, []);
   const name = snapshot?.bot?.name ?? (botConversationId ? 'this bot' : 'Henry');
@@ -137,6 +137,8 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
       if (generation.current !== epoch) { await room.disconnect(); return; }
       await room.localParticipant.publishTrack(mic);
       if (generation.current !== epoch) return;
+      await voiceRequest(`/calls/${result.id}/connected`, {});
+      if (generation.current !== epoch) return;
       setState('connected');
       if ('wakeLock' in navigator) {
           const currentRoom = roomRef.current;
@@ -169,7 +171,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const focused = snapshot?.decision ?? null;
   const open = (snapshot?.decisions ?? []).filter(d => d.state === 'needs_input' && d.decisionId !== focused?.decisionId);
   const missingBot = !!botConversationId && !!snapshot && !bot;
-  if (compact) return <VoiceCallPanel name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && !!bot?.canMessage} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby')}>
+  if (compact) return <VoiceCallPanel callerName={snapshot?.callerName} name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && !!bot?.canMessage} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby')}>
     {error && <p role="alert" className="mt-3 px-2 text-sm text-destructive">{error}</p>}
     {snapshot && !snapshot.configuration.ready && <p role="alert" className="mt-3 px-2 text-sm">Voice setup needs attention. Ask your administrator to check {snapshot.configuration.missing.join(', ') || 'LIVEKIT_URL'} in Settings → Credentials.</p>}
     {audioBlocked && active && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => void roomRef.current?.startAudio().catch(() => setError('Tap again to enable audio.'))}><Volume2 className="size-4" />Enable audio</Button>}

@@ -1,4 +1,5 @@
-import { ChevronDown, FileText, Mic, Paperclip, X } from 'lucide-react';
+import { useLiveVoice } from './VoiceProvider';
+import { AudioLines, ChevronDown, FileText, Mic, Paperclip, Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api, type ModelOption } from '@/lib/api';
 import { isComposerSubmitKey } from '@/lib/composerKeys';
@@ -44,14 +45,17 @@ function formatBytes(n: number): string {
 export function BotComposer({
   conversationId,
   botName,
+  decisionId,
   busy = false,
   onSend,
 }: {
   conversationId: string;
   botName: string;
+  decisionId?: string;
   busy?: boolean;
   onSend: (text: string) => Promise<void>;
 }) {
+  const liveVoice = useLiveVoice();
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
@@ -306,6 +310,15 @@ export function BotComposer({
             }}
           />
           <div className="flex min-w-0 items-center justify-between gap-1.5">
+<button
+                type="button"
+            onClick={event => { if(event.detail === 0) fileInputRef.current?.click(); }}
+                onPointerUp={() => fileInputRef.current?.click()}
+                aria-label="Attach files"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
             {chipLabel ? (
               <button
                 type="button"
@@ -324,20 +337,13 @@ export function BotComposer({
               <span />
             )}
             <div className="flex shrink-0 items-center gap-0.5">
-              <button
-                type="button"
-                onPointerUp={() => fileInputRef.current?.click()}
-                aria-label="Attach files"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Paperclip className="h-5 w-5" />
-              </button>
+
               <button
                 type="button"
                 onPointerUp={toggleDictation}
                 aria-label={transcribing ? 'Finishing dictation' : recording ? 'Stop dictation' : 'Dictate message'}
                 aria-pressed={recording}
-                disabled={transcribing}
+                disabled={transcribing || !!liveVoice.pinnedId}
                 className={cn(
                   'relative flex size-9 shrink-0 items-center justify-center rounded-full transition-colors',
                   recording ? 'text-destructive' : 'text-muted-foreground hover:text-foreground',
@@ -347,6 +353,7 @@ export function BotComposer({
                 {recording ? <span className="absolute inset-1.5 animate-ping rounded-full bg-destructive/40" /> : null}
                 <Mic className="relative size-5" />
               </button>
+              <button type="button" aria-label="Live voice" disabled={busy || recording || transcribing} onPointerUp={() => liveVoice.open(conversationId, decisionId)} onClick={e => {if(e.detail===0)liveVoice.open(conversationId,decisionId)}} className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"><AudioLines className="size-5" /></button>
               <Button
                 size="icon-lg"
                 className="size-10 shrink-0 select-none rounded-full text-xl disabled:opacity-30"

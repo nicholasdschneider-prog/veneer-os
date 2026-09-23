@@ -325,7 +325,10 @@ export function createCommunicationRouter(ctx: AppContext) {
           .prepare(
             `SELECT t.id,t.anchor,(SELECT count(*) FROM bot_message_replies WHERE thread_id=t.id) AS count,(SELECT count(*) FROM bot_message_replies WHERE thread_id=t.id AND (actor_id<>? OR actor_conversation_id IS NOT NULL) AND seq>coalesce((SELECT seq FROM bot_message_thread_seen WHERE thread_id=t.id AND user_id=?),0)) AS unread FROM bot_message_threads t WHERE t.conversation_id=?`,
           )
-          .all(a.user.id, a.user.id, c),
+          .all(a.user.id, a.user.id, c).map(row => {
+            const thread = row as {id:string};
+            return {...thread, reactions:ctx.db.prepare('SELECT emoji,count(*) AS count,max(user_id=?) AS mine FROM bot_message_reactions WHERE thread_id=? GROUP BY emoji').all(a.user.id,thread.id)};
+          }),
       });
     }),
   );

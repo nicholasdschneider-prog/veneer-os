@@ -948,3 +948,23 @@ body {
     transition: none;
   }
 }
+
+/* Screenshot-aligned conversation surfaces; named themes retain their palette. */
+:root[data-color-mode='dark']:not([data-theme]) .conversation-surface {
+  --background: #141414;
+  --muted: #232323;
+  --card: #1c1c1c;
+  --border: #363636;
+  --input: #363636;
+  background-color: var(--background);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]):not([data-color-mode]) .conversation-surface {
+    --background: #141414;
+    --muted: #232323;
+    --card: #1c1c1c;
+    --border: #363636;
+    --input: #363636;
+    background-color: var(--background);
+  }
+}

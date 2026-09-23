@@ -5,6 +5,7 @@ export interface VoiceDecisionSummary {
   result: { state: string; evidence: string } | null;
 }
 export interface VoiceSnapshot {
+  callerName?: string;
   configuration: { ready: boolean; missing: string[]; invalidUrl: boolean };
   call: { id: string; state: string; error: string | null; expiresAt: number; botConversationId: string | null; botName: string | null; decisionId: string | null } | null;
   bot: { conversationId: string; name: string; title: string | null; archived: boolean; role: string | null; subteam: string | null; team: string | null; canMessage: boolean } | null;

@@ -29,6 +29,23 @@ beforeEach(() => {
 });
 afterEach(() => { service.close(); db.close(); vi.useRealTimers(); });
 describe('live voice lifecycle', () => {
+  it('persists real connected duration, bounds restart interruption, and ignores foreign end attempts', async () => {
+    const call=await service.start(1);
+    expect(service.connected(2,call.id)).toBe(false);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(service.connected(1,call.id)).toBe(true);
+    const connected=Date.now();
+    await vi.advanceTimersByTimeAsync(12000);
+    service.heartbeat(1,call.id);
+    service.end(2,call.id);
+    expect(db.prepare('SELECT ended_ms FROM voice_sessions WHERE id=?').get(call.id)).toEqual({ended_ms:null});
+    service.end(1,call.id);service.end(1,call.id);
+    expect(db.prepare('SELECT connected_ms,ended_ms,outcome FROM voice_sessions WHERE id=?').get(call.id)).toEqual({connected_ms:connected,ended_ms:connected+12000,outcome:'ended'});
+    db.prepare("INSERT INTO voice_sessions(id,user_id,started_ms,connected_ms,last_seen_ms) VALUES('interrupted',1,1,2,5002)").run();
+    service.close();
+    service=new LiveVoiceService({db,manager,doppler:{get:()=>null}} as unknown as AppContext);
+    expect(db.prepare("SELECT ended_ms,outcome FROM voice_sessions WHERE id='interrupted'").get()).toEqual({ended_ms:5002,outcome:'interrupted'});
+  });
   it('bounds large bot context and preserves an older selected decision in startup and notices', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('large',1,1,'Large bot','codex','large')").run();
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('large','Grant',1)").run();
