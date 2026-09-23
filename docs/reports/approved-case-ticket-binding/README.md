@@ -45,3 +45,9 @@ Only this report changed. No application capability or schema changed, so no sou
 Owner remains Platform Dev chat `732adce5-ea99-45d4-be9d-07ae47e02133`. Boris `9bb5b47e-b9c9-43c0-a83b-7dc485166c0f` receives this prerequisite receipt. No new bot, duplicate queue job or slot timer was created.
 
 Changed file: [this report](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/README.md).
+
+## Affected-record addendum: Joseph
+
+User-supplied addendum to this same build/commission only; no new research or live inspection. Decision `e1873e7e-9906-474c-94a6-c4ba9be66a58` version 2 is reported Ali-approved, with the same equality failure: canonical UUID `174fd3fb-9f2c-4b8d-a038-cbf212630748` versus approved `payload.ticket` `JKAF95`. Named executor Tess: `1e96b7bb-1071-4f1d-b710-310f9fbbc9e1`. Root recorded blocked; no delegation or send is reported. Preserve the immutable approval and both strings; no retrofit or duplicate approval.
+
+The September 23 shipment-plan wording “today” becomes stale on date change and requires fresh material review before any future execution. It grants no refund authority. This is an additional affected record alongside William, not evidence that the resolver prerequisite is fulfilled or that a repair shipped. The same trusted source connection and native-to-source principal mapping remain unestablished. No live case action was performed.
