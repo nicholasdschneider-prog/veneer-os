@@ -21,7 +21,7 @@ Employee instructions and dated New callouts are in the [Bot guide](https://nick
 - Server tests cover current-version choices, optional notes, forged choice IDs, bot attempts to authorize, duplicate clicks, rejected conflicting retries, defer never executing, and shared-queue ownership.
 - No live customer sends, business actions, or microphone calls were used as tests.
 - Root typecheck, full tests (2,178 server passed, 5 skipped; 850 web; 40 browser-manager; 21 installer), and production build passed. The build retains the existing bundle-size advisory.
-- Deployment: awaiting restart and live health verification.
+- Deployed commit `2ec4e37` through the root restart script. Live health reports web and runner healthy; restart preflight passes. The authenticated live guide serves both New announcements, and built bot instructions include proposal.choices guidance. Committed and pushed to origin/main.
 
 ## Screenshots
 
