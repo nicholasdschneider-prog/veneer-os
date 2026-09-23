@@ -1,3 +1,4 @@
+import { decisionTitle } from '@/lib/decisionPresentation';
 import { CallButton } from '@/components/CallButton';
 import { DecisionImages } from '../components/DecisionImages';
 import { isPeopleConversation } from '@/lib/teamRooms';
@@ -687,15 +688,15 @@ export function Bots({
                     </Button>
                   </div>
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
-                    {d.proposal.question}
+                    {decisionTitle(d.proposal)}
                   </h2>
                   <BotOrderLink order={d.order_reference} />
                   <p role="status" className="mt-2 text-sm text-muted-foreground">
                     {d.state === 'needs_input' ? 'Approval still needed' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
-                  <BotCommunication mode="briefing" key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
                   <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} showIdentifiers /></div>
+                  <BotCommunication mode="briefing" key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
                   <p className="mt-3 text-sm text-muted-foreground">Approval scope: {d.proposal.blocks_scope === 'task' ? 'This task only. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</p>
                   {d.state === 'needs_input' && d.shared_queue && (
                     <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border p-3">
@@ -813,6 +814,8 @@ export function Bots({
                                   await mutate('proposal', {
                                     proposal: {
                                       ...d.proposal,
+                                      // This editor changes raw scope, not its sourced summary.
+                                      review_summary: undefined,
                                       recommendation,
                                       question: amendQuestion,
                                       consequence: amendConsequence,
@@ -1037,7 +1040,7 @@ export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selec
       </div>
       <BotOrderLink order={d.order_reference} />
       <h3 className="mt-4 text-base font-semibold text-balance">
-        <button onClick={onOpen} className="w-full rounded text-left hover:underline focus-visible:outline focus-visible:outline-ring">{d.proposal.question}</button>
+        <button onClick={onOpen} className="w-full rounded text-left hover:underline focus-visible:outline focus-visible:outline-ring">{decisionTitle(d.proposal)}</button>
       </h3>
       <VoiceBriefing key={`${d.id}:${d.version}`} decisionId={d.id} version={d.version} />
       <div className="mt-4"><BotProposalSummary decision={d} compact /></div>

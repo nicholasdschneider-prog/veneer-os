@@ -39,8 +39,24 @@ export const decisionImageSchema = z.object({
   source: z.string().trim().min(1).max(300),
   sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict();
+export const reviewSummarySchema = z.object({
+  action_title: z.string().trim().min(1).max(160),
+  customer_request: z.string().trim().min(1).max(300),
+  background: z.array(z.string().trim().min(1).max(240)).max(6),
+  refund: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('not_verified') }).strict(),
+    z.object({ status: z.literal('none'), source: z.string().trim().min(1).max(600),
+      as_of: z.string().datetime({ offset: true }), scope: z.string().trim().min(1).max(300),
+      evidence_kind: z.literal('complete_refund_history') }).strict(),
+    z.object({ status: z.enum(['partial', 'full']), source: z.string().trim().min(1).max(600),
+      as_of: z.string().datetime({ offset: true }), scope: z.string().trim().min(1).max(300),
+      evidence_kind: z.literal('completed_refund'), receipt: z.string().trim().min(1).max(300),
+      amount: z.number().positive().finite(), currency: z.string().regex(/^[A-Z]{3}$/) }).strict(),
+  ]),
+}).strict();
 export const proposalSchema = z
   .object({
+    review_summary: reviewSummarySchema.optional(),
     choices: z.array(decisionChoiceSchema).min(2).max(6).refine(items => new Set(items.map(item => item.id)).size === items.length, "Choice IDs must be unique").optional(),
     question: text,
     recommendation: text,

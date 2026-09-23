@@ -14,6 +14,15 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'decision-review-context', title: 'Review the reply before the background', category: 'Daily work', updated: '2026-09-23',
+    announcement: 'Decision cards put the proposed reply first, with customer-request and sourced refund context. Hover, tap or use the keyboard on Background for short notes.',
+    audience: 'Authorized decision reviewers', summary: 'See the exact reply and what the customer wants without a long background block.',
+    steps: ['Open Needs your input and choose a card.', 'Read What does the customer want? and Already refunded? A missing refund source reads Not verified; PARTIAL is distinct from a full refund.', 'Read the proposed reply or recommended action first. Hover over Background or activate it with Enter/tap; Escape closes it.', 'Open Original details & conditions for the unmodified question and instructions. Message scope & delivery details retains exact account, recipient and attachments.'],
+    example: 'Show me the proposed customer reply, the customer’s request, and verified refund history.',
+    limits: 'Refund context is supplied source evidence as of its recorded check, not a fresh provider lookup. NO requires complete checked history; missing evidence is Not verified. Older proposals retain original details and may lack concise context. Viewing a summary grants no action or source-history access.',
+    agent: 'For new/materially revised decisions supply proposal.review_summary: plain action_title, actual customer_request, up to six short grounded background bullets, and refund evidence. Use not_verified unless actual completed refund receipts (full/partial with positive amount/currency) or complete checked history (none) support source/scope/as_of. $0 new spend, requested refunds and no refund authorization are never completed history. Preserve exact raw scope/draft and material uncertainty. Do not revise unchanged live approvals solely to add summary fields or infer authority from the display. Refresh summary evidence with material proposal changes; the human raw-proposal editor clears old summary fields. Legacy display fallbacks do not certify customer intent or refund status.',
+  },
+  {
     id:'scoped-decision-context',title:'Shared CS questions without private chat access',category:'Teamwork',updated:'2026-09-23',
     announcement:'Already-authorized ERVP CS teammates can review the context attached to shared decisions even when a referenced source conversation is restricted.',
     audience:'Existing eligible human handlers in opted-in ERVP CS queues',

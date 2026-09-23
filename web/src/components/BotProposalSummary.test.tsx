@@ -4,7 +4,7 @@ import { BotProposalSummary } from './BotProposalSummary';
 import type { BotDecision } from '@/lib/bots';
 
 describe('human decision review', () => {
-  it('keeps limits visible and puts the unmodified draft and protocol in separate disclosures', () => {
+  it('puts the unmodified draft first and preserves limits and original protocol', () => {
     const decision = { id: 'reference-1', version: 2, proposal: {
       recommendation: 'Send a tracking update.', consequence: 'No refund approved. The date is an estimate.',
       blocked_action: 'Recheck material evidence. EXACT DRAFT: Hello, we cannot confirm delivery yet.',
@@ -12,9 +12,11 @@ describe('human decision review', () => {
     const html = renderToStaticMarkup(<BotProposalSummary decision={decision} showIdentifiers />);
     const firstDisclosure = html.indexOf('<details');
     expect(html.indexOf('No refund approved. The date is an estimate.')).toBeLessThan(firstDisclosure);
-    expect(html).toContain('Read the proposed customer reply');
+    expect(html).toContain('Proposed customer reply');
     expect(html).toContain('Hello, we cannot confirm delivery yet.');
-    expect(html.indexOf('Recheck material evidence.')).toBeGreaterThan(html.indexOf('Full instructions &amp; conditions'));
+    expect(html.indexOf('Hello, we cannot confirm delivery yet.')).toBeLessThan(html.indexOf('Impact &amp; limits'));
+    expect(html.indexOf('Hello, we cannot confirm delivery yet.')).toBeLessThan(firstDisclosure);
+    expect(html.indexOf('Recheck material evidence.')).toBeGreaterThan(html.indexOf('Original details &amp; conditions'));
     expect(html).toContain('reference-1');
     expect(html).not.toContain('line-clamp');
   });
@@ -26,10 +28,23 @@ describe('human decision review', () => {
     } } as BotDecision;
     const html = renderToStaticMarkup(<BotProposalSummary decision={decision} compact />);
     expect(html.indexOf(decision.proposal.consequence)).toBeLessThan(html.indexOf('<details'));
-    expect(html.indexOf(decision.proposal.recommendation)).toBeGreaterThan(html.indexOf('Read recommendation &amp; background'));
+    expect(html).toContain(decision.proposal.recommendation);
     expect(html).toContain(decision.proposal.blocked_action);
-    expect(html).not.toContain('Read the proposed customer reply');
+    expect(html).not.toContain('Proposed customer reply');
+    expect(html).toContain('Not verified');
     expect(html).not.toContain('line-clamp');
+  });
+
+  it.each(['none', 'partial', 'full', 'not_verified'] as const)('shows only supplied %s refund evidence and hides short background initially', (status) => {
+    const refund = status === 'not_verified' ? {status} : { status, source: 'Synthetic ledger receipt', as_of:'2026-09-23T12:00:00Z', scope:'This order', evidence_kind: status === 'none' ? 'complete_refund_history' : 'completed_refund', receipt:'receipt-1', amount:12.50,currency:'USD' };
+    const decision={proposal:{question:'$0 new action',recommendation:'Long background',consequence:'No new refund authority',blocked_action:'EXACT DRAFT: Exact reply',review_summary:{action_title:'Send a factual update',customer_request:'Customer wants a delivery update',background:['Shipment not confirmed'],refund}}} as BotDecision;
+    const html=renderToStaticMarkup(<BotProposalSummary decision={decision} />);
+    expect(html).toContain('What does the customer want?');
+    expect(html).toContain('Already refunded?');
+    expect(html).toContain({none:'NO',partial:'PARTIAL',full:'YES',not_verified:'Not verified'}[status]);
+    expect(html).not.toContain('Shipment not confirmed');
+    if(status!=='not_verified') expect(html).toContain('Synthetic ledger receipt');
+    expect(html.match(/Exact reply/g)).toHaveLength(1);
   });
 
   it('shows every structured message authorization field and keeps exact body whitespace', () => {

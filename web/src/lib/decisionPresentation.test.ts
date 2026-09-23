@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { discussionTimestamp, decisionCopy, decisionSection, decisionStatusLabel } from './decisionPresentation';
-import type { BotDecision } from './bots';
+import { discussionTimestamp, decisionCopy, decisionSection, decisionStatusLabel, decisionTitle } from './decisionPresentation';
+import type { BotDecision, BotProposal } from './bots';
 
 describe('readable proposal copy', () => {
   const base = { recommendation: 'Ask the customer for photos.', consequence: '$0 message only. No replacement approved. Delivery is an estimate.', blocked_action: 'Check both parcels. EXACT DRAFT: Hi Branden, UPS has not received the second parcel. We cannot confirm a delivery date.' } as BotDecision['proposal'];
@@ -59,4 +59,11 @@ it('only an explicit current question raises a hand; execution failures do not r
    expect(decisionSection({state,answer:{action}} as BotDecision)).not.toBe('input');
  }
  expect(decisionSection({state:'needs_input',answer:null} as BotDecision)).toBe('input');
+});
+
+it('uses explicit human titles or neutral legacy fallbacks without interpreting dollar amounts', () => {
+ const proposal={question:'Scott — $0 new action',recommendation:'Background',blocked_action:'EXACT DRAFT: Exact body.  \n',consequence:'No new refund'} as BotProposal;
+ expect(decisionTitle(proposal)).toBe('Review the proposed customer reply');
+ expect(decisionCopy(proposal).draft).toBe('Exact body.  \n');
+ expect(decisionTitle({...proposal,review_summary:{action_title:'Send Scott an update',customer_request:'Update requested',background:[],refund:{status:'not_verified'}}})).toBe('Send Scott an update');
 });

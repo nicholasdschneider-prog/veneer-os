@@ -16,6 +16,14 @@ const deliveryProof = {type:'object',properties:{provider:str,provider_message_i
 const proposal = {
   type: 'object',
   properties: {
+    review_summary: { type: 'object', description: 'Grounded human review context, included in the versioned proposal. Use plain action_title such as Send Scott an update about his custom shades, not $0 new action. customer_request states the actual customer ask; use Not established if unavailable. background is up to 6 short semantic factual bullets, preserving material uncertainty. refund describes COMPLETED refund history only: not_verified by default; none requires complete checked refund-history source/scope/as_of, not absence of a refund mention; full/partial require actual completed source receipt and amount/currency. Never infer from proposed refunds, $0 new spend or no refund authorization. Source is a bounded evidence citation, not a new access grant. Do not revise unchanged live approvals just to add presentation fields.', properties: {
+      action_title: {type:'string',maxLength:160}, customer_request:{type:'string',maxLength:300}, background:{type:'array',maxItems:6,items:{type:'string',maxLength:240}},
+      refund:{anyOf:[
+        {type:'object',properties:{status:{const:'not_verified'}},required:['status'],additionalProperties:false},
+        {type:'object',properties:{status:{const:'none'},source:str,as_of:{type:'string',format:'date-time'},scope:str,evidence_kind:{const:'complete_refund_history'}},required:['status','source','as_of','scope','evidence_kind'],additionalProperties:false},
+        {type:'object',properties:{status:{enum:['partial','full']},source:str,as_of:{type:'string',format:'date-time'},scope:str,evidence_kind:{const:'completed_refund'},receipt:str,amount:{type:'number',exclusiveMinimum:0},currency:{type:'string',pattern:'^[A-Z]{3}$'}},required:['status','source','as_of','scope','evidence_kind','receipt','amount','currency'],additionalProperties:false}
+      ]}
+    }, required:['action_title','customer_request','background','refund'],additionalProperties:false },
     question: { type: 'string', description: 'A short plain-English customer issue and the decision needed. Write for a customer-service teammate, not an engineer. Include the order number when known; keep case keys in source_key.' },
     recommendation: { type: 'string', description: 'In 1–3 short sentences, say what you propose to do and why. Preserve verified facts, uncertainty and meaningful dates. Do not include lease, CAS, provider, CASE LOG or execution-protocol jargon. Do not paste the full customer email here.' },
     consequence: { type: 'string', description: 'Plain-English impact and limits: exact amount/currency if relevant, what approval does and does not authorize, unresolved facts, and estimates versus confirmed dates. Keep every material condition; do not turn an estimate into a promise or task completion into case resolution.' },

@@ -4,7 +4,7 @@ import { decisionLabel, type BotDecision, type BotProposal } from './bots';
 export function decisionCopy(proposal: BotProposal) {
   const markers = [...proposal.blocked_action.matchAll(/\bEXACT DRAFT:\s*/gi)];
   const marker = markers.length === 1 ? markers[0] : undefined;
-  const draft = marker ? proposal.blocked_action.slice(marker.index! + marker[0].length).trim() : '';
+  const draft = marker ? proposal.blocked_action.slice(marker.index! + marker[0].length) : '';
   return {
     proposedAction: proposal.recommendation,
     limits: proposal.consequence,
@@ -43,4 +43,10 @@ export function discussionTimestamp(value: string): string {
   return Number.isNaN(date.getTime()) ? 'Time unavailable' : new Intl.DateTimeFormat(undefined, {
     year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
   }).format(date);
+}
+
+/** Presentation only. Never interpret spend, authorization or a proposed refund as history. */
+export function decisionTitle(proposal: BotProposal): string {
+  return proposal.review_summary?.action_title || (proposal.message_delivery || decisionCopy(proposal).draft
+    ? 'Review the proposed customer reply' : 'Review the recommended action');
 }
