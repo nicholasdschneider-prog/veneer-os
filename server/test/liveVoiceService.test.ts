@@ -29,6 +29,22 @@ beforeEach(() => {
 });
 afterEach(() => { service.close(); db.close(); vi.useRealTimers(); });
 describe('live voice lifecycle', () => {
+  it('saves style for the authenticated caller and reloads it across calls without dispatching bot work', async () => {
+    await service.start(1);
+    const request = async (id: string, args: unknown) => {
+      child.emit('message', { type: 'tool', id, name: 'voice_preferences', args });
+      await vi.advanceTimersByTimeAsync(1);
+      return child.send.mock.calls.map(a => a[0]).find(m => m.id === id)?.result;
+    };
+    expect(await request('save', { action: 'update', preferences: { length: 'concise' } })).toMatchObject({ ok: true, preferences: { length: 'concise' } });
+    expect(await request('foreign', { action: 'update', userId: 2, preferences: { length: 'detailed' } })).toHaveProperty('error');
+    service.end(1);
+    await service.start(1);
+    expect(child.send.mock.calls.map(a => a[0]).filter(m => m.type === 'start').at(-1).preferences).toEqual({ length: 'concise' });
+    expect(await request('reset-style', { action: 'reset' })).toMatchObject({ ok: true, preferences: {} });
+    expect(manager.steerMessage).not.toHaveBeenCalled();
+  });
+
   it('persists real connected duration, bounds restart interruption, and ignores foreign end attempts', async () => {
     const call=await service.start(1);
     expect(service.connected(2,call.id)).toBe(false);

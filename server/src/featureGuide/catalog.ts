@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'voice-preferences', title: 'Teach voice your speaking preferences', category: 'Daily work', updated: '2026-09-23',
+    announcement: 'Tell live voice to be more concise and it can remember your style across future calls, just for you.',
+    audience: 'Signed-in employees with live voice access',
+    summary: 'Save personal answer length, tone, and explanation style by speaking during a call.',
+    steps: ['Open an accessible bot in Chats, tap the blue waveform, and Start voice.', 'Say “Remember: keep your answers concise and lead with the answer.” Wait for voice to confirm it saved your preference.', 'Ask “What voice preferences have you saved for me?” to review them, or “Reset my voice preferences” to return to defaults. Say “Just for this answer” for a temporary change.'],
+    example: 'Remember that I prefer concise answers. Give me the main point and expand when I ask.',
+    limits: 'Requires configured live voice and your own signed-in account. Saved settings apply to that human across bots and future calls on this install; shared logins share preferences. Supports concise/balanced/detailed length, direct/warm/neutral tone, and answer-first/step-by-step/conversational explanations. Does not change the audio voice, bot text-chat instructions, permissions, or business rules. Separate installs do not sync.',
+    agent: 'For personal live voice style, direct callers to tell voice their preference; no developer ticket is needed for supported styles. The live voice manage_voice_preferences tool reads, merges updates, or resets settings for the authenticated caller and refreshes current-call instructions. Ordinary chat agents must not claim to save these settings themselves. Temporary requests stay unsaved; never treat style as business authorization. Guide: /#/bot-guide?feature=voice-preferences.',
+  },
+  {
     id: 'provider-model-updates', title: 'Choose newly available Claude and Codex models', category: 'Getting started', updated: '2026-09-23',
     announcement: 'Claude Opus 5.5, GPT-6 Sol, and GPT-6 Luna are available through connected provider model discovery. Existing chat and bot selections stay unchanged.',
     audience: 'People with access to the conversation and permission to change its model',

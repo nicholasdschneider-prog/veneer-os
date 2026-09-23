@@ -1,3 +1,4 @@
+import { manageVoicePreferences, readVoicePreferences, VOICE_PREFERENCE_RULES } from './preferences.js';
 import { finishVoiceSession } from './sessions.js';
 import { fork, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -16,7 +17,7 @@ interface Call {
 }
 export interface CallOptions { contextConversationId?: string; botConversationId?: string; decisionId?: string }
 const SECRET_NAMES = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'OPENAI_API_KEY'] as const;
-const SHARED_RULES = `Speak conversationally, briefly, and discuss one item at a time. Let the user interrupt.
+const SHARED_RULES = VOICE_PREFERENCE_RULES + `Speak conversationally, briefly, and discuss one item at a time. Let the user interrupt.
 Never invent tickets, decisions, completed work, or a personal history.
 The user may think aloud. Only deliver a decision when they explicitly tell you their decision for the specific item.
 Never approve tool permissions or handle passwords, keys, or secrets. Direct those to the chat on screen.
@@ -188,6 +189,7 @@ export class LiveVoiceService {
           void (async () => {
             const args = (message.args ?? {}) as Record<string, unknown>;
             switch (message.name) {
+              case 'voice_preferences': return manageVoicePreferences(this.ctx.db, userId, args);
               case 'blockers': return workspace.blockers();
               case 'chats': return bot ? { error: 'Only this bot’s chat is available on this call.' } : workspace.chats();
               case 'read_chat': return workspace.readChat(bot ? bot.conversationId : String(args.conversationId), typeof args.beforeMessage === 'number' ? args.beforeMessage : undefined);
@@ -209,6 +211,7 @@ export class LiveVoiceService {
       const catalog = workspace.decisionCatalog();
       const history = workspace.history(6).map(item => ({ ...item, text: item.text.slice(0,600) }));
       child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), participantIdentity,
+        preferences: readVoicePreferences(this.ctx.db, userId),
         mode: bot ? 'bot' : 'coordinator', agentName: bot?.name ?? 'Henry',
         instructions: (bot ? botInstructions(bot, options.decisionId ?? null) : HENRY_INSTRUCTIONS)
           + JSON.stringify({ history, currentConversation: context, historyCoverage: { recentEntries: 6, charactersPerEntry: 600, olderEntriesRetained: true }, blockers: workspace.blockers(), decisions: catalog.items, decisionCoverage: { total: catalog.total, nextOffset: catalog.nextOffset }, focusedDecision: focus }) });

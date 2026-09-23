@@ -52,6 +52,11 @@ try {
     await page.getByRole('searchbox').fill('Choose newly available Claude and Codex models');
     await page.getByRole('heading', { name: 'Choose newly available Claude and Codex models', exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 1);
+    await page.getByRole('searchbox').fill('Teach voice your speaking preferences');
+    await page.getByRole('heading', { name: 'Teach voice your speaking preferences', exact: true }).waitFor();
+    assert.equal(await page.locator('article').count(), 1);
+    await page.getByRole('button', { name: 'Copy example for Teach voice your speaking preferences' }).click();
+    assert.match(await page.evaluate(() => navigator.clipboard.readText()), /concise answers/);
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();
     assert.equal(await page.locator('article').count(), 1);
