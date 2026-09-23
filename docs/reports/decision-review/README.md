@@ -23,7 +23,7 @@ Normal updates still version the full proposal and invalidate the prior answer. 
 
 Fixtures cover legacy, action-only, exact reply ordering/whitespace, no duplicate draft, full/partial/none/unknown refunds and missing provenance rejection. Browser checks cover320/375/414/768/1440 widths and light/dark, hover/click/keyboard/Escape, default-closed background, original details, visible reply, no overflow. Guide fixtures cover full/restricted employees and resumed-instruction tests. No customer, approval, refund, access, provider or live call mutation was used.
 
-Root typecheck and full tests passed: 2,361 server (5 skipped), 877 web, 40 browser-manager and 21 installer tests. Production build and deployment health are recorded after completion.
+Root typecheck and full tests passed: 2,361 server (5 skipped), 877 web, 40 browser-manager and 21 installer tests. Production build passed. Implementation `3e665696b94d88f48d2f3db23aa5f019740593f1` is pushed to origin/main. Root detached restart completed; web, runner, app-runner, terminal and browser-manager each returned HTTP 200. No production decision, refund, customer or access record was mutated for validation.
 
 ![Mobile review](./375-light.png)
 ![Desktop review](./1440-dark.png)
