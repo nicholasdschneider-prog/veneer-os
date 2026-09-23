@@ -18,7 +18,7 @@ Root typecheck, full tests, and production build passed: 2,207 server tests (5 s
 
 ## Release
 
-Pending production build and restart verification.
+Implementation commit `ccd5f33` is pushed to `origin/main` and deployed through root `npm run restart`. Post-restart web, runner, app-runner, terminal, and browser-manager probes all returned HTTP 200. The authenticated live guide serves the inside-card wording for Listen and Reply; built bot instructions include the updated placement. Unrelated `.veneer-browser/`, `.veneer/`, and `out/` remain untouched.
 
 ## Changed files
 
