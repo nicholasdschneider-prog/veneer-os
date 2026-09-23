@@ -36,6 +36,7 @@ type Draft = {
   state: string;
   stale: boolean;
   receipt: string | null;
+  retirement?: {reason:string;evidence:string;created_at:string} | null;
 };
 export function VoiceBriefing({
   decisionId,
@@ -179,6 +180,7 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
         <span className="text-sm capitalize">
           {draft.stale && draft.state === 'draft'
             ? 'Proposal changed'
+            : draft.retirement ? 'Retired · not sent by this draft'
             : draft.state === 'sent'
               ? 'Sent · receipt recorded'
               : draft.state === 'queued'
@@ -273,6 +275,12 @@ function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => void }) {
         }}>Check routine setup</Button>
         {routineStatus && <p role="status" className="mt-2 break-words">{routineStatus}</p>}
       </details>
+      {draft.retirement && <div role="status" className="space-y-1 break-words rounded-lg border p-3 text-sm">
+        <p className="font-medium">Retired without delivery</p>
+        <p>{draft.retirement.reason}</p>
+        <p className="text-muted-foreground">Reference evidence: {draft.retirement.evidence}</p>
+        <p className="text-xs">Recorded {draft.retirement.created_at}. Independent message evidence is not a delivery receipt for this draft.</p>
+      </div>}
       {draft.receipt && (
         <p role="status" className="break-words text-sm">
           Delivery receipt: {draft.receipt}

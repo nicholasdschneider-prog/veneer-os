@@ -133,6 +133,7 @@ export function createCommunicationRouter(ctx: AppContext) {
       );
     }),
   );
+  r.post('/drafts/:id/retire', run((req,res) => res.json(s.retire(actor(req),req.params.id!,req.body))));
   r.post(
     '/drafts/:id/claim',
     run((req, res) => {

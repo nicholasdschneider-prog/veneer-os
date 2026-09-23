@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'draft-retirement',title:'Retire an obsolete unsent draft',category:'Daily work',updated:'2026-09-23',
+    announcement:'The owning bot can retire an ordinary unclaimed draft when it is no longer needed, without inventing a delivery receipt.',
+    audience:'Active owning bots; authorized draft readers can see the audit',
+    summary:'Close obsolete outgoing work while preserving the original message, authorization and separate source evidence.',
+    steps:['Ask the original bot to refresh its draft and verify why the message is no longer needed.', 'The bot uses retire_message_draft with the current version, stable request key, reason and reference evidence. Only ordinary draft or queued messages without a delivery claim qualify.', 'The card shows Retired without delivery and the separate audit. A message sent independently is not recorded as delivery of this draft.'],
+    example:'Retire your obsolete unclaimed draft because the customer was already answered separately; keep that source receipt as reference evidence only.',
+    limits:'Only the active native owning bot can retire. No new human send approval is needed to cancel unsent work. Delegated, claimed, sending, sent, uncertain or closed drafts are rejected. If delivery claimed first, reconcile; never send or invent a receipt to close a draft. Does not change the case, source system, decisions or standing-policy send eligibility.',
+    agent:'Use list_message_drafts for fresh state/version, then retire_message_draft with draft_id, expected_version, stable request_key, reason and evidence. Only your own ordinary nondelegated draft/queued record with claim_key null is eligible. Repeat identical requests safely; conflicting keys/evidence or stale versions fail. Retirement preserves payload/authorization and writes a separate immutable audit, never sent/failed delivery. Claim and retirement serialize: if claim wins stop and reconcile; if retirement wins no send is allowed. Never use independent SENT evidence as this draft delivery. Guide: /#/bot-guide?feature=draft-retirement.',
+  },
+  {
     id:'routine-policy-enrollment', title:'Enroll bounded standing routine policies', category:'Automation', updated:'2026-09-23',
     announcement:'Authenticated business owners can record immutable standing-policy enrollment. Draft cards explain routine setup; automated routine sends remain disabled pending trusted source eligibility verification.',
     audience:'Authenticated business owners for enrollment; named bots for read-only inspection; authorized draft readers for setup status',

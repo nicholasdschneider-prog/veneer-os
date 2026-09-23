@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { messageDelegationService } from './messageDelegation.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -93,6 +94,7 @@ export function communicationService(db: Database.Database) {
       ...d,
       payload: JSON.parse(d.payload_json) as DraftPayload,
       payload_json: undefined,
+      retirement: db.prepare('SELECT expected_version,reason,evidence,actor_id,conversation_id,created_at FROM bot_message_retirements WHERE draft_id=?').get(d.id) ?? null,
     };
   }
   return {
@@ -242,6 +244,33 @@ export function communicationService(db: Database.Database) {
           return draftView(readDraft(a, id));
         })
         .immediate();
+    },
+    retire(a: Actor, id: string, raw: unknown) {
+      const p=z.object({expected_version:z.number().int().positive(),request_key:z.string().trim().min(1).max(200),reason:z.string().trim().min(1).max(2000),evidence:z.string().trim().min(1).max(4000)}).strict().parse(raw);
+      return db.transaction(() => {
+        const user=db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(a.user.id) as UserRow | undefined;
+        if(!user) throw new BotError(403,'Active owning bot required');
+        a={...a,user};
+        const d=readDraft(a,id), c=access(a,d.conversation_id,true);
+        if(a.conversationId!==d.conversation_id || c.user_id!==user.id || !db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(c.id))
+          throw new BotError(403,'Only the active native owning bot can retire its draft');
+        if(d.delegation_id) throw new BotError(409,'Delegated drafts require their existing delegation lifecycle');
+        const previous=db.prepare('SELECT * FROM bot_message_retirements WHERE conversation_id=? AND request_key=?').get(c.id,p.request_key) as {draft_id:string;expected_version:number;reason:string;evidence:string;actor_id:number} | undefined;
+        if(previous){
+          if(previous.draft_id!==id || previous.expected_version!==p.expected_version || previous.reason!==p.reason || previous.evidence!==p.evidence || previous.actor_id!==user.id)
+            throw new BotError(409,'Retirement request key conflicts with its immutable audit');
+          if(d.state!=='discarded' || d.claim_key!==null) throw new BotError(409,'Retired draft state conflicts; reconcile without sending');
+          return draftView(d);
+        }
+        if(db.prepare('SELECT 1 FROM bot_message_retirements WHERE draft_id=?').get(id)) throw new BotError(409,'Draft already retired under another request key');
+        if(d.version!==p.expected_version) throw new BotError(409,'Draft version changed; refresh before retirement');
+        if(!['draft','queued'].includes(d.state) || d.claim_key!==null) throw new BotError(409,'Only an unclaimed draft or queued message can be retired; reconcile claimed or uncertain delivery');
+        const changed=db.prepare("UPDATE bot_message_drafts SET state='discarded',version=version+1,updated_at=datetime('now') WHERE id=? AND version=? AND state IN ('draft','queued') AND claim_key IS NULL AND delegation_id IS NULL").run(id,p.expected_version);
+        if(changed.changes!==1) throw new BotError(409,'Delivery claim or draft change won the race');
+        db.prepare('INSERT INTO bot_message_retirements(draft_id,conversation_id,actor_id,expected_version,request_key,reason,evidence) VALUES(?,?,?,?,?,?,?)').run(id,c.id,user.id,p.expected_version,p.request_key,p.reason,p.evidence);
+        // Keep payload, original authorization and receipt untouched. Evidence is not delivery proof.
+        return draftView(readDraft(a,id));
+      }).immediate();
     },
     claim(a: Actor, id: string, key: string, sendCheck?: unknown) {
       return db

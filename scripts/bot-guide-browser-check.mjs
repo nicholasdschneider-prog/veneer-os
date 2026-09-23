@@ -66,6 +66,10 @@ try {
     await page.getByRole('heading', {name:'Enroll bounded standing routine policies',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /All categories currently disabled/);
     await page.screenshot({path:output + '/routine-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
+    await page.getByRole('searchbox').fill('Retire an obsolete unsent draft');
+    await page.getByRole('heading', {name:'Retire an obsolete unsent draft',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /Only the active native owning bot/);
+    await page.screenshot({path:output + '/retirement-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();
     assert.equal(await page.locator('article').count(), 1);

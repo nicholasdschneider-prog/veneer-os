@@ -80,6 +80,7 @@ function definition(
   };
 }
 export const BOT_TOOL_DEFINITIONS = [
+  definition('retire_message_draft', 'Retire your own obsolete ordinary nondelegated draft without sending. Requires fresh expected_version, stable request_key, reason and reference evidence. Only draft/queued with no claim is allowed. Preserves original authorization/payload and records separate immutable retirement audit; independent SENT evidence is never this draft delivery. Claimed/sending/sent/uncertain and delegated drafts are rejected. Refresh after a race; never claim merely to close a draft.', {draft_id:str,expected_version:{type:'integer'},request_key:str,reason:str,evidence:str}, ['draft_id','expected_version','request_key','reason','evidence']),
   definition('list_routine_policies', 'List immutable standing-policy enrollment for this exact business and named current bot. Enrollment is not source eligibility or send authority; all categories currently require a trusted source verifier. Never infer business ID from project/name.', {business_id:str}, ['business_id']),
   definition('inspect_routine_message', 'Read-only standing-policy readiness for exact scope. Returns missing proof, never authorizes, claims or sends. Requires policy_id, bounded category and exact scope. Do not fabricate historical enrollment, infer eligibility from caller assertions or request duplicate per-email approval as a workaround. Current source/category verifier is not connected.', {policy_id:str,category:{type:'string',enum:['missing_information','no_order_catalog','unused_return','approved_status_restatement','factual_tracking']},scope:messageScope}, ['policy_id','category','scope']),
   definition('inspect_approved_message', 'Read-only preflight for an exact approved customer-message delegation. Requires current decision/version. Returns ready=false with concrete missing_proof for legacy prose or absent structural transport scope; do not infer authority, alter approval, or automatically request reapproval.', {decision_id:str,expected_version:{type:'integer'}}, ['decision_id','expected_version']),
@@ -191,6 +192,7 @@ export async function callBotTool({
     inspect_approved_message: '/approved-messages/inspect', delegate_approved_message: '/approved-messages/delegate',
     accept_approved_message: '/approved-messages/accept', revoke_message_delegation: '/approved-messages/revoke',
     save_message_draft: '/chats/current/drafts', list_message_drafts: '/chats/current',
+    retire_message_draft: `/drafts/${encodeURIComponent(String(args.draft_id))}/retire`,
     claim_message_draft: `/drafts/${encodeURIComponent(String(args.draft_id))}/claim`,
     record_message_delivery: `/drafts/${encodeURIComponent(String(args.draft_id))}/receipt`,
     save_voice_briefing: '/chats/current/briefings',
