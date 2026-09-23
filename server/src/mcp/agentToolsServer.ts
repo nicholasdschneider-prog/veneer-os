@@ -1,3 +1,4 @@
+import { ROOM_TOOL_DEFINITIONS, callRoomTool } from './roomTools.js';
 import { BOT_TOOL_DEFINITIONS, callBotTool } from './botTools.js';
 import { HUDDLE_TOOL_DEFINITIONS, callHuddleTool } from './huddleTools.js';
 import fs from 'node:fs';
@@ -88,6 +89,7 @@ const TOOLS: ToolDef[] = [
   ...CONVERSATION_DISCOVERY_TOOL_DEFINITIONS,
   ...BOT_TOOL_DEFINITIONS,
   ...HUDDLE_TOOL_DEFINITIONS,
+  ...ROOM_TOOL_DEFINITIONS,
   ...TODO_TOOL_DEFINITIONS,
   GMAIL_DRAFT_TOOL,
   {
@@ -934,6 +936,8 @@ async function callTool(
     if (renameConversationResult) return renameConversationResult;
     const todoResult = await callTodoTool({ name, args, callApi });
     if (todoResult) return todoResult;
+    const roomResult = await callRoomTool({ name, args, callApi });
+    if (roomResult) return roomResult;
     const huddleResult = await callHuddleTool({ name, args, callApi });
     if (huddleResult) return huddleResult;
     const gmailDraftResult = await callGmailDraftTool({ name, args, callApi });

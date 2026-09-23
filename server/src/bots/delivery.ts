@@ -1,3 +1,4 @@
+import { roomWakeAllowed } from '../rooms/service.js';
 import { communicationWakeAllowed, communicationWakeCancelled } from './communication.js';
 import crypto from 'node:crypto';
 import { routineWakeAllowed } from '../botWorkflows/routines.js';
@@ -14,7 +15,7 @@ export function botWakeAllowed(
   w: ConversationWakeupRow,
   c: ConversationRow,
 ): boolean {
-  if (!routineWakeAllowed(db, w) || !communicationWakeAllowed(db, w)) return false;
+  if (!roomWakeAllowed(db, w) || !routineWakeAllowed(db, w) || !communicationWakeAllowed(db, w)) return false;
   if (!w.wake_key.startsWith('bot-decision:')) return true;
   const e = db
     .prepare('SELECT * FROM bot_decision_events WHERE id=?')

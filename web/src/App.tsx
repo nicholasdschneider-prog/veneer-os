@@ -1,3 +1,4 @@
+import { TeamMessages } from './screens/TeamMessages';
 import { BotGuide } from './screens/BotGuide';
 import { EmployeeWorkspace } from './screens/EmployeeWorkspace';
 import { BotConversationRail } from '@/components/BotConversationRail';
@@ -326,6 +327,12 @@ export function App() {
   if (routePath === '#/bot-guide') return (
     <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
       <BotGuide hash={hash} onNavigate={navigate} />
+    </NavShell>
+  );
+
+  if (routePath === '#/messages' || routePath.startsWith('#/messages/')) return (
+    <NavShell current="messages" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <TeamMessages roomId={routePath.split('/')[2]} onNavigate={navigate} />
     </NavShell>
   );
 

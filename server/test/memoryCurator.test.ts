@@ -45,6 +45,7 @@ describe('Luna memory curator', () => {
       CREATE TABLE users (id INTEGER PRIMARY KEY);
       CREATE TABLE projects (id TEXT PRIMARY KEY);
       CREATE TABLE conversations (id TEXT PRIMARY KEY);
+      CREATE TABLE team_room_workers (conversation_id TEXT PRIMARY KEY);
       CREATE TABLE memory_suggestions (
         id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, conversation_id TEXT, project_id TEXT,
         scope TEXT NOT NULL, kind TEXT NOT NULL, content TEXT NOT NULL, evidence TEXT NOT NULL,
@@ -55,6 +56,16 @@ describe('Luna memory curator', () => {
       INSERT INTO users (id) VALUES (7);
       INSERT INTO conversations (id) VALUES ('conv-1');
     `);
+  });
+
+  it('never publishes isolated room history into shared memory, including backfills', async () => {
+    db.prepare("INSERT INTO team_room_workers(conversation_id) VALUES('conv-1')").run();
+    const model = vi.fn();
+    const memory = client();
+    const result = await curateConversationMemory({db,client:memory,codexBin:'unused',conversation:conversation(),messages:[{role:'user',content:'Remember our private group policy.'}],runModel:model});
+    expect(result.saved).toEqual([]);
+    expect(model).not.toHaveBeenCalled();
+    expect(memory.addMemory).not.toHaveBeenCalled();
   });
 
   it('uses Luna at xhigh and Haiku at medium', () => {

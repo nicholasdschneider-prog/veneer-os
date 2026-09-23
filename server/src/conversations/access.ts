@@ -6,7 +6,7 @@ type AccessRow = Pick<ConversationRow, 'user_id' | 'visibility'> &
 
 export function businessScopeSql(userId: number, alias = 'c'): string {
   if (!Number.isSafeInteger(userId)) return '0';
-  return `((NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
+  return `(NOT EXISTS (SELECT 1 FROM team_room_workers rw WHERE rw.conversation_id=${alias}.id) AND (NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
 }
 export function businessAgentSql(
   db: Database.Database,
@@ -57,6 +57,7 @@ export function canViewConversation(
   db?: Database.Database,
 ): boolean {
   if (db) {
+    if (c.id && db.prepare('SELECT 1 FROM team_room_workers WHERE conversation_id=?').get(c.id)) return false;
     const active = db.prepare('SELECT status FROM users WHERE id=?').get(user.id) as { status: string } | undefined;
     if (active?.status !== 'active') return false;
     if (isEmployee(db, user.id) && (!c.id || !db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(user.id, c.id))) return false;

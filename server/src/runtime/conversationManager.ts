@@ -1,3 +1,4 @@
+import { queuedRoomWakeAllowed, roomSessionAllowed } from '../rooms/service.js';
 import { botDiscussionWake, botWakeAllowed, queuedDiscussionWake, recordDiscussionDelivery } from '../bots/delivery.js';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
@@ -1375,6 +1376,13 @@ export function createConversationManager({
     if (failedTurnStmt.get(conv.id)) return;
     const item = entry.queue.shift();
     if (item === undefined) return;
+    if (!roomSessionAllowed(db, conv.id, item.actorUserId) || (item.id !== null && !queuedRoomWakeAllowed(db, conv.id, item.id))) {
+      if (item.id !== null) deleteQueuedMessageStmt.run(item.id);
+      db.prepare('DELETE FROM pending_turns WHERE conversation_id=?').run(conv.id);
+      emitQueue(conv.id);
+      void runNext(conv);
+      return;
+    }
     const discussion = item.id === null ? undefined : queuedDiscussionWake(db, conv.id, item.id);
     if (discussion && !botWakeAllowed(db, discussion, conv)) {
       deleteQueuedMessageStmt.run(item.id);
@@ -1502,10 +1510,11 @@ export function createConversationManager({
       developerInstructions: null,
       instructionHash: null,
     };
+    const isolatedRoom = Boolean(db.prepare('SELECT 1 FROM team_room_workers WHERE conversation_id=?').get(conv.id));
     let memoryBlock: string | null = null;
     try {
       // Memory reads and the optional semantic gate are bounded and fail open.
-      const recall = loadMemoryBlock ? await loadMemoryBlock(conv, visibleText, { firstTurn }) : null;
+      const recall = !isolatedRoom && loadMemoryBlock ? await loadMemoryBlock(conv, visibleText, { firstTurn }) : null;
       memoryBlock = recall?.block ?? null;
       const memories = recall?.memories ?? [];
       // Persist every successful recall attempt, including an empty result, so
@@ -1770,7 +1779,7 @@ export function createConversationManager({
             }).catch((err: Error) => log.warn(`[runtime] readModel failed: ${err.message}`));
         }
       }
-      if (!sawError && captureMemoryTurn && turn.events.some((event) => event.type === 'text_final')) {
+      if (!isolatedRoom && !sawError && captureMemoryTurn && turn.events.some((event) => event.type === 'text_final')) {
         const captureEvents = [...turn.events];
         void captureMemoryTurn(conv, captureEvents).catch((err: Error) =>
           log.warn(`[runtime] memory capture failed: ${err.message}`),

@@ -1,3 +1,4 @@
+import { createRoomsRouter } from '../rooms/routes.js';
 import { createBotWorkflowsRouter } from '../botWorkflows/routes.js';
 import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
 import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
@@ -845,6 +846,7 @@ export function createApiRouter(ctx: AppContext): Router {
   router.use('/bot-workflows', createBotWorkflowsRouter(ctx));
   router.use('/bots', createBotsRouter(ctx));
   router.use('/bot-communication', createCommunicationRouter(ctx));
+  router.use('/team-rooms', createRoomsRouter(ctx));
   router.use('/huddles', createHuddlesRouter(ctx));
 
   router.get('/system/usage', (_req, res) => {

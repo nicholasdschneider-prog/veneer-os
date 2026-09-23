@@ -1,3 +1,4 @@
+import { useRoomUnread } from '@/lib/teamRooms';
 import { WorkspaceSearchButton } from './BotWorkflows';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -5,6 +6,7 @@ import {
   BookOpen,
   Ellipsis,
   MessageSquare,
+  MessagesSquare,
   Settings,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
@@ -40,6 +42,7 @@ import { DESKTOP_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { useDocumentScrollLock } from '../hooks/useDocumentScrollLock';
 
 export type NavKey =
+  | 'messages'
   | 'guide'
   | 'bots'
   | 'chats'
@@ -53,6 +56,7 @@ export type NavSelection = NavKey | `app:${string}`;
 
 type Item = { key: NavSelection; label: string; icon: LucideIcon; hash: string };
 
+const MESSAGES: Item = { key: 'messages', label: 'Messages', icon: MessagesSquare, hash: '#/messages' };
 const CHATS: Item = { key: 'chats', label: 'Chats', icon: MessageSquare, hash: '#/' };
 const BOTS: Item = { key: 'bots', label: 'VeneerBots', icon: Bot, hash: '#/bots' };
 const GUIDE: Item = { key: 'guide', label: 'Bot guide', icon: BookOpen, hash: '#/bot-guide' };
@@ -309,6 +313,7 @@ export function NavShell({
   const { usage, now } = useUsage(chatOpen);
   const claudeRing = claudeRingModel(usage, now);
   const codexRing = codexRingModel(usage, now);
+  const roomUnread = useRoomUnread();
   const botInputCount = useBotInputCount(current);
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
   const clientLogoUrlRef = useRef<string | null>(null);
@@ -364,7 +369,7 @@ export function NavShell({
         hash: `#/apps/${encodeURIComponent(item.appId)}`,
       };
     });
-  const desktopItems = [CHATS, BOTS, GUIDE, ...configuredItems];
+  const desktopItems = [CHATS, BOTS, MESSAGES, GUIDE, ...configuredItems];
   // Mobile bar, left to right: Chats · VeneerBots · More · Claude ring ·
   // Settings. Every configured item, including Automations and pinned Mini Apps,
   // sits behind More so the
@@ -400,6 +405,7 @@ export function NavShell({
           />
         ) : null}
         <Icon className="size-5 shrink-0" />
+        {it.key === 'messages' ? <NavCountBadge count={roomUnread} label={`${roomUnread} unread team messages`} /> : null}
         {it.key === 'bots' ? (
           <NavCountBadge
             count={botInputCount}
@@ -462,6 +468,7 @@ export function NavShell({
           <div className={cn('min-w-0 flex-1 items-stretch', isDesktop ? 'hidden' : 'flex')}>
             {renderItem(CHATS)}
             {renderItem(BOTS)}
+            {renderItem(MESSAGES)}
             {mobileOverflow.length ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

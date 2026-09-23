@@ -503,6 +503,8 @@ export async function curateConversationMemory({
   modelRunners?: CuratorModelRunners;
 }): Promise<CuratorResult> {
   const empty: CuratorResult = { proposed: [], saved: [], suggested: [], skipped: [], rejectionReasons: [] };
+  // Room history belongs only to that room, including during explicit backfills.
+  if (db.prepare('SELECT 1 FROM team_room_workers WHERE conversation_id=?').get(conversation.id)) return empty;
   const userMessages = messages.filter((message) => message.role === 'user' && message.content.trim());
   if (!client.configured || userMessages.length === 0) return empty;
 

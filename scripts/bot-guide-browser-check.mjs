@@ -9,7 +9,7 @@ const { chromium } = await import(pathToFileURL(process.argv[2]).href);
 const vite = await createServer({ root: new URL('../web', import.meta.url).pathname, server: { host: '127.0.0.1', port: 3298, strictPort: true } });
 await vite.listen();
 const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
-const output = new URL('../docs/reports/bot-guide/', import.meta.url).pathname;
+const output = process.argv[3] ?? new URL('../docs/reports/bot-guide/', import.meta.url).pathname;
 await mkdir(output, { recursive: true });
 const errors = [];
 try {
@@ -23,6 +23,8 @@ try {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/bot-workflows/guide') return route.fulfill({ status: failGuide ? 503 : 200, json: failGuide ? { error: 'Unavailable' } : catalog });
       if (path === '/api/me') return route.fulfill({ json: { setupRequired: false, pending: false, user: { id: 1, email: 'employee@example.test', displayName: 'Alex', role: 'member', employeeWorkspace: restricted } } });
+      if (path === '/api/team-rooms') return route.fulfill({ json: { rooms: [] } });
+      if (path === '/api/team-rooms/directory') return route.fulfill({ json: { self_key: 'user:1', teams: [] } });
       if (path === '/api/bots') return route.fulfill({ json: { bots: [], decisions: [], teams: [] } });
       if (path === '/api/navigation') return route.fulfill({ json: { configured: true, navigation: { items: [] } } });
       if (path === '/api/page-brand') return route.fulfill({ json: { brand: {} } });
@@ -40,6 +42,9 @@ try {
     assert.equal(await page.getByRole('button', { name: /^New features/ }).getAttribute('aria-pressed'), 'true');
     await page.getByRole('button', { name: 'All features', exact: true }).click();
     await page.getByRole('heading', { name: 'Talk with your bot', exact: true }).waitFor();
+    await page.getByRole('searchbox').fill('Message teammates');
+    await page.getByRole('heading', { name: 'Message teammates and bots together', exact: true }).waitFor();
+    assert.equal(await page.locator('article').count(), 1);
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();
     assert.equal(await page.locator('article').count(), 1);
