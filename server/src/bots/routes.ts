@@ -1,3 +1,4 @@
+import { bindDecisionImages, readDecisionImage } from './decisionImages.js';
 import {createOrganizationService,latestBotPreview} from './organization.js';
 import { createTeamService } from './teams.js';
 import express from 'express';
@@ -190,7 +191,7 @@ export function createBotsRouter(ctx: AppContext) {
   );
   router.post(
     '/decisions',
-    run((req, res) => {
+    run(async (req, res) => {
       const p = z
         .object({
           source_key: key,
@@ -199,9 +200,19 @@ export function createBotsRouter(ctx: AppContext) {
         })
         .strict()
         .parse(req.body);
+      if (!req.agentConversationId) throw new BotError(403, 'A bot conversation is required');
+      p.proposal = await bindDecisionImages(ctx, actor(req), req.agentConversationId, p.proposal);
       res.json({ decision: s.raise(actor(req), p) });
     }),
   );
+  router.get('/decisions/:id/images/:version/:index', run(async (req, res) => {
+    const version = z.coerce.number().int().positive().parse(req.params.version);
+    const index = z.coerce.number().int().min(0).max(11).parse(req.params.index);
+    const image = await readDecisionImage(ctx, actor(req), req.params.id!, version, index);
+    res.set('Content-Type', image.type).set('X-Content-Type-Options', 'nosniff')
+      .set('Cache-Control', 'private, no-store').set('Content-Security-Policy', "default-src 'none'; sandbox")
+      .send(image.bytes);
+  }));
   router.get(
     '/decisions/:id',
     run((req, res) => {
@@ -214,11 +225,13 @@ export function createBotsRouter(ctx: AppContext) {
   );
   router.post(
     '/decisions/:id/proposal',
-    run((req, res) => {
+    run(async (req, res) => {
       const p = mutation
         .extend({ proposal: proposalInputSchema })
         .strict()
         .parse(req.body);
+      const current = s.read(actor(req), req.params.id!);
+      p.proposal = await bindDecisionImages(ctx, actor(req), current.conversation_id, p.proposal);
       res.json({
         decision: s.revise(
           actor(req),

@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'decision-images', title: 'See images while reviewing a decision', category: 'Daily work', updated: '2026-09-23',
+    announcement: 'Detailed Needs input cards now show explicitly attached customer and case photos, with larger previews.',
+    audience: 'Anyone authorized to read the decision and its source conversations',
+    summary: 'Review supplied photos beside the proposal before answering.',
+    steps: ['Open Bot work overview below Search, then Review & decide on a Needs input card.', 'Find Images above Your decision. Select a thumbnail to enlarge it; choose View full size for detail, Fit image to return, and Close or Escape to dismiss.', 'Read the image caption and source alongside the proposed action and limits. If an image is unavailable, retry or ask the bot to attach the retained original.'],
+    example: 'Attach the customer’s damage photos to this Needs input proposal so I can review them here.',
+    limits: 'Photos must be explicitly attached to the proposal by the bot from a detected conversation file. Existing text-only decisions do not automatically acquire ticket photos. OrderOps images must first be retained through the bot’s existing authorized connection; this gallery does not proxy remote URLs or grant source-system access. Supports PNG, JPEG, GIF and WebP up to 20 MB each, 12 images per proposal. Changed image bytes require updated evidence and a new proposal version. Viewing photos never approves an action or customer message.',
+    agent: 'Supply proposal.images when raising or materially updating a decision with useful image evidence. Each entry needs conversation_id, exact detected absolute file path, label and source (customer/bot/ticket provenance). Retain authorized OrderOps or other source images in the case output folder through the existing connection first; ensure the retained image is detected as a source conversation file (for example, link it as a deliverable in that chat), never use guessed paths, unrelated case images or remote URLs. The server binds a SHA-256 of the bytes to the proposal version. Preserve returned sha256 for unchanged images; omit it for genuinely new evidence in a revised proposal, which requires a new human answer. Do not revise live approvals solely for presentation. Explain that old text-only cards have no photos attached; do not claim the gallery searched the ticket. Viewing or attaching evidence grants no execution authority. Guide: /#/bot-guide?feature=decision-images.',
+  },
+  {
     id: 'message-listen', title: 'Listen to a full bot message', category: 'Daily work', updated: '2026-09-23',
     announcement: 'Listen, Reply, and reactions now sit together inside each completed bot message card.',
     audience: 'Anyone who can read the conversation, including assigned employees',

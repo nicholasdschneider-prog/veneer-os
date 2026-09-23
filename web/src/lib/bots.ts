@@ -22,6 +22,7 @@ export interface BotProposal {
   assignee_id: number;
   team: string;
   deadline: string | null;
+  images?: { conversation_id: string; path: string; label: string; source: string; sha256?: string }[];
   evidence: { label: string; conversation_id: string }[];
   blocked_action: string;
   blocks_scope: 'task' | 'workload';

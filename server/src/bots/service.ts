@@ -31,6 +31,13 @@ export const defaultDecisionChoices = [
   { id: 'defer', label: 'Not now', action: 'defer' },
   { id: 'withdraw', label: 'Withdraw request', action: 'withdraw' },
 ] as const;
+export const decisionImageSchema = z.object({
+  conversation_id: z.string().min(1).max(200),
+  path: z.string().min(1).max(4096),
+  label: z.string().trim().min(1).max(200),
+  source: z.string().trim().min(1).max(300),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+}).strict();
 export const proposalSchema = z
   .object({
     choices: z.array(decisionChoiceSchema).min(2).max(6).refine(items => new Set(items.map(item => item.id)).size === items.length, "Choice IDs must be unique").optional(),
@@ -40,6 +47,7 @@ export const proposalSchema = z
     assignee_id: z.number().int().positive(),
     team: z.string().max(160).default(''),
     deadline: z.string().datetime({ offset: true }).nullable().default(null),
+    images: z.array(decisionImageSchema).max(12).optional(),
     evidence: z.array(evidenceSchema).max(30).default([]),
     blocked_action: text,
     blocks_scope: z.enum(['task', 'workload']).default('task'),
@@ -148,7 +156,8 @@ export function createBotService(db: Database.Database) {
     return c;
   }
   function evidenceAllowed(actor: Actor, p: Proposal, botId?: string) {
-    for (const e of p.evidence) {
+    if (p.images?.some(image => !image.sha256)) throw new BotError(400, 'Image evidence must be bound to its verified bytes');
+    for (const e of [...p.evidence, ...(p.images ?? [])]) {
       const c = chat(actor, e.conversation_id);
       if (!sameBusiness(db, botId, c)) throw new BotError(403, 'Cross-business evidence is not allowed');
     }

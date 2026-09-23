@@ -1,3 +1,4 @@
+import { DecisionImages } from '../components/DecisionImages';
 import { isPeopleConversation } from '@/lib/teamRooms';
 import {NewGroupChat} from '@/components/NewGroupChat';
 import {GroupConversationRow} from '@/components/GroupConversationRow';
@@ -772,6 +773,7 @@ export function Bots({
                       {d.can_release && <Button variant="outline" disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'release' }))}>Release question</Button>}
                     </div>
                   )}
+                  <DecisionImages key={`${d.id}-${d.version}`} decision={d} />
                   {d.state === 'needs_input' &&
                     (d.can_answer ? (
                       <div className="mt-6 border-t pt-5">

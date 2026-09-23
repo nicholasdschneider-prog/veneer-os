@@ -17,7 +17,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/bots\/?$/,
     /^\/bots\/organization\/?$/,
     /^\/bots\/teams\/?$/,
-    /^\/bots\/decisions\/[^/]+\/?$/,
+    /^\/bots\/decisions\/[^/]+(?:\/images\/\d+\/\d+)?\/?$/,
     /^\/conversations\/?$/,
     /^\/recent-conversations\/?$/,
     /^\/conversations\/[^/]+\/?$/,
