@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'raised-hands',title:'One queue for raised hands',category:'Daily work',updated:'2026-09-23',
+    announcement:'Bot work overview now has one Needs your input queue. Answered work moves out of your way into Progress & history.',
+    audience:'People with access to bot decisions, including assigned employees',
+    summary:'A bot raises its hand for a concrete question, lowers it after your answer, and returns only when it needs new input.',
+    steps:['Open Bot work overview below Search. Needs your input contains current unanswered questions.', 'Answer with a choice or explicit direction. After the answer is recorded, the item leaves this queue; approval does not mean execution is complete, and defer or reject remains binding.', 'Expand Progress & history to see follow-through, blocked or failed work, holds and completed tasks. Its blocker count remains visible while closed. Open any item for the original answer, discussion and evidence.'],
+    example:'Show me only bots with a raised hand; keep their follow-through available without asking me to approve the same thing again.',
+    limits:'Existing opted-in ERVP CS shared queues let any already-authorized approver answer even if another teammate claimed the card. Claims/comments do not grant permissions; the first valid versioned answer wins. Unrecognized teammates need legitimate existing access, not inferred membership. Only the supported needs_input state raises a hand. Technical blocked/failed execution is not automatically another human question. Older records may lack a clear next step; their blockers remain counted in Progress & history. No approvals, assignments, holds or case status are changed by this layout. Genuine material changes require a new proposal version and answer.',
+    agent:'Use raise_decision for concrete bounded questions. An explicit recorded human answer lowers the hand; continue only within that answer and existing execution guards. Technical failures belong in record_decision_result, not repeated approval requests. If new human input is genuinely required, use update_decision with expected_version and a clear revised question through the existing versioned lifecycle (or a distinct decision for distinct scope). Never revise unchanged approvals solely to resurface them, auto-resume a defer/reject, or equate leaving the queue with completion. Progress & history retains blocked work and audit. Guide: /#/bot-guide?feature=raised-hands.',
+  },
+  {
     id:'draft-retirement',title:'Retire an obsolete unsent draft',category:'Daily work',updated:'2026-09-23',
     announcement:'The owning bot can retire an ordinary unclaimed draft when it is no longer needed, without inventing a delivery receipt.',
     audience:'Active owning bots; authorized draft readers can see the audit',

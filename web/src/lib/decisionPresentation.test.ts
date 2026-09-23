@@ -52,3 +52,11 @@ describe('discussion timestamp', () => {
     expect(discussionTimestamp('bad')).toBe('Time unavailable');
   });
 });
+
+it('only an explicit current question raises a hand; execution failures do not reinterpret the answer',()=>{
+ for(const action of ['approve','reject','withdraw','defer']) {
+  for(const state of ['decided','blocked','failed','action_pending','running','verified_completed'])
+   expect(decisionSection({state,answer:{action}} as BotDecision)).not.toBe('input');
+ }
+ expect(decisionSection({state:'needs_input',answer:null} as BotDecision)).toBe('input');
+});

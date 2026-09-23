@@ -308,17 +308,8 @@ export function Bots({
       ...body,
     });
   const needs = decisions.filter((d) => decisionSection(d) === 'input');
-  // Wide screens with nothing open show the three groups side by side so all
-  // of them scroll together; each column keeps its own heading pinned.
   const wide = useMediaQuery('(min-width: 1024px)');
-  const columns = queueWidth >= 1000 && !decisionId;
   const stickyHeader = wide ? 'sticky top-0 z-10 -mx-1 w-auto bg-background px-1 pt-1 pb-2' : undefined;
-  const sections = [
-    ['execution', 'Following through'],
-    ['attention', 'Needs attention'],
-    ['deferred', 'Deferred'],
-    ['history', 'Completed / History'],
-  ] as const;
   const d = detail?.decision;
   const openRegistration = () =>
     void act(async () => {
@@ -500,7 +491,8 @@ export function Bots({
         >
           <div className={cn('min-w-0', decisionId && 'hidden lg:block')}>
             {(() => {
-              const byKey = (key: string) => decisions.filter((item) => decisionSection(item) === key);
+              const background = decisions.filter(item => decisionSection(item) !== 'input');
+              const blockers = background.filter(item => ['blocked','failed'].includes(item.state));
               const card = (item: BotDecision) => (
                 <DecisionCard
                   key={item.id}
@@ -516,7 +508,7 @@ export function Bots({
                   onApprove={() =>
                     act(async () => {
                       let current = item;
-                      if (current.shared_queue && !current.handler_id && current.can_handle) {
+                      if (current.shared_queue && !current.collaborative_answers && !current.handler_id && current.can_handle) {
                         const claimed = (await send(current.id, 'handling', {
                           expected_version: current.version,
                           expected_handling_revision: current.handling_revision,
@@ -551,90 +543,38 @@ export function Bots({
                   ) : needs.length === 0 ? (
                     <div className="rounded-2xl border border-dashed p-6">
                       <Check className="mb-2 size-5 text-muted-foreground" />
-                      <p className="font-medium">No questions waiting here</p>
+                      <p className="font-medium">No raised hands</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Questions stay here until someone gives an explicit answer.
+                        Your input queue is clear. Bots may still be working or waiting; you can check Progress & history below.
                       </p>
                     </div>
                   ) : (
-                    <div className={cn('grid gap-3', !decisionId && !columns && queueWidth >= 680 && 'grid-cols-2')}>
+                    <div className={cn('grid gap-3', !decisionId && queueWidth >= 680 && 'grid-cols-2')}>
                       {needs.map(card)}
                     </div>
                   )}
                 </section>
               );
-              const historyNote = (
-                <p className="mb-3 text-sm text-muted-foreground">Completed scoped tasks and closed proposals. Open any item to view its discussion, answer, evidence and audit. Completion does not close the wider case.</p>
-              );
-              if (!columns) {
-                return (
-                  <>
-                    {inputSection}
-                    {sections.map(([key, title]) => {
-                      const items = byKey(key);
-                      if (!items.length && key !== 'history') return null;
-                      return (
-                        <section key={key} className="mt-7" aria-label={title}>
-                          <SectionToggle id={`section-${key}`} title={title} count={items.length} open={!collapsed[key]} onToggle={() => toggleSection(key)} className={stickyHeader} />
-                          {collapsed[key] ? null : (
-                            <>
-                              {key === 'history' && historyNote}
-                              <div className="grid gap-3">{items.map(card)}</div>
-                            </>
-                          )}
-                        </section>
-                      );
-                    })}
-                  </>
-                );
-              }
-              // Three columns: questions · attention (with follow-through and
-              // deferred beneath) · history. Empty groups still show so the
-              // headings stay in the same place from visit to visit.
-              const attention = byKey('attention');
-              const execution = byKey('execution');
-              const deferred = byKey('deferred');
-              const history = byKey('history');
-              const middleCount = attention.length + execution.length + deferred.length;
-              const subgroup = (title: string, items: BotDecision[]) =>
-                items.length ? (
-                  <div key={title}>
-                    <h3 className="sticky top-12 z-10 -mx-1 bg-background px-1 py-2 text-sm font-medium text-muted-foreground">
-                      {title} <span className="ml-1 text-xs">{items.length}</span>
-                    </h3>
-                    <div className="grid gap-3">{items.map(card)}</div>
-                  </div>
-                ) : null;
-              const empty = (text: string) => (
-                <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">{text}</p>
-              );
               return (
-                <div className="grid grid-cols-3 items-start gap-5">
+                <>
                   {inputSection}
-                  <section aria-label="Needs attention" className="min-w-0">
-                    <SectionToggle id="section-attention" title="Needs attention" count={middleCount} open={!collapsed.attention} onToggle={() => toggleSection('attention')} className={stickyHeader} />
-                    {collapsed.attention ? null : middleCount === 0 ? (
-                      empty('Nothing needs attention right now.')
-                    ) : (
-                      <div className="grid gap-5">
-                        {attention.length > 0 && <div className="grid gap-3">{attention.map(card)}</div>}
-                        {subgroup('Following through', execution)}
-                        {subgroup('Deferred', deferred)}
+                  <details className="mt-7 rounded-2xl border p-4" aria-label="Progress & history">
+                    <summary className="min-h-11 cursor-pointer py-2 font-medium">
+                      Progress &amp; history <span className="ml-2 text-sm text-muted-foreground">{background.length}</span>
+                      {blockers.length > 0 && <span className="ml-2 text-sm font-normal text-muted-foreground">· {blockers.length} blocked or failed</span>}
+                    </summary>
+                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                      These items are not waiting for another answer. Your previous directions still apply, including holds and rejections.
+                      Blocked or failed work stays visible here; if a bot needs your help again, it must raise a clear new question above.
+                      Older records may not explain the next step—open the discussion for context. Completed tasks do not necessarily close the wider case.
+                    </p>
+                    {background.length === 0 ? <p className="py-3 text-sm text-muted-foreground">No other work in this view yet.</p> : (
+                      <div className={cn('grid gap-3', !decisionId && queueWidth >= 680 && 'grid-cols-2')}>
+                        {background.map(card)}
                       </div>
                     )}
-                  </section>
-                  <section aria-label="Completed / History" className="min-w-0">
-                    <SectionToggle id="section-history" title="Completed / History" count={history.length} open={!collapsed.history} onToggle={() => toggleSection('history')} className={stickyHeader} />
-                    {collapsed.history ? null : history.length === 0 ? (
-                      empty('Completed work will collect here.')
-                    ) : (
-                      <>
-                        {historyNote}
-                        <div className="grid gap-3">{history.map(card)}</div>
-                      </>
-                    )}
-                  </section>
-                </div>
+                  </details>
+                </>
               );
             })()}
             <section className="mt-8" aria-labelledby="bot-roster">
@@ -768,8 +708,8 @@ export function Bots({
                   <p className="mt-3 text-sm text-muted-foreground">Approval scope: {d.proposal.blocks_scope === 'task' ? 'This task only. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</p>
                   {d.state === 'needs_input' && d.shared_queue && (
                     <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border p-3">
-                      <p className="text-sm">{d.handler_name ? `${d.handler_name} is handling this` : 'Any authorized teammate can approve this proposal. An extra owner approval click is not required.'}</p>
-                      {!d.handler_id && d.can_handle && <Button disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'claim' }))}>Handle this</Button>}
+                      <p className="text-sm">{d.collaborative_answers ? 'Shared question: any already-authorized teammate can answer. Comments and handling do not reserve it; the first valid answer is recorded.' : d.handler_name ? `${d.handler_name} is handling this` : 'Any authorized teammate can approve this proposal. An extra owner approval click is not required.'}</p>
+                      {!d.collaborative_answers && !d.handler_id && d.can_handle && <Button disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'claim' }))}>Handle this</Button>}
                       {d.can_release && <Button variant="outline" disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'release' }))}>Release question</Button>}
                     </div>
                   )}

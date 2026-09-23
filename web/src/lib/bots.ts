@@ -51,6 +51,7 @@ export interface BotDecision {
   created_at: string;
   updated_at: string;
   answered_by?: string | null;
+  collaborative_answers?: boolean;
   shared_queue?: boolean;
   handler_id?: number | null;
   handler_name?: string | null;

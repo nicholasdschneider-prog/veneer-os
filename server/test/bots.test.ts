@@ -133,6 +133,30 @@ describe('VeneerBots', () => {
     expect(() => s.choose(human, d.id, 1, 'hold-click', 'yes', '', 'this_case')).toThrow();
     expect(() => s.result(bot, d.id, 1, 'execute', {state:'running', evidence:'checked', material_evidence_unchanged:true})).toThrow();
   });
+  it('keeps opted-in CS questions visible and answerable to existing eligible teammates after claim and comment',()=>{
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('cs-fixture','Fixture CS',1)").run();
+    db.prepare("UPDATE conversations SET business_team_id='cs-fixture' WHERE id='fixture-a'").run();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('cs-fixture',2,'member'),('cs-fixture',3,'member')").run();
+    db.prepare("INSERT INTO employee_workspaces VALUES(2)").run();
+    db.prepare("INSERT INTO employee_bot_access VALUES(2,'fixture-a')").run();
+    db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();
+    db.prepare("INSERT INTO nonexclusive_bot_queues VALUES('fixture-a','cs-fixture')").run();
+    const ali={user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow};
+    const ungranted={user:db.prepare('SELECT * FROM users WHERE id=3').get() as UserRow};
+    const d=raise();s.handle(human,d.id,1,'claim','claim',0);
+    s.reply(human,d.id,'comment','I am reviewing the evidence.');
+    expect(s.list(ali,'me').find(x=>x.id===d.id)).toMatchObject({can_answer:true,collaborative_answers:true});
+    expect(s.list(human,'me').find(x=>x.id===d.id)).toBeTruthy();
+    expect(s.list(ungranted,'me').find(x=>x.id===d.id)).toBeUndefined();
+    expect(()=>s.dismiss(ali,d.id,1)).toThrow();
+    expect(()=>s.answer(ungranted,d.id,1,'not-granted',{action:'approve',text:'yes',scope:'this_case'},1)).toThrow();
+    s.answer(ali,d.id,1,'answer',{action:'defer',text:'Wait for evidence',scope:'this_case'},1);
+    expect(s.list(ali,'me').find(x=>x.id===d.id)).toMatchObject({state:'decided',answer:{actor_id:2,action:'defer'}});
+    expect(()=>s.answer(human,d.id,1,'competing',{action:'approve',text:'yes',scope:'this_case'},1)).toThrow();
+    s.revise(bot,d.id,1,'new-question',proposal({question:'Which new evidence should we request?'}));
+    expect(s.list(ali,'me').filter(x=>x.id===d.id && x.state==='needs_input')).toHaveLength(1);
+    expect(s.thread(ali,d.id).events.some(e=>e.kind==='answered')).toBe(true);
+  });
   it('requires the current shared-queue claim for button answers', () => {
     db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();
     const d = raise();

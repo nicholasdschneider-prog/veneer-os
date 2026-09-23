@@ -202,6 +202,9 @@ export function createBotService(db: Database.Database) {
     // explicitly authorized staff, never unrelated approvers' authority.
     return d.assignee_id === c.user_id || Boolean(db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(d.assignee_id, c.id));
   }
+  function nonexclusive(d: Decision) {
+    return shared(d) && Boolean(db.prepare('SELECT 1 FROM nonexclusive_bot_queues q JOIN conversations c ON c.id=q.conversation_id WHERE q.conversation_id=? AND q.business_id=c.business_team_id').get(d.conversation_id));
+  }
   function eligible(actor: Actor, d: Decision) {
     if (actor.conversationId) return false;
     const c = conversation(d.conversation_id)!;
@@ -449,11 +452,12 @@ export function createBotService(db: Database.Database) {
       parked_json: undefined,
       answered_by: answered ? (db.prepare('SELECT display_name FROM users WHERE id=?').get(answered.actor_id) as { display_name: string } | undefined)?.display_name ?? null : null,
       shared_queue: shared(d),
+      collaborative_answers: nonexclusive(d),
       handler_name: d.handler_id ? (db.prepare('SELECT display_name FROM users WHERE id=?').get(d.handler_id) as { display_name: string } | undefined)?.display_name ?? null : null,
       can_handle: eligible(actor, d) && shared(d) && d.state === 'needs_input',
       can_release: eligible(actor, d) && shared(d) && d.handler_id !== null && (d.handler_id === actor.user.id || c.user_id === actor.user.id),
       handling_mine: d.handler_id === actor.user.id,
-      can_answer: eligible(actor, d) && (!shared(d) || d.handler_id === actor.user.id),
+      can_answer: eligible(actor, d) && (!shared(d) || nonexclusive(d) || d.handler_id === actor.user.id),
       can_amend: eligible(actor, d) && actor.user.id === c.user_id && (!shared(d) || d.handler_id === actor.user.id),
       can_manage: !actor.conversationId && actor.user.id === c.user_id,
       dismissed,
@@ -630,7 +634,7 @@ export function createBotService(db: Database.Database) {
         cas(d, version);
         if (shared(d)) {
           handlingCas(d, handlingRevision);
-          if (d.handler_id !== actor.user.id) throw new BotError(409, 'Claim this question before answering');
+          if (!nonexclusive(d) && d.handler_id !== actor.user.id) throw new BotError(409, 'Claim this question before answering');
         }
         if (d.state !== 'needs_input')
           throw new BotError(409, 'This proposal already has an answer');
