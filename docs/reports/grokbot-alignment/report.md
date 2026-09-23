@@ -22,7 +22,7 @@ The [employee guide](https://nicksworld.dev/#/bot-guide) has updated steps and N
 - Browser checks cover the actual decision surface and shared components at 320, 375, 414, and 768 pixels: menu access, transcript opening, caller initials, call controls, material risks above discussion, and no-note version-bound choice submission.
 - Full/restricted employee guide browser checks passed, including New discovery, search, navigation, mobile layout, aging, refresh, and failure recovery.
 - No live customer sends, business actions, or microphone calls were performed.
-- Deployment verification pending.
+- Deployed commit `a14091f` through the root restart script and pushed to origin/main. Live web and runner health are healthy; restart preflight passes. The voice_sessions migration is present. The authenticated live guide serves all four updated announcements, and built bot instructions include Voice chat discovery.
 
 ## Screenshots
 
