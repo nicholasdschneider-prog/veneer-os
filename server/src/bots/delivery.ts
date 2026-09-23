@@ -1,3 +1,4 @@
+import { communicationWakeAllowed, communicationWakeCancelled } from './communication.js';
 import crypto from 'node:crypto';
 import { routineWakeAllowed } from '../botWorkflows/routines.js';
 import type Database from 'better-sqlite3';
@@ -13,7 +14,7 @@ export function botWakeAllowed(
   w: ConversationWakeupRow,
   c: ConversationRow,
 ): boolean {
-  if (!routineWakeAllowed(db, w)) return false;
+  if (!routineWakeAllowed(db, w) || !communicationWakeAllowed(db, w)) return false;
   if (!w.wake_key.startsWith('bot-decision:')) return true;
   const e = db
     .prepare('SELECT * FROM bot_decision_events WHERE id=?')
@@ -80,6 +81,7 @@ export function botWakeCancelled(
   db: Database.Database,
   w: ConversationWakeupRow,
 ) {
+  communicationWakeCancelled(db, w);
   if (!w.wake_key.startsWith('bot-decision:')) return;
   const e = db
     .prepare("SELECT * FROM bot_decision_events WHERE id=? AND kind='answered'")

@@ -1,3 +1,4 @@
+import { BotCommunication, VoiceBriefing } from '../components/BotCommunication';
 import { BotGuideNotice } from '@/components/BotGuideNotice';
 import { decisionCopy, decisionSection, decisionStatusLabel, discussionTimestamp } from '@/lib/decisionPresentation';
 import { BusinessAccess } from '@/components/BusinessAccess';
@@ -751,6 +752,7 @@ export function Bots({
                     {d.state === 'needs_input' ? 'Approval still needed · Give a clear decision in discussion, approve here, or approve during a call.' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
+                  <BotCommunication key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
                   <div className="mt-5"><BotCaseTimeline entries={d.proposal.case_timeline} /></div>
                   <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} showIdentifiers /></div>
                   <dl className="mt-4 grid gap-3 text-sm">
@@ -1101,6 +1103,7 @@ export function DecisionCard({ d, onOpen, onCall, onApprove, busy = false, selec
       <h3 className="mt-4 text-base font-semibold text-balance">
         <button onClick={onOpen} className="w-full rounded text-left hover:underline focus-visible:outline focus-visible:outline-ring">{d.proposal.question}</button>
       </h3>
+      <VoiceBriefing key={`${d.id}:${d.version}`} decisionId={d.id} version={d.version} />
       <div className="mt-4"><BotProposalSummary decision={d} compact /></div>
       {d.result && <div className="mt-3 space-y-1 text-base sm:text-sm"><p className="font-medium">Latest update</p><p className="whitespace-pre-wrap text-pretty text-muted-foreground">{d.result.evidence}</p></div>}
       <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">

@@ -9,6 +9,7 @@ export function isEmployee(db: Database.Database, userId: number): boolean {
 // denied by default; project files, credentials, tools and admin APIs are not inherited.
 export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'GET') return [
+    /^\/bot-communication\/(chats\/[^/]+(?:\/threads)?|threads\/[^/]+|briefings\/[^/]+\/audio)\/?$/,
     /^\/bot-workflows\/(guide|search|push|bots\/[^/]+)\/?$/,
     /^\/live-voice\/?$/,
     /^\/bots\/?$/,
@@ -24,6 +25,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'DELETE') return /^\/bot-workflows\/push\/[^/]+\/?$/.test(path);
   if (method === 'PATCH') return /^\/bots\/preferences\/[^/]+\/?$/.test(path);
   if (method === 'POST') return [
+    /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,
     /^\/bot-workflows\/push\/?$/,
     /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|end))?\/?$/,
     /^\/bots\/decisions\/[^/]+\/(answer|thread|handling|dismiss)\/?$/,

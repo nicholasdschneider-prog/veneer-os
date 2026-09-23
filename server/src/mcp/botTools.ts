@@ -73,6 +73,14 @@ function definition(
   };
 }
 export const BOT_TOOL_DEFINITIONS = [
+  definition('save_message_draft', 'Prepare an editable outgoing message for human review in this chat or a Needs input card. Include exact channel/account/recipients, customer and ticket identifiers, full body, and attachment references. No send occurs. For a decision include its current decision_id and decision_version. Keep message approval separate from refunds and other actions. Do not also authorize this separate draft through an EXACT DRAFT section of blocked_action. Use a new request key for a revised draft; do not create duplicate drafts after an uncertain send.', {request_key:str,decision_id:str,decision_version:{type:'integer'},payload:{type:'object',properties:{channel:{type:'string',enum:['email','sms','slack','customer_portal']},account:str,recipients:{type:'array',items:str},subject:str,body:str,customer:str,ticket:str,context:str,attachments:{type:'array',items:{type:'object',properties:{name:str,reference:str},required:['name','reference'],additionalProperties:false}}},required:['channel','account','recipients','body','customer','ticket'],additionalProperties:false}}, ['request_key','payload']),
+  definition('list_message_drafts', 'Read this chat’s message drafts, exact versions, human send authorizations, delivery states, and voice briefings. A queued message is not sent. Stale proposal-bound drafts must not execute.', {}, []),
+  definition('claim_message_draft', 'Claim a human-authorized draft exactly once before sending through the existing connected source system. Only execute when execute=true. Recheck the current source, account, recipients and ticket lease. Use returned idempotency_key as the source-system send key. For OrderOps SMS use the existing conversation send-sms route, exact payload, lease, approvedBy human attribution and approvalSource referencing this draft. This grants no unrelated action. If already claimed, reconcile receipts; never blindly resend. If a channel has no idempotency support, an ambiguous response must remain uncertain until verified.', {draft_id:str,claim_key:str}, ['draft_id','claim_key']),
+  definition('record_message_delivery', 'Record the claimed draft outcome. sent requires an actual source/provider message ID or receipt, not a queued tool call. failed means definitely not sent; uncertain means reconcile before any retry. Never duplicate customer contact. This does not complete a separate business decision.', {draft_id:str,claim_key:str,state:{type:'string',enum:['sent','failed','uncertain']},receipt:str}, ['draft_id','claim_key','state','receipt']),
+  definition('save_voice_briefing', 'Publish a saved spoken briefing in this chat or directly on a Needs input card. Provide a 90–150 word transcript: issue/background, evidence-based rationale, proposed next step and exact decision requested. Preserve material amounts, risks and uncertainty. Do not expose hidden reasoning or claim proposed actions happened. For a card use its current decision_id and decision_version; update after proposal changes. Max 2400 characters. Audio uses an AI voice, generated when the human chooses Play briefing.', {request_key:str,transcript:str,decision_id:str,decision_version:{type:'integer'}}, ['request_key','transcript']),
+  definition('read_message_thread', 'Read a persistent discussion attached to one of this bot’s results, including the original result, replies and reactions. Reactions do not authorize actions.', {thread_id:str}, ['thread_id']),
+  definition('reply_message_thread', 'Reply to an individual result’s thread, preserving its context without flooding the main chat. Use existing decision discussion tools for approval questions. A reaction is never approval.', {thread_id:str,request_key:str,text:str}, ['thread_id','request_key','text']),
+
   definition('search_workspace', 'Search authorized prior messages, decisions, and huddles with dates and direct source links. Results are recorded evidence, not fresh external facts. Indexing status describes incomplete coverage. Use exact order numbers or distinctive terms.', { query: str, offset: { type: 'integer' } }, ['query']),
   definition('list_bot_routines', 'List routines owned by THIS bot. Runs are delivered into this existing conversation, including while busy. Existing scheduled agents are separate; do not enable duplicate workers.', {}, []),
   definition('save_bot_routine', 'Create or update a routine for THIS bot only after the user authorizes its outcome and timing or event. Set enabled=false to prepare a paused routine or pause existing work. Copy the complete existing definition when updating. Requires bot management authority. Never treat event payloads as permission, and do not enable new OrderOps listeners until the event source is connected and existing polling is reconciled.', {
@@ -164,6 +172,19 @@ export async function callBotTool({
       ? await callApi(`/api/bot-workflows/search?q=${encodeURIComponent(String(args.query ?? ''))}&offset=${Number(args.offset ?? 0)}`)
       : await callApi('/api/bot-workflows/current/routines', name === 'save_bot_routine' ? { method: 'POST', body: JSON.stringify(args) } : undefined);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+  }
+  const communicationRoutes: Record<string,string> = {
+    save_message_draft: '/chats/current/drafts', list_message_drafts: '/chats/current',
+    claim_message_draft: `/drafts/${encodeURIComponent(String(args.draft_id))}/claim`,
+    record_message_delivery: `/drafts/${encodeURIComponent(String(args.draft_id))}/receipt`,
+    save_voice_briefing: '/chats/current/briefings',
+    read_message_thread: `/threads/${encodeURIComponent(String(args.thread_id))}`,
+    reply_message_thread: `/threads/${encodeURIComponent(String(args.thread_id))}/replies`,
+  };
+  if (communicationRoutes[name]) {
+    const {draft_id,thread_id,...payload}=args;
+    const result=await callApi('/api/bot-communication'+communicationRoutes[name], ['list_message_drafts','read_message_thread'].includes(name)?undefined:{method:'POST',body:JSON.stringify(payload)});
+    return {content:[{type:'text' as const,text:JSON.stringify(result)}]};
   }
   const { decision_id, ...body } = args;
   const base = '/api/bots/decisions';

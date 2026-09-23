@@ -1,6 +1,7 @@
 import { createBotWorkflowsRouter } from '../botWorkflows/routes.js';
 import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
 import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
+import { createCommunicationRouter } from '../bots/communicationRoutes.js';
 import { createBotsRouter } from '../bots/routes.js';
 import { createHuddlesRouter } from '../huddles/routes.js';
 import crypto from 'node:crypto';
@@ -843,6 +844,7 @@ export function createApiRouter(ctx: AppContext): Router {
   router.use('/live-voice', createLiveVoiceRouter(ctx));
   router.use('/bot-workflows', createBotWorkflowsRouter(ctx));
   router.use('/bots', createBotsRouter(ctx));
+  router.use('/bot-communication', createCommunicationRouter(ctx));
   router.use('/huddles', createHuddlesRouter(ctx));
 
   router.get('/system/usage', (_req, res) => {

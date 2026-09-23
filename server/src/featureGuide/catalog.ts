@@ -14,6 +14,33 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'message-drafts',title:'Review and send customer messages',category:'Daily work',updated:'2026-09-23',
+    announcement:'Editable outgoing messages now appear in chat and Needs input discussions, with separate send authorization and delivery receipts.',
+    audience:'Authorized employees and decision handlers',summary:'Review the customer, ticket, channel, sending account, recipients, attachments and exact message before sending.',
+    steps:['Ask the bot to prepare an outgoing message card, attached to its Needs input decision when relevant. Open the decision discussion to review it.','Edit recipients, subject or message and remove attachments if needed. Save edits before sending. Ask the bot to revise for other changes.','Select Send message, then Confirm send message. The bot checks the current case and sends through its existing connected channel.','Check the delivery receipt. Queued and Sending are not delivery confirmations. An uncertain send needs source verification before retrying.'],
+    example:'Prepare a customer SMS for this ticket as an editable draft on the Needs input card. Keep the refund decision separate.',
+    limits:'Sending approves only the exact message. Business actions remain separate. The owning bot and its channel connection must be available; source-system leases and permissions still apply. Historical EXACT DRAFT text keeps its existing proposal behavior.',
+    agent:'Use save_message_draft with exact account, recipients, customer, ticket and attachments; bind decisions with current decision_id/decision_version. After human send authorization, list_message_drafts, claim_message_draft, execute only if execute=true using the returned source idempotency key, and record_message_delivery with real receipt. Never send twice after uncertainty. Do not treat generic business approval as permission for a separately prepared message. Request new review after material source changes.',
+  },
+  {
+    id:'result-threads',title:'Discuss an individual result',category:'Teamwork',updated:'2026-09-23',
+    announcement:'Bot results now have persistent reply threads, reply counts, unread indicators and reactions.',
+    audience:'Teammates with chat access',summary:'Keep feedback and follow-up with the result they concern.',
+    steps:['Choose Reply in thread below a completed bot result.','Read the original result, add a reply, or acknowledge with a reaction. The bot receives your reply and responds in the thread.','Return through the reply count; new replies are marked. For a Needs input proposal, use its existing decision discussion.'],
+    example:'Discuss this result in its thread and explain the unresolved exception.',
+    limits:'Reactions never approve actions. Threads follow conversation access. Existing decision discussions remain the place to approve a particular proposal.',
+    agent:'Use read_message_thread and reply_message_thread when notified of a result-thread reply. Preserve the original result context. Keep approval questions in the existing decision discussion, and never interpret reactions as authority.',
+  },
+  {
+    id:'voice-briefings',title:'Listen to a short contextual briefing',category:'Daily work',updated:'2026-09-23',
+    announcement:'Needs input cards and chats can now play a saved audio briefing explaining the background, recommendation and decision needed.',
+    audience:'Employees with access to the item',summary:'Understand why a bot raised its hand without reading a long card.',
+    steps:['On a Needs input card, choose Play briefing. The first request prepares the summary and audio; then use the player to listen.','Use playback controls to pause or change position. Expand Read briefing transcript for the written version.','Review the proposed next step and use the existing decision controls to respond. Listening never approves or sends anything.','For other work, ask the bot to publish a short voice briefing in chat.'],
+    example:'Give me a 60-second briefing on this item: what happened, why you need me, your recommendation, and the decision you need.',
+    limits:'Uses an AI-generated voice and the configured OpenAI voice connection. Summaries target 30–60 seconds; material conditions may take longer. A changed proposal invalidates its old briefing. Written details remain available.',
+    agent:'Proactively use save_voice_briefing for complicated raised hands and requested audio updates. Write an evidence-grounded 90–150 word transcript covering issue, background, rationale, proposed next step and exact question; retain material amounts, conditions and uncertainty. Supply current decision version. Explain evidence, never hidden reasoning. Publish a new briefing after proposal changes; audio is generated when requested.',
+  },
+  {
     id: 'guide', title: 'Your living bot guide', category: 'Getting started', updated: '2026-09-23',
     announcement: 'Feature instructions now live here, with new releases highlighted automatically.',
     audience: 'All employees', summary: 'Find what your bots can do, how to ask, and what needs setup.',

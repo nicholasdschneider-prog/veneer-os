@@ -1,3 +1,4 @@
+import { BotCommunication, MessageThreadDialog } from '../components/BotCommunication';
 import { workspaceSearchFocusKey } from '@/lib/workspaceSearch';
 import { useLiveVoice } from '@/components/VoiceProvider';
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
@@ -6,7 +7,7 @@ import { MessageSelection, ComposerQuote, appendMessageQuote, type MessageQuote 
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AppWindow, Bell, Bot, Check, ChevronDown, ChevronLeft, Clock, Copy, Ellipsis, FileText, GitFork, HatGlasses, Mail, MessageSquare, MessagesSquare, Mic, Paperclip, Phone, Pin, Sparkles, UsersRound, Wrench, X } from 'lucide-react';
-import { api, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
+import { api, requestJson, type AssistantType, type ConnectorInfo, type ConnectorInstall, type ModelOption, type ModelPrefs, type SessionFile } from '../lib/api';
 import { chatDeleteConfirmation, chatHeaderMenuLabels, copyChatShareUrl } from '../lib/chatDeletion';
 import type { Artifact, PublishedArtifact } from '../lib/artifacts';
 import { artifactForHref, artifactPathKey, isDesktopWatchLink, localPathForHref } from '../lib/artifacts';
@@ -457,6 +458,7 @@ export function Chat({
     }
   });
   const quoteStorageKey = `veneer.quote.${conversationId}`;
+  const [messageThread, setMessageThread] = useState<{turn:string;at:string}|null>(null);
   const [messageQuote, setMessageQuote] = useState<MessageQuote | null>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(quoteStorageKey) ?? 'null');
@@ -2081,6 +2083,8 @@ export function Chat({
   const onTranscriptClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       const target = event.target as HTMLElement;
+      const threadButton=target.closest<HTMLElement>('[data-result-thread]');
+      if(threadButton){event.preventDefault();try{setMessageThread(JSON.parse(threadButton.dataset.resultThread!));}catch{/* invalid anchor */}return;}
       // Memory panels use the browser's top-layer popover so paint containment
       // on the transcript scroller cannot clip them. Position before the
       // popover target's native click action opens it; this works for both live
@@ -2141,6 +2145,19 @@ export function Chat({
     },
     [artifacts, onNavigate, onOpenArtifact, onOpenCitations, openBrowserLink, openLocalPath, openProjectFileLink, showDesktop],
   );
+
+  useEffect(()=>{
+    if(isNew)return;
+    let active=true;
+    const refresh=()=>requestJson<{threads:{anchor:string;count:number;unread:number}[]}>(`/api/bot-communication/chats/${encodeURIComponent(conversationId)}/threads`).then(({threads})=>{
+      if(!active)return;
+      for(const button of screenRef.current?.querySelectorAll<HTMLElement>('[data-result-thread]')??[]){
+        const t=threads.find(t=>t.anchor===button.dataset.resultThread);
+        button.textContent=t?.count?`Thread · ${t.count} replies${t.unread?` · ${t.unread} new`:''}`:'Reply in thread';
+      }
+    }).catch(()=>{});
+    void refresh();const timer=setInterval(()=>void refresh(),8000);return()=>{active=false;clearInterval(timer);};
+  },[conversationId,isNew,items.length,messageThread]);
 
   const liveItems = groupActivityRuns(items.slice(frozenLen));
   const pendingQuestionId = liveItems.find(isAnchoredPendingQuestion)?.key;
@@ -2642,6 +2659,7 @@ export function Chat({
                   />
                 </MessageScrollerItem>
               ))}
+              {!isNew&&<MessageScrollerItem><BotCommunication key={conversationId} conversationId={conversationId}/></MessageScrollerItem>}
             </MessageScrollerContent>
           </MessageScrollerViewport>
           <MessageScrollerButton direction="end" className="rounded-full" />
@@ -2650,6 +2668,7 @@ export function Chat({
       </MarkdownImageSourcesContext.Provider>
       </ImageLightboxContext.Provider>
 
+      {messageThread&&<MessageThreadDialog key={conversationId+JSON.stringify(messageThread)} conversationId={conversationId} anchor={messageThread} onClose={()=>setMessageThread(null)}/>}
       {overlayImage ? (
         <div
           className="absolute inset-0 z-10 flex flex-col bg-background/97 backdrop-blur-sm"
@@ -3759,6 +3778,7 @@ const ChatRow = memo(function ChatRow({
             </MessageFooter>
           ) : null}
           <AssistantResponseMetadata at={item.at} usage={item.usage} />
+          {item.turnId&&item.at&&<button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} className="min-h-9 text-xs text-muted-foreground underline underline-offset-4">Reply in thread</button>}
         </MessageContent>
       </Message>
     );
