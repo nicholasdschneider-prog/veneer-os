@@ -42,3 +42,11 @@ Synthetic fixtures, scrolled to show the collapsed technical section and discuss
 - [scripts/decision-discussion-browser-check.mjs](/Users/archerclawdington/veneer-os/scripts/decision-discussion-browser-check.mjs)
 
 - [BotProposalSummary.test.tsx](/Users/archerclawdington/veneer-os/web/src/components/BotProposalSummary.test.tsx)
+
+## Deployment receipt
+
+Code commit **5c1536e80a8882108338141d21357f3015ef8fd7** pushed to origin/main. Isolated root typecheck, full npm test and build passed: installer 21, server 2,413 passed / 5 existing skipped, web 878, browser-manager 40. Build retained the existing large-chunk warning. Ten full-app viewport/theme fixture combinations and full/restricted guide browser checks passed.
+
+Detached root `npm run restart` completed: web PID22312, runner22330, app-runner22366, terminal22468 and browser-manager all healthy. Independent web and browser-manager read-only health returned200. All885 compiled artifact hashes were checked after restart; no BUILD283 migration0119, handoff route or tool was published. No production decision or customer action was used for acceptance.
+
+[Exact artifact manifest](./artifact-manifest.json) records the code commit and per-file hashes. Canonical unfinished BUILD283 files/hunks remain unchanged for serial continuation. BUILD284 deferred-follow-up authorization is a distinct retained repair, not solved by presentation/reply editing.
