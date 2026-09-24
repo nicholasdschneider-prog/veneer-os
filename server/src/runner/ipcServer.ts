@@ -201,7 +201,7 @@ export function createIpcServer({
         if (!conv) return void sendJson(res, 404, { error: 'conversation not found' });
         return void sendJson(res, 200, {
           ok: true,
-          ...manager.queueMessage(conv, String(body.text ?? ''), actorFor(body, conv), originFor(body)),
+          ...manager.queueMessage(conv, String(body.text ?? ''), actorFor(body, conv), originFor(body), typeof body.requestKey==='string' ? body.requestKey : undefined),
         });
       }
       case '/rpc/queueSnapshot':

@@ -34,6 +34,7 @@ export function markTurnFinished(
   conversation: ConversationUnreadRow,
   viewerUserIds: Iterable<number>,
 ): void {
+  if (db.prepare('SELECT 1 FROM coordination_lanes WHERE conversation_id=?').get(conversation.id)) return;
   const viewers = new Set(viewerUserIds);
   const markUnread = db.prepare(
     `INSERT INTO conversation_last_seen (user_id, conversation_id, unread)

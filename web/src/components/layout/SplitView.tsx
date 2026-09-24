@@ -26,6 +26,7 @@ export function SplitView({
   sidebarHidden = false,
   detailMinWidth = 0,
   separatorLabel = 'Resize sidebar',
+  keepDetailMountedOnMobile = false,
 }: {
   storageKey: string;
   sidebar: ReactNode;
@@ -38,6 +39,7 @@ export function SplitView({
   sidebarHidden?: boolean;
   detailMinWidth?: number;
   separatorLabel?: string;
+  keepDetailMountedOnMobile?: boolean;
 }) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const clamp = (w: number) => Math.min(maxWidth, Math.max(minWidth, Math.round(w)));
@@ -79,7 +81,13 @@ export function SplitView({
     };
   }, [dragging]);
 
-  if (!isDesktop) return <>{mobileShows === 'sidebar' ? sidebar : children}</>;
+  if (!isDesktop) {
+    if (!keepDetailMountedOnMobile) return <>{mobileShows === 'sidebar' ? sidebar : children}</>;
+    return <div className="relative h-full min-h-0 min-w-0">
+      <div className={cn('absolute inset-0 min-h-0',mobileShows!=='sidebar'&&'invisible pointer-events-none')} inert={mobileShows!=='sidebar'?true:undefined}>{sidebar}</div>
+      <div className={cn('absolute inset-0 min-h-0',mobileShows!=='detail'&&'invisible pointer-events-none')} inert={mobileShows!=='detail'?true:undefined}>{children}</div>
+    </div>;
+  }
 
   const sidebarPane = (
     <div

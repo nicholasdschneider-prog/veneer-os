@@ -86,9 +86,9 @@ describe('restricted employee workspace', () => {
     expect(actor(2).user.role).toBe('member');
     expect(db.prepare("SELECT payload_json FROM business_audit WHERE action='member' ORDER BY id DESC LIMIT 1").get()).toBeDefined();
 
-    const steerMessage = vi.fn(async () => ({ disposition: 'delivered', messageId: 1 }));
+    const queueMessage = vi.fn(async () => ({ disposition: 'queued', messageId: 1 }));
     const ctx = { db, resolveIdentity: async () => ({ email: 'ali@fixture.test', agentConversationId: 'nora' }), manager: {
-      bus: new EventEmitter(), statusOf: async () => 'idle', snapshot: async () => [], steerMessage,
+      bus: new EventEmitter(), statusOf: async () => 'idle', snapshot: async () => [], queueMessage,
     } } as unknown as AppContext;
     const app = express(); app.use('/api', createApiRouter(ctx)); const server = app.listen(0, '127.0.0.1');
     await new Promise<void>(r => server.once('listening', r));
@@ -97,11 +97,11 @@ describe('restricted employee workspace', () => {
       expect((await (await fetch(base + '/me')).json()).user.employeeWorkspace).toBe(false);
       expect((await fetch(base + '/conversations/grant/transcript')).status).toBe(200);
       expect((await fetch(base + '/conversations/grant/steer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Provide the CS evidence for this accounting case.' }) })).status).toBe(200);
-      expect(steerMessage).toHaveBeenCalledOnce();
+      expect(queueMessage).toHaveBeenCalledOnce();
       expect((await fetch(base + '/admin/users')).status).toBe(403);
       teams.manage(owner, { action: 'member', team_id: teamId, user_id: 2, role: 'viewer' });
       expect((await fetch(base + '/conversations/grant/steer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Viewer cannot send.' }) })).status).toBe(404);
-      expect(steerMessage).toHaveBeenCalledOnce();
+      expect(queueMessage).toHaveBeenCalledOnce();
     } finally { await new Promise<void>(r => server.close(() => r())); }
   });
 

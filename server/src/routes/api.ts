@@ -1,3 +1,5 @@
+import { coordinationLane } from '../coordination/store.js';
+import { createCoordinationRouter, sendCoordination } from '../coordination/routes.js';
 import { focusedApiBoundary, focusedAutomations, isFocusedMember } from '../bots/focusedWorkspace.js';
 import { createRoomsRouter } from '../rooms/routes.js';
 import { createBotWorkflowsRouter } from '../botWorkflows/routes.js';
@@ -473,6 +475,7 @@ declare module 'express-serve-static-core' {
     identityEmail?: string;
     /** Chat whose agent authenticated this request (agent token), if any. */
     agentConversationId?: string;
+    agentExecutionConversationId?: string;
     user?: UserRow;
   }
 }
@@ -734,6 +737,7 @@ export function createApiRouter(ctx: AppContext): Router {
       }
       req.identityEmail = identity.email;
       req.agentConversationId = identity.agentConversationId;
+      req.agentExecutionConversationId = identity.agentExecutionConversationId;
       next();
     })().catch(() => res.status(500).json({ ok: false, error: 'Identity resolution failed' }));
   });
@@ -824,6 +828,20 @@ export function createApiRouter(ctx: AppContext): Router {
     next();
   });
 
+  // Coordination keeps canonical authority, but every callback must also retain
+  // access to its exact pair. Revocation or deletion stops active workers too.
+  router.use((req, res, next) => {
+    if (!req.agentExecutionConversationId) return next();
+    const lane = coordinationLane(db, req.agentExecutionConversationId);
+    const thread = lane ? db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string} | undefined : undefined;
+    const allowed = lane && lane.owner_id === req.agentConversationId && thread && [thread.left_id,thread.right_id].every(id => {
+      const parent = db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow | undefined;
+      return parent && canViewConversation(req.user!,parent,db) && sameBusiness(db,req.agentConversationId,parent) && (id !== lane.owner_id || canSendToConversation(req.user!,parent,db));
+    });
+    if (!allowed) { res.status(403).json({error:'Coordination access is no longer available'}); return; }
+    next();
+  });
+
   router.use(employeeApiBoundary(db));
   router.use(focusedApiBoundary(db));
   router.get('/focused-workspace/automations', (req, res) => {
@@ -849,6 +867,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     next();
   });
+  router.use(createCoordinationRouter(ctx));
   router.use('/live-voice', createLiveVoiceRouter(ctx));
   router.use('/bot-workflows', createBotWorkflowsRouter(ctx));
   router.use('/bots', createBotsRouter(ctx));
@@ -2851,7 +2870,7 @@ export function createApiRouter(ctx: AppContext): Router {
     const rows = db
       .prepare(
         `SELECT * FROM conversations
-          WHERE side_chat_of = ? AND archived = 0 AND (visibility = 'team' OR user_id = ?)
+          WHERE side_chat_of = ? AND NOT EXISTS (SELECT 1 FROM coordination_lanes cl WHERE cl.conversation_id=conversations.id) AND archived = 0 AND (visibility = 'team' OR user_id = ?)
           ORDER BY last_active_at DESC`,
       )
       .all(parent.id, req.user!.id) as ConversationRow[];
@@ -3107,6 +3126,14 @@ export function createApiRouter(ctx: AppContext): Router {
       res.status(400).json({ ok: false, error: 'text required' });
       return;
     }
+    if (req.agentExecutionConversationId && req.agentConversationId === row.id) {
+      res.status(400).json({error:'Coordination cannot post into its own human conversation'}); return;
+    }
+    if (req.agentConversationId && req.agentConversationId !== row.id) {
+      void sendCoordination(ctx, req, row, body.data.text).then(result=>res.json(result))
+        .catch((err: Error)=>res.status(400).json({error:err.message}));
+      return;
+    }
     reactivateConversation(row.id);
     if (!row.title) {
       db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(titleFrom(body.data.text), row.id);
@@ -3150,7 +3177,7 @@ export function createApiRouter(ctx: AppContext): Router {
       }
     }
     void manager
-      .scheduleWakeup(row.id, req.user!.id, body.data.key, body.data.reason, scheduledFor.toISOString())
+      .scheduleWakeup(req.agentExecutionConversationId ?? row.id, req.user!.id, body.data.key, body.data.reason, scheduledFor.toISOString())
       .then((result) => {
         if (!result.ok) {
           const status = result.error === 'invalid_time' ? 400 : result.error === 'conversation_archived' ? 409 : 404;
@@ -3170,7 +3197,7 @@ export function createApiRouter(ctx: AppContext): Router {
       return;
     }
     void manager
-      .listWakeups(row.id)
+      .listWakeups(req.agentExecutionConversationId ?? row.id)
       .then((wakeups) => res.json({ ok: true, wakeups }))
       .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
@@ -3188,7 +3215,7 @@ export function createApiRouter(ctx: AppContext): Router {
       return;
     }
     void manager
-      .cancelWakeup(row.id, wakeupId.data)
+      .cancelWakeup(req.agentExecutionConversationId ?? row.id, wakeupId.data)
       .then((result) => {
         if (!result.ok) {
           res.status(result.error === 'not_found' ? 404 : 409).json(result);
@@ -3229,7 +3256,7 @@ export function createApiRouter(ctx: AppContext): Router {
       }
     }
     void manager
-      .rescheduleWakeup(row.id, wakeupId.data, scheduledFor.toISOString())
+      .rescheduleWakeup(req.agentExecutionConversationId ?? row.id, wakeupId.data, scheduledFor.toISOString())
       .then((result) => {
         if (!result.ok) {
           const status = result.error === 'not_found' ? 404 : result.error === 'invalid_time' ? 400 : 409;
@@ -3255,7 +3282,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     reactivateConversation(row.id);
     void manager
-      .fireWakeup(row.id, wakeupId.data)
+      .fireWakeup(req.agentExecutionConversationId ?? row.id, wakeupId.data)
       .then((result) => {
         if (!result.ok) {
           const status = result.error === 'not_found' || result.error === 'conversation_not_found' ? 404 : 409;
@@ -3282,6 +3309,14 @@ export function createApiRouter(ctx: AppContext): Router {
     const body = MessageSchema.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ ok: false, error: 'text required' });
+      return;
+    }
+    if (req.agentExecutionConversationId && req.agentConversationId === row.id) {
+      res.status(400).json({error:'Coordination cannot steer its own human conversation'}); return;
+    }
+    if (req.agentConversationId && req.agentConversationId !== row.id) {
+      void sendCoordination(ctx, req, row, body.data.text).then(result=>res.json(result))
+        .catch((err: Error)=>res.status(400).json({error:err.message}));
       return;
     }
     reactivateConversation(row.id);

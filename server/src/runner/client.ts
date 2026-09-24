@@ -77,6 +77,7 @@ export interface RunnerClient {
     text: string,
     actorUserId: number,
     origin?: MessageOrigin,
+    requestKey?: string,
   ): Promise<{ ok: true } & PostMessageResult>;
   queueSnapshot(convId: string): Promise<ConversationQueueSnapshot>;
   updateQueuedMessage(convId: string, messageId: number, text: string, actorUserId: number): Promise<QueueMutationResult>;
@@ -293,8 +294,8 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
       rpc('/rpc/postMessage', { convId, text, actorUserId, origin }),
     steerMessage: (convId, text, actorUserId, idempotencyKey, origin) =>
       rpc('/rpc/steerMessage', { convId, text, actorUserId, idempotencyKey, origin }),
-    queueMessage: (convId, text, actorUserId, origin) =>
-      rpc('/rpc/queueMessage', { convId, text, actorUserId, origin }),
+    queueMessage: (convId, text, actorUserId, origin, requestKey) =>
+      rpc('/rpc/queueMessage', { convId, text, actorUserId, origin, requestKey }),
     queueSnapshot: (convId) =>
       rpc<{ queue: ConversationQueueSnapshot }>('/rpc/queueSnapshot', { convId }).then((r) => r.queue),
     updateQueuedMessage: (convId, messageId, text, actorUserId) =>

@@ -1,3 +1,4 @@
+import { CoordinationPanel } from './Coordination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { Artifact, FileArtifact, PageArtifact, PublishedArtifact } from '../../lib/artifacts';
@@ -286,6 +287,7 @@ export function ChatWorkspace({
   return (
     <SplitView
       storageKey="split:artifact"
+      keepDetailMountedOnMobile
       side="right"
       sidebarHidden={!panelOpen}
       mobileShows={panelOpen ? 'sidebar' : 'detail'}
@@ -307,7 +309,9 @@ export function ChatWorkspace({
               : 'Resize artifact preview'
       }
       sidebar={
-        sideChatOpen && sideParam ? (
+        sideChatOpen && sideParam?.startsWith('coordination:') ? (
+          <CoordinationPanel threadId={sideParam.slice('coordination:'.length)} onClose={closeSideChat} onNavigate={onNavigate} />
+        ) : sideChatOpen && sideParam ? (
           <SideChatPanel
             parentId={conversationId}
             agentName={agentName}

@@ -16,6 +16,7 @@ export interface Identity {
   /** Set when the caller authenticated with a per-turn agent token: the chat
       whose agent is making this request (see runtime/agentTokens.ts). */
   agentConversationId?: string;
+    agentExecutionConversationId?: string;
 }
 
 export type IdentityResolver = (req: IncomingMessage) => Promise<Identity | null>;

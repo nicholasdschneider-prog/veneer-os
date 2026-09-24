@@ -7,7 +7,7 @@ type AccessRow = Pick<ConversationRow, 'user_id' | 'visibility'> &
 
 export function businessScopeSql(userId: number, alias = 'c'): string {
   if (!Number.isSafeInteger(userId)) return '0';
-  return `(${focusedScopeSql(userId, alias)} AND NOT EXISTS (SELECT 1 FROM team_room_workers rw WHERE rw.conversation_id=${alias}.id) AND (NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
+  return `(${focusedScopeSql(userId, alias)} AND NOT EXISTS (SELECT 1 FROM coordination_lanes cl WHERE cl.conversation_id=${alias}.id) AND NOT EXISTS (SELECT 1 FROM team_room_workers rw WHERE rw.conversation_id=${alias}.id) AND (NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
 }
 export function businessAgentSql(
   db: Database.Database,
@@ -58,6 +58,14 @@ export function canViewConversation(
   db?: Database.Database,
 ): boolean {
   if (db) {
+    const lane = c.id ? db.prepare('SELECT thread_id FROM coordination_lanes WHERE conversation_id=?').get(c.id) as {thread_id:string} | undefined : undefined;
+    if (lane) {
+      const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string} | undefined;
+      return Boolean(thread && [thread.left_id,thread.right_id].every(id => {
+        const parent = db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow | undefined;
+        return parent && canViewConversation(user,parent,db);
+      }));
+    }
     if (c.id && db.prepare('SELECT 1 FROM team_room_workers WHERE conversation_id=?').get(c.id)) return false;
     const active = db.prepare('SELECT status FROM users WHERE id=?').get(user.id) as { status: string } | undefined;
     if (active?.status !== 'active') return false;
@@ -71,6 +79,7 @@ export function canSendToConversation(
   c: AccessRow,
   db?: Database.Database,
 ): boolean {
+  if (db && c.id && db.prepare('SELECT 1 FROM coordination_lanes WHERE conversation_id=?').get(c.id)) return false;
   return canViewConversation(user, c, db) && businessRole(user, c, db) !== 'viewer';
 }
 export function canManageConversation(
@@ -79,6 +88,11 @@ export function canManageConversation(
   db?: Database.Database,
 ): boolean {
   if (db && isEmployee(db, user.id)) return false;
+  const lane = db && c.id ? db.prepare('SELECT owner_id FROM coordination_lanes WHERE conversation_id=?').get(c.id) as {owner_id:string} | undefined : undefined;
+  if (lane && db) {
+    const parent = db.prepare('SELECT * FROM conversations WHERE id=?').get(lane.owner_id) as ConversationRow | undefined;
+    return Boolean(parent && canViewConversation(user,c,db) && canManageConversation(user,parent,db));
+  }
   return (
     canViewConversation(user, c, db) &&
     ['legacy', 'owner', 'manager'].includes(businessRole(user, c, db) ?? '')

@@ -23,13 +23,14 @@ import type Database from 'better-sqlite3';
 const configuredTurnCeilingMs = Number(process.env.VP_TURN_TIMEOUT_MS) || 6 * 60 * 60 * 1000;
 const TTL_MS = configuredTurnCeilingMs + 60 * 60 * 1000;
 
-export function mintAgentToken(db: Database.Database, email: string, conversationId: string | null = null): string {
+export function mintAgentToken(db: Database.Database, email: string, conversationId: string | null = null, executionConversationId: string | null = null): string {
   const token = crypto.randomBytes(24).toString('hex');
-  db.prepare('INSERT INTO agent_tokens (token, email, expires_at, conversation_id) VALUES (?, ?, ?, ?)').run(
+  db.prepare('INSERT INTO agent_tokens (token, email, expires_at, conversation_id, execution_conversation_id) VALUES (?, ?, ?, ?, ?)').run(
     token,
     email,
     Date.now() + TTL_MS,
     conversationId,
+    executionConversationId,
   );
   return token;
 }
@@ -37,16 +38,17 @@ export function mintAgentToken(db: Database.Database, email: string, conversatio
 export interface AgentTokenContext {
   email: string;
   conversationId: string | null;
+  executionConversationId?: string | null;
 }
 
 /** Resolve the authenticated user plus the conversation this turn belongs to. */
 export function resolveAgentTokenContext(db: Database.Database, token: string): AgentTokenContext | null {
-  const row = db.prepare('SELECT email, expires_at, conversation_id FROM agent_tokens WHERE token = ?').get(token) as
-    | { email: string; expires_at: number; conversation_id: string | null }
+  const row = db.prepare('SELECT email, expires_at, conversation_id, execution_conversation_id FROM agent_tokens WHERE token = ?').get(token) as
+    | { email: string; expires_at: number; conversation_id: string | null; execution_conversation_id: string | null }
     | undefined;
   db.prepare('DELETE FROM agent_tokens WHERE expires_at < ?').run(Date.now());
   if (!row || row.expires_at < Date.now()) return null;
-  return { email: row.email, conversationId: row.conversation_id };
+  return { email: row.email, conversationId: row.conversation_id, ...(row.execution_conversation_id ? { executionConversationId: row.execution_conversation_id } : {}) };
 }
 
 export function resolveAgentToken(db: Database.Database, token: string): string | null {

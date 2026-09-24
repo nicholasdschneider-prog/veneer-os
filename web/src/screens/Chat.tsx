@@ -1,3 +1,4 @@
+import { CoordinationActivity } from '../components/chat/Coordination';
 import {useChatHistory} from '../lib/useChatHistory';
 import {ChatHistoryControls} from '../components/ChatHistoryControls';
 import { CallButton, CallIcon } from '@/components/CallButton';
@@ -2618,6 +2619,7 @@ export function Chat({
           />
         ) : null}
       </header>
+      {!isNew && <CoordinationActivity conversationId={conversationId} onNavigate={onNavigate} />}
 
       {!isNew && automation ? (
         <AutomationStrip

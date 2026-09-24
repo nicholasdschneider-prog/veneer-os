@@ -74,9 +74,9 @@ beforeAll(async () => {
       postMessage: async (...args: unknown[]) => {
         postedMessages.push(args);
       },
-      steerMessage: async () => ({
+      queueMessage: async () => ({
         messageId: 42,
-        disposition: 'steered',
+        disposition: 'queued',
         queue: { revision: 1, messages: [], failedTurn: null },
       }),
       statusOf: async () => 'idle',
@@ -198,7 +198,7 @@ describe('handoff conversation origins', () => {
       target_conversation_id: 'team-destination',
       message_id: 42,
       message_text: 'Exact outbound message.',
-      disposition: 'steered',
+      disposition: 'queued',
     });
   });
 

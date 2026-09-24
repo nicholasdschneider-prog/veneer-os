@@ -326,6 +326,8 @@ export const api = {
     }),
   conversation: (id: string) => requestJson<{ conversation: Conversation }>(`/api/conversations/${id}`),
   // Side chats: ask about a chat without interrupting its agent.
+  coordinationThreads: (id: string) => requestJson<{threads: import('../components/chat/Coordination').CoordinationSummary[]}>(`/api/conversations/${id}/coordination`),
+  coordinationThread: (id: string) => requestJson<import('../components/chat/Coordination').CoordinationView>(`/api/coordination/${encodeURIComponent(id)}`),
   sideChats: (id: string) =>
     requestJson<{ sideChats: SideChatSummary[] }>(`/api/conversations/${id}/side-chats`),
   createSideChat: (id: string, firstMessage: string) =>

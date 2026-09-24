@@ -203,12 +203,13 @@ const TOOLS: ToolDef[] = [
   {
     name: 'send_message',
     description:
-      "Send guidance into another of the user's chats. A working chat is steered live — the agent reads the message inside its current turn — and an idle one starts a new turn. The reply states how the message was delivered. This does not wait for a response.",
+      "Message another bot in a separate coordination thread. Its human conversation is not interrupted. Responses and progress stay in that thread. The result returns the thread id; read_coordination retrieves the exchange. This does not wait for a response.",
     inputSchema: {
       type: 'object',
       properties: {
         conversationId: { type: 'string', description: 'The chat id.' },
         text: { type: 'string', description: 'The message to send.' },
+        request_key: { type: 'string', description: 'Stable key for this exact message. Reuse on retry; never reuse for changed text.' },
         interrupt: {
           type: 'boolean',
           description:
@@ -218,6 +219,7 @@ const TOOLS: ToolDef[] = [
       required: ['conversationId', 'text'],
     },
   },
+  { name: 'read_coordination', description: 'Read a bot coordination thread returned by send_message. Requires current access to both original conversations.', inputSchema: {type:'object',properties:{threadId:{type:'string'}},required:['threadId']} },
   RENAME_CONVERSATION_TOOL,
   {
     name: 'save_memory',
@@ -1010,12 +1012,17 @@ async function callTool(
       ]);
       return { content: [{ type: 'text', text: summarizeConversation(conversation, events) }] };
     }
+    if (name === 'read_coordination') {
+      const result = await callApi(`/api/coordination/${encodeURIComponent(String(args.threadId ?? ''))}`);
+      return {content:[{type:'text',text:JSON.stringify(result)}]};
+    }
     if (name === 'send_message') {
       const conversationId = String(args.conversationId ?? '');
       const result = await callApi(`/api/conversations/${encodeURIComponent(conversationId)}/steer`, {
         method: 'POST',
-        body: JSON.stringify({ text: String(args.text ?? '') }),
+        body: JSON.stringify({ text: String(args.text ?? ''), ...(args.request_key ? {request_key:String(args.request_key)} : {}) }),
       });
+      if (result.coordinationThreadId) return {content:[{type:'text',text: `Message ${String(result.disposition)} in coordination thread ${String(result.coordinationThreadId)}. Use read_coordination with this thread id to read responses. The human conversation was not interrupted.`}]};
       const disposition = String(result.disposition ?? 'queued');
       const messageId = Number(result.messageId ?? 0);
       // 'delivered' keeps its durable queue row, so send-now still works: the
