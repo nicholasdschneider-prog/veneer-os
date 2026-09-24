@@ -9,6 +9,7 @@ export function isEmployee(db: Database.Database, userId: number): boolean {
 // denied by default; project files, credentials, tools and admin APIs are not inherited.
 export function employeeRouteAllowed(method: string, path: string): boolean {
   if (method === 'GET') return [
+    /^\/bots\/decisions\/[^/]+\/(handoff-targets|handoffs)\/?$/,
     /^\/bot-communication\/drafts\/[^/]+\/routine-status\/?$/,
     /^\/bot-communication\/message-audio\/[^/]+\/\d+\/?$/,
     /^\/team-rooms(?:\/[^/]+(?:\/files\/[^/]+)?)?\/?$/,
@@ -36,7 +37,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,
     /^\/bot-workflows\/push\/?$/,
     /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|connected|end))?\/?$/,
-    /^\/bots\/decisions\/[^/]+\/(answer|choice|thread|handling|dismiss|reply)\/?$/,
+    /^\/bots\/decisions\/[^/]+\/(answer|choice|thread|handling|dismiss|reply|handoffs)\/?$/,
     /^\/conversations\/[^/]+\/messages\/?$/,
   ].some(pattern => pattern.test(path));
   return false;

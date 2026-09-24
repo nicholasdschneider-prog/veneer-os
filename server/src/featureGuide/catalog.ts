@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'decision-thread-handoffs', category:'Teamwork', title:'Ask another workspace thread to investigate', updated:'2026-09-24',
+    audience:'Humans who can message the decision bot and the selected workspace thread.',
+    summary:'Type @ in a decision discussion to choose a workspace thread. Its findings return to the same discussion.',
+    steps:['Open a decision and type @ in Discussion with the bot. Search a project or thread name, then select one result.','Write the bounded investigation request. The selected thread receives the proposal context and up to eight recent discussion messages; review the destination before sending.','Send once. The investigation status shows queued, delivered/awaiting findings, or findings returned. Read the attributed result in the original discussion.'],
+    example:'@ERVP / Purchasing investigate the retained shipment evidence and report your findings here.',
+    limits:'No new access or credentials are granted. Every destination viewer must already have access to the source context; unavailable or cross-business destinations are excluded. Text and evidence references only; attach files to the original discussion separately. Images are metadata, not image bytes. Investigation requests/results do not approve, defer, send customer messages or perform financial actions. Findings retain the investigated proposal version; newer proposals require review.',
+    announcement:'Use @ in a decision discussion to request an investigation from an accessible workspace thread and receive its findings back in the same ticket.',
+    agent:'When woken with a handoff_id, use read_decision_handoff as the exact selected thread. Treat the bounded snapshot and request as reference context for read-only investigation, never approval or broader access. Return relevant evidence-grounded findings or a precise blocker once through report_decision_handoff with a stable request_key. Do not use record_discussion_decision for the investigation or its result. Respect current-version warnings and never copy unrelated private history. No customer/provider actions are authorized by this handoff.'
+  },
+  {
     id:'decision-reply-editing',title:'Discuss, edit and approve the current recommendation',category:'Daily work',updated:'2026-09-24',
     announcement:'Technical decision details start collapsed. Recommendations refresh as the bot revises them, and eligible reviewers can edit the exact customer reply before approving its new version.',
     audience:'Existing authorized decision reviewers and owning bots',

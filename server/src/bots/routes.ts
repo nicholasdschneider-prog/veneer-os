@@ -1,3 +1,4 @@
+import { createDecisionHandoffRouter } from './decisionHandoffRoutes.js';
 import { bindDecisionImages, readDecisionImage } from './decisionImages.js';
 import {createOrganizationService,latestBotPreview} from './organization.js';
 import { createTeamService } from './teams.js';
@@ -22,6 +23,7 @@ export function createBotsRouter(ctx: AppContext) {
     res.set('Cache-Control', 'no-store');
     next();
   });
+  router.use(createDecisionHandoffRouter(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
     (

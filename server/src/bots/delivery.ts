@@ -1,3 +1,4 @@
+import { createDecisionHandoffs } from './decisionHandoffs.js';
 import { roomWakeAllowed } from '../rooms/service.js';
 import { communicationWakeAllowed, communicationWakeCancelled } from './communication.js';
 import crypto from 'node:crypto';
@@ -15,6 +16,7 @@ export function botWakeAllowed(
   w: ConversationWakeupRow,
   c: ConversationRow,
 ): boolean {
+  if (!createDecisionHandoffs(db).wakeAllowed(w)) return false;
   if (!roomWakeAllowed(db, w) || !routineWakeAllowed(db, w) || !communicationWakeAllowed(db, w)) return false;
   if (!w.wake_key.startsWith('bot-decision:')) return true;
   const e = db

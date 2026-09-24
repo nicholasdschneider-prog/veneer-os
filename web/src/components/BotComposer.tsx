@@ -1,3 +1,4 @@
+import { decisionHandoffsApi, retainsThreadMention, threadMentionQuery, threadToken, type ThreadTarget } from '@/lib/decisionHandoffs';
 import { CallButton } from '@/components/CallButton';
 import { useLiveVoice } from './VoiceProvider';
 import { ChevronDown, FileText, Mic, Paperclip, Plus, X } from 'lucide-react';
@@ -54,7 +55,7 @@ export function BotComposer({
   botName: string;
   decisionId?: string;
   busy?: boolean;
-  onSend: (text: string) => Promise<void>;
+  onSend: (text: string, targetId?: string) => Promise<void>;
 }) {
   const liveVoice = useLiveVoice();
   const [draft, setDraft] = useState('');
@@ -65,6 +66,43 @@ export function BotComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictationBaseRef = useRef('');
+  const [target, setTarget] = useState<ThreadTarget | null>(null);
+  const [mention, setMention] = useState<ReturnType<typeof threadMentionQuery>>(null);
+  const [targets, setTargets] = useState<ThreadTarget[]>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const [mentionError, setMentionError] = useState(false);
+  const sending = useRef(false);
+  const [sendingNow, setSendingNow] = useState(false);
+  const listId = `thread-mentions-${decisionId ?? conversationId}`;
+  useEffect(() => {
+    if (!mention || !decisionId) return;
+    let stopped = false;
+    setTargets([]); setMentionLoading(true); setMentionError(false); setMentionIndex(0);
+    const timer = setTimeout(() => {
+      void decisionHandoffsApi.targets(decisionId, mention.query).then(r => {
+        if (!stopped) { setTargets(r.targets); setMentionLoading(false); }
+      }).catch(() => { if (!stopped) { setMentionError(true); setMentionLoading(false); } });
+    }, 150);
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [decisionId, Boolean(mention), mention?.query]);
+  const updateDraft = (value: string, caret: number) => {
+    setDraft(value);
+    const retained = target && retainsThreadMention(value, target);
+    if (!retained) setTarget(null);
+    setMention(decisionId && !retained ? threadMentionQuery(value, caret) : null);
+  };
+  const selectTarget = (chosen: ThreadTarget) => {
+    if (!mention) return;
+    const prefix = draft.slice(0, mention.start) + threadToken(chosen) + ' ';
+    setDraft(prefix + draft.slice(mention.end));
+    setTarget(chosen); setMention(null);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(prefix.length, prefix.length);
+    });
+  };
+
 
   // Auto-grow with content; the max-h caps it and it scrolls past that.
   useLayoutEffect(() => {
@@ -225,26 +263,29 @@ export function BotComposer({
 
   const uploading = attachments.some((a) => a.status === 'uploading');
   const readyPaths = attachments.filter((a) => a.status === 'done' && a.path).map((a) => a.path!);
-  const canSend = !busy && !uploading && !transcribing && (draft.trim().length > 0 || readyPaths.length > 0);
+  const canSend = !busy && !sendingNow && !uploading && !transcribing && (draft.trim().length > 0 || readyPaths.length > 0);
   const send = async () => {
-    if (!canSend) return;
+    if (!canSend || sending.current || mention) return;
     if (uploading) {
       setError('Still uploading — one moment…');
       return;
     }
     if (recording) micDictation.stop();
+    if (target && readyPaths.length) { setError('Send attachments to the original discussion first, then request an investigation. Handoffs share text and evidence references only.'); return; }
     const text = withAttachmentFooter(draft, readyPaths);
     setError(null);
+    sending.current = true; setSendingNow(true);
     try {
-      await onSend(text);
+      await onSend(text, target && retainsThreadMention(draft, target) ? target.id : undefined);
       setDraft('');
+      setTarget(null); setMention(null);
       dictationBaseRef.current = '';
       for (const a of attachments) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
       setAttachments([]);
       if (IS_TOUCH) textareaRef.current?.blur();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not send');
-    }
+    } finally { sending.current = false; setSendingNow(false); }
   };
 
   return (
@@ -280,15 +321,47 @@ export function BotComposer({
               ))}
             </div>
           ) : null}
+          {target && retainsThreadMention(draft, target) ? <div className="flex items-center justify-between gap-2 px-2.5 text-xs text-muted-foreground">
+            <span>Send investigation to {target.project} / {target.title}. Findings return here.</span>
+            <button type="button" aria-label="Remove thread mention" className="min-h-11 px-2" onClick={() => { setDraft(draft.replace(threadToken(target), '')); setTarget(null); }}>×</button>
+          </div> : null}
+          {mention ? <div className="rounded-xl border bg-background p-1">
+            <p className="px-2 py-1 text-xs text-muted-foreground">Workspace threads · investigate and report here</p>
+            {mentionLoading ? <p role="status" className="p-2 text-sm">Searching…</p> : mentionError ? <p role="status" className="p-2 text-sm">Could not load threads. Change your search to retry.</p> : !targets.length ? <p role="status" className="p-2 text-sm">No accessible threads match. Try a project or thread name.</p> : null}
+            <ul id={listId} role="listbox" aria-label="Workspace threads" className="max-h-52 overflow-y-auto">
+              {targets.map((t, i) => <li key={t.id} role="option" id={`${listId}-${i}`} aria-selected={i === mentionIndex}>
+                <button type="button" tabIndex={-1} onMouseDown={e => e.preventDefault()} onClick={() => selectTarget(t)}
+                  className={cn('min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm', i === mentionIndex && 'bg-muted')}>
+                  <span className="block truncate font-medium">{t.title}</span><span className="block text-xs text-muted-foreground">{t.project} · {t.id.slice(0, 8)}</span>
+                </button>
+              </li>)}
+            </ul>
+          </div> : null}
           <textarea
             ref={textareaRef}
             aria-label={`Message ${botName}`}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            disabled={busy || sendingNow}
+            aria-autocomplete={decisionId ? 'list' : undefined}
+            aria-controls={mention ? listId : undefined}
+            aria-activedescendant={mention && targets[mentionIndex] ? `${listId}-${mentionIndex}` : undefined}
+            onChange={(e) => updateDraft(e.target.value, e.target.selectionStart)}
+            onClick={(e) => { if (!target && decisionId) setMention(threadMentionQuery(draft, e.currentTarget.selectionStart)); }}
             onPaste={(e) => {
               handleComposerImagePaste(e, addFiles);
             }}
             onKeyDown={(e) => {
+              if (mention && !e.nativeEvent.isComposing) {
+                if (e.key === 'Escape') { e.preventDefault(); setMention(null); setTargets([]); return; }
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                  e.preventDefault(); setMentionIndex(i => targets.length ? (i + (e.key === 'ArrowDown' ? 1 : -1) + targets.length) % targets.length : 0); return;
+                }
+                if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Tab') {
+                  e.preventDefault();
+                  if (targets[mentionIndex]) selectTarget(targets[mentionIndex]);
+                  return;
+                }
+              }
               // Enter sends on hardware keyboards only; the iOS return key
               // must insert a newline.
               if (isComposerSubmitKey(e) && !IS_TOUCH) {
@@ -296,7 +369,7 @@ export function BotComposer({
                 void send();
               }
             }}
-            placeholder={`Message ${botName}…`}
+            placeholder={decisionId ? `Message ${botName} or @ a workspace thread…` : `Message ${botName}…`}
             rows={1}
             className="max-h-[min(35dvh,16rem)] min-h-[2.5rem] w-full resize-none bg-transparent px-2.5 py-1.5 text-[16px] outline-none"
           />
@@ -358,9 +431,9 @@ export function BotComposer({
               <Button
                 size="icon-lg"
                 className="size-10 shrink-0 select-none rounded-full text-xl disabled:opacity-30"
-                onPointerUp={() => void send()}
-                disabled={!canSend}
-                aria-label={`Send to ${botName}`}
+                onClick={() => void send()}
+                disabled={!canSend || Boolean(mention)}
+                aria-label={target ? `Send investigation to ${target.title}` : `Send to ${botName}`}
               >
                 ↑
               </Button>

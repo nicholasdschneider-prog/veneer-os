@@ -1,3 +1,4 @@
+import { DecisionHandoffStatus } from '@/components/DecisionHandoffStatus';
 import { decisionTitle } from '@/lib/decisionPresentation';
 import { CallButton } from '@/components/CallButton';
 import { DecisionImages } from '../components/DecisionImages';
@@ -969,9 +970,9 @@ export function Bots({
                           )}
                         >
                           <p className="mb-1 text-xs font-medium text-muted-foreground">
-                            {m.actor_conversation_id
+                            {m.actor_conversation_id === d.conversation_id
                               ? d.bot_name
-                              : m.actor_name}{' '}
+                              : m.actor_conversation_id ? 'Investigating thread' : m.actor_name}{' '}
                             · <time dateTime={m.created_at.replace(" ", "T") + (/[zZ]|[+-]\d\d:\d\d$/.test(m.created_at) ? "" : "Z")}>{discussionTimestamp(m.created_at)}</time>
                           </p>
                           <p className="whitespace-pre-wrap break-words">
@@ -980,6 +981,7 @@ export function Bots({
                         </div>
                       ))}
                     </div>
+                    <DecisionHandoffStatus className="my-3" key={d.id} decisionId={d.id} />
                     <div className="mb-3"><BotWorkingIndicator name={d.bot_name} replyStatus={d.reply_status} unavailable={activityUnavailable || stale} /></div>
                     <div className="flex justify-end"><button type="button" aria-label="Jump to latest discussion" className="mb-2 flex size-11 items-center justify-center rounded-full border bg-background" onClick={() => document.getElementById('decision-composer')?.scrollIntoView({block:'end',behavior:'instant'})}>↓</button></div>
                     <div id="decision-composer"><BotComposer
@@ -988,11 +990,15 @@ export function Bots({
                       botName={d.bot_name}
                       decisionId={d.id}
                       busy={busy || stale}
-                      onSend={(text) =>
-                        act(async () => {
-                          await send(d.id, 'thread', { text, expected_version: d.version });
-                        })
-                      }
+                      onSend={async (text, targetId) => {
+                        setBusy(true);
+                        try {
+                          await send(d.id, targetId ? 'handoffs' : 'thread', { text, expected_version: d.version, ...(targetId ? { target_id: targetId } : {}) });
+                        } finally { setBusy(false); }
+                        // The mutation succeeded. A failed refresh must not retain
+                        // the draft and create a new handoff on the next click.
+                        try { await refresh(); } catch (e) { setError((e as Error).message); }
+                      }}
                     /></div>
                   </div>
                   <details className="mt-6 border-t pt-4">
