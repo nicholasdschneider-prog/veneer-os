@@ -23,3 +23,9 @@ Synthetic tests cover source owner/bot/foreign identity, dedicated config separa
 - [Employee and resumed-bot guidance](/Users/archerclawdington/veneer-os/server/src/featureGuide/catalog.ts)
 - [Service, race and manager fixtures](/Users/archerclawdington/veneer-os/server/test/autoshipCandidates.test.ts)
 - [Transport boundary fixtures](/Users/archerclawdington/veneer-os/server/test/autoshipCandidateRoutes.test.ts)
+
+## Deployment receipt
+
+Code `2c5fd62` pushed to origin main and deployed through detached root restart. All five services reported healthy: web75365, runner75383, app-runner75411, terminal75687 and browser-manager. Read-only verification 2026-09-24T16:24:10.700102+00:00: web/runner and browser-manager HTTP200; unauthenticated synthetic reconciliation path HTTP401, Dedicated candidate identity required. Schema-only inspection confirms four candidate tables and eight immutable triggers from0121. No live event/enrollment/customer rows were read or written for verification.
+
+Interface deployed; dedicated CF/config, reviewed source registration, source adapter and live acceptance remain separate prerequisites. This release does not activate normal AutoShip execution.
