@@ -60,6 +60,12 @@ rl.on('line', (line) => {
     logServerResponse(m);
     if (m.id === pendingServerRequestId) {
       pendingServerRequestId = null;
+      if (m.id === 'mcp-1') {
+        const error = m.result?.action !== 'accept' || process.env.MCP_TOOL_ERROR === '1';
+        send({ method: 'item/completed', params: { threadId: 't1', turnId: pendingServerTurnId ?? activeTurnId,
+          item: { id: 'mcp-result', type: 'mcpToolCall', server: 'fixture', tool: 'read_fixture',
+            ...(error ? { error: { message: 'Explicit fixture denial' } } : { result: { content: [] } }) } } });
+      }
       completeTurn('t1', pendingServerTurnId ?? activeTurnId, 'completed');
       pendingServerTurnId = null;
     }
@@ -213,6 +219,25 @@ rl.on('line', (line) => {
             ...JSON.parse(process.env.EMIT_USER_INPUT),
           },
         });
+        break;
+      }
+      if (process.env.EMIT_MCP_APPROVAL) {
+        respondStarted();
+        pendingServerRequestId = 'mcp-1';
+        pendingServerTurnId = turnId;
+        send({ id: 'mcp-1', method: 'mcpServer/elicitation/request', params: {
+          threadId: 't1', turnId, serverName: 'fixture', mode: 'form',
+          message: 'Allow fixture to run tool read_fixture?',
+          _meta: { codex_approval_kind: 'mcp_tool_call' },
+          requestedSchema: { type: 'object', properties: {} },
+          ...JSON.parse(process.env.EMIT_MCP_APPROVAL),
+        } });
+        if (process.env.RESOLVE_MCP_APPROVAL) {
+          setTimeout(() => {
+            if (process.env.RESOLVE_MCP_APPROVAL === '1') send({ method: 'serverRequest/resolved', params: { threadId: 't1', requestId: 'mcp-1' } });
+            completeTurn('t1', turnId, 'completed');
+          }, 30);
+        }
         break;
       }
       if (process.env.EMIT_PERMISSION_APPROVAL === '1') {

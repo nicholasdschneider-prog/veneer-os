@@ -107,6 +107,24 @@ describe('conversation manager approvals', () => {
     fake = fakeAdapter();
   });
 
+  it.each(['ask', 'auto'] as const)('routes MCP approvals through fresh %s mode without Full Access', (mode) => {
+    db.prepare("UPDATE conversations SET approval_mode = ? WHERE id = ?").run(mode, conv.id);
+    makeManager(); manager.postMessage(conv, 'fixture only');
+    fake.state.onEvent!({ type: 'approval_requested', requestId: 'mcp-1', toolName: 'mcp_tool_call',
+      displayName: 'Allow one MCP tool call', input: { serverName: 'fixture' }, inputPreview: 'read_fixture', policyReason: 'One call only' });
+    const row = db.prepare('SELECT * FROM approvals').get() as ApprovalRow;
+    expect(row.tool_name).toBe('mcp_tool_call');
+    expect(row.status).toBe(mode === 'ask' ? 'pending' : 'approved');
+    if (mode === 'ask') {
+      expect(fake.state.respondCalls).toEqual([]);
+      expect(manager.resolveApproval(row.id, 'denied', 1)).toEqual({ ok: true, status: 'denied' });
+      db.prepare("UPDATE conversations SET approval_mode = 'auto' WHERE id = ?").run(conv.id);
+      expect(manager.resolveApproval(row.id, 'approved', 1)).toEqual({ ok: false, error: 'not_pending' });
+      expect(fake.state.respondCalls[0]?.decision.behavior).toBe('deny');
+    } else expect(fake.state.respondCalls).toEqual([{ requestId: 'mcp-1', decision: { behavior: 'allow' } }]);
+    expect(db.prepare('SELECT full_access FROM assistants WHERE id = ?').get(conv.assistant_id)).toEqual({ full_access: 0 });
+  });
+
   it('records the approval, augments the event with approvalId, and derives needs_you', () => {
     makeManager();
     manager.postMessage(conv, 'do something risky');

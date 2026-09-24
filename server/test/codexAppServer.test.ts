@@ -156,6 +156,9 @@ describe('canonical Codex App Server adapter', () => {
     delete process.env.EMIT_COLLAB_EVENTS;
     delete process.env.EMIT_COLLAB_RUNNING;
     delete process.env.EMIT_PERMISSION_APPROVAL;
+    delete process.env.EMIT_MCP_APPROVAL;
+    delete process.env.RESOLVE_MCP_APPROVAL;
+    delete process.env.MCP_TOOL_ERROR;
     delete process.env.EMIT_UNKNOWN_REQUEST;
     delete process.env.EMIT_BROWSER_TOOL_CALL;
     delete process.env.EMIT_USER_INPUT;
@@ -659,6 +662,71 @@ describe('canonical Codex App Server adapter', () => {
       approvalPolicy: 'on-request',
       developerInstructions: TEST_DEVELOPER_INSTRUCTIONS,
     });
+  });
+
+  it.each(['allow', 'deny', 'stop'] as const)('maps MCP %s to a one-call response without policy persistence', async (behavior) => {
+    process.env.EMIT_MCP_APPROVAL = '{}';
+    const dir = tmpDir(); dirs.push(dir);
+    process.env.SERVER_RESPONSE_LOG = path.join(dir, 'responses.jsonl');
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 60_000, transcriptsDir: dir, log: silent });
+    const events: ConversationEvent[] = [];
+    const handle = adapter.runTurn(turnSpec({ dangerous: false, firstTurn: false, nativeSessionId: 't1' }), e => events.push(e));
+    await waitFor(() => events.some(e => e.type === 'approval_requested'), 'Missing MCP approval');
+    expect(events.find(e => e.type === 'approval_requested')).toMatchObject({ toolName: 'mcp_tool_call', requestId: 'mcp-1' });
+    if (behavior === 'stop') handle.kill();
+    else expect(handle.respondToApproval('mcp-1', { behavior })).toBe(true);
+    await handle.done;
+    expect(handle.respondToApproval('mcp-1', { behavior: 'allow' })).toBe(false);
+    if (behavior !== 'stop') expect(events.filter(e => e.type === 'tool_finished')).toEqual([expect.objectContaining({ ok: behavior === 'allow' })]);
+    const responses = fs.readFileSync(process.env.SERVER_RESPONSE_LOG, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    expect(responses.find(r => r.id === 'mcp-1')).toEqual({ id: 'mcp-1', result: {
+      action: behavior === 'allow' ? 'accept' : behavior === 'deny' ? 'decline' : 'cancel', content: null, _meta: null,
+    } });
+  });
+
+  it.each([
+    { mode: 'url', url: 'https://example.test/authorize' },
+    { _meta: {} },
+    { requestedSchema: { type: 'object', properties: { password: { type: 'string' } } } },
+    { requestedSchema: { type: 'object', properties: {}, required: ['missing'] } },
+    { turnId: null },
+    { turnId: 'old-turn' },
+    { threadId: 'foreign-thread' },
+  ])('fails closed for unsupported or unbound MCP request %j', async (overrides) => {
+    process.env.EMIT_MCP_APPROVAL = JSON.stringify(overrides);
+    const dir = tmpDir(); dirs.push(dir);
+    process.env.SERVER_RESPONSE_LOG = path.join(dir, 'responses.jsonl');
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 60_000, transcriptsDir: dir, log: silent });
+    const events: ConversationEvent[] = [];
+    const handle = adapter.runTurn(turnSpec({ dangerous: false }), e => events.push(e));
+    // A foreign thread is deliberately not routed to this turn at all.
+    if (overrides.threadId) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      handle.kill();
+    }
+    await handle.done;
+    expect(events.some(e => e.type === 'approval_requested')).toBe(false);
+  });
+
+  it('preserves a backend denial after approval without replaying the call', async () => {
+    process.env.EMIT_MCP_APPROVAL = '{}'; process.env.MCP_TOOL_ERROR = '1';
+    const dir = tmpDir(); dirs.push(dir);
+    const events: ConversationEvent[] = [];
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 60_000, transcriptsDir: dir, log: silent });
+    const handle = adapter.runTurn(turnSpec({ dangerous: false }), e => events.push(e));
+    await waitFor(() => events.some(e => e.type === 'approval_requested'), 'Missing request');
+    handle.respondToApproval('mcp-1', { behavior: 'allow' }); await handle.done;
+    expect(events.filter(e => e.type === 'approval_requested')).toHaveLength(1);
+    expect(events.filter(e => e.type === 'tool_finished')).toEqual([expect.objectContaining({ ok: false })]);
+  });
+
+  it.each(['1', 'completed'])('cannot answer an MCP request after resolution/completion (%s)', async (resolution) => {
+    process.env.EMIT_MCP_APPROVAL = '{}'; process.env.RESOLVE_MCP_APPROVAL = resolution;
+    const dir = tmpDir(); dirs.push(dir);
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 60_000, transcriptsDir: dir, log: silent });
+    const handle = adapter.runTurn(turnSpec({ dangerous: false }), () => {});
+    await handle.done;
+    expect(handle.respondToApproval('mcp-1', { behavior: 'allow' })).toBe(false);
   });
 
   it('handles the Codex 0.144.4 permission approval request with its exact response shape', async () => {

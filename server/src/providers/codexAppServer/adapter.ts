@@ -304,9 +304,10 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     // approval server-request id (number|string, whatever the server sent) keyed by its
     // stringified form (Veneer's requestId is always a string).
     type PendingApproval =
-      | { id: string | number; kind: 'command' | 'file' }
+      | { id: string | number; kind: 'command' | 'file' | 'mcp' }
       | { id: string | number; kind: 'permissions'; permissions: RequestPermissionProfile };
     const pendingApprovalIds = new Map<string, PendingApproval>();
+    const seenMcpApprovalIds = new Set<string>();
     const pendingQuestionIds = new Map<
       string,
       { id: string | number; nativeIds: Map<string, string> }
@@ -760,6 +761,8 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       for (const pending of pendingApprovalIds.values()) {
         if (pending.kind === 'permissions') {
           client.respond(pending.id, permissionResponse(pending.permissions, false));
+        } else if (pending.kind === 'mcp') {
+          client.respond(pending.id, { action: 'cancel', content: null, _meta: null });
         } else {
           client.respond(pending.id, { decision: 'cancel' });
         }
@@ -835,7 +838,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       const params = (msg.params ?? {}) as Record<string, unknown>;
       const incomingTurnId = messageTurnId(msg);
 
-      if (method !== DISCONNECTED_METHOD && (method?.startsWith('turn/') || method?.startsWith('item/'))) {
+      if (method !== DISCONNECTED_METHOD && (method?.startsWith('turn/') || method?.startsWith('item/') || method === 'mcpServer/elicitation/request')) {
         // Turn and item events without a native turn id cannot safely be routed
         // on a multiplexed thread. Buffer valid early events until turn/start
         // returns its id, then reject anything from an older native turn.
@@ -1145,6 +1148,49 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
                 ? Math.min(15 * 60_000, Math.max(0, request.autoResolutionMs))
                 : null,
           });
+          break;
+        }
+        case 'mcpServer/elicitation/request': {
+          if (msg.id === undefined) break;
+          const meta = params._meta as Record<string, unknown> | null;
+          const schema = params.requestedSchema as Record<string, unknown> | null;
+          // Codex 0.156.1's internal one-call approval, not arbitrary MCP data
+          // collection, URL authorization, or a persistent tool-policy grant.
+          const supported = params.threadId === resolvedThreadId
+            && params.mode === 'form'
+            && meta?.codex_approval_kind === 'mcp_tool_call'
+            && typeof params.serverName === 'string' && params.serverName.length > 0
+            && params.serverName.length <= 200
+            && typeof params.message === 'string' && params.message.length > 0
+            && params.message.length <= 4000
+            && schema?.type === 'object'
+            && Object.keys(schema).every((key) => key === 'type' || key === 'properties')
+            && schema.properties !== null && typeof schema.properties === 'object'
+            && !Array.isArray(schema.properties) && Object.keys(schema.properties).length === 0;
+          if (!supported) {
+            client.respond(msg.id, { action: 'decline', content: null, _meta: null });
+            onEvent({ type: 'notice', message: 'Codex requested an unsupported MCP input or authorization form. No permission was granted; use the connector’s supported authorization flow.' });
+            break;
+          }
+          const requestId = String(msg.id);
+          if (pendingApprovalIds.has(requestId)) break;
+          if (seenMcpApprovalIds.has(requestId)) {
+            client.respondError(msg.id, -32000, 'MCP approval request already resolved');
+            break;
+          }
+          seenMcpApprovalIds.add(requestId);
+          pendingApprovalIds.set(requestId, { id: msg.id, kind: 'mcp' });
+          watchdog.hold();
+          const event: ConversationEvent = {
+            type: 'approval_requested', requestId,
+            toolName: 'mcp_tool_call', displayName: 'Allow one MCP tool call',
+            // Do not copy tool_params, connector metadata, URLs or credentials.
+            input: { serverName: params.serverName, message: params.message },
+            inputPreview: previewOf(params.message),
+            policyReason: 'Codex requests approval for this call only. Existing connection permissions still apply.',
+          };
+          onEvent(event);
+          pushPersist(event);
           break;
         }
         case 'item/commandExecution/requestApproval':
@@ -1516,12 +1562,15 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     function respondToApproval(requestId: string, decision: ApprovalDecision): boolean {
       const pending = pendingApprovalIds.get(requestId);
       if (pending === undefined) return false;
+      if (pending.kind === 'mcp' && (settled || killed)) return false;
       pendingApprovalIds.delete(requestId);
       if (pending.kind === 'permissions') {
         client.respond(
           pending.id,
           permissionResponse(pending.permissions, decision.behavior === 'allow'),
         );
+      } else if (pending.kind === 'mcp') {
+        client.respond(pending.id, { action: decision.behavior === 'allow' ? 'accept' : 'decline', content: null, _meta: null });
       } else {
         client.respond(pending.id, { decision: decision.behavior === 'allow' ? 'accept' : 'decline' });
       }

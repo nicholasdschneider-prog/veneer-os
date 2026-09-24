@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'mcp-call-approvals', title: 'Use Ask and Auto for MCP call approvals', category: 'Daily work', updated: '2026-09-24',
+    audience: 'People using connected tools through Codex.',
+    summary: 'Supported Codex MCP call approval requests follow the conversation’s Ask or Auto setting.',
+    steps: ['Use Ask to review each supported tool approval, or Auto for automatic handling within your authorized task.', 'In Ask, review the named server and requested call before allowing or denying it.', 'A denied call is not retried automatically. Unsupported authorization forms need the connector’s supported setup flow.'],
+    example: 'Keep this conversation in Ask while I review connected-tool requests.',
+    limits: 'Only Codex’s tagged one-call approval form is supported. This does not enable Full Access, change the sandbox, grant membership or override a provider reviewer or backend denial. URL and data-entry elicitations remain unsupported.',
+    announcement: 'Codex MCP call requests now reach Veneer’s audited Ask/Auto approval flow instead of failing as unsupported server requests.',
+    agent: 'Supported one-call MCP approval requests follow current Ask/Auto settings. Do not infer access or execution authority from Auto; preserve connector, actor and membership checks. Do not retry explicit denials or request Full Access to bypass them. Generic MCP forms and URL authorization remain unsupported; explain the exact setup limitation.'
+  },
+  {
     id:'autoship-candidate-setup',title:'Confirm AutoShip candidate notifications',category:'Automation',updated:'2026-09-24',
     audience:'The current Elkhart RV Parts business owner; source configuration stays with the source custodian.',
     summary:'Review the prepared candidate-only connection and confirm it with one native button.',
