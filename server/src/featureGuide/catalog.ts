@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'return-owner-setup',title:'Confirm the prepared return service',category:'Daily work',updated:'2026-09-24',
+    audience:'The current authenticated Elkhart RV Parts business owner only.',
+    summary:'Review and confirm the exact prepared return connection without developer tools.',
+    steps:['Open /#/return-service-setup in your own signed-in Veneer session.', 'Review the prepared boundary, then choose Confirm return service setup once.', 'If the result is unclear, choose Check registration status. Share the nonsecret registration receipt with Platform Dev.'],
+    example:'Open the prepared return service setup so I can confirm it with one button.',
+    limits:'This registers only the pinned return service/account/executor connection. It does not approve or execute a customer return, label, refund or message. Source trust-ID injection and independent acceptance remain separate. Nonowners and bots cannot enroll; revoked or conflicting registrations require operator review.',
+    announcement:'The prepared return connection now has a native owner confirmation page. Sign in and confirm with one button; no Console instructions are needed.',
+    agent:'Direct the actual business owner to /#/return-service-setup for the reviewed prepared registration. Never borrow a session or enroll as the owner. A read-only status check reconciles an uncertain response using the same immutable request key; never create a new key. Pass only the actual nonsecret trust receipt to the source custodian for separate configuration and Grant acceptance. Registration does not authorize customer effects or routine-message access.'
+  },
+  {
     id:'deferred-decision-followup',title:'Continue a deferred decision with a fresh instruction',category:'Daily work',updated:'2026-09-24',
     announcement:'Fresh, authorized discussion instructions can answer an unchanged deferred proposal without a duplicate click. The prior defer remains in history.',
     audience:'Already-authorized decision reviewers and the permanent owning bot.',

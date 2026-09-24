@@ -1,3 +1,4 @@
+import { returnOwnerSetup } from './returnOwnerSetup.js';
 import { routineExecutionService } from './routineExecution.js';
 import { configuredRoutineIdentity } from './routineVerifierRoutes.js';
 import { returnExceptionService } from './returnException.js';
@@ -58,6 +59,9 @@ export function createCommunicationRouter(ctx: AppContext) {
     req.params.chat === 'current'
       ? (req.agentConversationId ?? '')
       : req.params.chat!;
+  const setup = returnOwnerSetup(ctx.db, ctx.config);
+  r.get('/return-exception/setup', run((req,res)=>res.json(setup.status(actor(req)))));
+  r.post('/return-exception/setup', run((req,res)=>res.json(setup.confirm(actor(req),req.body))));
   const returnBridge=returnExceptionService(ctx.db);
   r.post('/return-exception/trust',run((req,res)=>res.json(returnBridge.enroll(actor(req),req.body))));
   r.post('/return-exception/revoke',run((req,res)=>{

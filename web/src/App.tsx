@@ -1,3 +1,4 @@
+import { ReturnOwnerSetup } from './screens/ReturnOwnerSetup';
 import { TeamMessages } from './screens/TeamMessages';
 import { BotGuide } from './screens/BotGuide';
 import { EmployeeWorkspace } from './screens/EmployeeWorkspace';
@@ -280,6 +281,8 @@ export function App() {
     return <PendingApproval email={me.email ?? ''} onRecheck={loadMe} />;
   }
 
+  if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/return-service-setup') return <ReturnOwnerSetup />;
+
   if (me.user?.employeeWorkspace) return <><EmployeeWorkspace hash={hash} onNavigate={navigate} email={me.user.email} onToast={showToast} />{toastNode}</>;
 
   const role = me.user?.role ?? 'member';
@@ -323,6 +326,12 @@ export function App() {
             : /^#\/(settings|connectors|toolbox|skills)/.test(routePath)
               ? 'settings'
               : 'chats';
+
+  if (routePath === '#/return-service-setup') return (
+    <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <ReturnOwnerSetup />
+    </NavShell>
+  );
 
   if (routePath === '#/bot-guide') return (
     <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
