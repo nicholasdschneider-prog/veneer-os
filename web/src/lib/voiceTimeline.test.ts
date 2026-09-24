@@ -4,7 +4,7 @@ import type { ChatItem } from './transcript';
 const at=(n:number)=>new Date(n*60000).toISOString();
 const message=(key:string,n?:number):ChatItem=>({kind:'assistant',key,markdown:key,...(n===undefined?{}:{at:at(n)})});
 const call=(id:string,n:number):VoiceSession=>({id,started_ms:n*60000,connected_ms:n*60000,duration_ms:60000,outcome:'completed'});
-const keys=(items:ChatItem[],calls:VoiceSession[],frozen=items.length)=>voiceTimeline(items,frozen,calls).entries.flatMap(e=>e.kind==='static'?e.items.map(i=>i.key):e.kind==='voice'?[e.key]:[e.item.key]);
+const keys=(items:ChatItem[],calls:VoiceSession[],frozen=items.length)=>voiceTimeline(items,frozen,calls).entries.flatMap(e=>e.kind==='static'?e.items.map(i=>i.key):(e.kind==='voice'||e.kind==='reply')?[e.key]:[e.item.key]);
 describe('chronological voice cards',()=>{
  it('splits frozen history around calls rather than appending old calls to its bottom',()=>{
   expect(keys([message('morning',500),message('noon',720),message('afternoon',960)],[call('late',948),call('early',557)])).toEqual(['morning','voice-early','noon','voice-late','afternoon']);
@@ -38,4 +38,19 @@ describe('chronological voice cards',()=>{
   expect(after.map(e=>e.kind)).toEqual(['live-mermaid','voice','live-image']);
   expect(after.filter(e=>e.kind!=='voice').map(e=>e.key)).toEqual(before.map(e=>e.key));
  });
+});
+
+describe('result replies in the main timeline', () => {
+  const reply = (id:string,n:number,seq:number) => ({id,seq,thread_id:'thread',anchor:JSON.stringify({turn:'turn',at:at(1)}),source_text:'Original',text:id,actor_name:'Person',actor_conversation_id:null,bot_name:'Bot',created_at:at(n).replace('T',' ').replace('.000Z',''),unread:1});
+  it('interleaves old and new replies with messages and calls without moving transcript rows', () => {
+    const items=[message('original',1),message('later',5),message('latest',10)];
+    const result=voiceTimeline(items,2,[call('call',4)],[reply('human',3,1),reply('bot',7,2)]);
+    expect(result.entries.flatMap(e=>e.kind==='static'?e.items.map(i=>i.key):[e.key])).toEqual(['original','reply-human','voice-call','later','reply-bot','latest']);
+    expect(result.entries.at(-1)?.kind).toBe('live');
+  });
+  it('keeps same-second replies in durable sequence order across freezes', () => {
+    const items=[message('original',1),message('later',5)];
+    const replies=[reply('z',3,1),reply('a',3,2)];
+    for(const frozen of [0,1,2]) expect(voiceTimeline(items,frozen,[],replies).entries.filter(e=>e.kind==='reply').map(e=>e.key)).toEqual(['reply-z','reply-a']);
+  });
 });

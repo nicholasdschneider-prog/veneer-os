@@ -13,7 +13,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/bot-communication\/drafts\/[^/]+\/routine-status\/?$/,
     /^\/bot-communication\/message-audio\/[^/]+\/\d+\/?$/,
     /^\/team-rooms(?:\/[^/]+(?:\/files\/[^/]+)?)?\/?$/,
-    /^\/bot-communication\/(chats\/[^/]+(?:\/threads)?|threads\/[^/]+|briefings\/[^/]+\/audio)\/?$/,
+    /^\/bot-communication\/(chats\/[^/]+(?:\/(threads|replies))?|threads\/[^/]+|briefings\/[^/]+\/audio)\/?$/,
     /^\/bot-workflows\/(guide|search|push|bots\/[^/]+)\/?$/,
     /^\/live-voice(?:\/sessions(?:\/[^/]+)?)?\/?$/,
     /^\/bots\/?$/,

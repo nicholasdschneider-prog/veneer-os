@@ -323,6 +323,34 @@ describe('reviewable bot communication', () => {
       employeeRouteAllowed('POST', '/bot-communication/drafts/x/claim'),
     ).toBe(false);
   });
+  it('pages inline replies without gaps, preserves authors/context/unread and enforces chat access', async () => {
+    const call = await api();
+    const t = (await call('/chats/c1/threads', {turn:'turn',at:'2026-09-23T01:00:00Z'})).data;
+    const insert = db.prepare('INSERT INTO bot_message_replies(id,thread_id,actor_id,actor_conversation_id,text,request_key) VALUES(?,?,1,?,?,?)');
+    for(let i=1;i<=205;i++)insert.run(`r${i}`,t.id,i%2 ? null : 'c1',`Reply ${i}`,`key${i}`);
+    const recent = (await call('/chats/c1/replies')).data;
+    expect(recent.hasMore).toBe(true);
+    expect(recent.replies).toHaveLength(100);
+    expect(recent.replies[0]).toMatchObject({seq:106,actor_name:'Person 1',bot_name:'Fixture',source_text:'Fixture result',unread:1});
+    expect(recent.replies.at(-1)).toMatchObject({seq:205,unread:0});
+    const older = (await call('/chats/c1/replies?before=106')).data;
+    expect(older.replies.map((r:{seq:number})=>r.seq)).toEqual(Array.from({length:100},(_,i)=>i+6));
+    expect((await call('/chats/c1/replies?before=6')).data.replies).toHaveLength(5);
+    const catchup = (await call('/chats/c1/replies?after=0')).data;
+    expect(catchup.replies[0].seq).toBe(1);
+    expect(catchup.replies.at(-1).seq).toBe(100);
+    expect(catchup.hasMore).toBe(true);
+    expect((await call('/chats/c1/replies?after=200')).data.replies).toHaveLength(5);
+    expect((await call('/chats/c1/replies?before=1&after=0')).status).toBe(400);
+    expect((await call('/chats/c1/replies?after=invalid')).status).toBe(400);
+    expect((await call('/chats/c2/replies')).status).toBe(404);
+    // Reading the feed is not marking it read or approving anything.
+    expect((await call('/chats/c1/threads')).data.threads[0].unread).toBe(102);
+    expect(db.prepare('SELECT count(*) AS n FROM bot_decisions').get()).toEqual({n:0});
+    expect(employeeRouteAllowed('GET','/bot-communication/chats/c1/replies')).toBe(true);
+    human=other;
+    expect((await call('/chats/c1/replies')).status).toBe(404);
+  });
   it('serves saved audio only while authorized and on the current version', async () => {
     const call = await api();
     const d = bots.raise(bot, {

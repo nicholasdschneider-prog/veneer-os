@@ -420,6 +420,36 @@ export function createCommunicationRouter(ctx: AppContext) {
       });
     }),
   );
+  // A bounded, conversation-scoped feed also exposes replies to results whose
+  // original transcript page is no longer loaded. Existing thread storage and
+  // notification/approval semantics remain the authority.
+  r.get('/chats/:chat/replies', run((req, res) => {
+    const a = actor(req), c = current(req);
+    s.access(a, c);
+    const q = z.object({
+      before: z.coerce.number().int().positive().optional(),
+      after: z.coerce.number().int().nonnegative().optional(),
+    }).strict().refine(q => q.before === undefined || q.after === undefined).parse(req.query);
+    const forward = q.after !== undefined;
+    const rows = ctx.db.prepare(`
+      SELECT r.*,u.display_name AS actor_name,
+        coalesce(b.name,bc.title,'Bot') AS bot_name,t.anchor,t.source_text,
+        (r.actor_id<>? OR r.actor_conversation_id IS NOT NULL) AND
+          r.seq>coalesce(seen.seq,0) AS unread
+      FROM bot_message_replies r
+      JOIN bot_message_threads t ON t.id=r.thread_id
+      JOIN users u ON u.id=r.actor_id
+      LEFT JOIN conversations bc ON bc.id=r.actor_conversation_id
+      LEFT JOIN bot_registrations b ON b.conversation_id=r.actor_conversation_id
+      LEFT JOIN bot_message_thread_seen seen ON seen.thread_id=t.id AND seen.user_id=?
+      WHERE t.conversation_id=? ${q.before !== undefined ? 'AND r.seq<?' : forward ? 'AND r.seq>?' : ''}
+      ORDER BY r.seq ${forward ? 'ASC' : 'DESC'} LIMIT 101
+    `).all(a.user.id,a.user.id,c,...(q.before !== undefined ? [q.before] : forward ? [q.after!] : [])) as {seq:number}[];
+    const hasMore=rows.length>100;
+    const replies=rows.slice(0,100);
+    if(!forward)replies.reverse();
+    res.json({replies,hasMore});
+  }));
   r.post(
     '/chats/:chat/threads',
     run(async (req, res) => {

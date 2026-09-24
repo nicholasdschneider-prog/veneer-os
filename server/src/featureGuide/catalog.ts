@@ -244,13 +244,13 @@ export const BOT_FEATURES: BotFeature[] = [
     agent:'Use save_message_draft with exact account, recipients, customer, ticket and attachments; bind decisions with current decision_id/decision_version. After human send authorization, list_message_drafts, claim_message_draft, execute only if execute=true using the returned source idempotency key, and record_message_delivery with real receipt. Never send twice after uncertainty. Do not treat generic business approval as permission for a separately prepared message. Request new review after material source changes.',
   },
   {
-    id:'result-threads',title:'Discuss an individual result',category:'Teamwork',updated:'2026-09-23',
-    announcement:'Reply counts, unread indicators, Listen, and quick reactions now share a compact footer inside each completed result card.',
+    id:'result-threads',title:'Discuss an individual result',category:'Teamwork',updated:'2026-09-24',
+    announcement:'Replies now stay visible in the main chat. Reply from the normal composer with the original message attached as context.',
     audience:'Teammates with chat access',summary:'Keep feedback and follow-up with the result they concern.',
-    steps:['Choose Reply or the reply-count pill inside the bottom of a completed bot result card. Use the nearby thumbs-up, heart, or eyes to acknowledge it.','Read the original result, add a reply, or acknowledge with a reaction. The bot receives your reply and responds in the thread.','Return through the reply count; new replies are marked. For a Needs input proposal, use its existing decision discussion.'],
+    steps:['Choose Reply or the reply-count pill inside the bottom of a completed bot result card. Use the nearby thumbs-up, heart, or eyes to acknowledge it.','Write in the normal composer beneath the quoted message preview. Use Cancel reply to return to an ordinary message.','Your reply and the bot’s response appear in the main timeline. Expand the quoted reference to read or jump to the original. Load earlier replies for older history. For a Needs input proposal, use its existing decision discussion.'],
     example:'Discuss this result in its thread and explain the unresolved exception.',
     limits:'Reactions never approve actions. Threads follow conversation access. Existing decision discussions remain the place to approve a particular proposal.',
-    agent:'Use read_message_thread and reply_message_thread when notified of a result-thread reply. Preserve the original result context. Keep approval questions in the existing decision discussion, and never interpret reactions as authority. Tell users they can reply or react inside the original result card without losing its context.',
+    agent:'Use read_message_thread and reply_message_thread when notified of a result-thread reply. Preserve the original result context. Keep approval questions in the existing decision discussion, and never interpret reactions as authority. Tell users to select Reply on a result, write in the normal composer, and read responses in the main chat. Existing replies remain available in the timeline; the quoted reference opens the original context.',
   },
   {
     id:'voice-briefings',title:'Listen to a short contextual briefing',category:'Daily work',updated:'2026-09-23',

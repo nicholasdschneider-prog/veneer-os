@@ -18,4 +18,12 @@ describe('message quote context', () => {
     expect(html).toContain('&lt;script&gt;');
     expect(html).not.toContain('<script>');
   });
+  it('shows a compact cancelable reply preview without duplicating blank lines', () => {
+    const html = renderToStaticMarkup(<ComposerQuote quote={{role:'assistant',text:'Original\n\nmessage',thread:{id:'thread',anchor:{turn:'turn',at:'time'}}}} onRemove={()=>undefined}/>);
+    expect(html).toContain('Replying to this message');
+    expect(html).toContain('Original message');
+    expect(html).toContain('aria-label="Cancel reply"');
+    expect(html).toContain('line-clamp-2');
+  });
+
 });

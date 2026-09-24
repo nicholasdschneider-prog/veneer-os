@@ -3,9 +3,11 @@ import {ChatHistoryControls} from '../components/ChatHistoryControls';
 import { CallButton, CallIcon } from '@/components/CallButton';
 import { useMessageListen } from '@/components/MessageAudioPlayer';
 import { MobileChatHeader } from '../components/chat/MobileChatHeader';
+import { ThreadReplyRow, useThreadReplies } from '../components/chat/ThreadReplies';
+import { replyTime, type ReplyAnchor } from '../lib/threadReplies';
 import { voiceTimeline, type VoiceSession } from '../lib/voiceTimeline';
 import { VoiceSessions } from '../components/VoiceSessions';
-import { BotCommunication, MessageThreadDialog } from '../components/BotCommunication';
+import { BotCommunication } from '../components/BotCommunication';
 import { workspaceSearchFocusKey } from '@/lib/workspaceSearch';
 import { useLiveVoice } from '@/components/VoiceProvider';
 import { BotAvatar, BotPresence } from '@/components/BotIdentity';
@@ -473,7 +475,14 @@ export function Chat({
     }
   });
   const quoteStorageKey = `veneer.quote.${conversationId}`;
-  const [messageThread, setMessageThread] = useState<{turn:string;at:string}|null>(null);
+  const threadReplies = useThreadReplies(isNew ? '' : conversationId);
+  const [sourceAnchor, setSourceAnchor] = useState<(ReplyAnchor & {request:number}) | null>(null);
+  const [sentReplyId, setSentReplyId] = useState<string>();
+  const replySending = useRef(false);
+  const [sendingReply, setSendingReply] = useState(false);
+  const replyRetry = useRef<{thread:string;text:string;key:string}|null>(null);
+  const selectingReply = useRef(0);
+
   const [messageQuote, setMessageQuote] = useState<MessageQuote | null>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(quoteStorageKey) ?? 'null');
@@ -620,6 +629,17 @@ export function Chat({
   // agent's instructions explain — see materialize.ts connectorsNote).
   const screenRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const selectReply = useCallback(async (anchor: ReplyAnchor, threadId?: string) => {
+    if (!canSend) return;
+    textareaRef.current?.focus();
+    const selection = ++selectingReply.current;
+    try {
+      const thread = await requestJson<{id:string;source_text:string}>(threadId ? `/api/bot-communication/threads/${encodeURIComponent(threadId)}` : `/api/bot-communication/chats/${encodeURIComponent(conversationId)}/threads`, threadId ? undefined : {method:'POST',body:JSON.stringify(anchor)});
+      if (selection !== selectingReply.current) return;
+      setMessageQuote({text:thread.source_text,role:'assistant',thread:{id:thread.id,anchor}});
+      textareaRef.current?.focus();
+    } catch (e) { onToast(e instanceof Error ? e.message : 'Could not start reply'); }
+  }, [canSend, conversationId, onToast]);
   // Backdrop behind the composer textarea that paints pill highlights under
   // connector @mentions; its text is transparent, the textarea's is real.
   const composerHighlightRef = useRef<HTMLDivElement>(null);
@@ -1482,7 +1502,7 @@ export function Chat({
   }, [conversationId, isNew, onRefreshArtifacts, working]);
 
   const send = useCallback(async (dismissKeyboard = false) => {
-    if (creatingNewChat) return;
+    if (creatingNewChat || replySending.current) return;
     const pendingDictationSend = pendingDictationSendRef.current;
     if (pendingDictationSend) {
       // A second Enter/click while the transcript is settling belongs to the
@@ -1519,6 +1539,33 @@ export function Chat({
           .map((a) => `- ${a.path}`)
           .join('\n')}`
       : text;
+    if (messageQuote?.thread) {
+      if (replySending.current || !withFiles.trim()) return;
+      if (withFiles.length > 12000) { setSendError('Please keep your reply under 12,000 characters.'); return; }
+      const thread = messageQuote.thread.id;
+      if (replyRetry.current?.thread !== thread || replyRetry.current.text !== withFiles)
+        replyRetry.current = {thread,text:withFiles,key:crypto.randomUUID()};
+      replySending.current = true;
+      setSendingReply(true);
+      setSendError(null);
+      try {
+        const result = await requestJson<Parameters<typeof threadReplies.accept>[0]>(`/api/bot-communication/threads/${thread}/replies`, {
+          method:'POST',body:JSON.stringify({text:withFiles,request_key:replyRetry.current.key}),
+        });
+        const saved = result.messages.find(r => r.request_key === replyRetry.current?.key && !r.actor_conversation_id);
+        if (!saved) throw new Error('Could not confirm your reply. Try again to check the same send.');
+        threadReplies.accept({...result,messages:[saved]});
+        setSentReplyId(saved.id);
+        // Do not erase typing or a newly selected reply while this request ran.
+        setDraft(current => current === draft ? '' : current);
+        setMessageQuote(current => current === messageQuote ? null : current);
+        setAttachments(current => current.filter(a => !readyFiles.includes(a)));
+        for (const a of readyFiles) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+        replyRetry.current = null;
+      } catch (e) { setSendError(e instanceof Error ? e.message : 'Reply failed. Try again.'); }
+      finally { replySending.current = false; setSendingReply(false); }
+      return;
+    }
     // Chat @mentions: the visible prompt keeps the clean `@<Title>` tokens; the
     // ids the agent needs go into a machine-readable footer the transcript
     // strips again. Only tokens still present in the draft are attached.
@@ -1618,13 +1665,14 @@ export function Chat({
       setSendError((err as Error).message);
       restore();
     }
-  }, [draft, messageQuote, attachments, recording, transcribing, isNew, assistantSlug, pick, pickEffort, projectId, visibility, todoId, conversationId, onNavigate, working, applyQueueSnapshot, archived, restoreChatViewport, creatingNewChat, skillCommands]);
+  }, [draft, messageQuote, attachments, recording, transcribing, isNew, assistantSlug, pick, pickEffort, projectId, visibility, todoId, conversationId, onNavigate, working, applyQueueSnapshot, archived, restoreChatViewport, creatingNewChat, skillCommands, threadReplies.accept]);
   sendRef.current = send;
 
   // Long-press-to-queue: persist immediately through the same server-authoritative
   // path as a normal mid-turn send. Returns synchronously so the gesture can
   // latch; failures restore the draft and attachments.
   const queueDraft = useCallback(() => {
+    if (messageQuote?.thread) { void send(); return true; }
     if (transcribing || micDictation.isFinalizing) {
       setSendError('Finishing dictation — one moment…');
       return false;
@@ -1681,7 +1729,7 @@ export function Chat({
         setSendError((err as Error).message);
       });
     return true;
-  }, [draft, messageQuote, attachments, recording, transcribing, conversationId, applyQueueSnapshot, archived, skillCommands]);
+  }, [draft, messageQuote, attachments, recording, transcribing, conversationId, applyQueueSnapshot, archived, skillCommands, send]);
 
   // Edit a queued message: pull it back into the composer. Only allowed when
   // the composer is empty, so an in-progress draft is never clobbered.
@@ -1972,6 +2020,15 @@ export function Chat({
   useEffect(()=>{
     if(focusMessageId&&!focusedMessageReady&&history.window?.hasOlder&&!history.busy&&!history.error)history.load();
   },[focusMessageId,focusedMessageReady,history.window?.before,history.busy,history.error,history.load]);
+  const sourceMessage = sourceAnchor ? items.find(i => i.kind === 'assistant' && i.turnId === sourceAnchor.turn && i.at === sourceAnchor.at) : undefined;
+  useEffect(() => {
+    if (!sourceAnchor || sourceMessage) return;
+    if (history.window?.hasOlder && !history.busy && !history.error) history.load();
+    else if (!history.window?.hasOlder && !history.busy) {
+      onToast('The original message is not in the available history. Its text is preserved above this reply.');
+      setSourceAnchor(null);
+    }
+  }, [sourceAnchor, sourceMessage, history.window?.hasOlder, history.window?.before, history.busy, history.error, history.load, onToast]);
   const firstPromptKey = firstUserPromptKey(items, isCollapsibleUserPrompt);
   // A pending send is newer than every confirmed transcript row. Until it lands,
   // all confirmed prompts except the first are historical; otherwise the first
@@ -2128,7 +2185,7 @@ export function Chat({
         return;
       }
       const threadButton=target.closest<HTMLElement>('[data-result-thread]');
-      if(threadButton){event.preventDefault();try{setMessageThread(JSON.parse(threadButton.dataset.resultThread!));}catch{/* invalid anchor */}return;}
+      if(threadButton){event.preventDefault();try{void selectReply(JSON.parse(threadButton.dataset.resultThread!));}catch{/* invalid anchor */}return;}
       // Memory panels use the browser's top-layer popover so paint containment
       // on the transcript scroller cannot clip them. Position before the
       // popover target's native click action opens it; this works for both live
@@ -2187,7 +2244,7 @@ export function Chat({
       }
       openBrowserLink(anchor.href);
     },
-    [artifacts, onNavigate, onOpenArtifact, onOpenCitations, openBrowserLink, openLocalPath, openProjectFileLink, showDesktop, canSend, conversationId, onToast, listenToMessage, liveVoice.pinnedId],
+    [artifacts, onNavigate, onOpenArtifact, onOpenCitations, openBrowserLink, openLocalPath, openProjectFileLink, showDesktop, canSend, conversationId, onToast, listenToMessage, liveVoice.pinnedId, selectReply],
   );
 
   useEffect(()=>{
@@ -2197,8 +2254,8 @@ export function Chat({
       if(!active)return;
       for(const button of screenRef.current?.querySelectorAll<HTMLElement>('[data-result-thread]')??[]){
         const t=threads.find(t=>t.anchor===button.dataset.resultThread);
-        button.textContent=t?.count?`${t.count} ${t.count===1?'reply':'replies'}${t.unread?` · ${t.unread} new`:''}`:'Reply';
-        button.setAttribute('aria-label', t?.count ? `Open thread · ${button.textContent}` : 'Reply in thread');
+        button.textContent=t?.count?`Reply · ${t.count} ${t.count===1?'reply':'replies'}${t.unread?` · ${t.unread} new`:''}`:'Reply';
+        button.setAttribute('aria-label', t?.count ? `Reply to message · ${button.textContent}` : 'Reply to message');
         button.dataset.unread = t?.unread ? 'true' : 'false';
       }
       for(const button of screenRef.current?.querySelectorAll<HTMLButtonElement>('[data-result-reaction]')??[]){
@@ -2210,7 +2267,7 @@ export function Chat({
       }
     }).catch(()=>{});
     void refresh();const timer=setInterval(()=>void refresh(),8000);window.addEventListener('result-reactions-changed',refresh);return()=>{active=false;clearInterval(timer);window.removeEventListener('result-reactions-changed',refresh);};
-  },[conversationId,isNew,items.length,messageThread,canSend]);
+  },[conversationId,isNew,items.length,threadReplies.replies.length,canSend]);
 
   const liveItems = useMemo(()=>groupActivityRuns(items.slice(frozenLen)),[items,frozenLen]);
   const pendingQuestionId = liveItems.find(isAnchoredPendingQuestion)?.key;
@@ -2220,11 +2277,18 @@ export function Chat({
                   const times=items.flatMap(i=>'at' in i&&i.at&&Number.isFinite(Date.parse(i.at))?[Date.parse(i.at)]:[]);
                   const earliest=history.window?.hasOlder&&times.length?Math.min(...times):null;
                   const earlier=earliest===null?[]:sessions.filter(call=>call.started_ms<earliest);
-                  const timeline = voiceTimeline(items, frozenLen, earliest===null?sessions:sessions.filter(call=>call.started_ms>=earliest));
+                  const earlierReplies = earliest === null ? [] : threadReplies.replies.filter(r=>replyTime(r)<earliest);
+                  const replyCard = (reply: typeof threadReplies.replies[number]) => <ThreadReplyRow reply={reply} canReply={canSend} onReply={selectReply} onOriginal={anchor=>setSourceAnchor({...anchor,request:Date.now()})}/>;
+                  const timeline = voiceTimeline(items, frozenLen, earliest===null?sessions:sessions.filter(call=>call.started_ms>=earliest), earliest===null?threadReplies.replies:threadReplies.replies.filter(r=>replyTime(r)>=earliest));
                   return <>
+                    {threadReplies.hasOlder && <button type="button" disabled={threadReplies.busy} onClick={()=>void threadReplies.refresh(true)} className="min-h-11 rounded-lg border px-3 text-sm">{threadReplies.busy ? 'Loading replies…' : 'Load earlier replies'}</button>}
+                    {threadReplies.error && <p role="alert" className="text-sm text-destructive">Replies could not load. <button type="button" className="min-h-11 underline" onClick={()=>void threadReplies.refresh()}>Try again</button></p>}
+                    {earlierReplies.length>0&&<details className="rounded-xl border p-3"><summary className="cursor-pointer">Replies before loaded message history ({earlierReplies.length})</summary><div className="space-y-3">{earlierReplies.map(reply=><div key={reply.id}>{replyCard(reply)}</div>)}</div></details>}
                     {earlier.length>0&&<details className="rounded-xl border p-3"><summary>Voice chats before loaded message history ({earlier.length})</summary><p className="text-sm">Load earlier messages to see these calls alongside their original context.</p><div className="space-y-2">{[...earlier].reverse().map(voiceCard)}</div></details>}
                     {!timeline.hasMessageTimes && sessions.length > 0 && items.length > 0 && <p className="text-sm text-muted-foreground">Voice chats are dated below. These messages have no recorded times, so their relative position is unavailable.</p>}
-                    {timeline.entries.map(segment => segment.kind === 'voice' ? (
+                    {timeline.entries.map(segment => segment.kind === 'reply' ? (
+                      <MessageScrollerItem key={segment.key} messageId={segment.key}>{replyCard(segment.reply)}</MessageScrollerItem>
+                    ) : segment.kind === 'voice' ? (
                       <MessageScrollerItem key={segment.key}>{voiceCard(segment.session)}</MessageScrollerItem>
                     ) : segment.kind === 'static' ? (
                       <MessageScrollerItem key={segment.key}>
@@ -2238,7 +2302,7 @@ export function Chat({
                       </MessageScrollerItem>
                     ))}
                   </>;
-                }, [items, frozenLen, firstPromptKey, mostRecentPromptKey, onFrozenClick,history.window?.hasOlder]);
+                }, [items, frozenLen, firstPromptKey, mostRecentPromptKey, onFrozenClick,history.window?.hasOlder,threadReplies.replies,threadReplies.hasOlder,threadReplies.busy,threadReplies.error,threadReplies.refresh,canSend,selectReply]);
 
   // Header: the chat title leads, the agent name sits below it. Live status is
   // folded into the agent line so nothing important is lost off the top.
@@ -2572,7 +2636,8 @@ export function Chat({
         {/* Force a locally-sent prompt into view even when the reader had
             scrolled up. Using scrollToEnd keeps normal document height;
             scrollAnchor would add a viewport-sized spacer below the prompt. */}
-        <ScrollToLatestSend pendingId={pendingSends.at(-1)?.id} />
+        <ScrollToLatestSend pendingId={pendingSends.at(-1)?.id ?? sentReplyId} />
+        <ScrollToLinkedMessage key={sourceAnchor?.request} messageId={sourceMessage?.key ?? null} ready={!!sourceMessage} />
         <ScrollToPendingQuestion messageId={status === 'needs_you' ? pendingQuestionId : undefined} />
         <ScrollToLinkedMessage messageId={focusedMessageKey} ready={focusedMessageReady} />
         <MessageScroller className="flex-1" onClick={onTranscriptClick}>
@@ -2746,7 +2811,6 @@ export function Chat({
       </MarkdownImageSourcesContext.Provider>
       </ImageLightboxContext.Provider>
 
-      {messageThread&&<MessageThreadDialog key={conversationId+JSON.stringify(messageThread)} conversationId={conversationId} anchor={messageThread} onClose={()=>setMessageThread(null)}/>}
       {overlayImage ? (
         <div
           className="absolute inset-0 z-10 flex flex-col bg-background/97 backdrop-blur-sm"
@@ -3286,11 +3350,12 @@ export function Chat({
               disabled={
                 trailingAction === 'hidden' ||
                 creatingNewChat ||
-                sendingAfterDictation ||
+                sendingAfterDictation || sendingReply ||
                 !hasSendableContent ||
+                (!!messageQuote?.thread && !draft.trim() && !hasReadyAttachment && !dictationActive) ||
                 (isNew && !assistantSlug)
               }
-              aria-label={sendingAfterDictation ? 'Finishing dictation and sending' : 'Send'}
+              aria-label={sendingAfterDictation ? 'Finishing dictation and sending' : sendingReply ? 'Sending reply' : messageQuote?.thread ? 'Send reply' : 'Send'}
             >
               ↑
             </Button>
@@ -3851,7 +3916,7 @@ const ChatRow = memo(function ChatRow({
               </div>
               {item.turnId&&item.at&&<div className="-mx-2 mt-1 flex flex-wrap items-center font-sans" role="group" aria-label="Result discussion and reactions">
                 <button type="button" data-message-listen={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Listen to full message" className="min-h-[44px] min-w-[44px] rounded-full px-2 text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring hover:bg-foreground/5 active:bg-foreground/10 disabled:opacity-50">▶ Listen</button>
-                <button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Reply in thread" className="min-h-[44px] min-w-[44px] rounded-full px-2 text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring hover:bg-foreground/5 active:bg-foreground/10 disabled:opacity-50 data-[unread=true]:bg-blue-600/10 data-[unread=true]:font-semibold data-[unread=true]:text-foreground">Reply</button>
+                <button type="button" data-result-thread={JSON.stringify({turn:item.turnId,at:item.at})} aria-label="Reply to message" className="min-h-[44px] min-w-[44px] rounded-full px-2 text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring hover:bg-foreground/5 active:bg-foreground/10 disabled:opacity-50 data-[unread=true]:bg-blue-600/10 data-[unread=true]:font-semibold data-[unread=true]:text-foreground">Reply</button>
                 {['👍','❤️','👀'].map(emoji=><button key={emoji} type="button" data-result-reaction={emoji} data-result-anchor={JSON.stringify({turn:item.turnId,at:item.at})} aria-label={`React ${emoji} · does not approve`} aria-pressed={false} className="min-h-[44px] min-w-[44px] rounded-full px-2 text-xs hover:bg-foreground/5 active:bg-foreground/10 disabled:opacity-50 aria-pressed:bg-blue-600/10 focus-visible:outline-2 focus-visible:outline-ring">{emoji}</button>)}
               </div>}
             </BubbleContent>

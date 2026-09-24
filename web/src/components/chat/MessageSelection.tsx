@@ -2,7 +2,7 @@ import { useEffect, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Quote, X } from 'lucide-react';
 
-export type MessageQuote = { text: string; role: string };
+export type MessageQuote = { text: string; role: string; thread?: { id: string; anchor: {turn:string;at:string} } };
 
 export function appendMessageQuote(text: string, quote: MessageQuote | null): string {
   if (!quote) return text;
@@ -79,10 +79,10 @@ export function ComposerQuote({ quote, onRemove }: { quote: MessageQuote; onRemo
   return <div className="mx-2 mt-1 flex min-w-0 items-start gap-2 rounded-lg border-l-2 border-brand bg-background/50 p-2 text-sm" role="status">
     <Quote className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
     <div className="min-w-0 flex-1">
-      <div className="text-xs text-muted-foreground">Quoted from {quote.role} message</div>
-      <blockquote className="max-h-24 overflow-y-auto whitespace-pre-wrap wrap-break-word">{quote.text}</blockquote>
+      <div className="text-xs text-muted-foreground">{quote.thread ? 'Replying to this message' : `Quoted from ${quote.role} message`}</div>
+      <blockquote className={quote.thread ? "line-clamp-2 whitespace-pre-wrap wrap-break-word" : "max-h-24 overflow-y-auto whitespace-pre-wrap wrap-break-word"}>{quote.thread ? quote.text.replace(/\s+/g, ' ') : quote.text}</blockquote>
     </div>
-    <button type="button" onClick={onRemove} aria-label="Remove quote" className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring">
+    <button type="button" onClick={onRemove} aria-label={quote.thread ? "Cancel reply" : "Remove quote"} className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring">
       <X className="size-4" aria-hidden="true" />
     </button>
   </div>;
