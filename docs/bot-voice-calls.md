@@ -8,7 +8,7 @@ The runner's delivery disposition distinguishes queued, running, steered, and de
 
 ## Thread context at call startup
 
-A pinned call now loads the authorized thread's actual messages before creating the room or starting the voice worker. An unavailable thread fails with a context-loading error rather than opening a contextless call. The greeting and recap instructions use that supplied context; empty question or decision lists do not imply an empty conversation or no completed work. Current thread evidence takes precedence over potentially mistaken earlier voice replies.
+A pinned call now loads the authorized thread's actual messages before creating the room or starting the voice worker. An unavailable thread fails with a context-loading error rather than opening a contextless call. Requested recaps use that supplied context; empty question or decision lists do not imply an empty conversation or no completed work. Current thread evidence takes precedence over potentially mistaken earlier voice replies.
 
 Context includes up to 24 recent visible user/assistant messages, with a 36,000-character page budget. Long messages retain their beginning and ending within a 4,000-character limit. Coverage reports omitted older messages and clipped messages. The voice can retrieve older pages using `read_chat.beforeMessage` and the returned `coverage.olderBefore` cursor. Hidden reasoning and tool output remain excluded, and permissions are checked again after the runner snapshot returns.
 
@@ -60,7 +60,7 @@ All four names were present during this build. The implementation uses the exist
 
 ## Verification
 
-Repository typecheck and production build passed. The full suite passed: 2,096 server tests (5 skipped), 840 web tests, 21 installer tests, and 40 browser-manager tests.
+Repository typecheck and production build passed. The full suite passed: 2,453 server tests (5 skipped), 880 web tests, 21 installer tests, and 40 browser-manager tests.
 
 Automated coverage includes real runner question resolution, ordinary-thread dispatch receipts, uncertain-delivery deduplication, staff/private/business access, transcript isolation, access revocation, source-thread pinning in worker dispatch, active-call preservation during work, actual reply notifications, and room cleanup. The browser panel was inspected at 390 × 844 and 1440 × 1000, including navigation pinning and an actionable missing-microphone error.
 
@@ -119,3 +119,28 @@ It asks the voice to count, sends synthetic ambient hiss plus two short louder b
 - [Voice interruption and noise defaults](/Users/archerclawdington/veneer-os/server/src/voice/worker.ts)
 - [Live media regression entry point](/Users/archerclawdington/veneer-os/scripts/smoke-live-voice.mjs)
 - [Synthetic noise and spoken interruption fixture](/Users/archerclawdington/veneer-os/scripts/voice-interruption-fixture.mjs)
+
+
+## Saved greeting and reply style
+
+Voice preferences are stored per signed-in person and loaded on every call, across bots, normal threads, and coordinator calls. Reply length, tone, structure, and greeting are separate settings. The closed greeting vocabulary is `brief` or `recap`; arbitrary prompt text cannot be saved as instructions.
+
+With `greeting=brief`, a new or resumed call says only **“Hello, what can I help you with?”** and waits. It does not introduce the bot, recap work, list blockers, or lead with a selected decision. Thread and decision context remain loaded for subsequent questions. Relevant new work notifications during an active call still operate normally. People without an explicit greeting preference retain their previous recap opening; reset returns to that default.
+
+The reported caller already had a persisted concise preference, but greeting was not supported and the worker's opening explicitly required recent-work orientation. The saved voice transcript promised a hello-and-wait opening without any greeting field to persist. Startup now uses the same greeting policy as the agent's lasting style instructions, removing that conflict. Spoken requests to remember a greeting use the existing preference tool, which confirms persistence only after successful storage. Current-call refresh errors are reported separately from successful saving.
+
+Regression checks cover storage reopen, caller isolation, merging/reset, new thread and coordinator startup, current-call instruction refresh, and retained completed-work context. A single metered synthetic live check passed: exact brief greeting followed by an accurate spoken recap with an unpredictable existing-work reference, with no work dispatch:
+
+```sh
+NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live --recap --brief-greeting
+```
+
+No physical iPhone/AirPods check was performed for this prompt change.
+
+Changed implementation and regression files:
+- [Persistent preferences and shared greeting policy](/Users/archerclawdington/veneer-os/server/src/voice/preferences.ts)
+- [Startup context and tool routing](/Users/archerclawdington/veneer-os/server/src/voice/service.ts)
+- [Worker greeting and live preference refresh](/Users/archerclawdington/veneer-os/server/src/voice/worker.ts)
+- [Persistence and style tests](/Users/archerclawdington/veneer-os/server/test/voicePreferences.test.ts)
+- [Cross-session and thread tests](/Users/archerclawdington/veneer-os/server/test/liveVoiceService.test.ts)
+- [Live greeting and context verification](/Users/archerclawdington/veneer-os/scripts/smoke-live-voice.mjs)

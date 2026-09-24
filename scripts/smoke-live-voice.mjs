@@ -24,6 +24,8 @@ migrate(db, path.resolve('server/src/db/migrations'));
 db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'voice-smoke@example.invalid','Voice smoke','member')").run();
 db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('voice-smoke',1,1,'Voice verification fixture','codex','voice-smoke')").run();
 const conversation = db.prepare("SELECT * FROM conversations WHERE id='voice-smoke'").get();
+const briefGreeting = process.argv.includes('--brief-greeting');
+if (briefGreeting) db.prepare("INSERT INTO voice_preferences(user_id,preferences_json) VALUES(1,?)").run(JSON.stringify({length:'concise',greeting:'brief'}));
 const interruptions = process.argv.includes('--interruptions');
 const decisions = process.argv.includes('--decisions');
 const recap = process.argv.includes('--recap');
@@ -101,6 +103,16 @@ try {
   const deadline = Date.now() + 75000;
   while (samples === 0 && Date.now() < deadline && service.status(1)?.state !== 'failed') await delay(500);
   if (!samples) throw new Error('No remote audio');
+  if (briefGreeting) {
+    const greetingDeadline=Date.now()+15000;
+    let greeting;
+    while(Date.now()<greetingDeadline) {
+      greeting=db.prepare("SELECT text FROM voice_entries WHERE role='assistant' ORDER BY id LIMIT 1").get();
+      if(greeting && service.status(1)?.state==='listening') break;
+      await delay(100);
+    }
+    if(greeting?.text.toLowerCase().replace(/[^a-z ]/g,'').trim() !== 'hello what can i help you with') throw new Error('Brief greeting regression');
+  }
   // Real PCM speech travels through LiveKit to OpenAI, not a text-channel shortcut.
   for (let offset = 0; offset < pcm.length; offset += 960) {
     const data = new Int16Array(480);
@@ -121,7 +133,7 @@ try {
     if (service.status(1)?.state === 'failed') break;
     await delay(500);
   }
-  console.log(JSON.stringify({ passed: success, failure: service.status(1)?.error ?? null, mode: decisions ? 'many-decisions' : recap ? 'startup-recap' : 'dispatch', receivedAudio: samples > 0, transcribedSpeech: db.prepare("SELECT count(*) AS n FROM voice_entries WHERE role='user'").get().n > 0, dispatches, workingDuringCall, fixtureCompleted: events.length > 0 }));
+  console.log(JSON.stringify({ passed: success, briefGreeting, failure: service.status(1)?.error ?? null, mode: decisions ? 'many-decisions' : recap ? 'startup-recap' : 'dispatch', receivedAudio: samples > 0, transcribedSpeech: db.prepare("SELECT count(*) AS n FROM voice_entries WHERE role='user'").get().n > 0, dispatches, workingDuringCall, fixtureCompleted: events.length > 0 }));
   }
 } catch {
   console.log(JSON.stringify({ passed: false, status: service.status(1)?.error, error: 'Live media smoke failed. Check service configuration, credit, connectivity, and worker status. No credentials or provider diagnostics are printed.' }));

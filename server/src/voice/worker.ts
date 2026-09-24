@@ -8,7 +8,7 @@ import { Room, RoomEvent } from '@livekit/rtc-node';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { applyVoicePreferenceResult, voicePreferenceToolSchema, voicePreferencesSchema, voiceStyleInstructions } from './preferences.js';
+import { applyVoicePreferenceResult, voicePreferenceToolSchema, voicePreferencesSchema, voiceStyleInstructions, voiceGreetingInstructions } from './preferences.js';
 import { voiceFailureCode } from './failure.js';
 
 initializeLogger({ pretty: false, level: 'silent' });
@@ -130,9 +130,7 @@ process.on('message', (raw: unknown) => {
     await room.connect(config.url, config.token);
     await session.start({ agent, room, inputOptions: { participantIdentity: config.participantIdentity,
       textEnabled: false, videoEnabled: false, closeOnDisconnect: true }, record: false });
-    const greet = () => session?.generateReply({ instructions: bot
-      ? `Briefly greet the user as ${name}. Use the supplied fresh currentConversation messages to briefly orient the user to the actual recent work. You already have the thread context; do not substitute a count of pending questions for a work summary. Empty blockers or decisions do not mean an empty thread. Use read_chat if you need to refresh or retrieve older messages, and ask what they need. If a focused decision was given, lead with it. If this is a resumed conversation, continue naturally using the saved reference history.`
-      : 'Briefly greet the user. Check list_blockers, then offer to work through what is waiting. If this is a resumed conversation, continue naturally using the saved reference history.' });
+    const greet = () => session?.generateReply({ instructions: voiceGreetingInstructions(config.preferences) });
     if (room.remoteParticipants.has(config.participantIdentity)) greet();
     else room.once(RoomEvent.ParticipantConnected, greet);
     send({ type: 'ready' });

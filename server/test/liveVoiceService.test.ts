@@ -36,11 +36,21 @@ describe('live voice lifecycle', () => {
       await vi.advanceTimersByTimeAsync(1);
       return child.send.mock.calls.map(a => a[0]).find(m => m.id === id)?.result;
     };
-    expect(await request('save', { action: 'update', preferences: { length: 'concise' } })).toMatchObject({ ok: true, preferences: { length: 'concise' } });
+    expect(await request('save', { action: 'update', preferences: { length: 'concise', greeting: 'brief' } })).toMatchObject({ ok: true, preferences: { length: 'concise', greeting: 'brief' } });
     expect(await request('foreign', { action: 'update', userId: 2, preferences: { length: 'detailed' } })).toHaveProperty('error');
     service.end(1);
-    await service.start(1);
-    expect(child.send.mock.calls.map(a => a[0]).filter(m => m.type === 'start').at(-1).preferences).toEqual({ length: 'concise' });
+    for (const thread of ['first-style-thread','second-style-thread']) {
+      db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES(?,1,1,'Voice style','codex',?)").run(thread,thread);
+      manager.snapshot.mockResolvedValue([{type:'text_final',markdown:'Already completed export. Reference 719362.'}]);
+      await service.start(1,{botConversationId:thread});
+      const startup = child.send.mock.calls.map(a => a[0]).filter(m => m.type === 'start').at(-1);
+      expect(startup.preferences).toEqual({ length:'concise', greeting:'brief' });
+      expect(startup.instructions).toContain('Already completed export. Reference 719362.');
+      expect(startup.instructions).not.toContain('Use them immediately for greetings');
+      service.end(1);
+    }
+    await service.start(1); // Coordinator uses the same persisted personal style.
+    expect(child.send.mock.calls.map(a => a[0]).filter(m => m.type === 'start').at(-1).preferences).toEqual({length:'concise',greeting:'brief'});
     expect(await request('reset-style', { action: 'reset' })).toMatchObject({ ok: true, preferences: {} });
     expect(manager.steerMessage).not.toHaveBeenCalled();
   });

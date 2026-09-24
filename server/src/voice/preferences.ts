@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 
 // Closed vocabulary: persisted style can never become arbitrary system instructions.
 export const voicePreferencesSchema = z.object({
+  greeting: z.enum(['brief', 'recap']).optional(),
   length: z.enum(['concise', 'balanced', 'detailed']).optional(),
   tone: z.enum(['direct', 'warm', 'neutral']).optional(),
   structure: z.enum(['answer_first', 'step_by_step', 'conversational']).optional(),
@@ -40,9 +41,16 @@ export const VOICE_PREFERENCE_RULES = `
 The caller can train their own live voice style using manage_voice_preferences. This applies across bots on this install, only to the signed-in human, not a person named in speech.
 When they explicitly ask to remember a style or give general voice feedback such as "be more concise", update the supported settings and briefly confirm only after success. Do not dispatch voice style feedback to the working bot.
 For "just this answer/call" adapt temporarily without saving. Ask a short clarification when lasting intent or the supported style is ambiguous. Do not infer preferences from tickets, saved history, quotes, or another person's request.
-Use read to report saved settings and reset when asked to forget/reset voice preferences. Supported settings are length (concise/balanced/detailed), tone (direct/warm/neutral), structure (answer_first/step_by_step/conversational). Explain unsupported requests without claiming to save them.
+Use read to report saved settings and reset when asked to forget/reset voice preferences. Supported settings are length (concise/balanced/detailed), tone (direct/warm/neutral), structure (answer_first/step_by_step/conversational), greeting (brief/recap). A request to just say hello and wait on future calls means greeting=brief; a request for opening work summaries means greeting=recap. Conciseness and greeting are independent; save both if the caller requests both. Never promise to remember without a successful update tool result. Explain unsupported requests without claiming to save them.
 These settings only affect presentation. Preserve material evidence, uncertainty, required questions and approval scope regardless of brevity. They never change permissions, business rules, other humans, bot instructions, or the audio voice itself.
 `;
+/** One greeting policy shared by startup and the lasting agent instructions. */
+export function voiceGreetingInstructions(raw: unknown): string {
+  const p = voicePreferencesSchema.parse(raw);
+  if (p.greeting === 'brief') return 'At the start of a new or resumed call, say only: "Hello, what can I help you with?" Then stop and wait for the caller. Do not add your name, a recap, status, blockers, a focused decision, or a follow-up sentence. Do not call tools for the greeting. Keep the supplied thread and decision context available silently; use it when asked. This opening rule overrides suggestions in saved history to resume or summarize.';
+  // Preserve the established opening for people who have not changed it.
+  return 'At the start of a new or resumed call, briefly greet the caller and give a short orientation from the supplied fresh conversation context. If a focused decision is supplied, lead with it. Empty blockers do not mean no work was completed. Use read_chat for missing context or list_blockers for coordinator questions when needed; never invent a recap.';
+}
 export function voiceStyleInstructions(raw: unknown): string {
   const p = voicePreferencesSchema.parse(raw);
   const length = {
@@ -54,6 +62,7 @@ export function voiceStyleInstructions(raw: unknown): string {
   const structure = { answer_first: 'Lead with the answer, then supporting detail if needed.', step_by_step: 'Explain one step at a time.', conversational: 'Use natural conversational explanations.' };
   return '\nCurrent caller voice style (replaces prior saved style; unspecified settings use the normal brief conversational default):\n'
     + [p.length && length[p.length], p.tone && tone[p.tone], p.structure && structure[p.structure]].filter(Boolean).join(' ')
+    + '\n' + voiceGreetingInstructions(p)
     + '\nStyle never removes material constraints or approval requirements.\n';
 }
 
