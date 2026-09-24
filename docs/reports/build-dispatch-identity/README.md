@@ -53,3 +53,20 @@ Use **review first**. The route requires existing management access; the coordin
 ## Validation
 
 Root typecheck/full npm test/build passed: server2,447 passed/5 existing skipped, web880, browser-manager40, installer21. The final additional real-manager ordering fixture also passed with all8 identity tests: a build queued behind unrelated work is bound only when its own turn starts and only its completion releases the slot. Synthetic tests cover exact295/298 ordering shapes, delayedactivation, unrelated status/errors/completions, newer restart turn vs old callback, stop/explicitretry, originalowner/stale/queued recovery denial, immutable audit, idempotency and real competing SQLite writers. Full/restricted guide browser checks and resumed instruction/catalog tests passed. Existing bundle-size advisory remains.
+
+## Deployment and exact recovery disposition
+
+Code commit `767a96d` was pushed to origin/main and deployed with the root restart after the passing checks above. All five services reported healthy: web, runner, app-runner, terminal and browser-manager. Read-only web and browser-manager health endpoints returned HTTP200. No customer/provider actions or source enrollment occurred.
+
+The rollout itself began on the old coordinator. Supported `review` returned active_adoption_ready=true for job300, origin6286, turn `bf04e51d-a0f1-4afe-b6dd-d20ad4714ac5`, timestamp `2026-09-24T16:37:53.024Z`. Supported `adopt_active` succeeded with request key `build300-active-adoption-v1`; job300 remained running under its original owner/scope. This binds its real current completion, with an immutable recovery audit, rather than inferring identity from its prompt.
+
+Supported read-only reviews of both legacy jobs returned done_recovery_ready=false:
+
+| Job | Origin | Exact turn | Expected finished_at | Stable recovery key |
+|---|---|---|---|---|
+|295|6209|05eeef6c-2a9b-485d-9634-e49aeb2e5efc|2026-09-24 16:04:27|build300-recover-295-v1|
+|298|6240|05f1ea8f-ae93-46fc-bc73-31a8f964af4d|2026-09-24 16:13:51|build300-recover-298-v1|
+
+A bounded read-only metadata check identified the concrete blocker: the original OO owner had one pending turn and zero queued messages. Its new native origin6292/turn `68b32da5-e5d4-4e43-892c-b6a11ac74836` started at `2026-09-24T16:39:07.102Z`. No contents were read. Neither295 nor298 was mutated, recovered or newly commissioned. Queue readback before review contained only running300.
+
+Next authorized operation: after the original owner is idle, freshly list the queue and repeat review with the exact tuple/key above; call recover_done only if eligible. Recover295 first, retaining its original brief/owner. Recover298 only after295 is terminal and a fresh review confirms no pending/queued work or scope competitor. Do not bypass these conditions with a new job, raw status edit, interruption or changed key. Existing authorization covers these exact recoveries, but this receipt does not claim they occurred.
