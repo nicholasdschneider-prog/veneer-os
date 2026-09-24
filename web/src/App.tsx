@@ -1,3 +1,4 @@
+import { FocusedWorkspace } from './screens/FocusedWorkspace';
 import { ReturnOwnerSetup } from './screens/ReturnOwnerSetup';
 import { TeamMessages } from './screens/TeamMessages';
 import { BotGuide } from './screens/BotGuide';
@@ -209,7 +210,7 @@ export function App() {
   const isActiveUser = Boolean(me && !me.setupRequired && !me.pending);
   const activeCanManage = me?.user?.role === 'owner' || me?.user?.role === 'consultant';
   useEffect(() => {
-    if (!isActiveUser || me?.user?.employeeWorkspace) return;
+    if (!isActiveUser || me?.user?.employeeWorkspace || me?.user?.focusedWorkspace) return;
     let alive = true;
     void api
       .navigation()
@@ -232,7 +233,7 @@ export function App() {
     return () => {
       alive = false;
     };
-  }, [activeCanManage, isActiveUser]);
+  }, [activeCanManage, isActiveUser, me?.user?.employeeWorkspace, me?.user?.focusedWorkspace]);
 
   const updateNavigation = useCallback(async (next: WorkspaceNavigation) => {
     const result = await api.updateNavigation(next);
@@ -283,6 +284,8 @@ export function App() {
 
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/autoship-candidate-setup') return <ReturnOwnerSetup key="candidate" candidate />;
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/return-service-setup') return <ReturnOwnerSetup key="return" />;
+
+  if (me.user?.focusedWorkspace && !me.user.employeeWorkspace) return <><FocusedWorkspace hash={hash} onNavigate={navigate} email={me.user.email} onToast={showToast} />{toastNode}</>;
 
   if (me.user?.employeeWorkspace) return <><EmployeeWorkspace hash={hash} onNavigate={navigate} email={me.user.email} onToast={showToast} />{toastNode}</>;
 

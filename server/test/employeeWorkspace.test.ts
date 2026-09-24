@@ -1,3 +1,4 @@
+import { focusedAutomations, isFocusedMember } from '../src/bots/focusedWorkspace.js';
 import express from 'express';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
@@ -9,7 +10,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import { createTeamService } from '../src/bots/teams.js';
 import { createBotService, proposalSchema, type Actor } from '../src/bots/service.js';
-import { canViewConversation, businessScopeSql } from '../src/conversations/access.js';
+import { canViewConversation, canSendToConversation, canTrainBusinessBot, businessScopeSql } from '../src/conversations/access.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 import { createApiRouter } from '../src/routes/api.js';
 import { attachWebSocket } from '../src/channels/webSocket.js';
@@ -219,5 +220,71 @@ describe('restricted employee workspace', () => {
       ws.send(JSON.stringify({ kind: 'ping' })); await frame();
       expect(frames).toEqual([{ kind: 'pong' }]);
     } finally { ws.close(); await new Promise<void>(r => server.close(() => r())); }
+  });
+});
+
+
+describe('focused business members', () => {
+  function focus(ids = ['nora'], enabled = true) {
+    return teams.manage(owner, { action: 'focus', team_id: teamId, user_id: 2, email: 'ali@fixture.test', conversation_ids: ids, enabled });
+  }
+  function fullMember() {
+    grant(['nora']);
+    teams.manage(owner, { action: 'member', team_id: teamId, user_id: 2, email: 'ali@fixture.test', role: 'member' });
+  }
+  it('scopes chats and routines without changing membership, training or native identity', () => {
+    fullMember();
+    const before = db.prepare('SELECT * FROM conversations ORDER BY id').all();
+    focus();
+    const nora = db.prepare("SELECT * FROM conversations WHERE id='nora'").get() as ConversationRow;
+    expect(canViewConversation(actor(2).user, nora, db)).toBe(true);
+    expect(canSendToConversation(actor(2).user, nora, db)).toBe(true);
+    expect(canTrainBusinessBot(actor(2).user, { ...nora, project_id: 'accounting-project' }, db)).toBe(true);
+    expect(db.prepare('SELECT * FROM employee_workspaces').all()).toHaveLength(0);
+    expect(db.prepare('SELECT * FROM conversations ORDER BY id').all()).toEqual(before);
+    expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(2)}`).all()).toEqual([{ id: 'nora' }]);
+    for (const id of ['henry','grant','dev']) {
+      const row = db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow;
+      expect(canViewConversation(actor(2).user, row, db)).toBe(false);
+      expect(canViewConversation(owner.user, row, db)).toBe(true);
+    }
+    for (const id of ['nora','grant']) db.prepare("INSERT INTO bot_routines(id,conversation_id,created_by,name,instructions,kind) VALUES(?,?,1,?,'private instructions','ticket.created')").run(id,id,id);
+    expect(focusedAutomations(db, actor(2).user)).toEqual([expect.objectContaining({ name: 'nora', enabled: false })]);
+    expect(JSON.stringify(focusedAutomations(db, actor(2).user))).not.toContain('private instructions');
+    expect(db.prepare("SELECT * FROM business_audit WHERE action='focus'").all()).toHaveLength(1);
+    focus([], false);
+    expect(isFocusedMember(db, 2)).toBe(false);
+    expect(canViewConversation(actor(2).user, db.prepare("SELECT * FROM conversations WHERE id='grant'").get() as ConversationRow, db)).toBe(true);
+  });
+  it('requires verified owner configuration and keeps revoked bot scope closed', () => {
+    fullMember();
+    expect(() => teams.manage(owner, { action: 'focus', team_id: teamId, user_id: 2, email: 'wrong@fixture.test', conversation_ids: ['nora'] })).toThrow('verified');
+    expect(() => focus(['dev'])).toThrow('active, shared');
+    expect(() => teams.manage({ ...owner, conversationId: 'nora' }, { action: 'focus', team_id: teamId, user_id: 2, email: 'ali@fixture.test', conversation_ids: ['nora'] })).toThrow('Platform Dev');
+    focus();
+    teams.manage(owner, { action: 'member', team_id: teamId, user_id: 2, role: null });
+    teams.manage(owner, { action: 'member', team_id: teamId, user_id: 2, role: 'member' });
+    expect(isFocusedMember(db,2)).toBe(true);
+    expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(2)}`).all()).toEqual([]);
+    focus();
+    teams.manage(owner, { action: 'remove_bot', team_id: teamId, conversation_id: 'nora' });
+    expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(2)}`).all()).toEqual([]);
+  });
+  it('enforces direct HTTP routes and keeps the full-member flag for accounting tools', async () => {
+    fullMember(); focus();
+    const ctx = { db, resolveIdentity: async () => ({ email: 'ali@fixture.test' }), manager: { bus: new EventEmitter(), statusOf: async () => 'idle', snapshot: async () => [] } } as unknown as AppContext;
+    const app = express(); app.use('/api', createApiRouter(ctx)); const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(r => server.once('listening', r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+    try {
+      expect((await (await fetch(base + '/me')).json()).user).toMatchObject({ focusedWorkspace: true, employeeWorkspace: false, role: 'member' });
+      expect((await fetch(base + '/conversations/nora/transcript')).status).toBe(200);
+      expect((await fetch(base + '/conversations/grant/transcript')).status).toBe(404);
+      expect((await fetch(base + '/scheduled-tasks')).status).toBe(403);
+      expect((await fetch(base + '/scheduled-tasks/task/run-now', { method: 'POST' })).status).toBe(403);
+      expect((await fetch(base + '/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status).toBe(403);
+      expect((await fetch(base + '/focused-workspace/automations')).status).toBe(200);
+      expect((await fetch(base + '/admin/users')).status).toBe(403);
+    } finally { await new Promise<void>(r => server.close(() => r())); }
   });
 });

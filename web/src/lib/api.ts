@@ -1025,6 +1025,7 @@ export const api = {
       hosting: { cloudflare: boolean; local: boolean };
       apps: MiniApp[];
     }>('/api/apps'),
+  focusedAutomations: () => requestJson<{ automations: { id: string; name: string; botId: string; botName: string; enabled: boolean; nextRunAt: string | null; timezone: string; schedule: string }[] }>('/api/focused-workspace/automations'),
   navigation: () =>
     requestJson<{ configured: boolean; navigation: WorkspaceNavigation }>('/api/navigation'),
   updateNavigation: (navigation: WorkspaceNavigation) =>
@@ -1516,6 +1517,8 @@ export interface AdminUser {
   createdAt: string;
   lastSeenAt: string | null;
   employeeWorkspace?: boolean;
+  focusedWorkspace?: boolean;
+  focusedBotIds?: string[];
   allowedBotIds?: string[];
 }
 

@@ -26,6 +26,7 @@ export const bulkSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('apply'), team_id: id, preview_id: id }).strict(),
 ]);
 const manageSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('focus'), team_id: id, user_id: z.number().int().positive(), email: z.string().email(), conversation_ids: z.array(id).max(100), enabled: z.boolean().default(true) }).strict(),
   z.object({ action: z.literal('shopify'), team_id: id, shopify_store: z.string().regex(/^[a-z0-9-]+$/).max(100).nullable() }).strict(),
   z.object({ action: z.literal('employee'), team_id: id, user_id: z.number().int().positive(), email: z.string().email(), conversation_ids: z.array(id).min(1).max(100), activate: z.boolean().default(false) }).strict(),
   z.object({ action: z.literal('create'), name: z.string().trim().min(1).max(120) }).strict(),
@@ -210,7 +211,7 @@ export function createTeamService(db: Database.Database) {
     },
     manage(actor: Actor, raw: Record<string, unknown>) {
       const input = manageSchema.parse(raw) as Record<string, unknown>;
-      const action = z.enum(['create', 'member', 'employee', 'delegate', 'remove_bot', 'shopify']).parse(input.action);
+      const action = z.enum(['create', 'member', 'employee', 'focus', 'delegate', 'remove_bot', 'shopify']).parse(input.action);
       return db.transaction(() => {
         if (action === 'create') {
           admin(actor);
@@ -234,6 +235,28 @@ export function createTeamService(db: Database.Database) {
         admin(actor, t);
         if (action === 'shopify') {
           db.prepare('UPDATE business_teams SET shopify_store=? WHERE id=?').run(input.shopify_store, t.id);
+        } else if (action === 'focus') {
+          const userId = input.user_id as number;
+          const target = db.prepare('SELECT email,role,status FROM users WHERE id=?').get(userId) as { email: string; role: string; status: string } | undefined;
+          if (!target || target.email !== String(input.email).toLowerCase() || target.role !== 'member' || target.status !== 'active' || userId === t.owner_id)
+            throw new BotError(400, 'Focus requires the verified active member account');
+          if (!db.prepare('SELECT 1 FROM business_team_members WHERE team_id=? AND user_id=?').get(t.id, userId) ||
+            db.prepare('SELECT 1 FROM employee_workspaces WHERE user_id=?').get(userId))
+            throw new BotError(400, 'Focus requires an existing full business member');
+          if (db.prepare('SELECT 1 FROM business_team_members m JOIN business_teams t ON t.id=m.team_id WHERE m.user_id=? AND t.owner_id<>?').get(userId, actor.user.id))
+            throw new BotError(403, 'Another business owner must review account-wide workspace access');
+          const ids = input.conversation_ids as string[];
+          for (const chatId of ids) {
+            const c = chat(chatId);
+            if (!c || c.business_team_id !== t.id || c.user_id !== t.owner_id || c.visibility !== 'team' || c.archived ||
+              !db.prepare('SELECT 1 FROM business_bot_members bm JOIN bot_registrations br ON br.conversation_id=bm.conversation_id WHERE bm.conversation_id=? AND bm.team_id=? AND br.active=1').get(chatId, t.id))
+              throw new BotError(400, 'Focus requires active, shared bots in this business');
+          }
+          db.prepare('DELETE FROM focused_workspaces WHERE user_id=?').run(userId);
+          if (input.enabled !== false) {
+            db.prepare('INSERT INTO focused_workspaces(user_id,team_id) VALUES(?,?)').run(userId,t.id);
+            for (const chatId of new Set(ids)) db.prepare('INSERT INTO focused_bot_access VALUES(?,?)').run(userId,chatId);
+          }
         } else if (action === 'employee') {
           const userId = z.number().int().positive().parse(input.user_id);
           const email = z.string().email().parse(input.email).toLowerCase();
@@ -280,6 +303,7 @@ export function createTeamService(db: Database.Database) {
             ).run(t.id, userId, role);
           else {
             db.prepare('DELETE FROM employee_bot_access WHERE user_id=? AND conversation_id IN (SELECT id FROM conversations WHERE business_team_id=?)').run(userId, t.id);
+            db.prepare('DELETE FROM focused_bot_access WHERE user_id=? AND conversation_id IN (SELECT id FROM conversations WHERE business_team_id=?)').run(userId, t.id);
             db.prepare('DELETE FROM business_team_members WHERE team_id=? AND user_id=?').run(
               t.id,
               userId,
@@ -331,6 +355,7 @@ export function createTeamService(db: Database.Database) {
           )
             throw new BotError(409, 'Remove other members before the coordinator');
           db.prepare('DELETE FROM employee_bot_access WHERE conversation_id=?').run(chatId);
+          db.prepare('DELETE FROM focused_bot_access WHERE conversation_id=?').run(chatId);
           db.prepare('DELETE FROM shared_bot_queues WHERE conversation_id=?').run(chatId);
           db.prepare('DELETE FROM business_bot_members WHERE team_id=? AND conversation_id=?').run(
             t.id,

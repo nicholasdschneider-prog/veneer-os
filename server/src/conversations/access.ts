@@ -1,3 +1,4 @@
+import { focusedScopeSql, isFocusedMember } from '../bots/focusedWorkspace.js';
 import { isEmployee } from '../bots/employeeAccess.js';
 import type Database from 'better-sqlite3';
 import type { ConversationRow, UserRow } from '../db/db.js';
@@ -6,7 +7,7 @@ type AccessRow = Pick<ConversationRow, 'user_id' | 'visibility'> &
 
 export function businessScopeSql(userId: number, alias = 'c'): string {
   if (!Number.isSafeInteger(userId)) return '0';
-  return `(NOT EXISTS (SELECT 1 FROM team_room_workers rw WHERE rw.conversation_id=${alias}.id) AND (NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
+  return `(${focusedScopeSql(userId, alias)} AND NOT EXISTS (SELECT 1 FROM team_room_workers rw WHERE rw.conversation_id=${alias}.id) AND (NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
 }
 export function businessAgentSql(
   db: Database.Database,
@@ -60,6 +61,7 @@ export function canViewConversation(
     if (c.id && db.prepare('SELECT 1 FROM team_room_workers WHERE conversation_id=?').get(c.id)) return false;
     const active = db.prepare('SELECT status FROM users WHERE id=?').get(user.id) as { status: string } | undefined;
     if (active?.status !== 'active') return false;
+    if (isFocusedMember(db, user.id) && (!c.id || !db.prepare(`SELECT 1 FROM conversations c WHERE c.id=? AND ${focusedScopeSql(user.id)}`).get(c.id))) return false;
     if (isEmployee(db, user.id) && (!c.id || !db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(user.id, c.id))) return false;
   }
   return (c.visibility === 'team' || c.user_id === user.id) && businessRole(user, c, db) !== null;

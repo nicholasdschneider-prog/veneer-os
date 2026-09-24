@@ -622,7 +622,7 @@ export interface Me {
   /** Signed in but not yet approved by an admin — App shows the pending screen. */
   pending?: boolean;
   email?: string;
-  user?: { id: number; email: string; displayName: string; role: string; employeeWorkspace?: boolean; status?: 'pending' | 'active' | 'disabled' };
+  user?: { id: number; email: string; displayName: string; role: string; employeeWorkspace?: boolean; focusedWorkspace?: boolean; status?: 'pending' | 'active' | 'disabled' };
 }
 
 /**

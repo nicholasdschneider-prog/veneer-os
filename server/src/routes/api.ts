@@ -1,3 +1,4 @@
+import { focusedApiBoundary, focusedAutomations, isFocusedMember } from '../bots/focusedWorkspace.js';
 import { createRoomsRouter } from '../rooms/routes.js';
 import { createBotWorkflowsRouter } from '../botWorkflows/routes.js';
 import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
@@ -774,6 +775,7 @@ export function createApiRouter(ctx: AppContext): Router {
         role: user.role,
         status: user.status,
         employeeWorkspace: isEmployee(db, user.id),
+        focusedWorkspace: isFocusedMember(db, user.id),
       },
     });
   });
@@ -823,6 +825,11 @@ export function createApiRouter(ctx: AppContext): Router {
   });
 
   router.use(employeeApiBoundary(db));
+  router.use(focusedApiBoundary(db));
+  router.get('/focused-workspace/automations', (req, res) => {
+    if (!isFocusedMember(db, req.user!.id)) { res.status(404).json({ error: 'Focused workspace not enabled' }); return; }
+    res.set('Cache-Control', 'no-store').json({ automations: focusedAutomations(db, req.user!) });
+  });
 
   router.use(
     '/recent-conversations',
@@ -4578,6 +4585,8 @@ export function createApiRouter(ctx: AppContext): Router {
     createdAt: u.created_at,
     lastSeenAt: u.last_seen_at,
     employeeWorkspace: isEmployee(db, u.id),
+    focusedWorkspace: isFocusedMember(db, u.id),
+    focusedBotIds: (db.prepare('SELECT conversation_id FROM focused_bot_access WHERE user_id=?').all(u.id) as { conversation_id: string }[]).map(row => row.conversation_id),
     allowedBotIds: (db.prepare('SELECT conversation_id FROM employee_bot_access WHERE user_id=?').all(u.id) as { conversation_id: string }[]).map(row => row.conversation_id),
   });
 

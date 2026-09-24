@@ -58,7 +58,7 @@ export function createBotsRouter(ctx: AppContext) {
   router.post('/teams/manage', run((req, res) => {
     const result = teams.manage(actor(req), req.body);
     changed(result.id);
-    if (req.body.action === 'employee' || (req.body.action === 'member' && req.body.email !== undefined)) {
+    if (req.body.action === 'focus' || req.body.action === 'employee' || (req.body.action === 'member' && req.body.email !== undefined)) {
       for (const c of ctx.db.prepare('SELECT id FROM conversations').all() as { id: string }[]) ctx.manager.bus?.emit('access', c.id);
     }
     if (req.body.action === 'remove_bot') ctx.manager.bus?.emit('access', req.body.conversation_id);
