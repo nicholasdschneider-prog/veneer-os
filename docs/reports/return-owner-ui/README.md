@@ -39,3 +39,9 @@ Synthetic full-app browser fixtures cover desktop/mobile, light/dark, keyboard/t
 - [Isolated browser fixture](/Users/archerclawdington/veneer-os/scripts/return-owner-setup-browser-check.mjs)
 
 Root typecheck, full npm test and production build passed before deployment: server 2,431 passed / 5 existing skipped, web 880, browser-manager 40, installer 21. Full/restricted guide browser checks passed; catalog/instruction tests verify new and resumed bot guidance. The production build retains its existing bundle-size advisory.
+
+## Deployment receipt
+
+Code commit `89e7c61` was pushed to `origin main`, then deployed through the detached root restart. All five services reported healthy (web51889, runner51902, app-runner51919, terminal52034, browser-manager healthy). Read-only health verification at 2026-09-24T14:58:15.475828+00:00 returned HTTP200 for web/runner and browser-manager. The new owner setup endpoint rejected an unauthenticated request with HTTP403 `No identity`; no owner session was simulated. No schema migration was added.
+
+The native page is deployed at https://nicksworld.dev/#/return-service-setup. No production enrollment was performed and no trust receipt is claimed. Actual owner confirmation remains required, then the original source custodian injects that exact trust ID and Grant independently accepts the configured workflow.
