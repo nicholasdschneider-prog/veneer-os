@@ -17,7 +17,8 @@ import { BotActions, BOT_PREFERENCES_CHANGED } from '@/components/BotActions';
 import { BotAvatar, BotName, BotPresence, BotWorkingIndicator } from '@/components/BotIdentity';
 import { BotOrderLink } from '@/components/BotOrderLink';
 import { BotCaseTimeline } from '@/components/BotCaseTimeline';
-import { BotProposalSummary } from '@/components/BotProposalSummary';
+import { DecisionReplyEditor } from '@/components/DecisionReplyEditor';
+import { BotProposalSummary, BotProposalDetails } from '@/components/BotProposalSummary';
 import { BotComposer } from '@/components/BotComposer';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -208,6 +209,10 @@ export function Bots({
   const [answer, setAnswer] = useState('');
   const [scope, setScope] = useState('this_case');
   const [editing, setEditing] = useState(false);
+  const [replyEditing,setReplyEditing]=useState(false);
+  const [amendVersion,setAmendVersion]=useState(0);
+  const reviewDirty=useRef(false);
+  reviewDirty.current=editing || replyEditing || !!answer.trim();
   const [recommendation, setRecommendation] = useState('');
   const [amendQuestion, setAmendQuestion] = useState('');
   const [amendConsequence, setAmendConsequence] = useState('');
@@ -265,6 +270,7 @@ export function Bots({
             setDecisions(list.decisions);
             if (thread && reviewedVersion.current === thread.decision.version)
               setDetail(thread);
+            else if (thread && !reviewDirty.current) { reviewedVersion.current=thread.decision.version;setDetail(thread);setStale(false); }
             else if (thread) setStale(true);
           }
         })
@@ -668,6 +674,8 @@ export function Bots({
                 <p>Loading decision…</p>
               ) : (
                 <>
+                  {stale && <div role="alert" className="mb-3 rounded-xl border p-3 text-sm">This proposal has changed. Your unsaved text is preserved. <button className="underline" onClick={()=>void act(refresh)}>Review the new version</button></div>}
+                  {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
                     <State state={d.state} label={decisionStatusLabel(d)} />
@@ -695,9 +703,9 @@ export function Bots({
                     {d.state === 'needs_input' ? 'Approval still needed' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
-                  <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} showIdentifiers /></div>
-                  <BotCommunication mode="briefing" key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
-                  <p className="mt-3 text-sm text-muted-foreground">Approval scope: {d.proposal.blocks_scope === 'task' ? 'This task only. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</p>
+                  <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} hideDetails editingReply={replyEditing} /></div>
+                  <p className="mt-2 text-xs text-muted-foreground">Current recommendation · v{d.version}. Discussion updates appear here when the bot saves a revised proposal.</p>
+                  <DecisionReplyEditor key={d.id} className="mt-3" decision={d} onEditing={setReplyEditing} onSave={async(body,version,handlingRevision)=>{await send(d.id,'reply',{body,expected_version:version,...(d.shared_queue?{expected_handling_revision:handlingRevision}:{})});await refresh();}} />
                   {d.state === 'needs_input' && d.shared_queue && (
                     <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border p-3">
                       <p className="text-sm">{d.collaborative_answers ? 'Shared question: any already-authorized teammate can answer. Comments and handling do not reserve it; the first valid answer is recorded.' : d.handler_name ? `${d.handler_name} is handling this` : 'Any authorized teammate can approve this proposal. An extra owner approval click is not required.'}</p>
@@ -705,15 +713,14 @@ export function Bots({
                       {d.can_release && <Button variant="outline" disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'release' }))}>Release question</Button>}
                     </div>
                   )}
-                  <DecisionImages key={`${d.id}-${d.version}`} decision={d} />
                   {d.state === 'needs_input' &&
                     (d.can_answer ? (
                       <div className="mt-6 border-t pt-5">
                         <h3 className="font-medium">
-                          Your decision · v{d.version}
+                          Review and approve · v{d.version}
                         </h3>
                         <p className="mt-1 text-sm text-muted-foreground">Applies to: {scope === 'this_case' ? 'This case only' : 'Standing rule intent — existing approvals still apply'}</p>
-                        <DecisionChoices choices={d.proposal.choices} disabled={busy || stale} onChoose={choice_id => void act(async () => {
+                        <DecisionChoices choices={d.proposal.choices} disabled={busy || stale || replyEditing || editing} onChoose={choice_id => void act(async () => {
                           await mutate('choice', { choice_id, note: answer, scope });
                           setAnswer('');
                         })} />
@@ -752,6 +759,7 @@ export function Bots({
                           className="mt-4 text-sm underline"
                           onClick={() => {
                             setEditing(!editing);
+                            setAmendVersion(d.version);
                             setRecommendation(d.proposal.recommendation);
                             setAmendQuestion(d.proposal.question);
                             setAmendConsequence(d.proposal.consequence);
@@ -803,7 +811,7 @@ export function Bots({
                             <Button
                               className="mt-2 min-h-11"
                               disabled={
-                                busy ||
+                                busy || stale || amendVersion !== d.version ||
                                 !recommendation.trim() ||
                                 !amendQuestion.trim() ||
                                 !amendConsequence.trim() ||
@@ -812,6 +820,7 @@ export function Bots({
                               onClick={() =>
                                 void act(async () => {
                                   await mutate('proposal', {
+                                    expected_version: amendVersion,
                                     proposal: {
                                       ...d.proposal,
                                       // This editor changes raw scope, not its sourced summary.
@@ -836,6 +845,12 @@ export function Bots({
                         {d.shared_queue ? (d.handler_name ? 'The current handler can submit the answer. You can both join the discussion.' : 'Choose Handle this before submitting an answer.') : `Only ${d.assignee_name} can answer this proposal.`}
                       </p>
                     ))}
+                  <details key={`technical-${d.id}`} className="mt-5 rounded-2xl border px-4">
+                    <summary className="min-h-11 cursor-pointer py-3 font-medium">Details, evidence &amp; history</summary>
+                    <BotProposalDetails decision={d} showIdentifiers />
+                  <BotCommunication mode="briefing" key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
+                  <p className="mt-3 text-sm text-muted-foreground">Approval scope: {d.proposal.blocks_scope === 'task' ? 'This task only. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</p>
+                  <DecisionImages key={`${d.id}-${d.version}`} decision={d} />
                   {d.answer && (
                     <div className="mt-4 rounded-xl border p-3 text-sm">
                       <p className="font-medium">
@@ -887,8 +902,8 @@ export function Bots({
                     </p>
                   )}
                   <div className="mt-5"><BotCommunication mode="drafts" key={`drafts-${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} /></div>
-                  <details className="mt-5 rounded-2xl border px-4">
-                    <summary className="min-h-11 cursor-pointer py-3 font-medium">Case history, evidence & details</summary>
+                  <section className="mt-5">
+                    <h3 className="font-medium">Case history, evidence &amp; details</h3>
                     <BotCaseTimeline entries={d.proposal.case_timeline} />
                   <dl className="mt-4 grid gap-3 text-sm">
                     <div>
@@ -933,6 +948,7 @@ export function Bots({
                       ))}
                     </div>
                   )}
+                  </section>
                   </details>
                   <div className="mt-6 border-t pt-5">
                     <h3 className="flex flex-wrap items-center gap-2 font-medium">

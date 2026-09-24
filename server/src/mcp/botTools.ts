@@ -128,7 +128,7 @@ export const BOT_TOOL_DEFINITIONS = [
   ),
   definition(
     'update_decision',
-    'Revise a material proposal or changed evidence. Increments version, clears old approval and requires a fresh human answer. Never execute against a stale version.',
+    'Revise a material proposal or changed evidence. After discussion establishes a concrete changed recommendation or customer reply, update the displayed complete proposal here, not just in a thread reply. Preserve exact message scope and make review_summary consistent. Increments version, clears old approval and requires a fresh human answer. Do not revise unchanged scope or treat an edit request as consent. Reread human-edited versions before continuing; never execute against stale text.',
     { ...mutation, proposal },
     [...Object.keys(mutation), 'proposal'],
   ),

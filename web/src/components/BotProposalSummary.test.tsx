@@ -1,9 +1,18 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { BotProposalSummary } from './BotProposalSummary';
+import { BotProposalSummary, BotProposalDetails } from './BotProposalSummary';
 import type { BotDecision } from '@/lib/bots';
 
 describe('human decision review', () => {
+  it('separates technical details without losing a long action-only recommendation',()=>{
+    const recommendation='A long material recommendation. '.repeat(20);
+    const decision={proposal:{question:'Review',recommendation,consequence:'Material limit',blocked_action:'Verify first'}} as BotDecision;
+    const main=renderToStaticMarkup(<BotProposalSummary decision={decision} hideDetails />);
+    const details=renderToStaticMarkup(<BotProposalDetails decision={decision} />);
+    expect(main).not.toContain('<details');expect(main).toContain('Material limit');
+    expect(details).toContain(recommendation);expect(details).toContain('Verify first');
+  });
+
   it('puts the unmodified draft first and preserves limits and original protocol', () => {
     const decision = { id: 'reference-1', version: 2, proposal: {
       recommendation: 'Send a tracking update.', consequence: 'No refund approved. The date is an estimate.',

@@ -243,6 +243,10 @@ export function createBotsRouter(ctx: AppContext) {
       });
     }),
   );
+  router.post('/decisions/:id/reply', run((req,res)=>{
+    const p=mutation.extend({body:z.string().min(1).max(12000),expected_handling_revision:z.number().int().nonnegative().optional()}).strict().parse(req.body);
+    res.json({decision:s.editReply(actor(req),req.params.id!,p.expected_version,p.request_key,p.body,p.expected_handling_revision)});
+  }));
   router.post('/decisions/:id/handling', run((req, res) => {
     const p = mutation.extend({ action: z.enum(['claim', 'release']), expected_handling_revision: z.number().int().nonnegative() }).strict().parse(req.body);
     res.json({ decision: s.handle(actor(req), req.params.id!, p.expected_version, p.request_key, p.action, p.expected_handling_revision) });

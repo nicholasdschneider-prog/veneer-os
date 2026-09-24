@@ -66,6 +66,7 @@ export interface BotDecision {
   can_handle?: boolean;
   can_release?: boolean;
   can_amend?: boolean;
+  can_edit_reply?: boolean;
   can_answer: boolean;
   dismissed: boolean;
   bot_name: string;

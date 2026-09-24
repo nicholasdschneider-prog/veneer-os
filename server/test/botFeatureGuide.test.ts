@@ -4,6 +4,13 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('discovers versioned reply editing and allows its narrow employee route',()=>{
+    const feature=botFeatureCatalog(Date.parse('2026-09-24')).features.find(f=>f.id==='decision-reply-editing')!;
+    expect(feature.isNew).toBe(true);
+    expect(botFeatureInstructions()).toContain(feature.agent);
+    expect(employeeRouteAllowed('POST','/bots/decisions/fixture/reply')).toBe(true);
+    expect(employeeRouteAllowed('POST','/bots/decisions/fixture/proposal')).toBe(false);
+  });
   it('labels policy enrollment separately from disabled execution and protects enrollment routes',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-23')).features.find(f=>f.id==='routine-policy-enrollment')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('All categories currently disabled in production');

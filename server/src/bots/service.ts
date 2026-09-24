@@ -1,3 +1,4 @@
+import { withEditedReply } from './replyEdit.js';
 import { approvedMessageSchema } from './draftPayload.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -389,7 +390,7 @@ export function createBotService(db: Database.Database) {
         409,
         'Restore the bot chat before sending a decision or message',
       );
-    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. Revalidate material evidence and call record_decision_result with state running and this version before executing. Revise changed proposals with update_decision. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
+    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. Revalidate material evidence and call record_decision_result with state running and this version before executing. After discussion establishes a concrete changed recommendation or customer reply, call update_decision with the current expected_version and the complete exact revised proposal; do not leave the displayed recommendation stale while describing different text only in discussion. Keep review_summary consistent with the revised scope. Do not revise unchanged proposals or treat a request to edit as approval. Human reply edits create a new version; reread it before responding. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
     db.prepare(
       'INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)',
     ).run(
@@ -493,6 +494,7 @@ export function createBotService(db: Database.Database) {
       can_release: eligible(actor, d) && shared(d) && d.handler_id !== null && (d.handler_id === actor.user.id || c.user_id === actor.user.id),
       handling_mine: d.handler_id === actor.user.id,
       can_answer: eligible(actor, d) && (!shared(d) || nonexclusive(d) || d.handler_id === actor.user.id),
+      can_edit_reply: eligible(actor,d) && (!shared(d) || nonexclusive(d) || d.handler_id===actor.user.id) && !['running','verified_completed'].includes(d.state),
       can_amend: eligible(actor, d) && actor.user.id === c.user_id && (!shared(d) || d.handler_id === actor.user.id),
       can_manage: !actor.conversationId && actor.user.id === c.user_id,
       dismissed,
@@ -585,6 +587,34 @@ export function createBotService(db: Database.Database) {
         const d = read(actor, id);
         event(actor, d, 'raised', input, 'raise');
         return view(actor, d);
+      })();
+    },
+    editReply(actor:Actor,id:string,version:number,key:string,body:string,handlingRevision?:number):ReturnType<typeof view> {
+      return db.transaction(()=>{
+        if(actor.conversationId)throw new BotError(403,'Use update_decision for bot proposal revisions');
+        const d=read(actor,id);
+        // Bind editor retries to their exact immutable edit event, not the current payload.
+        const previous=db.prepare("SELECT payload_json FROM bot_decision_events WHERE decision_id=? AND request_key=? AND kind='reply_edited'").get(id,key) as {payload_json:string}|undefined;
+        if(previous){const p=JSON.parse(previous.payload_json);if(p.expected_version!==version || p.body!==body || p.actor_id!==actor.user.id)throw new BotError(409,'Reply edit request conflict');approver(actor,d);return view(actor,d);}
+        approver(actor,d);
+        if(shared(d) && !nonexclusive(d) && d.handler_id!==actor.user.id)throw new BotError(403,'Only the current handler can edit this reply');
+        if(['running','verified_completed'].includes(d.state))throw new BotError(409,'Executing or completed work cannot be edited');
+        cas(d,version);
+        if(shared(d))handlingCas(d,handlingRevision);
+        const p=withEditedReply(JSON.parse(d.proposal_json),body);
+        // Body-only edit: evidence and assignee are immutable here. Retain the
+        // existing decision-bound context ACL without granting source access.
+        decisionEvidenceAllowed(actor,p,d);
+        const assigned=db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(d.assignee_id) as UserRow|undefined;
+        if(!assigned || !canViewConversation(assigned,conversation(d.conversation_id)!,db))throw new BotError(400,'Approver must have access to the bot');
+        decisionEvidenceAllowed({user:assigned},p,d);
+        const permanentOwner=db.prepare('SELECT * FROM users WHERE id=?').get(conversation(d.conversation_id)!.user_id) as UserRow;
+        evidenceAllowed({user:permanentOwner},p,d.conversation_id);
+        db.prepare("UPDATE bot_decisions SET version=version+1,handler_id=NULL,handling_revision=handling_revision+1,state='needs_input',proposal_json=?,answer_json=NULL,result_json=NULL,parked_json=NULL,updated_at=datetime('now') WHERE id=?").run(JSON.stringify(p),id);
+        event(actor,read(actor,id),'revised',p,key+':revision');
+        const result=view(actor,read(actor,id));
+        event(actor,read(actor,id),'reply_edited',{expected_version:version,body,actor_id:actor.user.id},key);
+        return result;
       })();
     },
     revise(

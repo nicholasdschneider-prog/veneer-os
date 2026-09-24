@@ -16,7 +16,7 @@ function Background({ bullets }: { bullets: string[] }) {
 }
 
 /** Display only: raw scope and approval remain in the unchanged versioned proposal. */
-export function BotProposalSummary({ decision, showIdentifiers = false, compact = false }: { decision: BotDecision; showIdentifiers?: boolean; compact?: boolean }) {
+export function BotProposalSummary({ decision, showIdentifiers = false, compact = false, hideDetails = false, editingReply = false }: { decision: BotDecision; showIdentifiers?: boolean; compact?: boolean; hideDetails?: boolean; editingReply?: boolean }) {
   // Both surfaces expose the exact reply; compact affects the containing card, not evidence.
   void compact;
   const proposal = decision.proposal;
@@ -38,10 +38,18 @@ export function BotProposalSummary({ decision, showIdentifiers = false, compact 
     {draft ? <section className="space-y-2 rounded-xl border p-3" aria-label="Proposed customer reply">
       <h3 className="font-medium">{delivery ? 'Exact customer message to authorize' : 'Proposed customer reply'}</h3>
       {delivery?.payload.subject && <p className="text-sm">Subject: {delivery.payload.subject}</p>}
-      <div className="whitespace-pre-wrap leading-6">{draft}</div>
+      <div className="whitespace-pre-wrap leading-6">{editingReply ? 'Editing below. The saved reply stays unchanged until you save a new version.' : draft}</div>
     </section> : <section className="space-y-1" aria-label="Recommended action"><h3 className="font-medium">Recommended action</h3><p className="whitespace-pre-wrap leading-6">{action}</p></section>}
     <div className="space-y-1 border-l-2 border-foreground/15 pl-3"><h3 className="font-medium">Impact &amp; limits</h3><p className="whitespace-pre-wrap leading-6">{copy.limits}</p></div>
     <Background bullets={summary?.background ?? []} />
+    {!hideDetails && <BotProposalDetails decision={decision} showIdentifiers={showIdentifiers} />}
+  </div>;
+}
+
+export function BotProposalDetails({decision,showIdentifiers=false}:{decision:BotDecision;showIdentifiers?:boolean}) {
+  const proposal=decision.proposal, delivery=proposal.message_delivery, copy=decisionCopy(proposal);
+  const action=proposal.review_summary?.action_title || (copy.proposedAction.length <= 240 ? copy.proposedAction : 'Review the recommended action in Original details.');
+  return <div className="space-y-4">
     {delivery && <details className="rounded-lg border p-3">
       <summary className="cursor-pointer min-h-[44px] font-medium focus-visible:outline focus-visible:outline-ring">Message scope &amp; delivery details</summary>
       <p>Approval includes this one message through the named executor. It does not authorize other customer contact or financial actions.</p>

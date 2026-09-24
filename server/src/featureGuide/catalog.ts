@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'decision-reply-editing',title:'Discuss, edit and approve the current recommendation',category:'Daily work',updated:'2026-09-24',
+    announcement:'Technical decision details start collapsed. Recommendations refresh as the bot revises them, and eligible reviewers can edit the exact customer reply before approving its new version.',
+    audience:'Existing authorized decision reviewers and owning bots',
+    summary:'Keep the discussion close to the current recommendation.',
+    steps:['Read the current recommendation and impact limits; expand Details, evidence & history only when needed.', 'Discuss changes with the bot. A saved revised proposal updates the recommendation and requires review of its new version.', 'For a customer reply, choose Edit customer reply, change the text, then Save reply for review. Review the saved version and use its approval choice. Cancel edit keeps the saved proposal unchanged.'],
+    example:'Update the proposed customer reply from our discussion, then let me edit the wording before I approve it.',
+    limits:'Saving an edit is not approval or delivery. Original answers remain in history; changed text requires a new answer. Exact account, recipient and attachments stay unchanged. Existing eligibility and handling restrictions apply. Legacy draft text does not become structured send authority. Concurrent changes preserve your unsaved text and require a fresh review.',
+    agent:'When decision discussion establishes a concrete changed recommendation or customer reply, read the current decision and use update_decision with expected_version and the complete revised proposal, including consistent review_summary. Do not leave stale displayed text while describing different wording only in discussion. Human reply edits create a new unapproved version; reread it and preserve exact payload. Never infer approval from an edit request, revise unchanged scope, bypass a hold or claim provider delivery from an approval click. Guide: /#/bot-guide?feature=decision-reply-editing.',
+  },
+  {
     id:'bounded-chat-history',title:'Open long chats with recent history first',category:'Daily work',updated:'2026-09-23',
     announcement:'Long chats open with a bounded recent window. Scroll up or choose Load earlier messages to retrieve older history without deleting it.',
     audience:'People with access to the conversation',summary:'Keep the initial chat lightweight while preserving older work.',

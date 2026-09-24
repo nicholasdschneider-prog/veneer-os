@@ -108,6 +108,47 @@ describe('VeneerBots', () => {
       blocked_action: 'Publish internal fixture',
       ...extra,
     });
+  it('edits exact customer reply into a new unapproved version while preserving immutable prior answer and source scope',()=>{
+    const delivery={canonical_case:'case',executor_conversation_id:'fixture-a',payload:{channel:'email',account:'help@example.test',recipients:['customer@example.test'],subject:'Exact subject',body:'Old exact reply',attachments:[],customer:'customer',ticket:'case',context:'Keep these instructions'}};
+    const d=s.raise(bot,{source_key:'reply-edit',proposal_key:'reply',proposal:proposal({blocked_action:'Check sources. EXACT DRAFT: Old exact reply',message_delivery:delivery})});
+    s.choose(human,d.id,1,'hold','defer','Investigate first','this_case');
+    const next=s.editReply(human,d.id,1,'edit1','New exact reply with caveat.');
+    expect(next).toMatchObject({version:2,state:'needs_input',answer:null,proposal:{message_delivery:{...delivery,payload:{...delivery.payload,body:'New exact reply with caveat.'}},blocked_action:'Check sources. EXACT DRAFT: New exact reply with caveat.'}});
+    expect(s.thread(human,d.id).events.filter(e=>e.kind==='answered')).toHaveLength(1);
+    expect(s.editReply(human,d.id,1,'edit1','New exact reply with caveat.').version).toBe(2);
+    expect(()=>s.editReply(human,d.id,1,'edit1','Different')).toThrow('conflict');
+    expect(()=>s.choose(human,d.id,1,'stale','approve','','this_case')).toThrow();
+    expect(()=>s.editReply(bot,d.id,2,'bot-edit','Text')).toThrow();
+    expect(()=>s.editReply(human,d.id,1,'stale-edit','Text')).toThrow();
+    expect(s.choose(human,d.id,2,'approve-current','approve','','this_case').answer?.action).toBe('approve');
+  });
+  it('keeps legacy-only reply as legacy and rejects ambiguous or absent drafts',()=>{
+    const d=s.raise(bot,{source_key:'legacy-reply',proposal_key:'reply',proposal:proposal({blocked_action:'No additional authority. EXACT DRAFT: Original'})});
+    const next=s.editReply(human,d.id,1,'legacy-edit','Edited');
+    expect(next.proposal.message_delivery).toBeUndefined();expect(next.proposal.blocked_action).toBe('No additional authority. EXACT DRAFT: Edited');
+    const other=s.raise(bot,{source_key:'no-reply',proposal_key:'action',proposal:proposal()});
+    expect(()=>s.editReply(human,other.id,1,'no','Invented')).toThrow('unambiguous');
+    const ambiguous=s.raise(bot,{source_key:'ambiguous',proposal_key:'action',proposal:proposal({blocked_action:'EXACT DRAFT: A EXACT DRAFT: B'})});
+    expect(()=>s.editReply(human,ambiguous.id,1,'no','Invented')).toThrow('unambiguous');
+  });
+  it('allows only already-eligible nonexclusive CS reviewers to edit reply text with handling CAS',()=>{
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('reply-team','Fixture CS',1)").run();
+    db.prepare("UPDATE conversations SET business_team_id='reply-team' WHERE id='fixture-a'").run();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('reply-team',2,'member'),('reply-team',3,'member')").run();
+    db.prepare("INSERT INTO employee_workspaces VALUES(2)").run();db.prepare("INSERT INTO employee_bot_access VALUES(2,'fixture-a')").run();
+    db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();db.prepare("INSERT INTO nonexclusive_bot_queues VALUES('fixture-a','reply-team')").run();
+    const ali={user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow},foreign={user:db.prepare('SELECT * FROM users WHERE id=3').get() as UserRow};
+    db.prepare("UPDATE conversations SET business_team_id='reply-team',visibility='team' WHERE id='fixture-b'").run();
+    const d=s.raise(bot,{source_key:'shared-edit',proposal_key:'reply',proposal:proposal({blocked_action:'EXACT DRAFT: Existing',evidence:[{conversation_id:'fixture-b',label:'Restricted source'}]})});
+    expect(s.view(ali,s.read(ali,d.id)).can_edit_reply).toBe(true);
+    expect(()=>s.editReply(foreign,d.id,1,'foreign','Changed',0)).toThrow();
+    expect(()=>s.editReply(ali,d.id,1,'stale-handler','Changed',99)).toThrow();
+    const pending=db.prepare('SELECT count(*) n FROM conversation_wakeups').get();
+    const edited=s.editReply(ali,d.id,1,'ali-edit','Changed',d.handling_revision);
+    expect(edited).toMatchObject({version:2,state:'needs_input',answer:null});
+    expect(db.prepare('SELECT count(*) n FROM conversation_wakeups').get()).toEqual(pending);
+    db.prepare("DELETE FROM employee_bot_access WHERE user_id=2").run();expect(()=>s.editReply(ali,d.id,2,'revoked','No',edited.handling_revision)).toThrow();
+  });
   const raise = (key = 'case', actor = bot) =>
     s.raise(actor, {
       source_key: key,
