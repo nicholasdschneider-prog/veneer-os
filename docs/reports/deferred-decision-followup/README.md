@@ -40,3 +40,9 @@ Synthetic fixtures cover defer → investigation → fresh exact instruction, un
 - [decision-discussion-browser-check.mjs](/Users/archerclawdington/veneer-os/scripts/decision-discussion-browser-check.mjs) accepts an isolated output directory for regression artifacts.
 
 Root typecheck, full npm test and build passed. Test totals: server 2,427 passed / 5 existing skipped; web 880 passed; browser-manager 40 passed; installer 21 passed. Synthetic browser checks passed at five widths in both themes: collapsed details, keyboard/tap, discussion position, exact reply save, approval disabled during editing, stale polling protection and clean refresh. Guide checks passed for full/restricted routes, dated notices, navigation/search, mobile overflow and refresh; shared catalog tests verify resumed instruction delivery. No live business actions were used.
+
+## Deployment receipt
+
+Code commit `65abe49` pushed to `origin main`. Detached root restart completed; web, runner, app-runner, terminal and browser-manager all reported healthy. Read-only verification at 2026-09-24T14:44:31.661163+00:00: web `/healthz` HTTP200 (web/runner healthy), browser-manager `/health` HTTP200. Schema inspection confirms `bot_deferred_followups` and both immutable update/delete triggers. No live decision rows were read or changed for verification.
+
+Historical null instructions remain untouched. This is a deployed fresh-follow-up/access repair, not a receipt for Avery’s customer remedy, order, notification or Auto-Ship execution. Generated-result message binding remains unsupported as described above.
