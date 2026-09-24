@@ -56,3 +56,13 @@ Changed files:
 - [Read-only synthetic authentication check](./check_transport.py)
 
 Root typecheck, full npm test and build passed after the final route-isolation change: server2452 passed/5 existing skipped, web880, browser-manager40, installer21. Existing bundle-size advisory remains. Deployment/health and post-restart auth receipt follow below.
+
+## Deployed result
+
+Code/provisioning/UI commit **909f7d2**, pushed origin/main. Detached root restart completed successfully under Node24.21.0: web10638, runner10663, app-runner10683, terminal10801 and browser-manager all healthy. Read-only web/browser health returned200.
+
+Public synthetic-key GET after restart: dedicated candidate identity reached native404 `Candidate source not found`; no identity401; fake human JWT401; candidate token on separate AutoShip verifier403. This proves transport authentication only, not enrolled source acceptance. No POST event/enrollment was used as a test.
+
+Bounded read-only native metadata confirms business owner1 active, existing worker owned by1 in the exact business with active bot registration. All four candidate source/event/revocation/start ledgers are zero at this check. Genuine owner confirmation has NOT been performed by the builder. Current actual link is https://nicksworld.dev/#/autoship-candidate-setup; only sign-in and the plain confirm button remain for that owner.
+
+Final separation: dedicated CF/native transport **configured and verified**; approved Doppler source custody **stored**; source Railway candidate/AutoPO injection **not performed by301 and retained by original custodian**; genuine owner enrollment/source_id **pending**; live event/shipping acceptance **not performed**. AutoPO access names/operator/tuple/absent destination and supported protected transfer mechanism were verified/prepared; no AutoPO value was read. No policy broadening, business action or source redeploy by Platform.
