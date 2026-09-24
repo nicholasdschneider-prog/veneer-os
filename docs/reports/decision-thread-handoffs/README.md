@@ -43,3 +43,11 @@ No real employees, customer records, calls or provider actions were used as test
 - [web/src/lib/decisionHandoffs.test.ts](/Users/archerclawdington/veneer-os/web/src/lib/decisionHandoffs.test.ts)
 - [web/src/screens/Bots.tsx](/Users/archerclawdington/veneer-os/web/src/screens/Bots.tsx)
 - [scripts/decision-handoff-browser-check.mjs](/Users/archerclawdington/veneer-os/scripts/decision-handoff-browser-check.mjs)
+
+## Deployment receipt
+
+Code **e04b389086b47ffd11773d2d564f8de16e1be423** pushed to origin/main. Root typecheck, full tests and production build passed: installer21, server2,424 passed/5 existing skipped, web880, browser-manager40. Four viewport/theme browser combinations passed, including restricted mobile and full desktop; guide browser and resumed instruction checks passed. Existing large-chunk build warning remains.
+
+Detached root restart completed with web PID32696, runner32709, app-runner32725, terminal32797 and browser-manager all healthy. Independent read-only web and browser-manager health checks returned200. Read-only SQLite metadata confirmed the two handoff ledgers and immutable update triggers. No live investigation, employee message, decision answer or provider action was performed as a test.
+
+The preserved BUILD283 work is now completed in this serial platform release. BUILD282 remains intact; unrelated `.veneer-browser/`, `.veneer/` and `out/` were preserved. BUILD284 remains a separate retained request, not an implemented part of this release.
