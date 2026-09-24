@@ -1,3 +1,5 @@
+import { recoverBuild } from './recovery.js';
+import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
 import type { BuildQueueRow, ConversationRow } from '../db/db.js';
@@ -7,6 +9,7 @@ import { PLATFORM_DEV_VALIDATION_GUIDANCE } from './guidance.js';
 
 interface QueueManager {
   bus: EventEmitter;
+  dispatchBuild(conv: ConversationRow, text: string, actorUserId: number, origin: MessageOrigin): unknown;
   postMessage(conv: ConversationRow, text: string, actorUserId?: number, origin?: MessageOrigin): void;
   isLive(conversationId: string): boolean;
   queueSnapshot(conversationId: string): { messages: unknown[] };
@@ -26,6 +29,7 @@ export interface BuildQueueCoordinator {
   tick(): void;
   enqueue(conversationId: string, title: string, brief: string, actorUserId?: number): EnqueueBuildResult;
   list(): BuildQueueRow[];
+  recover(input:unknown, actorId:number, actorConversation:string|null): unknown;
   resolve(jobId: number, action: 'retry' | 'skip'): ResolveBuildResult;
 }
 
@@ -167,6 +171,7 @@ export function createBuildQueueCoordinator({
           continue;
         }
 
+        db.prepare("DELETE FROM pending_turns WHERE conversation_id=? AND status='failed' AND json_extract(origin_json,'$.buildDispatchId') IN(SELECT id FROM build_dispatches WHERE job_id=?)").run(job.conversation_id,job.id);
         const claimed = db.prepare(
           `UPDATE build_queue
            SET status = 'running', started_at = datetime('now'), error = NULL
@@ -179,7 +184,13 @@ export function createBuildQueueCoordinator({
         if (claimed.changes === 0) continue;
 
         try {
-          manager.postMessage(conv, promptFor(job, conv), job.user_id, messageOriginFor(conv));
+          const dispatchId=crypto.randomUUID();
+          db.transaction(()=>{
+            db.prepare('INSERT INTO build_dispatches(id,job_id,conversation_id) VALUES(?,?,?)').run(dispatchId,job.id,conv.id);
+            db.prepare('UPDATE build_queue SET dispatch_id=? WHERE id=?').run(dispatchId,job.id);
+            db.prepare("INSERT INTO build_dispatch_audit(job_id,dispatch_id,kind,payload_json) VALUES(?,?,'dispatched','{}')").run(job.id,dispatchId);
+          }).immediate();
+          manager.dispatchBuild(conv, promptFor(job, conv), job.user_id, {...messageOriginFor(conv),buildDispatchId:dispatchId});
         } catch (err) {
           db.prepare(
             "UPDATE build_queue SET status = 'failed', error = ?, finished_at = datetime('now') WHERE id = ?",
@@ -219,34 +230,30 @@ export function createBuildQueueCoordinator({
 
   function onEvent(conversationId: string, event: ConversationEvent): void {
     if (event.type === 'turn_started') {
-      // A plain Stop parks the job as 'stopped'. When the user then types a
-      // follow-up in the same chat, that turn is the correction: revive the job
-      // so its turn_done finishes it instead of leaving the workspace blocked.
-      // The stopped job already holds the scope, so nothing else slipped in.
-      // Failed jobs are not revived here; they need an explicit retry/skip.
-      db.prepare(
-        `UPDATE build_queue
-         SET status = 'running', error = NULL, finished_at = NULL
-         WHERE conversation_id = ? AND status = 'stopped'`,
-      ).run(conversationId);
+      const dispatchId=event.origin?.buildDispatchId;
+      if (!dispatchId) return;
+      db.transaction(()=>{
+        const matched=db.prepare("SELECT b.id FROM build_queue b JOIN build_dispatches d ON d.id=b.dispatch_id WHERE d.id=? AND b.conversation_id=? AND b.status='running'").get(dispatchId,conversationId) as {id:number}|undefined;
+        if(!matched)return;
+        // Event origin is emitted by the manager and persisted before this callback.
+        const origin=db.prepare("SELECT id FROM turn_origins WHERE conversation_id=? AND turn_id=? AND json_extract(origin_json,'$.buildDispatchId')=?").get(conversationId,event.turnId,dispatchId);
+        if(!origin)return;
+        const originId=(origin as {id:number}).id;
+        const bound=db.prepare('SELECT current_origin_id FROM build_dispatches WHERE id=?').get(dispatchId) as {current_origin_id:number|null};
+        if(bound.current_origin_id!==null && bound.current_origin_id>=originId)return;
+        db.prepare('UPDATE build_dispatches SET current_turn_id=?,current_origin_id=? WHERE id=?').run(event.turnId,originId,dispatchId);
+        db.prepare("INSERT INTO build_dispatch_audit(job_id,dispatch_id,kind,turn_id,payload_json) VALUES(?,?,'turn_bound',?,'{}')").run(matched.id,dispatchId,event.turnId);
+      }).immediate();
       return;
     }
-    const job = runningByConversation.get(conversationId) as BuildQueueRow | undefined;
-    if (!job) return;
-    if (event.type === 'error') {
-      db.prepare('UPDATE build_queue SET error = COALESCE(error, ?) WHERE id = ?').run(event.message, job.id);
-      return;
-    }
+    if(event.type==='error' && event.turnId){db.prepare("UPDATE build_queue SET error=COALESCE(error,?) WHERE status='running' AND conversation_id=? AND dispatch_id IN(SELECT id FROM build_dispatches WHERE current_turn_id=?)").run(event.message,conversationId,event.turnId);return;}
+    if(event.type!=='turn_done')return; // diagnostics/status without turn identity never change a build
+    const job=db.prepare("SELECT b.* FROM build_queue b JOIN build_dispatches d ON d.id=b.dispatch_id WHERE b.conversation_id=? AND b.status='running' AND d.current_turn_id=?").get(conversationId,event.turnId) as BuildQueueRow|undefined;
+    if(!job)return;
+    db.prepare("INSERT INTO build_dispatch_audit(job_id,dispatch_id,kind,turn_id,payload_json) SELECT id,dispatch_id,'turn_done',?,? FROM build_queue WHERE id=?").run(event.turnId,JSON.stringify({outcome:event.outcome??'completed'}),job.id);
     if (event.type !== 'turn_done') return;
     const latest = jobById.get(job.id) as BuildQueueRow;
     const outcome = event.outcome ?? (latest.error ? 'failed' : 'completed');
-    if (outcome === 'interrupted_by_user' && manager.queueSnapshot(conversationId).messages.length > 0) {
-      // "Send now" interrupted the provider turn, but the queued correction is
-      // still part of this build. Keep both the job and workspace mutex live;
-      // the follow-up's eventual turn_done will finish this same queue item.
-      db.prepare("UPDATE build_queue SET error = NULL WHERE id = ? AND status = 'running'").run(job.id);
-      return;
-    }
     if (outcome === 'interrupted_by_user') {
       db.prepare(
         `UPDATE build_queue
@@ -270,16 +277,11 @@ export function createBuildQueueCoordinator({
   }
 
   function onStatus(conversationId: string, status: ConversationStatus): void {
-    const job = runningByConversation.get(conversationId) as BuildQueueRow | undefined;
-    if (job && status === 'failed') {
-      failOrRetry(job.id, 'Agent run failed');
-      tick();
-      return;
-    }
     if (status === 'idle' || status === 'failed') tick();
   }
 
-  manager.bus.on('event', onEvent);
+  const serializedEvent = (id:string,event:ConversationEvent) => db.transaction(()=>onEvent(id,event)).immediate();
+  manager.bus.on('event', serializedEvent);
   manager.bus.on('status', onStatus);
 
   return {
@@ -289,8 +291,8 @@ export function createBuildQueueCoordinator({
       // crash in the tiny dispatch window. Pause visibly instead of duplicating it.
       const phantomFilter =
         `status = 'running'
-           AND NOT EXISTS (SELECT 1 FROM pending_turns p WHERE p.conversation_id = build_queue.conversation_id)
-           AND NOT EXISTS (SELECT 1 FROM queued_messages q WHERE q.conversation_id = build_queue.conversation_id)`;
+           AND NOT EXISTS (SELECT 1 FROM pending_turns p WHERE p.conversation_id = build_queue.conversation_id AND p.status='pending' AND (build_queue.dispatch_id IS NULL OR json_extract(p.origin_json,'$.buildDispatchId')=build_queue.dispatch_id))
+           AND NOT EXISTS (SELECT 1 FROM queued_messages q WHERE q.conversation_id = build_queue.conversation_id AND (build_queue.dispatch_id IS NULL OR json_extract(q.origin_json,'$.buildDispatchId')=build_queue.dispatch_id))`;
       // Capture the ids first; after the UPDATE they no longer match the filter.
       const phantoms = db.prepare(`SELECT id FROM build_queue WHERE ${phantomFilter}`).all() as { id: number }[];
       db.prepare(
@@ -309,7 +311,7 @@ export function createBuildQueueCoordinator({
     stop() {
       if (timer) clearInterval(timer);
       timer = null;
-      manager.bus.off('event', onEvent);
+      manager.bus.off('event', serializedEvent);
       manager.bus.off('status', onStatus);
     },
     tick,
@@ -374,6 +376,7 @@ export function createBuildQueueCoordinator({
          ORDER BY scope_key, id`,
       ).all() as BuildQueueRow[];
     },
+    recover(input, actorId, actorConversation) { const result=recoverBuild(db,input,actorId,actorConversation,id=>manager.isLive(id)); if((input as {mode?:string}).mode==='recover_done') tick(); return result; },
     resolve(jobId, action) {
       const job = jobById.get(jobId) as BuildQueueRow | undefined;
       if (!job) return { ok: false, error: 'not_found' };

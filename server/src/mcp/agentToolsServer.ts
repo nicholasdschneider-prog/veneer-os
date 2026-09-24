@@ -281,6 +281,11 @@ const TOOLS: ToolDef[] = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name:'recover_build_queue',
+    description:'Inspect or recover an explicitly user-authorized exact legacy prematurely-done build. Use review first with exact native origin ID/turn ID/finished timestamp; never infer linkage from prompt text. recover_done requires idle original owner, no pending/queued work or scope competitor. adopt_active is only this chat current legacy build activation at rollout. Audited/idempotent; no new job or owner. Never broadly reopen jobs.',
+    inputSchema:{type:'object',properties:{job_id:{type:'number'},origin_id:{type:'number'},turn_id:{type:'string'},expected_finished_at:{type:['string','null']},request_key:{type:'string'},mode:{type:'string',enum:['review','recover_done','adopt_active']},reason:{type:'string'}},required:['job_id','origin_id','turn_id','expected_finished_at','request_key','mode','reason']},
+  },
+  {
     name: 'resolve_build_queue',
     description:
       'Retry or skip a failed/queued workspace build. You may retry or skip THIS chat\'s own failed or stopped build on your own judgment (for example after list_build_queue shows it blocking the queue). Only touch another chat\'s queue item when the user explicitly asks.',
@@ -1138,6 +1143,7 @@ async function callTool(
       });
       return { content: [{ type: 'text', text: lines.length ? `Build queues:\n${lines.join('\n')}` : 'The build queues are empty.' }] };
     }
+    if(name==='recover_build_queue'){const result=await callApi('/api/build-queue/recover',{method:'POST',body:JSON.stringify(args)});return {content:[{type:'text',text:JSON.stringify(result)}]};}
     if (name === 'resolve_build_queue') {
       const jobId = Number(args.job_id);
       const action = String(args.action ?? '');

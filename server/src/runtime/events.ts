@@ -12,6 +12,8 @@ export type TurnOutcome = 'completed' | 'interrupted_by_user' | 'timed_out' | 'f
  * Omitted means the ordinary user authored the message. */
 export interface MessageOrigin {
   kind: 'agent' | 'wakeup' | 'build_queue';
+  /** Durable internal build activation; never inferred from prompt text. */
+  buildDispatchId?: string;
   from: string;
   to: string;
   /** Viewer-safe marker for a message sent from another chat on this instance.
@@ -383,7 +385,7 @@ export type ConversationEvent =
   // A neutral, non-failure notice (e.g. "you stopped this turn"). Rendered muted;
   // error rows are red, while turn_done remains authoritative for final status.
   | { type: 'notice'; message: string; at?: string }
-  | { type: 'error'; message: string; fatal: boolean };
+  | { type: 'error'; message: string; fatal: boolean; turnId?: string };
 
 export type ConversationStatus = 'working' | 'needs_you' | 'idle' | 'failed';
 export type ConversationActivity = 'compacting' | null;

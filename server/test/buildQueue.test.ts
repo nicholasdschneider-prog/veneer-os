@@ -47,6 +47,7 @@ function fakeManager(db: Database.Database) {
     bus,
     live,
     sent,
+    dispatchBuild(conv:ConversationRow,text:string,actorUserId:number,origin:MessageOrigin){this.postMessage(conv,text,actorUserId,origin);},
     postMessage(conv: ConversationRow, text: string, _actorUserId?: number, origin?: MessageOrigin) {
       sent.push({ conversationId: conv.id, text, ...(origin ? { origin } : {}) });
       live.add(conv.id);
@@ -59,7 +60,7 @@ function fakeManager(db: Database.Database) {
         db.prepare('INSERT INTO queued_messages (conversation_id, prompt) VALUES (?, ?)').run(conv.id, text);
         return;
       }
-      db.prepare('INSERT INTO pending_turns (conversation_id, prompt) VALUES (?, ?)').run(conv.id, text);
+      db.prepare('INSERT INTO pending_turns (conversation_id, prompt,origin_json) VALUES (?, ?,?)').run(conv.id,text,JSON.stringify(origin));
     },
     isLive(conversationId: string) {
       return live.has(conversationId);
@@ -72,6 +73,16 @@ function fakeManager(db: Database.Database) {
       };
     },
     event(conversationId: string, event: ConversationEvent) {
+      const d=db.prepare("SELECT d.* FROM build_dispatches d JOIN build_queue b ON b.dispatch_id=d.id WHERE b.conversation_id=? AND b.status='running'").get(conversationId) as {id:string;current_turn_id:string|null}|undefined;
+      if(d && (event.type==='turn_done'||event.type==='error')){
+        const turnId=d.current_turn_id??`fixture-${d.id}`;
+        if(!d.current_turn_id){
+          const origin={kind:'build_queue' as const,from:'Build queue',to:'platform-dev',buildDispatchId:d.id};
+          db.prepare('INSERT INTO turn_origins(conversation_id,turn_id,prompt_text,event_at,origin_json) VALUES(?,?,?,?,?)').run(conversationId,turnId,'fixture',new Date().toISOString(),JSON.stringify(origin));
+          bus.emit('event',conversationId,{type:'turn_started',turnId,role:'user',text:'fixture',at:new Date().toISOString(),origin});
+        }
+        event={...event,turnId};
+      }
       bus.emit('event', conversationId, event);
     },
     status(conversationId: string, status: ConversationStatus) {
@@ -143,7 +154,7 @@ describe('Platform Dev build queue', () => {
     expect(manager.sent[0]!.text).toContain('Use any implementation plan prepared in the preceding queue turn');
     expect(manager.sent[0]!.text).toContain('Briefly refresh the relevant source');
     expect(manager.sent[0]!.text).toContain(PLATFORM_DEV_VALIDATION_GUIDANCE);
-    expect(manager.sent[0]!.origin).toEqual({
+    expect(manager.sent[0]!.origin).toMatchObject({
       kind: 'build_queue',
       from: 'Build queue',
       to: 'platform-dev',
@@ -159,46 +170,6 @@ describe('Platform Dev build queue', () => {
     expect(manager.sent).toHaveLength(2);
     expect(manager.sent[1]).toMatchObject({ conversationId: 'build-2' });
     expect(db.prepare("SELECT status FROM build_queue WHERE title = 'First feature'").get()).toMatchObject({ status: 'done' });
-  });
-
-  it('keeps a corrected build running across an interrupted turn and holds the workspace lock', () => {
-    const manager = fakeManager(db);
-    coordinator = createBuildQueueCoordinator({ db, manager, tickMs: 60_000 });
-    coordinator.enqueue('build-1', 'Corrected feature', 'Build the first version.');
-    coordinator.enqueue('build-2', 'Later feature', 'Wait until the correction finishes.');
-    expect(manager.sent.map((item) => item.conversationId)).toEqual(['build-1']);
-
-    db.prepare(
-      "INSERT INTO queued_messages (conversation_id, prompt, sort_order) VALUES ('build-1', 'Do not run it yet.', 1)",
-    ).run();
-    manager.event('build-1', {
-      type: 'turn_done',
-      turnId: 'turn-interrupted',
-      outcome: 'interrupted_by_user',
-    });
-    expect(db.prepare("SELECT status, error FROM build_queue WHERE conversation_id = 'build-1'").get()).toEqual({
-      status: 'running',
-      error: null,
-    });
-
-    // The manager briefly reports idle between the interrupted turn and its
-    // durable follow-up. The second source build still must not dispatch.
-    manager.status('build-1', 'idle');
-    expect(manager.sent.map((item) => item.conversationId)).toEqual(['build-1']);
-
-    db.prepare("DELETE FROM queued_messages WHERE conversation_id = 'build-1'").run();
-    manager.event('build-1', {
-      type: 'turn_done',
-      turnId: 'turn-follow-up',
-      outcome: 'completed',
-    });
-    expect(db.prepare("SELECT status FROM build_queue WHERE conversation_id = 'build-1'").get()).toEqual({
-      status: 'done',
-    });
-
-    db.prepare("DELETE FROM pending_turns WHERE conversation_id = 'build-1'").run();
-    manager.status('build-1', 'idle');
-    expect(manager.sent.map((item) => item.conversationId)).toEqual(['build-1', 'build-2']);
   });
 
   it('records a plain user Stop as stopped instead of Blocked and keeps later work paused', () => {
@@ -226,81 +197,14 @@ describe('Platform Dev build queue', () => {
     });
   });
 
-  it('revives a stopped build when its chat resumes with a follow-up turn and finishes it on completion', () => {
-    const manager = fakeManager(db);
-    coordinator = createBuildQueueCoordinator({ db, manager, tickMs: 60_000 });
-    coordinator.enqueue('build-1', 'Paused feature', 'Build this when resumed.');
-    coordinator.enqueue('build-2', 'Later feature', 'Do this afterward.');
-
-    manager.event('build-1', { type: 'turn_done', turnId: 'turn-stopped', outcome: 'interrupted_by_user' });
-    db.prepare("DELETE FROM pending_turns WHERE conversation_id = 'build-1'").run();
-    manager.status('build-1', 'idle');
-    expect(db.prepare("SELECT status FROM build_queue WHERE conversation_id = 'build-1'").get()).toEqual({
-      status: 'stopped',
-    });
-
-    // The user types "continue" in the same chat: no queue message is sent.
-    manager.event('build-1', {
-      type: 'turn_started',
-      turnId: 'turn-resumed',
-      role: 'user',
-      text: 'continue',
-      at: '2026-08-27T12:00:00.000Z',
-      via: 'web',
-    });
-    expect(db.prepare("SELECT status, finished_at FROM build_queue WHERE conversation_id = 'build-1'").get()).toEqual({
-      status: 'running',
-      finished_at: null,
-    });
-    expect(manager.sent.map((item) => item.conversationId)).toEqual(['build-1']);
-
-    manager.event('build-1', { type: 'turn_done', turnId: 'turn-resumed', outcome: 'completed' });
-    manager.status('build-1', 'idle');
-    expect(db.prepare("SELECT status FROM build_queue WHERE conversation_id = 'build-1'").get()).toEqual({
-      status: 'done',
-    });
-    expect(manager.sent.map((item) => item.conversationId)).toEqual(['build-1', 'build-2']);
-  });
-
-  it('blocks a revived build as failed when the follow-up turn fails, and never revives a failed job', () => {
-    const manager = fakeManager(db);
-    coordinator = createBuildQueueCoordinator({ db, manager, tickMs: 60_000 });
-    coordinator.enqueue('build-1', 'Paused feature', 'Build this when resumed.');
-    coordinator.enqueue('build-2', 'Later feature', 'Do this afterward.');
-
-    manager.event('build-1', { type: 'turn_done', turnId: 'turn-stopped', outcome: 'interrupted_by_user' });
-    db.prepare("DELETE FROM pending_turns WHERE conversation_id = 'build-1'").run();
-    manager.status('build-1', 'idle');
-    manager.event('build-1', {
-      type: 'turn_started',
-      turnId: 'turn-resumed',
-      role: 'user',
-      text: 'continue',
-      at: '2026-08-27T12:00:00.000Z',
-      via: 'web',
-    });
-    manager.event('build-1', { type: 'turn_done', turnId: 'turn-resumed', outcome: 'failed' });
-    manager.status('build-1', 'idle');
-    manager.event('build-1', { type: 'turn_done', turnId: 'turn-retry', outcome: 'failed' });
-    manager.status('build-1', 'idle');
-
-    expect(db.prepare("SELECT status FROM build_queue WHERE conversation_id = 'build-1'").get()).toEqual({
-      status: 'failed',
-    });
-
-    // Another user turn in the chat must not clear a failed job.
-    manager.event('build-1', {
-      type: 'turn_started',
-      turnId: 'turn-later',
-      role: 'user',
-      text: 'unrelated question',
-      at: '2026-08-27T12:05:00.000Z',
-      via: 'web',
-    });
-    expect(db.prepare("SELECT status FROM build_queue WHERE conversation_id = 'build-1'").get()).toEqual({
-      status: 'failed',
-    });
-    expect(manager.sent.map((item) => item.conversationId)).not.toContain('build-2');
+  it('does not revive stopped builds for unrelated follow-ups; explicit retry is required',()=>{
+    const manager=fakeManager(db);coordinator=createBuildQueueCoordinator({db,manager});
+    const r=coordinator.enqueue('build-1','Fixture','Fixture');
+    manager.event('build-1',{type:'turn_done',turnId:'stop',outcome:'interrupted_by_user'});
+    manager.bus.emit('event','build-1',{type:'turn_started',turnId:'unrelated',role:'user',text:'Other work',at:new Date().toISOString()});
+    manager.bus.emit('event','build-1',{type:'turn_done',turnId:'unrelated',outcome:'completed'});
+    expect(db.prepare('SELECT status FROM build_queue').get()).toEqual({status:'stopped'});
+    expect(coordinator.resolve(r.ok?r.job.id:0,'retry').ok).toBe(true);
   });
 
   it('requeues a failed turn once with the provider error, then pauses on a second failure', () => {

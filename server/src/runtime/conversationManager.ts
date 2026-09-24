@@ -91,6 +91,7 @@ function parseMessageOrigin(value: unknown): MessageOrigin | undefined {
       : '';
     return {
       kind: candidate.kind,
+      ...(candidate.kind === 'build_queue' && typeof candidate.buildDispatchId === 'string' ? {buildDispatchId:candidate.buildDispatchId} : {}),
       from,
       to,
       ...(sourceConversationId ? { sourceConversationId } : {}),
@@ -190,6 +191,7 @@ export type CompactConversationResult =
 export interface ConversationManager {
   /** Fan-out bus: emits event/status plus server-authoritative queue snapshots. */
   bus: EventEmitter;
+  dispatchBuild(conv: ConversationRow, text: string, actorUserId: number, origin: MessageOrigin): PostMessageResult;
   postMessage(conv: ConversationRow, text: string, actorUserId?: number, origin?: MessageOrigin): PostMessageResult;
   /**
    * Persist first, then steer the active provider turn; retain the queue row on
@@ -1397,6 +1399,10 @@ export function createConversationManager({
       void runNext(conv);
       return;
     }
+    if (item.origin?.buildDispatchId && !db.prepare("SELECT 1 FROM build_dispatches d JOIN build_queue b ON b.id=d.job_id WHERE d.id=? AND d.conversation_id=? AND b.dispatch_id=d.id AND b.status='running'").get(item.origin.buildDispatchId,conv.id)) {
+      if(item.id!==null) deleteQueuedMessageStmt.run(item.id);
+      clearPendingTurnStmt.run(conv.id); emitQueue(conv.id); void runNext(conv); return;
+    }
     const discussion = item.id === null ? undefined : queuedDiscussionWake(db, conv.id, item.id);
     if (discussion && !botWakeAllowed(db, discussion, conv)) {
       deleteQueuedMessageStmt.run(item.id);
@@ -1432,6 +1438,7 @@ export function createConversationManager({
     const firstTurn = isFirstTurn(conv.id);
 
     const emit = (event: ConversationEvent): void => {
+      if(event.type==='error') event.turnId=turnId;
       if (['turn_done', 'error', 'approval_requested', 'question_asked'].includes(event.type)) {
         clearDiscussionActivity.run(conv.id);
       }
@@ -2009,6 +2016,10 @@ export function createConversationManager({
 
   return {
     bus,
+    dispatchBuild(conv, text, actorUserId, origin) {
+      if (!origin.buildDispatchId) throw new Error('Build dispatch identity required');
+      return enqueueMessage(conv,text,false,{key:`build:${origin.buildDispatchId}`,sourceKind:'wakeup'},actorUserId,origin);
+    },
     postMessage(conv, text, actorUserId = conv.user_id, origin) {
       return enqueueMessage(conv, text, true, undefined, actorUserId, origin);
     },

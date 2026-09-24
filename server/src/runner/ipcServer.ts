@@ -381,6 +381,8 @@ export function createIpcServer({
         );
       case '/rpc/listBuildQueue':
         return void sendJson(res, 200, { jobs: buildQueue.list() });
+      case '/rpc/recoverBuild':
+        return void sendJson(res,200,buildQueue.recover(body.input,Number(body.actorId),typeof body.actorConversation==='string'?body.actorConversation:null));
       case '/rpc/resolveBuild':
         return void sendJson(
           res,

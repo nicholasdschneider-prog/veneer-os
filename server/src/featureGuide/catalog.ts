@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'build-dispatch-identity',title:'Keep build slots tied to their actual work',category:'Daily work',updated:'2026-09-24',
+    audience:'Authorized project owners and the existing build owner.',
+    summary:'Build completion follows its exact dispatched turn. Unrelated chat activity cannot release its workspace slot.',
+    steps:['Use the existing build queue for shared source work. A delayed activation keeps its slot until its own turn finishes.', 'After Stop, explicitly retry or skip the stopped build; unrelated discussion does not resume it.', 'For a verified legacy premature completion, ask the existing platform owner to review exact job/origin/turn metadata before using audited recovery. Recovery preserves the original job and owner.'],
+    example:'Review this prematurely completed build using its exact origin and turn IDs, then recover it only if the original owner is idle and the scope is clear.',
+    limits:'Recovery is not automatic and cannot reopen an arbitrary completed build. It requires explicit authorization, original active owner, exact metadata and no competing/pending work. Legacy callback identity was not recorded; operator-selected legacy evidence is labeled honestly. No prompt-text inference, new builder or customer execution permission.',
+    announcement:'Build queue slots now follow durable activation and turn IDs. A separate audited recovery path handles verified legacy premature completion without duplicating a job.',
+    agent:'Never equate a conversation turn_done with build completion. Use list_build_queue and normal resolve_build_queue for stopped/failed jobs. recover_build_queue requires explicit user authorization and exact origin_id,turn_id,expected_finished_at and stable request_key: review first; recover_done only for an idle legacy prematurely-done job with no scope competitor. adopt_active is restricted to this caller current unbound legacy rollout build turn. No old prompt matching or automatic broad recovery. Preserve source ownership; never enqueue a replacement to bypass an occupied slot.'
+  },
+  {
     id:'autoship-candidates',title:'Notify AutoShip about order and stock candidates',category:'Daily work',updated:'2026-09-24',
     audience:'The existing ERVP AutoShip worker and an explicitly enrolled dedicated source; setup requires the current business owner.',
     summary:'A dedicated source can durably notify the existing worker about an order or confirmed stock change to reevaluate.',

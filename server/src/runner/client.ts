@@ -118,6 +118,7 @@ export interface RunnerClient {
   fireWakeup(convId: string, wakeupId: string): Promise<FireWakeupResult>;
   enqueueBuild(convId: string, title: string, brief: string, actorUserId?: number): Promise<EnqueueBuildResult>;
   listBuildQueue(): Promise<BuildQueueRow[]>;
+  recoverBuild(input:unknown,actorId:number,actorConversation:string|null):Promise<unknown>;
   resolveBuild(jobId: number, action: 'retry' | 'skip'): Promise<ResolveBuildResult>;
   veneerBrowserProfiles(
     userId: number,
@@ -330,6 +331,7 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     fireWakeup: (convId, wakeupId) => rpc('/rpc/fireWakeup', { convId, wakeupId }),
     enqueueBuild: (convId, title, brief, actorUserId) => rpc('/rpc/enqueueBuild', { convId, title, brief, actorUserId }),
     listBuildQueue: () => rpc<{ jobs: BuildQueueRow[] }>('/rpc/listBuildQueue', {}).then((r) => r.jobs),
+    recoverBuild: (input,actorId,actorConversation) => rpc('/rpc/recoverBuild',{input,actorId,actorConversation}),
     resolveBuild: (jobId, action) => rpc('/rpc/resolveBuild', { jobId, action }),
     veneerBrowserProfiles: (userId, role, projectId) =>
       rpc('/rpc/veneerBrowserProfiles', { userId, role, projectId }),

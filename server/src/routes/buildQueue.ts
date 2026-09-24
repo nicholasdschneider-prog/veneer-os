@@ -1,3 +1,4 @@
+import { BuildRecoveryInput } from '../buildQueue/recovery.js';
 import express, { type Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
@@ -130,6 +131,13 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
       .catch((err: Error) => res.status(503).json({ ok: false, error: err.message }));
   });
 
+  router.post('/recover', (req,res)=>{
+    const p=BuildRecoveryInput.safeParse(req.body);
+    if(!p.success){res.status(400).json({error:'Exact recovery metadata required'});return;}
+    const conv=queueConversation.get(p.data.job_id) as {user_id:number;visibility:'team'|'private'}|undefined;
+    if(!conv||!canManageConversation(req.user!,conv,ctx.db)){res.status(404).json({error:'Build not found'});return;}
+    void ctx.manager.recoverBuild(p.data,req.user!.id,req.agentConversationId??null).then(result=>res.json(result)).catch((e:Error)=>res.status(409).json({error:e.message}));
+  });
   router.post('/:id/resolve', (req, res) => {
     const body = ResolveSchema.safeParse(req.body);
     const jobId = Number(req.params.id);
