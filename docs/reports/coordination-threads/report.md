@@ -21,6 +21,10 @@ New bot-to-bot messages now use dedicated execution sessions and a shared thread
 - Browser checks used synthetic content and the actual Coordination and SplitView components. At 1280px, 390px, and 320px, the draft and scroll offset survived opening, a background update, closing, and Escape. No horizontal overflow or browser errors occurred. No real bot requests, customer messages, or external business actions were used for testing.
 - The service runtime preflight verified Node 24 and native module loading.
 
+## Rollout
+
+Implementation commit `4628531` was pushed to `origin main`. The runner and web service were restarted through the repository restart script after validation. Both returned healthy status. Read-only verification confirmed migration `0124_coordination_threads.sql` is applied and the live web service serves the newly built JavaScript asset. The browser manager, app runner, and terminal service were not restarted.
+
 ## Screenshots
 
 These are isolated verification fixtures, not customer conversation data.
