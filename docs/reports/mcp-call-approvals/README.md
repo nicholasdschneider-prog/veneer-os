@@ -21,7 +21,7 @@ Anna's retained reports establish native Auto/full_access=0 and generic rejectio
 
 ## Validation and deployment
 
-Root typecheck, full npm test and production build passed before deployment: 2,478 server tests (5 existing skips), 893 web tests, 40 browser-manager tests and 21 installer tests. Vite retained its existing large-chunk warning. The guide contract tests verify restricted employee access, dated discovery and current instructions for resumed agents. Regression fixtures cover Ask/Auto audit, explicit deny, Stop, fresh/resumed turns, malformed/unsupported/foreign/stale requests, completion without resolution, duplicate answers and tool success/backend failure. Deployment health receipt follows after restart. All tests use a local fake app-server and disposable databases; no Anna tool, business action, credential, provider call or membership mutation was used as a test.
+Root typecheck, full npm test and production build passed before deployment: 2,478 server tests (5 existing skips), 893 web tests, 40 browser-manager tests and 21 installer tests. Vite retained its existing large-chunk warning. The guide contract tests verify restricted employee access, dated discovery and current instructions for resumed agents. Regression fixtures cover Ask/Auto audit, explicit deny, Stop, fresh/resumed turns, malformed/unsupported/foreign/stale requests, completion without resolution, duplicate answers and tool success/backend failure. Implementation commit `b73f618` was pushed to origin main. The detached root restart completed for all five services with Node 24.21.0. At 2026-09-24T20:31:09.405Z all five returned HTTP 200. [Runtime receipt](./runtime.json) records the built adapter, catalog and web entry artifact hashes. No migration or configuration change was needed. All tests use a local fake app-server and disposable databases; no Anna tool, business action, credential, provider call or membership mutation was used as a test.
 
 ## Changed files
 
@@ -32,3 +32,9 @@ Root typecheck, full npm test and production build passed before deployment: 2,4
 - [fake-app-server.mjs](/Users/archerclawdington/veneer-os/server/test/fixtures/fake-app-server.mjs)
 
 Employee and agent guidance: `/#/bot-guide?feature=mcp-call-approvals`. The shared catalog serves full and restricted employees and is included in resumed-agent instructions.
+
+## Acceptance disposition
+
+The native integration is deployed and validated. Anna has not been retried by this build. Parent d254 owns any separately authorized acceptance check. If her next permitted call is still rejected, retain the exact request type and explicit reviewer reason if available; do not widen permissions or repeat the call automatically. The generic historical rejection alone cannot distinguish provider policy denial from the now-repaired unsupported-request path.
+
+- [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/mcp-call-approvals/runtime.json)
