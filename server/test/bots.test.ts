@@ -248,6 +248,52 @@ describe('VeneerBots', () => {
     expect(JSON.stringify(s.thread(human, d.id).messages)).toContain('Not completed');
     expect(() => s.recordDiscussionDecision(bot, d.id, message, 1, 'reject')).toThrow();
   });
+  it('keeps defer intact until a fresh exact instruction creates one audited successor answer',()=>{
+    const d=raise('deferred-followup');
+    s.answer(human,d.id,1,'hold',{action:'defer',text:'Sanity-check first',scope:'this_case'});
+    s.reply(bot,d.id,'investigated','Read-only investigation complete; original scope unchanged.');
+    s.reply(human,d.id,'legacy-null','Old message without a version');
+    const old=(db.prepare("SELECT id FROM bot_decision_events WHERE request_key='legacy-null'").get() as {id:string}).id;
+    expect(()=>s.recordDiscussionDecision(bot,d.id,old,1,'approve')).toThrow('version-bound');
+    const message=instruction(d.id,'Approve the unchanged exact proposal.');
+    expect(s.read(human,d.id).state).toBe('decided');
+    expect(JSON.parse(s.read(human,d.id).answer_json!).action).toBe('defer');
+    const next=s.recordDiscussionDecision(bot,d.id,message,1,'approve');
+    expect(next).toMatchObject({version:2,state:'decided',answer:{action:'approve',actor_id:1}});
+    const count=db.prepare('SELECT count(*) n FROM conversation_wakeups').get();
+    expect(s.recordDiscussionDecision(bot,d.id,message,1,'approve').version).toBe(2);
+    expect(db.prepare('SELECT count(*) n FROM conversation_wakeups').get()).toEqual(count);
+    expect(()=>s.recordDiscussionDecision(bot,d.id,message,1,'reject')).toThrow();
+    const answers=s.thread(human,d.id).events.filter(e=>e.kind==='answered');expect(answers).toHaveLength(2);
+    expect(JSON.parse(answers[0]!.payload_json).action).toBe('defer');
+    expect(db.prepare('SELECT * FROM bot_discussion_instructions WHERE message_id=?').get(old)).toBeUndefined();
+  });
+  it('never resumes a defer on ambiguous discussion alone and denies changed, stale or revoked follow-ups',()=>{
+    const d=raise('deferred-negative');s.answer(human,d.id,1,'hold',{action:'defer',text:'Wait',scope:'this_case'});
+    instruction(d.id,'Could we approve only if it fits?');
+    expect(JSON.parse(s.read(human,d.id).answer_json!).action).toBe('defer');
+    const old=instruction(d.id,'Approve the unchanged proposal.');instruction(d.id,'Wait, investigate more.');
+    expect(()=>s.recordDiscussionDecision(bot,d.id,old,1,'approve')).toThrow('newer human');
+    const fresh=instruction(d.id,'Approve unchanged');s.revise(bot,d.id,1,'changed',proposal({consequence:'Different quantity and financial scope'}));
+    expect(()=>s.recordDiscussionDecision(bot,d.id,fresh,1,'approve')).toThrow('Proposal changed');
+    const other=raise('revoke-followup');s.answer(human,other.id,1,'hold2',{action:'defer',text:'Wait',scope:'this_case'});
+    const revoked=instruction(other.id,'Approve unchanged');db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
+    expect(()=>s.recordDiscussionDecision(bot,other.id,revoked,1,'approve')).toThrow();
+  });
+  it('lets the owning bot revise scoped CS context without granting the assignee whole-source access',()=>{
+    db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('revision-team','Fixture CS',1)").run();
+    db.prepare("UPDATE conversations SET business_team_id='revision-team' WHERE id IN ('fixture-a','fixture-b')").run();
+    db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES('revision-team',2,'member')").run();
+    db.prepare('INSERT INTO employee_workspaces VALUES(2)').run();db.prepare("INSERT INTO employee_bot_access VALUES(2,'fixture-a')").run();
+    db.prepare("INSERT INTO shared_bot_queues VALUES('fixture-a')").run();db.prepare("INSERT INTO nonexclusive_bot_queues VALUES('fixture-a','revision-team')").run();
+    const d=raise('scoped-revision');
+    const revised=s.revise(bot,d.id,1,'scoped',proposal({assignee_id:2,evidence:[{conversation_id:'fixture-b',label:'Bounded same-business context'}]}));
+    expect(revised.version).toBe(2);
+    const ali={user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow};
+    expect(s.read(ali,d.id).id).toBe(d.id);expect(()=>s.chat(ali,'fixture-b')).toThrow();
+    db.prepare("UPDATE conversations SET visibility='private' WHERE id='fixture-b'").run();
+    expect(()=>s.revise(bot,d.id,2,'private',proposal({assignee_id:2,evidence:[{conversation_id:'fixture-b',label:'Private'}]}))).toThrow();
+  });
   it.each(['reject', 'defer', 'withdraw'] as const)('records %s without granting execution or claiming completion', action => {
     const d = raise();
     const message = instruction(d.id, action === 'defer' ? 'Investigate the missing package first.' : `Please ${action} this proposal.`);

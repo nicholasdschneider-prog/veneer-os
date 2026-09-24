@@ -301,7 +301,7 @@ export function createBotService(db: Database.Database) {
       reconciled_handling_revision: d.handling_revision, transitions,
     }, key + ':handling-reconciliation');
   }
-  function validateProposal(actor: Actor, p: Proposal, botId: string) {
+  function validateProposal(actor: Actor, p: Proposal, botId: string, existing?: Decision) {
     evidenceAllowed(actor, p, botId);
     const user = db
       .prepare("SELECT * FROM users WHERE id=? AND status='active'")
@@ -309,7 +309,8 @@ export function createBotService(db: Database.Database) {
     const c = conversation(botId)!;
     if (!user || !canViewConversation(user, c, db))
       throw new BotError(400, 'Approver must have access to the bot');
-    evidenceAllowed({ user }, p);
+    if(existing) decisionEvidenceAllowed({user},p,{...existing,assignee_id:p.assignee_id});
+    else evidenceAllowed({ user }, p);
     // Evidence must also be accessible to the permanent owner at execution time.
     const botOwner = db
       .prepare('SELECT * FROM users WHERE id=?')
@@ -390,7 +391,7 @@ export function createBotService(db: Database.Database) {
         409,
         'Restore the bot chat before sending a decision or message',
       );
-    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. Revalidate material evidence and call record_decision_result with state running and this version before executing. After discussion establishes a concrete changed recommendation or customer reply, call update_decision with the current expected_version and the complete exact revised proposal; do not leave the displayed recommendation stale while describing different text only in discussion. Keep review_summary consistent with the revised scope. Do not revise unchanged proposals or treat a request to edit as approval. Human reply edits create a new version; reread it before responding. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
+    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. Revalidate material evidence and call record_decision_result with state running and this version before executing. After discussion establishes a concrete changed recommendation or customer reply, call update_decision with the current expected_version and the complete exact revised proposal; do not leave the displayed recommendation stale while describing different text only in discussion. Keep review_summary consistent with the revised scope. Do not revise unchanged proposals or treat a request to edit as approval. Human reply edits create a new version; reread it before responding. Fresh version-bound instructions after defer may answer ONLY the unchanged exact proposal through record_discussion_decision; the service preserves the old defer and creates a successor version. If the human requests different quantities, actions, conditions or message text, revise and review that changed scope instead. Never reuse a legacy null instruction or treat questions, conditional requests or investigation findings as consent. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
     db.prepare(
       'INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)',
     ).run(
@@ -643,7 +644,7 @@ export function createBotService(db: Database.Database) {
             403,
             'A proposal amendment cannot transfer approval authority',
           );
-        validateProposal(actor, p, d.conversation_id);
+        validateProposal(actor, p, d.conversation_id, d);
         db.prepare(
           "UPDATE bot_decisions SET version=version+1,handler_id=NULL,handling_revision=handling_revision+1,state='needs_input',proposal_json=?,assignee_id=?,answer_json=NULL,result_json=NULL,parked_json=NULL,updated_at=datetime('now') WHERE id=?",
         ).run(JSON.stringify(p), p.assignee_id, id);
@@ -727,24 +728,40 @@ export function createBotService(db: Database.Database) {
         if (!user || user.status !== 'active') throw new BotError(403, 'The message author is no longer authorized');
         const humanActor: Actor = { user };
         approver(humanActor, d);
-        cas(d, version);
         const key = `discussion-answer:${messageId}`;
         const payload = { action, text: source.text, scope: 'this_case' };
         if (replay(humanActor, d, key, 'answered', payload)) return view(actor, d);
+        cas(d, version);
         const latest = db.prepare('SELECT id FROM bot_decision_threads WHERE decision_id=? AND actor_conversation_id IS NULL ORDER BY rowid DESC LIMIT 1').get(id) as { id: string };
         if (latest.id !== messageId) throw new BotError(409, 'A newer human message supersedes this instruction. Read the thread again.');
-        if (d.state !== 'needs_input') throw new BotError(409, 'This proposal already has an answer');
-        reconcileDiscussionHandling(actor, d, messageId, source, key);
-        // Reuse the same human authorization, shared-queue claim and answer flow as the UI.
         const service = createBotService(db);
+        if(d.state==='decided' && JSON.parse(d.answer_json || '{}').action==='defer') {
+          const followup=db.prepare('SELECT * FROM bot_deferred_followups WHERE message_id=?').get(messageId) as {deferred_answer_event_id:string;proposal_hash:string}|undefined;
+          const deferred=db.prepare("SELECT id FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='answered' ORDER BY rowid DESC LIMIT 1").get(id,version) as {id:string}|undefined;
+          if(!followup || followup.deferred_answer_event_id!==deferred?.id || followup.proposal_hash!==canonicalSha256(JSON.parse(d.proposal_json)))
+            throw new BotError(409,'A fresh instruction bound to this deferred proposal is required');
+          if(source.handling_revision!==d.handling_revision || (shared(d) && !nonexclusive(d) && d.handler_id!==null && d.handler_id!==user.id))
+            throw new BotError(409,'Handling changed. Review the current question before continuing.');
+          // Copy the exact proposal, never a bot-supplied replacement. Preserve
+          // the deferred answer in its original version's immutable events.
+          db.prepare("UPDATE bot_decisions SET version=version+1,state='needs_input',answer_json=NULL,result_json=NULL,parked_json=NULL,handler_id=NULL,handling_revision=handling_revision+1,updated_at=datetime('now') WHERE id=?").run(id);
+          d=read(actor,id);
+          event(humanActor,d,'revised',JSON.parse(d.proposal_json),key+':revision');
+          event(humanActor,d,'deferred_followup',{message_id:messageId,from_version:version,to_version:d.version,proposal_hash:followup.proposal_hash,deferred_answer_event_id:deferred!.id},key+':followup');
+        } else {
+          if (d.state !== 'needs_input') throw new BotError(409, 'This proposal already has an answer');
+          reconcileDiscussionHandling(actor, d, messageId, source, key);
+        }
+        // Reuse the same human authorization, shared-queue claim and answer flow as the UI.
+        const answerVersion=d.version;
         if (shared(d) && d.handler_id === null) {
-          service.handle(humanActor, id, version, key + ':claim', 'claim', d.handling_revision);
+          service.handle(humanActor, id, answerVersion, key + ':claim', 'claim', d.handling_revision);
           d = read(actor, id);
         }
-        service.answer(humanActor, id, version, key, payload, d.handling_revision);
+        service.answer(humanActor, id, answerVersion, key, payload, d.handling_revision);
         const label = { approve: 'Approved · Queued for required checks and execution. Not completed.', reject: 'Rejected · No execution authorized.', defer: 'Deferred · Follow-up needed. No execution authorized.', withdraw: 'Withdrawn · No execution authorized.' }[action];
-        service.reply(actor, id, key + ':receipt', `Decision recorded from ${user.display_name}’s discussion message (proposal v${version}): ${label}`);
-        event(actor, d, 'discussion_decision', { message_id: messageId, action, author_id: user.id, version }, key + ':source');
+        service.reply(actor, id, key + ':receipt', `Decision recorded from ${user.display_name}’s discussion message (proposal v${answerVersion}): ${label}`);
+        event(actor, d, 'discussion_decision', { message_id: messageId, action, author_id: user.id, version:answerVersion, instruction_version:version }, key + ':source');
         return view(actor, read(actor, id));
       }).immediate();
     },
@@ -788,8 +805,14 @@ export function createBotService(db: Database.Database) {
         db.prepare(
           'INSERT INTO bot_decision_threads(id,decision_id,actor_id,actor_conversation_id,text) VALUES(?,?,?,?,?)',
         ).run(ev, id, actor.user.id, actor.conversationId ?? null, message);
-        if (!actor.conversationId && expectedVersion !== undefined && d.state === 'needs_input' && eligible(actor, d)) {
+        const deferred=d.state==='decided' && JSON.parse(d.answer_json || '{}').action==='defer';
+        if (!actor.conversationId && expectedVersion !== undefined && (d.state === 'needs_input' || deferred) && eligible(actor, d)) {
           db.prepare('INSERT INTO bot_discussion_instructions(message_id,version,handling_revision) VALUES(?,?,?)').run(ev, d.version, d.handling_revision);
+          if(deferred){
+            const answer=db.prepare("SELECT id FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='answered' ORDER BY rowid DESC LIMIT 1").get(id,d.version) as {id:string}|undefined;
+            if(!answer)throw new BotError(409,'Deferred answer provenance is missing');
+            db.prepare('INSERT INTO bot_deferred_followups(message_id,deferred_answer_event_id,proposal_hash) VALUES(?,?,?)').run(ev,answer.id,canonicalSha256(JSON.parse(d.proposal_json)));
+          }
         }
         if (!actor.conversationId)
           wake(actor, d, ev, 'discussion (not an approval)', message);
@@ -818,6 +841,7 @@ export function createBotService(db: Database.Database) {
             actor,
             JSON.parse(d.proposal_json),
             d.conversation_id,
+            d,
           );
           const delivered = db
             .prepare(

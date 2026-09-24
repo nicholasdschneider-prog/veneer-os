@@ -14,6 +14,17 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'deferred-decision-followup',title:'Continue a deferred decision with a fresh instruction',category:'Daily work',updated:'2026-09-24',
+    announcement:'Fresh, authorized discussion instructions can answer an unchanged deferred proposal without a duplicate click. The prior defer remains in history.',
+    audience:'Already-authorized decision reviewers and the permanent owning bot.',
+    summary:'Investigate first, then give a fresh instruction for the exact current proposal.',
+    steps:['Read the current recommendation and version after the bot investigates. A defer still prohibits execution.', 'If the recommendation is unchanged, give a clear fresh instruction in its discussion. Questions and conditions remain discussion, not automatic approval.', 'The bot records the exact instruction through the supported decision tool. A successor version preserves the prior defer; changed scope requires a revised proposal and review.'],
+    example:'Your investigation answers my question. Approve the unchanged recommendation shown here.',
+    limits:'Only new version-bound human messages qualify. Old messages with no instruction binding are never backfilled. Access, latest-message, handling and exact scope checks still apply. Generated order numbers cannot be substituted into an exact approved customer message under the existing transport contract. No order, customer send or financial action is performed merely by posting.',
+    agent:'After defer, investigate read-only and keep the recommendation current. Use record_discussion_decision only for a fresh instruction_version-bound, unconditional authorized human instruction for the unchanged exact proposal. The server creates an identical-scope successor version and retains the old defer; use the returned version. Do not reinterpret legacy null messages, conditions or changed quantities/actions as consent. Revise changed scope with update_decision and preserve scoped evidence ACLs. Generated-result message substitutions are unsupported; never invent a final order reference or retrofit approved payloads.'
+  },
+
+  {
     id:'decision-thread-handoffs', category:'Teamwork', title:'Ask another workspace thread to investigate', updated:'2026-09-24',
     audience:'Humans who can message the decision bot and the selected workspace thread.',
     summary:'Type @ in a decision discussion to choose a workspace thread. Its findings return to the same discussion.',
