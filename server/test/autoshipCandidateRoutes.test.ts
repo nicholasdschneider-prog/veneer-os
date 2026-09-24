@@ -1,0 +1,10 @@
+import {it,expect} from 'vitest';
+import express from 'express';
+import type {AddressInfo} from 'node:net';
+import Database from 'better-sqlite3';
+import type {Config} from '../src/config.js';
+import type {AppContext} from '../src/context.js';
+import {configuredCandidateIdentity,autoshipCandidateRoutes} from '../src/botWorkflows/autoshipCandidateRoutes.js';
+const config={cfAud:'human',autoshipVerifierCfAud:'verifier',autoshipVerifierClientId:'verifier-client',returnVerifierCfAud:'return',returnVerifierClientId:'return-client',routineVerifierCfAud:'routine',routineVerifierClientId:'routine-client',autoshipCandidateCfAud:'candidate',autoshipCandidateClientId:'candidate-client'} as Config;
+it('requires isolated candidate transport; missing config and existing identities cannot enable it',()=>{expect(configuredCandidateIdentity(config)).toEqual({audience:'candidate',clientId:'candidate-client'});for(const aud of ['human','verifier','return','routine',null])expect(configuredCandidateIdentity({...config,autoshipCandidateCfAud:aud})).toBeNull();for(const client of ['verifier-client','return-client','routine-client',null])expect(configuredCandidateIdentity({...config,autoshipCandidateClientId:client})).toBeNull();});
+it.each(['POST','GET'])('rejects missing service identity before database access for %s',async method=>{const db=new Database(':memory:'),app=express();app.use('/api/autoship/candidates',autoshipCandidateRoutes({db,config} as AppContext,async()=>null));const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));try{const response=await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/autoship/candidates/${method==='POST'?'events':'sources/fixture/events/evt'}`,{method,...(method==='POST'?{headers:{'Content-Type':'application/json'},body:'{}'}:{})});expect(response.status).toBe(401);expect(response.headers.get('cache-control')).toBe('no-store');}finally{await new Promise<void>(r=>server.close(()=>r()));db.close();}});

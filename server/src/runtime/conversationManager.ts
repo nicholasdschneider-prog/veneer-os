@@ -1,3 +1,4 @@
+import { candidateWakeAllowed, startQueuedCandidate } from '../botWorkflows/autoshipCandidates.js';
 import {HistoryPages,type HistoryPage} from './historyPages.js';
 import { queuedRoomWakeAllowed, roomSessionAllowed } from '../rooms/service.js';
 import { botDiscussionWake, botWakeAllowed, queuedDiscussionWake, recordDiscussionDelivery } from '../bots/delivery.js';
@@ -1390,6 +1391,12 @@ export function createConversationManager({
       void runNext(conv);
       return;
     }
+    if (item.id !== null && !startQueuedCandidate(db, conv.id, item.id)) {
+      deleteQueuedMessageStmt.run(item.id);
+      emitQueue(conv.id);
+      void runNext(conv);
+      return;
+    }
     const discussion = item.id === null ? undefined : queuedDiscussionWake(db, conv.id, item.id);
     if (discussion && !botWakeAllowed(db, discussion, conv)) {
       deleteQueuedMessageStmt.run(item.id);
@@ -2019,7 +2026,10 @@ export function createConversationManager({
       const origin: MessageOrigin = { kind: 'wakeup', from: name, to: name };
       const posted = enqueueMessage(conv, text, false, {
         key: `wakeup:${wakeupId}`, sourceKind: 'wakeup',
-      }, actorUserId, origin, discussion ? () => recordDiscussionDelivery(db, wakeupId, 'queued') : undefined);
+      }, actorUserId, origin, () => {
+        if (!candidateWakeAllowed(db, wakeupId)) throw new Error('Candidate source revoked before queue delivery');
+        if (discussion) recordDiscussionDelivery(db, wakeupId, 'queued');
+      });
       if (discussion && posted.disposition !== 'duplicate') {
         if (posted.disposition === 'queued') {
           // The original durable row remains until the provider acknowledges it.

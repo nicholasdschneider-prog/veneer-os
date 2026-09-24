@@ -1,3 +1,5 @@
+import { autoshipCandidates } from '../botWorkflows/autoshipCandidates.js';
+import { configuredCandidateIdentity } from '../botWorkflows/autoshipCandidateRoutes.js';
 import { returnOwnerSetup } from './returnOwnerSetup.js';
 import { routineExecutionService } from './routineExecution.js';
 import { configuredRoutineIdentity } from './routineVerifierRoutes.js';
@@ -59,6 +61,9 @@ export function createCommunicationRouter(ctx: AppContext) {
     req.params.chat === 'current'
       ? (req.agentConversationId ?? '')
       : req.params.chat!;
+  const candidates = autoshipCandidates(ctx.db);
+  r.post('/autoship-candidates/sources',run((req,res)=>res.json(candidates.enroll(actor(req),req.body,configuredCandidateIdentity(ctx.config)))));
+  r.post('/autoship-candidates/revoke',run((req,res)=>{const p=z.object({source_id:key,reason:z.string().min(1).max(2000)}).strict().parse(req.body);res.json(candidates.revoke(actor(req),p.source_id,p.reason));}));
   const setup = returnOwnerSetup(ctx.db, ctx.config);
   r.get('/return-exception/setup', run((req,res)=>res.json(setup.status(actor(req)))));
   r.post('/return-exception/setup', run((req,res)=>res.json(setup.confirm(actor(req),req.body))));

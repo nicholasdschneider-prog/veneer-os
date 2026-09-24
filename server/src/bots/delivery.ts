@@ -1,3 +1,4 @@
+import { candidateWakeAllowed } from '../botWorkflows/autoshipCandidates.js';
 import { createDecisionHandoffs } from './decisionHandoffs.js';
 import { roomWakeAllowed } from '../rooms/service.js';
 import { communicationWakeAllowed, communicationWakeCancelled } from './communication.js';
@@ -16,6 +17,7 @@ export function botWakeAllowed(
   w: ConversationWakeupRow,
   c: ConversationRow,
 ): boolean {
+  if (!candidateWakeAllowed(db, w.id)) return false;
   if (!createDecisionHandoffs(db).wakeAllowed(w)) return false;
   if (!roomWakeAllowed(db, w) || !routineWakeAllowed(db, w) || !communicationWakeAllowed(db, w)) return false;
   if (!w.wake_key.startsWith('bot-decision:')) return true;

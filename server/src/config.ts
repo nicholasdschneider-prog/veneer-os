@@ -17,6 +17,8 @@ const EnvSchema = z.object({
   // values; all three absent disables the verifier and it fails closed.
   VP_ROUTINE_VERIFIER_CF_AUD: z.string().trim().optional(),
   VP_ROUTINE_VERIFIER_CLIENT_ID: z.string().trim().optional(),
+  VP_AUTOSHIP_CANDIDATE_CF_AUD: z.string().trim().optional(),
+  VP_AUTOSHIP_CANDIDATE_CLIENT_ID: z.string().trim().optional(),
   VP_RETURN_VERIFIER_CF_AUD: z.string().trim().optional(),
   VP_RETURN_VERIFIER_CLIENT_ID: z.string().trim().optional(),
   VP_AUTOSHIP_VERIFIER_CF_AUD: z.string().trim().optional(),
@@ -133,6 +135,8 @@ export interface Config {
   cfAud: string | null;
   routineVerifierCfAud?: string | null;
   routineVerifierClientId?: string | null;
+  autoshipCandidateCfAud?: string | null;
+  autoshipCandidateClientId?: string | null;
   returnVerifierCfAud?: string | null;
   returnVerifierClientId?: string | null;
   autoshipVerifierCfAud: string | null;
@@ -263,6 +267,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cfAud: parsed.VP_CF_AUD ?? null,
     routineVerifierCfAud: parsed.VP_ROUTINE_VERIFIER_CF_AUD || null,
     routineVerifierClientId: parsed.VP_ROUTINE_VERIFIER_CLIENT_ID || null,
+    autoshipCandidateCfAud: parsed.VP_AUTOSHIP_CANDIDATE_CF_AUD || null,
+    autoshipCandidateClientId: parsed.VP_AUTOSHIP_CANDIDATE_CLIENT_ID || null,
     returnVerifierCfAud: parsed.VP_RETURN_VERIFIER_CF_AUD || null,
     returnVerifierClientId: parsed.VP_RETURN_VERIFIER_CLIENT_ID || null,
     autoshipVerifierCfAud: parsed.VP_AUTOSHIP_VERIFIER_CF_AUD || null,

@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'autoship-candidates',title:'Notify AutoShip about order and stock candidates',category:'Daily work',updated:'2026-09-24',
+    audience:'The existing ERVP AutoShip worker and an explicitly enrolled dedicated source; setup requires the current business owner.',
+    summary:'A dedicated source can durably notify the existing worker about an order or confirmed stock change to reevaluate.',
+    steps:['Have the source custodian configure the separate candidate service identity and the current owner enroll its exact account, origin and existing worker binding.', 'Submit the versioned candidate event once from the authenticated source. Retain its immutable delivery receipt.', 'After an uncertain response, reconcile the same source/event with the read-only endpoint. The worker checks current source eligibility, per-order grants and duplicate/effect state before acting.'],
+    example:'Notify the existing AutoShip worker to reevaluate this order after the confirmed stock change.',
+    limits:'Deployed interface is not configured source activation. Candidates are references, never shipping approval. Stock evidence must identify inventory item, location and confirmed receipt or authenticated event; no invented purchase receipt. Exact replays do not wake again; conflicting payloads fail. Revocation blocks pending/queued delivery, but cannot recall an already started notification. No ticket-event substitution or new executor.',
+    announcement:'A dedicated order/stock candidate interface can notify the existing AutoShip worker with durable receipts and revocation checks. Source provisioning and owner enrollment remain required.',
+    agent:'Treat autoship-candidate/v1 wake context as reference only. stock.newly_eligible means reevaluate after confirmed stock change, not certified eligibility. Only existing worker1dcb56c5-be80-43c9-9b68-2817b931ecda may execute under fresh OrderOps eligibility, per-order grants and shared duplicate prevention. Never infer shipping authority from accepted/delivered notification. Source POST /api/autoship/candidates/events has immutable source/event idempotency; GET /api/autoship/candidates/sources/:source/events/:event reconciles without another wake. Dedicated owner-enrolled source and separate CF audience/client are required; no return/routine/verifier credential reuse.'
+  },
+  {
     id:'return-owner-setup',title:'Confirm the prepared return service',category:'Daily work',updated:'2026-09-24',
     audience:'The current authenticated Elkhart RV Parts business owner only.',
     summary:'Review and confirm the exact prepared return connection without developer tools.',
@@ -64,7 +74,7 @@ export const BOT_FEATURES: BotFeature[] = [
     agent:'The chat UI initially loads a bounded recent history window. Earlier messages remain available through Load earlier messages; never claim they were deleted or that provider memory was compacted. Use existing authorized history/search tools for agent work. History pagination and record viewing do not replay messages, approvals or tool actions. Calls remain chronological; earlier calls with unloaded message context are explicitly identified.',
   },
   {
-    id:'routine-hold-scopes',title:'Keep routine-message holds scoped to verified cases',category:'Automation',updated:'2026-09-23',
+    id:'routine-hold-scopes',title:'Keep routine-message holds scoped to verified cases',category:'Daily work',updated:'2026-09-23',
     announcement:'A current business owner can record supplemental decision scope using dedicated source identity evidence. Unknown scope stays blocked; original approvals are unchanged.',
     audience:'Authenticated business owner and separately enrolled routine source operator',
     summary:'Distinguish verified unrelated cases without dropping unbound legacy obligations.',
@@ -103,7 +113,7 @@ export const BOT_FEATURES: BotFeature[] = [
     agent:'Existing opted-in CS decision readers can see attached proposal context without unrelated source history. Preserve source provenance and explicit unavailable evidence; provide a bounded authorized excerpt when needed. Never claim restricted images were reviewed, grant whole-chat access, or revise an unchanged approval merely for visibility. Guide: /#/bot-guide?feature=scoped-decision-context.',
   },
   {
-    id:'return-exception-verifier',title:'Verify one exact return-window exception',category:'Automation',updated:'2026-09-23',
+    id:'return-exception-verifier',title:'Verify one exact return-window exception',category:'Daily work',updated:'2026-09-23',
     announcement:'A dedicated service identity now protects the return verifier. Owner trust enrollment and the OrderOps consumer remain separate requirements before live use.',
     audience:'Authenticated business owner for trust enrollment; dedicated OrderOps service for mapping and claims',
     summary:'Preserve the original human approval while recording later exact source evidence and preventing reuse.',
