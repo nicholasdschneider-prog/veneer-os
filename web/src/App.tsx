@@ -281,7 +281,8 @@ export function App() {
     return <PendingApproval email={me.email ?? ''} onRecheck={loadMe} />;
   }
 
-  if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/return-service-setup') return <ReturnOwnerSetup />;
+  if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/autoship-candidate-setup') return <ReturnOwnerSetup key="candidate" candidate />;
+  if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/return-service-setup') return <ReturnOwnerSetup key="return" />;
 
   if (me.user?.employeeWorkspace) return <><EmployeeWorkspace hash={hash} onNavigate={navigate} email={me.user.email} onToast={showToast} />{toastNode}</>;
 
@@ -327,9 +328,13 @@ export function App() {
               ? 'settings'
               : 'chats';
 
+  if (routePath === '#/autoship-candidate-setup') return (
+    <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><ReturnOwnerSetup key="candidate" candidate /></NavShell>
+  );
+
   if (routePath === '#/return-service-setup') return (
     <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-      <ReturnOwnerSetup />
+      <ReturnOwnerSetup key="return" />
     </NavShell>
   );
 

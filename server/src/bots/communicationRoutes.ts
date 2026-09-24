@@ -1,3 +1,4 @@
+import { candidateOwnerSetup } from './candidateOwnerSetup.js';
 import { autoshipCandidates } from '../botWorkflows/autoshipCandidates.js';
 import { configuredCandidateIdentity } from '../botWorkflows/autoshipCandidateRoutes.js';
 import { returnOwnerSetup } from './returnOwnerSetup.js';
@@ -61,6 +62,9 @@ export function createCommunicationRouter(ctx: AppContext) {
     req.params.chat === 'current'
       ? (req.agentConversationId ?? '')
       : req.params.chat!;
+  const candidateSetup = candidateOwnerSetup(ctx.db, ctx.config);
+  r.get('/autoship-candidates/setup',run((req,res)=>res.json(candidateSetup.status(actor(req)))));
+  r.post('/autoship-candidates/setup',run((req,res)=>res.json(candidateSetup.confirm(actor(req),req.body))));
   const candidates = autoshipCandidates(ctx.db);
   r.post('/autoship-candidates/sources',run((req,res)=>res.json(candidates.enroll(actor(req),req.body,configuredCandidateIdentity(ctx.config)))));
   r.post('/autoship-candidates/revoke',run((req,res)=>{const p=z.object({source_id:key,reason:z.string().min(1).max(2000)}).strict().parse(req.body);res.json(candidates.revoke(actor(req),p.source_id,p.reason));}));

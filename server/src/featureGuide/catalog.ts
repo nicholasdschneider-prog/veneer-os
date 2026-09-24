@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'autoship-candidate-setup',title:'Confirm AutoShip candidate notifications',category:'Automation',updated:'2026-09-24',
+    audience:'The current Elkhart RV Parts business owner; source configuration stays with the source custodian.',
+    summary:'Review the prepared candidate-only connection and confirm it with one native button.',
+    steps:['Sign in at /#/autoship-candidate-setup as the current business owner.', 'Review the exact OrderOps account and existing AutoShip worker boundary, then select Confirm candidate notifications.', 'If the response is uncertain, select Check registration status. Share the nonsecret source_id receipt with Platform Dev for source-custodian configuration.'],
+    example:'Connect the prepared OrderOps candidate notifications to our existing AutoShip worker.',
+    limits:'Dedicated native transport is provisioned; source runtime installation, actual owner confirmation and acceptance remain separate. This registers notifications only and grants no shipping authority. No automatic enrollment, return identity reuse or bot owner impersonation.',
+    announcement:'The prepared AutoShip candidate connection now has a native owner review and confirmation page, with read-only recovery after an uncertain response.',
+    agent:'Direct the actual current business owner to /#/autoship-candidate-setup. Do not enroll as the owner or borrow a session. Keep the reviewed stable registration key; reconcile uncertain responses read-only. Pass only actual source_id receipt to the original source custodian. Candidate transport setup is not source activation or shipping permission.'
+  },
+  {
     id:'build-dispatch-identity',title:'Keep build slots tied to their actual work',category:'Daily work',updated:'2026-09-24',
     audience:'Authorized project owners and the existing build owner.',
     summary:'Build completion follows its exact dispatched turn. Unrelated chat activity cannot release its workspace slot.',

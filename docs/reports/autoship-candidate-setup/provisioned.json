@@ -1,0 +1,11 @@
+{
+  "accountId": "c3c49db32586713c075a22a18d18cb11",
+  "origin": "https://nicksworld.dev",
+  "applicationId": "cf38ddac-68f8-4b58-8c50-306a6708e6ec",
+  "audience": "c0ada1a091ec82e0db0f1a80637f1055a1c2b9bdf1b19da451727ebbdb0e756d",
+  "serviceTokenId": "a443e9fc-45ce-47b6-8a68-e9e21bd36d41",
+  "serviceClientId": "3708f79a27190976c9eb17432c40a015.access",
+  "policyId": "4db7b626-f196-45f9-9efc-a4ef81c9faad",
+  "domain": "nicksworld.dev/api/autoship/candidates",
+  "secretDestination": "ervp/prd/OO_AUTOSHIP_CANDIDATE_CF_CLIENT_SECRET"
+}
