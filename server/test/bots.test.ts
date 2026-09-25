@@ -1,3 +1,4 @@
+import { communicationService } from '../src/bots/communication.js';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
@@ -496,6 +497,78 @@ describe('VeneerBots', () => {
     } finally {
       primary.close(); competing.close(); rmSync(dir, { recursive: true, force: true });
     }
+  });
+  function queueResultReply(id: string, text: string, actorId = 1) {
+    db.prepare("INSERT OR IGNORE INTO bot_message_threads(id,conversation_id,anchor,source_text) VALUES('result-thread','fixture-a','anchor','Original result evidence')").run();
+    db.prepare("INSERT INTO bot_message_replies(id,thread_id,actor_id,text,request_key) VALUES(?,'result-thread',?,?,?)").run(id,actorId,text,id);
+    const user = db.prepare('SELECT * FROM users WHERE id=?').get(actorId) as UserRow;
+    communicationService(db).notify({user}, 'fixture-a', `message-thread:${id}`, 'Legacy notification', actorId);
+    return db.prepare('SELECT id FROM conversation_wakeups WHERE wake_key=?').get(`message-thread:${id}`) as {id:string};
+  }
+  it('steers consecutive human result replies exactly once with actual text and original context', async () => {
+    const acknowledgments: ((ok: boolean) => void)[] = [];
+    const seen: string[] = [];
+    steer = async text => { seen.push(text); return {acknowledged: new Promise<boolean>(resolve => acknowledgments.push(resolve))}; };
+    const conv = db.prepare("SELECT * FROM conversations WHERE id='fixture-a'").get() as ConversationRow;
+    manager.postMessage(conv, 'Current work'); await flush();
+    const wakes = ['First correction', 'Second correction', 'Final detail'].map((text,i)=>queueResultReply(`reply-${i}`,text));
+    scheduler.tick(); await flush(); scheduler.tick();
+    expect(seen).toHaveLength(3);
+    expect(seen.map(text=>text.split('\n')[0])).toEqual(['First correction','Second correction','Final detail']);
+    for (const text of seen) {
+      expect(text).toContain('Original result evidence');
+      expect(text).toContain('does not record an approval');
+      expect(text).not.toContain('Hey, can you pick');
+    }
+    expect(manager.queueSnapshot(conv.id).messages).toHaveLength(3);
+    expect(manager.queueSnapshot(conv.id).messages.every(row=>row.origin?.kind==='result_reply' && row.delivered)).toBe(true);
+    for (const ack of acknowledgments) ack(true);
+    await flush();
+    expect(manager.queueSnapshot(conv.id).messages).toHaveLength(0);
+    for (const w of wakes) expect(manager.deliverWakeup(conv,'ignored',w.id).disposition).toBe('duplicate');
+    expect(seen).toHaveLength(3);
+    runs[0]!.finish(); await flush(); expect(runs).toHaveLength(1);
+    expect(db.prepare('SELECT count(*) AS n FROM bot_decisions').get()).toEqual({n:0});
+  });
+  it.each(['unsupported','other_actor','write_failed'])('preserves result reply fallback and sender for %s', async reason => {
+    const seen = vi.fn(async () => false);
+    if (reason !== 'unsupported') steer = seen;
+    const conv = db.prepare("SELECT * FROM conversations WHERE id='fixture-a'").get() as ConversationRow;
+    manager.postMessage(conv, 'Current work'); await flush();
+    queueResultReply('reply', 'Follow-up', reason === 'other_actor' ? 2 : 1);
+    scheduler.tick(); await flush();
+    expect(seen).toHaveBeenCalledTimes(reason==='write_failed'?1:0);
+    expect(db.prepare('SELECT actor_user_id FROM queued_messages').get()).toEqual({actor_user_id:reason==='other_actor'?2:1});
+    runs[0]!.finish(); await flush();
+    expect(runs).toHaveLength(2); expect(runs[1]!.prompt).toContain('Follow-up');
+  });
+  it('rechecks result reply access before starting the queued fallback', async () => {
+    const conv = db.prepare("SELECT * FROM conversations WHERE id='fixture-a'").get() as ConversationRow;
+    manager.postMessage(conv, 'Current work'); await flush();
+    queueResultReply('reply','Do not deliver after revocation',2); scheduler.tick(); await flush();
+    db.prepare("UPDATE users SET status='disabled' WHERE id=2").run();
+    runs[0]!.finish(); await flush();
+    expect(runs).toHaveLength(1); expect(manager.queueSnapshot(conv.id).messages).toHaveLength(0);
+  });
+  it('recovers a queued result reply after restart without a second message', async () => {
+    const conv = db.prepare("SELECT * FROM conversations WHERE id='fixture-a'").get() as ConversationRow;
+    manager.postMessage(conv, 'Current work'); await flush();
+    const wake = queueResultReply('reply','Durable result follow-up'); scheduler.tick(); await flush();
+    manager = createConversationManager({db, adapters:{claude:adapter},
+      resolveWorkspace:()=>({workspaceDir:'/tmp',assistantSlug:'assistant',elevated:false,fullAccess:false}),
+      log:{warn:vi.fn(),error:vi.fn()}});
+    manager.resumeInterruptedTurns(); await flush();
+    expect(manager.deliverWakeup(conv,'ignored',wake.id).disposition).toBe('duplicate');
+    expect(manager.queueSnapshot(conv.id).messages[0]?.origin?.kind).toBe('result_reply');
+    runs.at(-1)!.finish(); await flush();
+    expect(runs.filter(run=>run.prompt.startsWith('Durable result follow-up'))).toHaveLength(1);
+    expect(db.prepare('SELECT count(*) AS n FROM hub_inbound_messages').get()).toEqual({n:1});
+  });
+  it('starts an idle bot with the result reply', async () => {
+    const wake = queueResultReply('reply','Idle follow-up'); scheduler.tick(); await flush();
+    expect(runs).toHaveLength(1); expect(runs[0]!.prompt).toMatch(/^Idle follow-up/);
+    expect(db.prepare('SELECT origin_json FROM pending_turns').get()).toMatchObject({origin_json:expect.stringContaining('result_reply')});
+    expect(db.prepare('SELECT status FROM conversation_wakeups WHERE id=?').get(wake.id)).toEqual({status:'delivered'});
   });
   it('steers a human discussion once to the active owner, retiring only the acknowledged row', async () => {
     let ack!: (ok: boolean) => void;

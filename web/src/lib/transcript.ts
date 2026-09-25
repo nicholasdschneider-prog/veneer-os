@@ -1,3 +1,4 @@
+import { isResultReplyDelivery } from './threadReplies';
 import type { ConversationEvent } from './types';
 import type { ConnectorToolSource } from './types';
 import type { ConnectorToolDetails } from './types';
@@ -119,7 +120,8 @@ export function emptyTranscript(): TranscriptState {
 /** Keep lifecycle data in the normalized transcript while omitting question
  * prompts that the user bypassed by replying in the ordinary chat thread. */
 export function transcriptItemsForDisplay(items: ChatItem[]): ChatItem[] {
-  return items.filter((item) => item.kind !== 'question' || item.status !== 'dismissed');
+  return items.filter((item) => (item.kind !== 'question' || item.status !== 'dismissed')
+    && (item.kind !== 'user' || !isResultReplyDelivery(item)));
 }
 
 export function subagentGroupSummary(agents: Array<{ status: SubagentStatus }>): string {
@@ -286,7 +288,7 @@ export function reduceEvents(state: TranscriptState, events: ConversationEvent[]
         const validOrigin = origin
           && typeof origin === 'object'
           && ('kind' in origin)
-          && (origin.kind === 'agent' || origin.kind === 'wakeup' || origin.kind === 'build_queue')
+          && (origin.kind === 'agent' || origin.kind === 'wakeup' || origin.kind === 'build_queue' || origin.kind === 'result_reply')
           && ('from' in origin)
           && typeof origin.from === 'string'
           && ('to' in origin)

@@ -107,7 +107,7 @@ export function createIpcServer({
     if (!value || typeof value !== 'object') return undefined;
     const origin = value as Partial<MessageOrigin>;
     if (
-      (origin.kind !== 'agent' && origin.kind !== 'wakeup' && origin.kind !== 'build_queue') ||
+      (origin.kind !== 'agent' && origin.kind !== 'wakeup' && origin.kind !== 'build_queue' && origin.kind !== 'result_reply') ||
       typeof origin.from !== 'string' ||
       typeof origin.to !== 'string'
     ) return undefined;

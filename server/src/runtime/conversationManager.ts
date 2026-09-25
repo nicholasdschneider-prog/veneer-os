@@ -1,3 +1,4 @@
+import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js';
 import { coordinationLane, coordinationFamily } from '../coordination/store.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 import { candidateWakeAllowed, startQueuedCandidate } from '../botWorkflows/autoshipCandidates.js';
@@ -78,7 +79,7 @@ function parseMessageOrigin(value: unknown): MessageOrigin | undefined {
     if (!parsed || typeof parsed !== 'object') return undefined;
     const candidate = parsed as Partial<MessageOrigin>;
     if (
-      (candidate.kind !== 'agent' && candidate.kind !== 'wakeup' && candidate.kind !== 'build_queue') ||
+      (candidate.kind !== 'agent' && candidate.kind !== 'wakeup' && candidate.kind !== 'build_queue' && candidate.kind !== 'result_reply') ||
       typeof candidate.from !== 'string' ||
       typeof candidate.to !== 'string'
     ) return undefined;
@@ -1441,6 +1442,11 @@ export function createConversationManager({
       if(item.id!==null) deleteQueuedMessageStmt.run(item.id);
       clearPendingTurnStmt.run(conv.id); emitQueue(conv.id); void runNext(conv); return;
     }
+    const resultReply = item.id === null ? undefined : queuedResultReplyWake(db, conv.id, item.id);
+    if (resultReply && !botWakeAllowed(db, resultReply, conv)) {
+      deleteQueuedMessageStmt.run(item.id);
+      emitQueue(conv.id); void runNext(conv); return;
+    }
     const discussion = item.id === null ? undefined : queuedDiscussionWake(db, conv.id, item.id);
     if (discussion && !botWakeAllowed(db, discussion, conv)) {
       deleteQueuedMessageStmt.run(item.id);
@@ -2090,16 +2096,32 @@ export function createConversationManager({
       return enqueueMessage(conv, text, false, requestKey ? {key:requestKey,sourceKind:'coordination'} : undefined, actorUserId, origin);
     },
     deliverWakeup(conv, text, wakeupId, actorUserId = conv.user_id) {
+      const resultReply = resultReplyWake(db, wakeupId);
+      if (resultReply) {
+        if (resultReply.wake.conversation_id !== conv.id || !botWakeAllowed(db, resultReply.wake, conv))
+          throw new Error('Result reply access changed');
+        text = resultReply.prompt;
+        actorUserId = resultReply.reply.actor_id;
+      }
       const discussion = botDiscussionWake(db, wakeupId);
       if (discussion && !botWakeAllowed(db, discussion, conv)) throw new Error('Discussion access or version changed');
       const name = assistantNameFor(conv);
-      const origin: MessageOrigin = { kind: 'wakeup', from: name, to: name };
-      const posted = enqueueMessage(conv, text, false, {
+      const origin: MessageOrigin = resultReply
+        ? { kind: 'result_reply', from: resultReply.reply.display_name, to: name }
+        : { kind: 'wakeup', from: name, to: name };
+      // A scheduler retry must not dismiss a newer human question.
+      const newResultReply = !!resultReply && !findInboundReceiptStmt.get(`wakeup:${wakeupId}`);
+      const posted = enqueueMessage(conv, text, newResultReply, {
         key: `wakeup:${wakeupId}`, sourceKind: 'wakeup',
       }, actorUserId, origin, () => {
         if (!candidateWakeAllowed(db, wakeupId)) throw new Error('Candidate source revoked before queue delivery');
         if (discussion) recordDiscussionDelivery(db, wakeupId, 'queued');
       });
+      if (resultReply && posted.disposition === 'queued') {
+        void steerQueued(conv, text, posted, actorUserId, origin).catch(() => {
+          log.warn(`[runtime] result reply retained in queue after steering failed`);
+        });
+      }
       if (discussion && posted.disposition !== 'duplicate') {
         if (posted.disposition === 'queued') {
           // The original durable row remains until the provider acknowledges it.

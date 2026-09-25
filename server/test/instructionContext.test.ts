@@ -52,6 +52,7 @@ describe('instruction context migration', () => {
     expect(result.developerInstructions).toContain('retire_message_draft');
     expect(result.developerInstructions).toContain('An explicit recorded human answer lowers the hand');
     expect(result.developerInstructions).toContain('Without a fresh trusted proof, ready=false and execute=false');
+    expect(result.developerInstructions).toContain('Treat human result replies received mid-turn as follow-up input');
     expect(result.developerInstructions).toContain('claim_routine_message');
     expect(result.developerInstructions).toContain('/#/routine-reply-setup');
     expect(result.developerInstructions).toContain('/#/routine-scope-review');

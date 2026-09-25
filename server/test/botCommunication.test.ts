@@ -307,6 +307,7 @@ describe('reviewable bot communication', () => {
     expect(
       db.prepare('SELECT count(*) AS n FROM conversation_wakeups').get(),
     ).toEqual({ n: 1 });
+    expect(db.prepare('SELECT actor_user_id,reason FROM conversation_wakeups').get()).toEqual({actor_user_id:human.user.id,reason:reply.text});
     db.prepare(
       'INSERT INTO bot_message_replies(id,thread_id,actor_id,actor_conversation_id,text,request_key) VALUES(?,?,1,?,?,?)',
     ).run('botreply', t.id, 'c1', 'Explanation', 'b');

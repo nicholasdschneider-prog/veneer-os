@@ -11,7 +11,7 @@ export type TurnOutcome = 'completed' | 'interrupted_by_user' | 'timed_out' | 'f
 /** Authenticated origin for a prompt that was not authored by the human.
  * Omitted means the ordinary user authored the message. */
 export interface MessageOrigin {
-  kind: 'agent' | 'wakeup' | 'build_queue';
+  kind: 'agent' | 'wakeup' | 'build_queue' | 'result_reply';
   /** Durable internal build activation; never inferred from prompt text. */
   buildDispatchId?: string;
   from: string;

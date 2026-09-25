@@ -46,6 +46,9 @@ try {
     await page.getByRole('searchbox').fill('Answer with clickable choice cards');
     await page.getByRole('heading', {name:'Answer with clickable choice cards',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /no fixed option count cap/);
+    await page.getByRole('searchbox').fill('Discuss an individual result');
+    await page.getByRole('heading', {name:'Discuss an individual result',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /same provider and sender checks/);
     await page.getByRole('searchbox').fill('Listen to a full bot message');
     await page.getByRole('heading', { name: 'Listen to a full bot message', exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 1);

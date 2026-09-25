@@ -504,3 +504,13 @@ describe('sub-agent progress transcript', () => {
     expect(subagentProgressSummary(agent)).toBe('Finished · 1m 44s · 0 actions · 0 files changed · +0/−0');
   });
 });
+
+
+it('preserves result-reply delivery provenance for deduplication against the reply feed', () => {
+  const state = reduceEvents(emptyTranscript(), [{
+    type: 'turn_started', turnId: 'reply-turn', text: 'Please explain', role:'user', at:'2026-09-25T21:00:00Z', via:'web',
+    origin: {kind:'result_reply',from:'Human',to:'Bot'},
+  }]);
+  expect(state.items[0]).toMatchObject({origin:{kind:'result_reply',from:'Human',to:'Bot'}});
+  expect(transcriptItemsForDisplay(state.items)).toEqual([]);
+});

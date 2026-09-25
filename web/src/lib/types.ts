@@ -150,7 +150,7 @@ export interface SubagentProgress {
 /** Authenticated origin for a prompt sent by another agent or an automatic
  * system. Missing means the human authored the prompt. */
 export interface MessageOrigin {
-  kind: 'agent' | 'wakeup' | 'build_queue';
+  kind: 'agent' | 'wakeup' | 'build_queue' | 'result_reply';
   from: string;
   to: string;
   /** Authenticated local handoff marker. It never implies source-chat access. */

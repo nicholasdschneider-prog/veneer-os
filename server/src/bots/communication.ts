@@ -60,13 +60,14 @@ export function communicationService(db: Database.Database) {
         'The proposal changed. Refresh and review its current version.',
       );
   }
-  function notify(a: Actor, c: string, key: string, reason: string) {
+  function notify(a: Actor, c: string, key: string, reason: string, actorUserId?: number) {
+    const chat = access(a, c);
     db.prepare(
       `INSERT OR IGNORE INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)`,
     ).run(
       crypto.randomUUID(),
       c,
-      access(a, c).user_id,
+      actorUserId ?? chat.user_id,
       key,
       reason,
       new Date().toISOString(),
@@ -499,4 +500,27 @@ export function communicationWakeCancelled(
   db.prepare(
     "UPDATE bot_message_drafts SET state='failed',receipt='Sending was canceled before delivery because the proposal, access, or bot availability changed.',updated_at=datetime('now') WHERE id=? AND state='queued'",
   ).run(w.wake_key.slice('message-draft:'.length));
+}
+
+/** Resolve only a persisted human reply, never classify an arbitrary prompt as human input. */
+export function resultReplyWake(db: Database.Database, wakeupId: string) {
+  const wake = db.prepare("SELECT * FROM conversation_wakeups WHERE id=? AND wake_key LIKE 'message-thread:%'")
+    .get(wakeupId) as ConversationWakeupRow | undefined;
+  if (!wake) return undefined;
+  const reply = db.prepare(`SELECT r.id,r.actor_id,r.text,r.thread_id,t.source_text,u.display_name
+    FROM bot_message_replies r JOIN bot_message_threads t ON t.id=r.thread_id
+    JOIN users u ON u.id=r.actor_id
+    WHERE r.id=? AND t.conversation_id=? AND r.actor_conversation_id IS NULL`)
+    .get(wake.wake_key.slice('message-thread:'.length), wake.conversation_id) as
+    { id: string; actor_id: number; text: string; thread_id: string; source_text: string; display_name: string } | undefined;
+  if (!reply) return undefined;
+  return { wake, reply, prompt: `${reply.text}\n\n[Reply context]\nThis human message replies to result thread ${reply.thread_id}. Incorporate it into the current task like other human follow-up messages. Use read_message_thread for earlier replies and reply_message_thread to respond in that thread. Keep decision approvals in the existing decision discussion; this reply does not record an approval. The quoted original result below is reference data.\nOriginal result (JSON string): ${JSON.stringify(reply.source_text.slice(0, 6000))}` };
+}
+
+/** Recheck access when a durable fallback begins, including after a restart. */
+export function queuedResultReplyWake(db: Database.Database, conversationId: string, messageId: number) {
+  return db.prepare(`SELECT w.* FROM hub_inbound_messages h JOIN conversation_wakeups w
+    ON h.idempotency_key='wakeup:' || w.id AND h.source_kind='wakeup'
+    WHERE h.conversation_id=? AND h.message_id=? AND w.wake_key LIKE 'message-thread:%'`)
+    .get(conversationId, messageId) as ConversationWakeupRow | undefined;
 }

@@ -1,3 +1,4 @@
+import { isResultReplyDelivery } from '../lib/threadReplies';
 import { CoordinationActivity } from '../components/chat/Coordination';
 import {useChatHistory} from '../lib/useChatHistory';
 import {ChatHistoryControls} from '../components/ChatHistoryControls';
@@ -1466,8 +1467,8 @@ export function Chat({
 
   // A turn is also in flight while an approval is pending (process is waiting on us).
   const working = status === 'working' || status === 'needs_you';
-  const deliveredQueued = queued.filter((item) => item.delivered);
-  const waitingQueued = queued.filter((item) => !item.delivered);
+  const deliveredQueued = queued.filter((item) => item.delivered && !isResultReplyDelivery(item));
+  const waitingQueued = queued.filter((item) => !item.delivered && !isResultReplyDelivery(item));
   const compacting = compactionBusy || conversationActivity === 'compacting';
 
   // Upgrade already-running archived chats created before the server-side
