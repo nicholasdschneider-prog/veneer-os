@@ -280,16 +280,16 @@ const PatchConversationSchema = z.object({
 const ReorderPinsSchema = z.object({ ids: z.array(z.string().min(1)).min(1).max(500) });
 const ResolveApprovalSchema = z.object({ outcome: z.enum(['approved', 'denied']) });
 // ask_user tool: the agent posts a question; the user answers it as buttons.
-const AskQuestionSchema = z.object({
+export const AskQuestionSchema = z.object({
   question: z.string().trim().min(1).max(4000),
   options: z
     .array(z.object({
       label: z.string().trim().min(1).max(200),
-      value: z.string().max(400).optional(),
+      value: z.string().trim().min(1).max(400).optional(),
       description: z.string().trim().min(1).max(500).optional(),
     }))
     .min(1)
-    .max(20),
+    .refine(options => new Set(options.map(option => option.value ?? option.label)).size === options.length, "Option values must be unique"),
   multi: z.boolean().optional(),
   allowOther: z.boolean().optional(),
 });
@@ -311,9 +311,9 @@ const RevealSecretSchema = z.object({
   project: z.string().trim().min(1).max(100).optional(),
   config: z.string().trim().min(1).max(100).optional(),
 });
-const ResolveQuestionSchema = z.union([
+export const ResolveQuestionSchema = z.union([
   z.object({
-    answers: z.record(z.string().min(1).max(100), z.array(z.string().min(1).max(4000)).min(1).max(20)),
+    answers: z.record(z.string().min(1).max(100), z.array(z.string().min(1).max(4000)).min(1)),
   }),
   z.object({ answer: z.string().min(1).max(4000) }),
 ]);

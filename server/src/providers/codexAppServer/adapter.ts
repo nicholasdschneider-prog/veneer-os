@@ -1089,7 +1089,6 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
                 typeof question.question !== 'string' ||
                 !question.question.trim() ||
                 question.question.length > 4_000 ||
-                (Array.isArray(question.options) && question.options.length > 20) ||
                 (!question.isOther && (!Array.isArray(question.options) || question.options.length === 0)) ||
                 (Array.isArray(question.options) && question.options.some(
                   (option) =>

@@ -33,6 +33,17 @@ const pending: Extract<ChatItem, { kind: 'question' }> = {
 };
 
 describe('QuestionCard', () => {
+  it('renders every option beyond 26 with readable badges and supports selecting all', () => {
+    const options = Array.from({ length: 32 }, (_, i) => ({ label: `Option ${i + 1}`, value: `value-${i}` }));
+    const questions = [{ ...pending.questions[0]!, options, multi: true }];
+    const html = renderToStaticMarkup(<QuestionCard item={{ ...pending, questions }} />);
+    expect(html.match(/type="checkbox"/g)).toHaveLength(32);
+    expect(html).toContain('>27</span>');
+    expect(html).toContain('Option 32');
+    const choices = { q1: options.map(option => option.value) };
+    expect(answerPayload(questions, choices, {}, {})).toEqual(choices);
+  });
+
   it('renders accessible native controls, descriptions, and free-form Other', () => {
     const html = renderToStaticMarkup(<QuestionCard item={pending} />);
     expect(html).toContain('Waiting for you');

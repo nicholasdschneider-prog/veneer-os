@@ -43,6 +43,9 @@ try {
     assert.equal(await page.getByRole('button', { name: /^New features/ }).getAttribute('aria-pressed'), 'true');
     await page.getByRole('button', { name: 'All features', exact: true }).click();
     await page.getByRole('heading', { name: 'Talk with your bot', exact: true }).waitFor();
+    await page.getByRole('searchbox').fill('Answer with clickable choice cards');
+    await page.getByRole('heading', {name:'Answer with clickable choice cards',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /no fixed option count cap/);
     await page.getByRole('searchbox').fill('Listen to a full bot message');
     await page.getByRole('heading', { name: 'Listen to a full bot message', exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 1);

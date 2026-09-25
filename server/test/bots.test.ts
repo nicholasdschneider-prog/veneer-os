@@ -160,6 +160,18 @@ describe('VeneerBots', () => {
     s.reply(actor, id, key, text, version);
     return (db.prepare('SELECT id FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(id, key) as { id: string }).id;
   }
+  it('offers more than six decision choices while retaining exact version and duplicate guards', () => {
+    const choices = Array.from({ length: 32 }, (_, i) => ({ id: `choice-${i}`, label: `Hold reason ${i + 1}`, action: 'defer' }));
+    const d = s.raise(bot, { source_key: 'many-choices', proposal_key: 'draft', proposal: proposal({ choices }) });
+    expect(d.proposal.choices).toHaveLength(32);
+    expect(() => s.choose(human, d.id, 2, 'stale-many', 'choice-31', '', 'this_case')).toThrow();
+    const chosen = s.choose(human, d.id, 1, 'many-click', 'choice-31', '', 'this_case');
+    expect(chosen.answer).toMatchObject({ action: 'defer', choice_id: 'choice-31', choice_label: 'Hold reason 32' });
+    s.choose(human, d.id, 1, 'many-click', 'choice-31', '', 'this_case');
+    expect(s.thread(human, d.id).events.filter(e => e.kind === 'answered')).toHaveLength(1);
+    expect(() => proposal({ choices: [...choices, choices[0]] })).toThrow();
+  });
+
   it('derives a contextual choice on the server and records a single versioned answer without typing', () => {
     const d = s.raise(bot, {source_key:'choices', proposal_key:'draft', proposal:proposal({choices:[
       {id:'yes', label:'Yes — queue Auto-Ship', action:'approve'},

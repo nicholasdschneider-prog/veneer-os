@@ -58,7 +58,7 @@ export const reviewSummarySchema = z.object({
 export const proposalSchema = z
   .object({
     review_summary: reviewSummarySchema.optional(),
-    choices: z.array(decisionChoiceSchema).min(2).max(6).refine(items => new Set(items.map(item => item.id)).size === items.length, "Choice IDs must be unique").optional(),
+    choices: z.array(decisionChoiceSchema).min(2).refine(items => new Set(items.map(item => item.id)).size === items.length, "Choice IDs must be unique").optional(),
     question: text,
     recommendation: text,
     consequence: text,

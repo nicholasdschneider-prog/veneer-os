@@ -631,14 +631,15 @@ const TOOLS: ToolDef[] = [
   {
     name: 'ask_user',
     description:
-      'Ask the user a question in THIS chat and wait for their answer, shown as a structured choice card. Use this when you need the user to choose among a small set of specific options before you can continue. Set allowOther only when a short free-form alternative is useful. Never ask for passwords, tokens, API keys, or private keys here; use request_secret for those. This blocks until the user answers or the question times out.',
+      'Ask the user a question in THIS chat and wait for their answer, shown as a structured choice card. Use this proactively whenever you ask the user to choose: yes/no, preferences, clarifications, or any number of specific alternatives. Present the actual options here instead of asking them to type a label from prose or a bullet list. For registered-bot business approvals or holds, use raise_decision with proposal.choices and its versioned review instead; this card does not replace required approvals. Set allowOther only when a short free-form alternative is useful. Never ask for passwords, tokens, API keys, or private keys here; use request_secret for those. This blocks until the user answers or the question times out.',
     inputSchema: {
       type: 'object',
       properties: {
         question: { type: 'string', description: 'The question to ask (plain text).' },
         options: {
           type: 'array',
-          description: 'The choices to offer the user (1–20). Each is a short button label.',
+          description: 'All relevant choices; at least one, with no fixed option count cap. Each has a short label and a unique value (defaults to label).',
+          minItems: 1,
           items: {
             type: 'object',
             properties: {

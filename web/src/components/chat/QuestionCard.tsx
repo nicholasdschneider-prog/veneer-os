@@ -134,9 +134,9 @@ export function QuestionCard({ item }: { item: QuestionItem }) {
                                   onChange={(event) => chooseOption(question, option.value, event.currentTarget.checked)}
                                   className="peer sr-only"
                                 />
-                                <span aria-hidden="true" className="flex size-7 items-center justify-center rounded border text-xs peer-focus-visible:outline-2 peer-checked:bg-primary peer-checked:text-primary-foreground">{String.fromCharCode(65 + optionIndex)}</span>
+                                <span aria-hidden="true" className="flex size-7 items-center justify-center rounded border text-xs peer-focus-visible:outline-2 peer-checked:bg-primary peer-checked:text-primary-foreground">{optionIndex < 26 ? String.fromCharCode(65 + optionIndex) : String(optionIndex + 1)}</span>
                               </span>
-                              <span className="min-w-0 flex-1">
+                              <span className="min-w-0 flex-1 break-words">
                                 <p className="font-medium text-foreground">{option.label}</p>
                                 {option.description ? (
                                   <p className="text-sm text-pretty text-muted-foreground sm:text-[0.8125rem]">{option.description}</p>

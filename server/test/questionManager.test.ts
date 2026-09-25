@@ -79,6 +79,25 @@ describe('durable structured questions', () => {
     fake = fakeAdapter();
   });
 
+  it('round-trips all 32 choices through API validation and durable multi-answer storage', async () => {
+    const { AskQuestionSchema, ResolveQuestionSchema } = await import('../src/routes/api.js');
+    const options = Array.from({ length: 32 }, (_, i) => ({ label: `Option ${i + 1}`, value: `option-${i + 1}` }));
+    const request = AskQuestionSchema.parse({ question: 'Which options?', options, multi: true });
+    const runtime = manager();
+    runtime.postMessage(conv, 'Choose options');
+    const requestId = runtime.askQuestion(conv.id, request.question, options, true);
+    const answers = { q1: options.map(option => option.value) };
+    expect(ResolveQuestionSchema.parse({ answers })).toEqual({ answers });
+    expect(runtime.resolveQuestion(requestId, { q1: ['unknown'] }).ok).toBe(false);
+    expect(runtime.resolveQuestion(requestId, answers)).toEqual({ ok: true });
+    const row = db.prepare('SELECT * FROM questions WHERE request_id=?').get(requestId) as QuestionRow;
+    expect(JSON.parse(row.answers_json!)).toEqual(answers);
+    expect(AskQuestionSchema.safeParse({ question: 'Duplicate?', options: [{ label: 'One', value: 'same' }, { label: 'Two', value: 'same' }] }).success).toBe(false);
+    expect(AskQuestionSchema.safeParse({ question: 'Empty?', options: [] }).success).toBe(false);
+    fake.state.finish!();
+    await flush();
+  });
+
   it('persists an MCP question and replaces its raw tool row in history', async () => {
     const runtime = manager();
     runtime.postMessage(conv, 'ask me');
