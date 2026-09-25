@@ -592,6 +592,37 @@ describe('turn auto-resume', () => {
     expect(killReasons).toEqual(['send_now']);
   });
 
+  it('steers a chosen queued message into the live turn without interrupting it', async () => {
+    const { adapter, runs, steers, killReasons } = recordingAdapter();
+    const manager = makeManager(db, adapter);
+    manager.postMessage(conv, 'running');
+    const first = manager.postMessage(conv, 'first queued');
+    const chosen = manager.postMessage(conv, 'chosen queued');
+
+    const result = await manager.steerQueuedMessageNow(conv, chosen.messageId);
+
+    expect(result?.disposition).toBe('steered');
+    expect(steers).toEqual(['chosen queued']);
+    expect(killReasons).toEqual([]);
+    expect(manager.queueSnapshot(conv.id).messages.map((message) => message.id)).toEqual([first.messageId]);
+    expect(await manager.steerQueuedMessageNow(conv, chosen.messageId)).toBeNull();
+    await flush();
+    expect(runs.map((run) => run.prompt)).toEqual(['running']);
+  });
+
+  it('leaves a queued message untouched when the provider cannot steer', async () => {
+    const { adapter, steers } = recordingAdapter({ steerResult: false });
+    const manager = makeManager(db, adapter);
+    manager.postMessage(conv, 'running');
+    const queued = manager.postMessage(conv, 'waiting');
+
+    const result = await manager.steerQueuedMessageNow(conv, queued.messageId);
+
+    expect(result?.disposition).toBe('queued');
+    expect(steers).toEqual(['waiting']);
+    expect(manager.queueSnapshot(conv.id).messages.map((message) => message.text)).toEqual(['waiting']);
+  });
+
   it('an explicit Stop reaches the provider as a user interrupt', async () => {
     const { adapter, killReasons } = recordingAdapter();
     const manager = makeManager(db, adapter);

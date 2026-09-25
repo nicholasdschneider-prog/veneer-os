@@ -216,6 +216,11 @@ export interface ConversationManager {
   removeQueuedMessage(conversationId: string, messageId: number): QueueMutationResult;
   reorderQueuedMessages(conversationId: string, messageIds: number[]): QueueMutationResult;
   sendQueuedMessageNow(conv: ConversationRow, messageId: number): QueueMutationResult;
+  /**
+   * Hand an already-queued row to the live turn instead of interrupting it.
+   * 'queued' means steering was not possible and the row is unchanged.
+   */
+  steerQueuedMessageNow(conv: ConversationRow, messageId: number): Promise<PostMessageResult | null>;
   retryFailedTurn(conv: ConversationRow, actorUserId?: number): QueueMutationResult;
   discardFailedTurn(conv: ConversationRow): QueueMutationResult;
   /** Compact native context without changing real turns; success may add a maintenance notice. */
@@ -837,6 +842,9 @@ export function createConversationManager({
   );
   const listQueuedMessagesStmt = db.prepare(
     'SELECT id, conversation_id, prompt, actor_user_id, origin_json FROM queued_messages ORDER BY conversation_id, sort_order, id',
+  );
+  const queuedMessageForSteerStmt = db.prepare(
+    'SELECT prompt, actor_user_id, origin_json FROM queued_messages WHERE id = ? AND conversation_id = ?',
   );
   const listConversationQueuedMessagesStmt = db.prepare(
     'SELECT id, prompt, created_at, origin_json FROM queued_messages WHERE conversation_id = ? ORDER BY sort_order, id',
@@ -2183,6 +2191,17 @@ export function createConversationManager({
       // working on, not to abandon the agents it already delegated to.
       if (!this.interrupt(conv.id, 'send_now')) void runNext(conv);
       return { ok: true, queue: queueSnapshot(conv.id) };
+    },
+    async steerQueuedMessageNow(conv, messageId) {
+      const row = queuedMessageForSteerStmt.get(messageId, conv.id) as
+        | { prompt: string; actor_user_id: number | null; origin_json: string | null }
+        | undefined;
+      if (!row) return null;
+      const posted: PostMessageResult = { messageId, disposition: 'queued', queue: queueSnapshot(conv.id) };
+      // The live process already holds this row's text; a second write would duplicate it.
+      if (live.get(conv.id)?.steering.has(messageId)) return { ...posted, disposition: 'delivered' };
+      const origin = parseMessageOrigin(row.origin_json);
+      return steerQueued(conv, row.prompt, posted, row.actor_user_id, origin);
     },
     retryFailedTurn(conv, actorUserId) {
       const entry = entryFor(conv.id);

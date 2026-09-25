@@ -341,6 +341,8 @@ export interface QueuedMessageSnapshot {
   createdAt: string;
   /** Present when another agent or an automatic system queued this message. */
   origin?: MessageOrigin;
+  /** The live agent already holds this text; the row is only a fallback. */
+  delivered?: true;
 }
 
 export interface FailedTurnSnapshot {

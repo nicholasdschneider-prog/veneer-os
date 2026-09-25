@@ -1644,16 +1644,21 @@ export function Chat({
       return;
     }
     const pendingId = crypto.randomUUID();
-    // Queued (not just "sending") whenever a turn is already running, or
-    // something else already sent is still waiting ahead of it.
-    setPendingSends((prev) => [...prev, { id: pendingId, text: outgoing, queued: working || prev.length > 0 }]);
+    // While a reply is running, a send steers it: the bot reads the message at
+    // its next step and keeps working. Only an idle chat with sends already
+    // waiting ahead of this one shows it as queued.
+    setPendingSends((prev) => [...prev, { id: pendingId, text: outgoing, queued: !working && prev.length > 0 }]);
     try {
-      const posted = await api.sendMessage(conversationId, outgoing);
+      const posted = working
+        ? await api.steerMessage(conversationId, outgoing)
+        : await api.sendMessage(conversationId, outgoing);
       if (archived) setArchived(false);
       applyQueueSnapshot(conversationId, posted.queue);
-      if (posted.disposition === 'queued') {
-        // The durable queue row now renders in the transcript; avoid a duplicate
-        // transient bubble. Running sends remain until turn_started lands.
+      if (posted.disposition === 'queued' || posted.disposition === 'delivered' || posted.disposition === 'duplicate') {
+        // The durable queue row now renders in the transcript (as queued, or as
+        // delivered while the provider has not echoed it yet); avoid a
+        // duplicate transient bubble. Running and steered sends remain until
+        // their turn_started lands.
         setPendingSends((prev) => prev.filter((pending) => pending.id !== pendingId));
       } else {
         setPendingSends((prev) =>
@@ -2785,7 +2790,7 @@ export function Chat({
                 ? queued.map((item, index) => (
                     <MessageScrollerItem key={`queued-${item.id}`}>
                       <QueuedMessageRow
-                        item={{ id: item.id, text: visiblePromptText(item.text), origin: item.origin }}
+                        item={{ id: item.id, text: visiblePromptText(item.text), origin: item.origin, delivered: item.delivered }}
                         index={index}
                         count={queued.length}
                         canManage={canManage}
@@ -3317,7 +3322,7 @@ export function Chat({
           {/* While the agent is working with nothing staged to send, the send
               button quietly becomes a stop button — a turn is interruptible
               right where the thumb already is. Type anything and it flips back
-              to send (queueing the message mid-turn). */}
+              to send (steering the working reply with the message). */}
           <div
             className={cn(
               'transition-[width] duration-[360ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',

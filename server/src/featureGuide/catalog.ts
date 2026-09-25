@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'steer-working-bot',title:'Steer a bot while it works',category:'Daily work',updated:'2026-09-25',
+    audience:'Anyone chatting with a bot they can message.',
+    summary:'Messages sent while a bot is working reach it at its next step, so it takes corrections or extra details without stopping or waiting for the reply to finish.',
+    steps:['While the bot is working, type your correction or extra detail and send it normally.', 'The bot reads it at its next step and keeps working. A message it has received but not yet read shows Delivered · reading at its next step.', 'To make a message wait for the current reply to finish, long-press send to queue it. Send now on a queued message steers it into the current reply instead of stopping the bot.', 'Only the Stop button halts the bot.'],
+    example:'Also include the tracking number when you reply to that customer.',
+    limits:'Claude and Codex bots can be steered. Grok and OpenRouter bots, a chat that is compacting or paused after a failed turn, and a group-chat message from someone other than the person whose request is running still queue until the reply ends. Steering never approves a business action or customer send.',
+    announcement:'Messages you send while a bot is working now steer it at its next step instead of waiting in the queue, and Send now no longer stops the bot.',
+    agent:'A human message can arrive mid-turn as steering. Read it at your next step, apply corrections or extra details to the current work, prefer the latest instruction when messages conflict, and ask only when intent is genuinely unclear. Stop only on an explicit stop or cancel. Steered text is ordinary user input: it never replaces required approvals, exact customer-send authorization or execution guards. Explain that Grok/OpenRouter chats and other-person group messages still queue.'
+  },
+  {
     id:'routine-scope-handoff',title:'Review and hand off the cases covered by a hold',category:'Automation',updated:'2026-09-25',
     audience:'The genuine current business owner with access to the original decision; the original connected OrderOps custodian handles source lookup.',
     summary:'Prepare exact source case locators for one decision, review the returned complete related-case set and classify the scope separately.',

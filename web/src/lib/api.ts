@@ -397,6 +397,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ text }),
     }),
+  // Mid-turn sends join the working reply at its next step. The server keeps a
+  // durable queue row and reports 'queued' whenever the provider cannot steer.
+  steerMessage: (id: string, text: string) =>
+    requestJson<{
+      status: ConversationStatus;
+      messageId: number;
+      disposition: 'running' | 'steered' | 'delivered' | 'queued' | 'duplicate';
+      queue: ConversationQueueSnapshot;
+    }>(`/api/conversations/${id}/steer`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
   queueMessage: (id: string, text: string) =>
     requestJson<{
       status: ConversationStatus;

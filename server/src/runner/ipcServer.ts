@@ -238,7 +238,14 @@ export function createIpcServer({
       case '/rpc/sendQueuedMessageNow': {
         const conv = readConv(body.convId);
         if (!conv) return void sendJson(res, 404, { error: 'conversation not found' });
-        return void sendJson(res, 200, manager.sendQueuedMessageNow(conv, Number(body.messageId)));
+        const messageId = Number(body.messageId);
+        // Steer first so "Send now" joins the working turn instead of stopping it.
+        // Only when the provider cannot take the line does it replace the turn.
+        const steered = await manager.steerQueuedMessageNow(conv, messageId);
+        if (steered && steered.disposition !== 'queued') {
+          return void sendJson(res, 200, { ok: true, disposition: steered.disposition, queue: steered.queue });
+        }
+        return void sendJson(res, 200, manager.sendQueuedMessageNow(conv, messageId));
       }
       case '/rpc/retryFailedTurn': {
         const conv = readConv(body.convId);

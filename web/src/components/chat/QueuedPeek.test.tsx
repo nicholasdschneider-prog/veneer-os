@@ -50,6 +50,17 @@ describe('QueuedMessageRow', () => {
     expect(html).not.toContain('Drag to reorder');
   });
 
+  it('shows a steered message as delivered without queue actions', () => {
+    const html = render({ item: { ...item, delivered: true } });
+    expect(html).toContain('Delivered · reading at its next step');
+    expect(html).not.toContain('data-slot="queued-message-actions"');
+    expect(html).not.toContain('Send now');
+  });
+
+  it('explains that Send now joins the current reply instead of stopping it', () => {
+    expect(openingButton(render(), 'Send queued message now')).toContain('without stopping it');
+  });
+
   it('marks an agent-queued message with the gray agent tint, bot icon, and source', () => {
     const html = render({
       item: {

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { ArrowDown, ArrowUp, Bot, Clock3, Pencil, Send, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bot, CheckCheck, Clock3, Pencil, Send, Trash2 } from 'lucide-react';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Message, MessageContent, MessageFooter } from '@/components/ui/message';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,8 @@ export interface QueuedMessageItem {
   text: string;
   /** Set when another agent queued this message rather than the human. */
   origin?: MessageOrigin;
+  /** The working bot already holds this text; it reads it at its next step. */
+  delivered?: boolean;
 }
 
 /** Agent-queued rows keep the right-aligned pending treatment but borrow the
@@ -145,7 +147,7 @@ export function QueuedMessageRow({
   onMove: (id: number, direction: -1 | 1) => void;
 }) {
   const agentSource = agentQueueSource(item.origin);
-  const StatusIcon = agentSource ? Bot : Clock3;
+  const StatusIcon = item.delivered ? CheckCheck : agentSource ? Bot : Clock3;
   return (
     <Message align="end" className="pb-2">
       <MessageContent className="gap-1.5">
@@ -162,7 +164,9 @@ export function QueuedMessageRow({
         <MessageFooter className="flex-col items-end gap-1 px-1 sm:px-3">
           <div data-slot="queued-message-status" className="flex min-w-0 max-w-full shrink-0 items-center gap-1.5 whitespace-nowrap">
             <StatusIcon className="size-4 shrink-0" aria-hidden="true" />
-            {agentSource ? (
+            {item.delivered ? (
+              'Delivered · reading at its next step'
+            ) : agentSource ? (
               <>
                 <span className="truncate">Queued from {agentSource}</span>
                 <span className="shrink-0">· sends after this reply</span>
@@ -171,7 +175,7 @@ export function QueuedMessageRow({
               'Queued · sends after this reply'
             )}
           </div>
-          {canManage ? (
+          {canManage && !item.delivered ? (
             <div
               data-slot="queued-message-actions"
               className="flex max-w-full items-center justify-end gap-2"
@@ -222,7 +226,7 @@ function QueueSendNowButton({
       onPointerUp={onSend}
       disabled={disabled}
       aria-label="Send queued message now"
-      title="Stop the current reply and send this message now"
+      title="Send this message into the current reply without stopping it"
       className="relative flex h-7 shrink-0 items-center gap-1 rounded-full bg-foreground/8 py-1 pr-2 pl-1 text-xs font-medium text-muted-foreground hover:bg-foreground/12 hover:text-foreground disabled:opacity-40"
     >
       <Send className="size-4 shrink-0" aria-hidden="true" />
