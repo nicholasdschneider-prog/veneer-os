@@ -7,7 +7,7 @@ describe('living bot guide release contract', () => {
   it('announces flexible question cards and teaches all providers the approval boundary', () => {
     const feature = botFeatureCatalog(Date.parse('2026-09-25')).features.find(f => f.id === 'question-cards')!;
     expect(feature.isNew).toBe(true);
-    expect(feature.steps.join(' ')).toContain('Submit answer');
+    expect(feature.steps.join(' ')).toContain('Send answer');
     expect(feature.agent).toContain('All providers');
     expect(feature.agent).toContain('raise_decision with proposal.choices');
     expect(botFeatureInstructions()).toContain(feature.agent);

@@ -33,6 +33,14 @@ const pending: Extract<ChatItem, { kind: 'question' }> = {
 };
 
 describe('QuestionCard', () => {
+  it('renders single choices as immediate buttons without a submit step', () => {
+    const html = renderToStaticMarkup(<QuestionCard item={{ ...pending, questions: [pending.questions[0]!] }} />);
+    expect(html.match(/type="button"/g)).toHaveLength(2);
+    expect(html).not.toContain('type="radio"');
+    expect(html).not.toContain('type="submit"');
+    expect(html).toContain('max-w-[34rem]');
+  });
+
   it('renders every option beyond 26 with readable badges and supports selecting all', () => {
     const options = Array.from({ length: 32 }, (_, i) => ({ label: `Option ${i + 1}`, value: `value-${i}` }));
     const questions = [{ ...pending.questions[0]!, options, multi: true }];
@@ -46,7 +54,7 @@ describe('QuestionCard', () => {
 
   it('renders accessible native controls, descriptions, and free-form Other', () => {
     const html = renderToStaticMarkup(<QuestionCard item={pending} />);
-    expect(html).toContain('Waiting for you');
+    expect(html).not.toContain('Waiting for you');
     expect(html).not.toContain('Your input is needed');
     expect(html).not.toContain('Choose an answer for each question');
     expect(html).toContain('Release channel');
@@ -55,7 +63,7 @@ describe('QuestionCard', () => {
     expect(html).toContain('Other');
     expect(html).toContain('name="question-question-1-q2-other"');
     expect(html).toContain('aria-label="Other answer for Anything else?"');
-    expect(html).toContain('Submit answers');
+    expect(html).toContain('Send answers');
   });
 
   it('renders a compact read-only answer using the human label', () => {
@@ -68,7 +76,6 @@ describe('QuestionCard', () => {
       }} />,
     );
     expect(html).toContain('Answered');
-    expect(html).toContain('flex justify-start');
     expect(html).not.toContain('flex justify-end');
     expect(html).toContain('Stable');
     expect(html).not.toContain('rounded-md bg-muted');
