@@ -28,8 +28,8 @@ afterEach(() => {
 describe('pinned provider runtime policy', () => {
   it('contains one exact stable version and official source for every provider', () => {
     expect(loadProviderRuntimePolicy()).toEqual({
-      claude: { installerUrl: 'https://claude.ai/install.sh', version: '2.1.280' },
-      codex: { package: '@openai/codex', version: '0.156.1' },
+      claude: { installerUrl: 'https://claude.ai/install.sh', version: '2.1.282' },
+      codex: { package: '@openai/codex', version: '0.157.0' },
       grok: { installerUrl: 'https://x.ai/cli/install.sh', version: '1.0.5' },
     });
   });
@@ -39,7 +39,7 @@ describe('pinned provider runtime policy', () => {
     const file = path.join(directory, 'policy.json');
     fs.writeFileSync(file, JSON.stringify({
       claude: { installerUrl: 'https://claude.ai/install.sh', version: 'latest' },
-      codex: { package: '@openai/codex', version: '0.156.1' },
+      codex: { package: '@openai/codex', version: '0.157.0' },
       grok: { installerUrl: 'https://example.test/install.sh', version: '1.0.5' },
     }));
     expect(() => loadProviderRuntimePolicy(file)).toThrow(/exact semantic version/i);
@@ -53,12 +53,12 @@ describe('pinned provider runtime policy', () => {
       file: '/usr/bin/npm',
       args: [
         'install', '--global', '--prefix', '/srv/veneer/.local', '--no-audit', '--no-fund',
-        '@openai/codex@0.156.1',
+        '@openai/codex@0.157.0',
       ],
     });
     expect(plan.claude).toEqual({
       installerUrl: 'https://claude.ai/install.sh',
-      version: '2.1.280',
+      version: '2.1.282',
     });
     expect(plan.grok).toEqual({
       installerUrl: 'https://x.ai/cli/install.sh',
@@ -75,8 +75,8 @@ describe('pinned provider runtime policy', () => {
 
 describe('provider runtime provisioning and verification', () => {
   it('parses each vendor version format', () => {
-    expect(parseProviderRuntimeVersion('2.1.280 (Claude Code)')).toBe('2.1.280');
-    expect(parseProviderRuntimeVersion('codex-cli 0.156.1')).toBe('0.156.1');
+    expect(parseProviderRuntimeVersion('2.1.282 (Claude Code)')).toBe('2.1.282');
+    expect(parseProviderRuntimeVersion('codex-cli 0.157.0')).toBe('0.157.0');
     expect(parseProviderRuntimeVersion('grok 1.0.5 (abcdef123)')).toBe('1.0.5');
   });
 
@@ -111,8 +111,8 @@ describe('provider runtime provisioning and verification', () => {
         fs.symlinkSync(staged, link);
       }
       if (options?.encoding) {
-        if (file.endsWith('/claude')) return '2.1.280 (Claude Code)\n';
-        if (file.endsWith('/codex')) return 'codex-cli 0.156.1\n';
+        if (file.endsWith('/claude')) return '2.1.282 (Claude Code)\n';
+        if (file.endsWith('/codex')) return 'codex-cli 0.157.0\n';
         if (file.endsWith('/grok')) return 'grok 1.0.5 (build)\n';
       }
       return '';
@@ -122,14 +122,14 @@ describe('provider runtime provisioning and verification', () => {
       serviceHome,
       npmBin: '/usr/bin/npm',
       execFile: execFile as never,
-    })).toEqual({ claude: '2.1.280', codex: '0.156.1', grok: '1.0.5' });
+    })).toEqual({ claude: '2.1.282', codex: '0.157.0', grok: '1.0.5' });
     for (const file of sentinels) expect(fs.readFileSync(file, 'utf8')).toMatch(/^sentinel:/);
     expect(calls.some((call) => call.file === 'bash' && call.args.at(-1) === '1.0.5')).toBe(true);
     expect(fs.realpathSync(path.join(serviceHome, '.local', 'bin', 'grok'))).toContain(
       '/.local/lib/veneer-provider-runtimes/grok-1.0.5',
     );
     expect(fs.realpathSync(path.join(serviceHome, '.local', 'bin', 'claude'))).toContain(
-      '/.local/lib/veneer-provider-runtimes/claude-2.1.280',
+      '/.local/lib/veneer-provider-runtimes/claude-2.1.282',
     );
   });
 
@@ -142,7 +142,7 @@ describe('provider runtime provisioning and verification', () => {
       serviceHome,
       provider: 'codex',
       execFile: mismatch as never,
-    })).toThrow(/expected 0\.156\.1, found 0\.149\.0/i);
+    })).toThrow(/expected 0\.157\.0, found 0\.149\.0/i);
     const failed = vi.fn(() => { throw new Error('spawn failed'); });
     expect(() => verifyProviderRuntimeVersions({
       policy,
