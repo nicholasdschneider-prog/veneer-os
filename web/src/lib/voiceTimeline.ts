@@ -3,7 +3,12 @@ import type { ChatItem } from './transcript';
 import { groupActivityRuns, type ActivityRenderItem } from './activityRuns';
 import { segmentFrozenTranscript, type FrozenTranscriptSegment } from './transcriptFreeze';
 export type VoiceSession = { id: string; started_ms: number; connected_ms: number | null; duration_ms: number; outcome: string };
-export type VoiceTimelineEntry = FrozenTranscriptSegment | { kind: 'live'; key: string; item: ActivityRenderItem } | { kind: 'voice'; key: string; session: VoiceSession } | { kind: 'reply'; key: string; reply: ThreadReply };
+export type TimelineCard = { id: string; time: number };
+// SQLite datetime values are UTC even though their serialized form has no zone.
+export function communicationTime(createdAt: string) {
+  return Date.parse(/Z$|[+-]\d{2}:\d{2}$/.test(createdAt) ? createdAt : createdAt.replace(' ', 'T') + 'Z');
+}
+export type VoiceTimelineEntry = { kind: 'card'; key: string; card: TimelineCard } | FrozenTranscriptSegment | { kind: 'live'; key: string; item: ActivityRenderItem } | { kind: 'voice'; key: string; session: VoiceSession } | { kind: 'reply'; key: string; reply: ThreadReply };
 export function mergeVoiceSessions(current: VoiceSession[], incoming: VoiceSession[]) {
   const records = new Map(current.map(s => [s.id, s]));
   for (const s of incoming) records.set(s.id, s);
@@ -15,9 +20,10 @@ function messageTime(item: ChatItem) {
 }
 /** Insert calls at the first later/equal recorded message timestamp. Never sort
  * transcript rows or assign invented times to tool/status/legacy rows. */
-export function voiceTimeline(items: ChatItem[], frozenLength: number, sessions: VoiceSession[], replies: ThreadReply[] = []) {
+export function voiceTimeline(items: ChatItem[], frozenLength: number, sessions: VoiceSession[], replies: ThreadReply[] = [], cards: TimelineCard[] = []) {
   const entries: VoiceTimelineEntry[] = [];
   const dated = [
+    ...cards.map(card => ({ time: card.time, entry: { kind: 'card' as const, key: `draft-${card.id}`, card } })),
     ...mergeVoiceSessions([], sessions).map(session => ({time:session.started_ms, entry:{kind:'voice' as const,key:`voice-${session.id}`,session}})),
     ...replies.map(reply => ({time:replyTime(reply), entry:{kind:'reply' as const,key:`reply-${reply.id}`,reply}})),
   ].sort((a,b)=>a.time-b.time || (a.entry.kind==='reply' && b.entry.kind==='reply' ? a.entry.reply.seq-b.entry.reply.seq : a.entry.key.localeCompare(b.entry.key)));

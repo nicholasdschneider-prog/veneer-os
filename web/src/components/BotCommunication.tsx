@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -27,7 +27,8 @@ type Payload = {
   ticket: string;
   context: string;
 };
-type Draft = {
+export type Draft = {
+  created_at: string;
   id: string;
   version: number;
   decision_id: string | null;
@@ -352,6 +353,46 @@ export function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => voi
     </article>
   );
 }
+export function useBotCommunication(conversationId: string) {
+  const [data, setData] = useState<{ drafts: Draft[]; briefings: Briefing[]; approved_obligations?: {decision_id:string;version:number;ready:boolean;reason:string}[] }>({
+    drafts: [],
+    briefings: [],
+  });
+  const [error, setError] = useState('');
+  const [revision, setRevision] = useState(0);
+  const [loadedConversation, setLoadedConversation] = useState<string | null>(null);
+  const refresh = useCallback(() => setRevision(v => v + 1), []);
+  useEffect(() => {
+    setData({ drafts: [], briefings: [] });
+    setError('');
+  }, [conversationId]);
+  useEffect(() => {
+    if (!conversationId) return;
+    let active = true;
+    const load = () =>
+      requestJson<typeof data>(
+        `${root}/chats/${encodeURIComponent(conversationId)}`,
+      )
+        .then((d) => {
+          if (active) {
+            setData(d);
+            setLoadedConversation(conversationId);
+            setError('');
+          }
+        })
+        .catch((e) => {
+          if (active) { setError(e.message); setLoadedConversation(conversationId); }
+        });
+    void load();
+    const timer = setInterval(() => void load(), 8000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [conversationId, revision]);
+  return { data: loadedConversation === conversationId ? data : { drafts: [], briefings: [] }, error: loadedConversation === conversationId ? error : '', refresh };
+}
+
 export function BotCommunication({
   mode = 'all',
   conversationId,
@@ -363,34 +404,13 @@ export function BotCommunication({
   version?: number;
   mode?: 'all' | 'briefing' | 'drafts';
 }) {
-  const [data, setData] = useState<{ drafts: Draft[]; briefings: Briefing[]; approved_obligations?: {decision_id:string;version:number;ready:boolean;reason:string}[] }>({
-    drafts: [],
-    briefings: [],
-  });
-  const [error, setError] = useState('');
-  const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    let active = true;
-    const load = () =>
-      requestJson<typeof data>(
-        `${root}/chats/${encodeURIComponent(conversationId)}`,
-      )
-        .then((d) => {
-          if (active) {
-            setData(d);
-            setError('');
-          }
-        })
-        .catch((e) => {
-          if (active) setError(e.message);
-        });
-    void load();
-    const timer = setInterval(() => void load(), 8000);
-    return () => {
-      active = false;
-      clearInterval(timer);
-    };
-  }, [conversationId, revision]);
+  const communication = useBotCommunication(conversationId);
+  return <BotCommunicationContent {...communication} mode={mode} decisionId={decisionId} version={version} />;
+}
+
+export function BotCommunicationContent({ data, error, refresh, mode = "all", decisionId, version, hideDrafts = false }: ReturnType<typeof useBotCommunication> & {
+  mode?: "all" | "briefing" | "drafts"; decisionId?: string; version?: number; hideDrafts?: boolean;
+}) {
   const drafts = data.drafts.filter((d) =>
     decisionId ? d.decision_id === decisionId : !d.decision_id,
   );
@@ -403,7 +423,7 @@ export function BotCommunication({
     <div className="space-y-3">
       {mode !== 'briefing' && !decisionId && data.approved_obligations?.map(o => <div key={o.decision_id} className="space-y-2 rounded-lg border p-3 text-sm">
         <p className="font-medium">Original approved message · {o.ready ? 'awaiting guarded delegation' : 'technically blocked'}</p>
-        <p>{o.reason}</p><p>This approval applies only to its exact saved scope, not a different ordinary draft below. No delivery is claimed.</p>
+        <p>{o.reason}</p><p>This approval applies only to its exact saved scope, not a different ordinary draft. No delivery is claimed.</p>
         <a className="underline" href={`#/bots/${encodeURIComponent(o.decision_id)}`}>Review original approval · version {o.version}</a>
       </div>)}
       {mode !== 'drafts' && (decisionId ? (
@@ -418,11 +438,11 @@ export function BotCommunication({
           .slice(0, 5)
           .map((b) => <VoiceBriefing key={b.id} briefing={b} />)
       ))}
-      {mode !== 'briefing' && drafts.map((d) => (
+      {!hideDrafts && mode !== 'briefing' && drafts.map((d) => (
         <DraftCard
           key={`${d.id}:${d.version}:${d.state}`}
           draft={d}
-          refresh={() => setRevision((v) => v + 1)}
+          refresh={refresh}
         />
       ))}
       {error && (

@@ -10,17 +10,18 @@ const vite = await createServer({
 });
 await vite.listen();
 const browser = await chromium.launch({
-  executablePath:
+  executablePath: process.env.CHAT_FIXTURE_BROWSER ??
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   headless: true,
 });
 const restricted = process.env.CHAT_FIXTURE_RESTRICTED === "1";
-const output = new URL("../docs/reports/voice-timeline/", import.meta.url)
+const output = process.argv[3] ?? new URL("../docs/reports/voice-timeline/", import.meta.url)
   .pathname;
 await mkdir(output, { recursive: true });
 try {
   for (const width of (restricted ? [375, 1280] : [320, 375, 414, 768, 1440]))
     for (const theme of ["light", "dark"]) {
+      console.log(`Checking ${width}px ${theme}`);
       const page = await browser.newPage({
         viewport: { width, height: 1000 }, timezoneId: "UTC",
         reducedMotion: "reduce",
@@ -34,6 +35,7 @@ try {
       const time = minutes => Date.parse('2026-09-23T00:00:00Z') + minutes*60000;
       const session = (id,minutes) => ({id,started_ms:time(minutes),connected_ms:time(minutes),duration_ms:65000,outcome:'ended'});
       let sessions = [session('afternoon',948),session('morning',557),...Array.from({length:48},(_,i)=>session('older'+i,490+i))].sort((a,b)=>b.started_ms-a.started_ms);
+      let draft = {id:'fixture-draft',version:1,created_at:'2026-09-23 09:18:00',decision_id:null,decision_version:null,state:'draft',stale:false,receipt:null,payload:{channel:'sms',account:'Fixture',recipients:['fixture@example.test'],subject:'',body:'Fixture outgoing message',attachments:[],customer:'Fixture customer',ticket:'fixture-ticket',context:''}};
       let heldEarlier;
       let org = {
           revision: 0,
@@ -166,8 +168,15 @@ try {
           else body={sessions:sessions.slice(0,50)};
         }
         else if (p.startsWith('/api/live-voice/sessions/')) body={entries:[{id:1,role:'user',text:'Fixture narration, private to this caller.',createdAt:'2026-09-23T09:17:23Z'}],next:null};
+        else if (p === '/api/bot-communication/drafts/fixture-draft') {
+          assert.equal(req.method(), 'POST');
+          const edit = req.postDataJSON();
+          assert.equal(edit.action, 'save');
+          draft = {...draft,version:draft.version+1,payload:edit.payload};
+          body = draft;
+        }
         else if (p.includes("/bot-communication/chats/"))
-          body = { drafts: [], briefings: [] };
+          body = { drafts: p.includes('/bot0') ? [draft] : [], briefings: [] };
         else if (p.includes("/connectors")) body = { connectors: [] };
         else if (p.includes("/model-prefs")) body = { prefs: {} };
         else
@@ -221,6 +230,27 @@ try {
       assert(morningIndex>=0&&afternoonIndex>morningIndex);
       assert(ordered.slice(morningIndex+1,afternoonIndex).some(t=>t.includes('Review fixture item')));
       assert(ordered.slice(afternoonIndex+1).some(t=>t.includes('Review fixture item')));
+      const outgoing = page.getByRole('article', {name:'Outgoing message draft'});
+      await outgoing.waitFor();
+      const checkDraftPosition = async () => {
+        const positions = await page.locator('[data-slot="message-scroller-content"]').evaluate(el => {
+          const text = el.textContent;
+          return [text.indexOf('Review fixture item 5'), text.indexOf('Message to Fixture customer'), text.indexOf('Review fixture item 6'), text.indexOf('Review fixture item 34')];
+        });
+        assert(positions.every(p => p >= 0));
+        assert(positions.every((p,i) => i === 0 || p > positions[i-1]), 'outgoing card remains at its original time before later replies');
+      };
+      await checkDraftPosition();
+      console.log('Draft position verified');
+      await outgoing.getByRole('textbox', {name:'Message', exact:true}).fill('Edited fixture message');
+      await outgoing.getByRole('button', {name:'Save edits'}).click();
+      await page.waitForFunction(() => document.querySelector('[aria-label="Outgoing message draft"] textarea')?.value === 'Edited fixture message' && ![...document.querySelectorAll('button')].some(b => b.textContent === 'Save edits' && !b.disabled));
+      await checkDraftPosition();
+      if (width === 375 && theme === 'light') {
+        draft = {...draft,state:'sent',receipt:'Fixture receipt',updated_at:'2026-09-23 18:00:00'};
+        await outgoing.getByText('Sent · receipt recorded', {exact:true}).waitFor();
+        await checkDraftPosition();
+      }
       const morning=cards.filter({hasText:'9:17'});
       await morning.scrollIntoViewIfNeeded();await morning.focus();await page.keyboard.press('Enter');
       await page.getByText('Fixture narration, private to this caller.').waitFor();
@@ -240,7 +270,7 @@ try {
       await page.evaluate(()=>location.hash='#/chat/bot1');
       await page.waitForTimeout(100);
       if(heldEarlier) await heldEarlier.fulfill({json:{sessions:[session('earliest',470)]}});
-      await page.waitForTimeout(100);assert.equal(await cards.count(),0);
+      await page.waitForTimeout(100);assert.equal(await cards.count(),0);assert.equal(await outgoing.count(),0);
       await page.evaluate(()=>location.hash='#/chat/bot0');
       await cards.first().waitFor();assert.equal(await cards.count(),50);
       await page.getByRole('button',{name:'Earlier voice chats',exact:true}).click();

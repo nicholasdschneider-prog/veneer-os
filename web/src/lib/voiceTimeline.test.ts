@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { voiceTimeline, mergeVoiceSessions, type VoiceSession } from './voiceTimeline';
+import { communicationTime, voiceTimeline, mergeVoiceSessions, type VoiceSession } from './voiceTimeline';
 import type { ChatItem } from './transcript';
 const at=(n:number)=>new Date(n*60000).toISOString();
 const message=(key:string,n?:number):ChatItem=>({kind:'assistant',key,markdown:key,...(n===undefined?{}:{at:at(n)})});
 const call=(id:string,n:number):VoiceSession=>({id,started_ms:n*60000,connected_ms:n*60000,duration_ms:60000,outcome:'completed'});
-const keys=(items:ChatItem[],calls:VoiceSession[],frozen=items.length)=>voiceTimeline(items,frozen,calls).entries.flatMap(e=>e.kind==='static'?e.items.map(i=>i.key):(e.kind==='voice'||e.kind==='reply')?[e.key]:[e.item.key]);
+const keys=(items:ChatItem[],calls:VoiceSession[],frozen=items.length)=>voiceTimeline(items,frozen,calls).entries.flatMap(e=>e.kind==='static'?e.items.map(i=>i.key):(e.kind==='voice'||e.kind==='reply'||e.kind==='card')?[e.key]:[e.item.key]);
 describe('chronological voice cards',()=>{
  it('splits frozen history around calls rather than appending old calls to its bottom',()=>{
   expect(keys([message('morning',500),message('noon',720),message('afternoon',960)],[call('late',948),call('early',557)])).toEqual(['morning','voice-early','noon','voice-late','afternoon']);
@@ -52,5 +52,33 @@ describe('result replies in the main timeline', () => {
     const items=[message('original',1),message('later',5)];
     const replies=[reply('z',3,1),reply('a',3,2)];
     for(const frozen of [0,1,2]) expect(voiceTimeline(items,frozen,[],replies).entries.filter(e=>e.kind==='reply').map(e=>e.key)).toEqual(['reply-z','reply-a']);
+  });
+});
+
+
+describe('outgoing message cards in the main timeline', () => {
+  const rowKeys = (items: ChatItem[], frozen: number, drafts: {id:string;created_at:string}[]) =>
+    voiceTimeline(items, frozen, [], [], drafts.map(d => ({id:d.id,time:communicationTime(d.created_at)})))
+      .entries.flatMap(e => e.kind === 'static' ? e.items.map(i => i.key) : [e.key]);
+  it('keeps draft and sent cards between their original neighbors as new replies arrive', () => {
+    const original = {id:'sms',created_at:'1970-01-01 00:03:00',state:'draft',version:1};
+    const updated = {...original,state:'sent',version:2,updated_at:at(12)};
+    const messages = [message('before',1),message('after',5)];
+    expect(rowKeys(messages,2,[original])).toEqual(['before','draft-sms','after']);
+    for (const frozen of [0,2,3]) {
+      expect(rowKeys([...messages,message('new-reply',15)],frozen,[updated]))
+        .toEqual(['before','draft-sms','after','new-reply']);
+    }
+  });
+  it('keeps chronological positions when older transcript history loads and polling returns newest first', () => {
+    const drafts = [{id:'newer',created_at:at(8)},{id:'older',created_at:at(3)}];
+    expect(rowKeys([message('old',1),message('middle',5),message('new',10)],3,drafts))
+      .toEqual(['old','draft-older','middle','draft-newer','new']);
+    expect(rowKeys([message('middle',5),message('new',10)],1,drafts.filter(d=>communicationTime(d.created_at)>=5*60000)))
+      .toEqual(['middle','draft-newer','new']);
+  });
+  it('interprets saved SQLite times as UTC and accepts timestamps with an explicit zone', () => {
+    expect(communicationTime('2026-09-25 14:36:12')).toBe(Date.parse('2026-09-25T14:36:12Z'));
+    expect(communicationTime('2026-09-25T10:36:12-04:00')).toBe(Date.parse('2026-09-25T14:36:12Z'));
   });
 });
