@@ -126,3 +126,32 @@ restart completed all five services and ran the new connectivity checks. On
 continuation, another `npm run health` exited successfully: local web/runner
 healthy, four active connections on Veneer's tunnel, and HTTP 302 from the public
 front door. Authenticated public chat remains explicitly unverified.
+
+## Follow-up: 4:00 PM outage — host network loss, not a Veneer crash
+
+No Veneer process crashed. launchd reports every service on its first run since
+the 16:06 deployment with no abnormal exits, and there are no Node crash reports
+for today. The only diagnostic reports are macOS disk-write and CPU advisories
+(the 16:06 backup job and the web server), neither of which terminates a process.
+
+| Time (EDT) | Evidence |
+| --- | --- |
+| 16:00:20 | All four QUIC edge connections time out together. |
+| 16:01–16:02 | `sendmsg: no route to host` to Cloudflare, DNS lookups time out. |
+| 16:02:09 | First connection re-registers; all four by 16:03:05. |
+| 16:03:30–41 | Second brief drop; reconnects in 11 seconds. |
+| 16:04:55, 16:06:48 | Manual tunnel restart, then the HTTP/2 deployment (`92c4b7b`) briefly refused origin requests. |
+
+An unrelated tunnel on this Mac (`com.outpost.cloudflared`, its own token and
+log) failed and recovered at the same times, as it did at 12:51 and 12:59–13:03.
+The Mac lost its default route, so the fault is below Veneer: the Wi-Fi link
+(en1, 5 GHz channel 36, gateway 10.0.1.1). Built-in Ethernet (en0) and the
+AX88179A USB adapter (en8) are both ahead of Wi-Fi in the service order but have
+no cable link. A later 40-packet gateway ping showed no loss.
+
+Cloudflared recovered on its own within a minute of the route returning each time,
+so no watchdog or restart loop was added; it could not help while the host has no
+route. Pinning HTTP/2 (`92c4b7b`) keeps TCP recovery behavior but does not prevent
+the loss. The durable fix is a wired Ethernet cable to en0 or en8; macOS will
+prefer it automatically and keep Wi-Fi as fallback. Check with
+`route -n get default | grep interface` (expect `en0` or `en8`).
