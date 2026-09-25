@@ -79,8 +79,13 @@ That exact path is hardcoded in `installer/install-darwin.mjs`
 `deploy/launchd/com.veneer.pro.cloudflared.plist`, which runs:
 
 ```
-<cloudflared> tunnel --no-autoupdate run --token-file ~/.config/veneer-pro/cloudflared-token
+<cloudflared> tunnel --no-autoupdate --protocol http2 run --token-file ~/.config/veneer-pro/cloudflared-token
 ```
+
+The tunnel is pinned to HTTP/2 rather than the default QUIC. On this Mac's Wi-Fi, QUIC connections
+repeatedly failed with `timeout: no recent network activity` and did not all re-register, which left
+remote users on a Cloudflare error page (2026-09-25). The log should show `protocol=http2` on every
+`Registered tunnel connection` line.
 
 The installer looks for the `cloudflared` binary at exactly three paths, in order:
 

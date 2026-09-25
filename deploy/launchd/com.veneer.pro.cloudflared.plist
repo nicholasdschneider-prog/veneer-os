@@ -9,6 +9,8 @@
     <string>__CLOUDFLARED__</string>
     <string>tunnel</string>
     <string>--no-autoupdate</string>
+    <string>--protocol</string>
+    <string>http2</string>
     <string>run</string>
     <string>--token-file</string>
     <string>__TUNNEL_TOKEN_FILE__</string>
