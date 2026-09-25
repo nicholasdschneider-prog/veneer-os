@@ -149,6 +149,13 @@ The Mac lost its default route, so the fault is below Veneer: the Wi-Fi link
 AX88179A USB adapter (en8) are both ahead of Wi-Fi in the service order but have
 no cable link. A later 40-packet gateway ping showed no loss.
 
+The steering deployment (`cb01a0b`, chat 5d4122c1) was checked as a suspect and
+ruled out. Its restart at 15:51:44 refused origin requests for under one second,
+eight minutes before the loss. Its work ended at 15:52:13 and ran no network,
+DNS, or routing commands. After the restart, turn counts, stops, and pending turns
+stayed normal. Restarts at 14:07, 14:26, and 14:57 were not followed by network
+loss, and the 12:51 and 12:59 losses had no restart before them.
+
 Cloudflared recovered on its own within a minute of the route returning each time,
 so no watchdog or restart loop was added; it could not help while the host has no
 route. Pinning HTTP/2 (`92c4b7b`) keeps TCP recovery behavior but does not prevent
