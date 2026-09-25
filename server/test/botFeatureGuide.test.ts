@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('announces owner photo setup without granting employee enrollment',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-25')).features.find(f=>f.id==='routine-owner-setup')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('Registration does not prove');
+    expect(botFeatureInstructions()).toContain(f.agent);
+    expect(employeeRouteAllowed('POST','/bot-communication/routine-messages/setup')).toBe(false);
+  });
   it('discovers versioned reply editing and allows its narrow employee route',()=>{
     const feature=botFeatureCatalog(Date.parse('2026-09-24')).features.find(f=>f.id==='decision-reply-editing')!;
     expect(feature.isNew).toBe(true);

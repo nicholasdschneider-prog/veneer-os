@@ -1,4 +1,4 @@
-import { routineExecutionService } from './routineExecution.js';
+import { missingFields, routineExecutionService } from './routineExecution.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ export const routineEnvelope = {
 export const enrollRoutineSchema=z.object({
  business_id:key, policy_key:key, expected_version:z.number().int().nonnegative(), request_key:key,
  source_reference:z.string().trim().min(1).max(2000), policy_text:z.string().trim().min(100).max(50000),
+ missing_information_fields:z.array(z.enum(missingFields)).min(1).max(3).optional(),
  executor_ids:z.array(key).min(1).max(100), categories:z.array(routineCategory).min(1).max(5),
 }).strict();
 type Input=z.infer<typeof enrollRoutineSchema>;
@@ -58,7 +59,8 @@ export function routinePolicyService(db:Database.Database){
    owner(a,p.business_id);
    if(new Set(p.executor_ids).size!==p.executor_ids.length || new Set(p.categories).size!==p.categories.length)throw new BotError(400,'Duplicate executor or category');
    for(const id of p.executor_ids)executor(a,id,p.business_id);
-   const snapshot={source_reference:p.source_reference,policy_text:p.policy_text,executor_ids:[...p.executor_ids].sort(),categories:[...p.categories].sort(),envelope:routineEnvelope};
+   if(p.missing_information_fields && (!p.categories.includes('missing_information') || new Set(p.missing_information_fields).size!==p.missing_information_fields.length))throw new BotError(400,'Invalid missing-information field restriction');
+   const snapshot={...(p.missing_information_fields ? {missing_information_fields:[...p.missing_information_fields].sort()} : {}),source_reference:p.source_reference,policy_text:p.policy_text,executor_ids:[...p.executor_ids].sort(),categories:[...p.categories].sort(),envelope:routineEnvelope};
    const hash=canonicalSha256(snapshot);
    const old=db.prepare('SELECT * FROM bot_routine_policies WHERE business_id=? AND request_key=?').get(p.business_id,p.request_key) as Row|undefined;
    if(old){if(old.snapshot_hash!==hash || old.policy_key!==p.policy_key || old.version!==p.expected_version+1 || old.issuer_id!==a.user.id)throw new BotError(409,'Enrollment request key conflict');return view(old);}

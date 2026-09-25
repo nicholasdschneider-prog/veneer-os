@@ -2,7 +2,7 @@
 export function csDraftState(d: {state:string;receipt:string|null;claim_key:string|null;authorized_by:number|null},
   context: {retired:boolean;routine:boolean;delegated:boolean;decision?:{id:string;version:number;state:string;answer:string|null};stale:boolean}) {
   const result = (state:string,label:string,reason:string) => ({state,label,reason,execute:false as const});
-  if(context.retired || d.state==='discarded') return result('retired','Retired without delivery','The original payload and separate retirement history are retained.');
+  if(context.retired || d.state==='discarded') return result('retired','Retired without delivery','This draft was not sent. Retiring it does not establish that the customer was answered or resolve the case. The owning bot must verify a separate reply or retain the outstanding request; the original payload and retirement history remain available.');
   if(d.state==='sent' && d.receipt) return result('sent','Sent with receipt','Delivery is recorded below; this does not complete other case obligations.');
   if(d.state==='uncertain' || d.state==='sent') return result('unknown','Delivery needs reconciliation','Check the original source receipt. Do not retry or infer delivery.');
   if(d.state==='sending' || d.claim_key) return result('sending','Sending / awaiting receipt','The delivery claim is held. Unknown effects require read-only reconciliation, never another send.');

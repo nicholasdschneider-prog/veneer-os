@@ -1,3 +1,4 @@
+import { RoutineOwnerSetup } from './screens/RoutineOwnerSetup';
 import { FocusedWorkspace } from './screens/FocusedWorkspace';
 import { ReturnOwnerSetup } from './screens/ReturnOwnerSetup';
 import { TeamMessages } from './screens/TeamMessages';
@@ -281,6 +282,8 @@ export function App() {
   if (me.pending) {
     return <PendingApproval email={me.email ?? ''} onRecheck={loadMe} />;
   }
+
+  if (hash.split('?')[0] === '#/routine-reply-setup') return <RoutineOwnerSetup />;
 
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/autoship-candidate-setup') return <ReturnOwnerSetup key="candidate" candidate />;
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/return-service-setup') return <ReturnOwnerSetup key="return" />;

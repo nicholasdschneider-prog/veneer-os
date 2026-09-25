@@ -279,3 +279,10 @@ it('serializes scope revocation versus dispatch on independent SQLite connection
   expect(right.prepare('SELECT count(*) n FROM routine_dispatch_claims').get()).toEqual({n:0});
  }finally{if(left.inTransaction)left.exec('ROLLBACK');left.close();right.close();rmSync(dir,{recursive:true});}
 });
+it('enforces the owner photo-only restriction even when the source claims a different field is missing', () => {
+  const p = routinePolicyService(db).enroll(human, { business_id: 'team', policy_key: 'photo-only', expected_version: 0, request_key: 'photo-only', source_reference: 'Fixture photo-only policy', policy_text: 'Only actually missing product-label photos without remedy promises. Preserve all financial, ownership, human hold, duplicate and unknown effect gates.', executor_ids: ['tess'], categories: ['missing_information'], missing_information_fields: ['product_label_photo'] });
+  policyId=p.id;trustId=s.enroll(human,{...trustInput(),request_key:'photo-only-trust'}).trust_id;
+  const wrong=capture('wrong-field');expect(()=>s.capture(identity,wrong)).toThrow('field restriction');
+  const good=capture('photo');good.material.requested_fields=['product_label_photo'];good.material.field_evidence=[{field:'product_label_photo',state:'missing',relevance:'needed_for_current_question',evidence_revision:'snapshot1'}];
+  expect(s.capture(identity,good).scope.payload.body).toContain('clear photo of the product label');
+});

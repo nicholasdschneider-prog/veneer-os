@@ -158,6 +158,8 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
     if (!m.context.conversation_ids.includes(m.case_id) || new Set(m.context.conversation_ids).size !== m.context.conversation_ids.length || new Set(m.context.channels).size !== m.context.channels.length) fail('Complete case/channel context required');
     if (new Set(m.requested_fields).size !== m.requested_fields.length || m.field_evidence.length !== m.requested_fields.length || new Set(m.field_evidence.map(f => f.field)).size !== m.field_evidence.length ||
       m.requested_fields.some(f => !m.field_evidence.some(e => e.field === f && e.state === 'missing' && e.relevance === 'needed_for_current_question' && e.evidence_revision === m.context.snapshot_revision))) fail('Actually missing relevant information is not established');
+    const allowedFields = (JSON.parse(p.snapshot_json) as { missing_information_fields?: string[] }).missing_information_fields;
+    if (allowedFields && m.requested_fields.some(field => !allowedFields.includes(field))) fail('Requested information is outside the owner-enrolled field restriction');
     const fields = [...m.requested_fields].sort();
     const scope = { canonical_case: m.case_id, executor_conversation_id: t.executor_id, payload: {
       channel: 'email', account: m.sender_account, recipients: [m.recipient], subject: 'Information needed for your question',

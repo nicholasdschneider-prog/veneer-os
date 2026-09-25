@@ -66,6 +66,11 @@ try {
     await page.getByRole('heading', {name:'Enroll bounded standing routine policies',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /All categories currently disabled/);
     await page.screenshot({path:output + '/routine-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
+    await page.getByRole('searchbox').fill('Authorize routine product-label photo requests');
+    await page.getByRole('heading', {name:'Authorize routine product-label photo requests',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /routine-reply-setup/);
+    assert.match(await page.locator('article').innerText(), /Registration does not prove source activation or customer delivery/);
+    await page.screenshot({path:output + '/routine-setup-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('Retire an obsolete unsent draft');
     await page.getByRole('heading', {name:'Retire an obsolete unsent draft',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /Only the active native owning bot/);

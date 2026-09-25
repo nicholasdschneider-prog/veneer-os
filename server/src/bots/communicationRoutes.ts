@@ -1,3 +1,5 @@
+import { routineOwnerSetup } from './routineOwnerSetup.js';
+import { preparedRoutineRegistration } from './preparedRoutineRegistration.js';
 import { candidateOwnerSetup } from './candidateOwnerSetup.js';
 import { autoshipCandidates } from '../botWorkflows/autoshipCandidates.js';
 import { configuredCandidateIdentity } from '../botWorkflows/autoshipCandidateRoutes.js';
@@ -77,6 +79,9 @@ export function createCommunicationRouter(ctx: AppContext) {
     const p=z.object({trust_id:key,reason:z.string().trim().min(1).max(2000)}).strict().parse(req.body);
     res.json(returnBridge.revoke(actor(req),p.trust_id,p.reason));
   }));
+  const routineSetup = routineOwnerSetup(ctx.db, configuredRoutineIdentity(ctx.config), preparedRoutineRegistration);
+  r.get('/routine-messages/setup', run((req,res)=>res.json(routineSetup.status(actor(req)))));
+  r.post('/routine-messages/setup', run((req,res)=>res.json(routineSetup.confirm(actor(req),req.body))));
   const routinePolicies = routinePolicyService(ctx.db);
   const routineExecution = routineExecutionService(ctx.db, { identity: configuredRoutineIdentity(ctx.config) });
   r.post('/routine-messages/hold-scopes/list', run((req,res)=>res.json(routineExecution.scopeInventory(actor(req),req.body))));
@@ -109,7 +114,7 @@ export function createCommunicationRouter(ctx: AppContext) {
     const g=routineExecution.authorization(d.id);
     if(g){res.json({ready:false,execute:false,draft_version:d.version,authorization_basis:'standing_policy',message:`This ${d.state} draft has an immutable standing-policy authorization, not a per-email human approval. Claim requires fresh unchanged source proof. Only trusted source SENT readback proves delivery; unknown outcomes require read-only reconciliation.`});return;}
     res.json({ready:false,execute:false,draft_version:d.version,
-      message:'Standing-policy enrollment is available to the authenticated business owner. The native fixed-template missing-information path is implemented, but requires separately enrolled source trust and a fresh complete-context proof. No live source adapter is connected by this release. Other categories remain disabled. A category label or manager coordination alone cannot authorize this draft. Do not request duplicate per-email approval as a workaround; retain exceptions and report the missing setup.'});
+      message:'Standing-policy enrollment is available to the authenticated business owner. The native fixed-template missing-information path is implemented, but requires separately enrolled source trust and a fresh complete-context proof. The owner can review the prepared photo-only workflow at /#/routine-reply-setup; incomplete prerequisites are shown there. Setup or enrollment is not proof of live source activation. Other categories remain disabled. A category label or manager coordination alone cannot authorize this draft. Do not request duplicate per-email approval as a workaround; retain exceptions and report the missing setup.'});
   }));
   r.get(
     '/chats/:chat',

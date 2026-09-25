@@ -281,6 +281,7 @@ export function DraftCard({ draft, refresh }: { draft: Draft; refresh: () => voi
             .catch(e => setRoutineStatus(e instanceof Error ? e.message : 'Unable to check setup'))
             .finally(() => setBusy(false));
         }}>Check routine setup</Button>
+        <a className="ml-3 inline-block py-2 underline" href="#/routine-reply-setup">Owner photo-request setup</a>
         {routineStatus && <p role="status" className="mt-2 break-words">{routineStatus}</p>}
       </details>
       {draft.retirement && <div role="status" className="space-y-1 break-words rounded-lg border p-3 text-sm">
