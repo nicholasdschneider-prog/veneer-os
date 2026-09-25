@@ -26,6 +26,7 @@ export function routineVerifierRoutes(ctx: AppContext, override?: (req: express.
     try { res.json(fn(req, res.locals.routineIdentity)); }
     catch (e) { if (e instanceof BotError) res.status(e.status).json({ error: e.message }); else if (e instanceof z.ZodError) res.status(400).json({ error: 'Invalid routine source contract' }); else next(e); }
   };
+  r.get('/scope-handoffs/:id', run((req,id)=>s.readScopeHandoff(id,req.params.id!)));
   r.post('/scope-evidence', run((req,id)=>s.scopeEvidence(id,req.body)));
   r.post('/native-context', run((req,id)=>s.nativeContext(id,req.body)));
   r.post('/dispatch-claims', run((req,id)=>s.dispatchClaim(id,req.body)));

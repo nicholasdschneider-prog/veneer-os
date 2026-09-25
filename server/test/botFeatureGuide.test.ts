@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('announces owner scope review without widening employee or service inventory access',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-25')).features.find(f=>f.id==='routine-scope-handoff')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('does not approve');
+    expect(botFeatureInstructions()).toContain(f.agent);
+    for(const path of ['list','review','bind','handoffs','handoffs/revoke'])expect(employeeRouteAllowed('POST','/bot-communication/routine-messages/hold-scopes/'+path)).toBe(false);
+  });
   it('announces owner photo setup without granting employee enrollment',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-25')).features.find(f=>f.id==='routine-owner-setup')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('Registration does not prove');

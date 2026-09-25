@@ -71,6 +71,11 @@ try {
     assert.match(await page.locator('article').innerText(), /routine-reply-setup/);
     assert.match(await page.locator('article').innerText(), /Registration does not prove source activation or customer delivery/);
     await page.screenshot({path:output + '/routine-setup-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
+    await page.getByRole('searchbox').fill('Review and hand off the cases covered by a hold');
+    await page.getByRole('heading', {name:'Review and hand off the cases covered by a hold',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /routine-scope-review/);
+    assert.match(await page.locator('article').innerText(), /does not approve a reply/);
+    await page.screenshot({path:output + '/scope-review-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('Retire an obsolete unsent draft');
     await page.getByRole('heading', {name:'Retire an obsolete unsent draft',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /Only the active native owning bot/);

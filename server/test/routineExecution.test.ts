@@ -286,3 +286,99 @@ it('enforces the owner photo-only restriction even when the source claims a diff
   const good=capture('photo');good.material.requested_fields=['product_label_photo'];good.material.field_evidence=[{field:'product_label_photo',state:'missing',relevance:'needed_for_current_question',evidence_revision:'snapshot1'}];
   expect(s.capture(identity,good).scope.payload.body).toContain('clear photo of the product label');
 });
+
+// Owner-selected lookup data travels separately from supplemental classification.
+function handoffInput(previous:string|null=null,requestKey='60000000-0000-4000-8000-000000000006') {
+ return {trust_id:trustId,decision_id:'scope-hold',decision_version:1,proposal_hash:canonicalSha256(holdProposal),event_revision:0,
+  expected_handoff_id:previous,request_key:requestKey,roots:[{canonical_case:otherCid,source_reference:`https://source.example.test/api/cs/conversations/${otherCid}`}],confirmation:'source-locators-only-not-scope-classification'};
+}
+function handedOff() {
+ addHold();const input=handoffInput(),handoff=s.prepareScopeHandoff(human,input);
+ const evidence=s.scopeEvidence(identity,identities(false,handoff.source_request.requestKey)).evidence_id;
+ const args={trust_id:trustId,evidence_id:evidence,request_key:'handoff-bind',expected_binding_id:null,decision_id:'scope-hold',decision_version:1,proposal_hash:canonicalSha256(holdProposal),event_revision:0,scope_kind:'case_set',review_reference:'Owner reviewed exact complete source scope',confirmation:'complete-current-scope-not-business-approval'};
+ const binding=s.bindScope(human,args);
+ const target=s.scopeEvidence(identity,identities(true,'handoff-target')).evidence_id;
+ const coverage={target_evidence_id:target,scope_evidence_ids:[evidence]};
+ return {input,handoff,evidence,args,binding,coverage,context:()=>s.nativeContext(identity,{trust_id:trustId,canonical_case:cid,evidence:coverage})};
+}
+it('hands exact owner locators to the dedicated source without private inventory or scope approval',()=>{
+ addHold();const before=db.prepare('SELECT * FROM bot_decisions').all(),input=handoffInput();
+ const h=s.prepareScopeHandoff(human,input);expect(s.prepareScopeHandoff(human,input)).toEqual(h);
+ const source=s.readScopeHandoff(identity,h.handoff_id);
+ expect(source.source_request).toEqual({requestKey:h.source_request.requestKey,roots:[otherCid],decision:{id:'scope-hold',version:1,proposal_hash:canonicalSha256(holdProposal),event_revision:0}});
+ expect(source.execute).toBe(false);expect(source).not.toHaveProperty('source_references');expect(source).not.toHaveProperty('proposal');
+ expect(s.scopeReview(human,{trust_id:trustId,decision_id:'scope-hold'})).toMatchObject({handoff:{handoff_id:h.handoff_id},proposal:holdProposal});
+ expect(db.prepare('SELECT * FROM bot_decisions').all()).toEqual(before);
+ for(const table of ['routine_hold_bindings','routine_source_proofs','routine_draft_authorizations'])expect(db.prepare(`SELECT count(*) n FROM ${table}`).get()).toEqual({n:0});
+ expect(()=>s.readScopeHandoff({...identity,clientId:'wrong'},h.handoff_id)).toThrow('identity');
+ expect(()=>s.prepareScopeHandoff(bot,input)).toThrow('human');
+ expect(()=>s.prepareScopeHandoff({...human,user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow},input)).toThrow('owner');
+ expect(()=>s.prepareScopeHandoff(human,{...input,event_revision:1})).toThrow('conflict');
+ expect(()=>db.prepare('DELETE FROM routine_scope_handoffs').run()).toThrow('immutable');
+});
+it('rejects wrong tuple, duplicate roots, off-origin or mismatched record links',()=>{
+ addHold();const x=handoffInput();
+ for(const changed of [{...x,event_revision:1},{...x,decision_version:2},{...x,proposal_hash:'f'.repeat(64)},
+  {...x,roots:[...x.roots,...x.roots]}, {...x,roots:[{canonical_case:otherCid,source_reference:`https://foreign.test/${otherCid}`}]},
+  {...x,roots:[{canonical_case:otherCid,source_reference:`https://source.example.test/${cid}`}]},
+  {...x,roots:[{canonical_case:otherCid,source_reference:`https://source.example.test/${otherCid}?token=fixture`}]}])expect(()=>s.prepareScopeHandoff(human,changed)).toThrow();
+ expect(db.prepare('SELECT count(*) n FROM routine_scope_handoffs').get()).toEqual({n:0});
+});
+it('requires the initial owner request key and all selected roots, then permits explicit matching refresh',()=>{
+ addHold();const h=s.prepareScopeHandoff(human,handoffInput());
+ expect(()=>s.scopeEvidence(identity,identities(false,'not-owner-key'))).toThrow('request key');
+ const omitted=identities(false,h.source_request.requestKey);omitted.cases[0]!.canonical_case=cid;
+ expect(()=>s.scopeEvidence(identity,rehash(omitted))).toThrow('omitted');
+ const first=s.scopeEvidence(identity,identities(false,h.source_request.requestKey));
+ expect(s.scopeEvidence(identity,identities(false,h.source_request.requestKey))).toEqual(first);
+ expect(s.scopeEvidence(identity,identities(false,'explicit-refresh')).execute).toBe(false);
+ expect(db.prepare('SELECT count(*) n FROM routine_scope_handoff_evidence').get()).toEqual({n:2});
+});
+it.each(['revoked','superseded','event','version','owner','trust'] as const)('invalidates source retrieval and coverage after handoff %s',kind=>{
+ const x=handedOff(),revision=x.context().revision;expect(x.context().ready).toBe(true);
+ if(kind==='revoked')s.revokeScopeHandoff(human,{trust_id:trustId,handoff_id:x.handoff.handoff_id,reason:'Withdraw lookup'});
+ if(kind==='superseded')s.prepareScopeHandoff(human,handoffInput(x.handoff.handoff_id,'70000000-0000-4000-8000-000000000007'));
+ if(kind==='event')db.prepare("INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,payload_json,request_key) VALUES('handoff-event','scope-hold',1,'discussion',1,'{}','handoff-event')").run();
+ if(kind==='version')db.prepare("UPDATE bot_decisions SET version=2 WHERE id='scope-hold'").run();
+ if(kind==='owner')db.prepare("UPDATE business_teams SET owner_id=2 WHERE id='team'").run();
+ if(kind==='trust')s.revoke(human,trustId,'Stop routine source');
+ expect(()=>s.readScopeHandoff(identity,x.handoff.handoff_id)).toThrow();
+ if(kind==='owner'||kind==='trust')expect(()=>x.context()).toThrow();else{expect(x.context().ready).toBe(false);expect(x.context().revision).not.toBe(revision);}
+ expect(()=>s.scopeEvidence(identity,identities(false,'refresh-after-change'))).toThrow();
+});
+it('supersession requires new source observation and new owner scope binding even with identical roots',()=>{
+ const x=handedOff();const h=s.prepareScopeHandoff(human,handoffInput(x.handoff.handoff_id,'70000000-0000-4000-8000-000000000007'));
+ expect(()=>s.bindScope(human,{...x.args,request_key:'old-observation',expected_binding_id:x.binding.binding_id})).toThrow('handoff');
+ x.coverage.scope_evidence_ids=[s.scopeEvidence(identity,identities(false,h.source_request.requestKey)).evidence_id];
+ expect(x.context().ready).toBe(false);
+ s.bindScope(human,{...x.args,request_key:'new-review',evidence_id:x.coverage.scope_evidence_ids[0],expected_binding_id:x.binding.binding_id});
+ expect(x.context().ready).toBe(true);
+});
+it('rechecks handoff revocation at first service dispatch without granting another claim',()=>{
+ const x=handedOff(),proof=s.capture(identity,scopedCapture(x.coverage)),d=communicationService(db).saveDraft(bot,'tess','handoff-send',proof.scope.payload);
+ s.accept(bot,{draft_id:d.id,proof_id:proof.proof_id,expected_version:d.version,request_key:'handoff-accept'});
+ const fresh=s.capture(identity,scopedCapture(x.coverage,'handoff-claim')),claim={draft_id:d.id,proof_id:fresh.proof_id,claim_key:'handoff-claim'};s.claim(bot,claim);
+ s.revokeScopeHandoff(human,{trust_id:trustId,handoff_id:x.handoff.handoff_id,reason:'Incomplete root selection'});
+ expect(()=>s.dispatchClaim(identity,{...claim,source_intent:'case-request1',scope_hash:proof.scope_hash,material_hash:proof.material_hash,request_key:'handoff-dispatch'})).toThrow('Native');
+ expect(db.prepare('SELECT count(*) n FROM routine_dispatch_claims').get()).toEqual({n:0});
+});
+it('allows current owner to revoke a handoff after trust revocation without reactivation',()=>{
+ const x=handedOff();s.revoke(human,trustId,'Stop');
+ expect(s.revokeScopeHandoff(human,{trust_id:trustId,handoff_id:x.handoff.handoff_id,reason:'Withdraw'})).toEqual({revoked:true,execute:false});
+ expect(()=>s.readScopeHandoff(identity,x.handoff.handoff_id)).toThrow();
+});
+it('serializes handoff revocation with first dispatch across database connections',async()=>{
+ const x=handedOff(),proof=s.capture(identity,scopedCapture(x.coverage)),d=communicationService(db).saveDraft(bot,'tess','handoff-race',proof.scope.payload);
+ s.accept(bot,{draft_id:d.id,proof_id:proof.proof_id,expected_version:d.version,request_key:'handoff-race-accept'});
+ const fresh=s.capture(identity,scopedCapture(x.coverage,'handoff-race-claim')),claim={draft_id:d.id,proof_id:fresh.proof_id,claim_key:'handoff-race'};s.claim(bot,claim);
+ const {mkdtempSync,rmSync}=await import('node:fs');const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+ const dir=mkdtempSync(join(tmpdir(),'handoff-race-')),file=join(dir,'test.db');await db.backup(file);
+ const left=new Database(file),right=new Database(file);right.pragma('busy_timeout=0');
+ try{
+  const a=routineExecutionService(left,{now:()=>time}),b=routineExecutionService(right,{now:()=>time});
+  left.exec('BEGIN IMMEDIATE');a.revokeScopeHandoff(human,{trust_id:trustId,handoff_id:x.handoff.handoff_id,reason:'Owner found incomplete scope'});
+  const dispatch={...claim,source_intent:'case-request1',scope_hash:proof.scope_hash,material_hash:proof.material_hash,request_key:'handoff-race-dispatch'};
+  expect(()=>b.dispatchClaim(identity,dispatch)).toThrow();left.exec('COMMIT');expect(()=>b.dispatchClaim(identity,dispatch)).toThrow('Native');
+  expect(right.prepare('SELECT count(*) n FROM routine_dispatch_claims').get()).toEqual({n:0});
+ }finally{left.close();right.close();rmSync(dir,{recursive:true,force:true});}
+});

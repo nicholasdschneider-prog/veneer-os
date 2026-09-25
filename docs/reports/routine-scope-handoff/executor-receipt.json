@@ -1,0 +1,12 @@
+{
+  "native_executor_id": "170ab267-448c-4b13-97f4-5f24db2f3652",
+  "native_business_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+  "native_membership": "registered active, not archived, owner user 1 active; read-only BUILD343 database check",
+  "principal_id": "veneer:cbf4e12b-b0ea-44fb-95fc-0e99613dc313",
+  "authorized": true,
+  "enforcement_mode": "required",
+  "source_origin": "https://orderops-dev-web-production.up.railway.app",
+  "checked_at": "2026-09-25T17:58:56Z",
+  "provenance": "Avery own authenticated GET /api/cs/leases/capability; coordination 9f9993eb-92bd-4378-b2b8-eab2846e511b. Credential retained by Avery.",
+  "remaining": "Original source custodian must verify source external_bot_id/current enrollment and exact protected runtime binding. No ticket, lease, enrollment or send was performed."
+}

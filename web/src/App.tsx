@@ -1,3 +1,4 @@
+import { RoutineScopeReview } from './screens/RoutineScopeReview';
 import { RoutineOwnerSetup } from './screens/RoutineOwnerSetup';
 import { FocusedWorkspace } from './screens/FocusedWorkspace';
 import { ReturnOwnerSetup } from './screens/ReturnOwnerSetup';
@@ -283,6 +284,7 @@ export function App() {
     return <PendingApproval email={me.email ?? ''} onRecheck={loadMe} />;
   }
 
+  if (hash.split('?')[0] === '#/routine-scope-review') return <RoutineScopeReview />;
   if (hash.split('?')[0] === '#/routine-reply-setup') return <RoutineOwnerSetup />;
 
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/autoship-candidate-setup') return <ReturnOwnerSetup key="candidate" candidate />;

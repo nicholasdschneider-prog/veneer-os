@@ -40,7 +40,7 @@ export function RoutineOwnerSetup() {
     finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
   const button = 'min-h-11 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 disabled:opacity-50';
-  return <main className="mx-auto w-full max-w-2xl space-y-6 p-5 pb-16 sm:p-8">
+  return <main className="h-full overflow-y-auto mx-auto w-full max-w-2xl space-y-6 p-5 pb-16 sm:p-8">
     <header className="space-y-2"><p className="text-sm text-zinc-500">Elkhart RV Parts · Owner setup</p><h1 className="text-2xl font-semibold">Allow routine photo requests</h1><p className="text-zinc-600 dark:text-zinc-300">Let the named bot ask for a missing product-label photo without your approval for each email.</p></header>
     <section className="space-y-3 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-700">
       <h2 className="font-semibold">What you’re authorizing</h2>
@@ -53,7 +53,7 @@ export function RoutineOwnerSetup() {
     <div aria-live="polite" className="space-y-3">
       {busy && <p role="status">Checking routine reply setup…</p>}
       {!busy && setup?.status === 'blocked' && <section className="space-y-3 rounded-2xl border border-amber-400 p-5"><h2 className="font-semibold">Setup is not ready for authorization</h2><p>No approval is needed from you yet.</p><ul className="list-disc space-y-2 pl-5">{setup.blockers.map(b => <li key={b.owner + b.reason}><strong>{b.owner}:</strong> {b.reason}</li>)}</ul></section>}
-      {!busy && setup?.status === 'registered' && !uncertain && <section className="space-y-3 rounded-2xl border border-green-500 p-5"><h2 className="font-semibold">Standing authority recorded</h2><p>Platform Dev can now finish source activation using this receipt. This registration is not a delivery receipt and has not sent a customer message.</p><label className="block text-sm font-medium" htmlFor="routine-receipt">Registration receipt</label><textarea id="routine-receipt" readOnly rows={7} className="w-full rounded-lg border border-zinc-300 bg-transparent p-3 text-sm dark:border-zinc-600" value={JSON.stringify(setup.receipt, null, 2)} /></section>}
+      {!busy && setup?.status === 'registered' && !uncertain && <section className="space-y-3 rounded-2xl border border-green-500 p-5"><h2 className="font-semibold">Standing authority recorded</h2><p>Platform Dev can now finish source activation using this receipt. This registration is not a delivery receipt and has not sent a customer message.</p><a className="inline-block min-h-11 py-3 underline" href="#/routine-scope-review">Review existing decision scopes</a><label className="block text-sm font-medium" htmlFor="routine-receipt">Registration receipt</label><textarea id="routine-receipt" readOnly rows={7} className="w-full rounded-lg border border-zinc-300 bg-transparent p-3 text-sm dark:border-zinc-600" value={JSON.stringify(setup.receipt, null, 2)} /></section>}
       {!busy && setup?.status === 'revoked' && <p role="alert">This authority was revoked or superseded. It cannot be reactivated here. Contact Platform Dev.</p>}
     </div>
     {setup?.status === 'ready' && !uncertain ? <button className={button} disabled={busy} onClick={() => void confirm()}>Authorize routine photo requests</button>

@@ -20,3 +20,15 @@ it.each(['captures','scope-evidence','native-context','dispatch-claims'])('rejec
     expect(response.status).toBe(401); expect(response.headers.get('cache-control')).toBe('no-store');
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); db.close(); }
 });
+
+it('does not expose a source handoff inventory or permit unauthenticated exact lookup',async()=>{
+ const db=new Database(':memory:'),app=express();
+ app.use('/api/routine-message/verifier',routineVerifierRoutes({db,config} as AppContext,async()=>null));
+ const server=app.listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));
+ try{
+  for(const path of ['scope-handoffs','scope-handoffs/fixture']){
+   const response=await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/routine-message/verifier/${path}`);
+   expect(response.status).toBe(401);
+  }
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}
+});

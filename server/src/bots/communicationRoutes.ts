@@ -84,6 +84,8 @@ export function createCommunicationRouter(ctx: AppContext) {
   r.post('/routine-messages/setup', run((req,res)=>res.json(routineSetup.confirm(actor(req),req.body))));
   const routinePolicies = routinePolicyService(ctx.db);
   const routineExecution = routineExecutionService(ctx.db, { identity: configuredRoutineIdentity(ctx.config) });
+  r.post('/routine-messages/hold-scopes/handoffs', run((req,res)=>res.json(routineExecution.prepareScopeHandoff(actor(req),req.body))));
+  r.post('/routine-messages/hold-scopes/handoffs/revoke', run((req,res)=>res.json(routineExecution.revokeScopeHandoff(actor(req),req.body))));
   r.post('/routine-messages/hold-scopes/list', run((req,res)=>res.json(routineExecution.scopeInventory(actor(req),req.body))));
   r.post('/routine-messages/hold-scopes/review', run((req,res)=>res.json(routineExecution.scopeReview(actor(req),req.body))));
   r.post('/routine-messages/hold-scopes/bind', run((req,res)=>res.json(routineExecution.bindScope(actor(req),req.body))));

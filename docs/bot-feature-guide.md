@@ -73,3 +73,12 @@ The + button starts a human DM, opens an existing bot, or creates a group. Typin
 Room bots still do not inherit their original connected accounts or private history. The UI, invitation dialog, wake instructions, and guide explain this limit; QuickBooks actions still use the original connected bot and existing approval flow. No financial integration or external action was enabled by this release.
 
 Verification and screenshots are recorded in [the implementation report](./reports/unified-chats/report.md). The guide browser checks cover full and restricted employee access, feature discovery, current steps, search, aging, and refresh. The instruction-context regression verifies that resumed bots receive the new Chats and invitation guidance without changing their frozen role snapshots.
+
+
+## Routine scope handoff — September 25, 2026
+
+The current business owner can open `/#/routine-scope-review` after routine source enrollment, prepare the exact decision tuple and actual source case locators, then separately review the complete source projection and classify its scope. Case handoff and classification have independent immutable records and revocations. Unknown/business-wide scope stays blocking. No service inventory or bot owner impersonation is added.
+
+The owner-facing review includes the original decision under its existing ACL in the same snapshot as its version/hash/event tuple. The dedicated source service can retrieve only one exact handoff ID with current trust, owner, ACL and tuple checks. Its first matching observation binds to the owner request UUID; later explicit refresh preserves the same handoff binding. Preparation is never business approval, source eligibility or customer delivery. Source activation remains dependent on runtime/schema setup and genuine owner enrollment.
+
+Catalog entry `routine-scope-handoff` supplies the dated announcement, owner steps, example, access/setup limits and current/resumed-agent instructions. The release verification and compatible source payload are retained in [the handoff report](./reports/routine-scope-handoff/README.md).

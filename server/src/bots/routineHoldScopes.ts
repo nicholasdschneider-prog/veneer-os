@@ -1,3 +1,4 @@
+import { routineScopeHandoffs } from './routineScopeHandoffs.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -31,6 +32,7 @@ export type CoverageDecision = { id: string; version: number; state: string; pro
 // Source proves identities; only a genuine current owner establishes the entire
 // decision's supplemental scope. Neither fact is a new business approval.
 export function routineHoldScopes(db: Database.Database, now: () => number) {
+  const handoffs=routineScopeHandoffs(db);
   const fail = (s: string): never => { throw new BotError(409, s); };
   function decision(t: ScopeTrust, id: string, version: number, proposalHash: string) {
     const d = db.prepare('SELECT d.*,c.business_team_id business_id FROM bot_decisions d JOIN conversations c ON c.id=d.conversation_id WHERE d.id=?').get(id) as CoverageDecision | undefined;
@@ -42,8 +44,8 @@ export function routineHoldScopes(db: Database.Database, now: () => number) {
     if (a.conversationId || a.user.id !== t.owner_id || !db.prepare("SELECT 1 FROM business_teams b JOIN users u ON u.id=b.owner_id WHERE b.id=? AND b.owner_id=? AND u.status='active'").get(t.business_id,a.user.id)) throw new BotError(403,'Current authenticated human business owner required');
   }
   function fresh(e: Row) { return e.captured_ms <= now()+5000 && e.captured_ms >= now()-15000; }
-  function scope(x: Evidence) {
-    return canonicalSha256({account_id:x.account_id,source_origin:x.source_origin,principal_id:x.principal_id,executor_id:x.executor_id,cases:x.cases,closure_hash:x.closure_hash});
+  function scope(x: Evidence,handoffId:string|null) {
+    return canonicalSha256({...(handoffId?{handoff_id:handoffId}:{}),account_id:x.account_id,source_origin:x.source_origin,principal_id:x.principal_id,executor_id:x.executor_id,cases:x.cases,closure_hash:x.closure_hash});
   }
   function overlap(a:Evidence,b:Evidence) {
     const identities=(x:Evidence)=>new Set(x.cases.flatMap(c=>['case:'+c.canonical_case,...[c.customer_id,...c.customer_alias_ids].map(id=>'customer:'+id),...c.orders.map(o=>'order:'+o.order_id)]));
@@ -55,6 +57,7 @@ export function routineHoldScopes(db: Database.Database, now: () => number) {
   return {
     auditRevision(t:ScopeTrust) {
       return {
+        handoffs:handoffs.revision(t),
         evidence:(db.prepare('SELECT COALESCE(MAX(rowid),0) n FROM routine_scope_evidence WHERE trust_id=?').get(t.trust_id) as {n:number}).n,
         bindings:(db.prepare('SELECT COALESCE(MAX(rowid),0) n FROM routine_hold_bindings WHERE trust_id=?').get(t.trust_id) as {n:number}).n,
         revocations:(db.prepare('SELECT COALESCE(MAX(r.rowid),0) n FROM routine_hold_revocations r JOIN routine_hold_bindings b ON b.id=r.binding_id WHERE b.trust_id=?').get(t.trust_id) as {n:number}).n,
@@ -86,10 +89,12 @@ export function routineHoldScopes(db: Database.Database, now: () => number) {
       for(const c of x.cases){if(new Set(c.customer_alias_ids).size!==c.customer_alias_ids.length || canonicalSha256([...c.customer_alias_ids].sort())!==canonicalSha256(c.customer_alias_ids) || new Set(c.orders.map(o=>o.order_id)).size!==c.orders.length || canonicalSha256([...c.orders].sort((a,b)=>a.order_id.localeCompare(b.order_id)))!==canonicalSha256(c.orders))fail('Sorted unique aliases/orders required');}
       const captured_ms=Date.parse(x.captured_at);
       if(!fresh({captured_ms} as Row) || new Set(x.cases.map(c=>c.canonical_case)).size!==x.cases.length) fail('Fresh complete unique case identity evidence required');
+      const handoffId=handoffs.evidence(t,x);
       const requestHash=canonicalSha256(x), old=db.prepare('SELECT id,request_hash FROM routine_scope_evidence WHERE trust_id=? AND request_key=?').get(t.trust_id,x.request_key) as {id:string;request_hash:string}|undefined;
       if(old){if(old.request_hash!==requestHash)fail('Scope evidence request conflict');return {evidence_id:old.id,execute:false};}
       const id=crypto.randomUUID();
-      db.prepare('INSERT INTO routine_scope_evidence(id,trust_id,decision_id,target_case,decision_version,proposal_hash,event_revision,scope_hash,snapshot_json,captured_ms,request_key,request_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id,t.trust_id,x.decision?.id??null,x.target_case,x.decision?.version??0,x.decision?.proposal_hash??'',x.decision?.event_revision??0,scope(x),JSON.stringify(x),captured_ms,x.request_key,requestHash);
+      db.prepare('INSERT INTO routine_scope_evidence(id,trust_id,decision_id,target_case,decision_version,proposal_hash,event_revision,scope_hash,snapshot_json,captured_ms,request_key,request_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id,t.trust_id,x.decision?.id??null,x.target_case,x.decision?.version??0,x.decision?.proposal_hash??'',x.decision?.event_revision??0,scope(x,handoffId),JSON.stringify(x),captured_ms,x.request_key,requestHash);
+      handoffs.link(id,handoffId);
       return {evidence_id:id,execute:false};
     },
     review(a:Actor,t:ScopeTrust,decisionId:string) {
@@ -97,7 +102,7 @@ export function routineHoldScopes(db: Database.Database, now: () => number) {
       const d=db.prepare('SELECT version,proposal_json FROM bot_decisions WHERE id=?').get(decisionId) as {version:number;proposal_json:string};
       decision(t,decisionId,d.version,canonicalSha256(JSON.parse(d.proposal_json)));
       const e=latest(t.trust_id,decisionId), b=currentBinding(t.trust_id,decisionId);
-      return {decision_id:decisionId,decision_version:d.version,proposal_hash:canonicalSha256(JSON.parse(d.proposal_json)),event_revision:eventRevision(decisionId),evidence:e?{id:e.id,snapshot:JSON.parse(e.snapshot_json),fresh:fresh(e)}:null,binding:b??null,execute:false,
+      return {proposal:JSON.parse(d.proposal_json),decision_id:decisionId,decision_version:d.version,proposal_hash:canonicalSha256(JSON.parse(d.proposal_json)),event_revision:eventRevision(decisionId),evidence:e?{id:e.id,snapshot:JSON.parse(e.snapshot_json),fresh:fresh(e),handoff_current:handoffs.covers(t,decisionId,e.id)}:null,binding:b??null,binding_revoked:!!b && !!db.prepare('SELECT 1 FROM routine_hold_revocations WHERE binding_id=?').get(b.id),handoff:handoffs.ownerView(a,t,decisionId),execute:false,
         required_action:'Review the original decision and complete source case set. Record a current supplemental scope only if every affected case is established. Unknown/global scope must remain unbound. This is not business approval.'};
     },
     bind(a:Actor,t:ScopeTrust,raw:unknown) {
@@ -113,6 +118,7 @@ export function routineHoldScopes(db: Database.Database, now: () => number) {
       if((prior?.id??null)!==x.expected_binding_id)fail('Scope binding changed; refresh review');
       const e=latest(t.trust_id,x.decision_id);
       if(x.scope_kind==='case_set' && (!e || e.id!==x.evidence_id || e.decision_version!==x.decision_version || e.proposal_hash!==x.proposal_hash || e.event_revision!==x.event_revision))fail('Latest exact source evidence required; refresh review after drift');
+      if(x.scope_kind==='case_set' && !handoffs.covers(t,x.decision_id,e!.id))fail('Evidence must match the current unrevoked owner handoff');
       const id=crypto.randomUUID();
       db.prepare('INSERT INTO routine_hold_bindings(id,trust_id,business_id,decision_id,decision_version,proposal_hash,event_revision,scope_kind,scope_hash,evidence_id,owner_id,request_key,request_hash,review_reference) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,t.trust_id,t.business_id,x.decision_id,x.decision_version,x.proposal_hash,x.event_revision,x.scope_kind,x.scope_kind==='case_set'?e!.scope_hash:'',x.scope_kind==='case_set'?e!.id:null,a.user.id,x.request_key,h,x.review_reference);
       return {binding_id:id,execute:false};
@@ -144,6 +150,7 @@ export function routineHoldScopes(db: Database.Database, now: () => number) {
           if(revoked)status='revoked';
           else if(b.scope_kind!=='case_set')status=b.scope_kind;
           else if(b.owner_id!==t.owner_id || d.business_id!==t.business_id || b.decision_version!==d.version || b.event_revision!==d.event_revision || b.proposal_hash!==canonicalSha256(JSON.parse(d.proposal_json)))status='decision_changed';
+          else if(!handoffs.covers(t,d.id,b.evidence_id) || (e && !handoffs.covers(t,d.id,e.id)))status='handoff_changed';
           else if(!e || !fresh(e) || !targetValid)status='source_stale';
           else if(latest(t.trust_id,d.id)?.id!==e.id || e.scope_hash!==b.scope_hash || e.decision_version!==b.decision_version || e.event_revision!==b.event_revision || e.proposal_hash!==b.proposal_hash)status='source_changed';
           else status=overlap(JSON.parse(e.snapshot_json),targetData!)?'same_case_or_closure':'verified_other_case';

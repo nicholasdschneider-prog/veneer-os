@@ -1,3 +1,4 @@
+import { routineScopeHandoffs } from './routineScopeHandoffs.js';
 import { routineHoldScopes, coverageEvidenceSchema, type ScopeTrust, type CoverageEvidence, type CoverageDecision } from './routineHoldScopes.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -69,6 +70,7 @@ type Authorization = { draft_id: string; proof_id: string; trust_id: string; act
 export function routineExecutionService(db: Database.Database, options: { now?: () => number; identity?: RoutineIdentity | null } = {}) {
   const now = options.now ?? Date.now, bots = createBotService(db);
   const holds=routineHoldScopes(db,now);
+  const handoffs=routineScopeHandoffs(db);
   const fail = (message: string): never => { throw new BotError(409, message); };
   function user(id: number) {
     const u = db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(id) as UserRow | undefined;
@@ -175,6 +177,25 @@ export function routineExecutionService(db: Database.Database, options: { now?: 
     scopeEvidence(identity:RoutineIdentity,raw:unknown) {
       const {trust_id}=z.object({trust_id:key}).passthrough().parse(raw);
       return db.transaction(()=>{const {t}=loadTrust(trust_id,identity);return holds.evidence(scopeTrust(t,trust_id),raw);}).immediate();
+    },
+    prepareScopeHandoff(a:Actor,raw:unknown) {
+      const {trust_id}=z.object({trust_id:key}).passthrough().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(trust_id);return handoffs.prepare(a,scopeTrust(t,trust_id),raw);}).immediate();
+    },
+    readScopeHandoff(identity:RoutineIdentity,id:string) {
+      return db.transaction(()=>{
+        const row=db.prepare('SELECT trust_id FROM routine_scope_handoffs WHERE id=?').get(id) as {trust_id:string}|undefined;
+        if(!row)throw new BotError(404,'Scope handoff not found');
+        const {t}=loadTrust(row.trust_id,identity);return handoffs.sourceRead(scopeTrust(t,row.trust_id),id);
+      })();
+    },
+    revokeScopeHandoff(a:Actor,raw:unknown) {
+      const {trust_id}=z.object({trust_id:key}).passthrough().parse(raw);
+      return db.transaction(()=>{const {t}=loadTrust(trust_id,undefined,false);
+        const p=db.prepare('SELECT business_id FROM bot_routine_policies WHERE id=?').get(t.policy_id) as {business_id:string};
+        const b=db.prepare('SELECT owner_id FROM business_teams WHERE id=?').get(p.business_id) as {owner_id:number};
+        return handoffs.revoke(a,{...t,trust_id,business_id:p.business_id,owner_id:b.owner_id},raw);
+      }).immediate();
     },
     scopeInventory(a:Actor,raw:unknown) {
       const x=z.object({trust_id:key}).strict().parse(raw);
