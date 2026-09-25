@@ -55,3 +55,15 @@ rendering, draft chronology/editing, voice cards, history, and chat switching.
 Validation before restart passed: root typecheck; all 21 installer tests, 2,480
 server tests (5 skipped), 896 web tests, and 40 browser-manager tests; production
 build. The expanded browser fixture passed all ten width/theme combinations.
+
+## Deployment verification
+
+Commit `9324cb8` was pushed to `origin/main`. The root restart replaced web and
+runner at 13:05 EDT and interrupted the executing chat. On continuation, process
+start times and `/healthz` confirmed both replacements were healthy. The remaining
+app-runner, terminal, and browser-manager restarts were completed through the
+root `npm run restart -- ...` command, which reported each service healthy.
+The final web health response reported `ok: true`, web healthy, runner healthy.
+The compiled server contains the connection guard and immediate transactions.
+No inline-rendering failure was reproduced; confirmation of the originally
+reported user-visible symptom remains unavailable.
