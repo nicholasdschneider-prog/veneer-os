@@ -130,7 +130,7 @@ export function staleConversationCount(ctx: AppContext, user: UserRow, sourceId?
     ctx.db
       .prepare(
         `SELECT COUNT(*) AS n FROM conversations
-         WHERE (visibility = 'team' OR user_id = ?) AND (${STALE}) AND ${businessScopeSql(user.id, 'conversations')} AND ${businessAgentSql(ctx.db, sourceId, 'conversations')}`,
+         WHERE (visibility = 'team' OR user_id = ?) AND (${STALE}) AND ${businessScopeSql(user, 'conversations')} AND ${businessAgentSql(ctx.db, sourceId, 'conversations')}`,
       )
       .get(user.id) as { n: number }
   ).n;
@@ -212,8 +212,8 @@ function toView(row: GeneratedFileJoinRow, size: number, mtimeMs: number): Gener
 export function listGeneratedFiles(ctx: AppContext, user: UserRow, sourceId?: string): GeneratedFileView[] {
   const { db } = ctx;
   const visibilityWhere = user.role === 'member'
-    ? ` WHERE (c.visibility = 'team' OR c.user_id = ? OR (c.id IS NULL AND g.user_id = ?)) AND ${businessScopeSql(user.id)}`
-    : ` WHERE (c.visibility = 'team' OR c.user_id = ? OR c.id IS NULL) AND ${businessScopeSql(user.id)}`;
+    ? ` WHERE (c.visibility = 'team' OR c.user_id = ? OR (c.id IS NULL AND g.user_id = ?)) AND ${businessScopeSql(user)}`
+    : ` WHERE (c.visibility = 'team' OR c.user_id = ? OR c.id IS NULL) AND ${businessScopeSql(user)}`;
   const visibilityParams = user.role === 'member' ? [user.id, user.id] : [user.id];
   const rows = db
     .prepare(`${SELECT_JOIN}${visibilityWhere} AND ${businessAgentSql(db, sourceId)} ORDER BY g.mtime_ms DESC`)

@@ -1,13 +1,14 @@
-import { focusedScopeSql, isFocusedMember } from '../bots/focusedWorkspace.js';
+import { focusApplies, focusedScopeSql, type FocusActor } from '../bots/focusedWorkspace.js';
 import { isEmployee } from '../bots/employeeAccess.js';
 import type Database from 'better-sqlite3';
 import type { ConversationRow, UserRow } from '../db/db.js';
 type AccessRow = Pick<ConversationRow, 'user_id' | 'visibility'> &
   Partial<Pick<ConversationRow, 'id' | 'business_team_id'>>;
 
-export function businessScopeSql(userId: number, alias = 'c'): string {
+export function businessScopeSql(actor: number | FocusActor, alias = 'c'): string {
+  const userId = typeof actor === 'number' ? actor : actor.id;
   if (!Number.isSafeInteger(userId)) return '0';
-  return `(${focusedScopeSql(userId, alias)} AND NOT EXISTS (SELECT 1 FROM coordination_lanes cl WHERE cl.conversation_id=${alias}.id) AND NOT EXISTS (SELECT 1 FROM team_room_workers rw WHERE rw.conversation_id=${alias}.id) AND (NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
+  return `(${focusedScopeSql(actor, alias)} AND NOT EXISTS (SELECT 1 FROM coordination_lanes cl WHERE cl.conversation_id=${alias}.id) AND NOT EXISTS (SELECT 1 FROM team_room_workers rw WHERE rw.conversation_id=${alias}.id) AND (NOT EXISTS (SELECT 1 FROM employee_workspaces ew WHERE ew.user_id=${userId}) OR EXISTS (SELECT 1 FROM employee_bot_access ea WHERE ea.user_id=${userId} AND ea.conversation_id=${alias}.id)) AND (${alias}.business_team_id IS NULL OR EXISTS (SELECT 1 FROM business_teams bt WHERE bt.id=${alias}.business_team_id AND (bt.owner_id=${userId} OR EXISTS (SELECT 1 FROM business_team_members bm WHERE bm.team_id=bt.id AND bm.user_id=${userId})))))`;
 }
 export function businessAgentSql(
   db: Database.Database,
@@ -52,8 +53,19 @@ function businessRole(
     )?.role ?? null
   );
 }
+/** Coordination between two bots is visible to whoever can see both bots, or to
+ * a focused human whose assigned bot is one side while the other side is any
+ * team bot. That exposes the coordination exchange, never the peer's own chats. */
+export function canViewCoordinationPair(user: FocusActor, ids: string[], db: Database.Database): boolean {
+  const parents = ids.map(id => db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow | undefined);
+  const visible = (actor: FocusActor) => parents.map(parent => Boolean(parent && canViewConversation(actor, parent, db)));
+  const direct = visible(user);
+  if (direct.every(Boolean)) return true;
+  return !user.botSession && focusApplies(db, user) && direct.some(Boolean)
+    && visible({ id: user.id, botSession: true }).every(Boolean);
+}
 export function canViewConversation(
-  user: Pick<UserRow, 'id'>,
+  user: FocusActor,
   c: AccessRow,
   db?: Database.Database,
 ): boolean {
@@ -61,21 +73,18 @@ export function canViewConversation(
     const lane = c.id ? db.prepare('SELECT thread_id FROM coordination_lanes WHERE conversation_id=?').get(c.id) as {thread_id:string} | undefined : undefined;
     if (lane) {
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string} | undefined;
-      return Boolean(thread && [thread.left_id,thread.right_id].every(id => {
-        const parent = db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow | undefined;
-        return parent && canViewConversation(user,parent,db);
-      }));
+      return Boolean(thread && canViewCoordinationPair(user, [thread.left_id, thread.right_id], db));
     }
     if (c.id && db.prepare('SELECT 1 FROM team_room_workers WHERE conversation_id=?').get(c.id)) return false;
     const active = db.prepare('SELECT status FROM users WHERE id=?').get(user.id) as { status: string } | undefined;
     if (active?.status !== 'active') return false;
-    if (isFocusedMember(db, user.id) && (!c.id || !db.prepare(`SELECT 1 FROM conversations c WHERE c.id=? AND ${focusedScopeSql(user.id)}`).get(c.id))) return false;
+    if (focusApplies(db, user) && (!c.id || !db.prepare(`SELECT 1 FROM conversations c WHERE c.id=? AND ${focusedScopeSql(user.id)}`).get(c.id))) return false;
     if (isEmployee(db, user.id) && (!c.id || !db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(user.id, c.id))) return false;
   }
   return (c.visibility === 'team' || c.user_id === user.id) && businessRole(user, c, db) !== null;
 }
 export function canSendToConversation(
-  user: Pick<UserRow, 'id'>,
+  user: FocusActor,
   c: AccessRow,
   db?: Database.Database,
 ): boolean {

@@ -5,6 +5,7 @@ import type { ConversationRow } from '../db/db.js';
 import {
   canSendToConversation,
   canViewConversation,
+  canViewCoordinationPair,
   sameBusiness,
 } from '../conversations/access.js';
 import { presentConversationEventForUser } from '../conversations/messageOriginPresentation.js';
@@ -30,13 +31,10 @@ export function createCoordinationRouter(ctx: AppContext): express.Router {
         .get(id) as { name: string } | undefined
     )?.name ?? 'Bot';
   const allowed = (req: express.Request, thread: CoordinationThread) =>
+    canViewCoordinationPair(req.user!, [thread.left_id, thread.right_id], db) &&
     [thread.left_id, thread.right_id].every((id) => {
       const c = row(id);
-      return (
-        c &&
-        canViewConversation(req.user!, c, db) &&
-        sameBusiness(db, req.agentConversationId, c)
-      );
+      return c && sameBusiness(db, req.agentConversationId, c);
     });
   router.get('/conversations/:id/coordination', (req, res) => {
     const parent = row(String(req.params.id));

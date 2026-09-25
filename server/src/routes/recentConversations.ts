@@ -174,7 +174,7 @@ export function createRecentConversationsRouter(
       const input = parsed.data;
       options.refreshAutoArchive(req.user!.id);
 
-      const where = ["(c.visibility = 'team' OR c.user_id = ?)", businessScopeSql(req.user!.id), businessAgentSql(ctx.db, req.agentConversationId)];
+      const where = ["(c.visibility = 'team' OR c.user_id = ?)", businessScopeSql(req.user!), businessAgentSql(ctx.db, req.agentConversationId)];
       const params: unknown[] = [req.user!.id];
       if (!input.includeArchived) where.push('c.archived = 0');
       if (input.projectId === 'none') where.push('c.project_id IS NULL');

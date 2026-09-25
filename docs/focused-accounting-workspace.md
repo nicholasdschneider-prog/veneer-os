@@ -6,6 +6,8 @@ The Automations tab is a read-only view of routines belonging to accessible assi
 
 The focus configuration is reusable and enforced through conversation access checks, SQL list scopes, direct chat routes, and existing WebSocket authorization. An empty bot assignment stays closed. Removing membership or a registered bot removes its assignment. Hidden platform navigation is a UX choice; this is not a replacement for all existing platform API permissions.
 
+Focus narrows only the human view. A bot turn acting for the focused member (agent token or coordination lane, marked `botSession`) keeps normal business-member reach: it can list, message, and coordinate with every bot in the same business team. The focused member can open coordination threads their assigned bot takes part in, but not the other bot's own chats. See `focusApplies` and `canViewCoordinationPair`.
+
 ## Owner configuration
 
 Use `manage_business_team` with `action: "focus"`, exact `team_id`, verified `user_id` and `email`, explicit `conversation_ids`, and `enabled: true`. Requires an active full business member and active shared bots owned by that business. Human owner or authenticated owner Platform Dev only. Configuration writes an immutable business audit entry. `enabled: false` with an empty `conversation_ids` list restores the normal view; it does not change membership or financial authorization. Account-wide changes fail if another business owner has membership in scope.

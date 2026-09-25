@@ -1411,7 +1411,8 @@ export function createConversationManager({
     const item = entry.queue.shift();
     if (item === undefined) return;
     if (lane) {
-      const actor = {id:item.actorUserId ?? -1};
+      // A lane is a bot session; the initiating human's focus never narrows it.
+      const actor = {id:item.actorUserId ?? -1, botSession:true};
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string};
       const peer = db.prepare('SELECT * FROM conversations WHERE id=?').get(thread.left_id===authority.id ? thread.right_id : thread.left_id) as ConversationRow | undefined;
       if (!peer || !canViewConversation(actor,peer,db) || !canSendToConversation(actor,authority,db) || !sameBusiness(db,peer.id,authority)) {

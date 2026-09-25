@@ -146,7 +146,7 @@ export function searchWork(
   const agentHuddle = source
     ? ` AND (s.kind<>'huddle' OR EXISTS(SELECT 1 FROM huddle_messages hm JOIN huddle_members mem ON mem.huddle_id=hm.huddle_id WHERE 'huddle:'||hm.id=s.id AND mem.conversation_id='${source.replaceAll("'", "''")}'))`
     : '';
-  const scope = `(c.visibility='team' OR c.user_id=${user.id}) AND ${businessScopeSql(user.id)} AND ${businessAgentSql(ctx.db, source)}`;
+  const scope = `(c.visibility='team' OR c.user_id=${user.id}) AND ${businessScopeSql(user)} AND ${businessAgentSql(ctx.db, source)}`;
   const rows = ctx.db
     .prepare(
       `SELECT s.id,s.kind,s.body,s.at,s.href,c.id AS conversation_id,c.title FROM bot_search_fts f JOIN bot_search_documents s ON s.rowid=f.rowid JOIN conversations c ON c.id=s.conversation_id WHERE bot_search_fts MATCH ? AND ${scope}${agentHuddle} ORDER BY rank,s.at DESC LIMIT 31 OFFSET ?`,

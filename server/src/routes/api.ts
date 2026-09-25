@@ -476,7 +476,8 @@ declare module 'express-serve-static-core' {
     /** Chat whose agent authenticated this request (agent token), if any. */
     agentConversationId?: string;
     agentExecutionConversationId?: string;
-    user?: UserRow;
+    /** botSession marks a bot turn acting for this human; see focusApplies. */
+    user?: UserRow & { botSession?: boolean };
   }
 }
 
@@ -824,7 +825,7 @@ export function createApiRouter(ctx: AppContext): Router {
       `UPDATE users SET last_seen_at = datetime('now')
        WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < datetime('now','-5 minutes'))`,
     ).run(user.id);
-    req.user = user;
+    req.user = req.agentConversationId ? { ...user, botSession: true } : user;
     next();
   });
 
@@ -1296,7 +1297,7 @@ export function createApiRouter(ctx: AppContext): Router {
       const where = ['archived = ?', 'side_chat_of IS NULL'];
       const params: unknown[] = [archived];
       where.push("(visibility = 'team' OR user_id = ?)");
-      where.push(businessScopeSql(req.user!.id, 'conversations'));
+      where.push(businessScopeSql(req.user!, 'conversations'));
       where.push(businessAgentSql(db, req.agentConversationId, 'conversations'));
       params.push(req.user!.id);
       if (!archived && project === 'none') {
@@ -1372,7 +1373,7 @@ export function createApiRouter(ctx: AppContext): Router {
       const where = [
         'c.archived = 1',
         "(c.visibility = 'team' OR c.user_id = ?)",
-        businessScopeSql(req.user!.id),
+        businessScopeSql(req.user!),
         businessAgentSql(db, req.agentConversationId),
         `(c.channel <> 'automation'
           OR NOT EXISTS (
@@ -1496,7 +1497,7 @@ export function createApiRouter(ctx: AppContext): Router {
         `SELECT COUNT(*) AS chatCount, MAX(last_active_at) AS lastActiveAt
          FROM conversations
          WHERE project_id = ? AND archived = 0 AND channel <> 'automation'
-           AND (visibility = 'team' OR user_id = ?) AND ${businessScopeSql(user.id, 'conversations')}`,
+           AND (visibility = 'team' OR user_id = ?) AND ${businessScopeSql(user, 'conversations')}`,
       )
       .get(row.id, user.id) as {
       chatCount: number;
@@ -3656,7 +3657,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     const stmt = db.prepare(
       `UPDATE conversations SET pin_order = ?
-       WHERE id = ? AND pin_order IS NOT NULL AND (visibility = 'team' OR user_id = ?) AND ${businessScopeSql(req.user!.id, 'conversations')}`,
+       WHERE id = ? AND pin_order IS NOT NULL AND (visibility = 'team' OR user_id = ?) AND ${businessScopeSql(req.user!, 'conversations')}`,
     );
     db.transaction((ids: string[]) => {
       ids.forEach((id, i) => stmt.run(i, id, req.user!.id));
@@ -3896,7 +3897,7 @@ export function createApiRouter(ctx: AppContext): Router {
     const rows = db
       .prepare(
         `SELECT a.* FROM approvals a JOIN conversations c ON c.id = a.conversation_id
-         WHERE a.status = ? AND (c.visibility = 'team' OR c.user_id = ?) AND ${businessScopeSql(req.user!.id)} AND ${businessAgentSql(db, req.agentConversationId)}
+         WHERE a.status = ? AND (c.visibility = 'team' OR c.user_id = ?) AND ${businessScopeSql(req.user!)} AND ${businessAgentSql(db, req.agentConversationId)}
          ORDER BY a.created_at DESC`,
       )
       .all(status, req.user!.id) as ApprovalRow[];

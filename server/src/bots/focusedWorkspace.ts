@@ -8,9 +8,19 @@ export function isFocusedMember(db: Database.Database, userId: number): boolean 
   return Boolean(db.prepare('SELECT 1 FROM focused_workspaces WHERE user_id=?').get(userId));
 }
 
+/** Focus trims what a human browses. A bot turn acting for that human (agent
+ * token or coordination lane) keeps the ordinary business reach, so assigned
+ * bots can still find, message and coordinate with the rest of the team. */
+export type FocusActor = Pick<UserRow, 'id'> & { botSession?: boolean };
+export function focusApplies(db: Database.Database, user: FocusActor): boolean {
+  return !user.botSession && isFocusedMember(db, user.id);
+}
+
 // This scope complements existing membership and visibility checks; it never grants access.
-export function focusedScopeSql(userId: number, alias = 'c'): string {
+export function focusedScopeSql(actor: number | FocusActor, alias = 'c'): string {
+  const userId = typeof actor === 'number' ? actor : actor.id;
   if (!Number.isSafeInteger(userId)) return '0';
+  if (typeof actor !== 'number' && actor.botSession) return '1';
   return `(NOT EXISTS (SELECT 1 FROM focused_workspaces fw WHERE fw.user_id=${userId}) OR EXISTS (
     SELECT 1 FROM focused_bot_access fa JOIN focused_workspaces fw ON fw.user_id=fa.user_id
     JOIN business_bot_members bm ON bm.conversation_id=fa.conversation_id AND bm.team_id=fw.team_id

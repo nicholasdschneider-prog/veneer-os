@@ -270,6 +270,34 @@ describe('focused business members', () => {
     teams.manage(owner, { action: 'remove_bot', team_id: teamId, conversation_id: 'nora' });
     expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(2)}`).all()).toEqual([]);
   });
+  it('narrows only the human view: assigned bots still reach and coordinate with every team bot', async () => {
+    fullMember(); focus();
+    const human = actor(2).user; const bot = { ...human, botSession: true };
+    const grantRow = db.prepare("SELECT * FROM conversations WHERE id='grant'").get() as ConversationRow;
+    expect(canSendToConversation(human, grantRow, db)).toBe(false);
+    expect(canSendToConversation(bot, grantRow, db)).toBe(true);
+    expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(bot)} ORDER BY id`).all()).toEqual(
+      expect.arrayContaining([{ id: 'grant' }, { id: 'henry' }, { id: 'nora' }]));
+    let agentConversationId: string | undefined = 'nora';
+    const queueMessage = vi.fn(async () => ({ messageId: 1, disposition: 'queued' }));
+    const ctx = { db, resolveIdentity: async () => ({ email: 'ali@fixture.test', agentConversationId }), manager: { bus: new EventEmitter(), statusOf: async () => 'idle', snapshot: async () => [], queueMessage } } as unknown as AppContext;
+    const app = express(); app.use('/api', createApiRouter(ctx)); const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(r => server.once('listening', r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+    try {
+      const sent = await fetch(base + '/conversations/grant/steer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Pricing handoff' }) });
+      expect(sent.status).toBe(200);
+      const { coordinationThreadId } = await sent.json() as { coordinationThreadId: string };
+      expect(queueMessage).toHaveBeenCalledOnce();
+      expect(((await (await fetch(base + '/conversations')).json()) as { conversations: { id: string }[] }).conversations.map(c => c.id)).toEqual(expect.arrayContaining(['grant', 'henry']));
+      expect((await fetch(base + `/coordination/${coordinationThreadId}`)).status).toBe(200);
+      agentConversationId = undefined;
+      // The human follows their bot's coordination without gaining the peer's chats.
+      expect((await fetch(base + `/coordination/${coordinationThreadId}`)).status).toBe(200);
+      expect((await fetch(base + '/conversations/grant/transcript')).status).toBe(404);
+      expect(((await (await fetch(base + '/conversations')).json()) as { conversations: { id: string }[] }).conversations.map(c => c.id)).toEqual(['nora']);
+    } finally { await new Promise<void>(r => server.close(() => r())); }
+  });
   it('enforces direct HTTP routes and keeps the full-member flag for accounting tools', async () => {
     fullMember(); focus();
     const ctx = { db, resolveIdentity: async () => ({ email: 'ali@fixture.test' }), manager: { bus: new EventEmitter(), statusOf: async () => 'idle', snapshot: async () => [] } } as unknown as AppContext;
