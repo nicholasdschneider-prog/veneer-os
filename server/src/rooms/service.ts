@@ -413,6 +413,7 @@ export function createRoomService(db: Database.Database) {
           userRole(r.team_id, a.user.id) !== "viewer",
         can_send: userRole(r.team_id, a.user.id) !== "viewer",
         members: participants(r),
+        bot_activity: service.activity(a, id),
         messages: messages.slice(0, 100).map((m) => ({
           ...m,
           mentions: JSON.parse(m.mentions_json),
@@ -422,6 +423,31 @@ export function createRoomService(db: Database.Database) {
         })),
         next: messages.length > 100 ? messages[99]!.seq : null,
       };
+    },
+    activity(a: RoomActor, id: string) {
+      const r = access(a, id);
+      // Only current, accessible room members; never expose worker IDs, prompts,
+      // provider errors, questions, approvals, or the original bot's activity.
+      return participants(r).filter(p => p.kind === 'bot' && p.available).flatMap(p => {
+        const latest = db.prepare(`SELECT w.status, w.conversation_id, m.seq, m.id message_id
+          FROM team_room_deliveries d JOIN conversation_wakeups w ON w.id=d.wake_id
+          JOIN team_room_messages m ON m.id=d.message_id
+          JOIN team_room_members member ON member.room_id=d.room_id AND member.bot_id=d.bot_id
+            AND member.epoch=d.bot_epoch AND member.left_at IS NULL
+          WHERE d.room_id=? AND d.bot_id=? ORDER BY m.seq DESC LIMIT 1`).get(id, p.key.slice(4)) as
+          {status: string; conversation_id: string; seq: number; message_id: string} | undefined;
+        if (!latest) return [];
+        const worker = latest.conversation_id;
+        const pending = db.prepare('SELECT status FROM pending_turns WHERE conversation_id=?').get(worker) as {status: string} | undefined;
+        const waiting = db.prepare(`SELECT 1 FROM approvals WHERE conversation_id=? AND status='pending'
+          UNION ALL SELECT 1 FROM questions WHERE conversation_id=? AND status='pending' LIMIT 1`).get(worker, worker);
+        const queued = db.prepare('SELECT 1 FROM queued_messages WHERE conversation_id=? LIMIT 1').get(worker);
+        const scheduled = db.prepare("SELECT 1 FROM conversation_wakeups WHERE conversation_id=? AND status='pending' LIMIT 1").get(worker);
+        const replied = db.prepare('SELECT 1 FROM team_room_messages WHERE room_id=? AND author_key=? AND seq>? LIMIT 1').get(id, p.key, latest.seq);
+        const state = pending?.status === 'failed' ? 'failed' : waiting ? 'waiting' : pending ? 'working'
+          : queued || scheduled ? 'queued' : latest.status === 'cancelled' ? 'cancelled' : replied ? 'replied' : 'no_reply';
+        return [{ bot_key: p.key, name: p.name, message_id: latest.message_id, state }];
+      });
     },
     seen(a: RoomActor, id: string, seq: number) {
       const r = access(a, id);

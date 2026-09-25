@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import {
   roomApi,
+  roomActivityLabel,
+  hasUnselectedMention,
   roomTitle,
   type TeamRoom,
   type RoomDirectory,
@@ -650,6 +652,10 @@ function RoomConversation({
                   <p className="whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
                     {m.text}
                   </p>
+                  {!!m.mentions.length && <p className="mt-2 text-xs text-muted-foreground">
+                    Addressed: {m.mentions.map(key => room.members.find(p => p.key === key)?.name ?? 'Former member').join(', ')}
+                  </p>}
+                  {!m.author_key.startsWith('bot:') && hasUnselectedMention(m.text, [], false) && !m.mentions.length && <p className="mt-2 text-xs text-muted-foreground">No member selected; this text did not wake a bot.</p>}
                   {m.attachments.map((f) => <RoomAttachment key={f.id} file={f} />)}
                 </div>
               </div>
@@ -672,6 +678,12 @@ function RoomConversation({
           >
             ↓ Latest messages
           </button>
+          {!!room.bot_activity?.length && <div role="status" aria-live="polite" className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            {room.bot_activity.map(activity => <span key={activity.bot_key}>
+              {activity.name}: {roomActivityLabel[activity.state] ?? 'Status unavailable'}
+            </span>)}
+          </div>}
+          {hasUnselectedMention(draft, mentions, everyone) && <p className="mb-2 text-sm text-amber-700 dark:text-amber-400">Choose a person or bot from the @ picker to address them. Plain @name text does not wake a bot.</p>}
           {mentions.some(m => m.kind === 'bot') && <p className="mb-2 text-sm text-muted-foreground">Connected account actions require the original bot chat: {mentions.filter(m => m.kind === 'bot').map(m => <button key={m.key} className="min-h-11 px-2 underline" onClick={() => onNavigate('#/chat/' + m.key.slice(4) + '?from=bots')}>Open {m.name}</button>)}</p>}
           <div className="rounded-3xl border bg-card p-3 shadow-sm"
             onDragOver={(e) => {

@@ -18,6 +18,7 @@ export type RoomMessage = {
   mentions: string[];
 };
 export type TeamRoom = {
+  bot_activity?: { bot_key: string; name: string; message_id: string; state: string }[];
   updated_at: string;
   last_message?: {text:string;author_name:string;created_at:string}|null;
   id: string;
@@ -112,4 +113,14 @@ export function useRoomUnread() {
     };
   }, []);
   return count;
+}
+
+export const roomActivityLabel: Record<string, string> = {
+  queued: 'Queued', working: 'Working…', waiting: 'Waiting for input',
+  failed: 'Stopped after an error', cancelled: 'Request canceled',
+  replied: 'Reply posted', no_reply: 'No room reply — no work pending',
+};
+export function hasUnselectedMention(text: string, mentions: RoomPerson[], everyone: boolean) {
+  // Never turn prose into execution authority. The picker supplies exact IDs.
+  return /(^|\s)@\S/.test(text) && !mentions.length && !everyone;
 }

@@ -5,15 +5,17 @@ import os from "node:os";
 import path from "node:path";
 import type { Server } from "node:http";
 import { fileURLToPath } from "node:url";
-import { beforeEach, afterEach, it, expect } from "vitest";
+import { beforeEach, afterEach, it, expect, vi } from "vitest";
 import { migrate } from "../src/db/migrate.js";
 import { createRoomsRouter } from "../src/rooms/routes.js";
 import { createRoomService } from "../src/rooms/service.js";
 import { employeeApiBoundary } from "../src/bots/employeeAccess.js";
 import type { UserRow } from "../src/db/db.js";
 import type { AppContext } from "../src/context.js";
+const statusOf = vi.fn();
 let db: Database.Database, server: Server, url: string, folder: string;
 beforeEach(async () => {
+  statusOf.mockReset().mockResolvedValue('idle');
   db = new Database(":memory:");
   db.pragma("foreign_keys=ON");
   migrate(db, fileURLToPath(new URL("../src/db/migrations", import.meta.url)));
@@ -41,7 +43,7 @@ beforeEach(async () => {
   app.use(employeeApiBoundary(db));
   app.use(
     "/team-rooms",
-    createRoomsRouter({ db, config: { dataDir: folder } } as AppContext),
+    createRoomsRouter({ db, manager: { statusOf }, config: { dataDir: folder } } as AppContext),
   );
   server = await new Promise<Server>((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
@@ -245,4 +247,24 @@ it("keeps active documents as downloads even when inline is requested", async ()
     expect(preview.headers.get('content-disposition')).toContain('attachment');
     expect(preview.headers.get('content-type')).toBe('application/octet-stream');
   }
+});
+
+it('reports runner failures for room workers without querying the original bot', async () => {
+  db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES('bot',1,1,'Grant','claude','native','team','team')").run();
+  db.prepare("INSERT INTO bot_registrations(conversation_id,name,active,registered_by) VALUES('bot','Grant',1,1)").run();
+  const service = createRoomService(db);
+  const owner = {user: db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow};
+  const room = service.create(owner, {team_id:'team',kind:'group',name:'Mixed',members:['bot:bot'],request_key:'mixed'});
+  service.post(owner,room.id,{text:'Review',mentions:['bot:bot'],request_key:'request'});
+  statusOf.mockResolvedValue('failed');
+  const response = await req('/team-rooms/'+room.id);
+  expect(response.status).toBe(200);
+  expect((await response.json()).room.bot_activity[0].state).toBe('failed');
+  expect(statusOf).toHaveBeenCalledTimes(1);
+  expect(statusOf.mock.calls[0]![0]).not.toBe('bot');
+  statusOf.mockClear();
+  expect((await req('/team-rooms/'+room.id,'GET',undefined,3)).status).toBe(404);
+  expect(statusOf).not.toHaveBeenCalled();
+  statusOf.mockRejectedValue(new Error('runner unavailable'));
+  expect((await (await req('/team-rooms/'+room.id)).json()).room.bot_activity[0].state).toBe('queued');
 });

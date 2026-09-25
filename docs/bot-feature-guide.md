@@ -82,3 +82,23 @@ The current business owner can open `/#/routine-scope-review` after routine sour
 The owner-facing review includes the original decision under its existing ACL in the same snapshot as its version/hash/event tuple. The dedicated source service can retrieve only one exact handoff ID with current trust, owner, ACL and tuple checks. Its first matching observation binds to the owner request UUID; later explicit refresh preserves the same handoff binding. Preparation is never business approval, source eligibility or customer delivery. Source activation remains dependent on runtime/schema setup and genuine owner enrollment.
 
 Catalog entry `routine-scope-handoff` supplies the dated announcement, owner steps, example, access/setup limits and current/resumed-agent instructions. The release verification and compatible source payload are retained in [the handoff report](./reports/routine-scope-handoff/README.md).
+
+## Group bot activity — September 25, 2026
+
+Mixed human/bot rooms now show room-specific bot status above the composer, refreshed by the existing visible-room polling. Status comes from isolated room workers and durable wake, queue, pending-turn, approval, and question records. Working includes a turn awaiting recovery after restart; it does not claim text is streaming. A later room reply is labeled Reply posted, without claiming it answers a particular request. No room reply with no pending work is not a success receipt. Waiting and errors may need administrator investigation; private prompts, errors, approval details, and worker IDs are not exposed to room members.
+
+Select an exact recipient through the @ picker. Sent messages list selected recipients, and plain mention text with no recipients gets a warning. Plain text never creates a wake. Membership, bot access, private-session isolation, and external action permissions remain unchanged. The team-messages catalog entry delivers these instructions to employees and fresh/resumed bots.
+
+Implementation and verification files:
+
+- [server/src/rooms/service.ts](/Users/archerclawdington/veneer-os/server/src/rooms/service.ts)
+- [server/src/rooms/routes.ts](/Users/archerclawdington/veneer-os/server/src/rooms/routes.ts)
+- [web/src/lib/teamRooms.ts](/Users/archerclawdington/veneer-os/web/src/lib/teamRooms.ts)
+- [web/src/screens/TeamMessages.tsx](/Users/archerclawdington/veneer-os/web/src/screens/TeamMessages.tsx)
+- [server/test/teamRooms.test.ts](/Users/archerclawdington/veneer-os/server/test/teamRooms.test.ts)
+- [server/test/teamRoomRoutes.test.ts](/Users/archerclawdington/veneer-os/server/test/teamRoomRoutes.test.ts)
+- [web/src/lib/teamRooms.test.ts](/Users/archerclawdington/veneer-os/web/src/lib/teamRooms.test.ts)
+- [scripts/room-activity-browser-check.mjs](/Users/archerclawdington/veneer-os/scripts/room-activity-browser-check.mjs)
+- [server/src/featureGuide/catalog.ts](/Users/archerclawdington/veneer-os/server/src/featureGuide/catalog.ts)
+
+Validation: root typecheck and the full suite passed (2,507 server tests, 898 web tests, 40 browser-manager tests, and 29 installer tests; five server tests skipped). Isolated browser checks verified queued/working/error polling, selected-recipient display, plain-mention warnings, and overflow at 390px and 1280px. The guide browser checks passed for full/restricted employees, discovery, search, mobile layout, refresh, and aging. Instruction-context and catalog tests passed for fresh/resumed agent delivery. No real employee messages were sent.

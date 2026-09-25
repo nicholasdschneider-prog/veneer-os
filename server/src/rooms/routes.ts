@@ -49,13 +49,35 @@ export function createRoomsRouter(ctx: AppContext) {
   );
   router.get(
     "/:id",
-    run((req, res) => {
+    run(async (req, res) => {
       const after = z.coerce
         .number()
         .int()
         .nonnegative()
         .parse(req.query.after ?? 0);
-      res.json({ room: s.read(actor(req), String(req.params.id), after) });
+      const id = String(req.params.id);
+      const room = s.read(actor(req), id, after);
+      await Promise.all(room.bot_activity.map(async activity => {
+        const worker = ctx.db.prepare(`SELECT w.conversation_id FROM team_room_workers w
+          JOIN team_room_members m ON m.room_id=w.room_id AND m.bot_id=w.bot_id AND m.epoch=w.bot_epoch
+          WHERE w.room_id=? AND w.bot_id=? AND m.left_at IS NULL`).get(id, activity.bot_key.slice(4)) as {conversation_id: string} | undefined;
+        if (!worker) return;
+        try {
+          const status = await ctx.manager.statusOf(worker.conversation_id);
+          if (status === 'failed') activity.state = 'failed';
+          else if (status === 'needs_you') activity.state = 'waiting';
+          else if (status === 'working') activity.state = 'working';
+        } catch {
+          // Durable queue/recovery state remains useful during runner restarts.
+        }
+      }));
+      // Access may have changed during the runner round trip.
+      const fresh = s.read(actor(req), id, after);
+      for (const activity of fresh.bot_activity) {
+        const observed = room.bot_activity.find(old => old.bot_key === activity.bot_key && old.message_id === activity.message_id);
+        if (observed) activity.state = observed.state;
+      }
+      res.json({ room: fresh });
     }),
   );
   router.patch(
