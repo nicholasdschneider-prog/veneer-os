@@ -120,3 +120,9 @@ Follow-up validation passed before restart: root typecheck, 29 installer tests
 tests, 40 browser-manager tests, and production build. Live `npm run health`
 reported healthy local web/runner, four connections on the owned tunnel, and
 HTTP 302 public front-door reachability with authenticated chat unverified.
+
+Follow-up deployment: commit `7250de5` was pushed to `origin/main`. The root
+restart completed all five services and ran the new connectivity checks. On
+continuation, another `npm run health` exited successfully: local web/runner
+healthy, four active connections on Veneer's tunnel, and HTTP 302 from the public
+front door. Authenticated public chat remains explicitly unverified.
