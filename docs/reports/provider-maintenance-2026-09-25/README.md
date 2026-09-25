@@ -27,7 +27,9 @@ Used the supported runtime installer separately for Claude and Codex, with expli
 - Installer `--verify-only` confirmed all three exact runtime pins.
 - Full `npm test` passed: 2,478 server tests (5 skipped), 893 web tests, 40 browser-manager tests, and 21 installer tests.
 - Root production build passed with the existing nonfatal Vite large-chunk warning.
-- Restart and final health verification: pending.
+- `npm run restart` restarted web and runner, interrupting this maintenance chat. On the queue's automatic continuation, confirmed their new PIDs, then completed the remaining services with `npm run restart -- veneer-pro-app-runner veneer-pro-term veneer-browser-manager` (exit 0).
+- After restart, all five service health endpoints returned HTTP 200. Installer verification again confirmed Claude 2.1.282, Codex 0.157.0, and unchanged Grok 1.0.5. Live Veneer model discovery retained all existing choices and defaults (Claude Opus 5.5 and GPT-6 Astra).
+- Runtime/test changes committed and pushed to `origin main` as `36f2c0e` (`Update Claude and Codex production runtimes`). This report's final deployment evidence is recorded in a follow-up documentation commit. No owner blocker remains.
 
 ## Rollback and follow-through
 
