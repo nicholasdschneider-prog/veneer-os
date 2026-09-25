@@ -29,6 +29,35 @@ beforeEach(() => {
 });
 afterEach(() => { service.close(); db.close(); vi.useRealTimers(); });
 describe('live voice lifecycle', () => {
+  it('keeps approved work queued after hangup and never approves an unanswered discussion on end', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('ticket',1,1,'Ticket owner','codex','ticket')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('ticket','Case owner',1)").run();
+    for (const id of ['approved','discussed']) db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,'ticket',?,?,?,1)").run(id,id,id,JSON.stringify({question:'Send this reply?',recommendation:'Request a label photo',consequence:'One email',blocked_action:'EXACT DRAFT: Please send the label.',blocks_scope:'task',deadline:null,evidence:[]}));
+    const call = await service.start(1,{botConversationId:'ticket',decisionId:'approved'});
+    child.emit('message',{type:'tool',id:'approve',name:'answer_decision',args:{decisionId:'approved',version:1,action:'approve',text:'Yes, send that reply'}});
+    child.emit('message',{type:'tool',id:'discuss',name:'discuss_decision',args:{decisionId:'discussed',text:'Could we ask for another photo?'}});
+    service.end(1,call.id);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(db.prepare("SELECT state FROM bot_decisions WHERE id='approved'").get()).toEqual({state:'decided'});
+    expect(db.prepare("SELECT state,answer_json FROM bot_decisions WHERE id='discussed'").get()).toEqual({state:'needs_input',answer_json:null});
+    expect(db.prepare("SELECT count(*) AS n FROM conversation_wakeups WHERE conversation_id='ticket' AND reason LIKE 'VeneerBots answer.%'").get()).toEqual({n:1});
+    expect(db.prepare("SELECT count(*) AS n FROM bot_decision_events WHERE decision_id='approved' AND kind='answered'").get()).toEqual({n:1});
+  });
+
+  it('finishes an accepted instruction dispatch after its caller hangs up without replaying it', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('ticket',1,1,'Ticket owner','codex','ticket')").run();
+    let deliver!: (value: unknown) => void;
+    manager.steerMessage.mockImplementation(() => new Promise(resolve => { deliver=resolve; }));
+    const call = await service.start(1,{botConversationId:'ticket'});
+    child.emit('message',{type:'tool',id:'followup',name:'send_message',args:{instructionId:'followup',text:'Investigate the missing parcel'}});
+    service.end(1,call.id);
+    deliver({messageId:17,disposition:'queued'});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(manager.steerMessage).toHaveBeenCalledTimes(1);
+    const row = db.prepare("SELECT result_json FROM voice_dispatches WHERE instruction_id='followup'").get() as {result_json:string};
+    expect(JSON.parse(row.result_json)).toMatchObject({ok:true,messageId:17,disposition:'queued'});
+    expect(db.prepare("SELECT count(*) AS n FROM voice_entries WHERE session_id=? AND role='decision'").get(call.id)).toEqual({n:1});
+  });
   it('saves style for the authenticated caller and reloads it across calls without dispatching bot work', async () => {
     await service.start(1);
     const request = async (id: string, args: unknown) => {

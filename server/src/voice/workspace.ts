@@ -17,6 +17,12 @@ export const DecisionAnswerSchema = z.object({
   text: z.string().trim().min(1).max(12000),
   scope: z.enum(['this_case', 'standing_rule']).default('this_case'),
 });
+const ReplyEditSchema = z.object({
+  decisionId: z.string().min(1).max(200),
+  version: z.number().int().positive(),
+  requestId: z.string().regex(/^[a-zA-Z0-9_-]{1,160}$/),
+  body: z.string().min(1).max(12000),
+}).strict();
 const clip = (value: string, max: number) => sanitizeMemoryText(value ?? '').slice(0, max);
 
 /** Coordinator context is owned chats; pinned calls use the normal conversation access policy.
@@ -171,7 +177,7 @@ export class VoiceWorkspace {
   }
 
   /** Relay what the caller said into the bot's own conversation, the same way the chat composer would. */
-  async sendMessage(text: string, instructionId: string) {
+  async sendMessage(text: string, instructionId: string, sessionId?: string) {
     const bot = this.bot();
     if (!bot.canMessage) throw new Error('This bot cannot receive messages right now.');
     const clean = clip(text, 12000).trim();
@@ -185,8 +191,9 @@ export class VoiceWorkspace {
     this.ctx.db.prepare('INSERT INTO voice_dispatches(user_id,conversation_id,instruction_id,text) VALUES(?,?,?,?)').run(this.userId,bot.conversationId,instructionId,clean);
     // Runner persists the message before steering; do not wait for agent completion.
     const posted = await this.ctx.manager.steerMessage(bot.conversationId, `[Voice call] ${clean}`, this.userId);
-    const result = { ok: true, messageId: posted.messageId, disposition: posted.disposition, steerReason: posted.steerReason, status: await this.ctx.manager.statusOf(bot.conversationId), delivery: 'Instruction delivered to the conversation. Keep talking while the agent works. Check read_chat for actual status and results; delivery does not mean completion.' };
+    const result = { ok: true, messageId: posted.messageId, disposition: posted.disposition, steerReason: posted.steerReason, delivery: 'Instruction delivered to the conversation. The bot continues after you hang up. Check read_chat for actual status and results; delivery does not mean completion.' };
     this.ctx.db.prepare('UPDATE voice_dispatches SET result_json=? WHERE user_id=? AND conversation_id=? AND instruction_id=?').run(JSON.stringify(result),this.userId,bot.conversationId,instructionId);
+    if (sessionId) this.record(sessionId, 'decision', `Instruction delivered to ${bot.name}: ${clean}`);
     return result;
   }
 
@@ -197,6 +204,8 @@ export class VoiceWorkspace {
       replyStatus: d.reply_status,
       handler: d.handler_name, handlingRevision: d.handling_revision, sharedQueue: d.shared_queue,
       order: d.order_reference,
+      actionTitle: clip(d.proposal.review_summary?.action_title ?? '', 160),
+      customerRequest: clip(d.proposal.review_summary?.customer_request ?? '', 300),
       question: clip(d.proposal.question, 2000), recommendation: clip(d.proposal.recommendation, 2000),
       consequence: clip(d.proposal.consequence, 1000), blockedAction: clip(d.proposal.blocked_action, 1000),
       blocksScope: d.proposal.blocks_scope, deadline: d.proposal.deadline,
@@ -228,15 +237,18 @@ export class VoiceWorkspace {
     if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid decision cursor.');
     const summary = this.readDecision(decisionId);
     const d = this.bots.view(this.actor, this.bots.read(this.actor, decisionId));
-    const fields = { question: d.proposal.question, recommendation: d.proposal.recommendation,
-      consequence: d.proposal.consequence, blockedAction: d.proposal.blocked_action };
+    const { question, recommendation, consequence, blocked_action, ...details } = d.proposal;
+    const fields = { question, recommendation, consequence, blockedAction: blocked_action,
+      // The structured reply, recipients, review summary and action-specific
+      // constraints are part of the proposal too, not just its four prose fields.
+      proposalDetails: JSON.stringify(details, null, 2) };
     const clean = Object.fromEntries(Object.entries(fields).map(([k,v]) => [k, sanitizeMemoryText(String(v ?? ''))]));
     const length = Math.max(...Object.values(clean).map(v => v.length));
     return { ...summary, ...Object.fromEntries(Object.entries(clean).map(([k,v]) => [k,v.slice(offset,offset+1500)])),
       evidence: summary.evidence.slice(0,8), discussion: summary.discussion.slice(-4).map(m => ({...m,text:m.text.slice(0,1000)})),
       coverage: { proposalOffset: offset, nextOffset: offset + 1500 < length ? offset + 1500 : null,
         evidenceTotal: summary.evidence.length, discussionTotal: summary.discussionCoverage.totalMessages,
-        note: 'Proposal fields are paged. Read remaining pages before advising approval; discussion and evidence are recent excerpts. Open the decision thread for complete discussion.' } };
+        note: 'All proposal fields, including proposalDetails, are paged at the same offset. Read remaining pages before advising approval. Image entries are metadata, not viewed photos. Discussion and evidence are recent excerpts. Open the decision thread for complete discussion.' } };
   }
 
   readDecision(decisionId: string) {
@@ -258,6 +270,23 @@ export class VoiceWorkspace {
     if (!clean) throw new Error('Nothing to send.');
     const decision = this.bots.reply(this.actor, decisionId, `voice:${sessionId}:${Date.now()}`, `[Voice call] ${clean}${factCheck ? '\n[Live-call fact check: prioritize a brief factual reply in this decision thread before unrelated work. Read-only investigation; no customer messages, order changes or approval. State sources, freshness, and unknowns. Do not guess package-to-item mapping.]' : ''}`);
     return { ok: true, decisionId: decision.id, delivery: 'Discussion message posted; it wakes the bot but does not approve anything.' };
+  }
+
+  editReply(sessionId: string, input: unknown) {
+    const { decisionId, version, requestId, body } = ReplyEditSchema.parse(input);
+    return this.ctx.db.transaction(() => {
+      this.readDecision(decisionId);
+      let d = this.bots.view(this.actor, this.bots.read(this.actor, decisionId));
+      const key = `voice:${sessionId}:reply:${requestId}`;
+      const prior = this.ctx.db.prepare("SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=? AND kind='reply_edited'").get(decisionId, key);
+      if (!prior && d.shared_queue && !d.handler_id && d.can_handle) {
+        d = this.bots.handle(this.actor, decisionId, version, key + ':claim', 'claim', d.handling_revision);
+      }
+      const revised = this.bots.editReply(this.actor, decisionId, version, key, body, d.handling_revision);
+      if (!prior) this.record(sessionId, 'decision', `Customer reply updated for ${revised.bot_name}. Version ${revised.version} awaits approval.`);
+      return { ok: true, decisionId, version: revised.version, state: revised.state, alreadyRecorded: Boolean(prior),
+        delivery: 'Reply updated, not approved or sent. Read the current proposal and confirm the revised reply with the caller before answer_decision. No UI click is required.' };
+    })();
   }
 
   answerDecision(sessionId: string, input: unknown) {

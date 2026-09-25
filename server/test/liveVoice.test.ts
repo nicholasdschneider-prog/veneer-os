@@ -215,6 +215,58 @@ describe('bot voice calls', () => {
     await expect(new VoiceWorkspace(ctx, 1, 'own').sendMessage('hello', 'hello-1')).rejects.toThrow();
     expect(posted).toEqual([]);
   });
+  it('pages the exact reply and structured constraints without mutating the proposal', () => {
+    const decision = registerBot();
+    const original = JSON.parse((db.prepare('SELECT proposal_json FROM bot_decisions WHERE id=?').get(decision.id) as {proposal_json:string}).proposal_json);
+    original.review_summary = { action_title: 'Request the label photo', customer_request: 'Confirm the correct part', background: ['Photo received'], refund: {status:'not_verified'} };
+    original.message_delivery = { canonical_case:'case-1', executor_conversation_id:'own', payload:{channel:'email',account:'help@example.com',recipients:['customer@example.com'],subject:'Your part',body:'Details '.repeat(500)+'Please send the product label.',attachments:[],customer:'Customer',ticket:'case-1',context:''} };
+    db.prepare('UPDATE bot_decisions SET proposal_json=? WHERE id=?').run(JSON.stringify(original),decision.id);
+    const call = new VoiceWorkspace(ctx, 1, 'own');
+    let offset: number | null = 0;
+    let details = '';
+    while (offset !== null) {
+      const page = call.voiceDecision(decision.id, offset);
+      details += page.proposalDetails;
+      offset = page.coverage.nextOffset;
+    }
+    expect(JSON.parse(details).message_delivery).toEqual(original.message_delivery);
+    expect(JSON.parse(details).review_summary).toEqual(original.review_summary);
+    expect(call.readDecision(decision.id)).toMatchObject({state:'needs_input',actionTitle:'Request the label photo',customerRequest:'Confirm the correct part'});
+    expect(() => new VoiceWorkspace(ctx, 1, 'other').voiceDecision(decision.id)).toThrow('another bot');
+  });
+  it('saves a spoken reply edit once and requires approval of its new version', () => {
+    const decision = registerBot();
+    db.prepare("UPDATE bot_decisions SET proposal_json=json_set(proposal_json,'$.blocked_action','EXACT DRAFT: Please send a photo.') WHERE id=?").run(decision.id);
+    db.prepare("UPDATE conversations SET visibility='team' WHERE id='own'").run();
+    db.prepare('INSERT INTO employee_workspaces(user_id) VALUES(3)').run();
+    db.prepare("INSERT INTO employee_bot_access VALUES(3,'own')").run();
+    db.prepare("INSERT INTO shared_bot_queues VALUES('own')").run();
+    const call = new VoiceWorkspace(ctx, 3, 'own');
+    const edit = {decisionId:decision.id,version:1,requestId:'edit-1',body:'Please send a clear photo of the product label. Thank you!'};
+    expect(() => call.editReply('call', {...edit,version:9})).toThrow('Proposal changed');
+    expect(db.prepare('SELECT handler_id FROM bot_decisions WHERE id=?').get(decision.id)).toEqual({handler_id:null});
+    expect(call.editReply('call', edit)).toMatchObject({ok:true,version:2,state:'needs_input',alreadyRecorded:false});
+    expect(call.editReply('call', edit)).toMatchObject({ok:true,version:2,alreadyRecorded:true});
+    expect(() => call.editReply('call', {...edit,body:'Different text'})).toThrow('conflict');
+    expect(call.readDecision(decision.id)).toMatchObject({version:2,answer:null,blockedAction:`EXACT DRAFT: ${edit.body}`});
+    expect(db.prepare("SELECT count(*) AS n FROM conversation_wakeups WHERE conversation_id='own'").get()).toEqual({n:0});
+    expect(() => call.answerDecision('call', {decisionId:decision.id,version:1,action:'approve',text:'Send it'})).toThrow('Proposal changed');
+    expect(call.answerDecision('call', {decisionId:decision.id,version:2,action:'approve',text:'Send that updated reply'})).toMatchObject({ok:true,state:'decided'});
+    expect(db.prepare("SELECT count(*) AS n FROM conversation_wakeups WHERE conversation_id='own'").get()).toEqual({n:1});
+    db.prepare('DELETE FROM employee_bot_access WHERE user_id=3').run();
+    expect(() => call.editReply('call',edit)).toThrow();
+  });
+  it('retains accepted instructions even when a later status lookup would fail', async () => {
+    registerBot();
+    ctx.manager.statusOf = async () => { throw new Error('status unavailable'); };
+    const call = new VoiceWorkspace(ctx, 1, 'own');
+    const receipt = await call.sendMessage('Check the delivery evidence', 'follow-up', 'call-followup');
+    expect(receipt).toMatchObject({ok:true});
+    expect(await call.sendMessage('Check the delivery evidence','follow-up','call-followup')).toEqual(receipt);
+    expect(posted).toHaveLength(1);
+    expect(call.history()).toHaveLength(1);
+    expect(call.history()[0]?.text).toContain('Instruction delivered');
+  });
   it('claims and approves shared cards by phone for staff, with atomic retries and no owner click', () => {
     const decision = registerBot();
     db.prepare("UPDATE conversations SET visibility='team' WHERE id='own'").run();

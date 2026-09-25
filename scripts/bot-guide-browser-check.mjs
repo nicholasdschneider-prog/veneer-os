@@ -18,7 +18,7 @@ try {
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     let failGuide = false;
-    let catalog = botFeatureCatalog(Date.parse('2026-09-23T12:00:00Z'));
+    let catalog = botFeatureCatalog(Date.parse('2026-09-25T12:00:00Z'));
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/bot-workflows/guide') return route.fulfill({ status: failGuide ? 503 : 200, json: failGuide ? { error: 'Unavailable' } : catalog });

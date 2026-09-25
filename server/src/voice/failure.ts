@@ -13,6 +13,8 @@ export function voiceFailureCode(value: unknown, depth = 0): string {
   // locally, but never emit the message or any substring of it.
   if (typeof row.message === 'string' &&
       /maximum context length|context length exceeded|instructions.{0,40}(too long|maximum length)|input.{0,20}exceeds.{0,20}token/i.test(row.message)) return 'context_limit';
+  if (typeof row.message === 'string' && /invalid schema|invalid.{0,30}tool|unsupported.{0,30}(schema|parameter)|exclusiveMinimum/i.test(row.message)) return 'tool_schema';
+  if (typeof row.message === 'string' && /failed to fetch|fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|certificate/i.test(row.message)) return 'network';
   for (const key of ['error', 'body', 'cause']) {
     const found = voiceFailureCode(row[key], depth + 1);
     if (found !== 'connection') return found;
@@ -25,6 +27,8 @@ export function voiceFailureMessage(code: unknown): string {
     case 'authentication': return 'The voice provider rejected authentication. Ask an administrator to check voice service access.';
     case 'quota': return 'The voice provider account has reached its credit limit. Ask an administrator to check billing.';
     case 'rate_limit': return 'The voice provider is busy. End this call and reconnect shortly.';
+    case 'tool_schema': return 'The voice provider rejected a call tool definition. Ask your administrator to check the voice integration.';
+    case 'network': return 'The voice service could not reach its provider. Check the service network connection and reconnect.';
     default: return 'The live voice connection failed. End this call and reconnect. Your saved conversation and decisions are retained.';
   }
 }

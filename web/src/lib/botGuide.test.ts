@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { filterBotFeatures } from './botGuide';
 import { botFeatureCatalog } from '../../../server/src/featureGuide/catalog';
-const catalog = botFeatureCatalog(Date.parse('2026-09-23T12:00:00Z'));
+const catalog = botFeatureCatalog(Date.parse('2026-09-25T12:00:00Z'));
 describe('bot guide discovery', () => {
   it('finds capabilities by the task and setup instructions, not just the title', () => {
     expect(filterBotFeatures(catalog, '  WEEKDAY timezone  ', false).map(feature => feature.id)).toContain('routines');

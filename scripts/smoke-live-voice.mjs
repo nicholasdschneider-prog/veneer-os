@@ -28,11 +28,19 @@ const briefGreeting = process.argv.includes('--brief-greeting');
 if (briefGreeting) db.prepare("INSERT INTO voice_preferences(user_id,preferences_json) VALUES(1,?)").run(JSON.stringify({length:'concise',greeting:'brief'}));
 const interruptions = process.argv.includes('--interruptions');
 const decisions = process.argv.includes('--decisions');
+const replyEdit = process.argv.includes('--reply-edit');
 const recap = process.argv.includes('--recap');
 const events = [];
 const reference = String(randomInt(100000, 999999));
 if (recap || interruptions) events.push({type:'text_final',turnId:'prior-work',markdown:`Completed the onboarding checklist export. Delivery reference ${reference}. The export is saved and ready for staff.`,at:new Date().toISOString()});
 let focusId;
+if (replyEdit) {
+  focusId = 'reply-fixture';
+  db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('voice-smoke','Fixture owner',1)").run();
+  const proposal = {question:'Send the product-label photo request?',recommendation:'Ask for a label photo to identify the correct part.',consequence:'One customer reply; no refund or replacement.',blocked_action:'Send the exact proposed message after explicit approval.',blocks_scope:'task',deadline:null,evidence:[],
+    message_delivery:{canonical_case:'synthetic-case',executor_conversation_id:'voice-smoke',payload:{channel:'email',account:'help@example.invalid',recipients:['customer@example.invalid'],subject:'Part identification',body:'Please send a photo of the label.',attachments:[],customer:'Synthetic Customer',ticket:'synthetic-case',context:''}}};
+  db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,'voice-smoke',?,?,?,1)").run(focusId,focusId,focusId,JSON.stringify(proposal));
+}
 if (decisions) {
   db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('voice-smoke','Fixture Grant',1)").run();
   for (let i = 0; i < 45; i++) {
@@ -96,7 +104,10 @@ try {
   const track = LocalAudioTrack.createAudioTrack('smoke-microphone', source);
   const options = new TrackPublishOptions(); options.source = TrackSource.SOURCE_MICROPHONE;
   await room.localParticipant.publishTrack(track, options);
-  if (interruptions) {
+  if (replyEdit) {
+    const { runReplySmoke } = await import('./voice-reply-fixture.mjs');
+    success = await runReplySmoke({source,service,db,directory,callId:call.id,decisionId:focusId,getSamples:()=>samples});
+  } else if (interruptions) {
     const { runInterruptionSmoke } = await import('./voice-interruption-fixture.mjs');
     success = await runInterruptionSmoke({ source, service, db, directory, reference, getSamples: () => samples, getAudibleSamples: () => audibleSamples });
   } else {

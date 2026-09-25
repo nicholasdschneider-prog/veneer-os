@@ -7,6 +7,7 @@ const { chromium } = await import(pathToFileURL(process.argv[2]).href);
 const source = `import React from '/node_modules/.vite/deps/react.js';
 import ReactDOM from '/node_modules/.vite/deps/react-dom_client.js';
 import {VoiceCallPanel} from '/src/components/VoiceCallPanel.tsx';
+import {LiveVoice} from '/src/screens/LiveVoice.tsx';
 import {DecisionChoices} from '/src/components/DecisionChoices.tsx';
 import '/src/styles.css';
 const h=React.createElement;
@@ -20,7 +21,7 @@ function Fixture(){
  choice ? h('p',{role:'status'},'Recorded: '+choice+' · Execution tracked separately') : h(DecisionChoices,{disabled:false, choices:[{id:'yes',label:'Yes — queue Auto-Ship',action:'approve'},{id:'hold',label:'Hold order',action:'defer'},{id:'no',label:'Reject proposal',action:'reject'}],onChoose:id=>{window.actions.push(id);setChoice(id)}}),
  h('div',{className:'fixed left-1/2 top-4 w-[min(20rem,calc(100vw-1.5rem))] -translate-x-1/2'},h(VoiceCallPanel,{name:'Avery',botId:'fixture',status:active?'Listening':'Ready when you are',active,connected:active,muted,level:active?.65:0,ready:true,history:[{id:1,role:'user',text:'What do you need from me?'},{id:2,role:'assistant',text:'The order is ready to queue. The customer has confirmed the address. Please choose whether to queue Auto-Ship or hold the order. No shipment has been queued yet.'}],onStart:()=>{window.actions.push('start');setActive(true)},onMute:()=>setMuted(!muted),onEnd:()=>{window.actions.push('end');setActive(false)},onStandby:()=>{window.actions.push('standby');setActive(false)}})));
 }
-ReactDOM.createRoot(document.getElementById('root')).render(h(Fixture));`;
+ReactDOM.createRoot(document.getElementById('root')).render(new URLSearchParams(location.search).has('ticket') ? h('div',{className:'mx-auto mt-4 w-[min(20rem,calc(100vw-1.5rem))]'},h(LiveVoice,{compact:true,botConversationId:'fixture',decisionId:'ticket',onBack:()=>{}})) : h(Fixture));`;
 const vite = await createServer({
  root:new URL('../web',import.meta.url).pathname,
  server:{host:'127.0.0.1',port:3298,strictPort:true,preTransformRequests:false},
@@ -31,7 +32,7 @@ const vite = await createServer({
 });
 await vite.listen();
 const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
-const output=new URL('../docs/reports/decision-voice/',import.meta.url).pathname;
+const output=process.argv[3] ?? new URL('../docs/reports/decision-voice/',import.meta.url).pathname;
 await mkdir(output,{recursive:true});
 try {
  for(const width of [320,375,414,768,1440]){
@@ -57,8 +58,23 @@ try {
  await page.keyboard.press('Enter');
  assert.deepEqual(await page.evaluate(()=>window.actions),['start','standby','hold']);
  await page.getByText('Recorded: hold').waitFor();
- await page.getByRole('button',{name:'Close and end voice'}).click();
+ await page.getByRole('button',{name:'Hang up'}).click();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ assert.deepEqual(errors,[]);
+ await page.route('**/api/live-voice**', route => route.fulfill({json:{
+   configuration:{ready:true,missing:[],invalidUrl:false},call:null,callerName:'Ali',
+   bot:{conversationId:'fixture',name:'Owen',canMessage:true},
+   decision:{decisionId:'ticket',version:2,state:'decided',actionTitle:'Request a product-label photo',customerRequest:'The connector does not match the ordered part.',question:'Send the revised reply?',answer:{action:'approve'},result:null},
+   decisions:[],blockers:[],chats:[],history:[],
+ }}));
+ await page.goto('http://127.0.0.1:3298/__fixture?ticket=1');
+ await page.getByText('Request a product-label photo',{exact:true}).waitFor();
+ await page.getByText('The connector does not match the ordered part.',{exact:true}).waitFor();
+ await page.getByText('Approved · the bot continues after this call.',{exact:true}).waitFor();
+ assert.equal(await page.getByText('Reply sent',{exact:true}).count(),0);
+ assert.equal(await page.getByRole('button',{name:'Hang up'}).count(),1);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.screenshot({path:output+`ticket-${width}.png`,fullPage:true});
  assert.deepEqual(errors,[]);
  await page.close();
  }

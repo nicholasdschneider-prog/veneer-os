@@ -8,6 +8,10 @@ describe('safe voice failure diagnostics', () => {
       expect(voiceFailureMessage(result)).not.toContain('private');
     }
     expect(voiceFailureCode(new Error('Maximum context length exceeded: private payload'))).toBe('context_limit');
+    expect(voiceFailureCode(new Error('Invalid schema for tool: private payload'))).toBe('tool_schema');
+    expect(voiceFailureCode(new Error('fetch failed: private URL'))).toBe('network');
+    expect(voiceFailureMessage('tool_schema')).not.toContain('private');
+    expect(voiceFailureMessage('network')).not.toContain('private');
     const circular: {error?: unknown} = {}; circular.error = circular;
     expect(voiceFailureCode(circular)).toBe('connection');
     expect(voiceFailureCode(new Error('private request'))).toBe('connection');

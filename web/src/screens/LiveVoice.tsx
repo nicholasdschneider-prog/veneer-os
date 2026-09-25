@@ -173,6 +173,11 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const open = (snapshot?.decisions ?? []).filter(d => d.state === 'needs_input' && d.decisionId !== focused?.decisionId);
   const missingBot = !!botConversationId && !!snapshot && !bot;
   if (compact) return <VoiceCallPanel callerName={snapshot?.callerName} name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && !!bot?.canMessage} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby')}>
+    {focused && <div className="mt-3 space-y-1 px-2 text-base sm:text-sm">
+      <p className="break-words font-medium">{focused.actionTitle || focused.question}</p>
+      {focused.customerRequest && <p className="break-words text-muted-foreground">{focused.customerRequest}</p>}
+      <p className="text-muted-foreground">{focused.state === 'decided' && focused.answer?.action === 'approve' ? 'Approved · the bot continues after this call.' : decisionLabel(focused.state)}</p>
+    </div>}
     {error && <p role="alert" className="mt-3 px-2 text-sm text-destructive">{error}</p>}
     {snapshot && !snapshot.configuration.ready && <p role="alert" className="mt-3 px-2 text-sm">Voice setup needs attention. Ask your administrator to check {snapshot.configuration.missing.join(', ') || 'LIVEKIT_URL'} in Settings → Credentials.</p>}
     {audioBlocked && active && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => void roomRef.current?.startAudio().catch(() => setError('Tap again to enable audio.'))}><Volume2 className="size-4" />Enable audio</Button>}

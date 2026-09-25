@@ -1,6 +1,6 @@
 import { CallButton } from '@/components/CallButton';
 import { useState } from 'react';
-import { MessageSquare, Mic, MicOff, Settings2, X } from 'lucide-react';
+import { MessageSquare, Mic, MicOff, PhoneOff, Settings2 } from 'lucide-react';
 import { BotAvatar } from './BotIdentity';
 import type { VoiceSnapshot } from '@/lib/liveVoice';
 
@@ -27,7 +27,7 @@ export function VoiceCallPanel({ callerName, name, botId, status, active, connec
       <button type="button" aria-label="Voice settings" aria-expanded={settings} onClick={() => setSettings(!settings)} className={`${circle} bg-muted text-foreground hover:bg-accent`}><Settings2 className="size-5" /></button>
       <button type="button" aria-label="Show transcript" aria-expanded={transcript} aria-pressed={transcript} onClick={() => setTranscript(!transcript)} className={`${circle} ${transcript ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-muted text-foreground hover:bg-accent'}`}><MessageSquare className="size-5" /></button>
       <button type="button" aria-label={muted ? 'Unmute microphone' : 'Mute microphone'} aria-pressed={muted} disabled={!connected} onClick={onMute} className={`${circle} bg-muted text-foreground hover:bg-accent`}>{muted ? <MicOff className="size-5" /> : <Mic className="size-5" />}</button>
-      <button type="button" aria-label="Close and end voice" onClick={onEnd} className={`${circle} bg-destructive text-white hover:opacity-90`}><X className="size-5" /></button>
+      <button type="button" aria-label="Hang up" onClick={onEnd} className={`${circle} bg-destructive text-white hover:opacity-90`}><PhoneOff className="size-5" /></button>
     </div>
     <div className="min-h-0 overflow-y-auto overscroll-contain">
       {children}

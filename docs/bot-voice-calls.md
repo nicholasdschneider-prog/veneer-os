@@ -4,7 +4,7 @@ Use the phone icon beside the chat composer, or the call button on a bot card. T
 
 Explicit spoken instructions use the real runner's message-steering path. An active agent can receive work while the voice conversation continues; providers without live steering retain it in the normal queue. Thinking aloud and hypothetical discussion should not dispatch work. The voice model is instructed to clarify ambiguity and dispatch only explicit requests.
 
-The runner's delivery disposition distinguishes queued, running, steered, and delivered messages. These are delivery states, not proof of task completion. The voice service watches visible replies, status changes, structured questions, and bot decisions. Each notification includes fresh visible agent messages and current status, so the voice can report from new evidence rather than reuse an earlier tool response. Notifications wait while the user is speaking, including when they arrive during another response. It relays actual results and questions during the call. Approval prompts still require the existing approval UI; voice does not grant tool permissions or handle secrets.
+The runner's delivery disposition distinguishes queued, running, steered, and delivered messages. These are delivery states, not proof of task completion. The voice service watches visible replies, status changes, structured questions, and bot decisions. Each notification includes fresh visible agent messages and current status, so the voice can report from new evidence rather than reuse an earlier tool response. Notifications wait while the user is speaking, including when they arrive during another response. It relays actual results and questions during the call. Explicit spoken business decisions use the native versioned decision path without a duplicate approval click. Separate tool-permission prompts retain their existing approval UI; voice does not grant tool permissions or handle secrets.
 
 ## Thread context at call startup
 
@@ -144,3 +144,55 @@ Changed implementation and regression files:
 - [Persistence and style tests](/Users/archerclawdington/veneer-os/server/test/voicePreferences.test.ts)
 - [Cross-session and thread tests](/Users/archerclawdington/veneer-os/server/test/liveVoiceService.test.ts)
 - [Live greeting and context verification](/Users/archerclawdington/veneer-os/scripts/smoke-live-voice.mjs)
+
+
+## Talk through a customer reply — September 25, 2026
+
+Open the raised hand’s blue waveform and select **Start voice**. The compact call
+keeps the selected ticket’s action and customer request visible. Ask for the exact
+reply, request wording changes, and explicitly approve the revised reply aloud.
+**Hang up** ends the audio; accepted work stays with the existing case-owning bot.
+There is no separate training choice. Grant’s commissioned review of authorized
+CS activity maintains shared guidance separately from case execution.
+
+The voice reader now pages all structured proposal details as well as its prose:
+exact message payload, recipients, conditions, review summary and image metadata.
+Metadata does not mean the voice has viewed an image. Existing conversation and
+proposal-context access checks apply on every read.
+
+The native `edit_reply` tool uses the same human reply editor as the on-screen
+control. It atomically claims an available shared card when needed, preserves
+account/recipient/action bindings, saves a new unapproved version, and retains
+idempotent edit receipts. The caller reviews that version and gives explicit
+spoken approval through `answer_decision`. Changed remedies, amounts, recipients
+or other action scope still require a revised proposal from the owning bot.
+Editing or ending a call does not approve anything.
+
+Accepted general voice instructions are recorded in the caller’s saved transcript.
+Their dispatch receipt no longer depends on a subsequent status lookup succeeding.
+Approval wakes and accepted instruction dispatches survive normal hangup. An
+uncertain dispatch is still reconciled without automatically sending it again.
+Recorded approval is not proof of customer delivery; the existing source checks,
+exact approved payload and verified completion requirements remain in force.
+
+The isolated live-audio regression is:
+
+```sh
+NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live --reply-edit --brief-greeting
+```
+
+It uses synthetic speech, an in-memory case and no customer connection. It checks
+an exact spoken wording edit, a separate spoken approval of the new version, and
+one durable owning-bot wake remaining after hangup. Physical phone/headset and
+real-customer delivery are separate from this fixture.
+
+
+The September 25 synthetic live call passed: exact reply edit, separate spoken
+approval of version 2, and exactly one durable case-owner wake after hangup.
+The first run exposed a provider-rejected wire constraint in the new tool schema;
+the compatible wire definition now leaves positive-version validation in the
+server. Fixed error categories identify rejected tool definitions and network
+failures without exposing provider messages or credentials. Service tests also
+cover stale versions, duplicate edits, access revocation, unanswered discussion
+at hangup, and dispatch completion after hangup. Phone/headset behavior remains
+unverified on a physical device.

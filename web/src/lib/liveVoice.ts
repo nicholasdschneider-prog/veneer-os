@@ -1,4 +1,5 @@
 export interface VoiceDecisionSummary {
+  actionTitle?: string; customerRequest?: string;
   decisionId: string; version: number; state: string; createdAt: string; canAnswer: boolean; assignee: string;
   question: string; recommendation: string; consequence: string; blockedAction: string; blocksScope: string; deadline: string | null;
   answer: { action: string; scope: string; text: string } | null;
