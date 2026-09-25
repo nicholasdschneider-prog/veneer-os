@@ -279,3 +279,33 @@ installer/restore-backup.sh ~/.local/share/veneer-pro-backups/veneer-pro-YYYYMMD
 
 The restore script stops the application processes, moves the current data aside rather than
 deleting it, restores the archive, and starts the services again.
+
+### Diagnose a chat or tunnel outage
+
+Run `npm run health` from the source checkout with Node 24. It is read-only and
+checks local web/runner health, the readiness endpoint belonging to this
+installation's cloudflared process, and `VP_BOOT_PROBE_URL` when configured.
+A failed or unidentified configured tunnel returns a nonzero exit status.
+`npm run restart` performs these checks after restarting its requested services;
+the boot probe also reports tunnel readiness separately from public reachability.
+If restarting the runner interrupts the calling agent, run `npm run health` on
+continuation to finish verification.
+
+An HTTP 302 from Cloudflare Access proves only that its login front door answers.
+It does not prove the tunnel, origin, or authenticated chat works. Even with all
+checks passing, confirm an authenticated chat in the normal UI before claiming
+end-to-end recovery. These commands do not borrow sessions or bypass Access.
+
+On this Mac, tunnel discovery identifies the cloudflared process writing
+`~/Library/Logs/veneer-pro/veneer-pro-cloudflared.log`, then checks its loopback
+`/ready` listener. It does not assume port 20241, since another tunnel can own it.
+An inaccessible log owner or ambiguous listener is reported as unknown/failing,
+not healthy. A custom installation that uses a different tunnel log layout needs
+its diagnostics adapted. No tunnel credentials or HTTP bodies are printed.
+
+For `no route to host` or edge connection timeouts, inspect the host's network
+route and connection. Restarting Veneer's web process cannot restore a missing
+network route. These diagnostics do not change network settings or automatically
+restart the tunnel. The boot report remains a one-shot check, not a continuous
+outage monitor. Run `node scripts/boot-probe.mjs --now --no-email` for its detailed
+report without sending email.

@@ -17,6 +17,7 @@
 //   npm run restart -- veneer-pro-runner
 
 import fs from 'node:fs';
+import { inspectTunnel, inspectPublicEdge } from './tunnel-health.mjs';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -56,7 +57,8 @@ const dataDir = rawDataDir.startsWith('~') ? path.join(os.homedir(), rawDataDir.
 
 const args = process.argv.slice(2);
 const checkOnly = args.includes('--check');
-const requested = args.filter((arg) => arg !== '--check');
+const healthOnly = args.includes('--health-check');
+const requested = args.filter((arg) => arg !== '--check' && arg !== '--health-check');
 const unknown = requested.filter((name) => !ALL_SERVICES.includes(name));
 if (unknown.length) {
   console.error(`unknown service(s): ${unknown.join(', ')}`);
@@ -400,6 +402,33 @@ function warnForeignCodexHome() {
   }
 }
 
+async function verifyConnectivity() {
+  const prefix = '[health]';
+  const edgeUrl = process.env.VP_BOOT_PROBE_URL || valueFromEnvFile('VP_BOOT_PROBE_URL');
+  const tunnelExpected = !!edgeUrl || fs.existsSync(path.join(os.homedir(), '.config', 'veneer-pro', 'cloudflared-token'));
+  const checks = [
+    ['local web and runner', async () => {
+      try {
+        const response = await fetch(`http://127.0.0.1:${ports['veneer-pro']}/healthz`, {signal: AbortSignal.timeout(3000)});
+        const body = await response.json();
+        if (!response.ok || body.ok !== true || body.web !== 'healthy' || body.runner !== 'healthy') throw new Error('web or runner unavailable');
+        return 'healthy';
+      } catch { throw new Error('web or runner unavailable; inspect the local service logs'); }
+    }],
+    ...(tunnelExpected ? [['Veneer tunnel', () => inspectTunnel(path.join(os.homedir(), 'Library', 'Logs', 'veneer-pro', 'veneer-pro-cloudflared.log'))]] : []),
+    ...(edgeUrl ? [['public front door', () => inspectPublicEdge(edgeUrl)]] : []),
+  ];
+  const results = await Promise.all(checks.map(async ([name, run]) => {
+    try { console.log(`${prefix} ${name}: ${await run()}`); return true; }
+    catch (error) { console.error(`${prefix} ${name}: FAILED — ${error.message}`); return false; }
+  }));
+  if (!tunnelExpected) console.log(`${prefix} tunnel: not configured; public recovery unverified`);
+  if (!edgeUrl) console.log(`${prefix} public front door: VP_BOOT_PROBE_URL unset; unverified`);
+  console.log(`${prefix} These checks do not prove authenticated end-to-end chat delivery.`);
+  return results.every(Boolean);
+}
+
+if (healthOnly) process.exit(await verifyConnectivity() ? 0 : 1);
 if (!checkServiceRuntime()) process.exit(1);
 warnForeignCodexHome();
 if (checkOnly) process.exit(0);
@@ -408,4 +437,5 @@ let failed = false;
 for (const service of targets) {
   if (!(await restart(service))) failed = true;
 }
+if (!(await verifyConnectivity())) failed = true;
 process.exit(failed ? 1 : 0);

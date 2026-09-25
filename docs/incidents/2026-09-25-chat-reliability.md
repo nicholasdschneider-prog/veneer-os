@@ -3,8 +3,9 @@
 The reported break followed outgoing message timeline work at `20cb3e3`; inline
 result replies were also suspected. At investigation time the live web and runner
 health endpoint reported healthy. No inline rendering failure was reproduced.
-The original user-visible symptom and its exact time were not supplied, so the
-observed historical server crash cannot be conclusively assigned to this report.
+The symptom was initially unavailable; the subsequent human reply and tunnel
+findings are recorded below. The historical server crash still cannot be
+conclusively assigned to the original report.
 
 ## Findings and repair
 
@@ -65,5 +66,57 @@ app-runner, terminal, and browser-manager restarts were completed through the
 root `npm run restart -- ...` command, which reported each service healthy.
 The final web health response reported `ok: true`, web healthy, runner healthy.
 The compiled server contains the connection guard and immediate transactions.
-No inline-rendering failure was reproduced; confirmation of the originally
-reported user-visible symptom remains unavailable.
+No inline-rendering failure was reproduced. The follow-up below records the
+subsequently read human description of the outage.
+
+
+## Follow-up: public outage evidence and verification repair
+
+The human described chat-thread 502s, inability to reply, VeneerBots failing, then
+a Cloudflare tunnel error across the site. Tunnel logs distinguish several events
+on September 25 (EDT; UTC is four hours later):
+
+| Time | Evidence |
+| --- | --- |
+| 12:44:24 | macOS kernel boot time, checked with `sysctl -n kern.boottime`; reboot cause unknown. |
+| 12:45, 12:48 | Cloudflared could not connect to the local web origin. |
+| 12:51–12:52 | QUIC timeouts, followed by tunnel registrations. |
+| 12:59–1:04 | Another edge outage; explicit `sendmsg: no route to host` at 1:01–1:02. First connection recovered at 1:02:16; all four registered by 1:04:06. |
+| 1:05:40–41 | Local origin refusals during our known deployment restart. |
+
+The network failures are independent evidence missing from the first investigation.
+They establish lost host-to-edge connectivity, not its cause: no claim is made
+about a router, VPN, ISP, or the inline thread feature causing it. The current
+host has a default route and the tunnel reports four active connections. Two
+cloudflared processes run here, on separate metrics ports, which makes a blind
+check of the default metrics port unsafe as recovery evidence.
+
+The old boot probe called an unauthenticated Access redirect “up and protected”
+and labeled it a tunnel check. That inference was incorrect. The new read-only
+`npm run health` command and post-restart verification separate local services,
+Veneer's own tunnel readiness, and public front-door reachability. Boot reports
+make the same distinction. Unknown/disconnected configured tunnels fail even if
+the public login page returns 302. All reports explicitly leave authenticated
+end-to-end chat unverified; no credentials or borrowed sessions are used.
+
+Readiness follows [Cloudflare's readiness implementation](https://github.com/cloudflare/cloudflared/blob/master/metrics/readiness.go):
+a successful `/ready` response reports active edge connections. Dynamic metrics
+ports are described in [Cloudflare's metrics documentation](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/monitor-tunnels/metrics/).
+Discovery uses the log-owning process and its loopback listener rather than a
+hardcoded port. No authentication, tunnel transport, DNS, or network configuration
+was changed. These bounded checks do not add a background monitor or restart loop.
+
+Follow-up files:
+
+- [Tunnel diagnostics](/Users/archerclawdington/veneer-os/scripts/tunnel-health.mjs)
+- [Diagnostic regression tests](/Users/archerclawdington/veneer-os/installer/tunnel-health.test.mjs)
+- [Restart verification](/Users/archerclawdington/veneer-os/scripts/restart.mjs)
+- [Boot verification](/Users/archerclawdington/veneer-os/scripts/boot-probe.mjs)
+- [Health command](/Users/archerclawdington/veneer-os/package.json)
+- [Operator instructions](/Users/archerclawdington/veneer-os/README.md)
+
+Follow-up validation passed before restart: root typecheck, 29 installer tests
+(including 8 tunnel diagnostic tests), 2,480 server tests (5 skipped), 896 web
+tests, 40 browser-manager tests, and production build. Live `npm run health`
+reported healthy local web/runner, four connections on the owned tunnel, and
+HTTP 302 public front-door reachability with authenticated chat unverified.

@@ -22,6 +22,7 @@
     "start:app-runner": "node server/dist/appRunner/index.js",
     "start:term": "node server/dist/terminalService/index.js",
     "restart": "node scripts/restart.mjs",
+    "health": "node scripts/restart.mjs --health-check",
     "dev:app-runner": "tsx watch server/src/appRunner/index.ts",
     "backfill:memory-curator": "tsx scripts/backfill-curated-memory.ts",
     "audit:memory-duplicates": "tsx scripts/audit-memory-duplicates.ts"

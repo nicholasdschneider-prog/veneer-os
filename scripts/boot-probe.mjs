@@ -28,6 +28,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { inspectTunnel, inspectPublicEdge } from './tunnel-health.mjs';
 import { inspectAgentBrowserInstallation } from '../installer/agent-browser.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -78,11 +79,8 @@ const appRunnerPort = setting('VP_APP_RUNNER_PORT', '3102');
 const termPort = setting('VP_TERM_PORT', '3103');
 const cdpPort = setting('VP_DESKTOP_CDP_PORT', '9223');
 const supermemoryPort = setting('VP_SUPERMEMORY_PORT', '6767');
-// The edge is the only check that proves the tunnel: loopback health says
-// nothing about whether cloudflared reconnected. Unauthenticated it answers
-// 302 to the Access login, which is exactly the "up and protected" signal.
-// Unset means this install has no public hostname to probe; the check is
-// skipped rather than guessed at.
+// Access may answer before the request reaches the tunnel. Probe the owned
+// tunnel listener separately; a redirect proves only front-door reachability.
 const edgeUrl = setting('VP_BOOT_PROBE_URL', '');
 // Host extras as `label=url[,label=url...]`.
 const extras = setting('VP_BOOT_PROBE_EXTRA', '');
@@ -119,7 +117,11 @@ const CHECKS = [
   // The shared desktop Chrome. /json/version is the DevTools endpoint the CDP
   // viewer and agent-browser both attach through.
   httpCheck('desktop chrome (cdp)', `http://127.0.0.1:${cdpPort}/json/version`, [200]),
-  ...(edgeUrl ? [httpCheck('public edge (tunnel)', edgeUrl, [200, 302, 301])] : []),
+  ...((edgeUrl || fs.existsSync(path.join(home, '.config', 'veneer-pro', 'cloudflared-token'))) ? [{
+    name: 'Veneer tunnel readiness', detail: 'Owned cloudflared loopback /ready endpoint',
+    run: () => inspectTunnel(path.join(home, 'Library', 'Logs', 'veneer-pro', 'veneer-pro-cloudflared.log')),
+  }] : []),
+  ...(edgeUrl ? [{name: 'public front door', detail: 'Unauthenticated HTTPS reachability only', run: () => inspectPublicEdge(edgeUrl)}] : []),
 ];
 if (!edgeUrl) console.log('[boot-probe] VP_BOOT_PROBE_URL is unset — skipping the public edge check');
 
@@ -233,6 +235,7 @@ function renderReport(results, ctx, stamp) {
   lines.push(failed.length ? `VERDICT: FAIL — ${failed.length}/${results.length} checks did not come up`
                            : `VERDICT: PASS — all ${results.length} checks green`);
   lines.push('');
+  lines.push('Authenticated public chat delivery: UNVERIFIED (an Access redirect does not reach the origin).');
   lines.push('Checks');
   for (const r of results) {
     const mark = r.ok ? 'ok  ' : 'FAIL';
