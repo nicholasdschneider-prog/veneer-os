@@ -211,6 +211,36 @@ export function QueuedMessageRow({
   );
 }
 
+/** A message sent while the bot was working. It already reached the live
+ * reply, so it reads as an ordinary sent bubble rather than a queued one. */
+export function SteeredMessageRow({
+  text,
+  origin,
+  sending = false,
+}: {
+  text: string;
+  origin?: MessageOrigin;
+  /** Still on its way to the bot (the request has not returned yet). */
+  sending?: boolean;
+}) {
+  const agentSource = agentQueueSource(origin);
+  return (
+    <Message align="end" className="pb-2" data-slot="steered-message">
+      <MessageContent className="gap-1">
+        <Bubble align="end" variant={agentSource ? 'subtle' : 'default'} data-origin={agentSource ? 'agent' : undefined}>
+          <BubbleContent className="rounded-2xl rounded-br-md border-0 px-4 py-2.5 text-base">
+            <QueuedMessageText text={text} className="text-base" subject="sent message" />
+          </BubbleContent>
+        </Bubble>
+        <MessageFooter className="gap-1 px-1 sm:px-3">
+          <CheckCheck className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>{sending ? 'Sending…' : agentSource ? `From ${agentSource} · reading at its next step` : 'Sent · reading at its next step'}</span>
+        </MessageFooter>
+      </MessageContent>
+    </Message>
+  );
+}
+
 function QueueSendNowButton({
   sending,
   disabled,

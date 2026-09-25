@@ -107,7 +107,7 @@ import { Markdown, MarkdownImageSourcesContext } from '../components/Markdown';
 import { chatImageSources } from '../lib/chatImageSources';
 import { CreatorAvatar } from '@/components/CreatorAvatar';
 import { ProviderIcon } from '@/components/ProviderIcon';
-import { QueuedMessageRow } from '@/components/chat/QueuedPeek';
+import { QueuedMessageRow, SteeredMessageRow } from '@/components/chat/QueuedPeek';
 import { WakeupChip } from '@/components/chat/WakeupChip';
 import { SkillCommandPicker } from '@/components/chat/SkillCommandPicker';
 import { ComposerSkillChip, ComposerSkillDetails } from '@/components/chat/ComposerSkillChip';
@@ -540,7 +540,7 @@ export function Chat({
   // the matching turn_started event lands in the transcript. Lets a message
   // sent mid-turn show as "queued" instead of silently vanishing until the
   // current turn finishes.
-  const [pendingSends, setPendingSends] = useState<{ id: string; text: string; queued: boolean }[]>([]);
+  const [pendingSends, setPendingSends] = useState<{ id: string; text: string; queued: boolean; steering?: boolean }[]>([]);
   // The runner/SQLite queue is authoritative. Every WebSocket snapshot carries
   // it, so switching chats or reconnecting cannot make waiting messages vanish.
   const [queued, setQueued] = useState<QueuedMessageSnapshot[]>([]);
@@ -1466,6 +1466,8 @@ export function Chat({
 
   // A turn is also in flight while an approval is pending (process is waiting on us).
   const working = status === 'working' || status === 'needs_you';
+  const deliveredQueued = queued.filter((item) => item.delivered);
+  const waitingQueued = queued.filter((item) => !item.delivered);
   const compacting = compactionBusy || conversationActivity === 'compacting';
 
   // Upgrade already-running archived chats created before the server-side
@@ -1647,7 +1649,7 @@ export function Chat({
     // While a reply is running, a send steers it: the bot reads the message at
     // its next step and keeps working. Only an idle chat with sends already
     // waiting ahead of this one shows it as queued.
-    setPendingSends((prev) => [...prev, { id: pendingId, text: outgoing, queued: !working && prev.length > 0 }]);
+    setPendingSends((prev) => [...prev, { id: pendingId, text: outgoing, queued: !working && prev.length > 0, steering: working }]);
     try {
       const posted = working
         ? await api.steerMessage(conversationId, outgoing)
@@ -2777,7 +2779,25 @@ export function Chat({
                     </MessageContent>
                   </Message>
                 </MessageScrollerItem>
-              ) : status === 'working' || compacting ? (
+              ) : null}
+
+              {/* Messages sent mid-reply read like ordinary sent bubbles, back to
+                  back, above the working marker: the bot already holds them and
+                  reads them all at its next step. */}
+              {!isNew && canSend
+                ? deliveredQueued.map((item) => (
+                    <MessageScrollerItem key={`steered-${item.id}`}>
+                      <SteeredMessageRow text={visiblePromptText(item.text)} origin={item.origin} />
+                    </MessageScrollerItem>
+                  ))
+                : null}
+              {pendingSends.filter((p) => p.steering).map((p) => (
+                <MessageScrollerItem key={p.id}>
+                  <SteeredMessageRow text={visiblePromptText(p.text)} sending />
+                </MessageScrollerItem>
+              ))}
+
+              {!transcript.streamingText && (status === 'working' || compacting) ? (
                 <MessageScrollerItem>
                   <AgentWorkingMarker
                     thinking={transcript.items.at(-1)?.kind === 'user'}
@@ -2787,12 +2807,12 @@ export function Chat({
               ) : null}
 
               {!isNew && canSend
-                ? queued.map((item, index) => (
+                ? waitingQueued.map((item, index) => (
                     <MessageScrollerItem key={`queued-${item.id}`}>
                       <QueuedMessageRow
-                        item={{ id: item.id, text: visiblePromptText(item.text), origin: item.origin, delivered: item.delivered }}
+                        item={{ id: item.id, text: visiblePromptText(item.text), origin: item.origin }}
                         index={index}
-                        count={queued.length}
+                        count={waitingQueued.length}
                         canManage={canManage}
                         draftBlocked={!!draft.trim() || !!messageQuote}
                         sendingId={sendingQueuedId}
@@ -2805,7 +2825,7 @@ export function Chat({
                   ))
                 : null}
 
-              {pendingSends.map((p, i) => (
+              {pendingSends.map((p, i) => p.steering ? null : (
                 <MessageScrollerItem key={p.id}>
                   <PendingUserRow
                     text={p.text}

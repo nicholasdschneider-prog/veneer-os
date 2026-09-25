@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { QueuedMessageRow, QueuedMessageText, queuedPeekTextClass } from './QueuedPeek';
+import { QueuedMessageRow, QueuedMessageText, SteeredMessageRow, queuedPeekTextClass } from './QueuedPeek';
 
 const item = { id: 1, text: 'Fix and then roll out new version to clients' };
 const noop = () => undefined;
@@ -172,5 +172,20 @@ describe('QueuedMessageText', () => {
     expect(opened).toContain('aria-label="Collapse queued message"');
     expect(queuedPeekTextClass(true)).toContain('max-h-[min(40dvh,24rem)]');
     expect(queuedPeekTextClass(false)).toContain('line-clamp-2');
+  });
+});
+
+describe('SteeredMessageRow', () => {
+  it('reads as an ordinary sent bubble the bot will read at its next step', () => {
+    const html = renderToStaticMarkup(<SteeredMessageRow text="also add tracking" />);
+    expect(html).toContain('also add tracking');
+    expect(html).toContain('Sent · reading at its next step');
+    expect(html).not.toContain('opacity-60');
+    expect(html).not.toContain('Send now');
+    expect(html).not.toContain('Queued');
+  });
+
+  it('shows Sending while the steer request is in flight', () => {
+    expect(renderToStaticMarkup(<SteeredMessageRow text="one more" sending />)).toContain('Sending…');
   });
 });
