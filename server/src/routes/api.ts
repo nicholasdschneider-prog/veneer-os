@@ -3147,7 +3147,9 @@ export function createApiRouter(ctx: AppContext): Router {
           : await manager.queueMessage(row.id, body.data.text, req.user!.id)
         : origin
           ? await manager.postMessage(row.id, body.data.text, req.user!.id, origin)
-          : await manager.postMessage(row.id, body.data.text, req.user!.id);
+          : req.agentConversationId
+            ? await manager.postMessage(row.id, body.data.text, req.user!.id)
+            : await manager.steerMessage(row.id, body.data.text, req.user!.id);
       res.json({ ...posted, status: await manager.statusOf(row.id) });
     })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });

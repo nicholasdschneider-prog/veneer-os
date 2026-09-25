@@ -391,7 +391,7 @@ export const api = {
     requestJson<{
       status: ConversationStatus;
       messageId: number;
-      disposition: 'running' | 'queued';
+      disposition: 'running' | 'steered' | 'delivered' | 'queued' | 'duplicate';
       queue: ConversationQueueSnapshot;
     }>(`/api/conversations/${id}/messages`, {
       method: 'POST',

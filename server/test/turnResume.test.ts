@@ -769,6 +769,29 @@ describe('turn auto-resume', () => {
     ]);
   });
 
+  it('holds rapid follow-ups through asynchronous startup and steers each once in order', async () => {
+    const {adapter,runs,steers} = recordingAdapter();
+    let release!: () => void;
+    const startup = new Promise<void>(resolve=>{release=resolve;});
+    const manager = createConversationManager({db,adapters:{claude:adapter},
+      resolveWorkspace:()=>({workspaceDir:'/tmp',assistantSlug:'assistant',elevated:false,fullAccess:false}),
+      loadMemoryBlock:async()=>{await startup; return null;},
+      log:{warn:()=>undefined,error:()=>undefined}});
+    manager.postMessage(conv,'Opening message');
+    const first=manager.steerMessage(conv,'First rapid detail');
+    const second=manager.steerMessage(conv,'Second rapid detail');
+    expect(runs).toHaveLength(0);
+    expect(manager.queueSnapshot(conv.id).messages.map(m=>[m.text,m.delivered])).toEqual([
+      ['First rapid detail',true],['Second rapid detail',true]]);
+    release();
+    expect((await first).disposition).toBe('steered');
+    expect((await second).disposition).toBe('steered');
+    expect(runs).toHaveLength(1);
+    expect(steers).toEqual(['First rapid detail','Second rapid detail']);
+    expect(manager.queueSnapshot(conv.id).messages).toHaveLength(0);
+    runs[0]!.finish(); await flush(); expect(runs).toHaveLength(1);
+  });
+
   it('queues another user’s guidance instead of steering it into the current actor’s connectors', async () => {
     db.prepare(
       "INSERT INTO users (id, email, display_name, role) VALUES (2, 'member@example.com', 'Member', 'member')",

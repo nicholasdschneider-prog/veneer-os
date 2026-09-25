@@ -141,7 +141,7 @@ try {
     const deliveries = replies.map((r,i)=>({id:i+1,text:r.text+'\n\n[Reply context] Internal delivery instructions',createdAt:r.created_at,origin:{kind:'result_reply',from:'Alex',to:'Goldberg'}}));
     const legacy={id:4,text:'Hey, can you pick this back up for me?\n\nA human replied in message thread 20958f1b-7c52-4d91-98de-9fc9b5ae38ff. Use read_message_thread to read the original result and replies',createdAt:'2026-09-25 20:00:04',origin:{kind:'wakeup',from:'Bot',to:'Bot'}};
     let socket;
-    const snapshot = (messages,extra=[]) => socket.send(JSON.stringify({kind:'snapshot',conversationId:'bot0',status:'working',queue:{revision:Date.now(),messages,failedTurn:null},wakeups:[],events:[...events,...extra]}));
+    const snapshot = (messages,extra=[],status='working') => socket.send(JSON.stringify({kind:'snapshot',conversationId:'bot0',status,queue:{revision:Date.now(),messages,failedTurn:null},wakeups:[],events:[...events,...extra]}));
     await page.routeWebSocket('**/ws',ws=>{socket=ws;ws.onMessage(raw=>{if(JSON.parse(String(raw)).kind==='subscribe')snapshot([...deliveries,legacy]);});});
     await page.goto('http://127.0.0.1:3299/#/chat/bot0');
     await page.getByRole('textbox',{name:'Message',exact:true}).waitFor();
@@ -159,6 +159,35 @@ try {
     await page.waitForTimeout(150); await verify();
     snapshot([], deliveries.map((row,i)=>({type:'turn_started',turnId:`steer-${i}`,role:'user',text:row.text,origin:row.origin,at:`2026-09-25T20:00:0${i+1}Z`,via:'web'})));
     await page.waitForTimeout(150); await verify();
+    // Exercise the actual composer while its status is stale and both HTTP
+    // requests are still pending. Normal rapid sends must never offer Send now.
+    snapshot([],[],'idle');
+    await page.waitForTimeout(100);
+    const requests=[];
+    let release;
+    const gate=new Promise(resolve=>{release=resolve;});
+    await page.route('**/api/conversations/bot0/messages',async route=>{
+      requests.push(route.request().postDataJSON().text);
+      await gate;
+      await route.fulfill({json:{status:'working',messageId:100+requests.length,disposition:'delivered',queue:{revision:Date.now(),messages:requests.map((text,i)=>({id:100+i,text,createdAt:new Date().toISOString(),delivered:true})),failedTurn:null}}});
+    });
+    const composer=page.getByRole('textbox',{name:'Message',exact:true});
+    for(const text of ['Rapid ordinary one','Rapid ordinary two']) {
+      await composer.fill(text);
+      await page.getByRole('button',{name:'Send',exact:true}).click();
+      await page.getByText(text,{exact:true}).waitFor();
+    }
+    await page.waitForTimeout(100);
+    assert.deepEqual(requests,['Rapid ordinary one','Rapid ordinary two']);
+    assert.equal(await page.getByRole('button',{name:'Send now',exact:true}).count(),0);
+    assert(!(await page.locator('body').innerText()).includes('Queued'));
+    // The durable WebSocket receipts arrive while the POSTs still wait for
+    // provider startup. Each send must still have exactly one visible bubble.
+    snapshot(requests.map((text,i)=>({id:100+i,text,createdAt:new Date().toISOString(),delivered:true})),[],'working');
+    await page.waitForTimeout(100);
+    for(const text of requests) assert.equal(await page.getByText(text,{exact:true}).count(),1);
+    release(); await page.waitForTimeout(150);
+    for(const text of requests) assert.equal(await page.getByText(text,{exact:true}).count(),1);
     assert.deepEqual(errors,[]); await page.close();
   }
   console.log('Result reply browser checks passed: desktop/mobile, queued, steering, consumed history, one visible reply, no internal notification bubbles.');

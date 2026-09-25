@@ -81,7 +81,7 @@ describe('archived conversation reactivation', () => {
       body: JSON.stringify({ text: 'Continue this work.' }),
     });
     expect(response.status).toBe(200);
-    expect(archivedWhenPosted).toBe(0);
+    expect(archivedWhenSteered).toBe(0);
     expect(db.prepare("SELECT archived FROM conversations WHERE id = 'archived-message'").get()).toEqual({ archived: 0 });
     expect(
       (db.prepare("SELECT last_user_activity_at FROM conversations WHERE id = 'archived-message'").get() as {

@@ -103,7 +103,7 @@ import type {
   Project,
   QueuedMessageSnapshot,
 } from '../lib/types';
-import { newestQueueSnapshot, type OrderedQueueSnapshot } from '../lib/queueSnapshots';
+import { newestQueueSnapshot, pendingSendsForDisplay, type OrderedQueueSnapshot } from '../lib/queueSnapshots';
 import { Markdown, MarkdownImageSourcesContext } from '../components/Markdown';
 import { chatImageSources } from '../lib/chatImageSources';
 import { CreatorAvatar } from '@/components/CreatorAvatar';
@@ -541,7 +541,7 @@ export function Chat({
   // the matching turn_started event lands in the transcript. Lets a message
   // sent mid-turn show as "queued" instead of silently vanishing until the
   // current turn finishes.
-  const [pendingSends, setPendingSends] = useState<{ id: string; text: string; queued: boolean; steering?: boolean }[]>([]);
+  const [pendingSends, setPendingSends] = useState<{ id: string; text: string; queued: boolean; steering?: boolean; queueFloor?: number }[]>([]);
   // The runner/SQLite queue is authoritative. Every WebSocket snapshot carries
   // it, so switching chats or reconnecting cannot make waiting messages vanish.
   const [queued, setQueued] = useState<QueuedMessageSnapshot[]>([]);
@@ -1469,6 +1469,7 @@ export function Chat({
   const working = status === 'working' || status === 'needs_you';
   const deliveredQueued = queued.filter((item) => item.delivered && !isResultReplyDelivery(item));
   const waitingQueued = queued.filter((item) => !item.delivered && !isResultReplyDelivery(item));
+  const visiblePendingSends = pendingSendsForDisplay(pendingSends, queued);
   const compacting = compactionBusy || conversationActivity === 'compacting';
 
   // Upgrade already-running archived chats created before the server-side
@@ -1647,10 +1648,10 @@ export function Chat({
       return;
     }
     const pendingId = crypto.randomUUID();
-    // While a reply is running, a send steers it: the bot reads the message at
-    // its next step and keeps working. Only an idle chat with sends already
-    // waiting ahead of this one shows it as queued.
-    setPendingSends((prev) => [...prev, { id: pendingId, text: outgoing, queued: !working && prev.length > 0, steering: working }]);
+    const queueFloor = Math.max(0, ...queuedRef.current.map(row => row.id));
+    // Normal sends are immediate input even while the visible status is stale.
+    // Only the server can decide that a provider/sender needs a queue fallback.
+    setPendingSends((prev) => [...prev, { id: pendingId, text: outgoing, queued: false, steering: true, queueFloor }]);
     try {
       const posted = working
         ? await api.steerMessage(conversationId, outgoing)
@@ -2792,7 +2793,7 @@ export function Chat({
                     </MessageScrollerItem>
                   ))
                 : null}
-              {pendingSends.filter((p) => p.steering).map((p) => (
+              {visiblePendingSends.filter((p) => p.steering).map((p) => (
                 <MessageScrollerItem key={p.id}>
                   <SteeredMessageRow text={visiblePromptText(p.text)} sending />
                 </MessageScrollerItem>
@@ -2826,7 +2827,7 @@ export function Chat({
                   ))
                 : null}
 
-              {pendingSends.map((p, i) => p.steering ? null : (
+              {visiblePendingSends.map((p, i) => p.steering ? null : (
                 <MessageScrollerItem key={p.id}>
                   <PendingUserRow
                     text={p.text}

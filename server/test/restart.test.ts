@@ -167,7 +167,7 @@ beforeAll(async () => {
     db,
     resolveIdentity: async () => ({ email: identityEmail }),
     // Runner client is fully async; these focused routes use statusOf and postMessage.
-    manager: { statusOf: async () => 'idle', postMessage, bus: managerBus },
+    manager: { statusOf: async () => 'idle', postMessage, steerMessage: postMessage, bus: managerBus },
     requestRestart,
   } as unknown as AppContext;
 

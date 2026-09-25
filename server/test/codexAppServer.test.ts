@@ -152,6 +152,7 @@ describe('canonical Codex App Server adapter', () => {
   const dirs: string[] = [];
   afterEach(() => {
     delete process.env.HANG_START;
+    delete process.env.TURN_START_RELEASE_FILE;
     delete process.env.RESPOND_TURN_START;
     delete process.env.EMIT_COLLAB_EVENTS;
     delete process.env.EMIT_COLLAB_RUNNING;
@@ -391,6 +392,39 @@ describe('canonical Codex App Server adapter', () => {
     expect(done).toHaveLength(1);
     expect(done[0]).toMatchObject({ turnId: 'turn-2', outcome: 'interrupted_by_user' });
     expect((done[0] as { usage?: unknown }).usage).toBeUndefined();
+  });
+
+  it('accepts rapid follow-ups before the native turn id exists, then steers each once in order', async () => {
+    const dir=tmpDir(); dirs.push(dir);
+    const requestLog=path.join(dir,'requests.jsonl');
+    const release=path.join(dir,'release');
+    process.env.REQUEST_LOG=requestLog;
+    process.env.TURN_START_RELEASE_FILE=release;
+    const adapter=createCodexAdapter({codexBin:FAKE,turnTimeoutMs:60_000,transcriptsDir:dir,log:silent});
+    const events: ConversationEvent[]=[];
+    const handle=adapter.runTurn(turnSpec(),e=>events.push(e));
+    const first=handle.steer!('First rapid follow-up');
+    const second=handle.steer!('Second rapid follow-up');
+    await waitFor(()=>fs.existsSync(requestLog)&&fs.readFileSync(requestLog,'utf8').includes('"method":"turn/start"'),'turn/start missing');
+    expect(fs.readFileSync(requestLog,'utf8')).not.toContain('"method":"turn/steer"');
+    fs.writeFileSync(release,'ready');
+    expect(await first).toBe(true); expect(await second).toBe(true);
+    const requests=fs.readFileSync(requestLog,'utf8').trim().split('\n').map(line=>JSON.parse(line));
+    expect(requests.filter(r=>r.method==='turn/start')).toHaveLength(1);
+    expect(requests.filter(r=>r.method==='turn/steer').map(r=>r.params.input[0].text)).toEqual(['First rapid follow-up','Second rapid follow-up']);
+    expect(requests.some(r=>r.method==='turn/interrupt')).toBe(false);
+    expect(events.filter(e=>e.type==='turn_started')).toHaveLength(2);
+    handle.kill(); await handle.done;
+  });
+
+  it('releases startup follow-ups to the durable fallback when stopped before readiness', async () => {
+    process.env.HANG_START='1';
+    const dir=tmpDir(); dirs.push(dir);
+    const adapter=createCodexAdapter({codexBin:FAKE,turnTimeoutMs:60_000,transcriptsDir:dir,log:silent});
+    const handle=adapter.runTurn(turnSpec(),()=>undefined);
+    const pending=handle.steer!('Follow-up during startup');
+    handle.kill(); await handle.done;
+    expect(await pending).toBe(false);
   });
 
   it('steers an active native turn with its expected turn id', async () => {

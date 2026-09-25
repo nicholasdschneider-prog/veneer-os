@@ -106,6 +106,7 @@ function parseMessageOrigin(value: unknown): MessageOrigin | undefined {
 }
 
 interface LiveTurn {
+  providerReady: Promise<void>;
   turnId: string;
   promptText: string;
   actorUserId: number | null;
@@ -1468,7 +1469,10 @@ export function createConversationManager({
     }
 
     const turnId = crypto.randomUUID();
-    const turn: LiveTurn = { turnId, promptText: visibleText, actorUserId, origin, events: [], partialText: '' };
+    let markProviderReady!: () => void;
+    const providerReady = new Promise<void>(resolve => { markProviderReady = resolve; });
+    const turn: LiveTurn = { providerReady, turnId, promptText: visibleText, actorUserId, origin, events: [], partialText: '' };
+    try {
     const connectorSources = connectorToolSourcesForConversation(db, authority.id, actorUserId);
     entry.turn = turn;
     entry.lastTurnFailed = false;
@@ -1678,6 +1682,7 @@ export function createConversationManager({
         updateProviderInstructionHashStmt.run(spawnConfig.instructionHash, conv.id);
       }
     };
+    if (entry.turn !== turn || turn.discarded) return;
     const handle = adapter.runTurn(
       {
         cwd: workspace.workspaceDir,
@@ -1796,6 +1801,7 @@ export function createConversationManager({
     );
     entry.kill = handle.kill;
     entry.steer = handle.steer ?? null;
+    markProviderReady();
     entry.respond = handle.respondToApproval;
     entry.respondQuestion = handle.respondToQuestion ?? null;
 
@@ -1860,6 +1866,9 @@ export function createConversationManager({
       const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
       if (fresh && entry.queue.length) void runNext(fresh);
     });
+    } finally {
+      markProviderReady();
+    }
   }
 
   // First-turn tracking: --session-id (create) vs --resume. Kept in settings so
@@ -1964,7 +1973,6 @@ export function createConversationManager({
       if (posted.disposition === 'duplicate') return posted;
       if (posted.disposition !== 'queued') return posted;
       const entry = entryFor(conv.id);
-      const steer = entry.steer;
       // Each reason is reported back so the sending agent can tell "the chat is
       // busy compacting" from "this provider cannot be steered at all".
       const queued = (steerReason: SteerReason): PostMessageResult => ({
@@ -1979,7 +1987,18 @@ export function createConversationManager({
       // A live provider process already has one actor's personal connectors.
       // Another user's guidance must wait for a fresh, correctly scoped turn.
       if (entry.turn.actorUserId !== actorUserId) return queued('other_actor');
-      if (!steer) return queued('no_steer_support');
+      const targetTurn = entry.turn;
+      // Persisted human input arriving during recall/toolbox setup belongs to
+      // this turn. Do not mistake its not-yet-created handle for an unsupported provider.
+      entry.steering.add(posted.messageId);
+      emitQueue(conv.id);
+      await targetTurn.providerReady;
+      const steer = entry.steer;
+      if (entry.turn !== targetTurn || targetTurn.discarded || !steer) {
+        entry.steering.delete(posted.messageId);
+        emitQueue(conv.id);
+        return queued(entry.turn !== targetTurn || targetTurn.discarded ? 'no_live_turn' : 'no_steer_support');
+      }
 
       // Once another input enters this turn, exclusive discussion focus is unknown.
       // Even a failed steer must not restore a potentially stale activity claim.

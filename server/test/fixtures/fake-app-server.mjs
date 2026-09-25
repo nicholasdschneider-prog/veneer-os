@@ -180,6 +180,13 @@ rl.on('line', (line) => {
           completeTurn(threadId, previousTurnId, 'interrupted');
         }
       };
+      if (process.env.TURN_START_RELEASE_FILE) {
+        const timer = setInterval(() => {
+          if (!fs.existsSync(process.env.TURN_START_RELEASE_FILE)) return;
+          clearInterval(timer); respondStarted();
+        }, 5);
+        break;
+      }
       if (process.env.COMPLETE_TURNS === '1') {
         // Plain turn that finishes on its own, for tests about thread lifecycle.
         respondStarted();

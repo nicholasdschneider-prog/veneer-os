@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import { createCodexAdapter } from '../src/providers/codexAppServer/adapter.js';
 import { communicationService } from '../src/bots/communication.js';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -505,6 +507,46 @@ describe('VeneerBots', () => {
     communicationService(db).notify({user}, 'fixture-a', `message-thread:${id}`, 'Legacy notification', actorId);
     return db.prepare('SELECT id FROM conversation_wakeups WHERE wake_key=?').get(`message-thread:${id}`) as {id:string};
   }
+  it('delivers an ordinary rapid follow-up to a result reply through delayed native Codex startup', async () => {
+    const dir=mkdtempSync(join(tmpdir(),'rapid-native-'));
+    const requestLog=join(dir,'requests.jsonl'), release=join(dir,'release');
+    const previousLog=process.env.REQUEST_LOG, previousRelease=process.env.TURN_START_RELEASE_FILE;
+    process.env.REQUEST_LOG=requestLog; process.env.TURN_START_RELEASE_FILE=release;
+    let done: Promise<void> | undefined;
+    try {
+      db.prepare("UPDATE conversations SET provider='codex' WHERE id='fixture-a'").run();
+      const native=createCodexAdapter({codexBin:fileURLToPath(new URL('./fixtures/fake-app-server.mjs',import.meta.url)),
+        transcriptsDir:dir,turnTimeoutMs:60_000,log:{warn:()=>undefined,error:()=>undefined}});
+      const nativeRun=native.runTurn.bind(native);
+      native.runTurn=(...args)=>{const handle=nativeRun(...args);done=handle.done;return handle;};
+      manager=createConversationManager({db,adapters:{codex:native},
+        resolveWorkspace:()=>({workspaceDir:'/tmp',assistantSlug:'assistant',elevated:false,fullAccess:false}),
+        log:{warn:()=>undefined,error:()=>undefined}});
+      scheduler=createConversationWakeupScheduler({db,manager,log:{info:()=>undefined,warn:()=>undefined,error:()=>undefined}});
+      queueResultReply('reply','What is this message from?'); scheduler.tick();
+      const conv=db.prepare("SELECT * FROM conversations WHERE id='fixture-a'").get() as ConversationRow;
+      const followup=manager.steerMessage(conv,'Where is it coming from?');
+      const deadline=Date.now()+10000;
+      while (!fs.existsSync(requestLog)||!fs.readFileSync(requestLog,'utf8').includes('"method":"turn/start"')) {
+        if(Date.now()>deadline)throw new Error('Native startup did not begin');
+        await new Promise(resolve=>setTimeout(resolve,10));
+      }
+      expect(fs.readFileSync(requestLog,'utf8')).not.toContain('"method":"turn/steer"');
+      fs.writeFileSync(release,'ready');
+      expect((await followup).disposition).toBe('steered');
+      const requests=fs.readFileSync(requestLog,'utf8').trim().split('\n').map(line=>JSON.parse(line));
+      expect(requests.filter(r=>r.method==='turn/start')).toHaveLength(1);
+      expect(requests.find(r=>r.method==='turn/start').params.input[0].text).toMatch(/^What is this message from/);
+      expect(requests.filter(r=>r.method==='turn/steer').map(r=>r.params.input[0].text)).toEqual(['Where is it coming from?']);
+      expect(requests.some(r=>r.method==='turn/interrupt')).toBe(false);
+      expect(manager.queueSnapshot(conv.id).messages).toHaveLength(0);
+    } finally {
+      manager.shutdown(); await done; await flush();
+      if(previousLog===undefined)delete process.env.REQUEST_LOG;else process.env.REQUEST_LOG=previousLog;
+      if(previousRelease===undefined)delete process.env.TURN_START_RELEASE_FILE;else process.env.TURN_START_RELEASE_FILE=previousRelease;
+      rmSync(dir,{recursive:true,force:true});
+    }
+  });
   it('steers consecutive human result replies exactly once with actual text and original context', async () => {
     const acknowledgments: ((ok: boolean) => void)[] = [];
     const seen: string[] = [];

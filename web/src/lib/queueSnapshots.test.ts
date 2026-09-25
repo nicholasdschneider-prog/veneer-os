@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ConversationQueueSnapshot } from './types';
-import { newestQueueSnapshot, type OrderedQueueSnapshot } from './queueSnapshots';
+import { pendingSendsForDisplay, newestQueueSnapshot, type OrderedQueueSnapshot } from './queueSnapshots';
 
 const beforeInterrupt: ConversationQueueSnapshot = {
   revision: 10,
@@ -30,4 +30,13 @@ describe('ordered queue snapshots', () => {
     expect(state?.snapshot.revision).toBe(11);
     expect(state?.snapshot.messages).toEqual([]);
   });
+});
+
+it('renders one bubble per rapid send when WebSocket receipts arrive before HTTP responses', () => {
+  const pending=[{id:'first',text:'Same message',queueFloor:7},{id:'second',text:'Same message',queueFloor:7}];
+  const row=(id:number)=>({id,text:'Same message',createdAt:'2026-09-25T21:00:00Z',delivered:true as const});
+  expect(pendingSendsForDisplay(pending,[row(7)])).toEqual(pending);
+  expect(pendingSendsForDisplay(pending,[row(7),row(8)])).toEqual([pending[1]]);
+  expect(pendingSendsForDisplay(pending,[row(7),row(8),row(9)])).toEqual([]);
+  expect(pending).toHaveLength(2);
 });

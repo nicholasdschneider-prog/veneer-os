@@ -289,6 +289,8 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     let unsubscribe: (() => void) | null = null;
     let resolvedThreadId: string | null = spec.firstTurn ? null : spec.nativeSessionId;
     let resolvedTurnId: string | null = null;
+    let markTurnReady!: () => void;
+    const turnReady = new Promise<void>(resolve => { markTurnReady = resolve; });
     let interruptRequested = false;
     let interruptFallbackTimer: NodeJS.Timeout | null = null;
     let quarantineUnscopedNativeEvents = false;
@@ -1511,6 +1513,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         })) as { turn?: { id?: string } };
         resolvedTurnId = started.turn?.id ?? null;
         if (!resolvedTurnId) throw new Error('turn/start did not return a native turn id');
+        markTurnReady();
         if (killed && killReason) requestNativeInterrupt(killReason);
         for (const message of pendingNativeMessages.splice(0)) handleServerMessage(message);
         // Resolution happens via the 'turn/completed' notification above.
@@ -1587,6 +1590,9 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     }
 
     async function steer(text: string): Promise<boolean> {
+      // A follow-up can arrive before thread/start or turn/start returns. Wait
+      // for this exact turn, or release the durable fallback if it ends first.
+      await Promise.race([turnReady, done]);
       const threadId = resolvedThreadId;
       const expectedTurnId = resolvedTurnId;
       if (settled || killed || !threadId || !expectedTurnId) return false;

@@ -309,6 +309,18 @@ it('routes authenticated bot messages and replies to workers while human steerin
     identity = { email: 'owner@example.com' };
     await send('clara');
     expect(steerMessage).toHaveBeenCalledTimes(1);
+    // An idle/stale browser posts /messages. The server must still attempt live
+    // delivery instead of requiring a second Send now click.
+    const rapid = await fetch(`${base}/api/conversations/clara/messages`, {
+      method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:'Rapid human follow-up'}),
+    });
+    expect(rapid.status).toBe(200);
+    expect(steerMessage).toHaveBeenLastCalledWith('clara','Rapid human follow-up',1);
+    const count=steerMessage.mock.calls.length;
+    await fetch(`${base}/api/conversations/clara/messages`, {
+      method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:'Explicit queue',queueOnly:true}),
+    });
+    expect(steerMessage).toHaveBeenCalledTimes(count);
     identity = { email: 'other@example.com' };
     db.prepare(
       "UPDATE conversations SET visibility='private' WHERE id='grant'",
