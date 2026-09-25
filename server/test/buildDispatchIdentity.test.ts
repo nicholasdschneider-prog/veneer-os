@@ -82,3 +82,36 @@ it('binds the real manager queued build only after an unrelated in-flight turn f
   expect(db.prepare("SELECT count(*) n FROM hub_inbound_messages WHERE idempotency_key LIKE 'build:%'").get()).toEqual({n:1});
  }finally{manager.shutdown();await flush();}
 });
+
+it('reserves the WAL writer before reading inbound receipts and delivers only once', async () => {
+ c.stop();
+ const dir=mkdtempSync(join(tmpdir(),'inbound-contention-')),file=join(dir,'fixture.sqlite');
+ await db.backup(file);
+ const other=new Database(file,{timeout:0});
+ other.pragma('journal_mode = WAL');
+ let attempted=false, competingCode:string|undefined;
+ const primary=new Database(file,{verbose(sql){
+  // A second service tries to commit after the receipt read, before the insert.
+  if(!attempted && sql.startsWith('INSERT INTO queued_messages')){
+   attempted=true;
+   try {other.prepare("INSERT INTO settings(key,value_json) VALUES('competing-writer','true')").run();}
+   catch(error){competingCode=(error as {code:string}).code;}
+  }
+ }});
+ const adapter:ProviderAdapter={id:'claude',mintSessionId:()=>'',readTranscript:async()=>[],runTurn(){let finish!:()=>void;const done=new Promise<void>(resolve=>{finish=resolve;});return {done,kill:finish,respondToApproval:()=>true};}};
+ const manager=createConversationManager({db:primary,adapters:{claude:adapter},resolveWorkspace:()=>({workspaceDir:'/tmp',assistantSlug:'fixture',elevated:false,fullAccess:false}),log:{warn:()=>{},error:()=>{}}});
+ try {
+  const conv=primary.prepare("SELECT * FROM conversations WHERE id='build'").get() as ConversationRow;
+  const first=manager.deliverWakeup(conv,'Contention fixture','contention-fixture');
+  const duplicate=manager.deliverWakeup(conv,'Contention fixture','contention-fixture');
+  expect(attempted).toBe(true);
+  expect(competingCode).toBe('SQLITE_BUSY');
+  expect(duplicate).toMatchObject({messageId:first.messageId,disposition:'duplicate'});
+  expect(primary.prepare('SELECT count(*) n FROM hub_inbound_messages').get()).toEqual({n:1});
+  // Once persistence commits, the other service can write normally.
+  other.prepare("INSERT INTO settings(key,value_json) VALUES('after-delivery','true')").run();
+ } finally {
+  manager.shutdown();await new Promise(resolve=>setImmediate(resolve));
+  primary.close();other.close();rmSync(dir,{recursive:true,force:true});
+ }
+});

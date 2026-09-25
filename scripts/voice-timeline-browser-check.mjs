@@ -160,6 +160,16 @@ try {
             assistants: [{ id: 1, name: "Assistant", slug: "assistant" }],
           };
         else if (p === "/api/models") body = { models: [] };
+        else if (p.endsWith('/replies')) {
+          const after = Number(new URL(req.url()).searchParams.get('after') ?? 0);
+          body = {replies: p.includes('/bot0/') && after < 1 ? [{
+            id: 'inline-fixture', seq: 1, thread_id: 'thread-fixture',
+            anchor: JSON.stringify({turn: 'fixture-turn', at: '2026-09-23T09:00:00Z'}),
+            source_text: 'Original inline fixture result', text: 'Inline fixture response',
+            actor_name: 'Alex', actor_conversation_id: null, bot_name: 'Goldberg',
+            created_at: '2026-09-23 09:19:00', unread: 0,
+          }] : [], hasMore: false};
+        }
         else if (p.includes("/threads")) body = { threads: [] };
         else if (p === '/api/live-voice/sessions') {
           const url = new URL(req.url());
@@ -230,6 +240,7 @@ try {
       assert(morningIndex>=0&&afternoonIndex>morningIndex);
       assert(ordered.slice(morningIndex+1,afternoonIndex).some(t=>t.includes('Review fixture item')));
       assert(ordered.slice(afternoonIndex+1).some(t=>t.includes('Review fixture item')));
+      await page.getByText('Inline fixture response', {exact:true}).waitFor();
       const outgoing = page.getByRole('article', {name:'Outgoing message draft'});
       await outgoing.waitFor();
       const checkDraftPosition = async () => {

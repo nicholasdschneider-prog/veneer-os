@@ -1880,6 +1880,9 @@ export function createConversationManager({
       const questions = listPendingQuestionsStmt.all(conv.id) as QuestionRow[];
       for (const question of questions) finalizeQuestion(question.request_id, 'dismissed');
     }
+    // Reserve the writer before reading receipts. A deferred read transaction
+    // cannot upgrade after another WAL writer commits (SQLITE_BUSY_SNAPSHOT);
+    // busy_timeout does not retry that upgrade. Keep receipt + message atomic.
     let messageId: number;
     if (idempotency?.sourceKind === 'coordination') {
       if (!coordinationLane(db,conv.id)) throw new Error('Coordination delivery requires an internal session');
@@ -1890,7 +1893,7 @@ export function createConversationManager({
         const id=Number(insertQueuedMessageStmt.run(conv.id,text,actorUserId,messageOriginJson(origin),conv.id).lastInsertRowid);
         db.prepare('INSERT INTO coordination_deliveries(conversation_id,request_key,payload_hash,message_id) VALUES(?,?,?,?)').run(conv.id,idempotency.key,hash,id);
         return {id,duplicate:false};
-      })();
+      }).immediate();
       if(stored.duplicate)return {messageId:stored.id,disposition:'duplicate',queue:queueSnapshot(conv.id)};
       messageId=stored.id;
     } else if (idempotency) {
@@ -1915,7 +1918,7 @@ export function createConversationManager({
         insertInboundReceiptStmt.run(idempotency.key, conv.id, id, idempotency.sourceKind);
         onPersisted?.();
         return { messageId: id, duplicate: false };
-      })();
+      }).immediate();
       if (stored.duplicate) {
         return { messageId: stored.messageId, disposition: 'duplicate', queue: queueSnapshot(conv.id) };
       }

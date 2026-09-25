@@ -5,6 +5,7 @@ import { createBotEventsWebhook } from './botWorkflows/routes.js';
 import { startBotWorkflows } from './botWorkflows/background.js';
 import fs from 'node:fs';
 import http from 'node:http';
+import { guardConnectionErrors } from './channels/connectionErrors.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -260,6 +261,7 @@ if (fs.existsSync(webDist)) {
 }
 
 const server = http.createServer(app);
+guardConnectionErrors(server);
 attachWebSocket(server, ctx);
 attachSpeechToText(server, ctx);
 const terminals = attachTerminal(server, ctx);
