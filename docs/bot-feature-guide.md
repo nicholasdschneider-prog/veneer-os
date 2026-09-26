@@ -12,7 +12,7 @@ A nonempty announcement plus its update date earns a **New** callout for 30 days
 
 ## Bot awareness
 
-`botFeatureInstructions()` derives current capability instructions from the same catalog. Core rules v14 deliver them to all agents, including registered bots, through the existing `prepareConversationInstructions` path on **every new turn**. Both normal toolbox materialization and its required-instruction fallback use that path. The instruction hash changes with the content, so resumed provider sessions receive updated instructions. Frozen agent/project snapshots and existing user roles remain intact.
+`botFeatureInstructions()` derives current capability instructions from the same catalog. Core rules v15 deliver them to all agents, including registered bots, through the existing `prepareConversationInstructions` path on **every new turn**. Both normal toolbox materialization and its required-instruction fallback use that path. The instruction hash changes with the content, so resumed provider sessions receive updated instructions. Frozen agent/project snapshots and existing user roles remain intact.
 
 An idle bot receives the update before its next task; it is not woken merely to announce a feature or perform unrelated customer work. In-flight turns receive changes on their next turn. Guidance tells bots when to suggest/use each capability and retains authorization, approval, and setup limits. No owner broadcast or per-bot prompt editing is needed.
 
@@ -102,3 +102,27 @@ Implementation and verification files:
 - [server/src/featureGuide/catalog.ts](/Users/archerclawdington/veneer-os/server/src/featureGuide/catalog.ts)
 
 Validation: root typecheck and the full suite passed (2,507 server tests, 898 web tests, 40 browser-manager tests, and 29 installer tests; five server tests skipped). Isolated browser checks verified queued/working/error polling, selected-recipient display, plain-mention warnings, and overflow at 390px and 1280px. The guide browser checks passed for full/restricted employees, discovery, search, mobile layout, refresh, and aging. Instruction-context and catalog tests passed for fresh/resumed agent delivery. No real employee messages were sent.
+
+
+## Routine training without a build slot — September 26, 2026
+
+The existing Save reusable instructions feature now distinguishes authorized training text,
+procedural documentation, task receipts and isolated artifacts from software changes. Bots
+save ordinary training through the applicable project skill; they coordinate overlapping
+edits, read current content, patch narrowly and verify the saved result. An unresolved file
+ownership conflict delays that edit only.
+
+Software source, executable automation, dependencies, schemas and deployment changes still
+use the durable build queue. Mixed requests queue their software portion. Training never
+grants account access, financial or customer-send authority, and this update does not cancel
+or reclassify existing queue entries automatically.
+
+The same guidance is delivered by core rules v15, the enqueue_build tool description, and
+catalog entry training. The existing resumed-session test verifies delivery while preserving
+the frozen role snapshot. Isolated browser checks cover full and restricted employees,
+desktop/mobile guide access, training search and example copying, plus existing refresh,
+announcement aging and error recovery behavior. No live business actions are used as tests.
+
+Clara-specific procedure consolidation is a separate follow-through after this platform
+guidance is deployed; this release alone does not certify her accounting setup or complete
+her outstanding cases.

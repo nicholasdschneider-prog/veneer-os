@@ -43,6 +43,10 @@ describe('instruction context migration', () => {
     db.prepare("UPDATE assistants SET instructions = 'A later unrelated role.' WHERE id=1").run();
     const result = prepareConversationInstructions(db, { workspaceDir: '/repo', assistantSlug: 'assistant', elevated: false }, 'existing');
     expect(result.developerInstructions).toContain('Current Veneer bot capabilities');
+    expect(result.developerInstructions).toContain('Routine training text, procedural documentation, task records and isolated artifacts do not require enqueue_build');
+    expect(result.developerInstructions).toContain('Keep software source, executable automation, dependencies, schemas and deployment work in the build queue');
+    expect(result.developerInstructions).toContain('defer that edit and continue unrelated work');
+
     expect(result.developerInstructions).toContain('Proactively use ask_user');
     expect(result.developerInstructions).toContain('no fixed option count cap');
     expect(result.developerInstructions).toContain('list_bot_routines before save_bot_routine');

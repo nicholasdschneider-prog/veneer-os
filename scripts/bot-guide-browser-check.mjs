@@ -18,7 +18,7 @@ try {
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     let failGuide = false;
-    let catalog = botFeatureCatalog(Date.parse('2026-09-25T12:00:00Z'));
+    let catalog = botFeatureCatalog(Date.parse('2026-09-26T12:00:00Z'));
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/bot-workflows/guide') return route.fulfill({ status: failGuide ? 503 : 200, json: failGuide ? { error: 'Unavailable' } : catalog });
@@ -43,6 +43,12 @@ try {
     assert.equal(await page.getByRole('button', { name: /^New features/ }).getAttribute('aria-pressed'), 'true');
     await page.getByRole('button', { name: 'All features', exact: true }).click();
     await page.getByRole('heading', { name: 'Talk with your bot', exact: true }).waitFor();
+    await page.getByRole('searchbox').fill('Save reusable instructions');
+    await page.getByRole('heading', {name:'Save reusable instructions',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /without turning ordinary training into a software build/);
+    assert.match(await page.locator('article').innerText(), /deployment changes still require the build queue/);
+    await page.getByRole('button', { name: 'Copy example for Save reusable instructions' }).click();
+    assert.match(await page.evaluate(() => navigator.clipboard.readText()), /existing accounting procedure/);
     await page.getByRole('searchbox').fill('Answer with clickable choice cards');
     await page.getByRole('heading', {name:'Answer with clickable choice cards',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /no fixed option count cap/);
