@@ -123,6 +123,10 @@ the frozen role snapshot. Isolated browser checks cover full and restricted empl
 desktop/mobile guide access, training search and example copying, plus existing refresh,
 announcement aging and error recovery behavior. No live business actions are used as tests.
 
-Clara-specific procedure consolidation is a separate follow-through after this platform
-guidance is deployed; this release alone does not certify her accounting setup or complete
-her outstanding cases.
+Clara-specific procedure consolidation also completed under build 374: current native
+ownership, bounded passes, routine custody, training and artifact delivery replace the
+obsolete migrated worker/card mechanics. Her original routine keeps its timing and owner.
+Skill/regression checks and independent no-effect behavioral review passed; existing
+accounting cases and financial authority were preserved. See the
+[completion report](./reports/training-without-builds/report.md). This does not certify
+live connector parity or completion of her outstanding business cases.

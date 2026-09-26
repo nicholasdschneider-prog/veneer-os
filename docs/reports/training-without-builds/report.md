@@ -23,12 +23,29 @@ fixed role snapshot. In-flight turns receive the guidance on their next turn.
 - Resumed instruction regression confirms current guidance and preserved fixed snapshots.
 - No external accounting actions were performed.
 
-## Remaining Clara follow-through
+## Clara follow-through completed
 
-The existing ERVP skill text and routine still need consolidation. This source release alone
-does not complete that repair or certify live accounting. Continue using fresh current files,
-one editor per overlapping file and native authorized routine management; preserve holds,
-business authority, receipts and unknown effects. Do not replay invoices as validation.
+Clara's active accounting procedures now use one native-operations contract. Obsolete
+worker-file, card/heartbeat, shadow-gate, inbox-zero, Telegram delivery and retired
+environment/browser mechanics were removed. Existing vendor rules, financial/send
+permissions, source ownership, manual archive precedence and duplicate/attachment controls
+remain. Anna's assigned execution and coordinated QBO custody are explicit.
+
+The original Clara owner updated and read back the existing routine's instructions,
+preserving its ID, name, four daily Monday–Saturday run times, timezone and enabled state.
+No duplicate worker or accounting transaction was created.
+
+Five skill packages, 32 existing AP regressions and 39 operations links passed validation.
+An independent reviewer checked eight operational/recovery scenarios and passed the final
+revision. Exact changes, original preimages, routine readback and limits are in the
+[Clara repair report](/Users/archerclawdington/Projects/ERVP/out/clara/maintenance/build374/report.md).
+The ERVP root is not a Git repository; its procedural preimages and diff are retained locally.
+
+Platform commit 3b8b7a6 was pushed to origin/main. The supported restart updated web/runner;
+after reconciling the interrupted turn, the remaining app-runner, terminal and browser-manager
+restart completed through npm run restart with explicit remaining targets. Local services
+are healthy; public reachability does not certify authenticated end-to-end chat. No live
+financial/customer operation or Anna connection-parity test was performed.
 
 ## Changed source files
 
