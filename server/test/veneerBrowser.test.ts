@@ -60,8 +60,10 @@ describe('Veneer Browser manager', () => {
         running.add(profileId);
         return { active: true, status: 'running', runtimeId: `runtime-${profileId}` };
       }),
+      suspend: vi.fn(async (_projectId: string, profileId: string) => { running.delete(profileId); return { suspended: true }; }),
       stop: vi.fn(async (_projectId: string, profileId: string) => { running.delete(profileId); }),
       status: vi.fn(async (_projectId: string, profileId: string) => ({
+        profile: { lastUsedAt: '2026-09-01T00:00:00Z' },
         active: running.has(profileId),
         status: running.has(profileId) ? 'running' : 'stopped',
         runtimeId: running.has(profileId) ? `runtime-${profileId}` : undefined,
@@ -523,6 +525,71 @@ describe('Veneer Browser manager', () => {
     expect(closeBrowserSession).not.toHaveBeenCalled();
     expect(db.prepare('SELECT status, last_error FROM veneer_browser_clone_sessions').get())
       .toEqual({ status: 'error', last_error: 'The temporary browser did not stop.' });
+  });
+
+  async function idleReadOnlyCopy() {
+    await manager.createProfile(1, 'project-1', 'Idle source');
+    await manager.runCommand(1, 'conv-1', ['snapshot', '-i']);
+    db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2000-01-01T00:00:00Z'").run();
+    return cloneId('conv-1');
+  }
+
+  it('suspends completed read-only work, retains files and resumes the same copy', async () => {
+    const id = await idleReadOnlyCopy();
+    await manager.reconcile();
+    expect(closeBrowserSession).toHaveBeenCalled();
+    expect(remote.suspend).toHaveBeenCalledWith('project-1', id, '2026-09-01T00:00:00Z');
+    expect(running.has(id)).toBe(false);
+    await manager.reconcile();
+    expect(cloneId('conv-1')).toBe(id);
+    expect(remote.delete).not.toHaveBeenCalled();
+    await manager.runCommand(1, 'conv-1', ['snapshot', '-i']);
+    expect(cloneId('conv-1')).toBe(id);
+    expect(remote.open).toHaveBeenCalledTimes(1);
+    expect(running.has(id)).toBe(true);
+  });
+
+  it.each(['pending', 'capture', 'viewer', 'mutation', 'fresh', 'recent', 'unknown'])('protects %s sessions from automatic suspension', async (protection) => {
+    await idleReadOnlyCopy();
+    if (protection === 'pending') db.prepare("INSERT INTO pending_turns(conversation_id,prompt) VALUES('conv-1','working')").run();
+    if (protection === 'capture') manager.setCaptureGrant(1, 'conv-1', true);
+    if (protection === 'viewer') await manager.viewerTicketForConversation(1, 'conv-1');
+    if (protection === 'mutation') {
+      runBrowser.mockRejectedValueOnce(new Error('uncertain action'));
+      await expect(manager.runCommand(1, 'conv-1', ['click', '@e1'])).rejects.toThrow();
+      db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2000-01-01T00:00:00Z'").run();
+    }
+    if (protection === 'fresh') db.prepare("INSERT INTO veneer_browser_audit(client_scope, project_id, profile_id, conversation_id, action, metadata_json) VALUES(?,'project-1',?,'conv-1','clone.login_started','{}')").run(manager.clientScope(), cloneId('conv-1'));
+    if (protection === 'recent') db.prepare('UPDATE veneer_browser_clone_sessions SET last_used_at = ?').run(new Date().toISOString());
+    if (protection === 'unknown') db.prepare("DELETE FROM veneer_browser_audit WHERE action = 'clone.created'").run();
+    await manager.reconcile();
+    expect(closeBrowserSession).not.toHaveBeenCalled();
+    expect(remote.suspend).not.toHaveBeenCalled();
+  });
+
+  it('releases read-only public browsing when the project has no saved profile', async () => {
+    await manager.runCommand(1, 'conv-other-project', ['snapshot', '-i']);
+    db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2000-01-01T00:00:00Z'").run();
+    await manager.reconcile();
+    expect(remote.suspend).toHaveBeenCalledTimes(1);
+    expect(remote.delete).not.toHaveBeenCalled();
+  });
+
+  it('keeps the copy active when another connection prevents suspension', async () => {
+    const id = await idleReadOnlyCopy();
+    remote.suspend.mockResolvedValueOnce({ suspended: false });
+    await manager.reconcile();
+    expect(running.has(id)).toBe(true);
+    expect(remote.delete).not.toHaveBeenCalled();
+  });
+
+  it('rechecks pending work after the daemon closes', async () => {
+    await idleReadOnlyCopy();
+    closeBrowserSession.mockImplementationOnce(async () => {
+      db.prepare("INSERT INTO pending_turns(conversation_id,prompt) VALUES('conv-1','new work')").run();
+    });
+    await manager.reconcile();
+    expect(remote.suspend).not.toHaveBeenCalled();
   });
 
   it('removes a local copy record after the remote stale cleaner deletes it', async () => {
@@ -2032,9 +2099,9 @@ describe('Veneer Browser escape hatch', () => {
   });
 
   it('rejects loopback URLs in typed commands and anywhere in raw args', () => {
-    expect(() => rejectLoopbackUrl('navigate', { url: 'http://localhost:3000' })).toThrow(/separate virtual machine/);
-    expect(() => rejectLoopbackUrl('tab', { url: 'http://127.0.0.1:8080/x' })).toThrow(/separate virtual machine/);
-    expect(() => rejectLoopbackUrl('run', { args: ['tab', 'new', 'http://127.0.0.1:5173'] })).toThrow(/separate virtual machine/);
+    expect(() => rejectLoopbackUrl('navigate', { url: 'http://localhost:3000' })).toThrow(/refuses loopback URLs/);
+    expect(() => rejectLoopbackUrl('tab', { url: 'http://127.0.0.1:8080/x' })).toThrow(/refuses loopback URLs/);
+    expect(() => rejectLoopbackUrl('run', { args: ['tab', 'new', 'http://127.0.0.1:5173'] })).toThrow(/refuses loopback URLs/);
     expect(() => rejectLoopbackUrl('run', { args: ['open', 'https://example.com'] })).not.toThrow();
     expect(() => rejectLoopbackUrl('navigate', { url: 'https://example.com' })).not.toThrow();
   });

@@ -4,6 +4,14 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('explains shared browser capacity to employees and resumed agents', () => {
+    const feature = botFeatureCatalog(Date.parse('2026-09-27')).features.find(f => f.id === 'browser')!;
+    expect(feature.isNew).toBe(true);
+    expect(feature.limits).toContain('Five active browsers');
+    expect(feature.agent).toContain('Never stop another chat');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'business-bot', elevated: false })).toContain(feature.agent);
+  });
   it('announces flexible question cards and teaches all providers the approval boundary', () => {
     const feature = botFeatureCatalog(Date.parse('2026-09-25')).features.find(f => f.id === 'question-cards')!;
     expect(feature.isNew).toBe(true);

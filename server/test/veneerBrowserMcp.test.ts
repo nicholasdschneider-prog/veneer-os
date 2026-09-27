@@ -176,7 +176,7 @@ describe('Veneer Browser runner tool scope', () => {
     const body = await response.json() as { result: { isError?: boolean; content: Array<{ text: string }> } };
 
     expect(body.result.isError).toBe(true);
-    expect(body.result.content[0]?.text).toContain('runs on a separate virtual machine');
+    expect(body.result.content[0]?.text).toContain('refuses loopback URLs');
     expect(body.result.content[0]?.text).toContain('network-accessible URL');
     expect(openConversation).not.toHaveBeenCalled();
     expect(runCommand).not.toHaveBeenCalled();

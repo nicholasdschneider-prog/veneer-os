@@ -31,7 +31,11 @@ import {
 
 const MAX_DOWNLOAD_FILE = 25 * 1024 * 1024;
 const MAX_DOWNLOAD_TOTAL = 100 * 1024 * 1024;
-const STOPPED_COPY_GRACE_MS = 30 * 60_000;
+const IDLE_COPY_MS = 30 * 60_000;
+// Anything that could leave a form, login, or an unknown action unfinished pins
+// the copy until its owner explicitly stops it. Never infer safety from success.
+const IDLE_SAFE_COMMANDS = new Set(['open', 'get', 'snapshot', 'screenshot', 'tab', 'scroll',
+  'scrollintoview', 'wait', 'back', 'forward', 'reload', 'fetch_url']);
 const UNFILED_SCOPE_PREFIX = 'unfiled-user-';
 // A chat that is already running commands re-checks the remote runtime at most
 // this often.
@@ -806,7 +810,7 @@ export class VeneerBrowserManager {
       ));
     } catch (error) {
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('The browser limit is full. Stop an idle browser, then try again.');
+        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
       }
       throw new Error('Veneer Browser could not make a working copy. The saved profile is unchanged.');
     }
@@ -850,7 +854,7 @@ export class VeneerBrowserManager {
     } catch (error) {
       if (isVeneerBrowserRemoteError(error, 404)) return null;
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('The browser limit is full. Stop an idle browser, then try again.');
+        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
       }
       throw new Error('Veneer Browser could not make a working copy. The saved profile is unchanged.');
     }
@@ -909,7 +913,7 @@ export class VeneerBrowserManager {
       await this.remote.createTemporary(scopeId, cloneProfileId, 'Signed-out working copy');
     } catch (error) {
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('The browser limit is full. Stop an idle browser, then try again.');
+        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
       }
       throw new Error('Veneer Browser could not make a signed-out working copy.');
     }
@@ -955,7 +959,7 @@ export class VeneerBrowserManager {
          WHERE conversation_id = ? AND clone_profile_id = ?`,
       ).run('The temporary browser runtime did not start.', context.id, row.clone_profile_id);
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('The browser limit is full. Stop an idle browser, then try again.');
+        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
       }
       throw new Error('The temporary browser copy did not start. Its data was kept for a safe retry.');
     }
@@ -971,6 +975,7 @@ export class VeneerBrowserManager {
     if (!profile) {
       return this.queue(`fresh:${context.id}`).run(async () => {
         const row = await this.ensureFreshCopy(context);
+        this.audit(row.project_id, this.auditProfileId(row), 'clone.public_browsing', context.user_id, context.id);
         return this.startWorkingCopy(context, row);
       });
     }
@@ -1117,6 +1122,7 @@ export class VeneerBrowserManager {
       if (!copy || copy.status !== 'active') {
         throw new Error('Open this chat browser before you connect the viewer.');
       }
+      this.audit(copy.project_id, this.auditProfileId(copy), 'clone.human_viewed', userId, context.id);
       const connection = await this.remote.viewerConnection(copy.project_id, copy.clone_profile_id);
       return { ticket: connection.viewerUrl, caFile: connection.caFile };
     });
@@ -1170,6 +1176,9 @@ export class VeneerBrowserManager {
       ...(options.redact?.length ? { redact: options.redact } : {}),
     };
     let current = runtime;
+    if (!IDLE_SAFE_COMMANDS.has(auditCommandName(args))) {
+      this.audit(runtime.row.project_id, runtime.auditProfileId, 'clone.interaction', userId, context.id);
+    }
     let thrown: unknown = null;
     let result = await this.runOnCopy(context, current, args, passthrough).catch((error: unknown) => {
       thrown = error;
@@ -1191,6 +1200,9 @@ export class VeneerBrowserManager {
         // new ticket. A second failure is the real answer, so it is not
         // caught, and only this attempt is recorded and audited.
         current = await this.startForContext(context);
+        if (!IDLE_SAFE_COMMANDS.has(auditCommandName(args))) {
+          this.audit(current.row.project_id, current.auditProfileId, 'clone.interaction', userId, context.id);
+        }
         result = await this.runOnCopy(context, current, args, passthrough);
       } else if (!result) {
         // The copy is still there, so whatever went wrong on this side is the
@@ -1495,6 +1507,7 @@ export class VeneerBrowserManager {
     return this.queue(`conversation:${context.id}`).run(async () => {
       context = this.conversation(conversationId, userId, true);
       const row = await this.ensureFreshCopy(context);
+      this.audit(row.project_id, this.auditProfileId(row), 'clone.login_started', userId, context.id);
       await this.queue(row.clone_profile_id).run(() => this.startWorkingCopy(context, row));
       return this.conversationSession(userId, conversationId);
     });
@@ -1694,6 +1707,31 @@ export class VeneerBrowserManager {
     });
   }
 
+  private idleCopyIsSafe(row: VeneerBrowserCloneSessionRow): boolean {
+    const lastUsed = Date.parse(row.last_used_at ?? row.created_at);
+    if (!Number.isFinite(lastUsed) || Date.now() - lastUsed < IDLE_COPY_MS) return false;
+    if (this.captureGrantActive(row.conversation_id) || hasLiveSecretField(row.conversation_id)) return false;
+    if (this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id = ?').get(row.conversation_id)) return false;
+    const created = this.db.prepare(`SELECT MAX(id) AS id FROM veneer_browser_audit
+      WHERE client_scope = ? AND conversation_id = ? AND action = 'clone.created'`).get(
+      this.clientScope(), row.conversation_id) as { id: number | null };
+    if (!created.id) return false;
+    const events = this.db.prepare(`SELECT action, metadata_json FROM veneer_browser_audit
+      WHERE client_scope = ? AND conversation_id = ? AND id > ?`).all(
+      this.clientScope(), row.conversation_id, created.id) as Array<{ action: string; metadata_json: string }>;
+    if (row.mode === 'fresh' && !events.some((event) => event.action === 'clone.public_browsing')) return false;
+    let readOnlyCommand = false;
+    for (const event of events) {
+      if (['clone.login_started', 'clone.human_viewed', 'clone.interaction', 'credential.used', 'credential.refused', 'capture.granted'].includes(event.action)) return false;
+      if (event.action !== 'command.executed') continue;
+      try {
+        if (!IDLE_SAFE_COMMANDS.has(JSON.parse(event.metadata_json).command)) return false;
+        readOnlyCommand = true;
+      } catch { return false; }
+    }
+    return readOnlyCommand;
+  }
+
   async reconcile(): Promise<void> {
     if (!this.configured()) return;
     const rows = this.db.prepare(
@@ -1707,11 +1745,23 @@ export class VeneerBrowserManager {
     ).all(this.clientScope()) as VeneerBrowserCloneSessionRow[];
     await Promise.all(copies.map(async (row) => {
       const refreshed = await this.refreshCloneSession(row).catch(() => row);
-      if (!refreshed || refreshed.status !== 'stopped') return;
-      const lastUsed = Date.parse(refreshed.last_used_at ?? refreshed.created_at);
-      if (Number.isFinite(lastUsed) && Date.now() - lastUsed > STOPPED_COPY_GRACE_MS) {
-        await this.removeTemporaryClone(refreshed).catch(() => undefined);
-      }
+      if (!refreshed || refreshed.status !== 'active' || !this.remote.suspend) return;
+      await this.queue(`conversation:${row.conversation_id}`).run(async () => {
+        const current = this.cloneSession(row.conversation_id);
+        if (!current || current.clone_profile_id !== row.clone_profile_id || !this.idleCopyIsSafe(current)) return;
+        const remote = await this.remote.status(current.project_id, current.clone_profile_id);
+        if (!remote.active || !remote.profile?.lastUsedAt || remote.profile.humanProtected) return;
+        this.runtimeCache.delete(current.conversation_id);
+        // Closing the automation daemon disconnects CDP, not Chrome. The remote
+        // suspend refuses all remaining connections and unexpired tickets.
+        await this.closeCommandSession(current);
+        if (!this.idleCopyIsSafe(current)) return;
+        const result = await this.remote.suspend!(current.project_id, current.clone_profile_id, remote.profile.lastUsedAt);
+        if (!result.suspended) return;
+        this.db.prepare(`UPDATE veneer_browser_clone_sessions SET status = 'stopped', stopped_at = ?
+          WHERE conversation_id = ? AND clone_profile_id = ?`).run(now(), current.conversation_id, current.clone_profile_id);
+        this.audit(current.project_id, this.auditProfileId(current), 'clone.idle_suspended', null, current.conversation_id);
+      }).catch(() => undefined);
     }));
   }
 

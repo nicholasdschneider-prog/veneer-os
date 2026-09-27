@@ -50,7 +50,6 @@ const IMAGE = process.env.VENEER_BROWSER_IMAGE || 'veneer-browser-runtime:1';
 const SECCOMP = path.resolve(process.env.VENEER_BROWSER_SECCOMP || '/etc/veneer-browser/seccomp_profile.json');
 const MAX_ACTIVE = integer(process.env.VENEER_BROWSER_MAX_ACTIVE, 5, 1, 20);
 const IDLE_MS = integer(process.env.VENEER_BROWSER_IDLE_MINUTES, 30, 5, 1440) * 60_000;
-const TEMP_IDLE_MS = integer(process.env.VENEER_BROWSER_TEMP_IDLE_MINUTES, 30, 5, 1440) * 60_000;
 const SWEEP_MS = integer(process.env.VENEER_BROWSER_SWEEP_SECONDS, 60, 1, 3600) * 1000;
 const REQUIRE_ENCRYPTED = process.env.VENEER_BROWSER_REQUIRE_ENCRYPTED === '1';
 // One pre-booted copy per saved profile; 0 turns the pool off entirely.
@@ -212,6 +211,7 @@ function writeMeta(s, patch = {}) {
     sourceProfileId: field('sourceProfileId', current?.sourceProfileId ?? null),
     sourceGeneration: field('sourceGeneration', current?.sourceGeneration ?? null),
     generation: field('generation', current?.generation ?? 1),
+    humanProtected: field('humanProtected', current?.humanProtected ?? false),
   };
   fs.mkdirSync(s.root, { recursive: true, mode: 0o700 });
   const temporary = path.join(s.root, `.metadata.${crypto.randomUUID()}.tmp`);
@@ -469,7 +469,7 @@ async function startProfile(s) {
     }
     if (state.exists) await backend.remove(s.container);
     if (await sessionRuntimeCount() >= MAX_ACTIVE) {
-      throw new HttpError(429, 'The browser VM is at its active browser limit. Stop an idle browser and try again.');
+      throw new HttpError(429, 'All browser slots are occupied. Idle read-only sessions are released automatically; active or protected sessions must finish before another browser can start.');
     }
     fs.mkdirSync(s.chromeDir, { recursive: true, mode: 0o700 });
     fs.mkdirSync(s.downloadsDir, { recursive: true, mode: 0o700 });
@@ -503,7 +503,7 @@ async function cloneAndStartLocked(source, sourceMeta, target, name, labels = []
   if (fs.existsSync(target.root) || readMeta(target)) throw new HttpError(409, 'Browser profile already exists.');
   if ((await runtimeStatus(target)).exists) await backend.remove(target.container);
   if (await sessionRuntimeCount() >= MAX_ACTIVE) {
-    throw new HttpError(429, 'The browser VM is at its active browser limit. Stop an idle browser and try again.');
+    throw new HttpError(429, 'All browser slots are occupied. Idle read-only sessions are released automatically; active or protected sessions must finish before another browser can start.');
   }
   const state = await runtimeStatus(source);
   const shouldPause = state.running && !state.paused;
@@ -643,6 +643,9 @@ function evictOldestWarmCopy(keepSourceKey) {
 async function adoptWarmCopy(source, generation) {
   const entry = warmCopies.get(source.key);
   if (!entry) return null;
+  if (await sessionRuntimeCount() >= MAX_ACTIVE) {
+    throw new HttpError(429, 'All browser slots are occupied. Wait for an active or protected session to finish.');
+  }
   // Claim registry and marker together: the sweeper reads both, and a copy that
   // is in neither looks like a stray it should delete.
   warmCopies.delete(source.key);
@@ -705,7 +708,7 @@ async function rebuildWarmCopy(clientId, source) {
 // head start, so it is logged rather than surfaced.
 function scheduleWarmRebuild(clientId, source) {
   if (!WARM) return;
-  void serial(source.key, () => rebuildWarmCopy(clientId, source))
+  void serial('runtime-admission', () => serial(source.key, () => rebuildWarmCopy(clientId, source)))
     .catch((error) => console.log(`[veneer-browser] warm rebuild failed for ${source.key.slice(0, 10)}: ${error.message}`));
 }
 
@@ -745,10 +748,6 @@ async function stopProfileLocked(s) {
 
 async function stopProfile(s) {
   return serial(s.key, () => stopProfileLocked(s));
-}
-
-function temporaryProfileIsStale(meta, timestamp = Date.now()) {
-  return meta?.temporary === true && meta.lastUsedAt && timestamp - Date.parse(meta.lastUsedAt) > TEMP_IDLE_MS;
 }
 
 function profileHasLiveConnection(s) {
@@ -827,18 +826,20 @@ async function restoreWarmRegistry() {
   }
 }
 
-async function cleanupTemporaryProfile(s, timestamp = Date.now()) {
+// Only the application knows whether a chat is done and safe to suspend. A CDP
+// connection is not task activity. Refuse new/reconnecting clients and viewers;
+// retain the working directory so restarting never silently clones an old login.
+async function suspendProfile(s, expectedLastUsedAt) {
   return serial(s.key, async () => {
     const meta = readMeta(s);
-    if (warmCopyEntry(s.key)) return false;
-    if (!temporaryProfileIsStale(meta, timestamp)) return false;
-    if (profileHasLiveConnection(s)) return false;
+    if (!meta?.temporary || meta.humanProtected || warmCopyEntry(s.key)) return { suspended: false };
+    if (typeof expectedLastUsedAt !== 'string' || meta.lastUsedAt !== expectedLastUsedAt) return { suspended: false };
+    if (profileHasLiveConnection(s)) return { suspended: false };
+    if ([...tickets.values()].some((t) => t.scope.key === s.key && t.expiresAt > Date.now())) {
+      return { suspended: false };
+    }
     await stopProfileLocked(s);
-    if ((await runtimeStatus(s)).running) return false;
-    purgeTickets(s);
-    fs.rmSync(s.root, { recursive: true, force: true });
-    console.log(`[veneer-browser] removed stale temporary profile ${s.key.slice(0, 10)}`);
-    return true;
+    return { suspended: !(await runtimeStatus(s)).running };
   });
 }
 
@@ -875,7 +876,7 @@ function send(res, status, body) {
 }
 
 function profileFromRequest(clientId, url, body = {}) {
-  const match = /^\/v1\/profiles\/([A-Za-z0-9_-]{1,200})(?:\/(start|stop|ticket|downloads|clone|promote|save|open))?$/.exec(url.pathname);
+  const match = /^\/v1\/profiles\/([A-Za-z0-9_-]{1,200})(?:\/(start|stop|suspend|ticket|downloads|clone|promote|save|open))?$/.exec(url.pathname);
   if (!match) return null;
   const projectId = safeId(body.projectId || url.searchParams.get('projectId'), 'project');
   return { scope: scope(clientId, projectId, safeId(match[1], 'profile')), action: match[2] || '' };
@@ -900,6 +901,7 @@ function ticketOrigin(req) {
 // No port is stored: the scope is the ticket's identity, and the port behind it
 // is resolved at use time so a recycled port cannot lead to another profile.
 function mintTicket(req, clientId, s, purpose) {
+  if (ticketPurpose(purpose) === 'viewer') writeMeta(s, { humanProtected: true });
   const ticket = crypto.randomBytes(32).toString('base64url');
   const expiresAt = Date.now() + TICKET_MS;
   tickets.set(ticket, {
@@ -997,8 +999,13 @@ async function apiRequest(req, res) {
     return;
   }
   if (req.method === 'POST' && action === 'start') {
-    const runtime = await startProfile(s);
+    const runtime = await serial('runtime-admission', () => startProfile(s));
     send(res, 200, { ok: true, active: true, runtimeId: runtime.runtimeId, startedAt: new Date().toISOString() });
+    return;
+  }
+  if (req.method === 'POST' && action === 'suspend') {
+    const result = await serial('runtime-admission', () => suspendProfile(s, body.expectedLastUsedAt));
+    send(res, 200, { ok: true, ...result });
     return;
   }
   if (req.method === 'POST' && action === 'stop') {
@@ -1007,15 +1014,19 @@ async function apiRequest(req, res) {
     return;
   }
   if (req.method === 'POST' && action === 'ticket') {
-    await startProfile(s);
-    const ticket = mintTicket(req, clientId, s, body.purpose);
+    const ticket = await serial('runtime-admission', async () => {
+      await startProfile(s);
+      return mintTicket(req, clientId, s, body.purpose);
+    });
     send(res, 200, { ok: true, cdpUrl: ticket.cdpUrl, viewerUrl: ticket.viewerUrl, expiresAt: ticket.expiresAt });
     return;
   }
   if (req.method === 'POST' && action === 'open') {
     const cloneProfileId = safeId(body.cloneProfileId, 'clone profile');
-    const opened = await openProfile(clientId, s, cloneProfileId, body.name === undefined ? '' : safeName(body.name));
-    const ticket = mintTicket(req, clientId, opened.scope, body.purpose);
+    const { opened, ticket } = await serial('runtime-admission', async () => {
+      const opened = await openProfile(clientId, s, cloneProfileId, body.name === undefined ? '' : safeName(body.name));
+      return { opened, ticket: mintTicket(req, clientId, opened.scope, body.purpose) };
+    });
     send(res, 200, {
       ok: true,
       cloneProfileId: opened.scope.profileId,
@@ -1266,13 +1277,11 @@ setInterval(() => {
         if (warm) {
           // A warm copy is never handed out, so idleness means nobody wants it.
           if (meta.lastUsedAt && now - Date.parse(meta.lastUsedAt) > IDLE_MS) dropWarmCopy(warm.sourceKey);
-        } else if (temporaryProfileIsStale(meta, now)) {
-          void cleanupTemporaryProfile(s, now).catch(() => {});
         } else if (meta.temporary && !passkeyBlockers.has(s.key)) {
           // A block dropped by a hiccup on Chrome's socket is put back while the
           // copy is still running; a stopped copy simply has no port to reach.
           void rearmPasskeyBlock(s);
-        } else if (meta.lastUsedAt && now - Date.parse(meta.lastUsedAt) > IDLE_MS && !profileHasLiveConnection(s)) {
+        } else if (!meta.temporary && meta.lastUsedAt && now - Date.parse(meta.lastUsedAt) > IDLE_MS && !profileHasLiveConnection(s)) {
           void stopProfile(s).catch(() => {});
         }
       } catch {}

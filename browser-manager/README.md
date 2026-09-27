@@ -21,9 +21,11 @@ bearer-token auth.
 ## Rules that hold on every backend
 
 - Saved profiles are stopped login bases. Each chat gets its own temporary
-  working copy; a clean stop deletes it, and an idle one is deleted after
-  `VENEER_BROWSER_TEMP_IDLE_MINUTES` (30 by default) unless its control
-  connection is still open.
+  working copy. An explicit Stop deletes it. The application suspends completed
+  read-only copies after 30 idle minutes, retaining their files for reuse. The
+  manager never deletes a working copy merely because it is idle. Background CDP
+  traffic does not count as application task activity. See the capacity policy in
+  [INSTALL-MACOS.md](INSTALL-MACOS.md#capacity-and-project-growth).
 - Updating a saved profile is explicit: the manager stops the working copy,
   checks the source generation and keeps a prior backup, and an older copy can
   never replace a newer saved profile.

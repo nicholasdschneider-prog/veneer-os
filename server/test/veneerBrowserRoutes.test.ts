@@ -425,7 +425,7 @@ describe('Veneer Browser MCP endpoint', () => {
   it('refuses a loopback URL inside raw arguments', async () => {
     const result = await call('run', { args: ['open', 'http://localhost:5173'] });
     expect(result.isError).toBe(true);
-    expect(result.text).toContain('separate virtual machine');
+    expect(result.text).toContain('refuses loopback URLs');
     expect(runCommand).not.toHaveBeenCalled();
   });
 });

@@ -46,6 +46,7 @@ export interface RemoteProfileStatus {
   active: boolean;
   status: string;
   runtimeId?: string;
+  profile?: { lastUsedAt?: string; humanProtected?: boolean };
 }
 
 export interface RemoteTicket {
@@ -93,6 +94,7 @@ export interface VeneerBrowserRemote {
   delete(projectId: string, profileId: string): Promise<void>;
   start(projectId: string, profileId: string): Promise<RemoteProfileStatus>;
   stop(projectId: string, profileId: string): Promise<void>;
+  suspend?(projectId: string, profileId: string, expectedLastUsedAt: string): Promise<{ suspended: boolean }>;
   status(projectId: string, profileId: string): Promise<RemoteProfileStatus>;
   open(
     projectId: string,
@@ -355,6 +357,7 @@ export function createVeneerBrowserRemote(options: {
       request(encoded(projectId, profileId), { method: 'PATCH', body: JSON.stringify({ projectId, name }) }).then(() => undefined),
     delete: (projectId, profileId) => request(encoded(projectId, profileId), { method: 'DELETE' }).then(() => undefined),
     start: (projectId, profileId) => post(projectId, profileId, 'start'),
+    suspend: (projectId, profileId, expectedLastUsedAt) => request(`/v1/profiles/${encodeURIComponent(profileId)}/suspend`, { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt }) }),
     stop: (projectId, profileId) => post(projectId, profileId, 'stop').then(() => undefined),
     status: (projectId, profileId) => request(encoded(projectId, profileId)),
     open: (projectId, sourceProfileId, cloneProfileId, purpose) =>

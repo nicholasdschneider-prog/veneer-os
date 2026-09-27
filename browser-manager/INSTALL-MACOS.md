@@ -2,7 +2,7 @@
 
 On a Mac the browser manager runs beside the Pro server as a launchd agent and
 drives **native Chrome processes** (`VENEER_BROWSER_BACKEND=native`) instead of
-Docker containers: one headless Chrome per profile working copy, DevTools bound
+Docker containers: one Chrome per profile working copy, DevTools bound
 to 127.0.0.1, downloads forced into the profile's own `downloads` directory
 through its `Default/Preferences`. The REST API, tickets, CDP relay, per-user
 profile scoping, clone/promote/save, the warm pool and the bearer-token auth are
@@ -114,7 +114,7 @@ FileVault).
 | `VENEER_BROWSER_TLS_PORT` / `_CERT` / `_KEY` | unset | TLS listener; all three or none. |
 | `VENEER_BROWSER_PUBLIC_ORIGIN` | unset | Forces the origin minted into tickets (`https://localhost:7301`). |
 | `VENEER_BROWSER_WARM` / `_WARM_MAX` | `1` / `2` | Pre-booted copy per saved profile, and the pool cap. |
-| `VENEER_BROWSER_MAX_ACTIVE` | `5` | Concurrent sessions. |
+| `VENEER_BROWSER_MAX_ACTIVE` | `5` | Running sessions across all projects; saved profiles do not add capacity. |
 
 ## Native backend notes
 
@@ -141,3 +141,50 @@ FileVault).
 - `npm run restart` (repo root) bounces the manager along with the Pro services
   through `launchctl kickstart -k com.veneer.browser-manager`, and skips it
   quietly when the job is not loaded.
+
+
+## Capacity and project growth
+
+As of September 27, 2026, runtime admission is serialized across projects, including
+adoption of prewarmed copies. The default is five active sessions plus up to two
+unclaimed warm copies. Warm copies consume memory even though they are not active
+sessions. This install uses visible native Chrome (`VENEER_BROWSER_HEADLESS=0` in
+the installed launch agent); headless mode is not an extra pool of capacity.
+
+Use saved profiles for distinct business/account identities, and assign those
+profiles only to authorized projects. Each chat has an independent working copy.
+Adding profiles does not increase the runtime limit. Projects without a saved
+profile can use automatically allocated signed-out copies for public read-only
+work; those copies are eligible for idle suspension too. Explicit Fresh/sign-in
+sessions stay protected. Prefer existing authorized
+connectors for structured work and public reads when browser interaction is not
+needed. Do not route around an unavailable signed-in browser using another identity.
+
+The application checks completed working-copy sessions once per minute. After
+30 minutes without an application browser command, it disconnects and suspends
+copies whose recorded history contains only read-only commands. Pending turns,
+explicit fresh sign-in copies, capture, secret fields, human-viewed copies, form/click or
+unknown interaction history are protected. Uncertain mutations are recorded before
+execution so a failed command cannot make a copy look read-only. Historical command
+records are checked as well; absent history never establishes safety. A fresh remote
+activity observation, no live connections, and no unexpired control tickets are
+required at suspension time. Other clients' browser profiles are not considered.
+
+Suspension gracefully stops Chrome and preserves the same copy's profile files and
+downloads; the next request starts it again. Chrome attempts session restoration,
+but old element references and unsaved page state must never be assumed restored.
+List tabs and read the page again. Saved login bases are never automatically updated.
+Retained stopped copies use disk until explicit Stop or the owning chat/profile's
+normal cleanup. The former manager-only temporary-idle deletion is disabled; it
+could not distinguish an abandoned control socket from unfinished work.
+
+Bots should import needed downloads, explicitly save an intentionally completed new
+login when appropriate, and stop their own browser once the workflow is finished.
+Protected copies require that explicit completion step. If all five slots are busy
+or protected, new requests get a clear capacity error; this change does not add a
+durable browser waiting queue, promise unlimited concurrency, or kill active work.
+
+Keep the five-session default on the current 16 GB Mac until measured concurrent
+work warrants a change. First check completed sessions and protected owners, memory
+pressure, Chrome process counts, and warm-pool usage. A higher limit or more hardware
+is an operator capacity decision, not a reason to duplicate signed-in profiles.

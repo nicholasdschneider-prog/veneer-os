@@ -436,7 +436,7 @@ after(async () => {
   fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
-test('clones a live profile into independent encrypted-store ownership and removes a stale copy', async () => {
+test('clones a live profile and retains idle working data until explicitly deleted', async () => {
   const created = await request('/v1/profiles', {
     method: 'POST',
     body: JSON.stringify({ projectId, profileId: sourceProfileId, name: 'Saved login' }),
@@ -477,8 +477,11 @@ test('clones a live profile into independent encrypted-store ownership and remov
 
   cloneMeta.lastUsedAt = '2000-01-01T00:00:00.000Z';
   writeMeta(clone, cloneMeta);
-  await waitFor(() => !fs.existsSync(clone.profileRoot), 4000);
+  await new Promise((resolve) => setTimeout(resolve, 2200));
+  assert.equal(fs.readFileSync(path.join(clone.chromeDir, 'Cookies'), 'utf8'), 'clone-only-change');
   assert.equal(fs.existsSync(source.profileRoot), true);
+  const removed = await request(`/v1/profiles/${cloneProfileId}?projectId=${projectId}`, { method: 'DELETE' });
+  assert.equal(removed.status, 200);
 });
 
 test('updates a saved profile atomically, keeps a backup, and rejects an old generation', async () => {
@@ -701,9 +704,16 @@ test('rebuilds a warm copy after an open and keeps it out of the active browser 
   assert.equal(fs.existsSync(fast.scope('work-three').profileRoot), false);
 });
 
-test('adopts the warm copy on the next open even at the active browser limit', async () => {
+test('refuses warm adoption at the limit and adopts it after a slot is released', async () => {
   const [warm] = readyWarmContainers(fast.state);
   const warmCloneId = warm.labels['veneer.clone'];
+  const refused = await fast.call('/v1/profiles/open-source/open', {
+    method: 'POST', body: JSON.stringify({ projectId, cloneProfileId: 'work-refused' }),
+  });
+  assert.equal(refused.status, 429);
+  assert.equal(fs.existsSync(path.join(fast.scope(warmCloneId).profileRoot, '.warm')), true);
+  const stopped = await fast.call('/v1/profiles/work-two/stop', { method: 'POST', body: JSON.stringify({ projectId }) });
+  assert.equal(stopped.status, 200);
   const opened = await fast.call('/v1/profiles/open-source/open', {
     method: 'POST',
     body: JSON.stringify({ projectId, cloneProfileId: 'work-four' }),
@@ -1218,4 +1228,37 @@ test('merges download preferences into an existing profile instead of clobbering
   fs.writeFileSync(path.join(dir, 'Default', 'Preferences'), 'not json');
   const rebuilt = seedDownloadPreferences(dir, downloads);
   assert.equal(rebuilt.download.default_directory, downloads);
+});
+
+
+test('serializes concurrent admission across projects and releases a slot without deleting copy data', async () => {
+  const instance = await startManager('admission', { VENEER_BROWSER_MAX_ACTIVE: '1', VENEER_BROWSER_WARM: '0' });
+  for (const [project, profile] of [['one', 'first'], ['two', 'second']]) {
+    assert.equal((await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId: project, profileId: profile, name: profile, temporary: true }) })).status, 201);
+  }
+  const results = await Promise.all([['one', 'first'], ['two', 'second']].map(async ([project, profile]) => {
+    const response = await instance.call(`/v1/profiles/${profile}/start`, { method: 'POST', body: JSON.stringify({ projectId: project }) });
+    return { project, profile, status: response.status };
+  }));
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 429]);
+  const winner = results.find(r => r.status === 200);
+  const loser = results.find(r => r.status === 429);
+  const status = await (await instance.call(`/v1/profiles/${winner.profile}?projectId=${winner.project}`)).json();
+  const suspend = (expectedLastUsedAt) => instance.call(`/v1/profiles/${winner.profile}/suspend`, { method: 'POST', body: JSON.stringify({ projectId: winner.project, expectedLastUsedAt }) });
+  assert.equal((await (await suspend('stale-observation')).json()).suspended, false);
+  assert.equal((await (await suspend(status.profile.lastUsedAt)).json()).suspended, true);
+  assert.equal((await instance.call(`/v1/profiles/${winner.profile}?projectId=${winner.project}`)).status, 200);
+  assert.equal((await instance.call(`/v1/profiles/${loser.profile}/start`, { method: 'POST', body: JSON.stringify({ projectId: loser.project }) })).status, 200);
+});
+
+test('protects ticket holders and human-viewed copies from idle suspension', async () => {
+  const instance = await startManager('suspend-protection', { VENEER_BROWSER_WARM: '0' });
+  for (const purpose of ['agent', 'viewer']) {
+    await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId, profileId: purpose, name: purpose, temporary: true }) });
+    await instance.call(`/v1/profiles/${purpose}/ticket`, { method: 'POST', body: JSON.stringify({ projectId, purpose }) });
+    const status = await (await instance.call(`/v1/profiles/${purpose}?projectId=${projectId}`)).json();
+    assert.equal(status.profile.humanProtected, purpose === 'viewer');
+    const suspended = await instance.call(`/v1/profiles/${purpose}/suspend`, { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt: status.profile.lastUsedAt }) });
+    assert.equal((await suspended.json()).suspended, false);
+  }
 });
