@@ -4,6 +4,14 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('announces same-owner approved delivery with unchanged authority limits',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='approved-message-delegation')!;
+    expect(f.isNew).toBe(true);expect(f.updated).toBe('2026-09-28');
+    expect(f.steps.join(' ')).toContain('same bot performs both steps');
+    expect(f.agent).toContain('no self-message');expect(f.agent).toContain('ordinary-draft retrofit');
+    expect(botFeatureInstructions()).toContain(f.agent);
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+  });
   it('teaches dedicated timing setup limits to employees and resumed bots',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='purchase-timing-verifier')!;
     expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('/#/purchase-timing-setup');

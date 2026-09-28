@@ -115,7 +115,9 @@ export function messageDelegationService(db: Database.Database) {
     delegate(a: Actor, id: string, version: number, executor: string, key: string, scope: Scope) {
       return db.transaction(()=>{
         const p=proof(a,id,version);activeBot(a,p.d.conversation_id,true);activeBot(a,executor);
-        if (executor === p.d.conversation_id || executor !== p.scope.executor_conversation_id || !equal(scope,p.scope)) throw new BotError(409,'Named executor or exact approved scope differs');
+        // The immutable approval may name its owner as executor. Both roles
+        // still require their own actor checks; this does not authorize an ordinary draft.
+        if (executor !== p.scope.executor_conversation_id || !equal(scope,p.scope)) throw new BotError(409,'Named executor or exact approved scope differs');
         const prior=db.prepare('SELECT * FROM bot_message_delegations WHERE (decision_id=? AND decision_version=?) OR (owner_conversation_id=? AND request_key=?)').all(id,version,p.d.conversation_id,key) as Delegation[];
         if(prior.length){const g=prior[0]!;if(prior.length!==1||g.request_key!==key||g.decision_id!==id||g.decision_version!==version||g.delegator_user_id!==a.user.id||g.payload_hash!==p.payload_hash)throw new BotError(409,'Decision version or request key already bound; no new delivery');valid(a,g);return g;}
         const g:Delegation={id:crypto.randomUUID(),decision_id:id,decision_version:version,owner_conversation_id:p.d.conversation_id,executor_conversation_id:executor,executor_user_id:bots.chat(a,executor).user_id,delegator_user_id:a.user.id,approver_user_id:p.approver.id,approval_event_id:p.approval.id,proposal_hash:p.proposal_hash,payload_hash:p.payload_hash,scope_json:canonicalJson(p.scope),request_key:key};

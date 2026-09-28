@@ -19,6 +19,10 @@ Nicholas’s native approval event `453ed642-5f81-4668-a0d8-adbf9574cdbb` remain
 
 Grant owns this decision (`cb4ade24-c960-4235-956a-220260e5adac`); Nora remains the intended executor (`e9fe9b64-9b75-4280-b795-42158ae9cf16`). The following calls document the executable native contract, **not authorization to perform the later steps on this currently unready record**.
 
+## Same-owner execution — September 28, 2026
+
+The immutable approved scope may name the decision owner itself as executor. That same authenticated bot uses inspect → delegate → accept → current material checks/RUNNING → claim → verified receipt. No separate bot, self-message, revised approval or reassignment is required. The existing one-delegation-per-version, one-bound-draft and one-execution-claim guards apply identically. Ordinary unbound drafts are never adopted or retrofitted. Readiness verifies the approval proof; it is not a lease, source permission, duplicate-effect clearance or permission to bypass later checks. The canonical-case/payload-ticket equality guard remains unchanged.
+
 ## 1. Read-only preflight
 
 Grant calls `inspect_approved_message`:
