@@ -151,3 +151,30 @@ sender evidence and complete human review; Tess alone may accept/reserve a separ
 valid prospective authority. Neither builder creates those production records. No
 second customer approval, ordinary-draft retrofit, alias merge or provider replay is
 introduced by this release.
+
+## BUILD437 — original payload and human-source hash binding
+
+Every new strict authority tuple requires `payloadHash` and `sourceInstructionHash`.
+`payloadHash = canonicalSha256(saved.scope.payload)` must match both saved payload
+bindings. `sourceInstructionHash` is the existing authenticated
+`saved.native.binding.source_hash`, checked against `existing_consumption.source_hash`
+and the original direct-message provenance (ID, actor, exact text, original timestamp,
+owner and consumption identity). It is not a new plaintext-only hash or historical grant.
+Creation and service use reject missing/mismatched proof. `authorityHash` continues to
+hash ALL tuple fields except itself and therefore commits these two fields. The wire
+domain and explicit bindingHash field selection are unchanged.
+
+The read-only compatibility check found zero production positive dispatch authorities.
+No records are rewritten. Older missing-field tuples, if encountered, fail closed.
+No migration, approval/draft change or new service/sender authority is introduced.
+The [synthetic golden fixture](./build437-golden.json) includes the exact canonical
+UTF-8 authority, original snapshot, explicit binding object and expected hashes.
+
+Source436 confirmation `build436-dto-authority-hash-auth-confirmation-v1` specifies:
+prepare locator `{schemaVersion,nativeActionId,authorityId,authorityRevision}`;
+dispatch `/api/cs/composed-sms/intents/:prepareId/dispatch` locator
+`{schemaVersion,nativeClaimId}`. Source generates and durably stores the redemption key.
+Required source readback `prepareExpiresAt` and `redeemRequestKey` remain unchanged.
+Native authentication is `X-Compose-Registration-Id`, dedicated bearer and dedicated
+CF JWT audience/common_name; no arbitrary audience header. Sender/guard adapters and
+actual service custody remain separate unavailable dependencies.

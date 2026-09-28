@@ -1,3 +1,4 @@
+import {composeOriginalHashes} from './composedSmsAuthority.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import {BotError} from './service.js';
@@ -20,9 +21,12 @@ export function composedSmsVerifier(db:Database.Database,io:ComposeVerifierIO){
   const d=db.prepare('SELECT * FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(authorityId) as Dispatch|undefined;
   if(!d)return boundaryUnavailable();
   if(d.registration_id!==registrationId||d.registration_hash!==rh)throw new BotError(403,'Exact service registration changed');
-  const a=verifyAuthority(JSON.parse(d.tuple_json));const g=db.prepare('SELECT * FROM bot_composed_sms_authorities WHERE id=?').get(authorityId) as {owner_id:string;executor_id:string;snapshot_json:string}|undefined;
+  let a:ComposeAuthority;try{a=verifyAuthority(JSON.parse(d.tuple_json));}catch{throw new BotError(409,'Immutable authority hash proof missing or incompatible; no retrofit');}
+  const g=db.prepare('SELECT * FROM bot_composed_sms_authorities WHERE id=?').get(authorityId) as {owner_id:string;executor_id:string;source_id:string;snapshot_json:string}|undefined;
   const b=r.executorBindings.find(b=>b.conversationId===a.executorConversationId);
-  if(!g||g.owner_id!==a.ownerConversationId||g.executor_id!==a.executorConversationId||!b||b.principalId!==a.executorPrincipalId||a.businessId!==r.businessId||a.sourceOrigin!==r.sourceOrigin||canonicalJson(a.runtime)!==canonicalJson(r.runtime))throw new BotError(403,'Authority source, runtime or executor binding differs');
+  if(!g||g.source_id!==a.sourceInstructionId||g.owner_id!==a.ownerConversationId||g.executor_id!==a.executorConversationId||!b||b.principalId!==a.executorPrincipalId||a.businessId!==r.businessId||a.sourceOrigin!==r.sourceOrigin||canonicalJson(a.runtime)!==canonicalJson(r.runtime))throw new BotError(403,'Authority source, runtime or executor binding differs');
+  const original=composeOriginalHashes(JSON.parse(g.snapshot_json),g.source_id,g.owner_id);
+  if(a.payloadHash!==original.payloadHash||a.sourceInstructionHash!==original.sourceInstructionHash)throw new BotError(409,'Immutable authority original hashes differ');
   if(event(authorityId,'revoked'))throw new BotError(403,'Authority revoked');
   if(!receiptOnly&&Math.min(Date.parse(d.expires_at),Date.parse(d.sender_expires_at))<=io.now())throw new BotError(409,'Authority or sender evidence expired');
   io.nativeCurrent(authorityId,receiptOnly);

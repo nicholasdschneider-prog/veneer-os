@@ -190,3 +190,9 @@ it('rechecks a short prepare expiry inside the association transaction',async()=
  const v=composedSmsVerifier(db,{registration:()=>f.r,now:()=>clock,readback:async()=>f.source,nativeCurrent:(id,receipt)=>{s.serviceCurrent(id,receipt);if(++checks===2)clock+=2000;}});
  await expect(v.associate(f.r.registrationId,f.p)).rejects.toThrow('observation');expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});
 });
+it('exports the exact authenticated payload and source hashes without changing original records',async()=>{
+ const f=await serviceFixture();const saved=JSON.parse((db.prepare('SELECT snapshot_json FROM bot_composed_sms_authorities WHERE id=?').get(f.g.authority_id) as {snapshot_json:string}).snapshot_json);
+ expect(f.a.payloadHash).toBe(canonicalSha256(saved.scope.payload));expect(f.a.payloadHash).toBe(saved.binding.payload_hash);
+ expect(f.a.sourceInstructionHash).toBe(saved.native.binding.source_hash);expect(f.a.sourceInstructionHash).toBe(saved.native.existing_consumption.source_hash);
+ expect(f.v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId).authority).toEqual(f.a);
+});
