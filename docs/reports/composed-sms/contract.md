@@ -14,7 +14,7 @@ Fixed source origin: `https://orderops-dev-web-production.up.railway.app`. Exact
 
 No queries, redirects, broad case fallback, token forwarding to another origin or identity borrowing. Each actual owner/executor uses its own registered credential at use time. No live credentials are read by BUILD432.
 
-Separate `VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE` is required. It is an absolute, non-symlink, service-user-owned regular file with mode0600 and maximum128KiB. Its strict schema is `correspondenceRegistrySchema` in `server/src/bots/composedSmsReader.ts`: schema_version `compose-correspondence-registry/v1`, registrations carry current business/owner/source account/runtime/origin, caller-to-principal and protected credential references, explicit expiry, and provenance authority `compose-send-correspondence-custody`. A genuine source-custodian receipt extending correspondence/customer-data read custody is necessary; BUILD429's approved-message-resolver registry is rejected. No registry is installed by this release.
+Separate `VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE` is required. It is an absolute, non-symlink, service-user-owned regular file with mode0600 and maximum128KiB. Its strict schema is `correspondenceRegistrySchema` in `server/src/bots/composedSmsReader.ts`: schema_version `compose-correspondence-registry/v1`, registrations carry current business/owner/source account/runtime/origin, caller-to-principal and protected credential references, explicit expiry, and provenance authority `compose-send-correspondence-custody`. A genuine source-custodian receipt extending correspondence/customer-data read custody is necessary; BUILD429's approved-message-resolver registry is rejected. BUILD432 installed no registry. BUILD434 activates the separate six-caller registry under the retained custodian extension; see [activation report](./build434.md). Its expiry remains October 28, 2026 at21:04UTC or earlier revocation.
 
 The consumer pins source BUILD433's documented `approved-case-correspondence/v1`: canonical/contact case order, all persisted message rows ordered conversationId/id, strict fields, complete counts, declared omitted media/HTML/transcription,500 combined messages and1MiB response limit. Null fields and distinct customer IDs remain unchanged. Entire envelope hash excludes only observedAt/expiresAt/snapshotHash. Source identity is checked against native custody twice; the native material digest excludes independently authenticated caller identity so the same facts can be compared across owner and executor. No relationship classification or merged-customer assertion is inferred.
 
@@ -46,7 +46,7 @@ If a supported source adapter is later implemented and accepted, only the first 
 
 ## Activation dependencies
 
-1. Final source433 deployed contract/receipt and explicit protected correspondence custody extension from original custodian.
+1. Source433 deployment and separate correspondence custody are recorded in BUILD434. Original callers can inspect; this does not satisfy sender or dispatch evidence.
 2. Authenticated current SMS account/fromPhone ownership evidence with provenance/revision; configured credentials or historic inbound destination are insufficient. Current v1 only emits unknown.
 3. Agreed and implemented source-enforced native-action dispatch association, exact wire payload and durable UNKNOWN/readback contract. Current generic manual-SMS route cannot consume a native action grant.
 
