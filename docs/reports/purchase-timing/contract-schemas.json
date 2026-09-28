@@ -1,5 +1,5 @@
 {
-  "description": "Generated from purchaseTimingSchema.ts. Additional semantic refinements and authenticated state requirements are specified in docs/purchase-timing-verifier.md.",
+  "description": "Generated from purchaseTimingSchema.ts. Additional semantic refinements and authenticated state requirements are specified in docs/purchase-timing-verifier.md. New claims and execution-check success are disabled by build 408; the execution response schema is historical only.",
   "definitions": {
     "timingCaptureResponseSchema": {
       "type": "object",
@@ -575,14 +575,16 @@
           "additionalProperties": false
         },
         "execute": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": false
         },
         "status": {
           "type": "string",
           "const": "claimed"
         },
         "reconciliation_only": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": true
         }
       },
       "required": [

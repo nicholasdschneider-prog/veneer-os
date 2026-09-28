@@ -8,6 +8,9 @@ describe('living bot guide release contract', () => {
     const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='purchase-timing-verifier')!;
     expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('/#/purchase-timing-setup');
     expect(f.limits).toContain('Disabled until');
+    expect(f.agent).toContain('EXECUTION_BOUNDARY_UNAVAILABLE');
+    expect(f.agent).toContain('SOURCE_MAPPING_REQUIRED');
+    expect(f.announcement).toContain('Recorded human approvals remain intact');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     expect(employeeRouteAllowed('POST','/purchase-timing/setup/confirm')).toBe(false);
     expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated:false})).toContain(f.agent);

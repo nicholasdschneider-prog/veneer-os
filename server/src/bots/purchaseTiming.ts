@@ -53,25 +53,11 @@ export function purchaseTimingService(db:Database.Database,config:Config,now:()=
  function nativeProof(t:Trust,p:TimingRequest){
   const d=bots.read({user:user(t.owner_id)},p.decision_id);
   if(d.conversation_id!==t.executor_id || d.version!==p.decision_version)fail('NATIVE_BINDING_CHANGED','Native owner or current proposal version changed');
-  if(d.state!=='running')fail('NOT_APPROVED_RUNNING','Native decision must be approved and running');
   const proposal=JSON.parse(d.proposal_json);
   if(canonicalSha256(proposal)!==p.native_proposal_hash)fail('NATIVE_BINDING_CHANGED','Native proposal hash mismatch');
-  const parsed=timingProposalSchema.safeParse(proposal.purchase_timing);
-  if(!parsed.success)fail('STRUCTURED_SCOPE_REQUIRED','No supported structured purchase-timing scope; do not retrofit a live approval');
-  const approved=parsed.data!;
-  const original=captureRow(approved.capture_id,t);
-  const current=captureRow(p.source_capture_id,t,true);
-  scope(t,approved.scope);scope(t,current.raw.scope);
-  const scopeHash=canonicalSha256(approved.scope);
-  const newest=db.prepare("SELECT scope_hash FROM purchase_timing_captures WHERE trust_id=? AND json_extract(request_json,'$.scope.order_id')=? ORDER BY rowid DESC LIMIT 1").get(t.id,approved.scope.order_id) as {scope_hash:string}|undefined;
-  if(newest?.scope_hash!==scopeHash)fail('SOURCE_SUPERSEDED','Newer authoritative material supersedes this approval');
-  if(scopeHash!==original.row.scope_hash || scopeHash!==current.row.scope_hash)fail('SOURCE_BINDING_CHANGED','Approved and fresh authoritative source material differ');
   const events=db.prepare("SELECT rowid,* FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='answered'").all(d.id,d.version) as {rowid:number;id:string;actor_id:number;actor_conversation_id:string|null;payload_json:string;created_at:string}[];
   const e=events[0];
   if(events.length!==1 || !e || e.actor_conversation_id!==null)fail('HUMAN_ANSWER_REQUIRED','Exactly one genuine native human answer required');
-  const contextEvent=db.prepare("SELECT payload_json FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='purchase_timing_context'").all(d.id,d.version) as {payload_json:string}[];
-  const watermark=contextEvent.length===1?JSON.parse(contextEvent[0]!.payload_json):null;
-  if(!watermark || watermark.answer_event_id!==e!.id || canonicalSha256(watermark.context)!==canonicalSha256(timingHumanContext(db,d.conversation_id,d.id)))fail('HUMAN_CONTEXT_CHANGED','Human context changed or native answer watermark is missing');
   const event=e!,answer=JSON.parse(d.answer_json??'null'),raw=JSON.parse(event.payload_json);
   if(!answer || raw.action!=='approve' || raw.scope!=='this_case' || answer.action!==raw.action || answer.scope!==raw.scope || answer.text!==raw.text || answer.actor_id!==event.actor_id)fail('HUMAN_ANSWER_REQUIRED','Current answer and immutable human attribution disagree');
   const approver={user:user(event.actor_id)};
@@ -81,11 +67,25 @@ export function purchaseTimingService(db:Database.Database,config:Config,now:()=
   if(!snapshot)fail('NATIVE_BINDING_CHANGED','Approved proposal snapshot missing');
   const originalProposal=JSON.parse(snapshot!.payload_json);
   if(canonicalSha256(snapshot!.kind==='raised'?originalProposal.proposal:originalProposal)!==p.native_proposal_hash)fail('NATIVE_BINDING_CHANGED','Original approved scope changed');
+  const age=now()-Date.parse(event.created_at.replace(' ','T')+'Z');
+  if(!Number.isFinite(age)||age< -1000||age>86400000)fail('EXPIRED','Human answer is outside the 24-hour maximum validity');
+  const parsed=timingProposalSchema.safeParse(proposal.purchase_timing);
+  if(!parsed.success)fail('SOURCE_MAPPING_REQUIRED','Native human approval is retained. Missing authenticated source linkage from this unchanged approved proposal to exact order/line, amount/currency, delivery windows/timezone, executor, and material/action/cart versions. A fresh observation or prose reconstruction cannot establish historical linkage; do not request duplicate consent');
+  const approved=parsed.data!;
+  const original=captureRow(approved.capture_id,t);
+  const current=captureRow(p.source_capture_id,t,true);
+  scope(t,approved.scope);scope(t,current.raw.scope);
+  const scopeHash=canonicalSha256(approved.scope);
+  const newest=db.prepare("SELECT scope_hash FROM purchase_timing_captures WHERE trust_id=? AND json_extract(request_json,'$.scope.order_id')=? ORDER BY rowid DESC LIMIT 1").get(t.id,approved.scope.order_id) as {scope_hash:string}|undefined;
+  if(newest?.scope_hash!==scopeHash)fail('SOURCE_SUPERSEDED','Newer authoritative material supersedes this approval');
+  if(scopeHash!==original.row.scope_hash || scopeHash!==current.row.scope_hash)fail('SOURCE_BINDING_CHANGED','Approved and fresh authoritative source material differ');
   // Native event timestamps have second precision; allow no later capture
   // to masquerade as evidence that was already in the approved snapshot.
   if(Date.parse(original.row.received_at)>Date.parse(snapshot!.created_at+'Z')+999)fail('NATIVE_BINDING_CHANGED','Source evidence was not retained before the proposal');
-  const age=now()-Date.parse(event.created_at.replace(' ','T')+'Z');
-  if(!Number.isFinite(age)||age< -1000||age>86400000)fail('EXPIRED','Human answer is outside the 24-hour maximum validity');
+  const contextEvent=db.prepare("SELECT payload_json FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='purchase_timing_context'").all(d.id,d.version) as {payload_json:string}[];
+  const watermark=contextEvent.length===1?JSON.parse(contextEvent[0]!.payload_json):null;
+  if(!watermark || watermark.answer_event_id!==e!.id || canonicalSha256(watermark.context)!==canonicalSha256(timingHumanContext(db,d.conversation_id,d.id)))fail('HUMAN_CONTEXT_CHANGED','Human context changed or native answer watermark is missing');
+  if(d.state!=='running')fail('NOT_APPROVED_RUNNING','Native decision must be approved and running');
   const delivered=db.prepare("SELECT 1 FROM conversation_wakeups WHERE id=? AND status='delivered'").get(event.id);
   const result=db.prepare("SELECT payload_json FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='result' ORDER BY rowid DESC LIMIT 1").get(d.id,d.version) as {payload_json:string}|undefined;
   const running=result?JSON.parse(result.payload_json):null;
@@ -109,7 +109,7 @@ export function purchaseTimingService(db:Database.Database,config:Config,now:()=
    if(a.conversationId)fail('OWNER_REQUIRED','Human setup only',403);user(a.user.id);
    const businesses=db.prepare('SELECT id,name FROM business_teams WHERE owner_id=?').all(a.user.id);
    const executors=db.prepare('SELECT c.id,c.title,c.business_team_id FROM conversations c JOIN business_teams b ON b.id=c.business_team_id JOIN bot_registrations r ON r.conversation_id=c.id WHERE b.owner_id=? AND c.user_id=? AND c.archived=0 AND r.active=1').all(a.user.id,a.user.id);
-   return {schema_version:protocol,configured:!!timingConfiguration(config),businesses,executors,service:timingConfiguration(config),requires:'Dedicated CF service configuration and verified source deployment/custody receipt. Registration is setup only, never purchase approval.'};
+   return {schema_version:protocol,configured:!!timingConfiguration(config),businesses,executors,service:timingConfiguration(config),requires:'Dedicated CF service configuration and verified source deployment/custody receipt. Registration is setup only, never purchase approval. Purchase dispatch is unavailable until an enforced request transport is implemented and accepted.'};
   },
   setupReview,
   enroll(a:Actor,raw:unknown){
@@ -152,9 +152,11 @@ export function purchaseTimingService(db:Database.Database,config:Config,now:()=
    if(old){if(old.request_json!==canonicalJson(p))fail('REQUEST_CONFLICT','Claim key already binds a different intent');return {schema_version:protocol,claim_id:old.id,request_key:p.request_key,receipt:JSON.parse(old.receipt_json),execute:false,status:'claimed',reconciliation_only:true};}
    trust(t.id,identity);const proof=nativeProof(t,p);
    if(db.prepare('SELECT 1 FROM purchase_timing_claims WHERE decision_id=? OR (business_id=? AND account_id=? AND order_id=?)').get(p.decision_id,t.business_id,t.account_id,proof.scope.order_id))fail('ALREADY_CLAIMED','Decision or source order already claimed; reconcile the original intent');
-   const id=crypto.randomUUID();
-   db.prepare('INSERT INTO purchase_timing_claims(id,trust_id,request_key,decision_id,business_id,account_id,order_id,request_json,receipt_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,t.id,p.request_key,p.decision_id,t.business_id,t.account_id,proof.scope.order_id,canonicalJson(p),canonicalJson(proof),timestamp());
-   return {schema_version:protocol,claim_id:id,request_key:p.request_key,receipt:proof,execute:true,status:'claimed',reconciliation_only:false};
+   // No deployed transport controls the actual browser purchase request. A
+   // source transition or operator receipt cannot establish that boundary.
+   // Retain historical claims above for UNKNOWN reconciliation, never mint a
+   // new bearer grant until a concrete enforcing transport is implemented.
+   return fail('EXECUTION_BOUNDARY_UNAVAILABLE','No enforced purchase request transport is deployed. Source transition locks end before generic browser submission; no execution grant was created');
   }).immediate();},
   reconcile(identity:TimingIdentity,trustId:string,key:string){
    const t=trust(trustId,identity,false),c=db.prepare('SELECT * FROM purchase_timing_claims WHERE trust_id=? AND request_key=?').get(t.id,key) as Claim|undefined;
@@ -167,8 +169,8 @@ export function purchaseTimingService(db:Database.Database,config:Config,now:()=
    if(!c)fail('NOT_FOUND','Claim not found',404);
    const original=JSON.parse(c!.receipt_json) as {expires_at:string};
    if(now()>=Date.parse(original.expires_at))fail('EXPIRED','Original one-time claim window expired; no renewed execution');
-   const proof=nativeProof(t,{...JSON.parse(c!.request_json),source_capture_id:p.source_capture_id});
-   return {...proof,claim_id:c!.id,request_key:p.request_key,expires_at:original.expires_at,execute:false,applicable:true,reconciliation_only:false};
+   nativeProof(t,{...JSON.parse(c!.request_json),source_capture_id:p.source_capture_id});
+   return fail('EXECUTION_BOUNDARY_UNAVAILABLE','An existing claim cannot authorize a generic browser purchase. Reconcile the same intent read-only; no renewed execution');
   }).immediate();},
  };
 }

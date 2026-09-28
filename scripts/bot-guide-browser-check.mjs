@@ -98,7 +98,9 @@ try {
     await page.screenshot({path:output + '/hands-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('Connect purchase timing verification');
     await page.getByRole('heading', {name:'Connect purchase timing verification',exact:true}).waitFor();
-    assert.match(await page.locator('#feature-purchase-timing-verifier').innerText(), /Disabled until separate Cloudflare Access/);
+    assert.match(await page.locator('#feature-purchase-timing-verifier').innerText(), /EXECUTION_BOUNDARY_UNAVAILABLE/);
+    assert.match(await page.locator('#feature-purchase-timing-verifier').innerText(), /Recorded human approvals remain intact/);
+    assert.match(await page.locator('#feature-purchase-timing-verifier').innerText(), /SOURCE_MAPPING_REQUIRED/);
     await page.screenshot({path:output + '/timing-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('Approve an exact proposal in conversation');
     await page.getByRole('heading', {name:'Approve an exact proposal in conversation',exact:true}).waitFor();

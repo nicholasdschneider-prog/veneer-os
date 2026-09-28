@@ -1,4 +1,6 @@
-# Purchase timing verifier — build #406
+# Purchase timing verifier — builds #406 and #408
+
+**Current #408 update:** new timing grants and execution-check success are disabled at the native service boundary because no enforced browser purchase transport exists. Original approval remains untouched. See the [#408 evidence, coordinated design and verification](./build408.md). The #406 validation below is historical and does not certify browser submission.
 
 Implementation is deployed in commit `faee01b`, pushed to `origin main`. This is a dedicated native verifier and owner setup flow, not an activated OrderOps consumer or an approval of the reference purchase.
 
@@ -10,7 +12,7 @@ The [versioned contract](../../purchase-timing-verifier.md) specifies methods, p
 - Only the actual current business owner can review and enroll the exact source account/origin/principal/executor mapping. Stable registration keys and review hashes prevent conflicting setup; lost confirmation switches to read-only status retrieval.
 - Authenticated source captures precede structured native timing proposals. Current native and source material hashes remain distinct. The exact scope includes order, Shopify/line/SKU/quantity, integer cents/currency, original/checkout delivery dates and timezone, source action, proposal/material/cart versions, fingerprint and expiry.
 - Proof requires one genuine human answer, exact current approved-running native scope, current approver/evidence access, delivered answer, unchanged material evidence and no newer human instructions. Prose-only legacy approvals and bot-attributed answers are unsupported.
-- Claims are durable and unique across the native decision and business/account/source order. A lost response never produces another `execute:true`. Original five-second expiry is nonrenewable. Current execution checks are transactional and read-only; source locks and every other business guard remain mandatory.
+- Historical #406 behavior (new claims disabled by #408): claims are durable and unique across the native decision and business/account/source order. A lost response never produces another `execute:true`. Original five-second expiry is nonrenewable. Current execution checks are transactional and read-only; source locks and every other business guard remain mandatory.
 - No customer, order, approval, source trust, credential or live business record was changed during implementation. No operational purchase test was performed.
 
 ## Outstanding activation and case blockers

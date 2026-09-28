@@ -5,7 +5,7 @@ import {migrate} from '../src/db/migrate.js';
 import {createBotService,proposalSchema,type Actor} from '../src/bots/service.js';
 import {purchaseTimingService} from '../src/bots/purchaseTiming.js';
 import {timingClaimResponseSchema,timingVerifyResponseSchema,timingCaptureSchema,type TimingScope,type TimingRequest} from '../src/bots/purchaseTimingSchema.js';
-import {canonicalSha256} from '../src/bots/canonical.js';
+import {canonicalJson,canonicalSha256} from '../src/bots/canonical.js';
 import type {Config} from '../src/config.js';
 import type {UserRow} from '../src/db/db.js';
 import {captureHumanMessage} from '../src/bots/humanMessages.js';
@@ -31,6 +31,14 @@ function ready(approve=true,structured=true){
  const args:TimingRequest={schema_version:'veneer-purchase-timing-request/v1',trust_id:trustId,request_key:'intent-1',decision_id:d.id,decision_version:1,native_proposal_hash:canonicalSha256(proposal),source_capture_id:c.capture_id};
  return {args,scope,d,proposal};
 }
+// A pre-408 claim is retained only in this disposable fixture. No production
+// endpoint creates these records after the execution-boundary closure.
+function historicalClaim(args:TimingRequest){
+ const proof=s.verify(identity,args),{execute:_,...receipt}=proof;
+ const id='historical-claim';
+ db.prepare('INSERT INTO purchase_timing_claims(id,trust_id,request_key,decision_id,business_id,account_id,order_id,request_json,receipt_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,trustId,args.request_key,args.decision_id,'team','account','order',canonicalJson(args),canonicalJson(receipt),new Date(time).toISOString());
+ return {claim_id:id};
+}
 beforeEach(()=>{
  time=Date.now();db=new Database(':memory:');db.pragma('foreign_keys=ON');migrate(db,fileURLToPath(new URL('../src/db/migrations',import.meta.url)));
  db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'owner@test','Owner','owner'),(2,'human@test','Approver','member')").run();
@@ -41,13 +49,16 @@ beforeEach(()=>{
  human={user:db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow};bot={...human,conversationId:'sage'};bots=createBotService(db);s=purchaseTimingService(db,config,()=>time);
  const review=s.setupReview(human,enrollment);trustId=s.enroll(human,{enrollment,review_hash:review.review_hash,confirm:true}).receipt!.trust_id;
 });afterEach(()=>db.close());
-it('verifies distinct hashes and records only one claim; readback never grants execution',()=>{
+it('preserves proof namespaces but refuses new grants without an enforced browser boundary',()=>{
  const {args,scope}=ready(),before=db.prepare('SELECT * FROM bot_decisions').get();
  const v=timingVerifyResponseSchema.parse(s.verify(identity,args));expect(v.execute).toBe(false);expect(v.native_proposal_hash).not.toBe(v.source_scope_hash);expect(v.source_material_fingerprint).toBe(scope.material_fingerprint);
- expect(timingClaimResponseSchema.parse(s.claim(identity,args))).toMatchObject({execute:true,reconciliation_only:false});
- expect(s.claim(identity,args)).toMatchObject({execute:false,reconciliation_only:true});
+ expect(()=>s.claim(identity,args)).toThrow('No enforced purchase request transport');
+ expect(db.prepare('SELECT count(*) n FROM purchase_timing_claims').get()).toEqual({n:0});
+ historicalClaim(args);
+ expect(timingClaimResponseSchema.parse(s.claim(identity,args))).toMatchObject({execute:false,reconciliation_only:true});
+ expect(()=>timingClaimResponseSchema.parse({...s.claim(identity,args),execute:true,reconciliation_only:false})).toThrow();
  expect(s.reconcile(identity,trustId,args.request_key).execute).toBe(false);
- expect(s.executionCheck(identity,{schema_version:'veneer-purchase-timing-execution-check/v1',trust_id:trustId,request_key:args.request_key,source_capture_id:args.source_capture_id})).toMatchObject({execute:false,applicable:true});
+ expect(()=>s.executionCheck(identity,{schema_version:'veneer-purchase-timing-execution-check/v1',trust_id:trustId,request_key:args.request_key,source_capture_id:args.source_capture_id})).toThrow('generic browser');
  expect(()=>s.claim(identity,{...args,request_key:'other'})).toThrow('already claimed');
  expect(()=>s.claim(identity,{...args,native_proposal_hash:'b'.repeat(64)})).toThrow('different intent');
  expect(db.prepare('SELECT * FROM bot_decisions').get()).toEqual(before);
@@ -72,7 +83,7 @@ it.each(['owner','approver','executor','trust','version','proposal','answer','pe
  if(kind==='human-context')captureHumanMessage(db,'sage',1,'Wait, do not place it');
  if(kind==='delivery')db.prepare("UPDATE conversation_wakeups SET status='pending'").run();
  if(kind==='running-evidence')db.prepare("INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,actor_conversation_id,payload_json,request_key) VALUES('bad-result',?,1,'result',1,'sage',?,'bad-result')").run(args.decision_id,JSON.stringify({state:'running',material_evidence_unchanged:false}));
- expect(()=>s.claim(identity,args)).toThrow();expect(db.prepare('SELECT count(*) n FROM purchase_timing_claims').get()).toEqual({n:0});
+ expect(()=>s.verify(identity,args)).toThrow();expect(db.prepare('SELECT count(*) n FROM purchase_timing_claims').get()).toEqual({n:0});
 });
 it.each(['amount','currency','dates','timezone','order','shopify','line','quantity','sku','material','cart','action','proposal-version'] as const)('rejects authoritative source %s changes and supersedes old capture',kind=>{
  const {args,scope}=ready(),changed=structuredClone(scope);
@@ -90,20 +101,20 @@ it.each(['amount','currency','dates','timezone','order','shopify','line','quanti
  if(kind==='action')changed.source_action_id='action2';
  if(kind==='proposal-version')changed.source_proposal_version='p2';
  const c=capture(changed,'capture-2');
- expect(()=>s.claim(identity,args)).toThrow('supersedes');
- expect(()=>s.claim(identity,{...args,source_capture_id:c.capture_id})).toThrow();
+ expect(()=>s.verify(identity,args)).toThrow('supersedes');
+ expect(()=>s.verify(identity,{...args,source_capture_id:c.capture_id})).toThrow();
 });
 it('refuses legacy prose and pending decisions, with no approval import',()=>{
- const {args}=ready(true,false);expect(()=>s.verify(identity,args)).toThrow('structured');
+ const {args}=ready(true,false);expect(()=>s.verify(identity,args)).toThrow('Native human approval is retained');
 });
 it('expires fresh evidence and never renews a claimed execution window',()=>{
- const {args}=ready();s.claim(identity,args);time+=5001;
+ const {args}=ready();historicalClaim(args);time+=5001;
  expect(()=>s.executionCheck(identity,{schema_version:'veneer-purchase-timing-execution-check/v1',trust_id:trustId,request_key:args.request_key,source_capture_id:args.source_capture_id})).toThrow('expired');
  time+=31000;expect(()=>s.verify(identity,args)).toThrow('Fresh');
  expect(s.claim(identity,args).execute).toBe(false);expect(s.reconcile(identity,trustId,'intent-1').execute).toBe(false);
 });
 it('reconciles UNKNOWN after revoked trust/version/expiry without allowing an effect',()=>{
- const {args}=ready();const first=s.claim(identity,args);s.revoke(human,trustId,'stop');time+=86400001;db.prepare('UPDATE bot_decisions SET version=2').run();
+ const {args}=ready();const first=historicalClaim(args);s.revoke(human,trustId,'stop');time+=86400001;db.prepare('UPDATE bot_decisions SET version=2').run();
  expect(s.reconcile(identity,trustId,'intent-1')).toMatchObject({claim_id:first.claim_id,execute:false,reconciliation_only:true});
  expect(s.claim(identity,args).execute).toBe(false);
  expect(()=>s.executionCheck(identity,{schema_version:'veneer-purchase-timing-execution-check/v1',trust_id:trustId,request_key:args.request_key,source_capture_id:args.source_capture_id})).toThrow('revoked');
@@ -141,7 +152,7 @@ it('preserves immutable approval audit and rejects changed evidence access',()=>
 });
 it('keeps durable one-time claims across two connections and a restart',async()=>{
  const {mkdtempSync,rmSync}=await import('node:fs'),{tmpdir}=await import('node:os'),{join}=await import('node:path');
- const {args}=ready(),dir=mkdtempSync(join(tmpdir(),'timing-fixture-')),file=join(dir,'test.sqlite');
+ const {args}=ready(),dir=mkdtempSync(join(tmpdir(),'timing-fixture-')),file=join(dir,'test.sqlite');historicalClaim(args);
  await db.backup(file);const a=new Database(file),b=new Database(file);
  try{
   b.pragma('busy_timeout=0');let attempted=false;
@@ -152,7 +163,7 @@ it('keeps durable one-time claims across two connections and a restart',async()=
   expect(atomic.verify(identity,args).execute).toBe(false);expect(attempted).toBe(true);
   const first=purchaseTimingService(a,config,()=>time).claim(identity,args);
   const retry=purchaseTimingService(b,config,()=>time).claim(identity,args);
-  expect(first.execute).toBe(true);expect(retry.execute).toBe(false);
+  expect(first.execute).toBe(false);expect(retry.execute).toBe(false);
   expect(()=>purchaseTimingService(b,config,()=>time).claim(identity,{...args,request_key:'competitor'})).toThrow('already claimed');
  }finally{a.close();b.close();}
  const reopened=new Database(file);try{expect(purchaseTimingService(reopened,config,()=>time).reconcile(identity,trustId,args.request_key).execute).toBe(false);}finally{reopened.close();rmSync(dir,{recursive:true,force:true});}
@@ -166,7 +177,7 @@ it('requires a retained source capture before a native timing question can be ra
  expect(()=>bots.raise(bot,{source_key:'invented',proposal_key:'invented',proposal:p})).toThrow('authenticated source');
 });
 it('prevents another enrolled executor from claiming the same source account/order',()=>{
- const first=ready();s.claim(identity,first.args);
+ const first=ready();historicalClaim(first.args);
  db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES('other',1,1,'Other','codex','other','team','team')").run();
  db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('other','Other',1)").run();
  const e={...enrollment,request_key:'other-registration',executor_id:'other'},r=s.setupReview(human,e);
@@ -179,4 +190,28 @@ it('rejects expired authorization, unsupported delay, future evidence and overlo
  expect(()=>capture({...scope,authorization_expires_at:new Date(time+86400001).toISOString()},'long')).toThrow('24 hours');
  expect(()=>capture({...scope,checkout_delivery:{start:'2026-09-26',end:'2026-09-26'}},'routine')).toThrow('seven days');
  expect(()=>s.capture(identity,{schema_version:'veneer-purchase-timing-capture/v1',trust_id:trustId,request_key:'future',captured_at:new Date(time+1001).toISOString(),scope})).toThrow('fresh');
+});
+
+it('recognizes an original-style conversational answer without altering it or inventing a capture',()=>{
+ const {args,d}=ready(false,false);
+ const author={user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow};
+ const source=captureHumanMessage(db,'sage',author.user.id,'Place. I authorize you too. We are in catchup mode.');
+ const inspected=bots.inspectConversationalDecision(bot,d.id,1,'direct_message',source);
+ bots.recordConversationalDecision(bot,d.id,1,'direct_message',source,inspected.inspection_hash!,'approve',true);
+ const before=db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(d.id);
+ const events=db.prepare('SELECT * FROM bot_decision_events WHERE decision_id=?').all(d.id);
+ expect(()=>s.verify(identity,args)).toThrow('Missing authenticated source linkage');
+ expect(db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(d.id)).toEqual(before);
+ expect(db.prepare('SELECT * FROM bot_decision_events WHERE decision_id=?').all(d.id)).toEqual(events);
+ expect(db.prepare("SELECT count(*) n FROM bot_decision_events WHERE kind='purchase_timing_context'").get()).toEqual({n:0});
+ db.prepare("UPDATE users SET status='disabled' WHERE id=2").run();
+ expect(()=>s.verify(identity,args)).toThrow('Active');
+});
+it('never permits recovery or a replacement intent from a retained UNKNOWN receipt',()=>{
+ const {args}=ready();historicalClaim(args);
+ const restarted=purchaseTimingService(db,config,()=>time);
+ expect(restarted.claim(identity,args).execute).toBe(false);
+ expect(restarted.reconcile(identity,trustId,args.request_key).execute).toBe(false);
+ expect(()=>restarted.claim(identity,{...args,request_key:'replacement'})).toThrow('already claimed');
+ expect(()=>restarted.executionCheck(identity,{schema_version:'veneer-purchase-timing-execution-check/v1',trust_id:trustId,request_key:args.request_key,source_capture_id:args.source_capture_id})).toThrow('generic browser');
 });
