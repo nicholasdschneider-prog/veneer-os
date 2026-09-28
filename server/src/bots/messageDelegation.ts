@@ -13,7 +13,7 @@ export interface Delegation {
   executor_conversation_id: string; executor_user_id: number; delegator_user_id: number; approver_user_id: number;
   approval_event_id: string; proposal_hash: string; payload_hash: string; scope_json: string; request_key: string;
 }
-interface BoundDraft { id: string; delegation_id: string | null; conversation_id: string; decision_id: string | null; decision_version: number | null; authorized_by: number | null; payload_json: string; }
+interface BoundDraft { id: string; delegation_id: string | null; conversation_id: string; decision_id: string | null; decision_version: number | null; authorized_by: number | null; payload_json: string; claim_key?: string | null; }
 export const sendCheckSchema = z.object({
   payload_hash: z.string().regex(/^[a-f0-9]{64}$/), material_evidence_unchanged: z.literal(true),
   recipient_account_case_verified: z.literal(true), lease_and_duplicates_checked: z.literal(true),
@@ -44,14 +44,14 @@ export function messageDelegationService(db: Database.Database) {
     user(c.user_id);
     return c;
   }
-  function proof(a: Actor, id: string, version: number) {
+  function proof(a: Actor, id: string, version: number, completedReceipt = false) {
     // Read-only: never clear a running conversation's discussion context.
     const d = bots.read({ user: user(a.user.id) }, id);
     bots.chat(a, d.conversation_id);
     if (d.version !== version) throw new BotError(409, 'Decision version changed');
     const p = JSON.parse(d.proposal_json) as Proposal;
     const answer = d.answer_json ? JSON.parse(d.answer_json) : null;
-    if (answer?.action !== 'approve' || !['decided','action_pending','blocked','running'].includes(d.state)) throw new BotError(409, 'A current uncompleted approve decision is required');
+    if (answer?.action !== 'approve' || !(['decided','action_pending','blocked','running'].includes(d.state) || (completedReceipt && d.state === 'verified_completed'))) throw new BotError(409, 'A current uncompleted approve decision is required');
     const events = db.prepare("SELECT rowid,id,actor_id,actor_conversation_id,payload_json FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='answered'").all(id,version) as {rowid:number;id:string;actor_id:number;actor_conversation_id:string|null;payload_json:string}[];
     if (events.length !== 1) throw new MissingMessageProof(['one immutable human approval event for this exact version']);
     const approval = events[0]!;
@@ -87,8 +87,8 @@ export function messageDelegationService(db: Database.Database) {
     if (a.conversationId && ![g.owner_conversation_id,g.executor_conversation_id].includes(a.conversationId)) throw new BotError(403,'Only the named owner or executor may use this delegation');
     return g;
   }
-  function valid(a: Actor, g: Delegation, running = false) {
-    const found = proof(a,g.decision_id,g.decision_version);
+  function valid(a: Actor, g: Delegation, running = false, completedReceipt = false) {
+    const found = proof(a,g.decision_id,g.decision_version,completedReceipt);
     const delegator = user(g.delegator_user_id);
     activeBot({user:delegator,conversationId:g.owner_conversation_id},g.owner_conversation_id,true);
     const executor = activeBot({user:delegator},g.executor_conversation_id);
@@ -96,18 +96,19 @@ export function messageDelegationService(db: Database.Database) {
     user(g.executor_user_id);
     if (found.d.conversation_id !== g.owner_conversation_id || found.approval.id !== g.approval_event_id || found.approver.id !== g.approver_user_id || found.proposal_hash !== g.proposal_hash || found.payload_hash !== g.payload_hash || !equal(found.scope,JSON.parse(g.scope_json))) throw new BotError(409,'Delegation proof changed');
     if (db.prepare("SELECT 1 FROM bot_message_delegation_events WHERE delegation_id=? AND kind='revoked'").get(g.id)) throw new BotError(403,'Delegation revoked');
-    if (running && found.d.state !== 'running') throw new BotError(409,'The owner must record current material checks and RUNNING through the existing decision lifecycle before delivery');
+    if (running && found.d.state !== 'running' && !(completedReceipt && found.d.state === 'verified_completed')) throw new BotError(409,'The owner must record current material checks and RUNNING through the existing decision lifecycle before delivery');
     return found;
   }
-  function bound(a: Actor, draft: BoundDraft, running = false) {
+  function bound(a: Actor, draft: BoundDraft, running = false, completedReceipt = false) {
     if (!draft.delegation_id) throw new BotError(409,'Not a delegated draft');
-    const g = read(a,draft.delegation_id); const found = valid(a,g,running);
+    const g = read(a,draft.delegation_id); const found = valid(a,g,running,completedReceipt);
     activeBot(a,g.executor_conversation_id,true);
     if (draft.conversation_id !== g.executor_conversation_id || draft.decision_id !== g.decision_id || draft.decision_version !== g.decision_version || draft.authorized_by !== g.approver_user_id || !equal(JSON.parse(draft.payload_json),found.scope.payload)) throw new BotError(409,'Draft differs from its immutable delegation');
     return {g,...found};
   }
   return {
-    bound, record,
+    // Public pre-send validation never admits completed decisions.
+    bound: (a: Actor, draft: BoundDraft, running = false) => bound(a,draft,running), record,
     inspect(a: Actor, id: string, version: number) {
       try {const p=proof(a,id,version);return {ready:true,decision_id:id,decision_version:version,owner_conversation_id:p.d.conversation_id,scope:p.scope,payload_hash:p.payload_hash,approval_event_id:p.approval.id};}
       catch(e){if(e instanceof MissingMessageProof)return {ready:false,missing_proof:e.missing_proof};throw e;}
@@ -137,7 +138,18 @@ export function messageDelegationService(db: Database.Database) {
     }).immediate();},
     checkSend(a:Actor,draft:BoundDraft,check:unknown){const p=bound(a,draft,true);const parsed=sendCheckSchema.parse(check);if(parsed.payload_hash!==p.g.payload_hash)throw new BotError(409,'Fresh send check has a different payload hash');return p;},
     delivery(a:Actor,draft:BoundDraft,state:string,receipt:string,proofInput:unknown){
-      const p=bound(a,draft,true);
+      // Only positive receipt reconciliation may inspect completed approval proof.
+      // This never reaches inspect/delegate/accept/claim or changes the decision.
+      const p=bound(a,draft,true,state==='sent');
+      if(p.d.state==='verified_completed'){
+        const events=db.prepare("SELECT rowid,id,actor_id,actor_conversation_id,kind,request_key,payload_json FROM bot_message_delegation_events WHERE delegation_id=? AND kind IN ('accepted','claimed') ORDER BY rowid").all(p.g.id) as {rowid:number;id:string;actor_id:number;actor_conversation_id:string;kind:string;request_key:string;payload_json:string}[];
+        const accepted=events.filter(e=>e.kind==='accepted');const claimed=events.filter(e=>e.kind==='claimed');
+        if(accepted.length!==1||claimed.length!==1||!draft.claim_key)throw new BotError(409,'Completed receipt requires one original durable acceptance and claim');
+        const accept=accepted[0]!, claim=claimed[0]!;
+        const acceptPayload=JSON.parse(accept.payload_json), claimPayload=JSON.parse(claim.payload_json);
+        const check=sendCheckSchema.safeParse(claimPayload.send_check);
+        if(accept.rowid>=claim.rowid||[accept,claim].some(e=>e.actor_id!==a.user.id||e.actor_conversation_id!==a.conversationId)||claim.request_key!==draft.claim_key||acceptPayload.draft_id!==draft.id||acceptPayload.payload_hash!==p.g.payload_hash||claimPayload.draft_id!==draft.id||!check.success||check.data.payload_hash!==p.g.payload_hash)throw new BotError(409,'Completed receipt does not match the original durable claim');
+      }
       if(state==='sent'){
         const v=deliveryProofSchema.parse(proofInput);
         if(/^(unknown|pending|queued|none|n\/a)$/i.test(v.provider_message_id)||v.account!==p.scope.payload.account||!equal(v.recipients,p.scope.payload.recipients)||v.canonical_case!==p.scope.canonical_case||v.payload_hash!==p.g.payload_hash||v.idempotency_key!==`veneer-message:${draft.id}`)throw new BotError(409,'Delivery proof does not match this approved message');

@@ -8,6 +8,7 @@ describe('living bot guide release contract', () => {
     const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='approved-message-delegation')!;
     expect(f.isNew).toBe(true);expect(f.updated).toBe('2026-09-28');
     expect(f.steps.join(' ')).toContain('same bot performs both steps');
+    expect(f.agent).toContain('existing claim key');expect(f.agent).toContain('Never reopen, reclaim, requeue or resend');
     expect(f.agent).toContain('no self-message');expect(f.agent).toContain('ordinary-draft retrofit');
     expect(botFeatureInstructions()).toContain(f.agent);
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);

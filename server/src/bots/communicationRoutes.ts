@@ -201,7 +201,7 @@ export function createCommunicationRouter(ctx: AppContext) {
         .strict()
         .parse(req.body);
       res.json(
-        s.receipt(actor(req), req.params.id!, p.claim_key, p.state, p.receipt),
+        s.receipt(actor(req), req.params.id!, p.claim_key, p.state, p.receipt, p.delivery_proof),
       );
     }),
   );

@@ -142,6 +142,62 @@ describe('exact approved message delegation',()=>{
    expect(()=>bridge.delegate(owner,d.id,1,'grant','bad',p)).toThrow('canonical_case');
   });
  });
+ describe('receipt-only reconciliation after decision completion',()=>{
+  function complete(id:string){bots.result(owner,id,1,'fixture-completed',{state:'verified_completed',evidence:'Synthetic provider readback'});}
+  function claimed(){const x=setup();running(x.id);s.claim(executor,x.d.id,'original-claim',checks(x.g.payload_hash));complete(x.id);return x;}
+  it.each(['grant','nora'])('records one exact sent receipt for %s without reopening any pre-send path',name=>{
+   namedExecutor=name;executor={...owner,conversationId:name};const {id,g,d}=claimed();
+   const before=db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(id);
+   const events=db.prepare('SELECT * FROM bot_decision_events WHERE decision_id=?').all(id);
+   expect(()=>bridge.inspect(owner,id,1)).toThrow('uncompleted');
+   expect(()=>bridge.delegate(owner,id,1,name,'delegate-once',scope())).toThrow('uncompleted');
+   expect(()=>bridge.accept(executor,g.id,'accept-once',scope())).toThrow('uncompleted');
+   expect(()=>s.claim(executor,d.id,'original-claim',checks(g.payload_hash))).toThrow('uncompleted');
+   expect(()=>s.receipt(executor,d.id,'original-claim','uncertain','timeout')).toThrow('uncompleted');
+   expect(()=>s.receipt(executor,d.id,'original-claim','failed','not sent')).toThrow('uncompleted');
+   const result=s.receipt(executor,d.id,'original-claim','sent','fixture readback',proof(d.id,g.payload_hash));expect(result.state).toBe('sent');
+   s.receipt(executor,d.id,'original-claim','sent','fixture readback',proof(d.id,g.payload_hash));
+   expect(db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(id)).toEqual(before);
+   expect(db.prepare('SELECT * FROM bot_decision_events WHERE decision_id=?').all(id)).toEqual(events);
+   expect(db.prepare('SELECT count(*) n FROM bot_message_delivery_proofs').get()).toEqual({n:1});
+   expect(db.prepare("SELECT count(*) n FROM bot_message_delegation_events WHERE kind='sent'").get()).toEqual({n:1});
+   expect(()=>s.receipt(executor,d.id,'original-claim','sent','fixture readback',{...proof(d.id,g.payload_hash),provider_message_id:'other'})).toThrow();
+  });
+  it.each(['missing','wrong-key','wrong-actor','wrong-hash','wrong-draft','ambiguous'])('rejects %s durable claim and rolls back receipt writes',kind=>{
+   const {id,g,d}=setup();running(id);
+   // Synthetic corruption/legacy gap: a draft state alone is not durable claim evidence.
+   db.prepare("UPDATE bot_message_drafts SET state='sending',claim_key='original-claim' WHERE id=?").run(d.id);
+   if(kind!=='missing')bridge.record(kind==='wrong-actor'?owner:executor,g,'claimed',kind==='wrong-key'?'different':'original-claim',{draft_id:kind==='wrong-draft'?'other':d.id,send_check:checks(kind==='wrong-hash'?'0'.repeat(64):g.payload_hash)});
+   if(kind==='ambiguous')bridge.record(executor,g,'claimed','second',{draft_id:d.id,send_check:checks(g.payload_hash)});
+   complete(id);expect(()=>s.receipt(executor,d.id,'original-claim','sent','fixture',proof(d.id,g.payload_hash))).toThrow();
+   expect(s.readDraft(executor,d.id).state).toBe('sending');expect(db.prepare('SELECT count(*) n FROM bot_message_delivery_proofs').get()).toEqual({n:0});
+  });
+  it.each(['actor','key','proof','snapshot','version','revoked','access','scope'])('rejects completed receipt with invalid %s',kind=>{
+   const {id,g,d}=claimed();
+   if(kind==='snapshot'){const p=JSON.parse((db.prepare('SELECT proposal_json FROM bot_decisions WHERE id=?').get(id) as {proposal_json:string}).proposal_json);p.message_delivery.payload.body+=' changed';db.prepare('UPDATE bot_decisions SET proposal_json=? WHERE id=?').run(JSON.stringify(p),id);}
+   if(kind==='version')db.prepare('UPDATE bot_decisions SET version=2 WHERE id=?').run(id);
+   if(kind==='revoked')bridge.revoke(owner,g.id,'revoke','fixture');
+   if(kind==='access')db.prepare('DELETE FROM business_team_members WHERE user_id=2').run();
+   expect(()=>s.receipt(kind==='actor'?owner:executor,d.id,kind==='key'?'other':'original-claim','sent','fixture',kind==='proof'?undefined:kind==='scope'?{...proof(d.id,g.payload_hash),account:'foreign'}:proof(d.id,g.payload_hash))).toThrow();
+   expect(db.prepare('SELECT count(*) n FROM bot_message_delivery_proofs').get()).toEqual({n:0});
+  });
+  it('allows identical receipt retry after completion when originally recorded while running',()=>{
+   const {id,g,d}=setup();running(id);s.claim(executor,d.id,'original-claim',checks(g.payload_hash));
+   s.receipt(executor,d.id,'original-claim','sent','fixture',proof(d.id,g.payload_hash));complete(id);
+   expect(s.receipt(executor,d.id,'original-claim','sent','fixture',proof(d.id,g.payload_hash)).state).toBe('sent');
+  });
+  it('serializes conflicting completed receipts and persists exactly one proof',async()=>{
+   const {g,d}=claimed();const app=express();app.use(express.json());app.use((req,_res,next)=>{req.user=executor.user;req.agentConversationId=executor.conversationId;next();});app.use(createCommunicationRouter({db} as AppContext));
+   const server=app.listen(0,'127.0.0.1');servers.push(server);await new Promise<void>(resolve=>server.once('listening',resolve));const port=(server.address() as {port:number}).port;
+   const replies=await Promise.all(['one','two'].map(provider_message_id=>fetch(`http://127.0.0.1:${port}/drafts/${d.id}/receipt`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({claim_key:'original-claim',state:'sent',receipt:'fixture',delivery_proof:{...proof(d.id,g.payload_hash),provider_message_id}})})));
+   expect(replies.map(r=>r.status).sort()).toEqual([200,409]);
+   const stored=db.prepare('SELECT proof_json FROM bot_message_delivery_proofs WHERE draft_id=?').get(d.id) as {proof_json:string};
+   const retry=await fetch(`http://127.0.0.1:${port}/drafts/${d.id}/receipt`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({claim_key:'original-claim',state:'sent',receipt:'fixture',delivery_proof:JSON.parse(stored.proof_json)})});
+   expect(retry.status).toBe(200);expect((await retry.json()).state).toBe('sent');
+   expect(db.prepare('SELECT count(*) n FROM bot_message_delivery_proofs').get()).toEqual({n:1});
+   expect(db.prepare("SELECT count(*) n FROM bot_message_delegation_events WHERE kind='sent'").get()).toEqual({n:1});
+  });
+ });
  it('keeps ordinary drafts unapproved and reports ownership mismatch separately from version mismatch',()=>{
   const id=approved(false);expect(()=>s.saveDraft(executor,'nora','ordinary',scope().payload,id,1)).toThrow('another bot');const d=s.saveDraft(owner,'grant','ordinary',scope().payload,id,1);expect(d.state).toBe('draft');expect(()=>s.claim(owner,d.id,'not-approved')).toThrow('authorization');expect(()=>s.saveDraft(owner,'grant','stale',scope().payload,id,2)).toThrow('proposal changed');
  });

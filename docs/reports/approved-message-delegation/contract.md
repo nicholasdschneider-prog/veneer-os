@@ -122,3 +122,9 @@ All endpoints use existing authenticated actor identity; no body field can imper
 | record_message_delivery | /api/bot-communication/drafts/:id/receipt |
 
 Inspect/delegate/accept/revoke retain the fields above. Claim/receipt put `draft_id` in the URL; the remaining fields form the body. No endpoint performs a provider send. No ordinary draft permissions were broadened.
+
+## Completed-decision receipt reconciliation — September 28, 2026
+
+The original authenticated claiming executor may call `record_message_delivery` with state `sent`, the existing draft/claim key, a nonempty receipt and exact verified `delivery_proof` after the decision reaches `verified_completed`. This is receipt persistence only. It preserves the completed decision and requires the original immutable approval, version, snapshot, scope, delegation, draft and current authorization. Exactly one durable acceptance and claim must match the actor, draft, claim key and payload hash. All provider/account/recipient/case/hash/idempotency and duplicate-proof checks remain.
+
+The HTTP receipt route forwards its validated delivery_proof to the service. Persistence of the proof, immutable sent audit and draft receipt is one immediate transaction. Identical receipt retries return the stored outcome; conflicts fail. Inspect/delegate/accept/claim remain unavailable for completed decisions. Failed/uncertain outcomes do not receive this completed-state exception. No reopen, resend, reclaim, requeue, new approval or provider action occurs. If actual provider readback is missing, do not substitute the decision completion note for proof.
