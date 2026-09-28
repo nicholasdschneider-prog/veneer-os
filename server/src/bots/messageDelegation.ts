@@ -8,6 +8,17 @@ import { canSendToConversation } from '../conversations/access.js';
 import type { UserRow } from '../db/db.js';
 
 type Scope = z.infer<typeof approvedMessageSchema>;
+export interface CaseMappingEvidence {
+  schema_version: 'approved-case-mapping/v1';
+  fingerprint: string; source_revision: string; observed_at: string;
+  registration_id: string; registration_hash: string; source_origin: string;
+  account_id: string; business_id: string; principal_id: string; caller_id: string;
+  canonical_case: string; ticket: string; customer_id: string;
+  related_order_id: string | null; order_binding_version: number | null; order_binding_explicit: boolean | null;
+  runtime: {projectId:string;environmentId:string;serviceId:string};
+  provenance: {custodian_id:string;receipt:string;registered_at:string;authority:'approved-message-resolver-custody'};
+}
+export type CaseMappingCheck = (a: Actor, decision: {id:string;version:number;conversation_id:string;proposal_json:string}, scope: Scope) => CaseMappingEvidence;
 export interface Delegation {
   id: string; decision_id: string; decision_version: number; owner_conversation_id: string;
   executor_conversation_id: string; executor_user_id: number; delegator_user_id: number; approver_user_id: number;
@@ -28,7 +39,7 @@ export const deliveryProofSchema = z.object({
 export class MissingMessageProof extends BotError {
   constructor(public missing_proof: string[]) { super(409, `Approved-message bridge needs proof: ${missing_proof.join('; ')}. No approval imported. Do not automatically request another approval.`); }
 }
-export function messageDelegationService(db: Database.Database) {
+export function messageDelegationService(db: Database.Database, mappingCheck?: CaseMappingCheck) {
   const bots = createBotService(db);
   const equal = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
   function user(id: number) {
@@ -65,11 +76,15 @@ export function messageDelegationService(db: Database.Database) {
     const parsed = approvedMessageSchema.safeParse(p.message_delivery);
     if (!parsed.success) throw new MissingMessageProof(['proposal.message_delivery in the approved snapshot: exact channel/account/recipients/subject/body/customer/ticket/attachments, canonical_case and named executor; legacy EXACT DRAFT prose is not a structured transport authorization']);
     const scope = parsed.data;
-    if (scope.canonical_case !== scope.payload.ticket) throw new MissingMessageProof(['canonical_case must equal the approved payload.ticket']);
+    let mapping: CaseMappingEvidence | undefined;
+    if (scope.canonical_case !== scope.payload.ticket) {
+      if (!mappingCheck) throw new MissingMessageProof(['canonical_case must equal the approved payload.ticket unless a registered authenticated source mapping is available']);
+      mapping = mappingCheck(a,d,scope);
+    }
     const owner = activeBot({user:approver},d.conversation_id);
     const executor = activeBot({user:approver},scope.executor_conversation_id);
     if (!owner.business_team_id || executor.business_team_id !== owner.business_team_id) throw new BotError(403, 'Delegation requires the same explicit business');
-    return { d, scope, approval, approver, proposal_hash: canonicalSha256(p), payload_hash: canonicalSha256(scope) };
+    return { d, scope, approval, approver, mapping, proposal_hash: canonicalSha256(p), payload_hash: canonicalSha256(scope) };
   }
   function record(a: Actor, g: Delegation, kind: string, key: string, payload: unknown) {
     const json = canonicalJson(payload);
@@ -96,6 +111,10 @@ export function messageDelegationService(db: Database.Database) {
     user(g.executor_user_id);
     if (found.d.conversation_id !== g.owner_conversation_id || found.approval.id !== g.approval_event_id || found.approver.id !== g.approver_user_id || found.proposal_hash !== g.proposal_hash || found.payload_hash !== g.payload_hash || !equal(found.scope,JSON.parse(g.scope_json))) throw new BotError(409,'Delegation proof changed');
     if (db.prepare("SELECT 1 FROM bot_message_delegation_events WHERE delegation_id=? AND kind='revoked'").get(g.id)) throw new BotError(403,'Delegation revoked');
+    if(found.mapping){
+      const binding=db.prepare('SELECT fingerprint,source_revision FROM approved_case_mapping_bindings WHERE delegation_id=?').get(g.id) as {fingerprint:string;source_revision:string}|undefined;
+      if(!binding||binding.fingerprint!==found.mapping.fingerprint||(!completedReceipt && binding.source_revision!==found.mapping.source_revision))throw new BotError(409,'Authenticated case mapping or source revision changed; no new send');
+    }
     if (running && found.d.state !== 'running' && !(completedReceipt && found.d.state === 'verified_completed')) throw new BotError(409,'The owner must record current material checks and RUNNING through the existing decision lifecycle before delivery');
     return found;
   }
@@ -109,8 +128,12 @@ export function messageDelegationService(db: Database.Database) {
   return {
     // Public pre-send validation never admits completed decisions.
     bound: (a: Actor, draft: BoundDraft, running = false) => bound(a,draft,running), record,
+    // Read-only preflight for the server resolver, including receipt reconciliation.
+    mappingTarget: (a:Actor,id:string,version:number,receiptOnly=false) => proof(a,id,version,receiptOnly),
     inspect(a: Actor, id: string, version: number) {
-      try {const p=proof(a,id,version);return {ready:true,decision_id:id,decision_version:version,owner_conversation_id:p.d.conversation_id,scope:p.scope,payload_hash:p.payload_hash,approval_event_id:p.approval.id};}
+      try {const p=proof(a,id,version);
+        if(p.mapping){const existing=db.prepare('SELECT * FROM bot_message_delegations WHERE decision_id=? AND decision_version=?').get(id,version) as Delegation|undefined;if(existing)valid(a,existing);}
+        return {ready:true,decision_id:id,decision_version:version,owner_conversation_id:p.d.conversation_id,scope:p.scope,payload_hash:p.payload_hash,approval_event_id:p.approval.id,...(p.mapping?{case_mapping:p.mapping}:{})};}
       catch(e){if(e instanceof MissingMessageProof)return {ready:false,missing_proof:e.missing_proof};throw e;}
     },
     delegate(a: Actor, id: string, version: number, executor: string, key: string, scope: Scope) {
@@ -122,7 +145,9 @@ export function messageDelegationService(db: Database.Database) {
         const prior=db.prepare('SELECT * FROM bot_message_delegations WHERE (decision_id=? AND decision_version=?) OR (owner_conversation_id=? AND request_key=?)').all(id,version,p.d.conversation_id,key) as Delegation[];
         if(prior.length){const g=prior[0]!;if(prior.length!==1||g.request_key!==key||g.decision_id!==id||g.decision_version!==version||g.delegator_user_id!==a.user.id||g.payload_hash!==p.payload_hash)throw new BotError(409,'Decision version or request key already bound; no new delivery');valid(a,g);return g;}
         const g:Delegation={id:crypto.randomUUID(),decision_id:id,decision_version:version,owner_conversation_id:p.d.conversation_id,executor_conversation_id:executor,executor_user_id:bots.chat(a,executor).user_id,delegator_user_id:a.user.id,approver_user_id:p.approver.id,approval_event_id:p.approval.id,proposal_hash:p.proposal_hash,payload_hash:p.payload_hash,scope_json:canonicalJson(p.scope),request_key:key};
-        db.prepare('INSERT INTO bot_message_delegations(id,decision_id,decision_version,owner_conversation_id,executor_conversation_id,executor_user_id,delegator_user_id,approver_user_id,approval_event_id,proposal_hash,payload_hash,scope_json,request_key) VALUES(@id,@decision_id,@decision_version,@owner_conversation_id,@executor_conversation_id,@executor_user_id,@delegator_user_id,@approver_user_id,@approval_event_id,@proposal_hash,@payload_hash,@scope_json,@request_key)').run(g);return g;
+        db.prepare('INSERT INTO bot_message_delegations(id,decision_id,decision_version,owner_conversation_id,executor_conversation_id,executor_user_id,delegator_user_id,approver_user_id,approval_event_id,proposal_hash,payload_hash,scope_json,request_key) VALUES(@id,@decision_id,@decision_version,@owner_conversation_id,@executor_conversation_id,@executor_user_id,@delegator_user_id,@approver_user_id,@approval_event_id,@proposal_hash,@payload_hash,@scope_json,@request_key)').run(g);
+        if(p.mapping)db.prepare('INSERT INTO approved_case_mapping_bindings(delegation_id,fingerprint,source_revision,evidence_json) VALUES(?,?,?,?)').run(g.id,p.mapping.fingerprint,p.mapping.source_revision,canonicalJson(p.mapping));
+        return g;
       }).immediate();
     },
     revoke(a:Actor,id:string,key:string,reason:string){return db.transaction(()=>{const g=read(a,id);activeBot(a,g.owner_conversation_id,true);record(a,g,'revoked',key,{reason});return {revoked:true,delegation_id:id};}).immediate();},
@@ -133,7 +158,7 @@ export function messageDelegationService(db: Database.Database) {
       if(old.length){if(old.length!==1||old[0]!.delegation_id!==id||old[0]!.request_key!==key)throw new BotError(409,'Acceptance already bound; do not create another draft');bound(a,old[0]!);return old[0]!;}
       const draftId=crypto.randomUUID();
       db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,decision_id,decision_version,request_key,payload_json,state,authorized_by,delegation_id) VALUES(?,?,?,?,?,?,'queued',?,?)").run(draftId,g.executor_conversation_id,g.decision_id,g.decision_version,key,JSON.stringify(p.scope.payload),g.approver_user_id,g.id);
-      record(a,g,'accepted',key,{draft_id:draftId,payload_hash:g.payload_hash});
+      record(a,g,'accepted',key,{draft_id:draftId,payload_hash:g.payload_hash,...(p.mapping?{case_mapping:p.mapping}:{})});
       return db.prepare('SELECT * FROM bot_message_drafts WHERE id=?').get(draftId) as BoundDraft;
     }).immediate();},
     checkSend(a:Actor,draft:BoundDraft,check:unknown){const p=bound(a,draft,true);const parsed=sendCheckSchema.parse(check);if(parsed.payload_hash!==p.g.payload_hash)throw new BotError(409,'Fresh send check has a different payload hash');return p;},

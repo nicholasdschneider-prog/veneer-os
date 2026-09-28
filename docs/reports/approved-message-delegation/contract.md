@@ -21,7 +21,7 @@ Grant owns this decision (`cb4ade24-c960-4235-956a-220260e5adac`); Nora remains 
 
 ## Same-owner execution — September 28, 2026
 
-The immutable approved scope may name the decision owner itself as executor. That same authenticated bot uses inspect → delegate → accept → current material checks/RUNNING → claim → verified receipt. No separate bot, self-message, revised approval or reassignment is required. The existing one-delegation-per-version, one-bound-draft and one-execution-claim guards apply identically. Ordinary unbound drafts are never adopted or retrofitted. Readiness verifies the approval proof; it is not a lease, source permission, duplicate-effect clearance or permission to bypass later checks. The canonical-case/payload-ticket equality guard remains unchanged.
+The immutable approved scope may name the decision owner itself as executor. That same authenticated bot uses inspect → delegate → accept → current material checks/RUNNING → claim → verified receipt. No separate bot, self-message, revised approval or reassignment is required. The existing one-delegation-per-version, one-bound-draft and one-execution-claim guards apply identically. Ordinary unbound drafts are never adopted or retrofitted. Readiness verifies the approval proof; it is not a lease, source permission, duplicate-effect clearance or permission to bypass later checks. Equal canonical-case/payload-ticket IDs retain that path. BUILD425 additionally supports authenticated UUID/ticket equivalence through a protected native resolver; it does not normalize approved IDs. See the [resolver contract](../approved-case-ticket-binding/resolver-contract.md) for registration, drift and live custody prerequisites.
 
 ## 1. Read-only preflight
 
@@ -47,7 +47,7 @@ Only the authenticated decision-owner bot calls `delegate_approved_message` with
 }
 ```
 
-Copy scope verbatim; do not reconstruct it. It contains `canonical_case` (equal to `payload.ticket`), `executor_conversation_id`, and the complete `payload`: channel, account, recipients, subject, body, customer, ticket, context, attachments. Each attachment has name, reference, and SHA-256. Structured scope must have existed in the immutable proposal snapshot before its human approve event. Delegation does not rewrite the proposal/answer, send anything, transfer ownership, wake a bot automatically, or share credentials.
+Copy scope verbatim; do not reconstruct it. It contains `canonical_case` (equal to `payload.ticket`, or freshly verified by the registered source resolver without changing either string), `executor_conversation_id`, and the complete `payload`: channel, account, recipients, subject, body, customer, ticket, context, attachments. Each attachment has name, reference, and SHA-256. Structured scope must have existed in the immutable proposal snapshot before its human approve event. Delegation does not rewrite the proposal/answer, send anything, transfer ownership, wake a bot automatically, or share credentials.
 
 Save the returned delegation `id` and `payload_hash`. The hash covers the entire canonical scope, including case and named executor—not just body or payload. One decision version permits one immutable delegation. Same-key exact retries return it; conflicting keys or scopes fail. The owner may explicitly hand off its ID and scope to the named executor using the existing authorized communication workflow.
 

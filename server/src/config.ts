@@ -15,6 +15,8 @@ const EnvSchema = z.object({
   // AutoShip verifier (option A): a second Cloudflare Access application with
   // its own audience and exactly one Service Auth token. Non-secret identity
   // values; all three absent disables the verifier and it fails closed.
+  // Protected operator registration of approved-message source/caller custody.
+  VP_APPROVED_CASE_REGISTRY_FILE: z.string().trim().optional(),
   VP_ROUTINE_VERIFIER_CF_AUD: z.string().trim().optional(),
   VP_ROUTINE_VERIFIER_CLIENT_ID: z.string().trim().optional(),
   VP_AUTOSHIP_CANDIDATE_CF_AUD: z.string().trim().optional(),
@@ -135,6 +137,7 @@ export interface Config {
   identity: 'cloudflare' | 'dev';
   cfTeamDomain: string | null;
   cfAud: string | null;
+  approvedCaseRegistryFile?: string | null;
   routineVerifierCfAud?: string | null;
   routineVerifierClientId?: string | null;
   autoshipCandidateCfAud?: string | null;
@@ -269,6 +272,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     identity: parsed.VP_IDENTITY,
     cfTeamDomain: parsed.VP_CF_TEAM_DOMAIN ?? null,
     cfAud: parsed.VP_CF_AUD ?? null,
+    approvedCaseRegistryFile: parsed.VP_APPROVED_CASE_REGISTRY_FILE || null,
     routineVerifierCfAud: parsed.VP_ROUTINE_VERIFIER_CF_AUD || null,
     routineVerifierClientId: parsed.VP_ROUTINE_VERIFIER_CLIENT_ID || null,
     autoshipCandidateCfAud: parsed.VP_AUTOSHIP_CANDIDATE_CF_AUD || null,

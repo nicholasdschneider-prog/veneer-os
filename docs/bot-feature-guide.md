@@ -130,3 +130,18 @@ Skill/regression checks and independent no-effect behavioral review passed; exis
 accounting cases and financial authority were preserved. See the
 [completion report](./reports/training-without-builds/report.md). This does not certify
 live connector parity or completion of her outstanding business cases.
+
+## Authenticated approved case mapping — September 28, 2026
+
+Approved-message delegation can preserve an approved UUID and a different ticket code
+when the server verifies their persisted equivalence under a protected, caller-specific
+OrderOps registration. No aliases or credentials are accepted from bot request bodies.
+Fresh source authority and a supplemental immutable fingerprint are checked through
+inspection, delegation, acceptance, claim and receipt reconciliation. Original exact
+approval, named executor, one-time claim and completed-receipt rules remain intact.
+
+The native contract is implemented; live unequal-ID use remains disabled until the
+source capability account/business/runtime projection and own-credential custody are
+established. Equal-ID messages need no new setup. Missing source setup is not missing
+human consent. The catalog supplies the same steps and limitations to employees and
+fresh/resumed bots. See the [executable resolver contract](./reports/approved-case-ticket-binding/resolver-contract.md).

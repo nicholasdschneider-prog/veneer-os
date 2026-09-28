@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { csDraftState } from './csDraftState.js';
 import { approvedMessageSchema } from './draftPayload.js';
 import { routineExecutionService } from './routineExecution.js';
-import { messageDelegationService } from './messageDelegation.js';
+import { messageDelegationService, type CaseMappingCheck } from './messageDelegation.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { BotError, createBotService, type Actor } from './service.js';
@@ -33,9 +33,9 @@ export type Briefing = {
   transcript: string;
   request_key: string;
 };
-export function communicationService(db: Database.Database) {
+export function communicationService(db: Database.Database, mappingCheck?: CaseMappingCheck) {
   const bots = createBotService(db);
-  const delegated = messageDelegationService(db);
+  const delegated = messageDelegationService(db,mappingCheck);
   function access(a: Actor, c: string, write = false) {
     const chat = bots.chat(a, c);
     if (write && (!canSendToConversation(a.user, chat, db) || chat.archived))
@@ -340,7 +340,7 @@ export function communicationService(db: Database.Database) {
             );
           if (bridge) {
             delegated.checkSend(a, d, sendCheck);
-            delegated.record(a, bridge.g, 'claimed', key, {draft_id:id, send_check:sendCheck});
+            delegated.record(a, bridge.g, 'claimed', key, {draft_id:id, send_check:sendCheck,...(bridge.mapping?{case_mapping:bridge.mapping}:{})});
           }
           db.prepare(
             "UPDATE bot_message_drafts SET state='sending',claim_key=?,updated_at=datetime('now') WHERE id=?",

@@ -1,3 +1,4 @@
+import { approvedCaseResolver } from './approvedCaseResolver.js';
 import { routineOwnerSetup } from './routineOwnerSetup.js';
 import { preparedRoutineRegistration } from './preparedRoutineRegistration.js';
 import { candidateOwnerSetup } from './candidateOwnerSetup.js';
@@ -34,6 +35,15 @@ export function createCommunicationRouter(ctx: AppContext) {
   }));
   const s = communicationService(ctx.db);
   const delegations = messageDelegationService(ctx.db);
+  const resolver = approvedCaseResolver(ctx);
+  const mapped = async (a:Actor,id:string,v:number,receipt=false) => {
+    const check=await resolver.prepare(a,id,v,receipt);
+    return {delegations:messageDelegationService(ctx.db,check),messages:communicationService(ctx.db,check)};
+  };
+  const mappedDraft = async (a:Actor,id:string,receipt=false) => {
+    const draft=s.readDraft(a,id);
+    return draft.delegation_id ? (await mapped(a,draft.decision_id!,draft.decision_version!,receipt)).messages : s;
+  };
   const generating = new Map<string, Promise<void>>();
   const actor = (req: express.Request): Actor => ({
     user: req.user!,
@@ -122,21 +132,26 @@ export function createCommunicationRouter(ctx: AppContext) {
     '/chats/:chat',
     run((req, res) => res.json(s.list(actor(req), current(req)))),
   );
-  r.post('/approved-messages/inspect', run((req,res) => {
+  r.post('/approved-messages/inspect', run(async(req,res) => {
     const p=z.object({decision_id:key,expected_version:version}).strict().parse(req.body);
-    res.json(delegations.inspect(actor(req),p.decision_id,p.expected_version));
+    try{const m=await mapped(actor(req),p.decision_id,p.expected_version);res.json(m.delegations.inspect(actor(req),p.decision_id,p.expected_version));}
+    catch(e){if(e instanceof MissingMessageProof)res.json({ready:false,missing_proof:e.missing_proof});else throw e;}
   }));
-  r.post('/approved-messages/delegate', run((req,res) => {
+  r.post('/approved-messages/delegate', run(async(req,res) => {
     const p=z.object({decision_id:key,expected_version:version,executor_conversation_id:key,request_key:key,scope:approvedMessageSchema}).strict().parse(req.body);
-    res.json(delegations.delegate(actor(req),p.decision_id,p.expected_version,p.executor_conversation_id,p.request_key,p.scope));
+    const m=await mapped(actor(req),p.decision_id,p.expected_version);
+    res.json(m.delegations.delegate(actor(req),p.decision_id,p.expected_version,p.executor_conversation_id,p.request_key,p.scope));
   }));
   r.post('/approved-messages/revoke', run((req,res) => {
     const p=z.object({delegation_id:key,request_key:key,reason:z.string().trim().min(1).max(2000)}).strict().parse(req.body);
     res.json(delegations.revoke(actor(req),p.delegation_id,p.request_key,p.reason));
   }));
-  r.post('/approved-messages/accept', run((req,res) => {
+  r.post('/approved-messages/accept', run(async(req,res) => {
     const p=z.object({delegation_id:key,request_key:key,scope:approvedMessageSchema}).strict().parse(req.body);
-    const draft=delegations.accept(actor(req),p.delegation_id,p.request_key,p.scope);
+    const g=ctx.db.prepare('SELECT decision_id,decision_version FROM bot_message_delegations WHERE id=?').get(p.delegation_id) as {decision_id:string;decision_version:number}|undefined;
+    if(!g)throw new BotError(404,'Delegation not found');
+    const m=await mapped(actor(req),g.decision_id,g.decision_version);
+    const draft=m.delegations.accept(actor(req),p.delegation_id,p.request_key,p.scope);
     res.json(s.draftView(s.readDraft(actor(req),draft.id)));
   }));
   r.post(
@@ -183,14 +198,15 @@ export function createCommunicationRouter(ctx: AppContext) {
   r.post('/drafts/:id/retire', run((req,res) => res.json(s.retire(actor(req),req.params.id!,req.body))));
   r.post(
     '/drafts/:id/claim',
-    run((req, res) => {
+    run(async(req, res) => {
       const p = z.object({ claim_key: key, send_check: sendCheckSchema.optional() }).strict().parse(req.body);
-      res.json(s.claim(actor(req), req.params.id!, p.claim_key, p.send_check));
+      const service=await mappedDraft(actor(req),req.params.id!);
+      res.json(service.claim(actor(req), req.params.id!, p.claim_key, p.send_check));
     }),
   );
   r.post(
     '/drafts/:id/receipt',
-    run((req, res) => {
+    run(async(req, res) => {
       const p = z
         .object({
           claim_key: key,
@@ -200,8 +216,9 @@ export function createCommunicationRouter(ctx: AppContext) {
         })
         .strict()
         .parse(req.body);
+      const service=await mappedDraft(actor(req),req.params.id!,p.state==='sent');
       res.json(
-        s.receipt(actor(req), req.params.id!, p.claim_key, p.state, p.receipt, p.delivery_proof),
+        service.receipt(actor(req), req.params.id!, p.claim_key, p.state, p.receipt, p.delivery_proof),
       );
     }),
   );

@@ -1,5 +1,7 @@
 # Approved canonical case and ticket binding
 
+September 28 continuation: BUILD425 implements the native resolver contract. See [the current contract](./resolver-contract.md) and [the implementation receipt](./build425.md). The September 23 findings below are preserved as history; they are not the current native implementation status. Live source custody remains a separate prerequisite.
+
 Build #250 · September 23, 2026 · Commission `william-case-ticket-binding-20260923`
 
 **Blocked at the authoritative resolver integration prerequisite. No compatibility change was deployed.** Ali's existing approval was not edited or treated as withdrawn. No duplicate approval was requested. The completed $1,393.21 refund was not touched or replayed. No live decision, draft, delegation, acceptance, provider send, lease or customer mutation was performed.
