@@ -174,3 +174,15 @@ The original instruction-owning bot can now inspect and record a separate SMS in
 The `composed-sms` catalog entry describes original-owner correspondence inspection, prospective exact composition authority, and named-executor acceptance/claim/receipt tools. Unlike BUILD431's intent-only record, the native lifecycle has a positive single-use path under verified evidence and accepted source transport. The installed source v1 consumer truthfully reports unknown SMS sender ownership and unavailable native-action transport; live derivation and dispatch are not enabled. It requires a separate correspondence-reader custody receipt and never extends the email resolver's permission implicitly. The [contract](./reports/composed-sms/contract.md) identifies exact fields, review semantics, duplicate/UNKNOWN protections and remaining source prerequisites. No second customer approval, alias merge or ordinary-draft authorization retrofit is introduced. Full/restricted employee and fresh/resumed agent delivery are tested from the shared catalog.
 
 BUILD434 configures that separate correspondence-reader custody for Grant, Owen, Avery, Nora, Miles and Tess until October 28, 2026 at21:04UTC or earlier revocation. Original owners may use `inspect_composed_sms`; no duplicate reader setup is needed. Source sender ownership remains unverified and dispatch remains unsupported. The [activation receipt](./reports/composed-sms/build434.md) retains exact permission, bindings and runtime verification.
+
+## Dedicated composed-SMS dispatch — September 28, 2026
+
+BUILD435 replaces the synthetic bot execution claim with reservation-only behavior.
+The named executor receives `execute:false`; only the first authenticated source
+service association can entitle its exact fenced attempt. Lost association responses
+remain UNKNOWN. Receipt recording fetches the source's exact persisted action rather
+than accepting a bot's provider ID. `SENT_ACCEPTED` distinguishes provider acceptance
+from delivery. The catalog updates employees and fresh/resumed bots together.
+Dedicated service custody, an accepted positive sender/guard adapter and the source
+prepare expiry/key readback extension remain outstanding; existing correspondence
+reader setup does not need to be repeated. See the [contract](./reports/composed-sms/contract.md).

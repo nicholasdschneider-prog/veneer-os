@@ -1,3 +1,4 @@
+import {composeMaterialHash} from './composedSmsContract.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {z} from 'zod';
@@ -57,6 +58,6 @@ export function composedSmsReader(ctx:Pick<AppContext,'db'|'config'|'projectDopp
   // Caller-specific authentication is checked above; material comparison across
   // original owner and executor excludes only their independently checked identity.
   const {identity:ignored,...facts}=material;
-  return {projection:{cases:wire.cases,messages:wire.messages},snapshot_hash:canonicalSha256(facts),registration_hash:hash,business_id:reg.business_id,account_id:reg.account_id,principal_id:caller.principal_id,sms_account:'',sender_phone:'',sender_verified:false,dispatch:{supported:false,contract:null,revision:'approved-case-correspondence/v1',reason:'Verified SMS sender and native action/executor/sender fenced transport are not supplied by this source contract'},assertFresh};
+  return {dispatch_material_hash:composeMaterialHash(material),projection:{cases:wire.cases,messages:wire.messages},snapshot_hash:canonicalSha256(facts),registration_hash:hash,business_id:reg.business_id,account_id:reg.account_id,principal_id:caller.principal_id,sms_account:'',sender_phone:'',sender_verified:false,dispatch:{supported:false,contract:null,revision:'approved-case-correspondence/v1',reason:'Verified SMS sender and native action/executor/sender fenced transport are not supplied by this source contract'},assertFresh};
  };
 }

@@ -8,3 +8,9 @@ it('discovers and routes composed SMS reads without a mutation or duplicated dis
  await callBotTool({name:'read_composed_sms',args:{authority_id:'exact-id'},callApi});
  expect(calls).toEqual([['/api/bots/composed-sms/exact-id',undefined]]);
 });
+it('advertises reservation only and source receipt reconciliation without accepting a bot SID',()=>{
+ const claim=BOT_TOOL_DEFINITIONS.find(t=>t.name==='claim_composed_sms')!;
+ const receipt=BOT_TOOL_DEFINITIONS.find(t=>t.name==='record_composed_sms_delivery')!;
+ expect(claim.description).toContain('execute:false');expect(receipt.description).toContain('server fetches');
+ expect(JSON.stringify(receipt)).not.toContain('delivery_proof');
+});

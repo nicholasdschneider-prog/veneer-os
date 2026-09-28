@@ -1,10 +1,11 @@
+import {persistComposeDispatchAuthority,type ComposeBoundaryEvidence} from './composedSmsAuthority.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import {z} from 'zod';
 import {canonicalSha256,canonicalJson} from './canonical.js';
 import {BotError,createBotService,type Actor} from './service.js';
 import {createInstructionObligations,obligationInspectionSchema} from './instructionObligations.js';
-import {deliveryProofSchema,sendCheckSchema} from './messageDelegation.js';
+import {sendCheckSchema} from './messageDelegation.js';
 import type {UserRow} from '../db/db.js';
 const id=z.string().min(1).max(200),hash=z.string().regex(/^[a-f0-9]{64}$/);
 export const composedInspectionSchema=obligationInspectionSchema.extend({canonical_case:z.string().uuid(),contact_case:z.string().uuid()}).strict();
@@ -27,6 +28,8 @@ export interface CompositionEvidence {
  snapshot_hash:string;registration_hash:string;business_id:string;account_id:string;principal_id:string;
  sms_account:string;sender_phone:string;sender_verified:boolean;
  dispatch: {supported:boolean;contract:string|null;revision:string;reason:string};
+ dispatch_material_hash?:string;
+ boundary?:ComposeBoundaryEvidence;
  assertFresh:()=>void;
 }
 export type CompositionReader=(a:Actor,input:ComposedInput,owner:string)=>Promise<CompositionEvidence>;
@@ -88,7 +91,7 @@ export function composedSmsService(db:Database.Database,reader:CompositionReader
   db.prepare('INSERT INTO bot_composed_sms_events(authority_id,kind,actor_id,actor_conversation_id,request_key,payload_json) VALUES(?,?,?,?,?,?)').run(g.id,kind,a.user.id,a.conversationId,key,json);
  }
  function usable(g:Authority){if(event(g.id,'revoked'))throw new BotError(403,'Derived authority revoked');if(Date.parse(g.expires_at)<=now())throw new BotError(409,'Derived authority expired; no new attempt');}
- function result(a:Actor,g:Authority){const claimed=event(g.id,'claimed'),sent=event(g.id,'sent');return {authority_id:g.id,action_id:g.action_id,execute:false,expires_at:g.expires_at,state:sent?'sent':claimed?'unknown':event(g.id,'revoked')?'revoked':event(g.id,'accepted')?'accepted':'derived',receipt:sent?JSON.parse(sent.payload_json):null,scope:JSON.parse(g.snapshot_json).scope};}
+ function result(a:Actor,g:Authority){const dispatched=db.prepare('SELECT action_id FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(g.id) as {action_id:string}|undefined;const associated=db.prepare('SELECT 1 FROM bot_composed_sms_associations WHERE authority_id=?').get(g.id);const claimed=event(g.id,'claimed'),sent=event(g.id,'sent');const serviceReceipt=db.prepare('SELECT r.evidence_json FROM bot_composed_sms_service_receipts r JOIN bot_composed_sms_associations s ON s.id=r.association_id WHERE s.authority_id=?').get(g.id) as {evidence_json:string}|undefined;return {authority_id:g.id,action_id:g.action_id,native_action_id:dispatched?.action_id??null,execute:false,expires_at:g.expires_at,state:serviceReceipt?'SENT_ACCEPTED':sent?'sent':claimed?(dispatched&&!associated?'reserved':'unknown'):event(g.id,'revoked')?'revoked':event(g.id,'accepted')?'accepted':'derived',receipt:serviceReceipt?JSON.parse(serviceReceipt.evidence_json):sent?JSON.parse(sent.payload_json):null,scope:JSON.parse(g.snapshot_json).scope,reservation:claimed?JSON.parse(claimed.payload_json):null};}
  async function prepare(a:Actor,p:ComposedInput,g?:Authority,requireSender=true){const n=native(a,p,g),e=await reader(a,p,n.binding.source_owner);const current=native(a,p,g);if(current.inspection_hash!==n.inspection_hash)throw new BotError(409,'Native context changed during source read');return {n:current,e,binding:scope(current,p,e,requireSender)};}
  return {
   async inspect(a:Actor,raw:ComposedInput){const p=composedInspectionSchema.parse(raw),{n,e,binding}=await prepare(a,p,undefined,false);return {ready_for_authority_review:e.sender_verified,missing_proof:e.sender_verified?[]:['SMS_SENDER_OWNERSHIP_UNVERIFIED'],execute:false,inspection_hash:canonicalSha256(binding),native:n,source_evidence:e.projection,source_snapshot_hash:e.snapshot_hash,dispatch:e.dispatch,instructions:'Original owner: interpret full human instructions and customer evidence. Review every exact body span. No keyword acceptance, case merge, alias assertion or later-draft timing disqualification. This inspection does not authorize or send.'};},
@@ -105,6 +108,7 @@ export function composedSmsService(db:Database.Database,reader:CompositionReader
     const g={id:crypto.randomUUID(),action_id:actionId,owner_id:a.conversationId!,executor_id:p.executor_conversation_id,source_id:p.source_id,draft_id:p.draft_id,request_key,request_hash:requestHash,
      snapshot_json:canonicalJson({binding,scope:{canonical_case:p.canonical_case,contact_case:p.contact_case,executor_conversation_id:p.executor_conversation_id,payload:n.draft.payload},native:n,source_projection:e.projection,review:assessment,reviewer_user_id:a.user.id,reviewer_conversation_id:a.conversationId}),expires_at:new Date(now()+30*60_000).toISOString()};
     db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(@id,@action_id,@owner_id,@executor_id,@source_id,@draft_id,@request_key,@request_hash,@snapshot_json,@expires_at)').run(g);
+    if(e.boundary){if(e.dispatch_material_hash!==e.boundary.materialHash)throw new BotError(409,'Versioned correspondence material hash differs');persistComposeDispatchAuthority(db,g,e.boundary,now());}
     return result(a,read(a,g.id));
    }).immediate();
   },
@@ -116,20 +120,36 @@ export function composedSmsService(db:Database.Database,reader:CompositionReader
    return db.transaction(()=>{usable(g);current.e.assertFresh();if(event(id,'claimed'))return result(a,g);
     if(!event(id,'accepted')||check.payload_hash!==saved.binding.payload_hash||native(a,p,g).inspection_hash!==saved.binding.native_hash||canonicalSha256(current.binding)!==canonicalSha256(saved.binding))throw new BotError(409,'Acceptance, exact payload or fresh evidence changed');
     if(!current.e.dispatch.supported||current.e.dispatch.contract!=='native-compose-sms/v1')throw new BotError(409,'SOURCE_NATIVE_ACTION_TRANSPORT_UNAVAILABLE: '+current.e.dispatch.reason);
-    const claim=crypto.randomUUID(),idempotency=`veneer-compose-sms:${g.action_id}`;
-    append(a,g,'claimed',key,{claim_key:claim,payload_hash:check.payload_hash,idempotency_key:idempotency,transport:current.e.dispatch,check});
-    return {...result(a,g),execute:true,claim_key:claim,idempotency_key:idempotency,scope:saved.scope,transport:current.e.dispatch};
+    const dispatch=db.prepare('SELECT tuple_json FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(id) as {tuple_json:string}|undefined;
+    if(!dispatch)throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: accepted prospective service authority required');
+    const tuple=JSON.parse(dispatch.tuple_json);
+    const boundary=current.e.boundary;if(!boundary)throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: current accepted sender and source guard evidence required');
+    boundary.assertFresh();
+    const stored=db.prepare('SELECT registration_hash,sender_expires_at FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(id) as {registration_hash:string;sender_expires_at:string};
+    if(boundary.guardContractHash!==boundary.registration.guardContractHash||boundary.sender.issuerId!==boundary.registration.senderReceiptIssuerId||Date.parse(boundary.sender.expiresAt)<=now()||canonicalSha256(boundary.registration)!==stored.registration_hash||Date.parse(stored.sender_expires_at)<=now()||current.e.dispatch_material_hash!==tuple.materialHash||boundary.materialHash!==tuple.materialHash||boundary.sender.receiptId!==tuple.senderReceiptId||boundary.sender.revision!==tuple.senderReceiptRevision||boundary.sender.providerAccountId!==tuple.senderAccountId||boundary.sender.fromPhone!==tuple.fromPhone)throw new BotError(409,'Current service boundary changed');
+    const claim=crypto.randomUUID(),idempotency=tuple.idempotencyKey;
+    append(a,g,'claimed',key,{claim_key:claim,native_claim_id:claim,native_action_id:tuple.nativeActionId,authority_hash:tuple.authorityHash,payload_hash:check.payload_hash,idempotency_key:idempotency,transport:current.e.dispatch,check});
+    return {...result(a,g),execute:false,native_claim_id:claim,native_action_id:tuple.nativeActionId,claim_key:claim,idempotency_key:idempotency,scope:saved.scope,transport:current.e.dispatch};
    }).immediate();
   },
-  delivery(a:Actor,id:string,key:string,claimKey:string,proofInput:unknown){return db.transaction(()=>{
-   const g=read(a,id);if(a.conversationId!==g.executor_id)throw new BotError(403,'Original claiming executor only');
-   if(event(id,'revoked'))throw new BotError(403,'Revoked; receipt requires separate reconciliation');
-   const claimed=event(id,'claimed'),saved=JSON.parse(g.snapshot_json),proof=deliveryProofSchema.parse(proofInput);
-   if(!claimed||claimed.actor_id!==a.user.id||claimed.actor_conversation_id!==a.conversationId)throw new BotError(409,'Durable original claim required');
-   const c=JSON.parse(claimed.payload_json);
-   if(c.claim_key!==claimKey||proof.payload_hash!==saved.binding.payload_hash||proof.idempotency_key!==c.idempotency_key||proof.account!==saved.scope.payload.account||canonicalJson(proof.recipients)!==canonicalJson(saved.scope.payload.recipients)||proof.canonical_case!==saved.scope.canonical_case)throw new BotError(409,'Exact claim/provider proof mismatch');
-   append(a,g,'sent',key,proof);return result(a,g);
-  }).immediate();},
+  // Provider IDs submitted by a bot are not an authenticated source receipt.
+  delivery(a:Actor,id:string,_key:string,_claimKey:string,_proofInput:unknown){read(a,id);throw new BotError(503,'Authenticated source receipt reconciliation required; bot-submitted provider proof cannot complete composed SMS');},
+  receiptTarget(a:Actor,id:string,claimKey:string){
+   const g=read(a,id),claim=event(id,'claimed');
+   if(a.conversationId!==g.executor_id||!claim||claim.actor_id!==a.user.id||claim.actor_conversation_id!==a.conversationId||JSON.parse(claim.payload_json).claim_key!==claimKey)throw new BotError(403,'Original claiming executor and existing reservation required');
+   const dispatch=db.prepare('SELECT registration_id,action_id FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(id) as {registration_id:string;action_id:string}|undefined;
+   if(!dispatch)throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: no service-bound authority');return dispatch;
+  },
+  serviceCurrent(id:string,receiptOnly=false){
+   const g=db.prepare('SELECT * FROM bot_composed_sms_authorities WHERE id=?').get(id) as Authority|undefined;
+   if(!g)throw new BotError(404,'Authority not found');
+   const user=db.prepare("SELECT * FROM users WHERE id=(SELECT user_id FROM conversations WHERE id=?) AND status='active'").get(g.owner_id) as UserRow|undefined;
+   if(!user)throw new BotError(403,'Original owner access revoked');
+   // Native dependency validation only: no external credential or caller impersonation.
+   const actor={user,conversationId:g.owner_id},saved=JSON.parse(g.snapshot_json);
+   read(actor,id);if(!receiptOnly)usable(g);
+   if(native(actor,saved.binding.input,g).inspection_hash!==saved.binding.native_hash)throw new BotError(409,'Original source or current native context changed');
+  },
   revoke(a:Actor,id:string,key:string,reason:string){return db.transaction(()=>{const g=read(a,id);if(a.conversationId!==g.owner_id)throw new BotError(403,'Original owner only');append(a,g,'revoked',key,{reason:z.string().min(1).max(2000).parse(reason)});return result(a,g);}).immediate();},
  };
 }
