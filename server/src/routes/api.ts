@@ -1,3 +1,4 @@
+import { captureHumanMessage } from '../bots/humanMessages.js';
 import { coordinationLane } from '../coordination/store.js';
 import { createCoordinationRouter, sendCoordination } from '../coordination/routes.js';
 import { focusedApiBoundary, focusedAutomations, isFocusedMember } from '../bots/focusedWorkspace.js';
@@ -3141,6 +3142,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     void (async () => {
       const origin = agentMessageOrigin(req, row.id);
+      if (!req.agentConversationId && !req.agentExecutionConversationId) captureHumanMessage(db, row.id, req.user!.id, body.data.text);
       const posted = body.data.queueOnly
         ? origin
           ? await manager.queueMessage(row.id, body.data.text, req.user!.id, origin)
@@ -3324,6 +3326,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     reactivateConversation(row.id);
     const origin = agentMessageOrigin(req, row.id);
+    if (!req.agentConversationId && !req.agentExecutionConversationId) captureHumanMessage(db, row.id, req.user!.id, body.data.text);
     const posted = origin
       ? manager.steerMessage(row.id, body.data.text, req.user!.id, undefined, origin)
       : manager.steerMessage(row.id, body.data.text, req.user!.id);

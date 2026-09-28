@@ -298,6 +298,14 @@ export function createBotsRouter(ctx: AppContext) {
       });
     }),
   );
+  router.get('/decisions/:id/conversational-source', run((req,res)=>{
+    const p=z.object({expected_version:z.coerce.number().int().positive(),source_kind:z.enum(['result_reply','direct_message']),source_id:key.optional()}).strict().parse(req.query);
+    res.json(s.inspectConversationalDecision(actor(req),req.params.id!,p.expected_version,p.source_kind,p.source_id));
+  }));
+  router.post('/decisions/:id/conversational-decision', run((req,res)=>{
+    const p=z.object({expected_version:z.number().int().positive(),source_kind:z.enum(['result_reply','direct_message']),source_id:key,inspection_hash:z.string().regex(/^[a-f0-9]{64}$/),action:z.enum(['approve','reject','defer','withdraw']),reviewed_full_context:z.literal(true)}).strict().parse(req.body);
+    res.json({decision:s.recordConversationalDecision(actor(req),req.params.id!,p.expected_version,p.source_kind,p.source_id,p.inspection_hash,p.action,p.reviewed_full_context)});
+  }));
   router.post('/decisions/:id/discussion-decision', run((req, res) => {
     const p = z.object({ message_id: key, expected_version: z.number().int().positive(), action: z.enum(['approve', 'reject', 'defer', 'withdraw']) }).strict().parse(req.body);
     res.json({ decision: s.recordDiscussionDecision(actor(req), req.params.id!, p.message_id, p.expected_version, p.action) });

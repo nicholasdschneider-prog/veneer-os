@@ -18,7 +18,7 @@ try {
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     let failGuide = false;
-    let catalog = botFeatureCatalog(Date.parse('2026-09-26T12:00:00Z'));
+    let catalog = botFeatureCatalog(Date.parse('2026-09-28T12:00:00Z'));
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/bot-workflows/guide') return route.fulfill({ status: failGuide ? 503 : 200, json: failGuide ? { error: 'Unavailable' } : catalog });
@@ -96,6 +96,10 @@ try {
     await page.getByRole('heading', {name:'One queue for raised hands',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /Progress & history/);
     await page.screenshot({path:output + '/hands-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
+    await page.getByRole('searchbox').fill('Approve an exact proposal in conversation');
+    await page.getByRole('heading', {name:'Approve an exact proposal in conversation',exact:true}).waitFor();
+    assert.match(await page.locator('#feature-conversational-consent').innerText(), /second approval click/);
+    await page.screenshot({path:output + '/consent-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('quiet hours');
     await page.getByRole('heading', { name: 'Get notified when a bot needs you' }).waitFor();
     assert.equal(await page.locator('article').count(), 1);

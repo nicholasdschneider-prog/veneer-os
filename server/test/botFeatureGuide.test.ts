@@ -4,6 +4,14 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers conversational consent guidance to employees and resumed bots',()=>{
+    const feature=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='conversational-consent')!;
+    expect(feature.isNew).toBe(true);
+    expect(feature.summary).toContain('second approval click');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated:false})).toContain(feature.agent);
+    expect(feature.agent).toContain('inspect_conversational_decision');
+  });
   it('explains shared browser capacity to employees and resumed agents', () => {
     const feature = botFeatureCatalog(Date.parse('2026-09-27')).features.find(f => f.id === 'browser')!;
     expect(feature.isNew).toBe(true);

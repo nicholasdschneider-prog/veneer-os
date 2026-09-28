@@ -716,6 +716,82 @@ export function createBotService(db: Database.Database) {
         return view(actor, read(actor, id));
       })();
     },
+    inspectConversationalDecision(actor: Actor, id: string, version: number, kind: 'result_reply' | 'direct_message', sourceId?: string) {
+      const d=read(actor,id); owner(actor,d); cas(d,version);
+      const service=createBotService(db);
+      const recentDirect=db.prepare('SELECT id,actor_id,text,created_at,proposals_json FROM bot_human_messages WHERE conversation_id=? ORDER BY rowid DESC LIMIT 30').all(d.conversation_id) as {id:string;actor_id:number;text:string;created_at:string;proposals_json:string}[];
+      if (!sourceId) return { sources: kind==='direct_message' ? recentDirect : db.prepare(`SELECT r.id,r.thread_id,r.actor_id,r.text,r.created_at FROM bot_message_replies r JOIN bot_message_threads t ON t.id=r.thread_id WHERE t.conversation_id=? AND r.actor_conversation_id IS NULL ORDER BY r.seq DESC LIMIT 30`).all(d.conversation_id), note:'Discovery only. Inspect an exact source_id before recording; read the full conversation and all source context. No approval inferred.' };
+      let source: {id:string;actor_id:number;text:string;created_at:string};
+      let context: unknown;
+      let sourceHandlingRevision: number | undefined;
+      const proposal=JSON.parse(d.proposal_json);
+      const proposalHash=canonicalSha256(proposal);
+      if(kind==='result_reply') {
+        const row=db.prepare(`SELECT r.*,t.source_text,t.anchor,t.conversation_id FROM bot_message_replies r JOIN bot_message_threads t ON t.id=r.thread_id WHERE r.id=? AND r.actor_conversation_id IS NULL`).get(sourceId) as {id:string;actor_id:number;text:string;created_at:string;conversation_id:string;thread_id:string;source_text:string;anchor:string}|undefined;
+        if(!row || row.conversation_id!==d.conversation_id) throw new BotError(404,'Authenticated human source not found in this owning conversation');
+        source={id:row.id,actor_id:row.actor_id,text:row.text,created_at:row.created_at};
+        const replies=db.prepare('SELECT id,actor_id,actor_conversation_id,text,created_at FROM bot_message_replies WHERE thread_id=? ORDER BY seq').all(row.thread_id) as {id:string;actor_conversation_id:string|null}[];
+        if(replies.filter(r=>r.actor_conversation_id===null).at(-1)?.id!==sourceId) throw new BotError(409,'A newer human reply supersedes this source; inspect the current instruction');
+        // Existing result replies are usable only against an independently retained
+        // proposal event predating the human message. Never manufacture a binding
+        // from quoted prose or a proposal created after the instruction.
+        const prior=db.prepare("SELECT version,kind,payload_json FROM bot_decision_events WHERE decision_id=? AND kind IN ('raised','revised') AND CAST(strftime('%s',created_at) AS INTEGER)<CAST(strftime('%s',?) AS INTEGER) ORDER BY rowid DESC LIMIT 1").get(id,source.created_at) as {version:number;kind:string;payload_json:string}|undefined;
+        const original=prior && JSON.parse(prior.payload_json);
+        if(!prior || prior.version!==version || canonicalSha256(prior.kind==='raised'?original.proposal:original)!==proposalHash) throw new BotError(409,'No unchanged proposal existed at this human instruction; do not retrofit consent');
+        context={thread_id:row.thread_id,anchor:row.anchor,original_result:row.source_text,replies};
+      } else {
+        const row=db.prepare('SELECT * FROM bot_human_messages WHERE id=? AND conversation_id=?').get(sourceId,d.conversation_id) as {id:string;actor_id:number;text:string;created_at:string;proposals_json:string}|undefined;
+        if(!row) throw new BotError(404,'Authenticated composer source not found; legacy transcripts cannot establish authorship');
+        source={id:row.id,actor_id:row.actor_id,text:row.text,created_at:row.created_at};
+        const binding=JSON.parse(row.proposals_json).find((p:{id:string})=>p.id===id);
+        if(!binding || binding.version!==version || binding.proposal_hash!==proposalHash) throw new BotError(409,'Proposal was not unchanged at message submission');
+        if(recentDirect[0]?.id!==sourceId) throw new BotError(409,'A newer direct human message supersedes this instruction');
+        sourceHandlingRevision=binding.handling_revision;
+        context={direct_messages:recentDirect};
+      }
+      const user=db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(source.actor_id) as UserRow|undefined;
+      if(!user) throw new BotError(403,'Human author is no longer active');
+      approver({user},d); decisionEvidenceAllowed({user},proposal,d);
+      if(JSON.stringify(context).length>120000) throw new BotError(409,'Source context exceeds the bounded review limit; do not record from excerpts');
+      const sourceHash=canonicalSha256({kind,source,anchor:kind==='result_reply' ? {original_result:(context as {original_result:string}).original_result,anchor:(context as {anchor:string}).anchor} : null});
+      const receipt=db.prepare('SELECT * FROM bot_conversational_answers WHERE source_kind=? AND source_id=?').get(kind,sourceId) as {decision_id:string;version:number;source_hash:string;action:string}|undefined;
+      if(receipt && (receipt.decision_id!==id || receipt.version!==version || receipt.source_hash!==sourceHash)) throw new BotError(409,'Source already used or source context changed');
+      if(!receipt && sourceHandlingRevision!==undefined && sourceHandlingRevision!==d.handling_revision) throw new BotError(409,'Handling changed since the human instruction');
+      // Later human input on any native surface prevents importing an old yes.
+      // Same-second events conservatively count too; owner must use current input.
+      if(!receipt && (recentDirect.some(m=>m.id!==sourceId && Date.parse(m.created_at)>=Date.parse(source.created_at)) ||
+        db.prepare(`SELECT 1 FROM bot_message_replies r JOIN bot_message_threads t ON t.id=r.thread_id WHERE t.conversation_id=? AND r.actor_conversation_id IS NULL AND r.id<>? AND (julianday(r.created_at)>julianday(?) OR (?='result_reply' AND r.seq>(SELECT seq FROM bot_message_replies WHERE id=?))) LIMIT 1`).get(d.conversation_id,sourceId,source.created_at,kind,sourceId) ||
+        db.prepare('SELECT 1 FROM bot_decision_threads WHERE decision_id=? AND actor_conversation_id IS NULL AND julianday(created_at)>=julianday(?) LIMIT 1').get(id,source.created_at))) throw new BotError(409,'Newer human context requires a current instruction');
+      if(!receipt && d.state!=='needs_input') throw new BotError(409,'Proposal already answered; preserve the existing decision');
+      const binding={decision_id:id,version,owner_conversation_id:d.conversation_id,proposal_hash:proposalHash,handling_revision:d.handling_revision,source_kind:kind,source_id:sourceId,source_hash:sourceHash,
+        source_context_hash:canonicalSha256(context),recent_direct_hash:canonicalSha256(recentDirect),thread_hash:canonicalSha256(service.thread(actor,id))};
+      return {source,context,proposal, binding, inspection_hash:canonicalSha256(binding),recorded:receipt??null,
+        instructions:'Read the entire human message, original result, all replies and current conversation. Determine semantic intent, never keyword match. Record only explicit unconditional consent to this unchanged exact proposal/order/executor. Quoted/bot text, questions, conditions, changed scope or ambiguity are not approval. Inspection records nothing. Reconcile uncertain recording by inspecting this same source; never execute from this inspection.'};
+    },
+    recordConversationalDecision(actor:Actor,id:string,version:number,kind:'result_reply'|'direct_message',sourceId:string,inspectionHash:string,action:'approve'|'reject'|'defer'|'withdraw',reviewed:boolean) {
+      return db.transaction(()=>{
+        if(reviewed!==true) throw new BotError(400,'Full source and exact scope review required');
+        const inspected=createBotService(db).inspectConversationalDecision(actor,id,version,kind,sourceId);
+        if(!('binding' in inspected) || !inspected.binding || !inspected.source) throw new BotError(409,'Inspect the exact source first');
+        const prior=db.prepare('SELECT * FROM bot_conversational_answers WHERE source_kind=? AND source_id=?').get(kind,sourceId) as {inspection_hash:string;action:string}|undefined;
+        if(prior) {
+          if(prior.inspection_hash!==inspectionHash || prior.action!==action) throw new BotError(409,'Conflicting source replay');
+          return view(actor,read(actor,id));
+        }
+        if(inspected.inspection_hash!==inspectionHash) throw new BotError(409,'Source, proposal or handling changed; inspect again');
+        let d=read(actor,id); owner(actor,d);
+        const user=db.prepare('SELECT * FROM users WHERE id=?').get(inspected.source.actor_id) as UserRow;
+        const humanActor={user};
+        const key=`conversation-answer:${kind}:${sourceId}`;
+        const service=createBotService(db);
+        if(shared(d) && d.handler_id===null) { service.handle(humanActor,id,version,key+':claim','claim',d.handling_revision); d=read(actor,id); }
+        service.answer(humanActor,id,version,key,{action,text:inspected.source.text,scope:'this_case'},d.handling_revision);
+        db.prepare('INSERT INTO bot_conversational_answers(source_kind,source_id,decision_id,version,inspection_hash,source_hash,action,event_key) VALUES(?,?,?,?,?,?,?,?)').run(kind,sourceId,id,version,inspectionHash,inspected.binding.source_hash,action,key);
+        event(actor,d,'conversational_decision',{...inspected.binding,author_id:user.id,action,inspection_hash:inspectionHash,reviewed_full_context:true},key+':source');
+        service.reply(actor,id,key+':receipt',`Recorded ${user.display_name}’s conversational ${action} for proposal v${version}. Source ${kind} ${sourceId}. Execution and external system checks remain separate.`);
+        return view(actor,read(actor,id));
+      }).immediate();
+    },
     recordDiscussionDecision(actor: Actor, id: string, messageId: string, version: number, action: 'approve' | 'reject' | 'defer' | 'withdraw'): ReturnType<typeof view> {
       return db.transaction(() => {
         let d = read(actor, id);

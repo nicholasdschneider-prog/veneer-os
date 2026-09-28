@@ -146,6 +146,10 @@ export const BOT_TOOL_DEFINITIONS = [
     { decision_id: str, request_key: str, text: str },
     ['decision_id', 'request_key', 'text'],
   ),
+  definition('inspect_conversational_decision', 'Read authenticated HUMAN direct/result-reply evidence for THIS owning bot and exact current proposal. Omit source_id to discover the latest 30 sources, then inspect the exact ID. Returns full source context, unchanged proposal binding, inspection_hash and any recording receipt; no approval or execution. Read the whole current conversation too. Historical result replies require a retained proposal predating the message; legacy direct transcripts are unsupported. Check recorded after an uncertain response; never replay external effects.',
+    {decision_id:str,expected_version:{type:'integer'},source_kind:{type:'string',enum:['result_reply','direct_message']},source_id:str},['decision_id','expected_version','source_kind']),
+  definition('record_conversational_decision', 'Only the original owning bot may record clear unconditional HUMAN consent to the unchanged exact proposal/order/executor after inspect_conversational_decision. Read the entire human message, original result, replies and current conversation; never keyword match, infer from bot/quoted text, or approve ambiguous, conditional or changed scope. Pass the inspection_hash and reviewed_full_context=true only after this review. Server rechecks provenance, author ACL, scope, version, handling, newer context and single-use source. Same source/hash/action retries are idempotent; uncertain results require read-only inspection. No new human click/login, grant retrofit, business effect or external API override occurs here. Follow existing native execution and source-system guards.',
+    {decision_id:str,expected_version:{type:'integer'},source_kind:{type:'string',enum:['result_reply','direct_message']},source_id:str,inspection_hash:str,action:{type:'string',enum:['approve','reject','defer','withdraw']},reviewed_full_context:{type:'boolean',enum:[true]}},['decision_id','expected_version','source_kind','source_id','inspection_hash','action','reviewed_full_context']),
   definition(
     'record_discussion_decision',
     'Record a clear authorized HUMAN instruction from THIS decision thread, without a duplicate UI click. First list_decisions(decision_id) and read the entire message and current proposal. Requires the exact human message ID with instruction_version; server rechecks author, version, latest message, handler and idempotency. Interpret the whole message, never a keyword or quoted fragment. Approve only unconditional explicit consent to the current scope; reject/withdraw only clear directions. A clear request to investigate/revise first may defer the current proposal, without execution authority; perform that follow-up then ask about materially changed proposals. Questions, quoted customer statements, negations, conditional or ambiguous messages require clarification via reply_to_decision, not this tool. No historic replay, no invented human identity, no standing authority. Fresh version-bound follow-ups after defer may answer only the unchanged exact proposal: the server preserves the prior defer and creates an audited successor version. Use the returned version for subsequent work. Changed scope must first be revised and reviewed; legacy null instructions cannot be imported. Report the recorded state, never completion. Existing financial and action safeguards still apply.',
@@ -228,12 +232,19 @@ export async function callBotTool({
   const { decision_id, ...body } = args;
   const base = '/api/bots/decisions';
   const target = `${base}/${encodeURIComponent(String(decision_id ?? ''))}`;
+  if(name==='inspect_conversational_decision') {
+    const query=new URLSearchParams({expected_version:String(args.expected_version),source_kind:String(args.source_kind)});
+    if(args.source_id) query.set('source_id',String(args.source_id));
+    const result=await callApi(`${target}/conversational-source?${query}`);
+    return {content:[{type:'text' as const,text:JSON.stringify(result)}]};
+  }
   const routes: Record<string, string> = {
     raise_decision: base,
     update_decision: `${target}/proposal`,
     reply_to_decision: `${target}/thread`,
     record_decision_result: `${target}/result`,
     record_discussion_decision: `${target}/discussion-decision`,
+    record_conversational_decision: `${target}/conversational-decision`,
     park_decision_work: `${target}/park`,
   };
   const result =
