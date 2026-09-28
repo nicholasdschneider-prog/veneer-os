@@ -35,3 +35,9 @@ is needed for this parser-only correction.
 Node24 root typecheck and the full root test suite passed before deployment: server 2,810 passed / 5 skipped, web 909 passed, browser-manager 54 passed, installer 29 passed. Full-suite guide and instruction tests remain passing. Focused tests: 86 passed.
 
 Root production build passed (standard large-bundle advisory only); whitespace diff check passed. No migration was needed.
+
+## Deployment
+
+Implementation `1317fe33191e9cf08adea270919d52eef5fffae2` was pushed to origin main. Supported root restart completed on Node24. At 2026-09-28T23:52:55.063469+00:00, all five local services returned HTTP200 and all 4,545 built artifacts matched the pre-restart inventory. Both protected reader registries retained their hashes, UID501 and0600 regular-file permissions. Authenticated public chat and live SMS were not tested.
+
+[Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build439-runtime.json). Production sender/guard/service trust remains unavailable; no business action or new activation occurred.

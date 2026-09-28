@@ -1,0 +1,33 @@
+{
+  "verifiedAt": "2026-09-28T23:52:55.063469+00:00",
+  "implementationCommit": "1317fe33191e9cf08adea270919d52eef5fffae2",
+  "health": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  },
+  "artifactCount": 4545,
+  "artifactMismatches": [],
+  "artifactManifestHash": "193722e45d73e2f588ec0f2abe6b577945509058b1c82435da1657f03daf7075",
+  "protectedRegistries": {
+    "approved-case-registry.json": {
+      "unchanged": true,
+      "sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+      "uid": 501,
+      "mode": "0o600",
+      "regularNonSymlink": true
+    },
+    "compose-correspondence-registry.json": {
+      "unchanged": true,
+      "sha256": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c",
+      "uid": 501,
+      "mode": "0o600",
+      "regularNonSymlink": true
+    }
+  },
+  "businessMutations": false,
+  "credentialRetrieval": false,
+  "senderOrServiceActivation": false
+}
