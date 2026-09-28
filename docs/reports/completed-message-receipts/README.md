@@ -29,7 +29,7 @@ The remaining operational evidence is Avery's actual receipt-recording result an
 
 Offline SQL/service/HTTP tests cover same-owner and cross-bot completion, unchanged decision/history, closed pre-send operations, wrong actor/key/scope, missing/ambiguous/mismatched durable claims, changed proposal/version, revoked authorization, proof omission, identical retries, backend proof conflicts and concurrent receipt writes. Shared guide tests cover restricted employee access and fresh/resumed agent instructions. No migration/configuration change is required.
 
-Root typecheck, 73 scoped tests, full npm test and production build passed before restart. Full totals: 2,634 server tests (five existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Vite retained its existing large-chunk warning. Runtime verification follows deployment.
+Root typecheck, 73 scoped tests, full npm test and production build passed before restart. Full totals: 2,634 server tests (five existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Vite retained its existing large-chunk warning. Implementation `4222534` was pushed to origin main. Detached root restart completed for all five services on Node 24.21.0; all five returned HTTP 200 at 2026-09-28T16:49:00.472Z. The public front door returned 302 with four tunnel edge connections; authenticated end-to-end chat and customer delivery are not certified by that check. [Runtime receipt](./runtime.json) records the built adapter/routes/tools/catalog hashes.
 
 ## Changed files
 
@@ -42,3 +42,5 @@ Root typecheck, 73 scoped tests, full npm test and production build passed befor
 - [Transport contract](/Users/archerclawdington/veneer-os/docs/reports/approved-message-delegation/contract.md)
 
 Employee guide: `/#/bot-guide?feature=approved-message-delegation`.
+
+- [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/completed-message-receipts/runtime.json)
