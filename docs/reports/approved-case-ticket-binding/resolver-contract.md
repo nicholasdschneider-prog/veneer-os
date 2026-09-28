@@ -219,3 +219,22 @@ without independent source/custody evidence. Do not add another source capabilit
 repeat customer approval or use an unrelated credential. No registration or live case
 probe is performed by this endpoint-adoption build. Original owner inspection follows
 activation, using the same current approved version and unchanged transport scope.
+
+
+## BUILD429 current activation — September 28, 2026
+
+The missing custody permission was issued NOW at21:04Z by original source custodian
+under the verified human repair authority. The [verbatim nonsecret receipt](./build429-permission.md)
+and [exact six-caller manifest](./build429-manifest.json) preserve provenance. This
+supersedes earlier missing-permission/registry status, not historical probe timestamps.
+Protected registry installed at21:08:57.599Z, UID501/mode0600, 3,049 bytes; exact
+expiration **2026-10-28T21:04:00Z** (30 days from permission issuance). No automatic
+renewal/rebinding; expiration, removal, inactivity or changed binding fail closed.
+Native identities rechecked21:08:09Z: active owner1/business revision12, all six
+same-business native users1/active registrations/unarchived. No Henry or SMS aliases.
+Configuration activation/health evidence is in [BUILD429](./build429.md).
+
+The original case owner—not Platform—next calls its own `inspect_approved_message`
+with the current unchanged decision/version. A ready response is source mapping proof,
+not permission to skip material/lease/duplicate checks or send twice. No builder
+credential retrieval, source case probe, approval/draft/claim mutation or dispatch.

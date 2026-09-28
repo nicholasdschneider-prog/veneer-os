@@ -1,0 +1,90 @@
+{
+  "schema_version": "approved-case-registry/v1",
+  "registrations": [
+    {
+      "id": "approved-case-custody-permission-20260928-v1",
+      "active": true,
+      "business_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "business_owner_user_id": 1,
+      "account_id": "help@elkhartrvparts.com",
+      "source_origin": "https://orderops-dev-web-production.up.railway.app",
+      "runtime": {
+        "projectId": "71cc77d6-9c0d-4770-9d6d-62b8c4bb516c",
+        "environmentId": "530025e2-352d-443c-a8ed-e589fc20621d",
+        "serviceId": "ede1932e-b3f9-4e7b-b1be-45804dfbe842"
+      },
+      "payload_accounts": [
+        "help@elkhartrvparts.com"
+      ],
+      "expires_at": "2026-10-28T21:04:00Z",
+      "provenance": {
+        "custodian_id": "a4bc7b0c-e56a-4b90-b4bc-cb71cbc88e68",
+        "receipt": "approved-case-custody-permission-20260928-v1",
+        "registered_at": "2026-09-28T21:04:00Z",
+        "authority": "approved-message-resolver-custody"
+      },
+      "callers": [
+        {
+          "conversation_id": "cb4ade24-c960-4235-956a-220260e5adac",
+          "user_id": 1,
+          "principal_id": "veneer:3104b3b2-6d9f-48f2-943c-7b7f2f9013c1",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_GRANT_BOT_CREDENTIAL"
+          }
+        },
+        {
+          "conversation_id": "26c325f7-32de-46ec-80f1-1c28e75d4b37",
+          "user_id": 1,
+          "principal_id": "veneer:fbf6aafd-e70d-4aee-9ffc-2b569151bf64",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_HENRY_W4_BOT_CREDENTIAL"
+          }
+        },
+        {
+          "conversation_id": "170ab267-448c-4b13-97f4-5f24db2f3652",
+          "user_id": 1,
+          "principal_id": "veneer:cbf4e12b-b0ea-44fb-95fc-0e99613dc313",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_AVERY_BOT_CREDENTIAL"
+          }
+        },
+        {
+          "conversation_id": "e9fe9b64-9b75-4280-b795-42158ae9cf16",
+          "user_id": 1,
+          "principal_id": "veneer:f91e6269-a39e-406a-b38b-458d9b924918",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_HENRY_W1_BOT_CREDENTIAL"
+          }
+        },
+        {
+          "conversation_id": "8540bd53-1a6f-440e-a136-4a4c7ac7f940",
+          "user_id": 1,
+          "principal_id": "veneer:081a79d5-eb0e-44d1-82cf-19f2bae42c1b",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_HENRY_W2_BOT_CREDENTIAL"
+          }
+        },
+        {
+          "conversation_id": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+          "user_id": 1,
+          "principal_id": "veneer:f8c8f45f-dcc8-4c58-b6b6-f94e3ee7673b",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_HENRY_W3_BOT_CREDENTIAL"
+          }
+        }
+      ]
+    }
+  ]
+}

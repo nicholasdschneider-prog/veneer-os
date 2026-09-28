@@ -155,3 +155,12 @@ intact. Source account/business/runtime support is now deployed; the remaining a
 dependency is scoped native-server credential-use permission and protected registration.
 No duplicate customer approval is needed. The shared catalog carries this distinction
 for employees and fresh/resumed bots. See the [current resolver contract](./reports/approved-case-ticket-binding/resolver-contract.md).
+
+
+## Approved-case registry activation — September 28, 2026
+
+BUILD429 configures the existing six-caller ERVP resolver under current scoped custody
+permission. Earlier missing-permission status is superseded. Original case owners use
+their own inspector on the unchanged current approval; configured custody does not
+certify case readiness or customer delivery. Expiration is October28 at21:04UTC, with
+revocation checks at each stage. See [activation receipt](./reports/approved-case-ticket-binding/build429.md).
