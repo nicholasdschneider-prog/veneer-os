@@ -1,0 +1,54 @@
+{
+  "checked_at": "2026-09-28T23:28:06.690634+00:00",
+  "implementation": "d8c0ec90615874404f1dcfbd69086b127fe571d3",
+  "checks": [
+    {
+      "service": "web",
+      "status": 200
+    },
+    {
+      "service": "runner",
+      "status": 200
+    },
+    {
+      "service": "app-runner",
+      "status": 200
+    },
+    {
+      "service": "terminal",
+      "status": 200
+    },
+    {
+      "service": "browser-manager",
+      "status": 200
+    }
+  ],
+  "artifact_count": 4545,
+  "artifact_manifest_sha256": "7dfb7ebca27692e476eeae673ad1220a862c35e195af5a3913fd345063e965bd",
+  "all_artifacts_match": true,
+  "migration": {
+    "name": "0131_composed_sms_dispatch.sql",
+    "applied_at": "2026-09-28 23:27:12",
+    "content_hash": "dc8242d1b8ffc599ed95f9ab4025dd6642613ac3cc32c5623d5409abc2e7e65e"
+  },
+  "registries": {
+    "approved-case-registry.json": {
+      "sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+      "uid": 501,
+      "mode": "0o600",
+      "symlink": false
+    },
+    "compose-correspondence-registry.json": {
+      "sha256": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c",
+      "uid": 501,
+      "mode": "0o600",
+      "symlink": false
+    }
+  },
+  "service_registry_configured": false,
+  "source_sender_adapter_accepted": false,
+  "live_dispatch_enabled": false,
+  "credential_fetches": 0,
+  "source_case_probes": 0,
+  "business_effects": 0
+}

@@ -88,3 +88,28 @@ Both remained UID501/mode0600/non-symlink. No protected config was changed.
 - [server/test/composedSms.test.ts](/Users/archerclawdington/veneer-os/server/test/composedSms.test.ts)
 - [server/test/composedSmsTools.test.ts](/Users/archerclawdington/veneer-os/server/test/composedSmsTools.test.ts)
 - [server/test/composedSmsVerifierRoutes.test.ts](/Users/archerclawdington/veneer-os/server/test/composedSmsVerifierRoutes.test.ts)
+
+## Deployment receipt
+
+Implementation **d8c0ec90615874404f1dcfbd69086b127fe571d3** was committed and
+pushed to origin main. Required checks and production build passed before the supported
+detached root Node24 `npm run restart`. Restart completed for all five services.
+
+At **2026-09-28T23:28:06.690634Z**, all five health endpoints returned HTTP200,
+all **4,545** built artifacts matched the pre-restart inventory, and migration0131
+was applied with the exact source content hash. The original protected429/434 registry
+hashes and file ownership/modes remain unchanged. Compiled employee/resumed-agent
+instructions contain reservation-only behavior, authenticated receipt reconciliation
+and the live activation limits.
+
+[Runtime and artifact receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build435-runtime.json).
+Public302/tunnel connectivity reported by restart is not authenticated customer delivery.
+There is no configured dedicated service registry, accepted positive sender adapter,
+or enabled production SMS dispatch. No credential fetch, source-case probe, provider
+call or business effect was performed by the builder.
+
+Source owner ae5d6289 retains BUILD436 and must reconcile the exact remaining contract
+and custody facts above. Grant's own correspondence inspection remains supported; it
+is not permission to derive/claim/send through missing sender or transport evidence.
+Tess remains the eventual named executor. No repeated reader setup or customer approval
+is requested.
