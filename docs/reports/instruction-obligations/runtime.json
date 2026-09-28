@@ -1,0 +1,40 @@
+{
+  "checked_at": "2026-09-28T21:41:39.546Z",
+  "implementation": "823b3742dc57bd06151aab84c7b44d2051210ffb",
+  "node": "v24.21.0",
+  "checks": [
+    {
+      "service": "web",
+      "status": 200
+    },
+    {
+      "service": "runner",
+      "status": 200
+    },
+    {
+      "service": "app-runner",
+      "status": 200
+    },
+    {
+      "service": "terminal",
+      "status": 200
+    },
+    {
+      "service": "browser-manager",
+      "status": 200
+    }
+  ],
+  "artifact_count": 4536,
+  "artifact_manifest_sha256": "0b1a35dd6733911ca7759d5fbbe2b21abe9881490d112b71d8320681c1e5c67a",
+  "all_artifacts_match": true,
+  "migration": {
+    "name": "0129_instruction_obligations.sql",
+    "content_hash": "6b91cf96e5b8e720d017338ebd6b266a9c142916469644af881dd5af87f08cd8",
+    "applied_at": "2026-09-28 21:40:32"
+  },
+  "compiled_employee_and_agent_guide": "present; fresh/resumed and restricted delivery covered by tests",
+  "protected_registry_sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+  "production_obligations_created_by_builder": 0,
+  "customer_actions": "none",
+  "send_readiness": "not enabled; intent only"
+}
