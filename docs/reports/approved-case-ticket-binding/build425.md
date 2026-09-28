@@ -1,7 +1,8 @@
 # BUILD425 — authenticated approved case mapping
 
-Native implementation validated September 28, 2026. Deployment verification is pending
-in this revision; this is not a repaired live send-path or customer delivery receipt.
+Native implementation **3ddd331** committed and pushed to origin main, then deployed
+September 28, 2026. All five services returned HTTP 200 at **20:29:31.476Z**. This is
+a deployed native resolver contract, not an activated live send-path or customer delivery receipt.
 
 ## Implemented
 
@@ -31,6 +32,20 @@ current source already supports its missing capability fields.
 Tests use synthetic SQLite/HTTP/source responses only. No production credential, case,
 provider, decision, draft, delegation, claim, lease or customer action was used as a test.
 No ordinary draft was retrofitted and no old approval was revised.
+
+## Deployment receipt
+
+Detached root `npm run restart` completed on Node 24.21.0 after all checks/build passed.
+All 4,471 built artifacts retained their pre-restart hashes. Migration
+`0128_approved_case_mappings.sql` applied at 20:27:54Z; its stored content hash matched
+source/dist, and its table plus both immutable triggers were verified read-only.
+The public front door returned HTTP 302 and four tunnel edge connections; this does
+not certify authenticated end-to-end chat or customer delivery.
+
+`VP_APPROVED_CASE_REGISTRY_FILE` was absent in a names-only native configuration check.
+No registry, source credentials or source configuration were installed. The native
+resolver therefore remains fail-closed for unequal IDs pending the prerequisites below.
+See the [nonsecret runtime receipt](./build425-runtime.json).
 
 ## Outstanding live integration
 
@@ -74,3 +89,5 @@ not claim the mapping change repairs an unbound or differently authorized SMS dr
 - [Historical BUILD250 report](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/README.md)
 - [Resolver contract](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/resolver-contract.md)
 - [This implementation receipt](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/build425.md)
+
+- [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/build425-runtime.json)

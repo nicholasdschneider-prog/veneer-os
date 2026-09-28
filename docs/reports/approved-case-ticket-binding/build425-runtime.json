@@ -1,0 +1,61 @@
+{
+  "checked_at": "2026-09-28T20:29:31.476Z",
+  "implementation": "3ddd331",
+  "node": "v24.21.0",
+  "checks": [
+    {
+      "service": "web",
+      "status": 200
+    },
+    {
+      "service": "runner",
+      "status": 200
+    },
+    {
+      "service": "app-runner",
+      "status": 200
+    },
+    {
+      "service": "terminal",
+      "status": 200
+    },
+    {
+      "service": "browser-manager",
+      "status": 200
+    }
+  ],
+  "migration": {
+    "name": "0128_approved_case_mappings.sql",
+    "applied_at": "2026-09-28 20:27:54",
+    "content_hash": "e586e860e53711853605ce48c862add58e98b2189fbb94a3f1fb4db08098576e"
+  },
+  "schema": [
+    {
+      "name": "approved_case_mapping_bindings",
+      "type": "table"
+    },
+    {
+      "name": "approved_case_mapping_no_delete",
+      "type": "trigger"
+    },
+    {
+      "name": "approved_case_mapping_no_update",
+      "type": "trigger"
+    }
+  ],
+  "verified_artifact_count": 4471,
+  "artifact_manifest_sha256": "19bc84748c8438d95ef59c2279f410744a5624159a3fb1df53c02e7dbcdc7bfa",
+  "artifacts": {
+    "server/dist/bots/approvedCaseResolver.js": "3d64f9457fc991f2009636dd19b34822c1e7574365575455f50266122499895e",
+    "server/dist/bots/communication.js": "6205b1e84e9ae1de87a8a79e5f2233e94f7b556c4f1c2c06d2d763f914ce48af",
+    "server/dist/bots/communicationRoutes.js": "8bd641790fda4225f4081bc0442475ffed93e6756b643c428a12922bd0556149",
+    "server/dist/bots/messageDelegation.js": "1a24f47c90694c954f77071f0eafbb44423d841574fd4c7eb37ccf0d14e160a0",
+    "server/dist/config.js": "8a497a6f242edc3e765c2f5bed6015eb59baf73958e18562467add6142f8526c",
+    "server/dist/db/migrations/0128_approved_case_mappings.sql": "e586e860e53711853605ce48c862add58e98b2189fbb94a3f1fb4db08098576e",
+    "server/dist/featureGuide/catalog.js": "f7105294136bea8de982d728e7b9e196b6b674702460cf0f9cae7b6bc5177892",
+    "server/dist/mcp/botTools.js": "3c961afbdc53fabeb5259faee04a06c7408cdaadb5816288c9eca7e7b7bbc564"
+  },
+  "registry_configuration": "VP_APPROVED_CASE_REGISTRY_FILE absent (names-only check before restart)",
+  "source_activation": "Not configured; source capability/custody/read-only boundary unavailable",
+  "live_business_actions": "None"
+}
