@@ -1,0 +1,110 @@
+{
+  "description": "Synthetic format-valid interoperability artifact; preserves historical BUILD437/439 fixtures. No live identity, trust, authority or readiness.",
+  "snapshot": {
+    "scope": {
+      "canonical_case": "10000000-0000-4000-8000-000000000003",
+      "contact_case": "10000000-0000-4000-8000-000000000004",
+      "executor_conversation_id": "10000000-0000-4000-8000-000000000005",
+      "payload": {
+        "channel": "sms",
+        "account": "Synthetic SMS",
+        "recipients": [
+          "+12025550111"
+        ],
+        "subject": "",
+        "body": "Photos, please.\nCafé 📷",
+        "attachments": [],
+        "customer": "Fixture only",
+        "ticket": "FIXTURE-SMS",
+        "context": "Synthetic interoperability vector"
+      }
+    },
+    "binding": {
+      "payload_hash": "7559d6f52d3384bda01e5ffdbec8db5999f0991523a51c13142281a0ffb72aa7"
+    },
+    "native": {
+      "binding": {
+        "source_id": "10000000-0000-4000-8000-000000000001",
+        "source_owner": "10000000-0000-4000-8000-000000000002",
+        "source_hash": "6d8dd5ec1068f420638d48b5fac1c4e13ca5443d986d28ab417c9013f5dc35e8",
+        "payload_hash": "7559d6f52d3384bda01e5ffdbec8db5999f0991523a51c13142281a0ffb72aa7"
+      },
+      "source": {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "conversation_id": "10000000-0000-4000-8000-000000000002",
+        "actor_id": 1,
+        "text": "Compose the requested photo inquiry and send it by SMS.",
+        "created_at": "2026-09-28T20:14:33.252Z"
+      },
+      "existing_consumption": {
+        "source_kind": "direct_message",
+        "source_id": "10000000-0000-4000-8000-000000000001",
+        "source_hash": "6d8dd5ec1068f420638d48b5fac1c4e13ca5443d986d28ab417c9013f5dc35e8"
+      }
+    }
+  },
+  "authority": {
+    "senderAccountId": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fromPhone": "+12025550100",
+    "toPhone": "+12025550111",
+    "wireBody": "Photos, please.\nCafé 📷",
+    "media": [],
+    "normalizationPolicy": "sms-identity-utf8/v1",
+    "nativeActionId": "10000000-0000-4000-8000-000000000006",
+    "authorityId": "10000000-0000-4000-8000-000000000007",
+    "authorityRevision": 1,
+    "payloadHash": "7559d6f52d3384bda01e5ffdbec8db5999f0991523a51c13142281a0ffb72aa7",
+    "sourceInstructionHash": "6d8dd5ec1068f420638d48b5fac1c4e13ca5443d986d28ab417c9013f5dc35e8",
+    "scopeHash": "3cd49ef2b935b9154671b82eae0991aef4bebadce70d5f37e4e456e9c1cc9634",
+    "materialHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "materialHashVersion": "compose-correspondence-material/v1",
+    "sourceInstructionId": "10000000-0000-4000-8000-000000000001",
+    "businessId": "10000000-0000-4000-8000-000000000008",
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000009",
+      "environmentId": "10000000-0000-4000-8000-000000000010",
+      "serviceId": "10000000-0000-4000-8000-000000000011"
+    },
+    "ownerConversationId": "10000000-0000-4000-8000-000000000002",
+    "executorConversationId": "10000000-0000-4000-8000-000000000005",
+    "executorPrincipalId": "veneer:10000000-0000-4000-8000-000000000014",
+    "canonicalCaseId": "10000000-0000-4000-8000-000000000003",
+    "canonicalTicket": "FIXTURE-EMAIL",
+    "contactCaseId": "10000000-0000-4000-8000-000000000004",
+    "contactTicket": "FIXTURE-SMS",
+    "senderReceiptId": "10000000-0000-4000-8000-000000000012",
+    "senderReceiptRevision": 1,
+    "wirePayloadHash": "9d447fde5a155dee51e885db041b5a13e7a61e2a7089cd1ecd5ea43af99830ce",
+    "idempotencyKey": "veneer-compose-sms:10000000-0000-4000-8000-000000000006",
+    "authorityHash": "bcf7ef90574b89f4d00d51686a48cf812776e858d25e8563bf3d20efb406f36f"
+  },
+  "registration": {
+    "registrationId": "10000000-0000-4000-8000-000000000013",
+    "revision": 1,
+    "sourceRegistrationHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "binding": {
+    "registrationId": "10000000-0000-4000-8000-000000000013",
+    "registrationRevision": 1,
+    "sourceRegistrationHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "nativeActionId": "10000000-0000-4000-8000-000000000006",
+    "authorityId": "10000000-0000-4000-8000-000000000007",
+    "authorityRevision": 1,
+    "authorityHash": "bcf7ef90574b89f4d00d51686a48cf812776e858d25e8563bf3d20efb406f36f",
+    "scopeHash": "3cd49ef2b935b9154671b82eae0991aef4bebadce70d5f37e4e456e9c1cc9634",
+    "materialHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "senderReceiptId": "10000000-0000-4000-8000-000000000012",
+    "senderReceiptRevision": 1,
+    "wirePayloadHash": "9d447fde5a155dee51e885db041b5a13e7a61e2a7089cd1ecd5ea43af99830ce",
+    "executorConversationId": "10000000-0000-4000-8000-000000000005",
+    "executorPrincipalId": "veneer:10000000-0000-4000-8000-000000000014",
+    "canonicalCaseId": "10000000-0000-4000-8000-000000000003",
+    "canonicalTicket": "FIXTURE-EMAIL",
+    "contactCaseId": "10000000-0000-4000-8000-000000000004",
+    "contactTicket": "FIXTURE-SMS",
+    "idempotencyKey": "veneer-compose-sms:10000000-0000-4000-8000-000000000006"
+  },
+  "bindingHash": "90c1187b9ffbb3a50bb4a62fbc43c335cc034e4a7f0cf8aef962fe12a4cb4776",
+  "canonicalAuthorityWithoutHash": "{\"authorityId\":\"10000000-0000-4000-8000-000000000007\",\"authorityRevision\":1,\"businessId\":\"10000000-0000-4000-8000-000000000008\",\"canonicalCaseId\":\"10000000-0000-4000-8000-000000000003\",\"canonicalTicket\":\"FIXTURE-EMAIL\",\"contactCaseId\":\"10000000-0000-4000-8000-000000000004\",\"contactTicket\":\"FIXTURE-SMS\",\"executorConversationId\":\"10000000-0000-4000-8000-000000000005\",\"executorPrincipalId\":\"veneer:10000000-0000-4000-8000-000000000014\",\"fromPhone\":\"+12025550100\",\"idempotencyKey\":\"veneer-compose-sms:10000000-0000-4000-8000-000000000006\",\"materialHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"materialHashVersion\":\"compose-correspondence-material/v1\",\"media\":[],\"nativeActionId\":\"10000000-0000-4000-8000-000000000006\",\"normalizationPolicy\":\"sms-identity-utf8/v1\",\"ownerConversationId\":\"10000000-0000-4000-8000-000000000002\",\"payloadHash\":\"7559d6f52d3384bda01e5ffdbec8db5999f0991523a51c13142281a0ffb72aa7\",\"runtime\":{\"environmentId\":\"10000000-0000-4000-8000-000000000010\",\"projectId\":\"10000000-0000-4000-8000-000000000009\",\"serviceId\":\"10000000-0000-4000-8000-000000000011\"},\"scopeHash\":\"3cd49ef2b935b9154671b82eae0991aef4bebadce70d5f37e4e456e9c1cc9634\",\"senderAccountId\":\"ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"senderReceiptId\":\"10000000-0000-4000-8000-000000000012\",\"senderReceiptRevision\":1,\"sourceInstructionHash\":\"6d8dd5ec1068f420638d48b5fac1c4e13ca5443d986d28ab417c9013f5dc35e8\",\"sourceInstructionId\":\"10000000-0000-4000-8000-000000000001\",\"sourceOrigin\":\"https://orderops-dev-web-production.up.railway.app\",\"toPhone\":\"+12025550111\",\"wireBody\":\"Photos, please.\\nCafé 📷\",\"wirePayloadHash\":\"9d447fde5a155dee51e885db041b5a13e7a61e2a7089cd1ecd5ea43af99830ce\"}"
+}
