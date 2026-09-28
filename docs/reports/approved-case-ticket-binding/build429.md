@@ -1,7 +1,7 @@
 # BUILD429 — protected six-caller registry
 
-Installation completed September28 at21:08:57.599Z; restart/health verification pending
-in this initial receipt. This activates existing BUILD425/428 configuration only, not
+Installation completed September28 at21:08:57.599Z; configuration activation and
+health verified **21:13:24.372Z**, release **19a7460** pushed to origin main. This activates existing BUILD425/428 configuration only, not
 customer delivery or a new source contract.
 
 ## Permission and identity
@@ -52,8 +52,14 @@ No Brian stalev3, ordinary-draft retrofit, duplicate approval or builder send.
 ## Verification and files
 
 Root typecheck and118 focused tests passed. Full npm test passed: 2,686 server
-(five existing skips), 909 web, 54 browser-manager, 29 installer. Production build
-and restart verification are recorded in the final deployment revision. Catalog and guide reflect configured custody rather
+(five existing skips), 909 web, 54 browser-manager, 29 installer. Root production build passed (existing Vite chunk-size warning only), then detached
+root `npm run restart` completed on Node24.21.0. All five services returned HTTP200
+at21:13:24.372Z. All4,534 artifacts matched their pre-restart hashes. Protected manifest
+bytes/hash/permissions/owner and sole config entry were read back with the deployed
+config parser/registry loader without credential retrieval. Public302/tunnel4 is only
+connectivity evidence, not authenticated customer delivery.
+
+[Nonsecret runtime receipt](./build429-runtime.json). Catalog and guide reflect configured custody rather
 than the superseded missing permission. Full/restricted employee and resumed-agent
 instruction delivery are covered by the existing catalog/instruction tests.
 
@@ -65,3 +71,5 @@ instruction delivery are covered by the existing catalog/instruction tests.
 - [Catalog regression](/Users/archerclawdington/veneer-os/server/test/botFeatureGuide.test.ts)
 - [Guide](/Users/archerclawdington/veneer-os/docs/bot-feature-guide.md)
 - [Protected installed registry](/Users/archerclawdington/.config/veneer-pro/approved-case-registry.json)
+
+- [Runtime readback](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/build429-runtime.json)
