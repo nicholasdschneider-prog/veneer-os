@@ -12,6 +12,7 @@ vi.mock('livekit-server-sdk', () => ({
   AccessToken: class { addGrant() {} async toJwt() { return 'test-scoped-token'; } },
 }));
 import { LiveVoiceService } from '../src/voice/service.js';
+import { VoiceWorkspace } from '../src/voice/workspace.js';
 let db: Database.Database;
 let service: LiveVoiceService;
 let secrets: Record<string,string>;
@@ -57,6 +58,71 @@ describe('live voice lifecycle', () => {
     const row = db.prepare("SELECT result_json FROM voice_dispatches WHERE instruction_id='followup'").get() as {result_json:string};
     expect(JSON.parse(row.result_json)).toMatchObject({ok:true,messageId:17,disposition:'queued'});
     expect(db.prepare("SELECT count(*) AS n FROM voice_entries WHERE session_id=? AND role='decision'").get(call.id)).toEqual({n:1});
+  });
+  it('hands the saved transcript to the bot once after every bot call, marking relayed items', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();
+    const call = await service.start(1,{botConversationId:'sage'});
+    child.emit('message',{type:'transcript',role:'user',text:'Order 100121413, 83 by 5 by 3, 8 pounds, spot one.'});
+    child.emit('message',{type:'transcript',role:'assistant',text:'Got it, I will queue it.'});
+    child.emit('message',{type:'tool',id:'relay',name:'send_message',args:{instructionId:'relay-1',text:'Order 100121489, 48 by 5 by 3, 3.1 pounds, spot two.'}});
+    await vi.advanceTimersByTimeAsync(1);
+    child.emit('message',{type:'transcript',role:'user',text:'Order 100121489, 48 by 5 by 3, 3.1 pounds, spot two.'});
+    expect(manager.steerMessage).toHaveBeenCalledTimes(1);
+    service.end(1,call.id);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(manager.steerMessage).toHaveBeenCalledTimes(2);
+    const [id,text,actor] = manager.steerMessage.mock.calls[1]!;
+    expect(id).toBe('sage'); expect(actor).toBe(1);
+    expect(text).toContain('[Voice call transcript]');
+    expect(text).toContain('(ended)');
+    expect(text).toContain('Caller: Order 100121413, 83 by 5 by 3, 8 pounds, spot one.');
+    expect(text).toContain('Voice line: Got it, I will queue it.');
+    expect(text).toContain('[Already relayed or recorded during the call] Instruction delivered to Sage: Order 100121489');
+    expect(text).toContain('1 item(s) were relayed during the call');
+    // Idempotent: a second handoff for the same session is refused.
+    const again = await new VoiceWorkspace({db,manager} as unknown as AppContext, 1, 'sage').transcriptHandoff(call.id,'ended');
+    expect(again).toMatchObject({ok:false,skipped:'already_posted'});
+    expect(manager.steerMessage).toHaveBeenCalledTimes(2);
+    expect(db.prepare("SELECT count(*) AS n FROM voice_dispatches WHERE conversation_id='sage' AND instruction_id LIKE 'transcript-%'").get()).toEqual({n:1});
+  });
+  it('hands off after an interrupted call but not for coordinator calls or calls without caller turns', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
+    const silent = await service.start(1,{botConversationId:'sage'});
+    child.emit('message',{type:'transcript',role:'assistant',text:'Hello, what can I help you with?'});
+    service.end(1,silent.id);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(manager.steerMessage).not.toHaveBeenCalled();
+    await service.start(1);
+    child.emit('message',{type:'transcript',role:'user',text:'Henry, what is pending?'});
+    service.end(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(manager.steerMessage).not.toHaveBeenCalled();
+    const dropped = await service.start(1,{botConversationId:'sage'});
+    child.emit('message',{type:'transcript',role:'user',text:'Order 100121340, 82 by 5 by 3, 5.5 pounds, spot three.'});
+    await vi.advanceTimersByTimeAsync(95_000); // heartbeat lost: the phone dropped
+    expect(db.prepare('SELECT outcome FROM voice_sessions WHERE id=?').get(dropped.id)).toEqual({outcome:'interrupted'});
+    expect(manager.steerMessage).toHaveBeenCalledTimes(1);
+    expect(manager.steerMessage.mock.calls[0]![1]).toContain('(interrupted)');
+    expect(manager.steerMessage.mock.calls[0]![1]).toContain('Caller: Order 100121340');
+  });
+  it('survives transient conversation check failures and only interrupts after sustained failure', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
+    const warn = vi.spyOn(console,'warn').mockImplementation(() => {});
+    const call = await service.start(1,{botConversationId:'sage'});
+    child.emit('message',{type:'ready'});
+    manager.snapshot.mockRejectedValue(new Error('runner ipc timeout'));
+    for (let i=0;i<5;i++) { await vi.advanceTimersByTimeAsync(1000); service.heartbeat(1,call.id); }
+    expect(service.status(1)).toMatchObject({id:call.id,state:'listening'});
+    manager.snapshot.mockResolvedValue([]);
+    await vi.advanceTimersByTimeAsync(2000);
+    manager.snapshot.mockRejectedValue(new Error('runner ipc timeout'));
+    for (let i=0;i<12;i++) { await vi.advanceTimersByTimeAsync(1000); service.heartbeat(1,call.id); }
+    expect(service.status(1)).toBeNull();
+    expect(db.prepare('SELECT outcome FROM voice_sessions WHERE id=?').get(call.id)).toEqual({outcome:'interrupted'});
+    expect(warn.mock.calls.some(c => String(c[0]).includes('interrupted after'))).toBe(true);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('runner ipc timeout');
+    warn.mockRestore();
   });
   it('saves style for the authenticated caller and reloads it across calls without dispatching bot work', async () => {
     await service.start(1);

@@ -13,9 +13,10 @@ interface Call {
   id: string; userId: number; room: string; child: ChildProcess; client: RoomServiceClient;
   state: string; error: string | null; lastSeen: number; expiresAt: number;
   createdAt: number; ready: boolean; seenKeys: Set<string>; replies: number; workStatus: string | null;
-  bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number;
+  bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number; faults: number;
 }
 export interface CallOptions { contextConversationId?: string; botConversationId?: string; decisionId?: string }
+const FAULT_LIMIT = 10;
 const SECRET_NAMES = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'OPENAI_API_KEY'] as const;
 const SHARED_RULES = VOICE_PREFERENCE_RULES + `Speak conversationally, briefly, and discuss one item at a time. Let the user interrupt.
 Never invent tickets, decisions, completed work, or a personal history.
@@ -34,12 +35,12 @@ You can read chats and answer structured pending questions, but cannot independe
 ` + SHARED_RULES;
 function botInstructions(bot: { name: string; role: string | null; subteam: string | null; team: string | null }, decisionId: string | null) {
   const title = [bot.role, bot.subteam, bot.team].filter(Boolean).join(', ');
-  return `You are the voice line for ${bot.name}${title ? ` (${title})` : ''}, the agent in the pinned conversation. Identify yourself as ${bot.name} when asked; follow the caller's saved greeting policy at call startup.
-The real work happens in ${bot.name}'s own chat; you speak for it from that chat's actual messages, its open decisions, and its pending questions. Fresh currentConversation messages and status are provided below before this call starts. Keep this context available internally. Follow the caller's saved greeting policy; give an opening recap only when that policy requests it. Otherwise summarize when asked. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done or a clean slate. Summarize completed work from the actual messages when asked what you did. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fact questions, first use search_context with an exact order number, tracking number or short identifying phrase. It searches existing evidence directly without waiting for the working bot. Say when evidence was recorded; it is not a fresh external-system lookup. If missing or stale, ask one targeted question through discuss_decision, request a brief factual answer before unrelated work, and tell the caller the check is pending. Never claim to have retrieved current external data from this search. For fresh updates use read_chat. Its coverage describes a bounded window: if older history is needed, call read_chat with beforeMessage=coverage.olderBefore. If messages are clipped or missing, acknowledge the limit instead of inventing details.
-Do not dispatch thinking aloud, hypothetical examples, or ambiguous intentions. Ask a short clarifying question first. Only use send_message for an explicit instruction or a request to relay a message. Keep the same instructionId when retrying. The dispatch disposition is authoritative: queued means waiting, running means started, steered means forwarded into the active turn; none means completed. Completion or failure must come from actual agent results. Tool approval policies still apply in the underlying chat.
-When the user wants ${bot.name} to do something or wants to tell it something, use send_message to relay it in the user's words; ${bot.name} then replies in its chat. When you are told a reply arrived, read it with read_chat and summarize it aloud.
-For decisions: read_decision gives paged proposal fields and recent discussion excerpts. Catalog questions are previews only. Read all proposal pages, including proposalDetails with the exact customer reply, recipient and structured constraints, using coverage.nextOffset before advising approval; never treat omitted constraints as absent. list_decisions accepts offset for the next catalog page. discuss_decision posts a message into that decision's thread (it wakes the bot but approves nothing). answer_decision records approve, reject, defer or withdraw only after the user explicitly states that decision; repeat their decision back first. Use the exact decisionId and version from list_decisions.
-An explicit spoken approval of the current proposal MUST use answer_decision, not discuss_decision or send_message. The tool claims an available shared card for the authorized caller and records approval in one operation; never ask them to click Approve afterward. Authorized teammates can approve shared customer-service cards; Nicholas is not the mandatory final approver. If another teammate is handling a card, explain that conflict honestly. Separate a current approval from a conditional future action (for example, approving a photo request now does not approve a replacement later). For an explicit wording edit to the customer reply, use edit_reply to save the complete revised body directly, then read the new proposal version and confirm it conversationally before answer_decision. An edit is not approval. If the user changes remedies, amounts, recipients or other action scope, ask the owning bot to revise it, then read and confirm the new version on this call before answering it. After success, say approval is recorded and work is queued, and use read_decision to report execution or completion. Never infer completion from an idle chat. Dispatch explicit instructions and approvals during the call, not at hangup. After a successful tool receipt, briefly confirm what was queued and explain that the owning bot continues after the call ends. Ending a call neither approves unconfirmed discussion nor cancels accepted work. Do not ask the caller to stay on the line or visit another chat to restart it. Keep operational follow-through with the existing case owner; shared learning happens separately and requires no train/remember button. Image metadata is not visual evidence: never claim you viewed customer photos from metadata alone.
+  return `You are the voice line for ${bot.name}${title ? ` (${title})` : ''}, the agent in the pinned conversation. Identify yourself as ${bot.name}'s voice line when asked; follow the caller's saved greeting policy at call startup.
+You are only a phone line. You have no access to orders, purchase orders, queues, inventory, email, browsers or any system, and you cannot do, check, confirm or queue any work yourself. The only way anything happens is the send_message tool, which relays the caller's words into ${bot.name}'s chat where ${bot.name} does the actual work and replies.
+RELAY RULE: whenever the caller gives an instruction, order details, measurements, weights, locations, numbers or any data to act on, call send_message immediately with that item in the caller's words: one call per item, as each item is given, before you speak your acknowledgment. Do not wait for the batch to finish, do not combine several items into one later call, and do not ask clarifying questions unless the item is genuinely unusable. After a successful result say briefly "Sent to ${bot.name}" and repeat the item. Never say you will handle, process, confirm, check, look up or queue something yourself. If send_message was not called or it failed, say plainly that the item was not sent. Thinking aloud, hypotheticals and questions about the past are not instructions; for those, ask before relaying. Keep the same instructionId when retrying. The dispatch disposition is authoritative: queued means waiting, running means started, steered means forwarded into the active turn; none means completed. Completion or failure must come from ${bot.name}'s actual replies. Tool approval policies still apply in the underlying chat.
+Fresh currentConversation messages and status are provided below before this call starts; keep them available internally and give an opening recap only when the greeting policy requests it. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done. Summarize completed work from the actual messages when asked. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fact questions, first use search_context with an exact order number, tracking number or short phrase; it searches recorded evidence only, not external systems, so say when the evidence was recorded. If missing or stale, ask one targeted question through discuss_decision and tell the caller the check is pending. For fresh updates use read_chat; if older history is needed, call read_chat with beforeMessage=coverage.olderBefore, and acknowledge clipped or missing messages instead of inventing details. When you are told a reply arrived, read it with read_chat and summarize it aloud.
+For decisions: read_decision gives paged proposal fields and recent discussion excerpts. Read all proposal pages, including proposalDetails with the exact customer reply, recipient and structured constraints, using coverage.nextOffset before advising approval; never treat omitted constraints as absent. list_decisions accepts offset for the next catalog page. discuss_decision posts into that decision's thread (it wakes the bot but approves nothing). answer_decision records approve, reject, defer or withdraw only after the caller explicitly states that decision; repeat it back first, using the exact decisionId and version from list_decisions.
+An explicit spoken approval of the current proposal MUST use answer_decision, not discuss_decision or send_message; it claims an available shared card and records approval in one operation, so never ask them to click Approve afterward. Authorized teammates can approve shared customer-service cards; Nicholas is not the mandatory final approver. If another teammate is handling a card, explain that honestly. Separate a current approval from a conditional future action. For an explicit wording edit to the customer reply, use edit_reply to save the complete revised body, then read the new version and confirm it before answer_decision; an edit is not approval. If the caller changes remedies, amounts, recipients or other scope, ask the owning bot to revise it, then read and confirm the new version on this call before answering it. After success, say approval is recorded and work is queued; use read_decision to report execution. Never infer completion from an idle chat. Dispatch instructions and approvals during the call, not at hangup; ${bot.name} continues after the call ends, and ending a call neither approves unconfirmed discussion nor cancels accepted work. Image metadata is not visual evidence.
 Structured pending questions from ${bot.name} are in list_blockers; deliver those with answer_question using exact option values.
 You cannot start unrelated work, send email, or act as any other bot. Keep to ${bot.name}'s work.
 ${decisionId ? `The user opened this call from decision ${decisionId}. Its first proposal page is supplied as focusedDecision; retain it as the call focus and retrieve remaining pages as needed. Mention it in the opening only if the caller's greeting policy requests a recap.\n` : ''}` + SHARED_RULES;
@@ -58,11 +59,21 @@ export class LiveVoiceService {
         if (Date.now() - call.lastSeen > 90_000) { this.end(call.userId, call.id, 'interrupted', call.lastSeen); continue; }
         if (Date.now() > call.expiresAt || (!call.ready && Date.now() - call.createdAt > 45_000)) { this.end(call.userId, call.id, 'interrupted'); continue; }
         try { if (call.bot) new VoiceWorkspace(this.ctx, call.userId, call.bot.conversationId).bot(); }
-        catch { this.end(call.userId, call.id); continue; }
+        catch { if (this.fault(call, 'bot access check')) continue; }
         if (call.state === 'listening' && call.child.connected) void this.notice(call);
       }
     }, 1_000);
     this.timer.unref();
+  }
+  /** A transient runner or database failure must not drop a live call; only a sustained
+   * failure ends it, and then as an interruption with a reason rather than a silent hangup. */
+  private fault(call: Call, stage: string): boolean {
+    call.faults += 1;
+    if (call.faults < FAULT_LIMIT) return false;
+    console.warn(`[voice] call ${call.id} interrupted after ${call.faults} consecutive ${stage} failures`);
+    call.error ??= 'The call lost contact with the bot conversation. Reconnect to continue; your saved transcript is retained.';
+    this.end(call.userId, call.id, 'interrupted');
+    return true;
   }
   /** Tell a listening worker about new questions, decisions, or bot replies since the call started. */
   private async notice(call: Call) {
@@ -90,7 +101,8 @@ export class LiveVoiceService {
       call.replies = replies;
       call.discussionRevision = discussionRevision;
       call.workStatus = status;
-    } catch { this.end(call.userId, call.id); }
+      call.faults = 0;
+    } catch { this.fault(call, 'conversation check'); }
     finally { call.checking = false; }
   }
   configuration() {
@@ -166,7 +178,7 @@ export class LiveVoiceService {
         env: { PATH: process.env.PATH, NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS } });
       const call: Call = { id: randomUUID(), userId, room, child, client, state: 'connecting', error: null,
         lastSeen: Date.now(), expiresAt: Date.now() + 55 * 60_000, createdAt: Date.now(), ready: false,
-        seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, checking: false,
+        seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, checking: false, faults: 0,
         bot: bot ? { conversationId: bot.conversationId, name: bot.name } : null, decisionId: options.decisionId ?? null };
       if (bot) {
         workspace.decisions().filter(d => d.state === 'needs_input').forEach(d => call.seenKeys.add(`d:${d.decisionId}:${d.version}`));
@@ -226,12 +238,27 @@ export class LiveVoiceService {
   end(userId: number, id?: string, outcome = 'ended', endedAt = Date.now()) {
     const call = this.calls.get(userId);
     if (!call || (id && call.id !== id)) return;
-    finishVoiceSession(this.ctx.db, call.id, endedAt, call.state === 'failed' ? 'failed' : outcome);
+    const finalOutcome = call.state === 'failed' ? 'failed' : outcome;
+    finishVoiceSession(this.ctx.db, call.id, endedAt, finalOutcome);
     this.calls.delete(userId);
+    if (call.bot) this.handoff(call, finalOutcome);
     call.child.kill('SIGTERM');
     const timer = setTimeout(() => { if (call.child.exitCode === null) call.child.kill('SIGKILL'); }, 5000);
     timer.unref();
     void call.client.deleteRoom(call.room).catch(() => {});
+  }
+  /** The bot gets the saved transcript after every call so dictated instructions the voice
+   * line failed to relay are still acted on. Never throws; failures are logged without content. */
+  private handoff(call: Call, outcome: string) {
+    const bot = call.bot!;
+    void (async () => {
+      try {
+        const result = await new VoiceWorkspace(this.ctx, call.userId, bot.conversationId).transcriptHandoff(call.id, outcome);
+        if (!result.ok) console.warn(`[voice] transcript handoff skipped for call ${call.id}: ${result.skipped}`);
+      } catch (error) {
+        console.warn(`[voice] transcript handoff failed for call ${call.id}: ${error instanceof Error ? error.message : 'error'}`);
+      }
+    })();
   }
   close() { clearInterval(this.timer); for (const userId of this.calls.keys()) this.end(userId); }
 }
