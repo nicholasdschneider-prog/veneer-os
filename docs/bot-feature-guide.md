@@ -145,3 +145,13 @@ source capability account/business/runtime projection and own-credential custody
 established. Equal-ID messages need no new setup. Missing source setup is not missing
 human consent. The catalog supplies the same steps and limitations to employees and
 fresh/resumed bots. See the [executable resolver contract](./reports/approved-case-ticket-binding/resolver-contract.md).
+
+
+## Dedicated approved-case source reads — September 28, 2026
+
+BUILD428 adopts only the deployed dedicated OrderOps capability and bounded case GETs,
+with no legacy fallback. The BUILD425 approval, mapping, claim and receipt guards stay
+intact. Source account/business/runtime support is now deployed; the remaining activation
+dependency is scoped native-server credential-use permission and protected registration.
+No duplicate customer approval is needed. The shared catalog carries this distinction
+for employees and fresh/resumed bots. See the [current resolver contract](./reports/approved-case-ticket-binding/resolver-contract.md).

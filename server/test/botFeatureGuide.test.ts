@@ -15,7 +15,7 @@ describe('living bot guide release contract', () => {
   });
   it('delivers authenticated mapping limits to full/restricted employees and resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='approved-message-delegation')!;
-    expect(f.isNew).toBe(true);expect(f.announcement).toContain('server-authenticated source resolver');
+    expect(f.isNew).toBe(true);expect(f.announcement).toContain('dedicated read-only OrderOps resolver');expect(f.agent).toContain('/api/cs/approved-case/capabilities');expect(f.limits).toContain('No broad legacy endpoint fallback');
     expect(f.steps.join(' ')).toContain('each bot’s own identity');expect(f.limits).toContain('unequal-ID live use remains disabled');
     expect(f.agent).toContain('never normalize either approved string');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);

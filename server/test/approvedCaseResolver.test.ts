@@ -56,7 +56,7 @@ describe('authenticated approved UUID/ticket mapping',()=>{
   expect(db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(id)).toEqual(original);expect(JSON.parse(d.payload_json)).toEqual(p.payload);
   const row=db.prepare('SELECT * FROM approved_case_mapping_bindings').get() as {evidence_json:string};expect(row.evidence_json).not.toContain('PRIVATE');expect(row.evidence_json).not.toContain('CREDENTIAL');
   expect(()=>db.prepare("UPDATE approved_case_mapping_bindings SET fingerprint='bad'").run()).toThrow('immutable');
-  expect(calls.every(url=>url.endsWith('/capabilities')||url===`${origin}/api/cs/conversations/${ids.case}`)).toBe(true);
+  expect(calls).toEqual(Array.from({length:2},()=>[`${origin}/api/cs/approved-case/capabilities`,`${origin}/api/cs/approved-case/conversations/${ids.case}`,`${origin}/api/cs/approved-case/capabilities`]).flat());
   expect(secret.mock.calls.map(c=>c[0].name)).toEqual(same?['FIXTURE_0_CREDENTIAL','FIXTURE_0_CREDENTIAL']:['FIXTURE_0_CREDENTIAL','FIXTURE_1_CREDENTIAL']);
   running(id);const c=await services(executor,id);expect(c.messages.claim(executor,d.id,'claim',check(g.payload_hash)).execute).toBe(true);expect(c.messages.claim(executor,d.id,'claim').execute).toBe(false);
   expect(()=>c.messages.claim(executor,d.id,'other',check(g.payload_hash))).toThrow();
@@ -126,6 +126,17 @@ describe('authenticated approved UUID/ticket mapping',()=>{
    expect((await post(`/drafts/${d.id}/claim`,{claim_key:winner},ids.executor)).status).toBe(409);
    expect(db.prepare('SELECT count(*) n FROM bot_message_delivery_proofs').get()).toEqual({n:1});expect(readSecret.mock.calls.some(c=>c[1].name==='FIXTURE_1_CREDENTIAL')).toBe(true);
   }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));fs.rmSync(dir,{recursive:true,force:true});}
+ });
+ it.each(['capability','case'])('never falls back to legacy endpoints after dedicated %s failure',async stage=>{
+  const {id}=approve();const base=get;get=async(...args)=>{if((stage==='capability'&&args[0].endsWith('/capabilities'))||(stage==='case'&&args[0].includes('/conversations/'))){calls.push(args[0]);throw new Error('fixture 404');}return base(...args);};resetResolver();
+  await expect(resolver.prepare(owner,id,1)).rejects.toThrow('unavailable');
+  expect(calls).toEqual(stage==='capability'?[`${origin}/api/cs/approved-case/capabilities`]:[`${origin}/api/cs/approved-case/capabilities`,`${origin}/api/cs/approved-case/conversations/${ids.case}`]);
+  expect(db.prepare('SELECT count(*) n FROM bot_message_delegations').get()).toEqual({n:0});
+ });
+ it('accepts the deployed bounded projection with nullable order and absent optional binding fields',async()=>{
+  delete source.orderBindingVersion;delete source.orderBindingExplicit;
+  const {id}=approve();const a=await services(owner,id);const result=a.bridge.inspect(owner,id,1);
+  expect(result.ready).toBe(true);expect(result.case_mapping).toMatchObject({related_order_id:null,order_binding_version:null,order_binding_explicit:null});
  });
  it('sanitizes source failures and rejects permission changes during fetch',async()=>{
   const {id}=approve();get=async()=>{throw new Error('sensitive source body');};resetResolver();await expect(resolver.prepare(owner,id,1)).rejects.not.toThrow('sensitive source body');

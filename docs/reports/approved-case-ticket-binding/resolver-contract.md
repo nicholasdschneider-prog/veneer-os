@@ -10,9 +10,10 @@ executor or proposal hash is rewritten. Equal identifiers retain the existing pa
 
 **Native implementation and live source activation are separate.** No production
 resolver registration, credential read, case read, delegation, claim or send was
-performed by this build. The current OrderOps capabilities do not supply the required
-account/business/runtime identity. Those missing fields are not filled from native
-pins, tenant labels, a return/routine account or historical principal associations.
+performed by this build. BUILD426 deployed dedicated capabilities with account/business/runtime identity and a
+bounded read-only case projection; BUILD428 adopts those exact endpoints. Native-server
+credential-use permission and protected registration remain separate activation requirements.
+Identity is never filled from tenant labels, return/routine authority or historical associations.
 
 ## Operator registration and custody
 
@@ -82,8 +83,8 @@ or altered by a resolver configuration change.
 
 For each stage, using only that native caller's registered own bearer:
 
-1. `GET /api/order-completion/bot/capabilities`.
-2. `GET /api/cs/conversations/{approved-canonical-UUID}` with **no query parameters**
+1. `GET /api/cs/approved-case/capabilities`.
+2. `GET /api/cs/approved-case/conversations/{approved-canonical-UUID}` with **no query parameters**
    (in particular no `includeOrderMatches`).
 3. The same capability GET again, denying source principal/account/runtime revocation
    or drift across the case read.
@@ -104,17 +105,18 @@ The capability projection must contain:
 
 Every field must equal the registered values for the actual authenticated caller.
 The source must establish these fields from its authoritative current account/business/
-runtime custody, and that this authority covers the default case read. Reflecting request
+runtime custody, and that this authority covers the dedicated case read. Reflecting request
 values, hardcoded tenant names or unrelated return/routine enrollment is not sufficient.
 
-The default case response must contain persisted `id`, `ticketNumber`, `customerId`
+The dedicated case response must contain persisted `id`, `ticketNumber`, `customerId`
 and an ISO `updatedAt`; optional `relatedOrderId`, `orderBindingVersion` and
 `orderBindingExplicit` are projected if present. The returned `id` and `ticketNumber`
 must exactly match both unchanged approved strings. Missing, conflicting, malformed,
 foreign or inaccessible evidence fails closed. Unknown response fields (including
 messages) are discarded. Each response is capped at 1 MiB, all network calls share a
 10-second abort deadline, redirects are refused, and requests use no-store caching.
-Oversized broad default responses block; no partial response is used as proof.
+Oversized responses block; no partial response is used as proof. There is no fallback
+to the broad legacy case GET or legacy capabilities, including on 404/503/auth failure.
 
 The observation is valid for at most 5 seconds after the final capability read and
 15 seconds total including credential retrieval; negative clock drift denies. The
@@ -164,7 +166,7 @@ acceptance/claim requirements for completed decisions. Changed case/customer/ord
 registration/principal blocks. A completed decision stays completed; all pre-send paths
 remain closed. UNKNOWN outcomes never permit reclaim, requeue or another send.
 
-## Exact remaining live prerequisites (source-owner review September 28)
+## Historical BUILD425 prerequisites (superseded in part by BUILD426/428 below)
 
 The source owner `ae5d6289-aa2a-4266-8e68-083dc424f03f` confirmed in coordination
 `d8505c9f-b634-41bf-90e9-974f5f6d365c`:
@@ -194,3 +196,26 @@ Stale Brian v3 remains unusable; Grant's newer instruction is separate. Differin
 unbound ordinary drafts remain unbound. Builder does not execute, independently certify
 live eligibility or claim a delivery receipt. Actual business completion requires the
 original executor's verified provider receipt and native receipt readback.
+
+
+## BUILD428 dedicated endpoint adoption — September 28
+
+The native sequence above now uses only the dedicated pair. Source BUILD426 commit
+`f3fe128024607080a0e50f5be7651e045e237650` and configuration deployment
+`4814aa22-fcc0-46c0-9a3f-004975be2e38` were reported SUCCESS with exact health SHA at
+20:42:36Z in the [source receipt](</Users/archerclawdington/Projects/ERVP/Order Ops/.veneer/receipts/build426-source-evidence.md>).
+Its dedicated handler disables authentication schema initialization/cache, runs database
+operations in a read-only transaction and returns only identity fields. The earlier
+legacy-GET DDL and broad-response prerequisites are superseded for this dedicated path.
+Nullable relatedOrderId and absent optional order-binding fields are supported without
+inventing versions. Bounds, capability-case-capability sequencing, current authority,
+immutable mappings, freshness and all claim/receipt guards remain unchanged.
+
+Exact documented credential references for six source callers are available in existing
+custody coordination; references alone do not grant native-server use. The remaining
+activation dependency is the rightful custodian’s scoped permission/current-caller
+binding receipt followed by protected native registry installation. Henry is excluded
+without independent source/custody evidence. Do not add another source capability field,
+repeat customer approval or use an unrelated credential. No registration or live case
+probe is performed by this endpoint-adoption build. Original owner inspection follows
+activation, using the same current approved version and unchanged transport scope.

@@ -94,10 +94,10 @@ export function approvedCaseResolver(ctx:Pick<AppContext,'db'|'config'|'projectD
   try{
    const secret=await io.secret(caller.credential);checkRegistry();
    const signal=AbortSignal.timeout(10_000);
-   verifyCapability(await io.get(`${reg.source_origin}/api/order-completion/bot/capabilities`,secret,signal));
-   const raw=await io.get(`${reg.source_origin}/api/cs/conversations/${encodeURIComponent(target.scope.canonical_case)}`,secret,signal);
+   verifyCapability(await io.get(`${reg.source_origin}/api/cs/approved-case/capabilities`,secret,signal));
+   const raw=await io.get(`${reg.source_origin}/api/cs/approved-case/conversations/${encodeURIComponent(target.scope.canonical_case)}`,secret,signal);
    const parsed=projection.safeParse(raw);if(!parsed.success)throw new MissingMessageProof(['source case projection is missing exact identity/customer/revision fields']);source=parsed.data;
-   verifyCapability(await io.get(`${reg.source_origin}/api/order-completion/bot/capabilities`,secret,signal));
+   verifyCapability(await io.get(`${reg.source_origin}/api/cs/approved-case/capabilities`,secret,signal));
   }catch(e){if(e instanceof MissingMessageProof)throw e;throw new MissingMessageProof(['authenticated source capability/case read unavailable; no source error body or credential is exposed']);}
   if(source.id!==target.scope.canonical_case||source.ticketNumber!==target.scope.payload.ticket)throw new MissingMessageProof(['authenticated canonical case and approved ticket do not identify the same source record']);
   checkRegistry();const observed=io.now();
