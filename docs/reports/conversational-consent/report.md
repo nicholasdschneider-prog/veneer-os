@@ -29,7 +29,7 @@ Sage found no verified supported OrderOps timing-exception answer transport. Bor
 - Full root tests: 2,558 server passed (5 skipped), 907 web passed, 42 browser-manager passed, 29 installer passed.
 - Additional guide/resumed instruction checks: 23 passed, including the new capability's employee and agent guidance.
 - Isolated browser checks passed for full/restricted employees, desktop/mobile guide, new capability, search, navigation, refresh and failure recovery. All API data was mocked. Two test-selector errors were corrected before the passing run.
-- Production build passed. Service restart is pending the release check.
+- Production build passed. Code commit `32aaa65` was pushed to `origin main`. All five services restarted on September 28, 09:28–09:29 Eastern; the runner restart interrupted the build turn after the other services reported healthy. Resumption verified the new runner process and a successful supported health check: local web/runner healthy, public front door HTTP 302, four tunnel edge connections. Authenticated public end-to-end chat and live case acceptance remain unverified. No second restart was needed.
 
 ## Changed files
 
