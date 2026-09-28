@@ -4,6 +4,13 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers intent-only SMS guidance to employees and fresh/resumed agents',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='instruction-obligations')!;
+    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('exact existing SMS draft');
+    expect(f.agent).toContain('execute:false/ready:false');expect(f.agent).toContain('inspect_instruction_obligation');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+  });
   it('announces same-owner approved delivery with unchanged authority limits',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='approved-message-delegation')!;
     expect(f.isNew).toBe(true);expect(f.updated).toBe('2026-09-28');

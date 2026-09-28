@@ -147,6 +147,12 @@ export const BOT_TOOL_DEFINITIONS = [
     { decision_id: str, request_key: str, text: str },
     ['decision_id', 'request_key', 'text'],
   ),
+  definition('inspect_instruction_obligation', 'Read-only review by the original source-owning bot of an authenticated direct human instruction already consumed for a decision, plus an exact later SMS draft. Returns full bounded native context, unchanged consumption, exact draft and any immutable intent record. Always execute:false/ready:false. Read the whole current conversation too; no alias proof, approval, claim or send. Use after uncertain recording.',
+    {source_id:str,draft_id:str,expected_draft_version:{type:'integer'},executor_conversation_id:str},['source_id','draft_id','expected_draft_version','executor_conversation_id']),
+  definition('record_instruction_obligation', 'After inspect_instruction_obligation and full semantic review, preserve a separate outstanding SMS direction with the exact inspection_hash and stable request_key. intent_summary is your review, NOT human exact-draft approval. No keyword matching, historical snapshot, draft authorization, email consent reuse, new execution authority or wake. Always execute:false. On uncertainty inspect the same source/draft; conflicting replay cannot replace the immutable record.',
+    {source_id:str,draft_id:str,expected_draft_version:{type:'integer'},executor_conversation_id:str,inspection_hash:str,request_key:str,intent_summary:str,reviewed_full_context:{type:'boolean',enum:[true]}},['source_id','draft_id','expected_draft_version','executor_conversation_id','inspection_hash','request_key','intent_summary','reviewed_full_context']),
+  definition('revoke_instruction_obligation', 'Original source-owning bot only: append a revocation of an intent record with reason and stable request_key. Preserves the source, email answer, draft, and original evidence; does not cancel or undo external effects. Never revoke merely to hide an unresolved customer request.',
+    {obligation_id:str,reason:str,request_key:str},['obligation_id','reason','request_key']),
   definition('inspect_conversational_decision', 'Read authenticated HUMAN direct/result-reply evidence for THIS owning bot and exact current proposal. Omit source_id to discover the latest 30 sources, then inspect the exact ID. Returns full source context, unchanged proposal binding, inspection_hash and any recording receipt; no approval or execution. Read the whole current conversation too. Historical result replies require a retained proposal predating the message; legacy direct transcripts are unsupported. Check recorded after an uncertain response; never replay external effects.',
     {decision_id:str,expected_version:{type:'integer'},source_kind:{type:'string',enum:['result_reply','direct_message']},source_id:str},['decision_id','expected_version','source_kind']),
   definition('record_conversational_decision', 'Only the original owning bot may record clear unconditional HUMAN consent to the unchanged exact proposal/order/executor after inspect_conversational_decision. Read the entire human message, original result, replies and current conversation; never keyword match, infer from bot/quoted text, or approve ambiguous, conditional or changed scope. Pass the inspection_hash and reviewed_full_context=true only after this review. Server rechecks provenance, author ACL, scope, version, handling, newer context and single-use source. Same source/hash/action retries are idempotent; uncertain results require read-only inspection. No new human click/login, grant retrofit, business effect or external API override occurs here. Follow existing native execution and source-system guards.',
@@ -228,6 +234,12 @@ export async function callBotTool({
   if (communicationRoutes[name]) {
     const {draft_id,thread_id,...payload}=args;
     const result=await callApi('/api/bot-communication'+communicationRoutes[name], ['list_message_drafts','read_message_thread'].includes(name)?undefined:{method:'POST',body:JSON.stringify(['accept_routine_message','claim_routine_message'].includes(name)?args:payload)});
+    return {content:[{type:'text' as const,text:JSON.stringify(result)}]};
+  }
+  if(['inspect_instruction_obligation','record_instruction_obligation','revoke_instruction_obligation'].includes(name)) {
+    const {obligation_id,...payload}=args;
+    const path=name==='inspect_instruction_obligation'?'/inspect':name==='revoke_instruction_obligation'?`/${encodeURIComponent(String(obligation_id))}/revoke`:'';
+    const result=await callApi('/api/bots/instruction-obligations'+path,{method:'POST',body:JSON.stringify(payload)});
     return {content:[{type:'text' as const,text:JSON.stringify(result)}]};
   }
   const { decision_id, ...body } = args;

@@ -1,3 +1,4 @@
+import { createInstructionObligations, obligationInspectionSchema, obligationRecordSchema } from './instructionObligations.js';
 import { createDecisionHandoffRouter } from './decisionHandoffRoutes.js';
 import { bindDecisionImages, readDecisionImage } from './decisionImages.js';
 import {createOrganizationService,latestBotPreview} from './organization.js';
@@ -298,6 +299,13 @@ export function createBotsRouter(ctx: AppContext) {
       });
     }),
   );
+  const obligations=createInstructionObligations(ctx.db);
+  router.post('/instruction-obligations/inspect', run((req,res)=>res.json(obligations.inspect(actor(req),obligationInspectionSchema.parse(req.body)))));
+  router.post('/instruction-obligations', run((req,res)=>res.json(obligations.record(actor(req),obligationRecordSchema.parse(req.body)))));
+  router.post('/instruction-obligations/:id/revoke', run((req,res)=>{
+    const p=z.object({reason:z.string().trim().min(1).max(600),request_key:key}).strict().parse(req.body);
+    res.json(obligations.revoke(actor(req),req.params.id!,p.reason,p.request_key));
+  }));
   router.get('/decisions/:id/conversational-source', run((req,res)=>{
     const p=z.object({expected_version:z.coerce.number().int().positive(),source_kind:z.enum(['result_reply','direct_message']),source_id:key.optional()}).strict().parse(req.query);
     res.json(s.inspectConversationalDecision(actor(req),req.params.id!,p.expected_version,p.source_kind,p.source_id));

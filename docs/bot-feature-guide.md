@@ -164,3 +164,7 @@ permission. Earlier missing-permission status is superseded. Original case owner
 their own inspector on the unchanged current approval; configured custody does not
 certify case readiness or customer delivery. Expiration is October28 at21:04UTC, with
 revocation checks at each stage. See [activation receipt](./reports/approved-case-ticket-binding/build429.md).
+
+## Separate instruction obligations — September 28, 2026
+
+The original instruction-owning bot can now inspect and record a separate SMS intent after a direct human source has already answered an email proposal. The immutable intent record retains the existing answer and the exact later draft separately. It always reports `execute:false` and identifies missing exact-payload authority and authenticated source-case linkage; it does not authorize the ordinary draft or request a duplicate approval. Full/restricted employee guidance and fresh/resumed bot instructions come from the `instruction-obligations` catalog entry. The [supported contract](./reports/instruction-obligations/contract.md) describes inspection, idempotent recording, drift and revocation.
