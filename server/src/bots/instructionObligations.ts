@@ -40,8 +40,10 @@ export function createInstructionObligations(db: Database.Database) {
     return source;
   }
   function bounded<T>(rows:T[]) { if(rows.length>500) throw new BotError(409,'Context exceeds 500 records; full review unavailable, no excerpt-based recording'); return rows; }
-  function inspect(actor:Actor, raw:Input) {
-    const input=obligationInspectionSchema.parse(raw), source=sourceRow(input.source_id), c=owner(actor,source);
+  function inspect(actor:Actor, raw:Input, executorRead=false) {
+    const input=obligationInspectionSchema.parse(raw), source=sourceRow(input.source_id);
+    const c=executorRead ? bots.chat(actor,source.conversation_id) : owner(actor,source);
+    if(executorRead && (actor.conversationId!==input.executor_conversation_id || c.archived || !db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(c.id))) throw new BotError(403,'Derived executor or source owner inactive');
     const human=db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(source.actor_id) as UserRow|undefined;
     if(!human || !canSendToConversation(human,c,db)) throw new BotError(403,'Human source author access is revoked');
     const consumed=db.prepare("SELECT * FROM bot_conversational_answers WHERE source_kind='direct_message' AND source_id=?").get(source.id) as Consumption|undefined;
@@ -99,7 +101,13 @@ export function createInstructionObligations(db: Database.Database) {
       instructions:'Read the entire source, captured proposal, current conversation and all returned context. Classify a separate outstanding direction semantically, never by keywords. Any recorded summary is the owning bot’s intent review, NOT human approval of this later draft. No source-case alias is verified here. No send, claim, delegation, authorization or duplicate customer approval is provided. Reconcile uncertain recording with this read-only inspection.'};
   }
   return {
-    inspect,
+    inspect: (actor:Actor, raw:Input)=>inspect(actor,raw),
+    // Internal dependency validation. No public route returns owner context to an executor.
+    inspectDerivedDependency(actor:Actor, raw:Input, authorityId:string) {
+      const authority=db.prepare('SELECT executor_id,source_id,draft_id FROM bot_composed_sms_authorities WHERE id=?').get(authorityId) as {executor_id:string;source_id:string;draft_id:string}|undefined;
+      if(!authority || authority.executor_id!==actor.conversationId || authority.source_id!==raw.source_id || authority.draft_id!==raw.draft_id) throw new BotError(403,'Exact derived authority executor required');
+      return inspect(actor,raw,true);
+    },
     record(actor:Actor, raw:z.infer<typeof obligationRecordSchema>) {
       const p=obligationRecordSchema.parse(raw);
       return db.transaction(()=>{

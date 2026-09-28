@@ -1,3 +1,5 @@
+import {composedSmsService,composedInspectionSchema,deriveComposedSchema} from './composedSms.js';
+import {composedSmsReader} from './composedSmsReader.js';
 import { createInstructionObligations, obligationInspectionSchema, obligationRecordSchema } from './instructionObligations.js';
 import { createDecisionHandoffRouter } from './decisionHandoffRoutes.js';
 import { bindDecisionImages, readDecisionImage } from './decisionImages.js';
@@ -299,6 +301,14 @@ export function createBotsRouter(ctx: AppContext) {
       });
     }),
   );
+  const composed=composedSmsService(ctx.db,composedSmsReader(ctx));
+  router.post('/composed-sms/inspect',run(async(req,res)=>res.json(await composed.inspect(actor(req),composedInspectionSchema.parse(req.body)))));
+  router.post('/composed-sms/derive',run(async(req,res)=>res.json(await composed.derive(actor(req),deriveComposedSchema.parse(req.body)))));
+  router.get('/composed-sms/:id',run((req,res)=>res.json(composed.reconcile(actor(req),req.params.id!))));
+  router.post('/composed-sms/:id/accept',run(async(req,res)=>{const p=z.object({request_key:key,payload_hash:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body);res.json(await composed.accept(actor(req),req.params.id!,p.request_key,p.payload_hash));}));
+  router.post('/composed-sms/:id/claim',run(async(req,res)=>{const p=z.object({request_key:key,send_check:z.unknown()}).strict().parse(req.body);res.json(await composed.claim(actor(req),req.params.id!,p.request_key,p.send_check));}));
+  router.post('/composed-sms/:id/delivery',run((req,res)=>{const p=z.object({request_key:key,claim_key:key,delivery_proof:z.unknown()}).strict().parse(req.body);res.json(composed.delivery(actor(req),req.params.id!,p.request_key,p.claim_key,p.delivery_proof));}));
+  router.post('/composed-sms/:id/revoke',run((req,res)=>{const p=z.object({request_key:key,reason:z.string().min(1).max(2000)}).strict().parse(req.body);res.json(composed.revoke(actor(req),req.params.id!,p.request_key,p.reason));}));
   const obligations=createInstructionObligations(ctx.db);
   router.post('/instruction-obligations/inspect', run((req,res)=>res.json(obligations.inspect(actor(req),obligationInspectionSchema.parse(req.body)))));
   router.post('/instruction-obligations', run((req,res)=>res.json(obligations.record(actor(req),obligationRecordSchema.parse(req.body)))));
