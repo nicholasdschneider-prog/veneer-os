@@ -36,7 +36,7 @@ it('new material namespace removes only authenticated principal and retains all 
 });
 
 it('preserves exact Unicode and whitespace wire bytes and rejects ill-formed UTF-8',()=>{
- const wire={senderAccountId:'fixture',fromPhone:'+12025550100',toPhone:'+12025550111',wireBody:'  café\n📷 e\u0301  ',media:[],normalizationPolicy:'sms-identity-utf8/v1'};
+ const wire={senderAccountId:'AC'+'a'.repeat(32),fromPhone:'+12025550100',toPhone:'+12025550111',wireBody:'  café\n📷 e\u0301  ',media:[],normalizationPolicy:'sms-identity-utf8/v1'};
  expect(wireSchema.parse(wire).wireBody).toBe(wire.wireBody);
  expect(composeHash('native-compose-sms/wire/v1',wire)).not.toBe(composeHash('native-compose-sms/wire/v1',{...wire,wireBody:wire.wireBody.normalize('NFC')}));
  expect(()=>wireSchema.parse({...wire,wireBody:'\ud800'})).toThrow('UTF-8');

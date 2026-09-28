@@ -178,3 +178,24 @@ Required source readback `prepareExpiresAt` and `redeemRequestKey` remain unchan
 Native authentication is `X-Compose-Registration-Id`, dedicated bearer and dedicated
 CF JWT audience/common_name; no arbitrary audience header. Sender/guard adapters and
 actual service custody remain separate unavailable dependencies.
+
+## BUILD439 strict source readback alignment
+
+The native parser now requires `prepareExpiresAt` as an ISO datetime and
+`redeemRequestKey` as UUID or explicit null. `REDEEMING` requires a nonnull UUID.
+Association input `requestKey` is also a UUID, generated and durably retained by the
+source. First association still checks the original unexpired prepare and exact key;
+GET and replay never renew the persisted entitlement or grant another attempt.
+
+Source438's exact sender constraints are adopted: `senderAccountId` matches
+`^AC[0-9a-fA-F]{32}$`; `senderReceiptRevision` is a positive safe integer. No identifier
+normalization or persisted authority rewrite occurs. Full authority readback is not
+required: native independently recomputes the binding from its protected registration
+and immutable authority. All existing required payload/source hashes and domain
+algorithms remain unchanged.
+
+[BUILD439 golden vector](./build439-golden.json) supersedes BUILD437's synthetic
+non-AC account for current schema tests. Only the synthetic sender account and its
+consequent wire/authority/binding digests change; BUILD437's historical file remains.
+This is schema alignment only; sender, guard and service trust activation remain
+unavailable. Employee steps and agent setup instructions are unchanged.

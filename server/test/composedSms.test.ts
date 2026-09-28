@@ -32,7 +32,7 @@ beforeEach(()=>{
  evidence={projection:{cases:[{id:ids.canonical,ticketNumber:'EMAIL',customerId:'customer-one',relatedOrderId:null,customer:{phone:null}},{id:ids.contact,ticketNumber:'PHONE',customerId:'customer-two',relatedOrderId:null,customer:{phone:payload.recipients[0]!}}],messages:[{id:'email',conversationId:ids.canonical,direction:'inbound',channel:'email',messageType:'message',body:'Order fixture, my phone is +12025550111.',fromPhone:null,actorType:null,actorId:null,agentId:null,aiGenerated:false},{id:'sms',conversationId:ids.contact,direction:'inbound',channel:'sms',messageType:'message',body:'Same order fixture.',fromPhone:payload.recipients[0]!,actorType:null,actorId:null,agentId:null,aiGenerated:false}]},snapshot_hash:'a'.repeat(64),registration_hash:'b'.repeat(64),business_id:ids.business,account_id:'source-account',principal_id:'fixture',sms_account:payload.account,sender_phone:'+12025550100',sender_verified:true,dispatch:{supported:true,contract:'native-compose-sms/v1',revision:'fixture-accepted-transport',reason:'Synthetic fenced transport only'},assertFresh(){if(!allow)throw Error('Source authority revoked');}};
  const reg:ComposeRegistration={registrationId:'40000000-0000-4000-8000-000000000001',revision:1,active:true,businessId:ids.business,businessOwnerUserId:1,sourceOrigin:'https://orderops-dev-web-production.up.railway.app',runtime:{projectId:ids.business,environmentId:ids.canonical,serviceId:ids.contact},sourceRegistrationHash:'c'.repeat(64),sourceAccountId:evidence.account_id,servicePrincipalId:'dedicated-fixture',serviceCredentialHash:'d'.repeat(64),nativeAudience:'dedicated-fixture-audience',cfClientId:'dedicated-fixture-client',capabilities:['compose.authority.read','compose.permit.redeem','compose.association.read'],executorBindings:[{conversationId:ids.executor,userId:1,principalId:'executor-fixture'}],senderReceiptIssuerId:'fixture-issuer',guardContractHash:'e'.repeat(64),expiresAt:new Date(clock+3600000).toISOString(),custodyReceipt:'synthetic-only',readbackCredential:{project:'fixture',config:'test',name:'DEDICATED_READBACK'},readbackCustodyReceipt:'synthetic-only'};
  evidence.dispatch_material_hash='f'.repeat(64);
- evidence.boundary={registration:reg,materialHash:'f'.repeat(64),sender:{receiptId:'50000000-0000-4000-8000-000000000001',revision:1,issuerId:'fixture-issuer',providerAccountId:'fixture-provider',fromPhone:evidence.sender_phone,expiresAt:new Date(clock+3600000).toISOString()},guardContractHash:reg.guardContractHash,assertFresh:()=>evidence.assertFresh()};
+ evidence.boundary={registration:reg,materialHash:'f'.repeat(64),sender:{receiptId:'50000000-0000-4000-8000-000000000001',revision:1,issuerId:'fixture-issuer',providerAccountId:'AC'+'a'.repeat(32),fromPhone:evidence.sender_phone,expiresAt:new Date(clock+3600000).toISOString()},guardContractHash:reg.guardContractHash,assertFresh:()=>evidence.assertFresh()};
  s=composedSmsService(db,async()=>evidence,()=>clock);
 });
 afterEach(()=>{vi.useRealTimers();db.close();});
@@ -116,7 +116,7 @@ async function serviceFixture(){
  const g=await accept(),claim=await s.claim(executor,g.authority_id,'claim',check());
  const row=db.prepare('SELECT tuple_json FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(g.authority_id) as {tuple_json:string};
  const a=JSON.parse(row.tuple_json) as ComposeAuthority,r=evidence.boundary!.registration;
- const p={schemaVersion:'native-compose-sms/v1',nativeActionId:a.nativeActionId,authorityId:a.authorityId,authorityRevision:1,nativeClaimId:claim.reservation.native_claim_id,sourcePrepareId:'60000000-0000-4000-8000-000000000001',bindingHash:bindingHash(r,a),requestKey:'redeem'};
+ const p={schemaVersion:'native-compose-sms/v1',nativeActionId:a.nativeActionId,authorityId:a.authorityId,authorityRevision:1,nativeClaimId:claim.reservation.native_claim_id,sourcePrepareId:'60000000-0000-4000-8000-000000000001',bindingHash:bindingHash(r,a),requestKey:'70000000-0000-4000-8000-000000000001'};
  let source:any={schemaVersion:'native-compose-sms/v1',nativeActionId:a.nativeActionId,prepareId:p.sourcePrepareId,bindingHash:p.bindingHash,nativeClaimId:p.nativeClaimId,associationId:null,attemptId:null,state:'REDEEMING',authorityHash:a.authorityHash,wirePayloadHash:a.wirePayloadHash,idempotencyKey:a.idempotencyKey,providerReceipt:null,observedAt:new Date(clock).toISOString(),prepareExpiresAt:new Date(clock+8000).toISOString(),redeemRequestKey:p.requestKey,execute:false};
  const v=composedSmsVerifier(db,{registration:id=>{if(id!==r.registrationId)throw Error('foreign');return r;},nativeCurrent:s.serviceCurrent,readback:async()=>source,now:()=>clock});
  return {g,a,r,p,v,get source(){return source;},set source(value){source=value;}};
@@ -132,13 +132,13 @@ it('models PREPARED->REDEEMING, one native association and a sole source SENDING
 });
 it('lost first response permanently consumes the native action, without a second entitlement',async()=>{
  const f=await serviceFixture();await f.v.associate(f.r.registrationId,f.p);const retry=await f.v.associate(f.r.registrationId,f.p);expect(retry.dispatchEntitlement).toBe(false);
- await expect(f.v.associate(f.r.registrationId,{...f.p,requestKey:'new'})).rejects.toThrow('Conflicting');
+ await expect(f.v.associate(f.r.registrationId,{...f.p,requestKey:'70000000-0000-4000-8000-000000000002'})).rejects.toThrow('Conflicting');
  expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:1});
 });
 it.each(['binding','claim','prepare','expiry','key','context','revoke','registration','principal','sender','body'])('refuses %s mismatch before association',async kind=>{
  const f=await serviceFixture();
  if(kind==='binding')f.p.bindingHash='0'.repeat(64);if(kind==='claim')f.source.nativeClaimId=ids.other;if(kind==='prepare')f.source.prepareId=ids.other;
- if(kind==='expiry')f.source.prepareExpiresAt=new Date(clock-1).toISOString();if(kind==='key')f.source.redeemRequestKey='other';
+ if(kind==='expiry')f.source.prepareExpiresAt=new Date(clock-1).toISOString();if(kind==='key')f.source.redeemRequestKey=ids.other;
  if(kind==='context')captureHumanMessage(db,ids.owner,1,'Hold the SMS');if(kind==='revoke')s.revoke(owner,f.g.authority_id,'stop','Stop');
  if(kind==='registration')f.r.active=false;if(kind==='principal')f.r.executorBindings[0]!.principalId='other';
  if(kind==='sender')f.source.wirePayloadHash='0'.repeat(64);if(kind==='body')db.prepare('UPDATE bot_message_drafts SET payload_json=?').run(JSON.stringify({...payload,body:'changed'}));
@@ -170,7 +170,7 @@ it('keeps immutable authority and association audit after revocation and expires
  await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow('revoked');
 });
 it('bounds source observations, absent prepare expiry and wrong receipt scopes without mutation',async()=>{
- const f=await serviceFixture();delete f.source.prepareExpiresAt;await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow('DISPATCH_BOUNDARY_UNAVAILABLE');
+ const f=await serviceFixture();delete f.source.prepareExpiresAt;await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow('readback unavailable');
  f.source.prepareExpiresAt=new Date(clock+1000).toISOString();f.source.observedAt=new Date(clock-16000).toISOString();await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow('Stale');
  f.source.observedAt=new Date(clock).toISOString();const x=await f.v.associate(f.r.registrationId,f.p);Object.assign(f.source,{associationId:x.associationId,state:'SENT_ACCEPTED',attemptId:ids.other,providerReceipt:{provider:'twilio',providerAccountId:'foreign',providerMessageId:'fixture-SID',fromPhone:f.a.fromPhone,toPhone:f.a.toPhone,wirePayloadHash:f.a.wirePayloadHash,acceptanceStatus:'queued',deliveryStatus:null,evidenceOrigin:'persisted',checkedAt:new Date(clock).toISOString()}});
  await expect(f.v.receipt(f.r.registrationId,f.a.nativeActionId)).rejects.toThrow('acceptance proof');expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_service_receipts').get()).toEqual({n:0});
@@ -195,4 +195,18 @@ it('exports the exact authenticated payload and source hashes without changing o
  expect(f.a.payloadHash).toBe(canonicalSha256(saved.scope.payload));expect(f.a.payloadHash).toBe(saved.binding.payload_hash);
  expect(f.a.sourceInstructionHash).toBe(saved.native.binding.source_hash);expect(f.a.sourceInstructionHash).toBe(saved.native.existing_consumption.source_hash);
  expect(f.v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId).authority).toEqual(f.a);
+});
+
+it('never renews a consumed entitlement after original prepare expiry or a refreshed readback',async()=>{
+ const f=await serviceFixture(),first=await f.v.associate(f.r.registrationId,f.p);
+ clock+=9000;f.source.observedAt=new Date(clock).toISOString();f.source.prepareExpiresAt=new Date(clock+8000).toISOString();
+ const replay=await f.v.associate(f.r.registrationId,f.p);
+ expect(replay.dispatchEntitlement).toBe(false);expect(replay.expiresAt).toBe(first.expiresAt);
+ expect(f.v.association(f.r.registrationId,first.associationId)).toMatchObject({execute:false,dispatchEntitlement:false,expiresAt:first.expiresAt});
+ expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:1});
+});
+it('recomputes binding from protected registration and immutable tuple rather than matching two forged readbacks',async()=>{
+ const f=await serviceFixture();f.p.bindingHash='0'.repeat(64);f.source.bindingHash=f.p.bindingHash;
+ await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow();
+ expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});
 });
