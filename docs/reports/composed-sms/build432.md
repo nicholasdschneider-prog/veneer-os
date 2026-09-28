@@ -12,7 +12,7 @@ Once those facts and accepted source adapter exist, original Grant performs `ins
 
 ## Validation and deployment
 
-Root Node24 typecheck and the focused suite passed (87 tests). Full root npm test passed: 2,746 server tests (5 skipped), 909 web tests, 54 browser-manager tests and29 installer tests. Coverage includes semantic-review provenance, exact body spans, channel-only/ambiguous denial, source identity/hash/completeness, account custody before credential retrieval, copied drafts, concurrent/replayed claims, transport/context drift, revocation, expiry, UNKNOWN and receipts. Employee full/restricted and resumed-agent catalog delivery passed. Root production build and git diff --check passed; Vite emitted its existing chunk-size advisory. Deployment receipt follows after restart. No live acceptance test was performed.
+Root Node24 typecheck and the focused suite passed (87 tests). Full root npm test passed: 2,746 server tests (5 skipped), 909 web tests, 54 browser-manager tests and29 installer tests. Coverage includes semantic-review provenance, exact body spans, channel-only/ambiguous denial, source identity/hash/completeness, account custody before credential retrieval, copied drafts, concurrent/replayed claims, transport/context drift, revocation, expiry, UNKNOWN and receipts. Employee full/restricted and resumed-agent catalog delivery passed. Root production build and git diff --check passed; Vite emitted its existing chunk-size advisory. The deployment receipt is recorded below. No live acceptance test was performed.
 
 ## Changed files
 
@@ -31,3 +31,11 @@ Root Node24 typecheck and the focused suite passed (87 tests). Full root npm tes
 - [botFeatureGuide.test.ts](/Users/archerclawdington/veneer-os/server/test/botFeatureGuide.test.ts)
 - [bot-feature-guide.md](/Users/archerclawdington/veneer-os/docs/bot-feature-guide.md)
 - [contract.md](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/contract.md)
+
+## Deployment receipt
+
+Implementation **843319113ae40a62e01278b2ef65547efd799f55** was committed and pushed to origin main. The detached root `npm run restart` completed with Node24 after all checks passed. At **2026-09-28T22:42:07.568Z**, all five services returned HTTP200, all4,539 built artifact hashes matched the pre-restart inventory, and migration0130 was applied at22:40:54Z with the exact source hash. The compiled employee/agent guide includes the new tools and current limits. Existing protected email registry hash remained unchanged.
+
+[Nonsecret runtime receipt](./runtime.json). Public front door reached its expected HTTP302 authentication boundary; authenticated end-to-end chat/customer delivery was not tested. No correspondence registry or source credentials were installed, and no live authority/claim/send was performed.
+
+The current installed correspondence v1 adapter deliberately cannot manufacture a positive sender or transport result. Accepting a future positive source contract requires that contract to be agreed and implemented in the source and native adapter, not merely setting a flag or copying a receipt. The positive lifecycle tests use a synthetic server-owned adapter; they do not prove a deployed source dispatch integration.

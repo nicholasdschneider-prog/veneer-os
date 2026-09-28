@@ -1,0 +1,41 @@
+{
+  "checked_at": "2026-09-28T22:42:07.568Z",
+  "implementation": "843319113ae40a62e01278b2ef65547efd799f55",
+  "node": "v24.21.0",
+  "checks": [
+    {
+      "service": "web",
+      "status": 200
+    },
+    {
+      "service": "runner",
+      "status": 200
+    },
+    {
+      "service": "app-runner",
+      "status": 200
+    },
+    {
+      "service": "terminal",
+      "status": 200
+    },
+    {
+      "service": "browser-manager",
+      "status": 200
+    }
+  ],
+  "artifact_count": 4539,
+  "artifact_manifest_sha256": "2a5a8dfc4135084ed1f1a9b0cff727c74369f0478db32ebfb344b7b2c21d35fe",
+  "all_artifacts_match": true,
+  "migration": {
+    "name": "0130_composed_sms_authorities.sql",
+    "content_hash": "9a05d72e81a2949b8c71b9be8ea319a16708f4aa6962c4db51be627f7ccac1f1",
+    "applied_at": "2026-09-28 22:40:54"
+  },
+  "protected_email_registry_sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+  "compiled_employee_and_agent_guide": "present; full/restricted and resumed delivery tested",
+  "correspondence_custody_installed_by_builder": false,
+  "production_authority_or_claim_created_by_builder": false,
+  "customer_actions": "none",
+  "live_sms": "not enabled: correspondence custody, verified sender and accepted native-action source transport required"
+}
