@@ -1,6 +1,6 @@
 # Purchase timing verifier — build #406
 
-Implementation is complete; final release verification is pending. This is a dedicated native verifier and owner setup flow, not an activated OrderOps consumer or an approval of the reference purchase.
+Implementation is deployed in commit `faee01b`, pushed to `origin main`. This is a dedicated native verifier and owner setup flow, not an activated OrderOps consumer or an approval of the reference purchase.
 
 The [versioned contract](../../purchase-timing-verifier.md) specifies methods, paths, strict schemas, exact binding rules, error codes, source execution boundaries, and UNKNOWN reconciliation. [Machine-readable schemas](./contract-schemas.json) are generated from the runtime schema definitions; semantic refinements are documented in the contract.
 
@@ -28,7 +28,7 @@ The supplied reference decision v1 is unapproved and lacks this structured sourc
 - Synthetic browser checks passed on desktop/mobile: technical blocker, exact setup review, one confirmation, lost-response GET reconciliation, no horizontal overflow or page errors. A mobile scrolling issue and a label selector were corrected before the passing run.
 - Full/restricted employee guide checks passed, including the dated setup announcement, search, mobile layout, refresh and failure recovery. Current instructions deliver the capability to resumed agents.
 - A proposed DOM test was replaced with the existing isolated Playwright approach because this repository does not install jsdom. No dependency was added.
-- Final full root suite passed: 2,600 server tests (5 existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Production build passed. Commit/push and service health are pending release completion.
+- Final full root suite passed: 2,600 server tests (5 existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Production build passed. Commit `faee01b` was pushed to `origin main`. All five services restarted September 28 at 10:02 Eastern. The runner restart interrupted the turn after the other four services reported healthy; resumption verified all replacement processes and the supported health check: local web/runner healthy, public front door HTTP 302, four active tunnel connections. Authenticated public end-to-end chat and source consumer acceptance remain unverified. No second restart was needed.
 
 All screenshots below are synthetic fixtures, not actual source setup or enrollment receipts.
 
