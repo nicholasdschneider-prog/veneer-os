@@ -59,6 +59,17 @@ describe('live voice lifecycle', () => {
     expect(JSON.parse(row.result_json)).toMatchObject({ok:true,messageId:17,disposition:'queued'});
     expect(db.prepare("SELECT count(*) AS n FROM voice_entries WHERE session_id=? AND role='decision'").get(call.id)).toEqual({n:1});
   });
+  it('speaks as the bot in first person and never as a third-party voice line', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();
+    await service.start(1,{botConversationId:'sage'});
+    const start = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
+    expect(start.instructions).toContain('You ARE Sage');
+    expect(start.instructions).toContain('never say "I\'ll let Sage know"');
+    expect(start.instructions).toContain('call send_message immediately');
+    expect(start.instructions).not.toContain('voice line for');
+    expect(start.instructions).not.toContain("Sage's voice line");
+  });
   it('hands the saved transcript to the bot once after every bot call, marking relayed items', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();

@@ -38,7 +38,7 @@ const NOTICES: Record<string, string> = {
   update: 'Conversation activity changed. The currentConversation below is freshly read from the actual agent thread. Also inspect focusedDecision.discussion for new replies: these can arrive without a chat reply. Report new results or questions from this evidence, rather than reusing older tool results or guessing what the agent probably did. Working means running; idle alone does not prove success. Be brief and continue the conversation.',
   question: 'A new pending question arrived. Briefly let the user know and ask if they want to review it. Do not interrupt their current topic with details.',
   decision: 'A new decision needing the user’s input was raised. Briefly mention it and offer to go through it. Do not interrupt their current topic with details.',
-  reply: 'The bot just replied in its chat. Read the latest reply with read_chat and summarize it aloud in a sentence or two, then continue.',
+  reply: 'Your background work produced a new reply in your chat. Read it with read_chat and report it aloud in first person as your own progress, in a sentence or two, then continue.',
 };
 let pendingNotice: { kind: string; context: unknown } | null = null;
 function flushNotice() {
@@ -104,7 +104,7 @@ process.on('message', (raw: unknown) => {
     if (bot) {
       tools.search_context = llm.tool({ description: 'Fast read-only search of this bot’s existing chat and decision evidence. Use an exact order/tracking number or short phrase before dispatching a fact-gathering task. This does not fetch fresh external data. Results include source, author, date and excerpt coverage.',
         parameters: z.object({ query: z.string().min(2).max(200) }), execute: async args => call('search_context', args) });
-      tools.send_message = llm.tool({ description: `The only way any work happens. Relay what the caller said into ${name}’s chat, in the caller's words, so ${name} acts on it or answers. Call it immediately for every explicit instruction, order detail or data item as it is given, one call per item, before acknowledging aloud. You cannot do the work yourself. ${name} replies in its chat; you will be told when a reply arrives.`,
+      tools.send_message = llm.tool({ description: `The only way any work starts. Post what the caller said, in the caller's words, into your own background chat where you do the actual work. Call it immediately for every explicit instruction, order detail or data item as it is given, one call per item, before acknowledging aloud. The phone channel itself cannot do the work. You will be told when your background reply arrives; report it as your own progress.`,
         parameters: z.object({ text: z.string(), instructionId: z.string().describe('Unique stable ID for this explicit instruction; reuse on retry, never reuse for different text.') }), execute: async args => call('send_message', args) });
       tools.list_decisions = llm.tool({ description: `List ${name}’s decisions: open ones needing the user's input, plus recent answered, running and completed ones. Read fresh before discussing or answering.`,
         parameters: z.object({ offset: z.number().int().nonnegative().optional() }), execute: async args => call('decisions', args) });
