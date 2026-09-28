@@ -24,7 +24,7 @@ Unbound draft `66965892-54d4-497c-9d81-ee7489a26784` is not retrofitted, retired
 
 Synthetic SQLite and HTTP fixtures cover inspection → same-owner delegation/acceptance → one claim; exact replays, conflicting keys/payloads, stale versions, unrelated/human actors, original approval preservation, unbound-draft preservation, active-registration/approver/user/delegation revocation, unknown outcomes and receipt guards. Both same-owner and cross-bot HTTP fixtures race delegation, acceptance and claims. The canonical-case equality negative remains covered.
 
-Scoped tests: 55 passed across messageDelegation, botFeatureGuide and instructionContext. Catalog checks verify dated discovery, restricted employee access and resumed-agent delivery. Root typecheck, full npm test and production build passed before restart: 2,612 server tests (five existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Vite reported its existing large-chunk warning. Runtime verification follows deployment.
+Scoped tests: 55 passed across messageDelegation, botFeatureGuide and instructionContext. Catalog checks verify dated discovery, restricted employee access and resumed-agent delivery. Root typecheck, full npm test and production build passed before restart: 2,612 server tests (five existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Vite reported its existing large-chunk warning. Implementation `8d72899` was pushed to origin main. The detached root restart completed for all five services on Node 24.21.0. At 2026-09-28T15:03:39.592Z all five services returned HTTP 200. The restart also reported the public front door reachable (302) and four tunnel edge connections; authenticated end-to-end chat and customer delivery remain unverified. No migration or configuration change was needed. [Runtime receipt](./runtime.json) records the built delegation, tool guidance, catalog and web entry hashes.
 
 ## Changed files
 
@@ -36,3 +36,5 @@ Scoped tests: 55 passed across messageDelegation, botFeatureGuide and instructio
 - [Existing transport contract](/Users/archerclawdington/veneer-os/docs/reports/approved-message-delegation/contract.md)
 
 Guide: `/#/bot-guide?feature=approved-message-delegation`.
+
+- [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/same-owner-approved-message/runtime.json)

@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-09-28T15:03:39.592Z",
+  "implementation": "8d72899",
+  "checks": [
+    {
+      "service": "web",
+      "status": 200
+    },
+    {
+      "service": "runner",
+      "status": 200
+    },
+    {
+      "service": "app-runner",
+      "status": 200
+    },
+    {
+      "service": "terminal",
+      "status": 200
+    },
+    {
+      "service": "browser-manager",
+      "status": 200
+    }
+  ],
+  "artifacts": {
+    "server/dist/bots/messageDelegation.js": "085093b5d61c39e17b6b451b974c1fc6bbe8c2de79eba9fb16e0946b477036de",
+    "server/dist/mcp/botTools.js": "331ed918dd60d36a19cc4aa872ba9c7cf1958a96f60f634bb312ee258a2b0d4d",
+    "server/dist/featureGuide/catalog.js": "5ff9bcb0f1f7755f9317e293d2c970b774fd0d3de191f03f271fc4fd479c9238",
+    "web/dist/index.html": "12c9bada215f9d9d6395f2cb0a7e3766c89f6e936b65981611b30d158c84fc9c"
+  },
+  "no_live_business_tests": true
+}
