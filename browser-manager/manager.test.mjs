@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { after, before, test } from 'node:test';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import { seedDownloadPreferences } from './backends/native.mjs';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'veneer-browser-manager-'));
@@ -342,6 +342,7 @@ async function startManager(name, env = {}) {
   fs.writeFileSync(instance.log, '');
   fs.writeFileSync(instance.image, 'sha256:image-one\n');
   instance.env = {
+    VENEER_BROWSER_CAPACITY_WAIT_MS: '20000',
     VENEER_BROWSER_MANAGER_PORT: String(instance.port),
     VENEER_BROWSER_STORE: instance.store,
     FAKE_DOCKER_LOG: instance.log,
@@ -399,7 +400,15 @@ before(async () => {
     socket.on('message', (data) => {
       const message = JSON.parse(data.toString());
       cdpCommands.push(message);
-      socket.send(JSON.stringify({ id: message.id, sessionId: message.sessionId, result: {} }));
+      if (message.method === 'Runtime.enable') socket.send(JSON.stringify({ method: 'Runtime.executionContextCreated', sessionId: message.sessionId, params: { context: { id: 10, auxData: { isDefault: true, frameId: 'main' } } } }));
+      let result = {};
+      if (message.method === 'Target.getTargets') result = { targetInfos: [{ targetId: 'page', type: 'page' }] };
+      if (message.method === 'Target.attachToTarget') result = { sessionId: 'page-session' };
+      if (message.method === 'Page.getFrameTree') result = { frameTree: { frame: { id: 'main' } } };
+      if (message.method === 'Page.createIsolatedWorld') result = { executionContextId: 1 };
+      if (message.method === 'Runtime.evaluate') result = { result: message.params.expression === 'window' ? { objectId: 'window' } : { value: false } };
+      if (message.method === 'DOMDebugger.getEventListeners') result = { listeners: [] };
+      socket.send(JSON.stringify({ id: message.id, sessionId: message.sessionId, result }));
       if (message.method === 'Target.setAutoAttach') {
         socket.send(JSON.stringify({
           method: 'Target.attachedToTarget',
@@ -611,7 +620,7 @@ test('creates a signed-out temporary profile and saves it only through save-as',
 let fast;
 
 test('opens a saved profile as a running working copy with a ticket', async () => {
-  fast = await startManager('fast', { VENEER_BROWSER_MAX_ACTIVE: '2' });
+  fast = await startManager('fast', { VENEER_BROWSER_MAX_ACTIVE: '2', VENEER_BROWSER_CAPACITY_WAIT_MS: '1000' });
   const source = fast.scope('open-source');
   const created = await fast.call('/v1/profiles', {
     method: 'POST',
@@ -1232,7 +1241,7 @@ test('merges download preferences into an existing profile instead of clobbering
 
 
 test('serializes concurrent admission across projects and releases a slot without deleting copy data', async () => {
-  const instance = await startManager('admission', { VENEER_BROWSER_MAX_ACTIVE: '1', VENEER_BROWSER_WARM: '0' });
+  const instance = await startManager('admission', { VENEER_BROWSER_MAX_ACTIVE: '1', VENEER_BROWSER_WARM: '0', VENEER_BROWSER_CAPACITY_WAIT_MS: '1000' });
   for (const [project, profile] of [['one', 'first'], ['two', 'second']]) {
     assert.equal((await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId: project, profileId: profile, name: profile, temporary: true }) })).status, 201);
   }
@@ -1257,8 +1266,29 @@ test('protects ticket holders and human-viewed copies from idle suspension', asy
     await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId, profileId: purpose, name: purpose, temporary: true }) });
     await instance.call(`/v1/profiles/${purpose}/ticket`, { method: 'POST', body: JSON.stringify({ projectId, purpose }) });
     const status = await (await instance.call(`/v1/profiles/${purpose}?projectId=${projectId}`)).json();
-    assert.equal(status.profile.humanProtected, purpose === 'viewer');
+    assert.equal(Boolean(status.profile.lastViewerAt), purpose === 'viewer');
     const suspended = await instance.call(`/v1/profiles/${purpose}/suspend`, { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt: status.profile.lastUsedAt }) });
     assert.equal((await suspended.json()).suspended, false);
   }
+});
+
+
+test('old human-view protection expires while connected viewers still block suspension', async () => {
+  const instance = await startManager('viewer-lifecycle', { VENEER_BROWSER_WARM: '0' });
+  await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId, profileId: 'old-view', name: 'old' }) });
+  await instance.call('/v1/profiles/old-view/start', { method: 'POST', body: JSON.stringify({ projectId }) });
+  const scope = instance.scope('old-view');
+  writeMeta(scope, { ...readMeta(scope), humanProtected: true, lastViewerAt: '2000-01-01T00:00:00Z' });
+  const before = readMeta(scope);
+  const paused = await instance.call('/v1/profiles/old-view/suspend', { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt: before.lastUsedAt }) });
+  assert.equal((await paused.json()).suspended, true);
+  const ticket = await (await instance.call('/v1/profiles/old-view/ticket', { method: 'POST', body: JSON.stringify({ projectId, purpose: 'viewer' }) })).json();
+  const url = new URL(ticket.cdpUrl); url.protocol = 'ws:'; url.host = `127.0.0.1:${instance.port}`;
+  const ws = new WebSocket(url);
+  try {
+    await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
+    const meta = readMeta(scope);
+    const refused = await instance.call('/v1/profiles/old-view/suspend', { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt: meta.lastUsedAt }) });
+    assert.equal((await refused.json()).reason, 'human_viewer');
+  } finally { ws.terminate(); }
 });

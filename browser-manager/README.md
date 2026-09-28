@@ -22,7 +22,7 @@ bearer-token auth.
 
 - Saved profiles are stopped login bases. Each chat gets its own temporary
   working copy. An explicit Stop deletes it. The application suspends completed
-  read-only copies after 30 idle minutes, retaining their files for reuse. The
+  eligible copies after 30 idle minutes and current page safety checks, retaining their files for reuse. The
   manager never deletes a working copy merely because it is idle. Background CDP
   traffic does not count as application task activity. See the capacity policy in
   [INSTALL-MACOS.md](INSTALL-MACOS.md#capacity-and-project-growth).

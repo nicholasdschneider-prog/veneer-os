@@ -86,6 +86,9 @@ export interface VeneerBrowserProfileList {
 }
 
 export interface VeneerBrowserSessionView {
+  capacity?: { active: number; limit: number; waiting: number; occupants?: Array<{ conversationId: string; title: string; reason: string | null }> };
+  keepOpen?: boolean;
+  retentionReason?: string | null;
   configured: boolean;
   active: boolean;
   projectId: string;
@@ -810,7 +813,7 @@ export class VeneerBrowserManager {
       ));
     } catch (error) {
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
+        throw new Error('Browser capacity is busy after waiting 20 seconds. Active work, viewers, unfinished pages, and Keep open sessions are protected. Retry opening when a slot is available.');
       }
       throw new Error('Veneer Browser could not make a working copy. The saved profile is unchanged.');
     }
@@ -854,7 +857,7 @@ export class VeneerBrowserManager {
     } catch (error) {
       if (isVeneerBrowserRemoteError(error, 404)) return null;
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
+        throw new Error('Browser capacity is busy after waiting 20 seconds. Active work, viewers, unfinished pages, and Keep open sessions are protected. Retry opening when a slot is available.');
       }
       throw new Error('Veneer Browser could not make a working copy. The saved profile is unchanged.');
     }
@@ -913,7 +916,7 @@ export class VeneerBrowserManager {
       await this.remote.createTemporary(scopeId, cloneProfileId, 'Signed-out working copy');
     } catch (error) {
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
+        throw new Error('Browser capacity is busy after waiting 20 seconds. Active work, viewers, unfinished pages, and Keep open sessions are protected. Retry opening when a slot is available.');
       }
       throw new Error('Veneer Browser could not make a signed-out working copy.');
     }
@@ -959,7 +962,7 @@ export class VeneerBrowserManager {
          WHERE conversation_id = ? AND clone_profile_id = ?`,
       ).run('The temporary browser runtime did not start.', context.id, row.clone_profile_id);
       if (isVeneerBrowserRemoteError(error, 429)) {
-        throw new Error('All browser slots are occupied. Completed read-only sessions idle for 30 minutes are released automatically. Active work, sign-ins, forms, and human viewing are protected; wait for a slot or stop your own finished browser.');
+        throw new Error('Browser capacity is busy after waiting 20 seconds. Active work, viewers, unfinished pages, and Keep open sessions are protected. Retry opening when a slot is available.');
       }
       throw new Error('The temporary browser copy did not start. Its data was kept for a safe retry.');
     }
@@ -967,6 +970,7 @@ export class VeneerBrowserManager {
 
   private async startForContext(context: ConversationContext): Promise<ConversationRuntime> {
     const existing = this.cloneSession(context.id);
+    if (!existing || existing.status !== 'active') await this.reconcile(context.id);
     if (existing) {
       const key = existing.source_profile_id ?? existing.clone_profile_id;
       return this.queue(key).run(() => this.startWorkingCopy(context, existing));
@@ -1410,10 +1414,9 @@ export class VeneerBrowserManager {
       const status = remote.active ? 'active' : 'stopped';
       this.db.prepare(
         `UPDATE veneer_browser_clone_sessions SET remote_runtime_id = ?, status = ?,
-           stopped_at = CASE WHEN ? = 'stopped' THEN COALESCE(stopped_at, ?) ELSE NULL END,
-           last_error = CASE WHEN ? = 'active' THEN NULL ELSE last_error END
+           stopped_at = CASE WHEN ? = 'stopped' THEN COALESCE(stopped_at, ?) ELSE NULL END
          WHERE conversation_id = ? AND clone_profile_id = ? AND client_scope = ?`,
-      ).run(remote.runtimeId ?? null, status, status, now(), status,
+      ).run(remote.runtimeId ?? null, status, status, now(),
         row.conversation_id, row.clone_profile_id, this.clientScope());
     } catch (error) {
       if (isVeneerBrowserRemoteError(error, 404)) {
@@ -1453,11 +1456,16 @@ export class VeneerBrowserManager {
     if (!this.configured()) return this.emptySession(context, false);
     const storedCopy = this.cloneSession(context.id);
     const copy = storedCopy ? await this.refreshCloneSession(storedCopy) : null;
+    const counts = await this.remote.capacity?.().catch(() => undefined);
+    const capacity = counts ? { ...counts, occupants: this.accessibleOccupants(userId) } : undefined;
     if (copy) {
       const profile = copy.source_profile_id
         ? this.profileInProject(copy.project_id, copy.source_profile_id)
         : null;
       return {
+        capacity,
+        keepOpen: this.copyHeld(copy),
+        retentionReason: this.retentionReason(copy),
         configured: true,
         active: copy.status === 'active',
         projectId: copy.project_id,
@@ -1474,9 +1482,10 @@ export class VeneerBrowserManager {
       };
     }
     const profile = this.effectiveProfile(context);
-    if (!profile) return this.emptySession(context, true);
+    if (!profile) return { ...this.emptySession(context, true), capacity };
     const current = this.view(profile);
     return {
+      capacity,
       configured: true,
       active: false,
       projectId: profile.project_id,
@@ -1707,32 +1716,86 @@ export class VeneerBrowserManager {
     });
   }
 
-  private idleCopyIsSafe(row: VeneerBrowserCloneSessionRow): boolean {
-    const lastUsed = Date.parse(row.last_used_at ?? row.created_at);
-    if (!Number.isFinite(lastUsed) || Date.now() - lastUsed < IDLE_COPY_MS) return false;
-    if (this.captureGrantActive(row.conversation_id) || hasLiveSecretField(row.conversation_id)) return false;
-    if (this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id = ?').get(row.conversation_id)) return false;
+  private accessibleOccupants(userId: number): Array<{ conversationId: string; title: string; reason: string | null }> {
+    const rows = this.db.prepare("SELECT * FROM veneer_browser_clone_sessions WHERE client_scope = ? AND status = 'active'").all(this.clientScope()) as VeneerBrowserCloneSessionRow[];
+    const result: Array<{ conversationId: string; title: string; reason: string | null }> = [];
+    for (const row of rows) {
+      try {
+        const context = this.conversation(row.conversation_id, userId, true);
+        result.push({ conversationId: context.id, title: context.title ?? 'Browser chat', reason: this.retentionReason(row) });
+      } catch { /* Counts are global; private chat identities never cross access boundaries. */ }
+    }
+    return result;
+  }
+
+  private copyEvents(row: VeneerBrowserCloneSessionRow): Array<{ action: string; metadata_json: string }> {
     const created = this.db.prepare(`SELECT MAX(id) AS id FROM veneer_browser_audit
       WHERE client_scope = ? AND conversation_id = ? AND action = 'clone.created'`).get(
       this.clientScope(), row.conversation_id) as { id: number | null };
-    if (!created.id) return false;
-    const events = this.db.prepare(`SELECT action, metadata_json FROM veneer_browser_audit
-      WHERE client_scope = ? AND conversation_id = ? AND id > ?`).all(
+    if (!created.id) return [];
+    return this.db.prepare(`SELECT action, metadata_json FROM veneer_browser_audit
+      WHERE client_scope = ? AND conversation_id = ? AND id > ? ORDER BY id`).all(
       this.clientScope(), row.conversation_id, created.id) as Array<{ action: string; metadata_json: string }>;
-    if (row.mode === 'fresh' && !events.some((event) => event.action === 'clone.public_browsing')) return false;
-    let readOnlyCommand = false;
-    for (const event of events) {
-      if (['clone.login_started', 'clone.human_viewed', 'clone.interaction', 'credential.used', 'credential.refused', 'capture.granted'].includes(event.action)) return false;
-      if (event.action !== 'command.executed') continue;
-      try {
-        if (!IDLE_SAFE_COMMANDS.has(JSON.parse(event.metadata_json).command)) return false;
-        readOnlyCommand = true;
-      } catch { return false; }
-    }
-    return readOnlyCommand;
   }
 
-  async reconcile(): Promise<void> {
+  private copyHeld(row: VeneerBrowserCloneSessionRow): boolean {
+    let held = row.mode === 'fresh';
+    for (const event of this.copyEvents(row)) {
+      if (['clone.public_browsing', 'clone.hold_released'].includes(event.action)) held = false;
+      if (['clone.login_started', 'clone.hold_enabled'].includes(event.action)) held = true;
+    }
+    return held;
+  }
+
+  async setKeepOpen(userId: number, conversationId: string, active: boolean): Promise<void> {
+    this.conversation(conversationId, userId, true);
+    await this.queue(`conversation:${conversationId}`).run(async () => {
+      const context = this.conversation(conversationId, userId, true);
+      const row = this.cloneSession(context.id);
+      if (!row) throw new Error('Open this chat browser before choosing Keep open.');
+      this.audit(row.project_id, this.auditProfileId(row), active ? 'clone.hold_enabled' : 'clone.hold_released', userId, context.id);
+    });
+  }
+
+  private retentionReason(row: VeneerBrowserCloneSessionRow): string | null {
+    const event = this.copyEvents(row).filter(e => e.action === 'clone.retention').at(-1);
+    try { return event ? JSON.parse(event.metadata_json).reason : null; } catch { return null; }
+  }
+
+  private recordRetention(row: VeneerBrowserCloneSessionRow, reason: string): void {
+    if (this.retentionReason(row) === reason) return;
+    this.audit(row.project_id, this.auditProfileId(row), 'clone.retention', null, row.conversation_id, { reason });
+  }
+
+  private idleBlockReason(row: VeneerBrowserCloneSessionRow): string | null {
+    const lastUsed = Date.parse(row.last_used_at ?? row.created_at);
+    if (!Number.isFinite(lastUsed) || Date.now() - lastUsed < IDLE_COPY_MS) return 'recent_activity';
+    if (this.captureGrantActive(row.conversation_id)) return 'capture';
+    if (hasLiveSecretField(row.conversation_id)) return 'sign_in';
+    if (this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id = ?').get(row.conversation_id)) return 'active_turn';
+    if (this.copyHeld(row)) return 'keep_open';
+    const events = this.copyEvents(row);
+    if (!events.length) return 'unknown_history';
+    let interactionPending = false;
+    for (const event of events) {
+      if (event.action === 'clone.interaction') {
+        if (interactionPending) return 'uncertain_action';
+        interactionPending = true;
+      }
+      if (event.action !== 'command.executed') continue;
+      try {
+        const command = JSON.parse(event.metadata_json);
+        // A failed mutation's external outcome is unknown forever; a later
+        // snapshot cannot turn it into proof that the workflow finished.
+        if ((interactionPending || !IDLE_SAFE_COMMANDS.has(command.command)) && command.success !== true) return 'uncertain_action';
+        if (!IDLE_SAFE_COMMANDS.has(command.command)) interactionPending = false;
+      } catch { return 'unknown_history'; }
+    }
+    if (interactionPending) return 'uncertain_action';
+    return null; // Remote page inspection still must pass; this is not business completion.
+  }
+
+  async reconcile(excludeConversationId?: string): Promise<void> {
     if (!this.configured()) return;
     const rows = this.db.prepare(
       "SELECT * FROM veneer_browser_sessions WHERE client_scope = ? AND status IN ('starting', 'active')",
@@ -1744,24 +1807,36 @@ export class VeneerBrowserManager {
       'SELECT * FROM veneer_browser_clone_sessions WHERE client_scope = ?',
     ).all(this.clientScope()) as VeneerBrowserCloneSessionRow[];
     await Promise.all(copies.map(async (row) => {
+      if (row.conversation_id === excludeConversationId || this.queue(`conversation:${row.conversation_id}`).depth > 0) return;
       const refreshed = await this.refreshCloneSession(row).catch(() => row);
       if (!refreshed || refreshed.status !== 'active' || !this.remote.suspend) return;
+      if (this.queue(`conversation:${row.conversation_id}`).depth > 0) return;
       await this.queue(`conversation:${row.conversation_id}`).run(async () => {
         const current = this.cloneSession(row.conversation_id);
-        if (!current || current.clone_profile_id !== row.clone_profile_id || !this.idleCopyIsSafe(current)) return;
+        if (!current || current.clone_profile_id !== row.clone_profile_id) return;
+        const blocked = this.idleBlockReason(current);
+        if (blocked) { this.recordRetention(current, blocked); return; }
         const remote = await this.remote.status(current.project_id, current.clone_profile_id);
-        if (!remote.active || !remote.profile?.lastUsedAt || remote.profile.humanProtected) return;
+        if (!remote.active || !remote.profile?.lastUsedAt) return;
         this.runtimeCache.delete(current.conversation_id);
         // Closing the automation daemon disconnects CDP, not Chrome. The remote
-        // suspend refuses all remaining connections and unexpired tickets.
-        await this.closeCommandSession(current);
-        if (!this.idleCopyIsSafe(current)) return;
+        // suspend checks viewers, tickets, unchanged activity, and live page safety.
+        let closeFailed = false;
+        await this.closeCommandSession(current).catch(() => { closeFailed = true;
+          this.recordRetention(current, 'automation_disconnect_failed');
+        });
+        const latest = this.cloneSession(current.conversation_id);
+        if (!latest || latest.clone_profile_id !== current.clone_profile_id || this.idleBlockReason(latest)) return;
         const result = await this.remote.suspend!(current.project_id, current.clone_profile_id, remote.profile.lastUsedAt);
-        if (!result.suspended) return;
+        if (!result.suspended) {
+          this.recordRetention(current, result.reason ?? (closeFailed ? 'automation_disconnect_failed' : 'suspend_refused'));
+          return;
+        }
+        this.recordRetention(current, 'suspended');
         this.db.prepare(`UPDATE veneer_browser_clone_sessions SET status = 'stopped', stopped_at = ?
           WHERE conversation_id = ? AND clone_profile_id = ?`).run(now(), current.conversation_id, current.clone_profile_id);
         this.audit(current.project_id, this.auditProfileId(current), 'clone.idle_suspended', null, current.conversation_id);
-      }).catch(() => undefined);
+      }).catch(() => this.recordRetention(row, 'suspend_failed'));
     }));
   }
 

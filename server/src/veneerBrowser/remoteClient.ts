@@ -46,7 +46,7 @@ export interface RemoteProfileStatus {
   active: boolean;
   status: string;
   runtimeId?: string;
-  profile?: { lastUsedAt?: string; humanProtected?: boolean };
+  profile?: { lastUsedAt?: string; humanProtected?: boolean; lastViewerAt?: string };
 }
 
 export interface RemoteTicket {
@@ -81,6 +81,7 @@ export interface RemoteDownload {
 }
 
 export interface VeneerBrowserRemote {
+  capacity?(): Promise<{ active: number; limit: number; waiting: number }>;
   configured(): boolean;
   clientScope(): string;
   /** Path of the pinned LAN certificate while the LAN route is live, else null. */
@@ -94,7 +95,7 @@ export interface VeneerBrowserRemote {
   delete(projectId: string, profileId: string): Promise<void>;
   start(projectId: string, profileId: string): Promise<RemoteProfileStatus>;
   stop(projectId: string, profileId: string): Promise<void>;
-  suspend?(projectId: string, profileId: string, expectedLastUsedAt: string): Promise<{ suspended: boolean }>;
+  suspend?(projectId: string, profileId: string, expectedLastUsedAt: string): Promise<{ suspended: boolean; reason?: string }>;
   status(projectId: string, profileId: string): Promise<RemoteProfileStatus>;
   open(
     projectId: string,
@@ -320,6 +321,7 @@ export function createVeneerBrowserRemote(options: {
 
   return {
     configured,
+    capacity: () => request('/v1/capacity'),
     clientScope() {
       return identity()?.clientId ?? '';
     },
@@ -356,7 +358,7 @@ export function createVeneerBrowserRemote(options: {
     rename: (projectId, profileId, name) =>
       request(encoded(projectId, profileId), { method: 'PATCH', body: JSON.stringify({ projectId, name }) }).then(() => undefined),
     delete: (projectId, profileId) => request(encoded(projectId, profileId), { method: 'DELETE' }).then(() => undefined),
-    start: (projectId, profileId) => post(projectId, profileId, 'start'),
+    start: (projectId, profileId) => request(`/v1/profiles/${encodeURIComponent(profileId)}/start`, { method: 'POST', body: JSON.stringify({ projectId }) }, 90_000),
     suspend: (projectId, profileId, expectedLastUsedAt) => request(`/v1/profiles/${encodeURIComponent(profileId)}/suspend`, { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt }) }),
     stop: (projectId, profileId) => post(projectId, profileId, 'stop').then(() => undefined),
     status: (projectId, profileId) => request(encoded(projectId, profileId)),

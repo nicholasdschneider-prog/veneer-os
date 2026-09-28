@@ -143,6 +143,7 @@ export interface RunnerClient {
   veneerBrowserConversationSaveAs(userId: number, convId: string, name: string): Promise<VeneerBrowserSessionView>;
   veneerBrowserConversationStop(userId: number, convId: string): Promise<VeneerBrowserSessionView>;
   veneerBrowserConversationTicket(userId: number, convId: string): Promise<{ ticket: string; caFile: string | null }>;
+  veneerBrowserConversationKeepOpen(userId: number, convId: string, active: boolean): Promise<void>;
   /** Advanced capture is user-only state: no agent/MCP path may set it. */
   veneerBrowserConversationCaptureGet(userId: number, convId: string): Promise<VeneerBrowserCaptureView>;
   veneerBrowserConversationCaptureSet(
@@ -225,6 +226,7 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
       } catch {
         /* non-JSON body: report the status alone */
       }
+      if (path.startsWith('/rpc/veneerBrowser') && /Browser capacity is busy/.test(detail)) throw new Error(detail.replace(/^ — /, ''));
       throw new Error(`runner ${path} failed: HTTP ${res.status}${detail}`);
     }
     return (await res.json()) as T;
@@ -369,6 +371,7 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     veneerBrowserConversationTicket: (userId, convId) =>
       rpc<{ ticket: string; caFile?: string | null }>('/rpc/veneerBrowserConversationTicket', { userId, convId })
         .then((r) => ({ ticket: r.ticket, caFile: r.caFile ?? null })),
+    veneerBrowserConversationKeepOpen: (userId, convId, active) => rpc<void>('/rpc/veneerBrowserConversationKeepOpen', { userId, convId, active }),
     veneerBrowserConversationCaptureGet: (userId, convId) =>
       rpc<{ capture: VeneerBrowserCaptureView }>('/rpc/veneerBrowserConversationCaptureGet', { userId, convId }).then((r) => r.capture),
     veneerBrowserConversationCaptureSet: (userId, convId, active) =>

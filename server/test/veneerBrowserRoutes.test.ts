@@ -58,6 +58,8 @@ describe('Veneer Browser routes', () => {
   const veneerBrowserSetDefault = vi.fn(async () => undefined);
   const veneerBrowserRename = vi.fn(async () => profileView);
   const veneerBrowserDelete = vi.fn(async () => undefined);
+  const veneerBrowserConversationKeepOpen = vi.fn(async () => undefined);
+  const veneerBrowserConversationOpen = vi.fn(async () => profileView);
   const veneerBrowserStop = vi.fn(async () => profileView);
   const veneerBrowserStatus = vi.fn(async () => profileView);
 
@@ -82,6 +84,8 @@ describe('Veneer Browser routes', () => {
       db,
       manager: {
         veneerBrowserConversationFresh,
+        veneerBrowserConversationKeepOpen,
+        veneerBrowserConversationOpen,
         veneerBrowserConversationUpdateProfile,
         veneerBrowserConversationSaveAs,
         veneerBrowserConversationCreate,
@@ -111,6 +115,13 @@ describe('Veneer Browser routes', () => {
     vi.clearAllMocks();
     role = 'owner';
     db.prepare("DELETE FROM settings WHERE key = 'veneer_browser_settings'").run();
+  });
+
+  it('uses a bounded capacity response without a runner traceback', async () => {
+    veneerBrowserConversationOpen.mockRejectedValueOnce(new Error('Browser capacity is busy after waiting 20 seconds.'));
+    const response = await fetch(`${base}/api/veneer-browser/conversations/conv-1/open`, { method: 'POST' });
+    expect(response.status).toBe(429);
+    expect((await response.json()).error).not.toContain('/rpc/');
   });
 
   it('defaults to quality 80 with Auto resolution and restricts workspace changes to administrators', async () => {

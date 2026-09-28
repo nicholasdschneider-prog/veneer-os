@@ -160,7 +160,7 @@ describe('Veneer Browser remote routing', () => {
     })));
 
     await remote.start('project-1', 'copy-1');
-    expect(timeout).toHaveBeenLastCalledWith(45_000);
+    expect(timeout).toHaveBeenLastCalledWith(90_000);
     await remote.open('project-1', 'profile-1', 'copy-1', 'agent');
     expect(timeout).toHaveBeenLastCalledWith(3 * 60_000);
     expect(timeout.mock.calls.every(([ms]) => ms > 5_000)).toBe(true);

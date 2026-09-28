@@ -145,7 +145,7 @@ FileVault).
 
 ## Capacity and project growth
 
-As of September 27, 2026, runtime admission is serialized across projects, including
+As of September 28, 2026, runtime admission is serialized across projects, including
 adoption of prewarmed copies. The default is five active sessions plus up to two
 unclaimed warm copies. Warm copies consume memory even though they are not active
 sessions. This install uses visible native Chrome (`VENEER_BROWSER_HEADLESS=0` in
@@ -160,29 +160,44 @@ sessions stay protected. Prefer existing authorized
 connectors for structured work and public reads when browser interaction is not
 needed. Do not route around an unavailable signed-in browser using another identity.
 
-The application checks completed working-copy sessions once per minute. After
-30 minutes without an application browser command, it disconnects and suspends
-copies whose recorded history contains only read-only commands. Pending turns,
-explicit fresh sign-in copies, capture, secret fields, human-viewed copies, form/click or
-unknown interaction history are protected. Uncertain mutations are recorded before
-execution so a failed command cannot make a copy look read-only. Historical command
-records are checked as well; absent history never establishes safety. A fresh remote
-activity observation, no live connections, and no unexpired control tickets are
-required at suspension time. Other clients' browser profiles are not considered.
+The September 28 follow-up replaces permanent past-view/click protection. The
+application checks idle copies once per minute and before allocating a cold copy.
+After 30 minutes without application commands it considers copies with no pending
+turn, capture, sign-in field, explicit Keep open hold, or unresolved action. A
+successful old click is not proof that business work completed; it merely stops
+being a permanent veto. Failed/uncertain actions remain protected, even after later
+reads. Absent or malformed history fails closed.
 
-Suspension gracefully stops Chrome and preserves the same copy's profile files and
-downloads; the next request starts it again. Chrome attempts session restoration,
-but old element references and unsaved page state must never be assumed restored.
-List tabs and read the page again. Saved login bases are never automatically updated.
-Retained stopped copies use disk until explicit Stop or the owning chat/profile's
-normal cleanup. The former manager-only temporary-idle deletion is disabled; it
-could not distinguish an abandoned control socket from unfinished work.
+The browser manager then checks connected viewers, a 30-minute viewer grace period,
+unexpired tickets, unchanged activity, in-progress Chrome downloads, every page and
+frame, filled form fields, editable regions and beforeunload handlers. Only boolean
+safety results leave Chrome; no page values, URLs or credentials enter diagnostics.
+An unavailable or failed inspection prevents suspension. Dead automation sockets can
+be disconnected after these checks even when closing the local daemon failed. Live
+viewer sockets have ping/pong liveness detection. Historical humanProtected metadata
+is no longer an indefinite veto.
 
-Bots should import needed downloads, explicitly save an intentionally completed new
-login when appropriate, and stop their own browser once the workflow is finished.
-Protected copies require that explicit completion step. If all five slots are busy
-or protected, new requests get a clear capacity error; this change does not add a
-durable browser waiting queue, promise unlimited concurrency, or kill active work.
+Use Keep open (in the panel or the bot keep_open tool) for work whose in-memory state
+must survive, including unfinished business workflows waiting for human input. Fresh
+sign-in sessions start held; a successful sign-in does not implicitly release the
+hold. Turning it off permits safety checks, not business execution or uncertain-action
+replay. Browser files/downloads are retained on automatic suspension, and the same
+working copy restarts on next use. Explicit Stop still discards that working copy.
+Chrome attempts session restoration; old element refs and arbitrary in-memory app
+state are not a resume guarantee. Saved login bases are never automatically updated.
+
+Starts enter a FIFO queue capped at 32 waiters, waiting up to 20 seconds for a slot.
+`VENEER_BROWSER_CAPACITY_WAIT_MS` may shorten this timeout (100–20000 ms). The waiting
+queue does not hold the runtime lock: suspensions and ongoing work can free capacity.
+Warm-copy adoption shares admission. A timed-out/disconnected waiter is removed;
+no browser command or unknown-effect request is replayed. This queue is intentionally
+not durable across manager restart and does not schedule an agent continuation.
+
+The panel shows global counts and names of occupying chats only when its user already
+has browser access to them. It shows this copy's last retention reason and Keep open
+setting. Retention reasons are audited without raw errors or page content. Capacity
+exhaustion is a bounded 429 response, not a runner HTTP500 traceback. No profile,
+credential, or business-action permission changes are implied by waiting or release.
 
 Keep the five-session default on the current 16 GB Mac until measured concurrent
 work warrants a change. First check completed sessions and protected owners, memory

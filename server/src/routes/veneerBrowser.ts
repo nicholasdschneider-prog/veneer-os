@@ -23,7 +23,7 @@ const BrowserSettingsSchema = z.object({
 
 function safeError(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
-  if (/not found|not configured|active browser|browser limit|browser slots|requires a chat|in use|another profile|already has|temporary browser|browser cop|saved profile|working copy|signed-out|advanced capture/i.test(message)) return message;
+  if (/not found|not configured|active browser|browser limit|browser slots|browser capacity|requires a chat|in use|another profile|already has|temporary browser|browser cop|saved profile|working copy|signed-out|advanced capture/i.test(message)) return message;
   return 'Veneer Browser is temporarily unavailable.';
 }
 
@@ -118,7 +118,7 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
     }
     void ctx.manager.veneerBrowserDelete(req.user!.id, req.user!.role, req.params.projectId, req.params.profileId)
       .then(() => res.json({ ok: true }))
-      .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+      .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
   router.post('/projects/:projectId/profiles/:profileId/stop', (req, res) => {
@@ -150,7 +150,7 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
     if (!body.success) return void res.status(400).json({ ok: false, error: 'Enter a profile name.' });
     void ctx.manager.veneerBrowserConversationCreate(req.user!.id, req.params.conversationId, body.data.name)
       .then((session) => res.status(201).json({ ok: true, session }))
-      .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+      .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
   router.put('/conversations/:conversationId/profile', (req, res) => {
@@ -159,19 +159,19 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
     void ctx.manager.veneerBrowserConversationSelect(
       req.user!.id, req.params.conversationId, body.data.profileId,
     ).then((session) => res.json({ ok: true, session }))
-      .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+      .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
   router.post('/conversations/:conversationId/fresh', (req, res) => {
     void ctx.manager.veneerBrowserConversationFresh(req.user!.id, req.params.conversationId)
       .then((session) => res.json({ ok: true, session }))
-      .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+      .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
   router.post('/conversations/:conversationId/update-profile', (req, res) => {
     void ctx.manager.veneerBrowserConversationUpdateProfile(req.user!.id, req.params.conversationId)
       .then((session) => res.json({ ok: true, session }))
-      .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+      .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
   router.post('/conversations/:conversationId/save-as', (req, res) => {
@@ -179,7 +179,15 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
     if (!body.success) return void res.status(400).json({ ok: false, error: 'Enter a profile name.' });
     void ctx.manager.veneerBrowserConversationSaveAs(req.user!.id, req.params.conversationId, body.data.name)
       .then((session) => res.status(201).json({ ok: true, session }))
-      .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+      .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
+  });
+
+  router.put('/conversations/:conversationId/keep-open', (req, res) => {
+    const body = CaptureSchema.safeParse(req.body);
+    if (!body.success) return void res.status(400).json({ ok: false, error: 'Choose Keep open on or off.' });
+    void ctx.manager.veneerBrowserConversationKeepOpen(req.user!.id, req.params.conversationId, body.data.active)
+      .then(() => res.json({ ok: true }))
+      .catch(error => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
   // Advanced capture unlocks network inspection on the signed-in browser, so it
@@ -196,7 +204,7 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
     if (!body.success) return void res.status(400).json({ ok: false, error: 'Choose whether Advanced capture is on or off.' });
     void ctx.manager.veneerBrowserConversationCaptureSet(req.user!.id, req.params.conversationId, body.data.active)
       .then((capture) => res.json({ ok: true, capture }))
-      .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+      .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
   // A one-minute, single-use ticket that loads the viewer page from this
@@ -221,7 +229,7 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
         : ctx.manager.veneerBrowserConversationStop;
       void operation(req.user!.id, req.params.conversationId)
         .then((session) => res.json({ ok: true, session }))
-        .catch((error) => res.status(409).json({ ok: false, error: safeError(error) }));
+        .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
     });
   }
 

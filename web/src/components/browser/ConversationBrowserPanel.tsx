@@ -19,6 +19,20 @@ import {
 } from '../ui/dropdown-menu';
 import { Switch } from '../ui/switch';
 
+export function browserRetentionLabel(reason?: string | null): string | null {
+  const labels: Record<string, string> = {
+    recent_activity: 'Recently used', active_turn: 'Bot is working', capture: 'Advanced capture is on',
+    sign_in: 'Sign-in is unfinished', keep_open: 'Keep open is on', uncertain_action: 'An action needs verification',
+    unknown_history: 'Session needs review', human_viewer: 'A person is viewing this browser',
+    recent_human_viewer: 'Recently viewed by a person', recent_ticket: 'Browser is reconnecting',
+    unfinished_page: 'Page has unfinished work', page_check_unavailable: 'Could not verify that the page is safe to pause',
+    download_in_progress: 'Download in progress', activity_changed: 'Browser activity changed',
+    suspend_failed: 'Automatic pause failed; your working copy is retained',
+    automation_disconnect_failed: 'Browser control could not disconnect', suspend_refused: 'Browser could not pause safely',
+  };
+  return reason ? labels[reason] ?? null : null;
+}
+
 const EMPTY_PROFILES: VeneerBrowserProfile[] = [];
 const EMPTY_TABS: ViewerTarget[] = [];
 
@@ -1133,6 +1147,35 @@ export function ConversationBrowserPanel({
       {!session ? <div className="flex flex-1 items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : null}
       {session && !session.configured ? <div className="m-4 rounded-xl border p-4 text-sm text-muted-foreground">Veneer Browser is not configured on this client.</div> : null}
       {canTeach && <div className="flex shrink-0 justify-end border-b px-2"><Button variant="ghost" size="sm" onClick={() => openBotWorkflows(conversationId, 'Bot', 'teach')}>Teach a task</Button></div>}
+      {session?.configured && session.capacity ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-2 text-xs text-muted-foreground" role="status">
+          <span>{session.capacity.active} of {session.capacity.limit} browser slots in use</span>
+          {session.capacity.waiting > 0 ? <span>{session.capacity.waiting} waiting</span> : null}
+          {session.capacity.occupants?.length ? <details className="w-full">
+            <summary className="cursor-pointer">Browsers you can access</summary>
+            <ul className="mt-2 space-y-1">
+              {session.capacity.occupants.map(owner => <li key={owner.conversationId}>
+                <a className="underline" href={`/#/chat/${encodeURIComponent(owner.conversationId)}`}>{owner.title}</a>
+                {browserRetentionLabel(owner.reason) ? ` — ${browserRetentionLabel(owner.reason)}` : ''}
+              </li>)}
+            </ul>
+          </details> : null}
+        </div>
+      ) : null}
+      {session?.temporaryClone ? (
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs">
+          <span className="text-muted-foreground">{browserRetentionLabel(session.retentionReason) ?? 'Idle browsers pause safely and retain their files.'}</span>
+          <label className="flex items-center gap-2" title="Keep this browser running for an unfinished workflow. Turn off when ready for automatic idle checks.">
+            Keep open
+            <Switch aria-label="Keep browser open" checked={session.keepOpen ?? false} disabled={busy}
+              onCheckedChange={() => void action(async () => {
+                await requestJson(`/api/veneer-browser/conversations/${encodeURIComponent(conversationId)}/keep-open`, {
+                  method: 'PUT', body: JSON.stringify({ active: !session.keepOpen }),
+                });
+              })} />
+          </label>
+        </div>
+      ) : null}
       {(error || session?.error) ? <div className="m-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error ?? session?.error}</div> : null}
 
       {session && showingViewer ? (
@@ -1167,7 +1210,7 @@ export function ConversationBrowserPanel({
           </div>
         </div>
       ) : session?.configured && (opening || session.status === 'starting') ? (
-        <BrowserStartingState />
+        <BrowserStartingState headline={session?.capacity && session.capacity.active >= session.capacity.limit ? "Waiting for a browser slot" : "Starting your browser"} />
       ) : session?.temporaryClone ? (
         <BrowserEmptyState>
           <ProfileSelect session={session} profiles={profiles} busy={busy} large onChange={attach} />

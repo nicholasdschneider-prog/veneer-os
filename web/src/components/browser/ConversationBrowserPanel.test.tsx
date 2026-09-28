@@ -3,6 +3,7 @@ import { BrowserStartingState } from './BrowserStartingState';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { VeneerBrowserProfile, VeneerBrowserSession } from '../../lib/types';
 import {
+  browserRetentionLabel,
   ADVANCED_CAPTURE_CONFIRM,
   ConversationBrowserPanel,
   avatarRingVisible,
@@ -195,7 +196,7 @@ describe('ConversationBrowserPanel', () => {
     expect(html).toContain('<canvas');
     expect(html).toContain('data-orb-state="searching"');
     expect(html).toContain('Starting your browser');
-    expect(html).toContain('Warming up Chrome');
+    expect(html).toContain('Checking browser availability');
     expect(html).not.toContain('Open browser');
   });
 
@@ -640,5 +641,23 @@ describe('ConversationBrowserPanel', () => {
   it('surfaces a rejected capture grant as an error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ ok: false, error: 'not allowed' }, 403)));
     await expect(fetchConversationCaptureGrant('chat-one')).rejects.toThrow('not allowed');
+  });
+});
+
+
+describe('browser capacity lifecycle presentation', () => {
+  it('shows capacity and an explicit Keep open control without internal errors', () => {
+    const html = renderToStaticMarkup(<ConversationBrowserPanel conversationId="conv-1" onClose={() => {}} onToast={() => {}}
+      initialSession={{ ...baseSession, temporaryClone: true, keepOpen: true, capacity: { active: 5, limit: 5, waiting: 2 }, retentionReason: 'keep_open' }} />);
+    expect(html).toContain('5 of 5 browser slots in use');
+    expect(html).toContain('2 waiting');
+    expect(html).toContain('Keep browser open');
+    expect(html).toContain('Keep open is on');
+    expect(html).not.toContain('/rpc/');
+  });
+  it('explains failed checks and unfinished work without exposing raw diagnostics', () => {
+    expect(browserRetentionLabel('unfinished_page')).toContain('unfinished work');
+    expect(browserRetentionLabel('page_check_unavailable')).toContain('Could not verify');
+    expect(browserRetentionLabel('private internal detail')).toBeNull();
   });
 });

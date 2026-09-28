@@ -63,6 +63,7 @@ describe('Veneer Browser runner tool scope', () => {
   const openFreshConversation = vi.fn(async () => ({ ...(await conversationSession()), temporaryClone: true, fresh: true }));
   const updateConversationProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Saved login' }));
   const saveConversationAsProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Other login' }));
+  const setKeepOpen = vi.fn();
   const stopConversation = vi.fn(async () => conversationSession());
   const runCommand = vi.fn(async () => ({ stdout: 'opened', stderr: '', exitCode: 0, screenshotPath: null }));
   const runCommands = vi.fn(async () => ({ steps: [], failure: null, released: false }));
@@ -87,6 +88,7 @@ describe('Veneer Browser runner tool scope', () => {
       updateConversationProfile,
       saveConversationAsProfile,
       stopConversation,
+      setKeepOpen,
       runCommand,
       runCommands,
       probeCommand,
@@ -136,6 +138,15 @@ describe('Veneer Browser runner tool scope', () => {
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
     });
   }
+
+  it('changes only the token chat Keep open setting', async () => {
+    const response = await call('keep_open', { active: true });
+    const body = await response.json();
+    expect(body.result.isError).not.toBe(true);
+    expect(setKeepOpen).toHaveBeenCalledWith(1, 'token-chat', true);
+    const invalid = await call('keep_open', { active: 'false' });
+    expect((await invalid.json()).result.isError).toBe(true);
+  });
 
   it('uses the signed agent token chat and its derived unfiled scope for list', async () => {
     const response = await call('list', { conversation_id: 'caller-chat', project_id: 'project-2' });

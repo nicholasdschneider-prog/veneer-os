@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import crypto from 'node:crypto';
+import { inspectIdlePages } from './idle-safety.mjs';
+import { createAdmissionQueue } from './admission.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
@@ -104,6 +106,7 @@ const warmPending = new Set();
 let warmRestored = false;
 const profileOps = new Map();
 const liveConnections = new Map();
+const agentConnections = new Map();
 const cursorViewers = new Map();
 
 function integer(value, fallback, min, max) {
@@ -212,6 +215,7 @@ function writeMeta(s, patch = {}) {
     sourceGeneration: field('sourceGeneration', current?.sourceGeneration ?? null),
     generation: field('generation', current?.generation ?? 1),
     humanProtected: field('humanProtected', current?.humanProtected ?? false),
+    lastViewerAt: field('lastViewerAt', current?.lastViewerAt ?? null),
   };
   fs.mkdirSync(s.root, { recursive: true, mode: 0o700 });
   const temporary = path.join(s.root, `.metadata.${crypto.randomUUID()}.tmp`);
@@ -831,21 +835,37 @@ async function restoreWarmRegistry() {
 // retain the working directory so restarting never silently clones an old login.
 async function suspendProfile(s, expectedLastUsedAt) {
   return serial(s.key, async () => {
-    const meta = readMeta(s);
-    if (!meta?.temporary || meta.humanProtected || warmCopyEntry(s.key)) return { suspended: false };
-    if (typeof expectedLastUsedAt !== 'string' || meta.lastUsedAt !== expectedLastUsedAt) return { suspended: false };
-    if (profileHasLiveConnection(s)) return { suspended: false };
-    if ([...tickets.values()].some((t) => t.scope.key === s.key && t.expiresAt > Date.now())) {
-      return { suspended: false };
-    }
+    const blocked = reason => ({ suspended: false, reason });
+    const check = () => {
+      const meta = readMeta(s);
+      if (!meta?.temporary || warmCopyEntry(s.key)) return 'not_working_copy';
+      if (meta.lastUsedAt !== expectedLastUsedAt) return 'activity_changed';
+      if ((cursorViewers.get(s.key)?.size ?? 0) > 0) return 'human_viewer';
+      if (Date.now() - Date.parse(meta.lastViewerAt ?? '') < 30 * 60_000) return 'recent_human_viewer';
+      if ([...tickets.values()].some(t => t.scope.key === s.key && t.expiresAt > Date.now())) return 'recent_ticket';
+      return null;
+    };
+    if (typeof expectedLastUsedAt !== 'string') return blocked('activity_changed');
+    let reason = check();
+    if (reason) return blocked(reason);
+    if (!(await runtimeStatus(s)).running) return { suspended: true };
+    if (fs.readdirSync(s.downloadsDir).some(name => name.endsWith('.crdownload'))) return blocked('download_in_progress');
+    const inspection = await inspectIdlePages(await browserSocketUrl(await cdpPort(s)));
+    if (!inspection.safe) return blocked(inspection.reason);
+    reason = check();
+    if (reason) return blocked(reason);
+    // The authenticated application has verified no active turn/command and
+    // unchanged activity. Old automation transports are not ownership leases.
+    purgeTickets(s);
+    for (const socket of agentConnections.get(s.key) ?? []) socket.terminate();
     await stopProfileLocked(s);
-    return { suspended: !(await runtimeStatus(s)).running };
+    return { suspended: !(await runtimeStatus(s)).running, reason: 'stop_unconfirmed' };
   });
 }
 
 async function statusProfile(s) {
   const state = await runtimeStatus(s);
-  return { active: state.running, status: state.status, profile: readMeta(s) };
+  return { active: state.running, status: state.status, profile: readMeta(s), connections: { agents: agentConnections.get(s.key)?.size ?? 0, viewers: cursorViewers.get(s.key)?.size ?? 0 } };
 }
 
 async function readBody(req) {
@@ -901,7 +921,7 @@ function ticketOrigin(req) {
 // No port is stored: the scope is the ticket's identity, and the port behind it
 // is resolved at use time so a recycled port cannot lead to another profile.
 function mintTicket(req, clientId, s, purpose) {
-  if (ticketPurpose(purpose) === 'viewer') writeMeta(s, { humanProtected: true });
+  if (ticketPurpose(purpose) === 'viewer') writeMeta(s, { humanProtected: false, lastViewerAt: new Date().toISOString() });
   const ticket = crypto.randomBytes(32).toString('base64url');
   const expiresAt = Date.now() + TICKET_MS;
   tickets.set(ticket, {
@@ -922,6 +942,24 @@ function mintTicket(req, clientId, s, purpose) {
   };
 }
 
+const admission = createAdmissionQueue({
+  waitMs: integer(process.env.VENEER_BROWSER_CAPACITY_WAIT_MS, 20_000, 100, 20_000),
+  isFull: error => error instanceof HttpError && error.status === 429,
+  fullError: () => new HttpError(429, 'Browser capacity is busy after waiting 20 seconds. Current work is protected; retry opening when a slot is available.'),
+});
+async function admit(req, res, s, attempt, existingAllowed = false) {
+  if (existingAllowed && (await runtimeStatus(s)).running) return serial('runtime-admission', attempt);
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableEnded) controller.abort(); };
+  res.once('close', cancel);
+  try { return await admission.run((deadline) => serial('runtime-admission', async () => {
+    if (Date.now() >= deadline) throw new HttpError(429, 'Browser capacity is busy.');
+    if (controller.signal.aborted) throw new HttpError(499, 'Browser request canceled.');
+    return attempt();
+  }), controller.signal); }
+  finally { res.off('close', cancel); }
+}
+
 async function apiRequest(req, res) {
   const url = new URL(req.url || '/', 'http://manager.local');
   if (url.pathname === '/health') {
@@ -929,6 +967,10 @@ async function apiRequest(req, res) {
     return;
   }
   const clientId = authenticate(req);
+  if (url.pathname === '/v1/capacity' && req.method === 'GET') {
+    send(res, 200, { active: await sessionRuntimeCount(), limit: MAX_ACTIVE, waiting: admission.depth });
+    return;
+  }
   const body = ['POST', 'PATCH'].includes(req.method || '') ? await readBody(req) : {};
   if (url.pathname === '/v1/profiles' && req.method === 'POST') {
     const projectId = safeId(body.projectId, 'project');
@@ -999,7 +1041,7 @@ async function apiRequest(req, res) {
     return;
   }
   if (req.method === 'POST' && action === 'start') {
-    const runtime = await serial('runtime-admission', () => startProfile(s));
+    const runtime = await admit(req, res, s, () => startProfile(s), true);
     send(res, 200, { ok: true, active: true, runtimeId: runtime.runtimeId, startedAt: new Date().toISOString() });
     return;
   }
@@ -1014,16 +1056,16 @@ async function apiRequest(req, res) {
     return;
   }
   if (req.method === 'POST' && action === 'ticket') {
-    const ticket = await serial('runtime-admission', async () => {
+    const ticket = await admit(req, res, s, async () => {
       await startProfile(s);
       return mintTicket(req, clientId, s, body.purpose);
-    });
+    }, true);
     send(res, 200, { ok: true, cdpUrl: ticket.cdpUrl, viewerUrl: ticket.viewerUrl, expiresAt: ticket.expiresAt });
     return;
   }
   if (req.method === 'POST' && action === 'open') {
     const cloneProfileId = safeId(body.cloneProfileId, 'clone profile');
-    const { opened, ticket } = await serial('runtime-admission', async () => {
+    const { opened, ticket } = await admit(req, res, s, async () => {
       const opened = await openProfile(clientId, s, cloneProfileId, body.name === undefined ? '' : safeName(body.name));
       return { opened, ticket: mintTicket(req, clientId, opened.scope, body.purpose) };
     });
@@ -1196,15 +1238,33 @@ function handleUpgrade(req, socket, head) {
       viewers.add(client);
       cursorViewers.set(ticket.scope.key, viewers);
     }
+    if (ticket.purpose === 'agent') {
+      const agents = agentConnections.get(ticket.scope.key) ?? new Set();
+      agents.add(client);
+      agentConnections.set(ticket.scope.key, agents);
+    }
     const cursorTracker = ticket.purpose === 'agent' ? createAgentCursorTracker() : null;
+    let alive = true;
+    client.on('pong', () => { alive = true; });
+    const heartbeat = setInterval(() => {
+      if (!alive) { client.terminate(); return; }
+      alive = false;
+      client.ping();
+    }, 30_000);
+    heartbeat.unref();
     let released = false;
     const release = () => {
       if (released) return;
       released = true;
+      clearInterval(heartbeat);
       const remaining = (liveConnections.get(ticket.scope.key) ?? 1) - 1;
       if (remaining > 0) liveConnections.set(ticket.scope.key, remaining);
       else liveConnections.delete(ticket.scope.key);
+      const agents = agentConnections.get(ticket.scope.key);
+      agents?.delete(client);
+      if (agents?.size === 0) agentConnections.delete(ticket.scope.key);
       if (ticket.purpose === 'viewer') {
+        try { if (readMeta(ticket.scope)) writeMeta(ticket.scope, { lastViewerAt: new Date().toISOString() }); } catch { /* profile already removed */ }
         const viewers = cursorViewers.get(ticket.scope.key);
         viewers?.delete(client);
         if (viewers?.size === 0) cursorViewers.delete(ticket.scope.key);

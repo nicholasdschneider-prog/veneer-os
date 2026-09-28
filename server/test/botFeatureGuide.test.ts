@@ -41,7 +41,7 @@ describe('living bot guide release contract', () => {
     expect(feature.agent).toContain('inspect_conversational_decision');
   });
   it('explains shared browser capacity to employees and resumed agents', () => {
-    const feature = botFeatureCatalog(Date.parse('2026-09-27')).features.find(f => f.id === 'browser')!;
+    const feature = botFeatureCatalog(Date.parse('2026-09-28')).features.find(f => f.id === 'browser')!;
     expect(feature.isNew).toBe(true);
     expect(feature.limits).toContain('Five active browsers');
     expect(feature.agent).toContain('Never stop another chat');

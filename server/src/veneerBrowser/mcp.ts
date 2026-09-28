@@ -69,6 +69,7 @@ const TOOLS: ToolDef[] = [
   { name: 'status', description: 'Get safe lifecycle status for the selected project browser profile. When the browser is active, the result also lists every tab.', inputSchema: EMPTY },
   { name: 'update_profile', description: 'Replace the selected saved profile with this working copy. Use only after the user or agent intentionally completed a new login. Veneer does not detect logins automatically, and it blocks an older copy from replacing a newer profile.', inputSchema: EMPTY },
   { name: 'save_as', description: 'Save this working copy as an additional reusable profile. Use only when the user explicitly asks to keep a separate login.', inputSchema: { type: 'object', properties: { name: { type: 'string', minLength: 1, maxLength: 100 } }, required: ['name'], additionalProperties: false } },
+  { name: 'keep_open', description: 'Protect this chat working copy from automatic idle suspension while an unfinished browser workflow must stay in memory. Set active false when that workflow can resume from saved files. This does not approve or repeat a business action, clear an uncertain action, or stop another chat.', inputSchema: { type: 'object', properties: { active: { type: 'boolean' } }, required: ['active'], additionalProperties: false } },
   { name: 'stop', description: 'Stop and delete this chat working copy when the browser task is complete. Changes are discarded unless update_profile or save_as was called first.', inputSchema: EMPTY },
 ];
 
@@ -141,6 +142,8 @@ function sessionText(view: VeneerBrowserSessionView, captureActive = false): str
     `Veneer Browser is ${view.active ? 'active' : view.status}.`,
     `Profile: ${view.profileName ?? 'none'}.`,
     `Advanced capture: ${captureActive ? 'on' : 'off'}.`,
+    ...(view.capacity ? [`Browser slots: ${view.capacity.active}/${view.capacity.limit}; waiting: ${view.capacity.waiting}.`] : []),
+    ...(view.temporaryClone ? [`Keep open: ${view.keepOpen ? 'on' : 'off'}.`, ...(view.retentionReason ? [`Idle status: ${view.retentionReason}.`] : [])] : []),
     view.temporaryClone
       ? view.fresh
         ? 'This is a temporary signed-out browser. Call save_as only if the user explicitly asks for a new saved login. Otherwise, call stop to delete it.'
@@ -805,6 +808,10 @@ export async function handleVeneerBrowserMcp(
     } else if (name === 'save_as') {
       const saved = await manager.saveConversationAsProfile(user.id, conversationId, args.name);
       result = textResult(`Saved this working copy as browser profile “${saved.profileName ?? 'profile'}”.`);
+    } else if (name === 'keep_open') {
+      if (typeof args.active !== 'boolean') throw new Error('Choose Keep open on or off.');
+      await manager.setKeepOpen(user.id, conversationId, args.active);
+      result = textResult(args.active ? 'Keep open is on for this working copy. Release it when the workflow no longer needs to stay in memory.' : 'Keep open is off. Idle suspension still requires the safety checks to pass.');
     } else if (name === 'stop') {
       const stopped = await manager.stopConversation(user.id, conversationId);
       result = textResult(`${session.temporaryClone ? 'The temporary browser copy was stopped and deleted. Its unsaved changes were discarded.\n' : ''}${sessionText(stopped, manager.captureGrantActive(conversationId))}`);

@@ -549,7 +549,7 @@ describe('Veneer Browser manager', () => {
     expect(running.has(id)).toBe(true);
   });
 
-  it.each(['pending', 'capture', 'viewer', 'mutation', 'fresh', 'recent', 'unknown'])('protects %s sessions from automatic suspension', async (protection) => {
+  it.each(['pending', 'capture', 'mutation', 'fresh', 'recent', 'unknown'])('protects %s sessions from automatic suspension', async (protection) => {
     await idleReadOnlyCopy();
     if (protection === 'pending') db.prepare("INSERT INTO pending_turns(conversation_id,prompt) VALUES('conv-1','working')").run();
     if (protection === 'capture') manager.setCaptureGrant(1, 'conv-1', true);
@@ -565,6 +565,66 @@ describe('Veneer Browser manager', () => {
     await manager.reconcile();
     expect(closeBrowserSession).not.toHaveBeenCalled();
     expect(remote.suspend).not.toHaveBeenCalled();
+  });
+
+  it('does not pin successful interaction and past viewing history forever', async () => {
+    const id = await idleReadOnlyCopy();
+    await manager.runCommand(1, 'conv-1', ['click', '@e1']);
+    await manager.viewerTicketForConversation(1, 'conv-1');
+    db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2000-01-01T00:00:00Z'").run();
+    await manager.reconcile();
+    expect(remote.suspend).toHaveBeenCalled();
+    expect(cloneId('conv-1')).toBe(id);
+    expect(remote.delete).not.toHaveBeenCalled();
+  });
+
+  it('persists explicit Keep open, enforces access, and releases it for inspection', async () => {
+    await idleReadOnlyCopy();
+    await expect(manager.setKeepOpen(2, 'conv-1', true)).rejects.toThrow();
+    await manager.setKeepOpen(1, 'conv-1', true);
+    await manager.reconcile();
+    expect(remote.suspend).not.toHaveBeenCalled();
+    expect((await manager.conversationSession(1, 'conv-1')).keepOpen).toBe(true);
+    await manager.setKeepOpen(1, 'conv-1', false);
+    await manager.reconcile();
+    expect(remote.suspend).toHaveBeenCalled();
+  });
+
+  it('does not hide a failed daemon close or let it permanently prevent safe remote suspension', async () => {
+    await idleReadOnlyCopy();
+    closeBrowserSession.mockRejectedValue(new Error('daemon unreachable'));
+    remote.suspend.mockResolvedValueOnce({ suspended: false, reason: 'unfinished_page' });
+    await manager.reconcile();
+    expect((await manager.conversationSession(1, 'conv-1')).retentionReason).toBe('unfinished_page');
+    await manager.reconcile();
+    expect(remote.suspend).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps uncertain mutations protected after subsequent read-only work', async () => {
+    await idleReadOnlyCopy();
+    runBrowser.mockResolvedValueOnce({ args: ['click'], stdout: '', stderr: 'timeout', exitCode: 1 });
+    await manager.runCommand(1, 'conv-1', ['click', '@e1']);
+    await manager.runCommand(1, 'conv-1', ['snapshot']);
+    db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2000-01-01T00:00:00Z'").run();
+    await manager.reconcile();
+    expect(remote.suspend).not.toHaveBeenCalled();
+    expect((await manager.conversationSession(1, 'conv-1')).retentionReason).toBe('uncertain_action');
+  });
+
+  it('checks idle capacity before opening for a different project without deadlocking', async () => {
+    await idleReadOnlyCopy();
+    await manager.openConversation(1, 'conv-other-project');
+    expect(remote.suspend).toHaveBeenCalled();
+    expect(remote.delete).not.toHaveBeenCalled();
+  });
+
+  it('shows occupant names only for chats the caller can access', async () => {
+    remote.capacity = vi.fn(async () => ({ active: 2, limit: 5, waiting: 0 }));
+    await manager.openConversation(1, 'conv-1');
+    await manager.openConversation(2, 'conv-other-user');
+    const view = await manager.conversationSession(1, 'conv-1');
+    expect(view.capacity?.active).toBe(2);
+    expect(view.capacity?.occupants?.map(o => o.conversationId)).toEqual(['conv-1']);
   });
 
   it('releases read-only public browsing when the project has no saved profile', async () => {

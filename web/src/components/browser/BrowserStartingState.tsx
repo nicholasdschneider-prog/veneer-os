@@ -5,9 +5,9 @@ import { SharpOrb } from '../AgentActivityOrb';
 
 /** What the browser is doing while it starts, in the order it happens. */
 export const BROWSER_STARTING_PHASES = [
-  'Warming up Chrome',
-  'Loading your saved logins',
-  'Connecting the live view',
+  'Checking browser availability',
+  'Existing work stays protected',
+  'Connecting when a slot is ready',
 ] as const;
 
 const PHASE_MS = 2200;

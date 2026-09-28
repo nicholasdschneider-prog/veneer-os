@@ -152,7 +152,7 @@ export function createIpcServer({
       });
       return;
     }
-    void handleRpc(req, res).catch((err: Error) => sendJson(res, 500, { error: err.message }));
+    void handleRpc(req, res).catch((err: Error) => sendJson(res, /^Browser capacity is busy/.test(err.message) ? 429 : 500, { error: err.message }));
   });
 
   async function handleRpc(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -483,6 +483,10 @@ export function createIpcServer({
         return void sendJson(res, 200, await veneerBrowser.viewerTicketForConversation(
           Number(body.userId), String(body.convId ?? ''),
         ));
+      case '/rpc/veneerBrowserConversationKeepOpen':
+        if (typeof body.active !== 'boolean') return void sendJson(res, 400, { error: 'Choose Keep open on or off.' });
+        await veneerBrowser.setKeepOpen(Number(body.userId), String(body.convId ?? ''), body.active);
+        return void sendJson(res, 200, { ok: true });
       // Advanced capture reaches the runner only from the authenticated user's
       // HTTP route; the MCP endpoint above has no equivalent.
       case '/rpc/veneerBrowserConversationCaptureGet':
