@@ -81,7 +81,7 @@ Root typecheck and 191 scoped tests passed. The expanded HTTP fixture initially 
 
 ![Restricted employee mobile guide](./build408-guide-employee-mobile.png)
 
-Full root suite passed: 2,602 server tests (5 existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Production build passed with the existing Vite bundle-size advisory. No restart occurred before all checks passed. Runtime verification follows deployment.
+Full root suite passed: 2,602 server tests (5 existing skips), 907 web tests, 42 browser-manager tests and 29 installer tests. Production build passed with the existing Vite bundle-size advisory. No restart occurred before all checks passed. Implementation `d76791a120e74b70aa29a492dbb21d01c644b844` was committed and pushed to origin main. The supported restart replaced web, app-runner, terminal, browser-manager and runner at 10:24:04–05 Eastern on September 28. The runner restart interrupted this turn after the first four services reported healthy; resumption verified all five replacement process start times, the built boundary-denial/catalog strings and the supported health check. Local web/runner are healthy; public front door returns HTTP 302; the tunnel has four active edge connections. No second restart was needed. Authenticated public chat delivery, actual dedicated source trust and vendor/browser execution remain unverified. No business approval, cart, purchase, source write or operational test occurred.
 
 ## Changed files
 

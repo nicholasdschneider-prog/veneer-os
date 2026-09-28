@@ -1,6 +1,6 @@
 # Purchase timing verifier — builds #406 and #408
 
-**Current #408 update:** new timing grants and execution-check success are disabled at the native service boundary because no enforced browser purchase transport exists. Original approval remains untouched. See the [#408 evidence, coordinated design and verification](./build408.md). The #406 validation below is historical and does not certify browser submission.
+**Current #408 update (deployed `d76791a`, September 28 at 10:24 Eastern):** new timing grants and execution-check success are disabled at the native service boundary because no enforced browser purchase transport exists. Original approval remains untouched. See the [#408 evidence, coordinated design and verification](./build408.md). The #406 validation below is historical and does not certify browser submission.
 
 Implementation is deployed in commit `faee01b`, pushed to `origin main`. This is a dedicated native verifier and owner setup flow, not an activated OrderOps consumer or an approval of the reference purchase.
 
