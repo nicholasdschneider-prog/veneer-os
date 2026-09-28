@@ -2,7 +2,15 @@
 
 September 28, 2026. Continues BUILD425/250. Root typecheck, 118 scoped tests and full npm test passed: 2,686 server tests
 (five existing skips), 909 web, 54 browser-manager and 29 installer tests.
-Production build/deployment verification follows below; live registry activation is separate.
+Root production build passed (existing Vite large-chunk warning only). Implementation
+**6f908d0** was committed and pushed to origin main before detached root restart.
+All five services returned HTTP200 at **21:00:37.873Z** on Node24.21.0; all **4,534**
+built artifact hashes matched their pre-restart manifest. Public front door302 and four
+tunnel edge connections do not prove authenticated chat or customer delivery.
+No schema change was needed. Names-only configuration check confirms the native registry
+setting remains absent. Live registry activation is separate.
+
+[Nonsecret runtime receipt](./build428-runtime.json).
 
 Native resolver now uses only:
 
@@ -52,3 +60,5 @@ unbound-draft retrofit; stale Brian v3 remains unusable.
 - [Guide](/Users/archerclawdington/veneer-os/docs/bot-feature-guide.md)
 - [Current contract](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/resolver-contract.md)
 - [This receipt](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/build428.md)
+
+- [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/approved-case-ticket-binding/build428-runtime.json)

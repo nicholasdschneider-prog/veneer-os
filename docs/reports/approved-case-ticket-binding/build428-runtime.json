@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-09-28T21:00:37.873Z",
+  "implementation": "6f908d0",
+  "node": "v24.21.0",
+  "checks": [
+    {
+      "service": "web",
+      "status": 200
+    },
+    {
+      "service": "runner",
+      "status": 200
+    },
+    {
+      "service": "app-runner",
+      "status": 200
+    },
+    {
+      "service": "terminal",
+      "status": 200
+    },
+    {
+      "service": "browser-manager",
+      "status": 200
+    }
+  ],
+  "verified_artifact_count": 4534,
+  "artifacts": {
+    "server/dist/bots/approvedCaseResolver.js": "bf6c844d53dd88ded5dab2db1ab2f86bf529b8c79ca19bb552a8bc4cc82c36cd",
+    "server/dist/featureGuide/catalog.js": "8e9186ce952c3fcd58ee635a57dc88d12ac2b3f35ea9458af4f2537207abd9ef"
+  },
+  "registry_config_name_present": false,
+  "live_source_activation": "Not performed; scoped native-server credential-use permission remains pending",
+  "customer_actions": "None"
+}
