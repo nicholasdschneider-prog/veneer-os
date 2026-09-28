@@ -1,3 +1,4 @@
+import { PurchaseTimingSetup } from './screens/PurchaseTimingSetup';
 import { RoutineScopeReview } from './screens/RoutineScopeReview';
 import { RoutineOwnerSetup } from './screens/RoutineOwnerSetup';
 import { FocusedWorkspace } from './screens/FocusedWorkspace';
@@ -340,6 +341,7 @@ export function App() {
     <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><ReturnOwnerSetup key="candidate" candidate /></NavShell>
   );
 
+  if (routePath === '#/purchase-timing-setup') return <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><PurchaseTimingSetup /></NavShell>;
   if (routePath === '#/return-service-setup') return (
     <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
       <ReturnOwnerSetup key="return" />

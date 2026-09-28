@@ -19,6 +19,8 @@ const EnvSchema = z.object({
   VP_ROUTINE_VERIFIER_CLIENT_ID: z.string().trim().optional(),
   VP_AUTOSHIP_CANDIDATE_CF_AUD: z.string().trim().optional(),
   VP_AUTOSHIP_CANDIDATE_CLIENT_ID: z.string().trim().optional(),
+  VP_PURCHASE_TIMING_CF_AUD: z.string().trim().optional(),
+  VP_PURCHASE_TIMING_CLIENT_ID: z.string().trim().optional(),
   VP_RETURN_VERIFIER_CF_AUD: z.string().trim().optional(),
   VP_RETURN_VERIFIER_CLIENT_ID: z.string().trim().optional(),
   VP_AUTOSHIP_VERIFIER_CF_AUD: z.string().trim().optional(),
@@ -137,6 +139,8 @@ export interface Config {
   routineVerifierClientId?: string | null;
   autoshipCandidateCfAud?: string | null;
   autoshipCandidateClientId?: string | null;
+  purchaseTimingCfAud?: string | null;
+  purchaseTimingClientId?: string | null;
   returnVerifierCfAud?: string | null;
   returnVerifierClientId?: string | null;
   autoshipVerifierCfAud: string | null;
@@ -269,6 +273,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     routineVerifierClientId: parsed.VP_ROUTINE_VERIFIER_CLIENT_ID || null,
     autoshipCandidateCfAud: parsed.VP_AUTOSHIP_CANDIDATE_CF_AUD || null,
     autoshipCandidateClientId: parsed.VP_AUTOSHIP_CANDIDATE_CLIENT_ID || null,
+    purchaseTimingCfAud: parsed.VP_PURCHASE_TIMING_CF_AUD || null,
+    purchaseTimingClientId: parsed.VP_PURCHASE_TIMING_CLIENT_ID || null,
     returnVerifierCfAud: parsed.VP_RETURN_VERIFIER_CF_AUD || null,
     returnVerifierClientId: parsed.VP_RETURN_VERIFIER_CLIENT_ID || null,
     autoshipVerifierCfAud: parsed.VP_AUTOSHIP_VERIFIER_CF_AUD || null,

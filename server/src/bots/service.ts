@@ -1,3 +1,4 @@
+import { timingProposalSchema, timingHumanContext } from './purchaseTimingSchema.js';
 import { withEditedReply } from './replyEdit.js';
 import { approvedMessageSchema } from './draftPayload.js';
 import crypto from 'node:crypto';
@@ -66,6 +67,7 @@ export const proposalSchema = z
     team: z.string().max(160).default(''),
     deadline: z.string().datetime({ offset: true }).nullable().default(null),
     message_delivery: approvedMessageSchema.optional(),
+    purchase_timing: timingProposalSchema.optional(),
     images: z.array(decisionImageSchema).max(12).optional(),
     evidence: z.array(evidenceSchema).max(30).default([]),
     blocked_action: text,
@@ -316,6 +318,20 @@ export function createBotService(db: Database.Database) {
       .prepare('SELECT * FROM users WHERE id=?')
       .get(c.user_id) as UserRow;
     evidenceAllowed({ user: botOwner }, p);
+    if(p.purchase_timing){
+      const timing=p.purchase_timing;
+      const source=db.prepare(`SELECT c.request_json,c.received_at,t.executor_id,t.business_id,t.owner_id,
+        EXISTS(SELECT 1 FROM purchase_timing_revocations r WHERE r.trust_id=t.id) AS revoked
+        FROM purchase_timing_captures c JOIN purchase_timing_trust t ON t.id=c.trust_id WHERE c.id=?`).get(timing.capture_id) as {request_json:string;received_at:string;executor_id:string;business_id:string;owner_id:number;revoked:number}|undefined;
+      if(!source || source.revoked || source.executor_id!==botId || source.business_id!==c.business_team_id || source.owner_id!==c.user_id || canonicalSha256(JSON.parse(source.request_json).scope)!==canonicalSha256(timing.scope))
+        throw new BotError(409,'Purchase timing requires unchanged authenticated source evidence for this executor');
+      const prior=existing?JSON.parse(existing.proposal_json).purchase_timing:null;
+      if(!prior || canonicalSha256(prior)!==canonicalSha256(timing)){
+        if(Date.now()-Date.parse(source.received_at)>30000 || Date.parse(timing.scope.authorization_expires_at)<=Date.now())
+          throw new BotError(409,'Fresh purchase timing source evidence required before raising or revising scope');
+      }
+    }
+
   }
   function event(
     actor: Actor,
@@ -712,6 +728,7 @@ export function createBotService(db: Database.Database) {
           version,
         );
         const ev = event(actor, d, 'answered', payload, key);
+        if(JSON.parse(d.proposal_json).purchase_timing) event(actor,d,'purchase_timing_context',{answer_event_id:ev,context:timingHumanContext(db,d.conversation_id,d.id)},key+':timing-context');
         wake(actor, d, ev, 'answer', payload);
         return view(actor, read(actor, id));
       })();

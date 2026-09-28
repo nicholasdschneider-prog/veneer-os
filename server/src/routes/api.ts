@@ -1,3 +1,4 @@
+import { purchaseTimingSetupRoutes } from '../bots/purchaseTimingRoutes.js';
 import { captureHumanMessage } from '../bots/humanMessages.js';
 import { coordinationLane } from '../coordination/store.js';
 import { createCoordinationRouter, sendCoordination } from '../coordination/routes.js';
@@ -872,6 +873,7 @@ export function createApiRouter(ctx: AppContext): Router {
   router.use(createCoordinationRouter(ctx));
   router.use('/live-voice', createLiveVoiceRouter(ctx));
   router.use('/bot-workflows', createBotWorkflowsRouter(ctx));
+  router.use('/purchase-timing/setup', purchaseTimingSetupRoutes(ctx));
   router.use('/bots', createBotsRouter(ctx));
   router.use('/bot-communication', createCommunicationRouter(ctx));
   router.use('/team-rooms', createRoomsRouter(ctx));

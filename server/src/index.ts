@@ -1,3 +1,4 @@
+import { purchaseTimingVerifierRoutes } from './bots/purchaseTimingRoutes.js';
 import { autoshipCandidateRoutes } from './botWorkflows/autoshipCandidateRoutes.js';
 import { routineVerifierRoutes } from './bots/routineVerifierRoutes.js';
 import { returnExceptionRoutes } from './bots/returnExceptionRoutes.js';
@@ -204,6 +205,7 @@ app.use('/webhooks/composio', createComposioWebhookRouter(ctx));
 // service JWT is accepted here and nowhere else. Disabled (404) unless configured.
 app.use('/api/autoship/candidates', autoshipCandidateRoutes(ctx));
 app.use('/api/routine-message/verifier', routineVerifierRoutes(ctx));
+app.use('/api/purchase-timing/verifier', purchaseTimingVerifierRoutes(ctx));
 app.use('/api/return-exception/verifier', returnExceptionRoutes(ctx));
 app.use('/api/autoship/verifier', createAutoshipVerifierRouter({ db, config }));
 app.use('/api', createApiRouter(ctx));

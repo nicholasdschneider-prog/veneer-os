@@ -96,6 +96,10 @@ try {
     await page.getByRole('heading', {name:'One queue for raised hands',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /Progress & history/);
     await page.screenshot({path:output + '/hands-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
+    await page.getByRole('searchbox').fill('Connect purchase timing verification');
+    await page.getByRole('heading', {name:'Connect purchase timing verification',exact:true}).waitFor();
+    assert.match(await page.locator('#feature-purchase-timing-verifier').innerText(), /Disabled until separate Cloudflare Access/);
+    await page.screenshot({path:output + '/timing-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('Approve an exact proposal in conversation');
     await page.getByRole('heading', {name:'Approve an exact proposal in conversation',exact:true}).waitFor();
     assert.match(await page.locator('#feature-conversational-consent').innerText(), /second approval click/);

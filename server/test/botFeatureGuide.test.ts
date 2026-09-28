@@ -4,6 +4,14 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('teaches dedicated timing setup limits to employees and resumed bots',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='purchase-timing-verifier')!;
+    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('/#/purchase-timing-setup');
+    expect(f.limits).toContain('Disabled until');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    expect(employeeRouteAllowed('POST','/purchase-timing/setup/confirm')).toBe(false);
+    expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated:false})).toContain(f.agent);
+  });
   it('delivers conversational consent guidance to employees and resumed bots',()=>{
     const feature=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='conversational-consent')!;
     expect(feature.isNew).toBe(true);

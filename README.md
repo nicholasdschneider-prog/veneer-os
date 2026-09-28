@@ -114,6 +114,14 @@ has no `EnvironmentFile`.
 The server refuses to start in `cloudflare` mode without both Cloudflare values: it fails closed
 rather than silently granting owner access to every caller.
 
+### Purchase timing verification
+
+Optional `VP_PURCHASE_TIMING_CF_AUD` and `VP_PURCHASE_TIMING_CLIENT_ID` configure a
+separate purchase-timing service identity. Without both, the dedicated verifier
+rejects every request. Never reuse Return, Routine, AutoShip or candidate service
+credentials. Actual owner enrollment and source consumer acceptance are separate
+prerequisites; see [the exact contract and setup flow](docs/purchase-timing-verifier.md).
+
 ### Core
 
 | var | default | notes |

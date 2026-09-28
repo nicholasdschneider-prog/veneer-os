@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'purchase-timing-verifier',title:'Connect purchase timing verification',category:'Daily work',updated:'2026-09-28',
+    audience:'Current business owner, original purchasing bot, and dedicated source operator',
+    summary:'Connect independently authenticated timing verification without turning a bot receipt into purchase authority.',
+    steps:['Platform Dev and the source operator first configure a separate purchase-timing service identity and verify the exact source account, principal and executor mapping.', 'The current business owner opens /#/purchase-timing-setup, reviews the supplied nonsecret source details, and confirms the connection. Keep the stable registration key; check status read-only after an uncertain result.', 'The source operator integrates and verifies the dedicated contract under existing order/action locks. Only a genuinely approved, running native decision with structured source evidence can qualify; all other purchasing checks remain.'],
+    example:'Show whether purchase timing verification is configured and which owner setup or source acceptance step is still missing. Do not place an order.',
+    limits:'Disabled until separate Cloudflare Access audience/client configuration, actual owner enrollment and verified source consumer integration. Return, routine-message, AutoShip and candidate credentials cannot be reused. Setup is not business approval. Existing prose-only decisions are unsupported: do not retrofit a live proposal, infer a material mapping or request a duplicate approval as a workaround. Native, source-scope and source-material hashes are different namespaces. No live purchase was tested by this release.',
+    announcement:'A dedicated timing verifier and owner setup flow are available; production use still requires genuine trust and source integration acceptance.',
+    agent:'Use /#/purchase-timing-setup only for the actual signed-in business owner after technical setup and source custody evidence exist. Never enroll as owner or borrow verifier credentials. New purchase_timing proposals require a retained authenticated source capture and exact structured scope before human approval; no prose reconstruction or retrofit of existing approvals. Dedicated /api/purchase-timing/verifier is a service-only interface, not a bot tool. Verify approved-running state, current approver/evidence access, exact executor, native version/hash, distinct authoritative source material and human-context watermark. Source claims are single use with a nonrenewable five-second window; a final read-only execution check must run under source order/action locks with fresh source checks. Lost claim responses are UNKNOWN; same-intent reconciliation always execute=false and never permits another effect or key. Preserve >7-day blocks until both native trust and source integration are accepted. Report precise setup/schema blockers without duplicate business approval clicks.',
+  },
+  {
     id:'conversational-consent',title:'Approve an exact proposal in conversation',category:'Daily work',updated:'2026-09-28',
     audience:'Authorized human approvers and the original decision-owning bot',
     summary:'Give a clear answer in a result reply or the owning bot’s chat without a second approval click.',
