@@ -62,7 +62,31 @@ cross-project admission, FIFO waiting/cancellation, warm limits, viewer expiry,
 protected workflows, uncertain effects, retained working copies, owner visibility,
 and employee/resumed-agent guide delivery. A real isolated Chrome test verified
 filled forms, hydrated values, shadow-root editors, and beforeunload detection.
-Production build and live deployment verification are recorded below when complete.
+Production build passed. Source commit `8628158` was pushed to origin main.
+All five services restarted through the supported script, with the runner last;
+local health checks passed. The tunnel had four active edge connections and the
+public front door returned HTTP 302. Those are connectivity checks, not proof of
+authenticated end-to-end chat delivery.
+
+At 20:52 UTC the deployed maintenance sweep recorded `unfinished_page` for Plaud,
+Grant, and Clara, and `uncertain_action` for Sage. These are conservative safety
+results, not a claim that their business tasks remain unfinished. No new automatic
+suspension was observed in this live sample: those four copies were protected.
+Their files were left intact. The new auto-suspension behavior was verified in
+isolated tests; the live Owen suspension at 20:29 predates this release.
+
+A normal browser status/open in this requesting chat successfully created and
+connected its temporary Default-profile copy. After read-only verification, only
+that verification copy was stopped/deleted, returning occupancy to four of five.
+At 20:53:47 UTC Henry’s original chat was opened through the normal authenticated
+runner browser operation after confirming the same requesting owner. It returned
+`active`, with a retained temporary copy and occupancy five of five. Henry’s copy
+was left available; no business action or uncertain mutation was replayed.
+
+Remaining operating limitation: all five slots are currently occupied by Henry
+and the four protected copies. Their owners should finish/reconcile protected
+workflows before releasing them. The release improves safe reclamation and
+visibility; it does not guarantee immediate admission during genuine saturation.
 
 ## Changed files
 
