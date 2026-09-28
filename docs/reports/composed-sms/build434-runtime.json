@@ -1,0 +1,44 @@
+{
+  "checked_at": "2026-09-28T22:55:03.184Z",
+  "implementation": "7d916e3bb40888f409d43979f151fcbf479f30d6",
+  "node": "v24.21.0",
+  "checks": [
+    {
+      "service": "web",
+      "status": 200
+    },
+    {
+      "service": "runner",
+      "status": 200
+    },
+    {
+      "service": "app-runner",
+      "status": 200
+    },
+    {
+      "service": "terminal",
+      "status": 200
+    },
+    {
+      "service": "browser-manager",
+      "status": 200
+    }
+  ],
+  "artifact_count": 4539,
+  "artifact_manifest_sha256": "535e81c2240f2647f700e89661e3511b2ccdab1b3873ac1f175513befeb0fc8a",
+  "all_artifacts_match": true,
+  "registry_sha256": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c",
+  "uid": 501,
+  "mode": "600",
+  "bytes": 3092,
+  "config_sole_path_verified": true,
+  "caller_count": 6,
+  "expires_at": "2026-10-28T21:04:00Z",
+  "email_registry_sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+  "compiled_employee_and_resumed_agent_guide": "configured custody and unchanged sender/dispatch limits present",
+  "credential_fetches": 0,
+  "source_case_probes": 0,
+  "business_mutations": 0,
+  "sender_verified": false,
+  "dispatch_enabled": false
+}

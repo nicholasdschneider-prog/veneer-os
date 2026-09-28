@@ -35,3 +35,9 @@ Root Node24 typecheck and56 focused tests passed, including protected mode/non-s
 - [Nonsecret manifest](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build434-manifest.json)
 
 - [Installation readback](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build434-installation.json)
+
+## Activation receipt
+
+Release **7d916e3bb40888f409d43979f151fcbf479f30d6** was committed and pushed to origin main. After all checks passed, the detached root Node24 `npm run restart` completed. At **2026-09-28T22:55:03.184Z**, all five services returned HTTP200 and all4,539 built artifacts matched the pre-restart inventory. The protected registry bytes, UID501/mode0600, sole config path, six callers and unchanged expiry were read back successfully. The original email registry hash is unchanged. Compiled employee/resumed-agent guidance reflects configured read custody and outstanding sender/dispatch limits.
+
+[Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build434-runtime.json). Public HTTP302/tunnel health is connectivity evidence only, not authenticated customer delivery. No credential retrieval, live case probe, authority creation, claim, send or business-record mutation was performed. Original Grant's inspection-only acceptance is the next step; this is not end-to-end SMS completion.
