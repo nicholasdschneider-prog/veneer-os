@@ -4,6 +4,14 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers general bot question guidance to employees and resumed bots', () => {
+    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='decision-review-context')!;
+    expect(f.isNew).toBe(true);
+    expect(f.steps.join(' ')).toContain('What the bot needs from you');
+    expect(f.agent).toContain('Omit refund when irrelevant');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for (const elevated of [false,true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+  });
   it('announces Sonnet 5.5 to employees and current agent instructions without migrating selections', () => {
     const feature = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'provider-model-updates')!;
     expect(feature.isNew).toBe(true);

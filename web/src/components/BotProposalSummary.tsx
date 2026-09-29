@@ -25,11 +25,15 @@ export function BotProposalSummary({ decision, showIdentifiers = false, compact 
   const summary = proposal.review_summary;
   const refund = summary?.refund;
   const draft = delivery?.payload.body ?? copy.draft;
+  // Legacy summaries required refund status even for operational work. Do not
+  // turn that forced unknown into a refund concern; retain all sourced history.
+  const showRefund = refund && (refund.status !== 'not_verified' || !!draft || !!summary?.request);
   const action = summary?.action_title || (copy.proposedAction.length <= 240 ? copy.proposedAction : 'Review the recommended action in Original details.');
   return <div className="space-y-4 text-base sm:text-sm [overflow-wrap:anywhere]">
     <dl className="space-y-2 rounded-xl bg-muted/40 p-3">
-      <div><dt className="font-medium">What does the customer want?</dt><dd className="text-muted-foreground">{summary?.customer_request || 'Not established in the supplied review context. See Original details.'}</dd></div>
-      <div><dt className="inline font-medium">Already refunded? </dt><dd className="inline font-semibold">{!refund || refund.status === 'not_verified' ? 'Not verified' : refund.status === 'none' ? 'NO' : refund.status === 'partial' ? 'PARTIAL' : 'YES'}</dd></div>
+      <div><dt className="font-medium">What the bot needs from you</dt><dd className="whitespace-pre-wrap text-muted-foreground">{summary?.request || proposal.question}</dd></div>
+      {summary?.customer_request && <div><dt className="font-medium">{draft || summary.request ? 'Customer request' : 'Context'}</dt><dd className="whitespace-pre-wrap text-muted-foreground">{summary.customer_request}</dd></div>}
+      {showRefund && <div><dt className="inline font-medium">Already refunded? </dt><dd className="inline font-semibold">{!refund || refund.status === 'not_verified' ? 'Not verified' : refund.status === 'none' ? 'NO' : refund.status === 'partial' ? 'PARTIAL' : 'YES'}</dd></div>}
       {refund && refund.status !== 'not_verified' && <div className="text-sm text-muted-foreground">
         {refund.status !== 'none' && <p>{refund.amount} {refund.currency} · Completed refund receipt: {refund.receipt}</p>}
         <p>Scope: {refund.scope}</p><p>Source: {refund.source}</p><p>Checked as of: <time dateTime={refund.as_of}>{refund.as_of}</time></p>

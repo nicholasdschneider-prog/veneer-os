@@ -9,7 +9,7 @@ const vite = await createServer({ root: `${root}web`, server: { host:'127.0.0.1'
 }] });
 await vite.listen();
 const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
-const output=`${root}docs/reports/decision-review`;
+const output=process.argv[3] ?? `${root}docs/reports/decision-review`;
 await mkdir(output,{recursive:true});
 try {
  for (const width of [320,375,414,768,1440]) for (const theme of ['light','dark']) {
@@ -30,7 +30,12 @@ try {
   await background.click();assert.equal(await background.getAttribute('aria-expanded'),'false');
   assert(await card.getByText('Not verified',{exact:true}).isVisible());
   for(const [status,label] of [['none','NO'],['partial','PARTIAL'],['full','YES']]) assert(await page.locator(`[data-case="${status}"]`).getByText(label,{exact:true}).isVisible());
-  assert(await page.locator('[data-case="legacy"]').getByText('Not verified',{exact:true}).isVisible());
+  assert.equal(await page.locator('[data-case="legacy"]').getByText('Already refunded?',{exact:true}).count(),0);
+  const operational=page.locator('[data-case="operational"]');
+  assert(await operational.getByText('How many units of SKU 2024039645 are physically at Nicks?',{exact:true}).isVisible());
+  assert.equal(await operational.getByText('Customer request',{exact:true}).count(),0);
+  assert.equal(await operational.getByText('Already refunded?',{exact:true}).count(),0);
+  assert(await page.locator('[data-case="action"]').getByText('Context',{exact:true}).isVisible());
   const reply=card.getByRole('region',{name:'Proposed customer reply'});
   assert(await reply.isVisible());
   assert((await reply.boundingBox()).y < (await background.boundingBox()).y);

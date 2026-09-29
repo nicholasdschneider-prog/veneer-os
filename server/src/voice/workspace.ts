@@ -240,6 +240,7 @@ ${body}`;
       handler: d.handler_name, handlingRevision: d.handling_revision, sharedQueue: d.shared_queue,
       order: d.order_reference,
       actionTitle: clip(d.proposal.review_summary?.action_title ?? '', 160),
+      request: clip(d.proposal.review_summary?.request ?? d.proposal.question, 600),
       customerRequest: clip(d.proposal.review_summary?.customer_request ?? '', 300),
       question: clip(d.proposal.question, 2000), recommendation: clip(d.proposal.recommendation, 2000),
       consequence: clip(d.proposal.consequence, 1000), blockedAction: clip(d.proposal.blocked_action, 1000),

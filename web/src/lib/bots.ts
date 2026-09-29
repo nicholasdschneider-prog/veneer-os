@@ -16,8 +16,8 @@ export const defaultDecisionChoices: NonNullable<BotProposal['choices']> = [
 ];
 export interface BotProposal {
   review_summary?: {
-    action_title: string; customer_request: string; background: string[];
-    refund: { status: 'not_verified' } | { status: 'none'; source: string; as_of: string; scope: string; evidence_kind: 'complete_refund_history' } | { status: 'partial' | 'full'; source: string; as_of: string; scope: string; evidence_kind: 'completed_refund'; receipt: string; amount: number; currency: string };
+    action_title: string; request?: string; customer_request?: string; background: string[];
+    refund?: { status: 'not_verified' } | { status: 'none'; source: string; as_of: string; scope: string; evidence_kind: 'complete_refund_history' } | { status: 'partial' | 'full'; source: string; as_of: string; scope: string; evidence_kind: 'completed_refund'; receipt: string; amount: number; currency: string };
   };
   choices?: { id: string; label: string; description?: string; action: string }[];
   question: string;

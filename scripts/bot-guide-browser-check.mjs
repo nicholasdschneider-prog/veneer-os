@@ -18,7 +18,7 @@ try {
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     let failGuide = false;
-    let catalog = botFeatureCatalog(Date.parse('2026-09-28T12:00:00Z'));
+    let catalog = botFeatureCatalog(Date.parse('2026-09-29T12:00:00Z'));
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/bot-workflows/guide') return route.fulfill({ status: failGuide ? 503 : 200, json: failGuide ? { error: 'Unavailable' } : catalog });
@@ -43,6 +43,12 @@ try {
     assert.equal(await page.getByRole('button', { name: /^New features/ }).getAttribute('aria-pressed'), 'true');
     await page.getByRole('button', { name: 'All features', exact: true }).click();
     await page.getByRole('heading', { name: 'Talk with your bot', exact: true }).waitFor();
+    await page.getByRole('searchbox').fill('See what the bot needs from you');
+    await page.getByRole('heading', {name:'See what the bot needs from you',exact:true}).waitFor();
+    assert.match(await page.locator('article').innerText(), /What the bot needs from you/);
+    assert.match(await page.locator('article').innerText(), /missing refund section does not mean no refunds/);
+    await page.getByRole('button', {name:'Copy example for See what the bot needs from you'}).click();
+    assert.match(await page.evaluate(() => navigator.clipboard.readText()), /physical stock for AutoShip/);
     await page.getByRole('searchbox').fill('Save reusable instructions');
     await page.getByRole('heading', {name:'Save reusable instructions',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /without turning ordinary training into a software build/);
@@ -81,7 +87,7 @@ try {
     await page.getByRole('searchbox').fill('Authorize routine product-label photo requests');
     await page.getByRole('heading', {name:'Authorize routine product-label photo requests',exact:true}).waitFor();
     assert.match(await page.locator('article').innerText(), /routine-reply-setup/);
-    assert.match(await page.locator('article').innerText(), /Registration does not prove source activation or customer delivery/);
+    assert.match(await page.locator('article').innerText(), /Nothing here authorizes refunds, replacements, tracking replies, SMS or any other wording/);
     await page.screenshot({path:output + '/routine-setup-' + (restricted ? 'employee-mobile' : 'desktop') + '.png',fullPage:true});
     await page.getByRole('searchbox').fill('Review and hand off the cases covered by a hold');
     await page.getByRole('heading', {name:'Review and hand off the cases covered by a hold',exact:true}).waitFor();

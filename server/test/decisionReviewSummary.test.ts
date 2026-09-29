@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { proposalInputSchema, reviewSummarySchema } from '../src/bots/service.js';
 const base = { action_title:'Send Scott a factual update',customer_request:'Customer wants the shades',background:['Vendor acceptance is unconfirmed'] };
 describe('grounded decision review summary', () => {
+ it('accepts operational summaries without inventing customer or refund context', () => {
+  const summary={action_title:'Confirm physical stock',request:'How many units are at Nicks?',background:[]};
+  expect(reviewSummarySchema.parse(summary)).toEqual(summary);
+  expect(reviewSummarySchema.safeParse({...summary,request:' '}).success).toBe(false);
+  expect(reviewSummarySchema.safeParse({...summary,request:'x'.repeat(601)}).success).toBe(false);
+ });
  it('defaults through omission for legacy proposals without rewriting their question', () => {
   const raw={question:'$0 new action',recommendation:'Update',consequence:'No refund authorized',assignee_id:1,blocked_action:'Exact conditions'};
   expect(proposalInputSchema.parse(raw)).toMatchObject(raw);

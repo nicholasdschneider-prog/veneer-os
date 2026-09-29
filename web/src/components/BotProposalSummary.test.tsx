@@ -40,7 +40,7 @@ describe('human decision review', () => {
     expect(html).toContain(decision.proposal.recommendation);
     expect(html).toContain(decision.proposal.blocked_action);
     expect(html).not.toContain('Proposed customer reply');
-    expect(html).toContain('Not verified');
+    expect(html).not.toContain('Already refunded?');
     expect(html).not.toContain('line-clamp');
   });
 
@@ -48,12 +48,43 @@ describe('human decision review', () => {
     const refund = status === 'not_verified' ? {status} : { status, source: 'Synthetic ledger receipt', as_of:'2026-09-23T12:00:00Z', scope:'This order', evidence_kind: status === 'none' ? 'complete_refund_history' : 'completed_refund', receipt:'receipt-1', amount:12.50,currency:'USD' };
     const decision={proposal:{question:'$0 new action',recommendation:'Long background',consequence:'No new refund authority',blocked_action:'EXACT DRAFT: Exact reply',review_summary:{action_title:'Send a factual update',customer_request:'Customer wants a delivery update',background:['Shipment not confirmed'],refund}}} as BotDecision;
     const html=renderToStaticMarkup(<BotProposalSummary decision={decision} />);
-    expect(html).toContain('What does the customer want?');
+    expect(html).toContain('What the bot needs from you');
+    expect(html).toContain('Customer request');
     expect(html).toContain('Already refunded?');
     expect(html).toContain({none:'NO',partial:'PARTIAL',full:'YES',not_verified:'Not verified'}[status]);
     expect(html).not.toContain('Shipment not confirmed');
     if(status!=='not_verified') expect(html).toContain('Synthetic ledger receipt');
     expect(html.match(/Exact reply/g)).toHaveLength(1);
+  });
+
+  it('shows an operational request without customer or refund placeholders', () => {
+    const decision = {proposal:{question:'Confirm physical stock?', recommendation:'Check SKU 2024039645.', consequence:'AutoShip waits for confirmation.', blocked_action:'Recheck stock before queueing.', review_summary:{action_title:'Confirm physical stock', request:'How many units of SKU 2024039645 are physically at Nicks?', background:[]}}} as unknown as BotDecision;
+    const before = JSON.stringify(decision);
+    const html = renderToStaticMarkup(<BotProposalSummary decision={decision} />);
+    expect(html).toContain('How many units of SKU 2024039645');
+    expect(html).not.toContain('Customer request');
+    expect(html).not.toContain('Already refunded?');
+    expect(html).not.toContain('Not established');
+    expect(JSON.stringify(decision)).toBe(before);
+  });
+  it('uses the original legacy question and preserves internal context without customer labels', () => {
+    const decision = {proposal:{question:'Which archive should we inspect?',recommendation:'Identify the original archive.',consequence:'No restore authorized.',blocked_action:'Inspect only.',review_summary:{action_title:'Identify archive',customer_request:'Nora needs delivery evidence.',background:[],refund:{status:'not_verified'}}}} as unknown as BotDecision;
+    const html = renderToStaticMarkup(<BotProposalSummary decision={decision} />);
+    expect(html).toContain('Which archive should we inspect?');
+    expect(html).toContain('Context');
+    expect(html).toContain('Nora needs delivery evidence.');
+    expect(html).not.toContain('Customer request');
+    expect(html).not.toContain('Already refunded?');
+    delete decision.proposal.review_summary;
+    const legacy = renderToStaticMarkup(<BotProposalSummary decision={decision} />);
+    expect(legacy).toContain('Which archive should we inspect?');
+    expect(legacy).not.toContain('Not established');
+  });
+  it('retains sourced refund history even on an operational legacy card', () => {
+    const decision = {proposal:{question:'Reconcile ledger?',recommendation:'Review receipt.',consequence:'Read only.',blocked_action:'No effects.',review_summary:{action_title:'Review ledger',background:[],refund:{status:'partial',source:'Ledger',as_of:'2026-09-29T12:00:00Z',scope:'Order 1',evidence_kind:'completed_refund',receipt:'receipt-1',amount:12,currency:'USD'}}}} as unknown as BotDecision;
+    const html = renderToStaticMarkup(<BotProposalSummary decision={decision} />);
+    expect(html).toContain('PARTIAL');
+    expect(html).toContain('receipt-1');
   });
 
   it('shows every structured message authorization field and keeps exact body whitespace', () => {

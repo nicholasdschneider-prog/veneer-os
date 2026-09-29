@@ -43,7 +43,8 @@ export const decisionImageSchema = z.object({
 }).strict();
 export const reviewSummarySchema = z.object({
   action_title: z.string().trim().min(1).max(160),
-  customer_request: z.string().trim().min(1).max(300),
+  request: z.string().trim().min(1).max(600).optional(),
+  customer_request: z.string().trim().min(1).max(300).optional(),
   background: z.array(z.string().trim().min(1).max(240)).max(6),
   refund: z.discriminatedUnion('status', [
     z.object({ status: z.literal('not_verified') }).strict(),
@@ -54,7 +55,7 @@ export const reviewSummarySchema = z.object({
       as_of: z.string().datetime({ offset: true }), scope: z.string().trim().min(1).max(300),
       evidence_kind: z.literal('completed_refund'), receipt: z.string().trim().min(1).max(300),
       amount: z.number().positive().finite(), currency: z.string().regex(/^[A-Z]{3}$/) }).strict(),
-  ]),
+  ]).optional(),
 }).strict();
 export const proposalSchema = z
   .object({
