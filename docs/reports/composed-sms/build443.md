@@ -12,3 +12,7 @@ Changed files:
 Read-only comparison with source server/composed-sms-contract.ts validateAuthority confirms its observation condition: observedAt <= now < expiresAt and expiresAt-observedAt <=15,000ms. Native tests assert those same long/short bounds without changing authority/wire fields. No source files were changed or source application tests executed.
 
 Validation: Node24 root typecheck, focused131, full tests (server2,841 with5 skipped, web909, browser54, installer29), and root production build passed before restart. Standard bundle-size advisory only.
+
+Deployment: `2b44505735e51dcf1e09272994bf5fc09e429618` pushed and restarted using root npm run restart on Node24.21.0. Verified 2026-09-29T00:51:05.384058+00:00: all five services HTTP200 and4,547 matching artifacts; native service registry absent. No activation or business action.
+
+[Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build443-runtime.json).
