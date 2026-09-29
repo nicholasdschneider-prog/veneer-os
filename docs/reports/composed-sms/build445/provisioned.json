@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "compose-scope-evidence-provisioning/v1",
+  "state": "provisioned",
+  "checkedAt": "2026-09-29T01:36:18.507444+00:00",
+  "project": "ervp",
+  "config": "prd",
+  "name": "OO_COMPOSE_SMS_SCOPE_EVIDENCE_CREDENTIAL",
+  "credentialSha256": "97f8ab6d780e0c78f216c6300ce9cd705cc4c48a7d67b76f5c889abe937b3125",
+  "generation": "48 random bytes, URL-safe encoding; memory only",
+  "operator": "Platform732 via existing machine-authenticated Doppler CLI profile",
+  "authorization": "BUILD445; original custodian coordination8c3f2513-a025-4b4a-b531-c9cc09bb4e13 under current Nick technical repair authority",
+  "registrationId": "e0f86977-b32e-4eb4-a995-c27746fafa81",
+  "registrationRevision": 1,
+  "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+  "servicePrincipalId": "a56c2846-d4e1-4b5e-8287-7953c08998f0",
+  "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+  "runtime": {
+    "projectId": "71cc77d6-9c0d-4770-9d6d-62b8c4bb516c",
+    "environmentId": "530025e2-352d-443c-a8ed-e589fc20621d",
+    "serviceId": "ede1932e-b3f9-4e7b-b1be-45804dfbe842"
+  },
+  "businessId": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+  "userId": 1,
+  "accountId": "help@elkhartrvparts.com",
+  "ownerConversationId": "cb4ade24-c960-4235-956a-220260e5adac",
+  "executorConversationId": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+  "grantExpiresAtCap": "2026-10-28T00:14:26Z",
+  "expirySemantics": "Enforced grant/use-time cap or earlier revocation, not intrinsic secret-material expiration",
+  "aclTarget": {
+    "operation": "scope.action.read",
+    "method": "GET",
+    "path": "/api/cs/composed-sms/scope/actions/:nativeActionId/:rootUuid",
+    "queries": false,
+    "redirects": false,
+    "list": false,
+    "fallback": false,
+    "sourceInstalled": false,
+    "custodyFinalized": false
+  },
+  "nativeRegistryActivated": false,
+  "sourceCredentialUsed": false,
+  "priorComposeNames": [
+    "OO_COMPOSE_SMS_CF_CLIENT_ID",
+    "OO_COMPOSE_SMS_CF_CLIENT_SECRET",
+    "OO_COMPOSE_SMS_NATIVE_BEARER",
+    "OO_COMPOSE_SMS_NATIVE_READBACK_CREDENTIAL"
+  ],
+  "contractHashes": {
+    "server/src/bots/composedSmsEvidenceReader.ts": "af92b1b32f8ad42c8f5ac38d190ebefe76a300e301691802ccdde030bcc5523e",
+    "server/src/bots/composedSmsSender.ts": "33245361a38065be6f8190e90a080b4a9da60238f22ab349568e46cc39415063",
+    "server/src/bots/composedSmsClosure.ts": "d8d9726b1c5fcacc9002f7ca028a2121e6071db90319a77554ee87430ee0fd56",
+    "docs/reports/composed-sms/build444/contract.md": "b7a4c704e3a53a499d2987ecb7e1382bece5a60a6e894e0a26ee1473d690fc61"
+  },
+  "writeAcknowledgedAt": "2026-09-29T01:36:19.410678+00:00",
+  "verifiedAt": "2026-09-29T01:36:19.729131+00:00",
+  "verification": "Doppler set acknowledged and exact destination present in names-only readback; no value retrieval",
+  "secretValueExposedOrStoredOutsideApprovedDoppler": false
+}
