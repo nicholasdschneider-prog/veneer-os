@@ -8,7 +8,7 @@ The owner reviews the complete native context and exact citations for the correc
 
 ## Validation and runtime
 
-Node24 root typecheck, 95 focused tests, full suites (server 2,926 passed/5 skipped, web 909, browser 54, installer 29), and production build passed. Isolated full/restricted employee guide and mobile overflow checks passed; current/resumed-agent instructions passed. Tests ran preflight with no drafts and SQLite query-only enabled, verified unchanged history/authority tables and no network call. Runtime receipt follows the supported root restart.
+Node24 root typecheck, 95 focused tests, full suites (server 2,926 passed/5 skipped, web 909, browser 54, installer 29), and production build passed. Isolated full/restricted employee guide and mobile overflow checks passed; current/resumed-agent instructions passed. Tests ran preflight with no drafts and SQLite query-only enabled, verified unchanged history/authority tables and no network call. Implementation `720e0267fdc49b2c9bf6d0c017382e6424372847` was pushed and restarted once through root `npm run restart`. Readback at 2026-09-29T04:24:50.605545+00:00 returned HTTP 200 from all five services and matched all 4,554 built artifacts. The four protected registries remain byte-identical. Authenticated public chat was not tested. [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build451/runtime.json).
 
 ## Changed files
 

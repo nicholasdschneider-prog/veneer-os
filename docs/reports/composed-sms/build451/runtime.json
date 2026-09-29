@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-09-29T04:24:50.605545+00:00",
+  "implementationCommit": "720e0267fdc49b2c9bf6d0c017382e6424372847",
+  "restart": "supported root npm run restart completed once; Node24.21.0 ABI137",
+  "healthHttpStatus": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  },
+  "builtArtifactCount": 4554,
+  "builtArtifactsUnchanged": true,
+  "protectedRegistriesUnchanged": {
+    "compose-service-registry.json": "647bac515a174edf35e15de5c242425d9183e105e6a74d90db050b7f6a75688e",
+    "compose-evidence-registry.json": "c8ce2003ffcc8a4efcc149c05eb4d43536f38759d6bcdb1303fcf1b624fdb9c9",
+    "approved-case-registry.json": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+    "compose-correspondence-registry.json": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c"
+  },
+  "publicAuthenticatedChat": "not verified",
+  "businessActionsPerformed": false,
+  "authorityOrDispatchEnabled": false
+}
