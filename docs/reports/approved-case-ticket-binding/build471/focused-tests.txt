@@ -1,0 +1,15 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run test/approvedCaseResolver.test.ts test/messageDelegation.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/approvedCaseResolver.test.ts (44 tests) 2807ms
+ ✓ test/messageDelegation.test.ts (48 tests) 3231ms
+
+ Test Files  2 passed (2)
+      Tests  92 passed (92)
+   Start at  12:06:01
+   Duration  3.78s (transform 181ms, setup 0ms, collect 641ms, tests 6.04s, environment 0ms, prepare 83ms)
+

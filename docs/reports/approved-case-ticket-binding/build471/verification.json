@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-09-29T16:08:04.243642+00:00",
+  "sourceCommit": "697e332404028a46bb7cebc4da1db96c9c867f1d",
+  "registrySha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+  "registryUnchanged": true,
+  "henryRegisteredInResolver": false,
+  "payloadAccounts": [
+    "help@elkhartrvparts.com"
+  ],
+  "fixtureTestsPassed": 92,
+  "codeChangeRequired": false,
+  "needsInputCreated": false,
+  "needsInputError": "Bot registration is inactive",
+  "productionActions": false
+}
