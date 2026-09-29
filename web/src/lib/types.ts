@@ -569,9 +569,12 @@ export interface VeneerBrowserOtherProfile extends VeneerBrowserProfile {
 
 export interface VeneerBrowserSession {
   capacityWait?: { id: string; status: string; expiresAt: string } | null;
-  capacity?: { active: number; limit: number; waiting: number; occupants?: Array<{ conversationId: string; title: string; reason: string | null }> };
+  capacity?: { active: number; limit: number; waiting: number; projectActive?: number; projectLimit?: number; occupants?: Array<{ conversationId: string; title: string; reason: string | null; holdUntil?: string | null }> };
   keepOpen?: boolean;
+  keepOpenUntil?: string | null;
+  keepOpenReason?: string | null;
   retentionReason?: string | null;
+  pendingReview?: boolean;
   configured: boolean;
   active: boolean;
   projectId: string;

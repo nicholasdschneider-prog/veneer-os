@@ -492,8 +492,10 @@ export function createIpcServer({
         return void sendJson(res,200,await veneerBrowser.readPublic(Number(body.userId),String(body.convId ?? ''),body.input));
       case '/rpc/veneerBrowserConversationKeepOpen':
         if (typeof body.active !== 'boolean') return void sendJson(res, 400, { error: 'Choose Keep open on or off.' });
-        await veneerBrowser.setKeepOpen(Number(body.userId), String(body.convId ?? ''), body.active);
-        return void sendJson(res, 200, { ok: true });
+        return void sendJson(res, 200, { ok: true, ...(await veneerBrowser.setKeepOpen(Number(body.userId), String(body.convId ?? ''), body.active, {
+          ...(typeof body.reason === 'string' ? { reason: body.reason } : {}),
+          ...(typeof body.minutes === 'number' ? { minutes: body.minutes } : {}),
+        })) });
       // Advanced capture reaches the runner only from the authenticated user's
       // HTTP route; the MCP endpoint above has no equivalent.
       case '/rpc/veneerBrowserConversationCaptureGet':

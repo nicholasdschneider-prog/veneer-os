@@ -81,7 +81,7 @@ export interface RemoteDownload {
 }
 
 export interface VeneerBrowserRemote {
-  capacity?(): Promise<{ active: number; limit: number; waiting: number }>;
+  capacity?(projectId?: string): Promise<{ active: number; limit: number; waiting: number; projectActive?: number; projectLimit?: number }>;
   configured(): boolean;
   clientScope(): string;
   /** Path of the pinned LAN certificate while the LAN route is live, else null. */
@@ -321,7 +321,7 @@ export function createVeneerBrowserRemote(options: {
 
   return {
     configured,
-    capacity: () => request('/v1/capacity'),
+    capacity: (projectId) => request(projectId ? `/v1/capacity?projectId=${encodeURIComponent(projectId)}` : '/v1/capacity'),
     clientScope() {
       return identity()?.clientId ?? '';
     },

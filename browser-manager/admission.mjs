@@ -1,6 +1,9 @@
 // FIFO admission only: retries a refused allocation, never a browser command.
 // A request which times out is removed and can never start in the background.
-export function createAdmissionQueue({ isFull, waitMs = 20_000, retryMs = 250, maxWaiting = 32, fullError }) {
+// Arrival order is kept while the whole machine is full. A waiter refused only
+// by its own project's cap steps aside for later waiters from other projects,
+// so one busy project never stalls every other project's queue.
+export function createAdmissionQueue({ isFull, isProjectFull = () => false, waitMs = 20_000, retryMs = 250, maxWaiting = 32, fullError }) {
   const waiting = [];
   let pumping = false;
   const pump = async () => {
@@ -8,20 +11,25 @@ export function createAdmissionQueue({ isFull, waitMs = 20_000, retryMs = 250, m
     pumping = true;
     try {
       while (waiting.length) {
-        const item = waiting[0];
-        if (Date.now() >= item.deadline || item.signal?.aborted) {
-          waiting.shift(); item.reject(fullError()); continue;
+        let admitted = false;
+        for (const item of [...waiting]) {
+          if (!waiting.includes(item)) continue;
+          if (Date.now() >= item.deadline || item.signal?.aborted) {
+            remove(item); item.reject(fullError()); continue;
+          }
+          try {
+            const value = await item.attempt(item.deadline);
+            remove(item); item.resolve(value); admitted = true;
+          } catch (error) {
+            if (!isFull(error)) { remove(item); item.reject(error); continue; }
+            if (!isProjectFull(error)) break;
+          }
         }
-        try {
-          const value = await item.attempt(item.deadline);
-          waiting.shift(); item.resolve(value);
-        } catch (error) {
-          if (!isFull(error)) { waiting.shift(); item.reject(error); continue; }
-          await new Promise(resolve => setTimeout(resolve, retryMs));
-        }
+        if (!admitted && waiting.length) await new Promise(resolve => setTimeout(resolve, retryMs));
       }
     } finally { pumping = false; }
   };
+  const remove = (item) => { const index = waiting.indexOf(item); if (index >= 0) waiting.splice(index, 1); };
   return {
     get depth() { return waiting.length; },
     run(attempt, signal) {

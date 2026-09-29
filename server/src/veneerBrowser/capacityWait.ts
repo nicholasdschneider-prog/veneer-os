@@ -32,7 +32,7 @@ export function createCapacityWaits({ db, clientScope, authorize, open, availabl
   db: Database.Database; clientScope: () => string;
   authorize: (userId: number, conversationId: string) => void;
   open: (userId: number, conversationId: string, recovering: boolean, stillValid: () => boolean) => Promise<void>;
-  available: () => Promise<boolean>;
+  available: (conversationId: string) => Promise<{ machine: boolean; project: boolean }>;
   busy: (conversationId: string) => boolean;
 }) {
   let ticking = false;
@@ -103,7 +103,11 @@ export function createCapacityWaits({ db, clientScope, authorize, open, availabl
           if(busy(row.conversation_id))continue;
           // After a crash in allocation, inspect/reopen the SAME copy. The
           // manager reconciles runtime status; this path never runs a page command.
-          if(row.status!=='admitting' && !(await available()))break;
+          if(row.status!=='admitting') {
+            const room=await available(row.conversation_id);
+            if(!room.machine)break; // Arrival order across projects while the machine is full.
+            if(!room.project)continue; // A project at its cap steps aside for the others.
+          }
           const fresh=current(row.id);
           if(!['waiting','admitting'].includes(fresh.status))continue;
           try { authorize(row.user_id,row.conversation_id); if(scope(row)!==row.scope_json)throw new Error('scope changed'); } catch {cancelRow(row);continue;}

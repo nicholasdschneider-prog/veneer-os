@@ -289,10 +289,10 @@ export function createNativeBackend({ store, chromeBin, headless = true, windowS
     // are already owned by the user Chrome runs as.
     prepareDir() {},
 
-    async sessionCount(warmNames) {
+    async sessionNames(warmNames) {
       return Object.entries(readState())
         .filter(([name, entry]) => alive(entry.pid) && !warmNames.has(name))
-        .length;
+        .map(([name]) => name);
     },
 
     async listWarm() {

@@ -145,61 +145,62 @@ FileVault).
 
 ## Capacity and project growth
 
-As of September 28, 2026, runtime admission is serialized across projects, including
-adoption of prewarmed copies. The default is five active sessions plus up to two
-unclaimed warm copies. Warm copies consume memory even though they are not active
-sessions. This install uses visible native Chrome (`VENEER_BROWSER_HEADLESS=0` in
-the installed launch agent); headless mode is not an extra pool of capacity.
+Runtime admission is serialized across projects, including adoption of prewarmed
+copies. The default is five active sessions on this 16 GB Mac
+(`VENEER_BROWSER_MAX_ACTIVE`), of which one project may hold at most two
+(`VENEER_BROWSER_MAX_PER_PROJECT`, default 2), plus up to two unclaimed warm copies.
+An unfiled chat's scope is its owner's private project, so unfiled chats share a
+per-person cap. Warm copies consume memory even though they are not active sessions
+and are built subject to the machine cap only; the project cap applies when one is
+adopted. This install uses visible native Chrome (`VENEER_BROWSER_HEADLESS=0` in the
+installed launch agent); headless mode is not an extra pool of capacity.
 
 Use saved profiles for distinct business/account identities, and assign those
 profiles only to authorized projects. Each chat has an independent working copy.
-Adding profiles does not increase the runtime limit. Public HTML/plain-text research should use `read_public`: it needs no Chrome
-slot or saved profile. Rendered work still uses an isolated working copy. Projects
-without a saved profile can allocate a signed-out copy when rendering is required. Explicit Fresh/sign-in
-sessions stay protected. Prefer existing authorized
-connectors for structured work and public reads when browser interaction is not
-needed. Do not route around an unavailable signed-in browser using another identity.
+Adding profiles does not increase the runtime limit. Public HTML/plain-text research
+should use `read_public`: it needs no Chrome slot or saved profile. Rendered work
+still uses an isolated working copy. Prefer existing authorized connectors for
+structured work. Do not route around an unavailable signed-in browser using another
+identity.
 
-The September 28 follow-up replaces permanent past-view/click protection. The
-application checks idle copies once per minute and before allocating a cold copy.
-After 30 minutes without application commands it considers copies with no pending
-turn, capture, sign-in field, explicit Keep open hold, or unresolved action. A
-successful old click is not proof that business work completed; it merely stops
-being a permanent veto. Failed/uncertain actions remain protected, even after later
-reads. Absent or malformed history fails closed.
+### Lifecycle (September 29, 2026)
 
-The browser manager then checks connected viewers, a 30-minute viewer grace period,
-unexpired tickets, unchanged activity, in-progress Chrome downloads, every page and
-frame, filled form fields, editable regions and beforeunload handlers. Only boolean
-safety results leave Chrome; no page values, URLs or credentials enter diagnostics.
-An unavailable or failed inspection prevents suspension. Dead automation sockets can
-be disconnected after these checks even when closing the local daemon failed. Live
-viewer sockets have ping/pong liveness detection. Historical humanProtected metadata
-is no longer an indefinite veto.
+A working copy gives up its slot when its chat's turn ends. The runner observes the
+conversation status bus and asks the application to suspend the copy at once; a
+five-minute idle backstop in the once-a-minute sweep catches a copy whose turn-end
+release was missed. Suspension stops Chrome and keeps the working directory
+(profile data, sign-in, downloads); the next command restarts the same copy. Explicit
+Stop still discards the copy. In-memory page state (a half-filled form, an open
+wizard) does not survive suspension: that is the accepted trade for slots that
+actually free up. Page state is no longer inspected.
 
-Use Keep open (in the panel or the bot keep_open tool) for work whose in-memory state
-must survive, including unfinished business workflows waiting for human input. Fresh
-sign-in sessions start held; a successful sign-in does not implicitly release the
-hold. Turning it off permits safety checks, not business execution or uncertain-action
-replay. Browser files/downloads are retained on automatic suspension, and the same
-working copy restarts on next use. Explicit Stop still discards that working copy.
-Chrome attempts session restoration; old element refs and arbitrary in-memory app
-state are not a resume guarantee. Saved login bases are never automatically updated.
+What keeps a copy running is only a current condition with an end: a pending turn,
+an unfinished secret fill, Advanced capture, an explicit hold, a connected viewer
+(plus `VENEER_BROWSER_VIEWER_GRACE_SECONDS`, default 120, after the last viewer
+disconnects), a viewer ticket that has not connected yet, or a Chrome download in
+progress. Keep open (panel switch or the bot `keep_open` tool, which requires a
+reason) records an expiry of at most two hours; renewing means asking again, and a
+hold recorded without an expiry, or a started sign-in, lapses two hours after it was
+recorded. An action with an unknown outcome is kept in the audit trail and reported
+to the bot on reopen as needing verification; it no longer pins the copy, and nothing
+is ever replayed. The application's own agent ticket and automation socket are not
+ownership: they are closed at suspension.
 
-Starts enter a FIFO queue capped at 32 waiters, waiting up to 20 seconds for a slot.
-`VENEER_BROWSER_CAPACITY_WAIT_MS` may shorten this timeout (100–20000 ms). The waiting
-queue does not hold the runtime lock: suspensions and ongoing work can free capacity.
-Warm-copy adoption shares admission. A timed-out/disconnected waiter is removed;
+Starts enter an admission queue capped at 32 waiters, waiting up to 20 seconds for a
+slot. `VENEER_BROWSER_CAPACITY_WAIT_MS` may shorten this timeout (100–20000 ms).
+Arrival order is kept while the whole machine is full; a waiter refused only by its
+own project's cap steps aside for later waiters from other projects. The waiting
+queue does not hold the runtime lock. A timed-out/disconnected waiter is removed;
 no browser command or unknown-effect request is replayed. This queue is intentionally
-not durable across manager restart. Above it, the September 29 application layer
-persists owner-bound capacity continuations in SQLite. A bot Open capacity timeout
+not durable across manager restart. Above it, the application layer persists
+owner-bound capacity continuations in SQLite. A bot Open capacity timeout
 automatically creates a one-hour wait; explicit `wait_for_capacity` supports up to
 two hours, with at most 32 pending waits globally. No navigation or mutation is saved.
-After the requesting turn ends, maintenance admits one eligible waiter in arrival
-order and creates one existing-platform wake in the same transaction as its result.
-Active requesting chats are skipped. Before foreground cold allocation, older
-eligible durable waiters get an admission opportunity. Actual start and warm-copy
-adoption still enforce the global manager cap atomically.
+After the requesting turn ends, maintenance admits eligible waiters in arrival order,
+skipping a waiter whose project is at its cap while the machine has room, and creates
+one existing-platform wake in the same transaction as its result. Active requesting
+chats are skipped. Actual start and warm-copy adoption still enforce both caps
+atomically.
 
 Waits survive runner restarts. An interrupted allocation only reconciles a known
 active copy; an unknown outcome generates a failure wake, never a blind new start.

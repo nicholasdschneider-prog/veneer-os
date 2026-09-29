@@ -29,3 +29,12 @@ test('cancels queued requests and bounds queue size', async () => {
   await assert.rejects(q.run(async () => 2), /full/);
   controller.abort(); await assert.rejects(first, /full/); assert.equal(q.depth, 0);
 });
+test('a waiter refused only by its project cap does not block a later waiter from another project', async () => {
+  const projectFull = () => Object.assign(full(), { scope: 'project' });
+  const q = queue({ waitMs: 200, isProjectFull: e => e.scope === 'project' }); const order = []; let projectBusy = true;
+  const first = q.run(async () => { if (projectBusy) throw projectFull(); order.push('first'); return 1; });
+  const second = q.run(async () => { order.push('second'); return 2; });
+  setTimeout(() => { projectBusy = false; }, 15);
+  assert.deepEqual(await Promise.all([first, second]), [1, 2]);
+  assert.deepEqual(order, ['second', 'first']); assert.equal(q.depth, 0);
+});

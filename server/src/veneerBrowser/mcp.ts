@@ -72,7 +72,7 @@ const TOOLS: ToolDef[] = [
   { name: 'status', description: 'Get safe lifecycle status for the selected project browser profile. When the browser is active, the result also lists every tab.', inputSchema: EMPTY },
   { name: 'update_profile', description: 'Replace the selected saved profile with this working copy. Use only after the user or agent intentionally completed a new login. Veneer does not detect logins automatically, and it blocks an older copy from replacing a newer profile.', inputSchema: EMPTY },
   { name: 'save_as', description: 'Save this working copy as an additional reusable profile. Use only when the user explicitly asks to keep a separate login.', inputSchema: { type: 'object', properties: { name: { type: 'string', minLength: 1, maxLength: 100 } }, required: ['name'], additionalProperties: false } },
-  { name: 'keep_open', description: 'Protect this chat working copy from automatic idle suspension while an unfinished browser workflow must stay in memory. Set active false when that workflow can resume from saved files. This does not approve or repeat a business action, clear an uncertain action, or stop another chat.', inputSchema: { type: 'object', properties: { active: { type: 'boolean' } }, required: ['active'], additionalProperties: false } },
+  { name: 'keep_open', description: 'Hold this chat browser open past the end of your turn, for at most two hours, when in-memory page work (a half-filled form, a wizard, a page waiting on a person) must survive until the next turn. Give the reason and, if shorter, minutes. Call it again to renew; set active false when the work can resume from saved files. This does not approve or repeat a business action, clear an uncertain action, or stop another chat.', inputSchema: { type: 'object', properties: { active: { type: 'boolean' }, reason: { type: 'string', maxLength: 200 }, minutes: { type: 'integer', minimum: 1, maximum: 120 } }, required: ['active'], additionalProperties: false } },
   { name: 'stop', description: 'Stop and delete this chat working copy when the browser task is complete. Changes are discarded unless update_profile or save_as was called first.', inputSchema: EMPTY },
 ];
 
@@ -135,6 +135,7 @@ const INSTRUCTIONS = [
   'A confirm or prompt dialog blocks its page until it is answered, so a command that timed out may be waiting on one: call dialog status, then accept or dismiss. A dialog on a different tab that cannot be switched to is unreachable (browser limitation): dialog dismiss will close that tab for you after confirming it is stuck, and it does that even when dialog status reports nothing, because status only sees the selected tab; the closed page\'s state is lost. To answer such a dialog instead, the user can do it by hand in the live browser view.',
   'When refs cannot reach an element — a cross-origin iframe, a canvas, or shadow DOM, and a snapshot inlines only one level of iframe nesting — take a fresh non-full screenshot and use click_at, hover_at, or scroll_at on its pixels.',
   'Signing in: a stored password or API key goes in with fill_secret, naming the Doppler secret — the value never enters chat, your arguments, or the result, and the filled field cannot be read back. For a 2-step prompt, try these in order: fill_totp (a Doppler secret holding the TOTP seed or otpauth:// URI); then fill_sms_code, which reads a texted code out of Messages and is listed only on the Pro Mac instance; then fill_email_code, which reads an emailed code out of the configured help mailbox and is listed only where one is set up (pass targets for a row of one-digit boxes); and only then ask the user to type the code in the live browser view. Never pass a secret to type, fill, or find, and never ask the user to paste one in chat. When there is no stored password, collect it with request_secret, and collect a TOTP seed with a second request_secret (the user gets it from the authenticator app\'s "can\'t scan? enter key manually" option).',
+  'Your browser pauses as soon as your turn ends and reopens on the next browser call with its files, downloads and sign-in intact; only in-memory page state (a half-filled form, an open wizard) is lost. Before ending a turn with such work unfinished, call keep_open with the reason; a hold lasts at most two hours and is renewed by calling again. Five browsers run at once on this Mac and each project may hold two of them; a busy Open waits its turn and, if still full, saves a continuation for this chat.',
   'Use find when refs have gone stale or a snapshot would be huge, and read when you need the whole page.',
   'To keep a file, click its download link in the page and then call download to import it into the project.',
 ].join('\n\n');
@@ -147,7 +148,12 @@ function sessionText(view: VeneerBrowserSessionView, captureActive = false): str
     `Advanced capture: ${captureActive ? 'on' : 'off'}.`,
     ...(view.capacityWait ? [`Capacity continuation: ${view.capacityWait.status}; deadline: ${view.capacityWait.expiresAt}.`] : []),
     ...(view.capacity ? [`Browser slots: ${view.capacity.active}/${view.capacity.limit}; waiting: ${view.capacity.waiting}.`] : []),
-    ...(view.temporaryClone ? [`Keep open: ${view.keepOpen ? 'on' : 'off'}.`, ...(view.retentionReason ? [`Idle status: ${view.retentionReason}.`] : [])] : []),
+    ...(view.capacity?.projectLimit !== undefined ? [`This project: ${view.capacity.projectActive ?? 0}/${view.capacity.projectLimit} of those slots.`] : []),
+    ...(view.temporaryClone ? [
+      `Keep open: ${view.keepOpen ? `on until ${view.keepOpenUntil}${view.keepOpenReason ? ` (${view.keepOpenReason})` : ''}` : 'off; this browser pauses when your turn ends and reopens with its files and sign-in intact'}.`,
+      ...(view.retentionReason ? [`Idle status: ${view.retentionReason}.`] : []),
+      ...(view.pendingReview ? ['An earlier action in this browser has an unknown outcome. Check the page state before repeating any action.'] : []),
+    ] : []),
     view.temporaryClone
       ? view.fresh
         ? 'This is a temporary signed-out browser. Call save_as only if the user explicitly asks for a new saved login. Otherwise, call stop to delete it.'
@@ -834,8 +840,12 @@ export async function handleVeneerBrowserMcp(
       result = textResult(`Saved this working copy as browser profile “${saved.profileName ?? 'profile'}”.`);
     } else if (name === 'keep_open') {
       if (typeof args.active !== 'boolean') throw new Error('Choose Keep open on or off.');
-      await manager.setKeepOpen(user.id, conversationId, args.active);
-      result = textResult(args.active ? 'Keep open is on for this working copy. Release it when the workflow no longer needs to stay in memory.' : 'Keep open is off. Idle suspension still requires the safety checks to pass.');
+      if (args.active && !(typeof args.reason === 'string' && args.reason.trim())) throw new Error('Give the reason this browser must stay open.');
+      const hold = await manager.setKeepOpen(user.id, conversationId, args.active, {
+        ...(typeof args.reason === 'string' ? { reason: args.reason } : {}),
+        ...(typeof args.minutes === 'number' ? { minutes: args.minutes } : {}),
+      });
+      result = textResult(args.active ? `Keep open is on for this working copy until ${hold.expiresAt}. Call keep_open again to renew, or set active false when the work can resume from saved files.` : 'Keep open is off. This browser pauses when your turn ends; its files and sign-in are kept.');
     } else if (name === 'stop') {
       const stopped = await manager.stopConversation(user.id, conversationId);
       result = textResult(`${session.temporaryClone ? 'The temporary browser copy was stopped and deleted. Its unsaved changes were discarded.\n' : ''}${sessionText(stopped, manager.captureGrantActive(conversationId))}`);

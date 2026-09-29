@@ -6,7 +6,7 @@ import {migrate} from '../src/db/migrate.js';
 import {createCapacityWaits,browserCapacityWakeAllowed} from '../src/veneerBrowser/capacityWait.js';
 let db:Database.Database; let free:boolean; let open:ReturnType<typeof vi.fn>; let busy:boolean;
 const input={request_key:'task-one',task:'Continue authorized research',timeout_minutes:60};
-function service(){return createCapacityWaits({db,clientScope:()=> 'test',authorize:()=>{},open,available:async()=>free,busy:()=>busy});}
+function service(){return createCapacityWaits({db,clientScope:()=> 'test',authorize:()=>{},open,available:async()=>({machine:free,project:free}),busy:()=>busy});}
 beforeEach(()=>{db=new Database(':memory:');migrate(db,path.resolve('src/db/migrations'));db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'one@example.com','One','owner'),(2,'two@example.com','Two','owner')").run();
  for(let i=1;i<=8;i++)db.prepare("INSERT INTO conversations(id,assistant_id,user_id,provider,native_session_id) VALUES(?,1,1,'claude',?)").run(`c${i}`,`native${i}`);
  free=false;busy=false;open=vi.fn(async()=>{});
@@ -74,7 +74,7 @@ it('cancels a changed selected profile before allocation',async()=>{
 
 it('cancellation during the capacity probe prevents allocation',async()=>{
  let release!:()=>void;
- const available=()=>new Promise<boolean>(resolve=>{release=()=>resolve(true);});
+ const available=()=>new Promise<{machine:boolean;project:boolean}>(resolve=>{release=()=>resolve({machine:true,project:true});});
  const q=createCapacityWaits({db,clientScope:()=> 'test',authorize:()=>{},open,available,busy:()=>false});
  q.register(1,'c1',input);const ticking=q.tick();q.cancel(1,'c1');release();await ticking;
  expect(open).not.toHaveBeenCalled();expect(db.prepare('SELECT count(*) n FROM conversation_wakeups').get()).toEqual({n:0});
@@ -84,4 +84,14 @@ it('cancellation during an in-flight allocation suppresses its wake without kill
  const q=service();q.register(1,'c1',input);free=true;const ticking=q.tick();await new Promise(resolve=>setImmediate(resolve));
  q.cancel(1,'c1');release();await ticking;
  expect(q.status('c1')?.status).toBe('cancelled');expect(db.prepare('SELECT count(*) n FROM conversation_wakeups').get()).toEqual({n:0});
+});
+it('a waiter whose project is at its cap steps aside for a later waiter from another project',async()=>{
+ db.prepare("INSERT INTO projects(id,slug,name) VALUES('p1','p1','P1'),('p2','p2','P2')").run();
+ db.prepare("UPDATE conversations SET project_id='p1' WHERE id='c1'").run();db.prepare("UPDATE conversations SET project_id='p2' WHERE id='c2'").run();
+ const available=async(id:string)=>({machine:true,project:id!=='c1'});
+ const q=createCapacityWaits({db,clientScope:()=> 'test',authorize:()=>{},open,available,busy:()=>false});
+ q.register(1,'c1',input);q.register(1,'c2',{...input,request_key:'task-two'});
+ await q.tick();
+ expect(open).toHaveBeenCalledTimes(1);expect(open.mock.calls[0][1]).toBe('c2');
+ expect(q.status('c1')?.status).toBe('waiting');expect(q.status('c2')?.status).toBe('ready');
 });

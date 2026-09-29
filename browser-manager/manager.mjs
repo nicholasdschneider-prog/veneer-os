@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import crypto from 'node:crypto';
-import { inspectIdlePages } from './idle-safety.mjs';
 import { createAdmissionQueue } from './admission.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -51,6 +50,13 @@ const HEADLESS = process.env.VENEER_BROWSER_HEADLESS !== '0';
 const IMAGE = process.env.VENEER_BROWSER_IMAGE || 'veneer-browser-runtime:1';
 const SECCOMP = path.resolve(process.env.VENEER_BROWSER_SECCOMP || '/etc/veneer-browser/seccomp_profile.json');
 const MAX_ACTIVE = integer(process.env.VENEER_BROWSER_MAX_ACTIVE, 5, 1, 20);
+// Slots one project may hold at once, so a busy project queues behind itself
+// instead of taking every slot from the others. An unfiled chat's scope is its
+// owner's private "project", so unfiled chats share a cap per person.
+const MAX_PER_PROJECT = integer(process.env.VENEER_BROWSER_MAX_PER_PROJECT, 2, 1, 20);
+// A person who just closed the live view may be reloading it; longer than this
+// and the browser is simply unwatched.
+const VIEWER_GRACE_MS = integer(process.env.VENEER_BROWSER_VIEWER_GRACE_SECONDS, 120, 10, 3600) * 1000;
 const IDLE_MS = integer(process.env.VENEER_BROWSER_IDLE_MINUTES, 30, 5, 1440) * 60_000;
 const SWEEP_MS = integer(process.env.VENEER_BROWSER_SWEEP_SECONDS, 60, 1, 3600) * 1000;
 const REQUIRE_ENCRYPTED = process.env.VENEER_BROWSER_REQUIRE_ENCRYPTED === '1';
@@ -457,9 +463,60 @@ async function saveTemporaryProfile(working, target, name) {
 
 // Warm containers are not sessions until they are adopted, so they never consume
 // a slot; adoption pops the registry entry, which makes the copy count again.
-async function sessionRuntimeCount() {
+async function runtimeSessions() {
   const warm = new Set([...warmPending, ...[...warmCopies.values()].map((entry) => entry.containerName)]);
-  return backend.sessionCount(warm);
+  const projects = projectByContainer();
+  return (await backend.sessionNames(warm)).map((name) => ({ name, projectId: projects.get(name) ?? null }));
+}
+
+async function sessionRuntimeCount() {
+  return (await runtimeSessions()).length;
+}
+
+// Container names carry no project (labels are set only on warm copies), so the
+// project of a running copy comes from its own metadata on disk.
+function projectByContainer() {
+  const map = new Map();
+  for (const meta of storedProfiles()) {
+    try { const s = scope(meta.clientId, meta.projectId, meta.profileId); map.set(s.container, s.projectId); } catch {}
+  }
+  return map;
+}
+
+function storedProfiles() {
+  const root = path.join(STORE, 'profiles');
+  const found = [];
+  if (!fs.existsSync(root)) return found;
+  for (const client of fs.readdirSync(root)) for (const project of fs.readdirSync(path.join(root, client))) {
+    for (const profile of fs.readdirSync(path.join(root, client, project))) {
+      try { found.push(JSON.parse(fs.readFileSync(path.join(root, client, project, profile, 'metadata.json'), 'utf8'))); } catch {}
+    }
+  }
+  return found;
+}
+
+// The one admission check for every path that can make a copy count: cold
+// start, clone, and warm adoption. Both limits answer 429 so the queue retries.
+async function assertCapacity(s, { projectCap = true } = {}) {
+  const sessions = await runtimeSessions();
+  if (!projectCap) {
+    if (sessions.length >= MAX_ACTIVE) throw new HttpError(429, 'All browser slots are occupied.');
+    return;
+  }
+  if (sessions.length >= MAX_ACTIVE) {
+    throw new HttpError(429, `All ${MAX_ACTIVE} browser slots are occupied. Browsers pause when their chat's turn ends; Keep open and connected viewers protect a browser for a bounded time.`);
+  }
+  const inProject = sessions.filter((entry) => entry.projectId === s.projectId).length;
+  if (inProject >= MAX_PER_PROJECT) {
+    throw Object.assign(new HttpError(429, `This project already has ${inProject} of its ${MAX_PER_PROJECT} browser slots in use. Another chat in this project must finish its turn or pause before this one can start.`), { scope: 'project' });
+  }
+}
+
+async function capacityFor(projectId) {
+  const sessions = await runtimeSessions();
+  const result = { active: sessions.length, limit: MAX_ACTIVE, waiting: admission.depth, projectLimit: MAX_PER_PROJECT };
+  if (projectId) result.projectActive = sessions.filter((entry) => entry.projectId === projectId).length;
+  return result;
 }
 
 async function startProfile(s) {
@@ -472,9 +529,7 @@ async function startProfile(s) {
       return { active: true, runtimeId: s.container };
     }
     if (state.exists) await backend.remove(s.container);
-    if (await sessionRuntimeCount() >= MAX_ACTIVE) {
-      throw new HttpError(429, 'All browser slots are occupied. Idle read-only sessions are released automatically; active or protected sessions must finish before another browser can start.');
-    }
+    await assertCapacity(s);
     fs.mkdirSync(s.chromeDir, { recursive: true, mode: 0o700 });
     fs.mkdirSync(s.downloadsDir, { recursive: true, mode: 0o700 });
     // Unconditional on purpose: chown -R changes the root first, so a crash could
@@ -506,9 +561,8 @@ async function cloneAndStartLocked(source, sourceMeta, target, name, labels = []
   if (sourceMeta.temporary) throw new HttpError(409, 'A temporary browser copy cannot be copied.');
   if (fs.existsSync(target.root) || readMeta(target)) throw new HttpError(409, 'Browser profile already exists.');
   if ((await runtimeStatus(target)).exists) await backend.remove(target.container);
-  if (await sessionRuntimeCount() >= MAX_ACTIVE) {
-    throw new HttpError(429, 'All browser slots are occupied. Idle read-only sessions are released automatically; active or protected sessions must finish before another browser can start.');
-  }
+  // A warm copy is not a session yet; the project cap is applied when it is adopted.
+  await assertCapacity(target, { projectCap: !labels.includes('veneer.warm=1') });
   const state = await runtimeStatus(source);
   const shouldPause = state.running && !state.paused;
   let create = null;
@@ -647,9 +701,7 @@ function evictOldestWarmCopy(keepSourceKey) {
 async function adoptWarmCopy(source, generation) {
   const entry = warmCopies.get(source.key);
   if (!entry) return null;
-  if (await sessionRuntimeCount() >= MAX_ACTIVE) {
-    throw new HttpError(429, 'All browser slots are occupied. Wait for an active or protected session to finish.');
-  }
+  await assertCapacity(source);
   // Claim registry and marker together: the sweeper reads both, and a copy that
   // is in neither looks like a stray it should delete.
   warmCopies.delete(source.key);
@@ -833,6 +885,9 @@ async function restoreWarmRegistry() {
 // Only the application knows whether a chat is done and safe to suspend. A CDP
 // connection is not task activity. Refuse new/reconnecting clients and viewers;
 // retain the working directory so restarting never silently clones an old login.
+// Page state is deliberately not inspected: a browser pauses when its chat's
+// turn ends, and in-memory page work survives only behind an explicit hold,
+// which the application checks before calling here.
 async function suspendProfile(s, expectedLastUsedAt) {
   return serial(s.key, async () => {
     const blocked = reason => ({ suspended: false, reason });
@@ -841,19 +896,17 @@ async function suspendProfile(s, expectedLastUsedAt) {
       if (!meta?.temporary || warmCopyEntry(s.key)) return 'not_working_copy';
       if (meta.lastUsedAt !== expectedLastUsedAt) return 'activity_changed';
       if ((cursorViewers.get(s.key)?.size ?? 0) > 0) return 'human_viewer';
-      if (Date.now() - Date.parse(meta.lastViewerAt ?? '') < 30 * 60_000) return 'recent_human_viewer';
-      if ([...tickets.values()].some(t => t.scope.key === s.key && t.expiresAt > Date.now())) return 'recent_ticket';
+      if (Date.now() - Date.parse(meta.lastViewerAt ?? '') < VIEWER_GRACE_MS) return 'recent_human_viewer';
+      // A viewer ticket that has not connected yet is a person about to watch;
+      // an agent ticket is the application's own, and it has said it is done.
+      if ([...tickets.values()].some(t => t.scope.key === s.key && t.purpose === 'viewer' && t.expiresAt > Date.now())) return 'recent_ticket';
       return null;
     };
     if (typeof expectedLastUsedAt !== 'string') return blocked('activity_changed');
-    let reason = check();
+    const reason = check();
     if (reason) return blocked(reason);
     if (!(await runtimeStatus(s)).running) return { suspended: true };
     if (fs.readdirSync(s.downloadsDir).some(name => name.endsWith('.crdownload'))) return blocked('download_in_progress');
-    const inspection = await inspectIdlePages(await browserSocketUrl(await cdpPort(s)));
-    if (!inspection.safe) return blocked(inspection.reason);
-    reason = check();
-    if (reason) return blocked(reason);
     // The authenticated application has verified no active turn/command and
     // unchanged activity. Old automation transports are not ownership leases.
     purgeTickets(s);
@@ -945,7 +998,8 @@ function mintTicket(req, clientId, s, purpose) {
 const admission = createAdmissionQueue({
   waitMs: integer(process.env.VENEER_BROWSER_CAPACITY_WAIT_MS, 20_000, 100, 20_000),
   isFull: error => error instanceof HttpError && error.status === 429,
-  fullError: () => new HttpError(429, 'Browser capacity is busy after waiting 20 seconds. Current work is protected; retry opening when a slot is available.'),
+  isProjectFull: error => error instanceof HttpError && error.status === 429 && error.scope === 'project',
+  fullError: () => new HttpError(429, 'Browser capacity is busy after waiting 20 seconds. Browsers pause when their chat finishes its turn; retry opening when a slot is available.'),
 });
 async function admit(req, res, s, attempt, existingAllowed = false) {
   if (existingAllowed && (await runtimeStatus(s)).running) return serial('runtime-admission', attempt);
@@ -968,7 +1022,8 @@ async function apiRequest(req, res) {
   }
   const clientId = authenticate(req);
   if (url.pathname === '/v1/capacity' && req.method === 'GET') {
-    send(res, 200, { active: await sessionRuntimeCount(), limit: MAX_ACTIVE, waiting: admission.depth });
+    const projectId = url.searchParams.get('projectId');
+    send(res, 200, await capacityFor(projectId ? safeId(projectId, 'project') : null));
     return;
   }
   const body = ['POST', 'PATCH'].includes(req.method || '') ? await readBody(req) : {};

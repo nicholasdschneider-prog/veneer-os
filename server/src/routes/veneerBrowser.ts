@@ -16,6 +16,7 @@ const ConversationCreateSchema = NameSchema;
 const DeleteSchema = z.object({ confirm: z.literal(true) });
 const SelectSchema = z.object({ profileId: z.string().min(1).max(200) });
 const CaptureSchema = z.object({ active: z.boolean() });
+const KeepOpenSchema = z.object({ active: z.boolean(), reason: z.string().trim().max(200).optional(), minutes: z.number().int().min(1).max(120).optional() });
 const BrowserSettingsSchema = z.object({
   quality: z.number().int().min(VENEER_BROWSER_QUALITY_MIN).max(VENEER_BROWSER_QUALITY_MAX),
   resolution: z.enum(VENEER_BROWSER_RESOLUTIONS),
@@ -188,10 +189,11 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
   });
 
   router.put('/conversations/:conversationId/keep-open', (req, res) => {
-    const body = CaptureSchema.safeParse(req.body);
+    const body = KeepOpenSchema.safeParse(req.body);
     if (!body.success) return void res.status(400).json({ ok: false, error: 'Choose Keep open on or off.' });
-    void ctx.manager.veneerBrowserConversationKeepOpen(req.user!.id, req.params.conversationId, body.data.active)
-      .then(() => res.json({ ok: true }))
+    const { active, ...options } = body.data;
+    void ctx.manager.veneerBrowserConversationKeepOpen(req.user!.id, req.params.conversationId, active, options)
+      .then((hold) => res.json({ ok: true, ...hold }))
       .catch(error => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 

@@ -84,7 +84,11 @@ describe('living bot guide release contract', () => {
   it('explains shared browser capacity to employees and resumed agents', () => {
     const feature = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'browser')!;
     expect(feature.isNew).toBe(true);
-    expect(feature.limits).toContain('Five active browsers');
+    expect(feature.limits).toContain('Five browsers run at once');
+    expect(feature.limits).toContain('each project may hold two');
+    expect(feature.limits).toContain('two hours');
+    expect(feature.steps.join(' ')).toContain('pauses automatically');
+    expect(feature.agent).toContain('keep_open');
     expect(feature.agent).toContain('read_public');
     expect(feature.agent).toContain('wait_for_capacity');
     expect(feature.agent).toContain('Never stop another chat');

@@ -102,6 +102,12 @@ const veneerBrowser = new VeneerBrowserManager({
   }),
 });
 await veneerBrowser.reconcile();
+// A browser gives up its slot the moment its chat's turn ends. Idle and failed
+// are the two states a finished turn lands in; the release re-checks the
+// pending turn row itself, so a spurious status event costs one lookup.
+manager.bus.on('status', (conversationId: string, status: string) => {
+  if (status === 'idle' || status === 'failed') void veneerBrowser.releaseAtTurnEnd(conversationId).catch(() => undefined);
+});
 // Two seconds keeps provider-triggered automations responsive; schedule checks
 // are cheap and share the same durable tick.
 const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000 });

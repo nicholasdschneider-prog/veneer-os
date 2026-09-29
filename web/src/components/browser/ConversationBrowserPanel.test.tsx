@@ -653,12 +653,19 @@ describe('browser capacity lifecycle presentation', () => {
   });
   it('shows capacity and an explicit Keep open control without internal errors', () => {
     const html = renderToStaticMarkup(<ConversationBrowserPanel conversationId="conv-1" onClose={() => {}} onToast={() => {}}
-      initialSession={{ ...baseSession, temporaryClone: true, keepOpen: true, capacity: { active: 5, limit: 5, waiting: 2 }, retentionReason: 'keep_open' }} />);
+      initialSession={{ ...baseSession, temporaryClone: true, keepOpen: true, keepOpenUntil: '2026-09-29T17:00:00Z', keepOpenReason: 'wizard open', capacity: { active: 5, limit: 5, waiting: 2, projectActive: 2, projectLimit: 2 }, retentionReason: 'keep_open' }} />);
     expect(html).toContain('5 of 5 browser slots in use');
+    expect(html).toContain('2 of 2 for this project');
     expect(html).toContain('2 waiting');
     expect(html).toContain('Keep browser open');
-    expect(html).toContain('Keep open is on');
+    expect(html).toContain('Kept open until');
+    expect(html).toContain('wizard open');
     expect(html).not.toContain('/rpc/');
+  });
+  it('explains the turn-end pause when no hold is set', () => {
+    const html = renderToStaticMarkup(<ConversationBrowserPanel conversationId="conv-1" onClose={() => {}} onToast={() => {}}
+      initialSession={{ ...baseSession, temporaryClone: true, keepOpen: false, capacity: { active: 1, limit: 5, waiting: 0, projectActive: 1, projectLimit: 2 } }} />);
+    expect(html).toContain('Pauses when the bot finishes its turn');
   });
   it('explains failed checks and unfinished work without exposing raw diagnostics', () => {
     expect(browserRetentionLabel('unfinished_page')).toContain('unfinished work');

@@ -144,9 +144,9 @@ export function createDockerBackend({ image, seccomp, chromeUid, chromeGid }) {
 
     // Warm containers are not sessions until they are adopted, so they never
     // consume a slot; adoption pops the registry entry, which makes the copy count.
-    async sessionCount(warmNames) {
+    async sessionNames(warmNames) {
       const output = await docker(['ps', '--filter', 'label=veneer.browser=1', '--format', '{{.Names}}']);
-      return output ? output.split('\n').filter((name) => name && !warmNames.has(name)).length : 0;
+      return output ? output.split('\n').filter((name) => name && !warmNames.has(name)) : [];
     },
 
     // Warm containers carry their whole identity in labels so a restart can rebuild

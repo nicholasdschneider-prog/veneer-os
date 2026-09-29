@@ -24,9 +24,10 @@ export function browserRetentionLabel(reason?: string | null): string | null {
     recent_activity: 'Recently used', active_turn: 'Bot is working', capture: 'Advanced capture is on',
     sign_in: 'Sign-in is unfinished', keep_open: 'Keep open is on', uncertain_action: 'An action needs verification',
     unknown_history: 'Session needs review', human_viewer: 'A person is viewing this browser',
-    recent_human_viewer: 'Recently viewed by a person', recent_ticket: 'Browser is reconnecting',
+    recent_human_viewer: 'Viewed by a person moments ago', recent_ticket: 'A person is opening the live view',
     unfinished_page: 'Page has unfinished work', page_check_unavailable: 'Could not verify that the page is safe to pause',
     download_in_progress: 'Download in progress', activity_changed: 'Browser activity changed',
+    suspended: 'Paused; files and sign-in kept',
     suspend_failed: 'Automatic pause failed; your working copy is retained',
     automation_disconnect_failed: 'Browser control could not disconnect', suspend_refused: 'Browser could not pause safely',
   };
@@ -1150,6 +1151,7 @@ export function ConversationBrowserPanel({
       {session?.configured && session.capacity ? (
         <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-2 text-xs text-muted-foreground" role="status">
           <span>{session.capacity.active} of {session.capacity.limit} browser slots in use</span>
+          {session.capacity.projectLimit !== undefined ? <span>{session.capacity.projectActive ?? 0} of {session.capacity.projectLimit} for this project</span> : null}
           {session.capacity.waiting > 0 ? <span>{session.capacity.waiting} waiting</span> : null}
           {session.capacity.occupants?.length ? <details className="w-full">
             <summary className="cursor-pointer">Browsers you can access</summary>
@@ -1157,6 +1159,7 @@ export function ConversationBrowserPanel({
               {session.capacity.occupants.map(owner => <li key={owner.conversationId}>
                 <a className="underline" href={`/#/chat/${encodeURIComponent(owner.conversationId)}`}>{owner.title}</a>
                 {browserRetentionLabel(owner.reason) ? ` — ${browserRetentionLabel(owner.reason)}` : ''}
+                {owner.holdUntil ? ` (kept open until ${new Date(owner.holdUntil).toLocaleTimeString()})` : ''}
               </li>)}
             </ul>
           </details> : null}
@@ -1172,8 +1175,12 @@ export function ConversationBrowserPanel({
       ) : null}
       {session?.temporaryClone ? (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs">
-          <span className="text-muted-foreground">{browserRetentionLabel(session.retentionReason) ?? 'Idle browsers pause safely and retain their files.'}</span>
-          <label className="flex items-center gap-2" title="Keep this browser running for an unfinished workflow. Turn off when ready for automatic idle checks.">
+          <span className="text-muted-foreground">
+            {session.keepOpen && session.keepOpenUntil
+              ? `Kept open until ${new Date(session.keepOpenUntil).toLocaleTimeString()}${session.keepOpenReason ? ` — ${session.keepOpenReason}` : ''}`
+              : browserRetentionLabel(session.retentionReason) ?? 'Pauses when the bot finishes its turn; files and sign-in are kept.'}
+          </span>
+          <label className="flex items-center gap-2" title="Keep this browser running past the bot's turn for up to two hours. Turn it on again to renew.">
             Keep open
             <Switch aria-label="Keep browser open" checked={session.keepOpen ?? false} disabled={busy}
               onCheckedChange={() => void action(async () => {

@@ -310,6 +310,9 @@ function spawnManager(env) {
       VENEER_BROWSER_CHROME_GID: String(process.getgid?.() ?? 0),
       VENEER_BROWSER_TEMP_IDLE_MINUTES: '5',
       VENEER_BROWSER_SWEEP_SECONDS: '1',
+      // Most instances open several copies inside one project; the project cap
+      // has its own test.
+      VENEER_BROWSER_MAX_PER_PROJECT: '20',
       FAKE_DOCKER_LOG: dockerLog,
       FAKE_DOCKER_STATE: dockerState,
       FAKE_RUNNING_FILE: runningFile,
@@ -1260,16 +1263,35 @@ test('serializes concurrent admission across projects and releases a slot withou
   assert.equal((await instance.call(`/v1/profiles/${loser.profile}/start`, { method: 'POST', body: JSON.stringify({ projectId: loser.project }) })).status, 200);
 });
 
-test('protects ticket holders and human-viewed copies from idle suspension', async () => {
+test('a pending viewer ticket protects a copy from suspension; the application\'s own agent ticket does not', async () => {
   const instance = await startManager('suspend-protection', { VENEER_BROWSER_WARM: '0' });
   for (const purpose of ['agent', 'viewer']) {
     await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId, profileId: purpose, name: purpose, temporary: true }) });
     await instance.call(`/v1/profiles/${purpose}/ticket`, { method: 'POST', body: JSON.stringify({ projectId, purpose }) });
     const status = await (await instance.call(`/v1/profiles/${purpose}?projectId=${projectId}`)).json();
     assert.equal(Boolean(status.profile.lastViewerAt), purpose === 'viewer');
-    const suspended = await instance.call(`/v1/profiles/${purpose}/suspend`, { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt: status.profile.lastUsedAt }) });
-    assert.equal((await suspended.json()).suspended, false);
+    const suspended = await (await instance.call(`/v1/profiles/${purpose}/suspend`, { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt: status.profile.lastUsedAt }) })).json();
+    assert.equal(suspended.suspended, purpose === 'agent');
+    if (purpose === 'viewer') assert.equal(suspended.reason, 'recent_human_viewer');
   }
+});
+
+test('caps one project inside the shared admission path while another project still starts', async () => {
+  const instance = await startManager('project-cap', { VENEER_BROWSER_MAX_ACTIVE: '3', VENEER_BROWSER_MAX_PER_PROJECT: '1', VENEER_BROWSER_WARM: '0', VENEER_BROWSER_CAPACITY_WAIT_MS: '2000' });
+  for (const [project, profile] of [['one', 'a'], ['one', 'b'], ['two', 'c']]) {
+    assert.equal((await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId: project, profileId: profile, name: profile, temporary: true }) })).status, 201);
+  }
+  const start = (project, profile) => instance.call(`/v1/profiles/${profile}/start`, { method: 'POST', body: JSON.stringify({ projectId: project }) });
+  const same = await Promise.all([start('one', 'a'), start('one', 'b')]);
+  assert.deepEqual(same.map(r => r.status).sort(), [200, 429]);
+  const loser = same[0].status === 429 ? 'a' : 'b';
+  const capacity = await (await instance.call('/v1/capacity?projectId=one')).json();
+  assert.deepEqual({ active: capacity.active, limit: capacity.limit, projectLimit: capacity.projectLimit, projectActive: capacity.projectActive }, { active: 1, limit: 3, projectLimit: 1, projectActive: 1 });
+  // A project-capped waiter does not hold the other project's start behind it.
+  const [blocked, other] = await Promise.all([start('one', loser), start('two', 'c')]);
+  assert.equal(blocked.status, 429);
+  assert.equal(other.status, 200);
+  assert.equal((await (await instance.call('/v1/capacity')).json()).active, 2);
 });
 
 

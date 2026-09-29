@@ -63,7 +63,7 @@ describe('Veneer Browser runner tool scope', () => {
   const openFreshConversation = vi.fn(async () => ({ ...(await conversationSession()), temporaryClone: true, fresh: true }));
   const updateConversationProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Saved login' }));
   const saveConversationAsProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Other login' }));
-  const setKeepOpen = vi.fn();
+  const setKeepOpen = vi.fn(async () => ({ expiresAt: '2026-09-29T17:00:00Z' }));
   const readPublic = vi.fn(async () => ({ok:true,mode:'public_http',rendered:false,text:'public research'}));
   const capacityWaits={register:vi.fn(()=>({id:'wait',status:'waiting',expiresAt:'2026-09-29T15:00:00Z'})),automatic:vi.fn(()=>({id:'auto',status:'waiting',expiresAt:'2026-09-29T15:00:00Z'})),cancel:vi.fn()};
   const stopConversation = vi.fn(async () => conversationSession());
@@ -165,12 +165,17 @@ describe('Veneer Browser runner tool scope', () => {
   });
 
   it('changes only the token chat Keep open setting', async () => {
-    const response = await call('keep_open', { active: true });
+    const response = await call('keep_open', { active: true, reason: 'wizard open', minutes: 30 });
     const body = await response.json();
     expect(body.result.isError).not.toBe(true);
-    expect(setKeepOpen).toHaveBeenCalledWith(1, 'token-chat', true);
+    expect(setKeepOpen).toHaveBeenCalledWith(1, 'token-chat', true, { reason: 'wizard open', minutes: 30 });
     const invalid = await call('keep_open', { active: 'false' });
     expect((await invalid.json()).result.isError).toBe(true);
+    const unexplained = await call('keep_open', { active: true });
+    expect((await unexplained.json()).result.isError).toBe(true);
+    const released = await call('keep_open', { active: false });
+    expect((await released.json()).result.isError).not.toBe(true);
+    expect(setKeepOpen).toHaveBeenLastCalledWith(1, 'token-chat', false, {});
   });
 
   it('uses the signed agent token chat and its derived unfiled scope for list', async () => {
