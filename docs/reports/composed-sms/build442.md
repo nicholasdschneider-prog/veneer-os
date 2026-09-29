@@ -20,3 +20,9 @@ The loader validates protected operator attestations, not live CF token status. 
 ## Validation
 
 Node24 root typecheck passed; focused 144 passed; full root tests passed (server2,837 with5 skipped, web909, browser-manager54, installer29). Root build passed before restart; standard bundle-size advisory only. No production business acceptance tests.
+
+## Deployment
+
+Implementation `8aec7c36896038d5a6c4bc04c9f94a683ff8610c` pushed and deployed through supported root restart on Node24.21.0. At 2026-09-29T00:42:56.296019+00:00, all five actual service health endpoints returned200; all4,547 build artifacts matched. Initial generic /health probes were corrected to the service-specific paths used by restart.mjs (retained in receipt). Protected429/434 files remain unchanged UID501/0600. Compose service registry remains absent. Public front door302/tunnel healthy does not verify authenticated customer workflow.
+
+[Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build442-runtime.json).

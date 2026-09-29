@@ -1,0 +1,35 @@
+{
+  "verifiedAt": "2026-09-29T00:42:56.296019+00:00",
+  "implementationCommit": "8aec7c36896038d5a6c4bc04c9f94a683ff8610c",
+  "health": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  },
+  "artifactCount": 4547,
+  "artifactMismatches": [],
+  "protectedRegistries": {
+    "approved-case-registry.json": {
+      "unchanged": true,
+      "mode": "0o600",
+      "uid": 501
+    },
+    "compose-correspondence-registry.json": {
+      "unchanged": true,
+      "mode": "0o600",
+      "uid": 501
+    }
+  },
+  "composeServiceRegistryConfigured": false,
+  "credentialReadsOrRenewals": false,
+  "sourceWritesOrCustomerActions": false,
+  "initialGenericHealthProbes": {
+    "web": 200,
+    "runner": "HTTP Error 405: Method Not Allowed",
+    "app-runner": "HTTP Error 405: Method Not Allowed",
+    "terminal": "HTTP Error 404: Not Found",
+    "browser-manager": 200
+  }
+}
