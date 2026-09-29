@@ -35,7 +35,7 @@ The dated `correction-integration` feature provides exact original-owner/executo
 
 ## Validation
 
-Node24 root typecheck, 298 focused tests, full tests (server 2,980 passed/5 skipped; web 909; browser 54; installer 29) and production build passed. Build emitted its standard bundle-size advisory. [Validation receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build452/validation.json). [Exact implementation and contract hashes](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build452/implementation-manifest.json). Runtime verification follows the supported restart.
+Node24 root typecheck, 298 focused tests, full tests (server 2,980 passed/5 skipped; web 909; browser 54; installer 29) and production build passed. Build emitted its standard bundle-size advisory. [Validation receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build452/validation.json). [Exact implementation and contract hashes](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build452/implementation-manifest.json). Implementation `81dede8fc920f9fc42e5eddd5c8e82a29b25aac7` was pushed and restarted once through root `npm run restart`. At 2026-09-29T05:36:50.929430+00:00, all five services returned HTTP 200 and all 4,560 built artifacts matched. The four protected registries remain byte-identical. Authenticated public chat was not tested. [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build452/runtime.json).
 
 ## Changed files
 
