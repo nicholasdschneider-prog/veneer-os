@@ -9,14 +9,14 @@ const decision = (id: string, state: string, action?: string, conversationId = '
 } as BotDecision);
 
 describe('chat open questions', () => {
-  it('keeps unresolved work for this chat, including deferrals and approved blockers', () => {
+  it('keeps only unanswered questions for this chat; answered work stays in history', () => {
     const decisions = [
       decision('pending', 'needs_input'), decision('blocked', 'blocked', 'approve'),
       decision('deferred', 'decided', 'defer'), decision('running', 'running', 'approve'),
       decision('completed', 'verified_completed', 'approve'), decision('rejected', 'decided', 'reject'),
       decision('withdrawn', 'decided', 'withdraw'), decision('other', 'needs_input', undefined, 'other-chat'),
     ];
-    expect(questionsForConversation(decisions, 'chat').map(d => d.id)).toEqual(['pending', 'blocked', 'deferred', 'running']);
+    expect(questionsForConversation(decisions, 'chat').map(d => d.id)).toEqual(['pending']);
     expect(questionsForConversation(decisions, 'other-chat').map(d => d.id)).toEqual(['other']);
   });
 
@@ -27,11 +27,12 @@ describe('chat open questions', () => {
     expect(props.data.approved_obligations).toHaveLength(1);
   });
 
-  it('exposes a close control and separate question/follow-through sections while loading', () => {
+  it('exposes unanswered questions and a separate progress link while loading', () => {
     const html = renderToStaticMarkup(<OpenQuestionsPanel conversationId="chat" onClose={() => {}} onNavigate={() => {}} />);
     expect(html).toContain('Close open questions');
     expect(html).toContain('aria-label="Needs your input"');
-    expect(html).toContain('aria-label="Follow-through"');
+    expect(html).not.toContain('aria-label="Follow-through"');
+    expect(html).toContain('Progress &amp; history');
     expect(html).toContain('Loading questions');
     expect(html).not.toContain('No questions waiting');
   });

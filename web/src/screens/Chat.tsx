@@ -1,4 +1,5 @@
-import { OpenQuestionsButton } from '../components/chat/OpenQuestionsPanel';
+import { ChatDecisionCard } from '../components/chat/ChatDecisionCard';
+import { OpenQuestionsButton, useChatDecisions } from '../components/chat/OpenQuestionsPanel';
 import { isResultReplyDelivery } from '../lib/threadReplies';
 import { CoordinationActivity } from '../components/chat/Coordination';
 import {useChatHistory} from '../lib/useChatHistory';
@@ -2287,6 +2288,7 @@ export function Chat({
   const revealedStreamingText = useTypewriter(transcript.streamingText, true);
 
   const communication = useBotCommunication(isNew ? '' : conversationId);
+  const chatDecisions = useChatDecisions(isNew ? '' : conversationId);
   const chatDrafts = useMemo(() => communication.data.drafts.filter(d => !d.decision_id), [communication.data.drafts]);
   const renderVoiceTimeline = useCallback((sessions: VoiceSession[], voiceCard: (session: VoiceSession) => ReactNode) => {
                   const times=items.flatMap(i=>'at' in i&&i.at&&Number.isFinite(Date.parse(i.at))?[Date.parse(i.at)]:[]);
@@ -2294,9 +2296,13 @@ export function Chat({
                   const earlier=earliest===null?[]:sessions.filter(call=>call.started_ms<earliest);
                   const earlierReplies = earliest === null ? [] : threadReplies.replies.filter(r=>replyTime(r)<earliest);
                   const replyCard = (reply: typeof threadReplies.replies[number]) => <ThreadReplyRow reply={reply} canReply={canSend} onReply={selectReply} onOriginal={anchor=>setSourceAnchor({...anchor,request:Date.now()})}/>;
-                  const cards = chatDrafts.map(d => ({ id: d.id, time: communicationTime(d.created_at) }));
+                  const cards = [...chatDrafts.map(d => ({ id: d.id, time: communicationTime(d.created_at) })), ...chatDecisions.decisions.map(d => ({ id: `decision:${d.id}`, time: communicationTime(d.created_at) }))];
                   const earlierCards = earliest === null ? [] : cards.filter(c => c.time < earliest);
                   const draftCard = (id: string) => {
+                    if (id.startsWith('decision:')) {
+                      const decision = chatDecisions.decisions.find(d => `decision:${d.id}` === id)!;
+                      return <ChatDecisionCard key={`${decision.id}:${decision.version}`} decision={decision} unavailable={!!chatDecisions.error} />;
+                    }
                     const d = chatDrafts.find(d => d.id === id)!;
                     return <DraftCard key={`${d.id}:${d.version}:${d.state}`} draft={d} refresh={communication.refresh} />;
                   };
@@ -2307,7 +2313,7 @@ export function Chat({
                     {earlierReplies.length>0&&<details className="rounded-xl border p-3"><summary className="cursor-pointer">Replies before loaded message history ({earlierReplies.length})</summary><div className="space-y-3">{earlierReplies.map(reply=><div key={reply.id}>{replyCard(reply)}</div>)}</div></details>}
                     {earlier.length>0&&<details className="rounded-xl border p-3"><summary>Voice chats before loaded message history ({earlier.length})</summary><p className="text-sm">Load earlier messages to see these calls alongside their original context.</p><div className="space-y-2">{[...earlier].reverse().map(voiceCard)}</div></details>}
                     {!timeline.hasMessageTimes && sessions.length > 0 && items.length > 0 && <p className="text-sm text-muted-foreground">Voice chats are dated below. These messages have no recorded times, so their relative position is unavailable.</p>}
-                    {earlierCards.length > 0 && <details className="rounded-xl border p-3"><summary className="cursor-pointer">Outgoing messages before loaded message history ({earlierCards.length})</summary><p className="text-sm">Load earlier messages to see these cards in their original context.</p><div className="space-y-3">{earlierCards.sort((a,b) => a.time-b.time || a.id.localeCompare(b.id)).map(c => draftCard(c.id))}</div></details>}
+                    {earlierCards.length > 0 && <details className="rounded-xl border p-3"><summary className="cursor-pointer">Questions and outgoing messages before loaded message history ({earlierCards.length})</summary><p className="text-sm">Load earlier messages to see these cards in their original context.</p><div className="space-y-3">{earlierCards.sort((a,b) => a.time-b.time || a.id.localeCompare(b.id)).map(c => draftCard(c.id))}</div></details>}
                     {timeline.entries.map(segment => segment.kind === 'card' ? (
                       <MessageScrollerItem key={segment.key} messageId={segment.key}>{draftCard(segment.card.id)}</MessageScrollerItem>
                     ) : segment.kind === 'reply' ? (
@@ -2326,7 +2332,7 @@ export function Chat({
                       </MessageScrollerItem>
                     ))}
                   </>;
-                }, [items, frozenLen, firstPromptKey, mostRecentPromptKey, onFrozenClick,history.window?.hasOlder,threadReplies.replies,threadReplies.hasOlder,threadReplies.busy,threadReplies.error,threadReplies.refresh,canSend,selectReply,chatDrafts,communication.refresh]);
+                }, [items, frozenLen, firstPromptKey, mostRecentPromptKey, onFrozenClick,history.window?.hasOlder,threadReplies.replies,threadReplies.hasOlder,threadReplies.busy,threadReplies.error,threadReplies.refresh,canSend,selectReply,chatDrafts,communication.refresh,chatDecisions.decisions,chatDecisions.error]);
 
   // Header: the chat title leads, the agent name sits below it. Live status is
   // folded into the agent line so nothing important is lost off the top.
