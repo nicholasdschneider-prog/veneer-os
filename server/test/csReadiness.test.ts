@@ -4,14 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { migrate } from '../src/db/migrate.js';
 import { csReadiness } from '../src/bots/csReadiness.js';
 import { csOutcomes, summarizeDelays } from '../src/bots/csOutcomes.js';
-import { routineOwnerSetup, type RoutineSetupPacket } from '../src/bots/routineOwnerSetup.js';
-import { preparedRoutineRegistration } from '../src/bots/preparedRoutineRegistration.js';
+import { csStandingPolicy } from '../src/bots/csStandingPolicy.js';
 import { callBotTool } from '../src/mcp/botTools.js';
 import type { Actor } from '../src/bots/service.js';
 import type { UserRow } from '../src/db/db.js';
 
-let db: Database.Database, owner: Actor, bot: Actor, packet: RoutineSetupPacket;
-const identity = { clientId: 'fixture-client', audience: 'fixture-audience' };
+let db: Database.Database, owner: Actor, bot: Actor;
 const now = () => Date.parse('2026-09-29T12:00:00Z');
 const state = (view: ReturnType<ReturnType<typeof csReadiness>['read']>, id: string) => view.capabilities.find(c => c.id === id)!;
 function draft(id: string, fields: { state: string; authorized?: boolean; receipt?: string; claim?: string; at?: string }) {
@@ -29,37 +27,39 @@ beforeEach(() => {
   db.prepare("INSERT INTO business_bot_members(conversation_id,team_id,role,subteam) VALUES('bot','team','bot','Customer Service')").run();
   owner = { user: db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow };
   bot = { ...owner, conversationId: 'bot' };
-  packet = { ...preparedRoutineRegistration, business_id: 'team', client_id: identity.clientId, audience: identity.audience, source: null };
 });
 afterEach(() => db.close());
 
-it('names the source owner and keeps owner authorization closed while the adapter is missing', () => {
-  const view = csReadiness(db, identity, packet, now).read(owner, { business_id: 'team' });
+it('shows the owner authorization as the single remaining step before enrollment', () => {
+  const view = csReadiness(db, now).read(owner, { business_id: 'team' });
   const photo = state(view, 'routine-product-label-photo');
-  expect(photo).toMatchObject({ state: 'blocked_on_integration', execute: false });
-  expect(photo.blockers.map(b => b.owner)).toEqual(['OrderOps source owner', 'Business owner']);
-  expect(photo.blockers[1]!.dependency).toContain('no approval is needed yet');
+  expect(photo).toMatchObject({ state: 'awaiting_owner', state_label: 'Waiting for owner authorization', execute: false });
+  expect(photo.blockers).toEqual([{ owner: 'Business owner', dependency: expect.stringContaining('/#/routine-reply-setup') }]);
   expect(photo.evidence[0]).toContain('not an enrollment');
   expect(view.autonomous).toEqual([]);
 });
-it('reports a missing service connection before anything else', () => {
-  const photo = state(csReadiness(db, null, packet, now).read(owner, { business_id: 'team' }), 'routine-product-label-photo');
-  expect(photo.blockers[0]).toMatchObject({ owner: 'Platform Dev' });
-});
-it('stays tested after enrollment until a source proof arrives, and pauses on revocation', () => {
-  const ready: RoutineSetupPacket = { ...packet, source: { executor_id: 'bot', principal_id: 'own-principal', adapter_digest: 'a'.repeat(64), registration_reference: 'Fixture registration', deployment_receipt: 'Fixture deployment', principal_receipt: 'Fixture principal', runtime_receipt: 'Fixture runtime' } };
-  const setup = routineOwnerSetup(db, identity, ready);
-  const registered = setup.confirm(owner, { review_hash: setup.status(owner).review_hash, confirm: true });
-  const service = csReadiness(db, identity, ready, now);
-  const enrolled = state(service.read(owner, { business_id: 'team' }), 'routine-product-label-photo');
-  expect(enrolled).toMatchObject({ state: 'tested', blockers: [] });
-  db.prepare("INSERT INTO routine_source_revocations(trust_id,actor_id,reason) VALUES(?,1,'stop')").run(registered.receipt!.trust_id);
-  const view = service.read(owner, { business_id: 'team' });
+it('stays tested after enrollment, becomes a pilot only with a receipt, blocks on an unknown outcome and pauses on revocation', () => {
+  const policies = csStandingPolicy(db, now), service = csReadiness(db, now);
+  const review = policies.status(owner, 'team');
+  const enrolled = policies.enroll(owner, { business_id: 'team', expected_version: 0, request_key: 'enroll', executor_ids: ['bot'], daily_cap: 20, review_hash: review.review_hash, confirm: true });
+  expect(state(service.read(owner, { business_id: 'team' }), 'routine-product-label-photo')).toMatchObject({ state: 'tested', blockers: [] });
+  const standing = (id: string, ticket: string, fields: Parameters<typeof draft>[1]) => {
+    draft(id, fields);
+    db.prepare("INSERT INTO cs_standing_authorizations(draft_id,policy_id,policy_version,business_id,template_key,executor_id,ticket,draft_version,payload_hash) VALUES(?,?,1,'team',?,'bot',?,1,'hash')").run(id, enrolled.policy!.id, policies.template.key, ticket);
+  };
+  standing('photo-sent', 'T1', { state: 'sent', receipt: 'provider-1', claim: 'k1' });
+  let view = service.read(owner, { business_id: 'team' });
+  expect(state(view, 'routine-product-label-photo').state).toBe('live_for_pilot');
+  expect(view.autonomous).toEqual(['routine-product-label-photo']);
+  standing('photo-claimed', 'T2', { state: 'sending', claim: 'k2' });
+  expect(state(service.read(owner, { business_id: 'team' }), 'routine-product-label-photo')).toMatchObject({ state: 'blocked_on_integration', blockers: [{ owner: 'Fixture' }] });
+  policies.revoke(owner, { policy_id: enrolled.policy!.id, reason: 'Stop' });
+  view = service.read(owner, { business_id: 'team' });
   expect(state(view, 'routine-product-label-photo').state).toBe('paused');
   expect(view.autonomous).toEqual([]);
 });
 it('never reports the approved reply live while a send outcome is unknown or an authorized message is overdue', () => {
-  const service = csReadiness(db, identity, packet, now);
+  const service = csReadiness(db, now);
   expect(state(service.read(owner, { business_id: 'team' }), 'approved-customer-reply').state).toBe('tested');
   draft('sent', { state: 'sent', authorized: true, receipt: 'provider-1', claim: 'k1' });
   expect(state(service.read(owner, { business_id: 'team' }), 'approved-customer-reply').state).toBe('live');
@@ -76,18 +76,18 @@ it('never reports the approved reply live while a send outcome is unknown or an 
 });
 it('does not count a sent state without a receipt as delivered', () => {
   draft('claimed-sent', { state: 'sent', authorized: true, claim: 'k' });
-  const reply = state(csReadiness(db, identity, packet, now).read(owner, { business_id: 'team' }), 'approved-customer-reply');
+  const reply = state(csReadiness(db, now).read(owner, { business_id: 'team' }), 'approved-customer-reply');
   expect(reply.state).toBe('blocked_on_integration');
 });
 it('lists unbuilt case types as draft with a named dependency and changes no record', () => {
   const before = db.prepare('SELECT revision FROM compose_context_clock').get();
-  const view = csReadiness(db, identity, packet, now).read(bot, { business_id: 'team' });
+  const view = csReadiness(db, now).read(bot, { business_id: 'team' });
   expect(view.capabilities.filter(c => c.state === 'draft').map(c => c.id)).toContain('routine-factual-tracking');
   expect(view.capabilities.every(c => c.execute === false && (c.state === 'live' || c.state === 'tested' || c.blockers.length > 0))).toBe(true);
   expect(db.prepare('SELECT revision FROM compose_context_clock').get()).toEqual(before);
 });
 it('refuses another business, a non-owner, an inactive bot and an unknown business', () => {
-  const service = csReadiness(db, identity, packet, now);
+  const service = csReadiness(db, now);
   const member: Actor = { user: db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow };
   expect(() => service.read(member, { business_id: 'team' })).toThrow('business owner');
   expect(() => service.read({ ...member, conversationId: 'outside' }, { business_id: 'team' })).toThrow('exact business');

@@ -1,6 +1,7 @@
 import { approvedCaseResolver } from './approvedCaseResolver.js';
 import { routineOwnerSetup } from './routineOwnerSetup.js';
 import { csReadiness } from './csReadiness.js';
+import { csStandingPolicy } from './csStandingPolicy.js';
 import { csOutcomes } from './csOutcomes.js';
 import { preparedRoutineRegistration } from './preparedRoutineRegistration.js';
 import { candidateOwnerSetup } from './candidateOwnerSetup.js';
@@ -94,8 +95,14 @@ export function createCommunicationRouter(ctx: AppContext) {
   const routineSetup = routineOwnerSetup(ctx.db, configuredRoutineIdentity(ctx.config), preparedRoutineRegistration);
   r.get('/routine-messages/setup', run((req,res)=>res.json(routineSetup.status(actor(req)))));
   r.post('/routine-messages/setup', run((req,res)=>res.json(routineSetup.confirm(actor(req),req.body))));
+  // Owner-only standing authority for the fixed label-photo request on the ordinary send path.
+  const standingPolicy = csStandingPolicy(ctx.db);
+  const standingBusiness = (req: express.Request) => typeof req.query.business_id==='string'&&req.query.business_id?req.query.business_id:preparedRoutineRegistration.business_id;
+  r.get('/cs-standing-policy', run((req,res)=>res.json(standingPolicy.status(actor(req),standingBusiness(req)))));
+  r.post('/cs-standing-policy', run((req,res)=>res.json(standingPolicy.enroll(actor(req),req.body))));
+  r.post('/cs-standing-policy/revoke', run((req,res)=>res.json(standingPolicy.revoke(actor(req),req.body))));
   // Read-only views. Bots pass their business in the body; the owner screen defaults to the prepared business.
-  const readiness = csReadiness(ctx.db, configuredRoutineIdentity(ctx.config), preparedRoutineRegistration);
+  const readiness = csReadiness(ctx.db);
   r.get('/cs-readiness', run((req,res)=>res.json(readiness.read(actor(req),{business_id:typeof req.query.business_id==='string'&&req.query.business_id?req.query.business_id:preparedRoutineRegistration.business_id}))));
   r.post('/cs-readiness', run((req,res)=>res.json(readiness.read(actor(req),req.body))));
   r.post('/cs-outcomes', run((req,res)=>{

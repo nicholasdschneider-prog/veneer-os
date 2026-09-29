@@ -106,8 +106,9 @@ describe('living bot guide release contract', () => {
     for(const path of ['list','review','bind','handoffs','handoffs/revoke'])expect(employeeRouteAllowed('POST','/bot-communication/routine-messages/hold-scopes/'+path)).toBe(false);
   });
   it('announces owner photo setup without granting employee enrollment',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-25')).features.find(f=>f.id==='routine-owner-setup')!;
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('Registration does not prove');
+    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='routine-owner-setup')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('does not resolve the case');expect(f.agent).toContain('standing_policy.applied');
+    expect(employeeRouteAllowed('POST','/bot-communication/cs-standing-policy')).toBe(false);expect(employeeRouteAllowed('GET','/bot-communication/cs-standing-policy')).toBe(false);
     expect(botFeatureInstructions()).toContain(f.agent);
     expect(employeeRouteAllowed('POST','/bot-communication/routine-messages/setup')).toBe(false);
   });

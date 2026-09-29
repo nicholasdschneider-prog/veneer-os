@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { BotError, createBotService, type Actor } from './service.js';
 import { canSendToConversation } from '../conversations/access.js';
+import { csStandingPolicy } from './csStandingPolicy.js';
 import type { UserRow, ConversationWakeupRow } from '../db/db.js';
 
 import { draftPayload, type DraftPayload } from './draftPayload.js';
@@ -37,6 +38,7 @@ export type Briefing = {
 export function communicationService(db: Database.Database, mappingCheck?: CaseMappingCheck) {
   const bots = createBotService(db);
   const delegated = messageDelegationService(db,mappingCheck);
+  const standing = csStandingPolicy(db);
   function access(a: Actor, c: string, write = false) {
     const chat = bots.chat(a, c);
     if (write && (!canSendToConversation(a.user, chat, db) || chat.archived))
@@ -103,9 +105,10 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
   function draftView(d: Draft) {
     const retirement = db.prepare('SELECT expected_version,reason,evidence,actor_id,conversation_id,created_at FROM bot_message_retirements WHERE draft_id=?').get(d.id) ?? null;
     const routine = !!routineExecutionService(db).authorization(d.id);
+    const standingAuthorization = standing.authorization(d.id);
     const decision = d.decision_id ? db.prepare('SELECT id,version,state,answer_json FROM bot_decisions WHERE id=?').get(d.decision_id) as {id:string;version:number;state:string;answer_json:string|null}|undefined : undefined;
     const cs = csLane(d.conversation_id);
-    const lifecycle = cs ? { ...csDraftState(d,{retired:!!retirement,routine,delegated:!!d.delegation_id,
+    const lifecycle = cs ? { ...csDraftState(d,{retired:!!retirement,routine:routine||!!standingAuthorization,delegated:!!d.delegation_id,
       stale:!!decision && decision.version!==d.decision_version,
       decision:decision && {...decision,answer:decision.answer_json?JSON.parse(decision.answer_json).action:null}}),
       owner_conversation_id:d.conversation_id, technical_owner:'Platform Dev / connected source owner', decision_id:d.decision_id } : null;
@@ -114,7 +117,8 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
       payload: JSON.parse(d.payload_json) as DraftPayload,
       payload_json: undefined,
       cs_lifecycle: lifecycle,
-      authorization_basis: routine ? 'standing_policy' : (d.delegation_id ? 'approved_message_delegation' : 'human_draft'),
+      authorization_basis: routine || standingAuthorization ? 'standing_policy' : (d.delegation_id ? 'approved_message_delegation' : 'human_draft'),
+      standing_policy: standingAuthorization ? { applied: true, policy_id: standingAuthorization.policy_id, policy_version: standingAuthorization.policy_version, reasons: [] as string[] } : null,
       retirement,
     };
   }
@@ -213,17 +217,22 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
         return draftView(prior);
       }
       const id = crypto.randomUUID();
-      db.prepare(
-        'INSERT INTO bot_message_drafts(id,conversation_id,decision_id,decision_version,request_key,payload_json) VALUES(?,?,?,?,?,?)',
-      ).run(
-        id,
-        c,
-        decisionId ?? null,
-        decisionId ? version : null,
-        key,
-        JSON.stringify(payload),
-      );
-      return draftView(readDraft(a, id));
+      return db.transaction(() => {
+        db.prepare(
+          'INSERT INTO bot_message_drafts(id,conversation_id,decision_id,decision_version,request_key,payload_json) VALUES(?,?,?,?,?,?)',
+        ).run(
+          id,
+          c,
+          decisionId ?? null,
+          decisionId ? version : null,
+          key,
+          JSON.stringify(payload),
+        );
+        // The fixed request may be queued under the owner's standing policy.
+        // Anything else stays an ordinary draft that needs a person.
+        const outcome = standing.apply(a, readDraft(a, id));
+        return { ...draftView(readDraft(a, id)), standing_policy: outcome };
+      }).immediate();
     },
     mutateDraft(
       a: Actor,
@@ -321,12 +330,15 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
           if (!bridge) binding(a, d.conversation_id, d.decision_id, d.decision_version);
           if (a.conversationId !== d.conversation_id)
             throw new BotError(403, 'Only the owning bot can claim delivery');
-          const user = db
+          const underPolicy = !bridge && d.authorized_by === null && !!standing.authorization(d.id);
+          // Revocation stops an unclaimed request. A claimed one stays readable for reconciliation only.
+          const policy = underPolicy && d.state === 'queued' ? standing.checkClaim(d) : null;
+          const user = underPolicy ? undefined : db
             .prepare("SELECT * FROM users WHERE id=? AND status='active'")
             .get(d.authorized_by) as UserRow | undefined;
-          if (!user)
+          if (!underPolicy && !user)
             throw new BotError(403, 'Send authorization is no longer valid');
-          if (!bridge) authorize({ user }, d);
+          if (!bridge && user) authorize({ user }, d);
           if (d.state === 'sending' && d.claim_key === key)
             return {
               ...draftView(d),
@@ -350,8 +362,8 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
           return {
             ...draftView(readDraft(a, id)),
             execute: true,
-            authorized_name: user.display_name,
-            approval_source: bridge ? `Veneer decision ${d.decision_id} v${d.decision_version}; original approval ${bridge.approval.id}; delegation ${d.delegation_id}; draft ${id}` : `Veneer draft ${id} v${d.version}`,
+            authorized_name: policy ? `Standing policy enrolled by ${policy.enrolled_by}` : user!.display_name,
+            approval_source: policy ? `Veneer standing policy ${policy.policy_id} v${policy.policy_version}; draft ${id} v${d.version}` : bridge ? `Veneer decision ${d.decision_id} v${d.decision_version}; original approval ${bridge.approval.id}; delegation ${d.delegation_id}; draft ${id}` : `Veneer draft ${id} v${d.version}`,
             idempotency_key: `veneer-message:${id}`,
           };
         })

@@ -2,6 +2,7 @@ import { PurchaseTimingSetup } from './screens/PurchaseTimingSetup';
 import { RoutineScopeReview } from './screens/RoutineScopeReview';
 import { RoutineOwnerSetup } from './screens/RoutineOwnerSetup';
 import { CsReadiness } from './screens/CsReadiness';
+import { CsPhotoRequestSetup } from './screens/CsPhotoRequestSetup';
 import { FocusedWorkspace } from './screens/FocusedWorkspace';
 import { ReturnOwnerSetup } from './screens/ReturnOwnerSetup';
 import { TeamMessages } from './screens/TeamMessages';
@@ -287,7 +288,9 @@ export function App() {
   }
 
   if (hash.split('?')[0] === '#/routine-scope-review') return <RoutineScopeReview />;
-  if (hash.split('?')[0] === '#/routine-reply-setup') return <RoutineOwnerSetup />;
+  if (hash.split('?')[0] === '#/routine-reply-setup') return <CsPhotoRequestSetup />;
+  // The earlier dedicated-source setup, kept readable for its audit history.
+  if (hash.split('?')[0] === '#/routine-source-setup') return <RoutineOwnerSetup />;
   if (hash.split('?')[0] === '#/cs-readiness') return <CsReadiness />;
 
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/autoship-candidate-setup') return <ReturnOwnerSetup key="candidate" candidate />;

@@ -11,6 +11,7 @@ const tone: Record<string, string> = {
   live_for_pilot: 'border-green-500 text-green-700 dark:text-green-400',
   tested: 'border-blue-500 text-blue-700 dark:text-blue-400',
   blocked_on_integration: 'border-amber-500 text-amber-700 dark:text-amber-400',
+  awaiting_owner: 'border-blue-500 text-blue-700 dark:text-blue-400',
   paused: 'border-zinc-400 text-zinc-600 dark:text-zinc-300',
   draft: 'border-zinc-300 text-zinc-600 dark:border-zinc-600 dark:text-zinc-300',
 };
