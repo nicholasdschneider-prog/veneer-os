@@ -1,0 +1,56 @@
+{
+  "observedAt": "2026-09-29T02:22:11.915483+00:00",
+  "commit": "a9ad00ea04a03a81342796552ddec5ef315773f7",
+  "restart": "supported root npm run restart; completed once",
+  "healthHttpStatuses": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  },
+  "artifactCount": 4552,
+  "artifactMismatches": [],
+  "protectedFiles": {
+    "compose-service-registry.json": {
+      "sha256": "647bac515a174edf35e15de5c242425d9183e105e6a74d90db050b7f6a75688e",
+      "uid": 501,
+      "mode": "0600",
+      "regularNonSymlink": true,
+      "bytes": 22171
+    },
+    "compose-evidence-registry.json": {
+      "sha256": "c8ce2003ffcc8a4efcc149c05eb4d43536f38759d6bcdb1303fcf1b624fdb9c9",
+      "uid": 501,
+      "mode": "0600",
+      "regularNonSymlink": true,
+      "bytes": 2137
+    },
+    "approved-case-registry.json": {
+      "sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+      "uid": 501,
+      "mode": "0600",
+      "regularNonSymlink": true,
+      "bytes": 3049
+    },
+    "compose-correspondence-registry.json": {
+      "sha256": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c",
+      "uid": 501,
+      "mode": "0600",
+      "regularNonSymlink": true,
+      "bytes": 3092
+    }
+  },
+  "configPaths": {
+    "VP_COMPOSE_SERVICE_REGISTRY_FILE": "/Users/archerclawdington/.config/veneer-pro/compose-service-registry.json",
+    "VP_COMPOSE_EVIDENCE_REGISTRY_FILE": "/Users/archerclawdington/.config/veneer-pro/compose-evidence-registry.json"
+  },
+  "configured": true,
+  "sourceGuardAcceptanceInstallation": "pending original source owner",
+  "senderReceipt": null,
+  "timezoneEvidence": [],
+  "scopeReadiness": "not established; incomplete source closures remain blocking",
+  "customerEffects": false,
+  "credentialRetrieval": false,
+  "sourceOrProviderProbes": false
+}

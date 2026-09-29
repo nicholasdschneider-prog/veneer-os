@@ -21,7 +21,7 @@ No authority, review, preparation, claim, send, credential retrieval or customer
 
 ## Validation and runtime
 
-Node24 root typecheck, 169 focused tests, full suites (server2,862 passed/5 skipped, web909, browser54, installer29) and production build passed. Standard bundle-size advisory only. Isolated browser fixtures verified full/restricted employee guide and mobile overflow; core/catalog tests verify resumed-agent instructions. Both protected files were installed at 2026-09-29T02:17:56Z and passed the actual deployed loaders and current native identity checks. Only two exact config paths were appended; old429/434 hashes remain unchanged. Runtime receipt follows the supported root restart.
+Node24 root typecheck, 169 focused tests, full suites (server2,862 passed/5 skipped, web909, browser54, installer29) and production build passed. Standard bundle-size advisory only. Isolated browser fixtures verified full/restricted employee guide and mobile overflow; core/catalog tests verify resumed-agent instructions. Both protected files were installed at 2026-09-29T02:17:56Z and passed the actual deployed loaders and current native identity checks. Only two exact config paths were appended; old429/434 hashes remain unchanged. Commit `a9ad00ea04a03a81342796552ddec5ef315773f7` was pushed and the supported root restart completed once. All five services returned HTTP200; all 4,552 built artifact hashes match. Protected file ownership, permissions, exact config paths and preserved429/434 digests were read back successfully. Registries are configured; the independent readiness limits above remain unresolved.
 
 ## Evidence and changed files
 
@@ -39,3 +39,5 @@ Node24 root typecheck, 169 focused tests, full suites (server2,862 passed/5 skip
 ![Restricted mobile guide](./guide-restricted-mobile.png)
 
 - [installation.json](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build447/installation.json)
+
+- [runtime.json](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build447/runtime.json)
