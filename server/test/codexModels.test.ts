@@ -21,6 +21,14 @@ const RAW_56_SOL = {
 };
 
 describe('toModelOptions', () => {
+  it('excludes retired GPT-6 Sol while retaining the discovered replacement and other models', () => {
+    expect(toModelOptions({ data: [
+      { id: 'gpt-6-sol' }, { model: 'gpt-6-sol' },
+      { ...RAW_56_SOL, id: 'gpt-6.1-sol', displayName: 'GPT-6.1 Sol' },
+      { id: 'gpt-6-astra' },
+    ] }).map((model) => model.id)).toEqual(['gpt-6.1-sol', 'gpt-6-astra']);
+  });
+
   it('maps GPT-5.6 per-model effort metadata onto the option', () => {
     const [sol] = toModelOptions({ data: [RAW_56_SOL] });
     expect(sol).toEqual({

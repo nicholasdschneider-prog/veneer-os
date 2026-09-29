@@ -36,7 +36,8 @@ export function toModelOptions(result: unknown): ModelOption[] {
       if (m.isDefault === true) option.isDefault = true;
       return option;
     })
-    .filter((m) => m.id.length > 0);
+    // Retired locally by the owner; Codex may continue advertising it upstream.
+    .filter((m) => m.id.length > 0 && m.id !== 'gpt-6-sol');
 }
 
 /** Calls `model/list` on an already-running client, never hanging past `REQUEST_TIMEOUT_MS`. */

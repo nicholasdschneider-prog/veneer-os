@@ -238,6 +238,47 @@ describe('migrate', () => {
     db.close();
   });
 
+  it('replaces retired Sol selections without changing other models or history', () => {
+    const db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE settings (key TEXT PRIMARY KEY, value_json TEXT NOT NULL);
+      CREATE TABLE assistants (default_provider TEXT, default_model TEXT);
+      CREATE TABLE conversations (provider TEXT, model TEXT, last_answered_model TEXT, effort TEXT);
+      CREATE TABLE scheduled_tasks (provider TEXT, model TEXT);
+      INSERT INTO assistants VALUES ('codex', 'gpt-6-sol'), ('claude', 'claude-opus-5-5');
+      INSERT INTO conversations VALUES ('codex', 'gpt-6-sol', 'gpt-6-sol', 'high'),
+        ('codex', 'gpt-6-astra', 'gpt-6-astra', 'medium');
+      INSERT INTO scheduled_tasks VALUES ('codex', 'gpt-6-sol'), ('codex', 'gpt-6-luna');
+    `);
+    db.prepare('INSERT INTO settings VALUES (?, ?)').run('model_prefs', JSON.stringify({
+      providerDefaults: { codex: 'gpt-6-sol', claude: 'claude-opus-5-5' },
+      agents: { assistant: { provider: 'codex', model: 'gpt-6-sol', effort: 'ultra' } },
+      modelOrder: { codex: ['gpt-6-astra', 'gpt-6-sol', 'gpt-6.1-sol', 'gpt-6-luna'] },
+      hiddenModels: ['codex:gpt-6-sol', 'codex:gpt-5.5'],
+    }));
+    const sql = fs.readFileSync(path.join(REAL_MIGRATIONS, '0137_replace_gpt6_sol.sql'), 'utf8');
+    db.exec(sql);
+    db.exec(sql); // Safe even if the same data is encountered again.
+    expect(db.prepare('SELECT * FROM conversations').all()).toEqual([
+      { provider: 'codex', model: 'gpt-6.1-sol', last_answered_model: 'gpt-6-sol', effort: 'high' },
+      { provider: 'codex', model: 'gpt-6-astra', last_answered_model: 'gpt-6-astra', effort: 'medium' },
+    ]);
+    expect(db.prepare('SELECT default_model FROM assistants').all()).toEqual([
+      { default_model: 'gpt-6.1-sol' }, { default_model: 'claude-opus-5-5' },
+    ]);
+    expect(db.prepare('SELECT model FROM scheduled_tasks').all()).toEqual([
+      { model: 'gpt-6.1-sol' }, { model: 'gpt-6-luna' },
+    ]);
+    const prefs = JSON.parse((db.prepare('SELECT value_json FROM settings').get() as {value_json: string}).value_json);
+    expect(prefs).toEqual({
+      providerDefaults: { codex: 'gpt-6.1-sol', claude: 'claude-opus-5-5' },
+      agents: { assistant: { provider: 'codex', model: 'gpt-6.1-sol', effort: 'ultra' } },
+      modelOrder: { codex: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna'] },
+      hiddenModels: ['codex:gpt-5.5'],
+    });
+    db.close();
+  });
+
   it('repairs the OpenRouter Deepseek V4 Flash alias in saved selections', () => {
     const oldId = 'deepseek/deepseek-v4-flash-latest';
     const newId = '~deepseek/deepseek-v4-flash-latest';
