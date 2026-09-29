@@ -133,6 +133,13 @@ describe('living bot guide release contract', () => {
     expect(f.limits).toContain('not screen video');expect(f.limits).toContain('Restricted customer-service');
     expect(f.agent).toContain('never permission');
   });
+  it('announces readiness as presentation that grants no authority and stays closed to restricted employees', () => {
+    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='cs-readiness')!;
+    expect(f.isNew).toBe(true);expect(f.agent).toContain('read_cs_readiness');expect(f.agent).toContain('never resend');
+    expect(f.limits).toContain('grants no authority');
+    expect(employeeRouteAllowed('GET','/bot-communication/cs-readiness')).toBe(false);
+    expect(employeeRouteAllowed('POST','/bot-communication/cs-outcomes')).toBe(false);
+  });
   it('requires practical human and bot instructions, unique links, and valid release dates', () => {
     expect(new Set(BOT_FEATURES.map(feature => feature.id)).size).toBe(BOT_FEATURES.length);
     for (const feature of BOT_FEATURES) {

@@ -1,5 +1,7 @@
 import { approvedCaseResolver } from './approvedCaseResolver.js';
 import { routineOwnerSetup } from './routineOwnerSetup.js';
+import { csReadiness } from './csReadiness.js';
+import { csOutcomes } from './csOutcomes.js';
 import { preparedRoutineRegistration } from './preparedRoutineRegistration.js';
 import { candidateOwnerSetup } from './candidateOwnerSetup.js';
 import { autoshipCandidates } from '../botWorkflows/autoshipCandidates.js';
@@ -92,6 +94,15 @@ export function createCommunicationRouter(ctx: AppContext) {
   const routineSetup = routineOwnerSetup(ctx.db, configuredRoutineIdentity(ctx.config), preparedRoutineRegistration);
   r.get('/routine-messages/setup', run((req,res)=>res.json(routineSetup.status(actor(req)))));
   r.post('/routine-messages/setup', run((req,res)=>res.json(routineSetup.confirm(actor(req),req.body))));
+  // Read-only views. Bots pass their business in the body; the owner screen defaults to the prepared business.
+  const readiness = csReadiness(ctx.db, configuredRoutineIdentity(ctx.config), preparedRoutineRegistration);
+  r.get('/cs-readiness', run((req,res)=>res.json(readiness.read(actor(req),{business_id:typeof req.query.business_id==='string'&&req.query.business_id?req.query.business_id:preparedRoutineRegistration.business_id}))));
+  r.post('/cs-readiness', run((req,res)=>res.json(readiness.read(actor(req),req.body))));
+  r.post('/cs-outcomes', run((req,res)=>{
+    const a=actor(req);
+    readiness.read(a,{business_id:z.object({business_id:key}).passthrough().parse(req.body).business_id});
+    res.json(csOutcomes(ctx.db).report(req.body));
+  }));
   const routinePolicies = routinePolicyService(ctx.db);
   const routineExecution = routineExecutionService(ctx.db, { identity: configuredRoutineIdentity(ctx.config) });
   r.post('/routine-messages/hold-scopes/handoffs', run((req,res)=>res.json(routineExecution.prepareScopeHandoff(actor(req),req.body))));

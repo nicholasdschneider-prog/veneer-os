@@ -1,0 +1,367 @@
+[
+  {
+    "id": "single-shipped-unit",
+    "title": "One unit shipped, customer says it looks wrong",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "When one unit shipped, ask for a photo of that unit only. Do not ask which item or for photos of everything.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1001",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "The part I got does not look like the one in the listing.",
+          "attachments": []
+        }
+      ],
+      "human_direction": "none",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": []
+    },
+    "expect": {
+      "action": "send_message",
+      "must_request": [
+        "product_label_photo"
+      ],
+      "must_not_request": [
+        "order_number",
+        "installation_photo",
+        "model_number"
+      ],
+      "max_requests": 1,
+      "subject_skus": [
+        "FX-VALVE-1"
+      ]
+    }
+  },
+  {
+    "id": "multi-item-ambiguity",
+    "title": "Three items shipped, customer does not say which",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "When several items shipped and the customer did not identify one, the single label photo of the item in question is still the only request.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1002",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          },
+          {
+            "sku": "FX-LATCH-2",
+            "name": "Fixture door latch",
+            "quantity_shipped": 2
+          },
+          {
+            "sku": "FX-VENT-3",
+            "name": "Fixture roof vent",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "One of the parts in my order is the wrong one.",
+          "attachments": []
+        }
+      ],
+      "human_direction": "none",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": []
+    },
+    "expect": {
+      "action": "send_message",
+      "must_request": [
+        "product_label_photo"
+      ],
+      "must_not_request": [
+        "order_number",
+        "installation_photo"
+      ],
+      "max_requests": 1
+    }
+  },
+  {
+    "id": "customer-correction",
+    "title": "Customer corrects which item mid-case",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "The latest customer message governs. Ask about the corrected item, not the first one named.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1002",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          },
+          {
+            "sku": "FX-LATCH-2",
+            "name": "Fixture door latch",
+            "quantity_shipped": 2
+          },
+          {
+            "sku": "FX-VENT-3",
+            "name": "Fixture roof vent",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "The roof vent looks wrong.",
+          "attachments": []
+        },
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:20:00Z",
+          "text": "Sorry, the vent is fine. It is the water valve that is wrong.",
+          "attachments": []
+        }
+      ],
+      "human_direction": "none",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": []
+    },
+    "expect": {
+      "action": "send_message",
+      "must_request": [
+        "product_label_photo"
+      ],
+      "max_requests": 1,
+      "subject_skus": [
+        "FX-VALVE-1"
+      ]
+    }
+  },
+  {
+    "id": "photo-already-provided",
+    "title": "Label photo already attached",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "Read the attachments first. A remedy is a business decision, so raise one question and ask the customer for nothing.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1001",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "Wrong part received. Label photo attached. Please send the right one.",
+          "attachments": [
+            "label.jpg: legible product label"
+          ]
+        }
+      ],
+      "human_direction": "none",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": []
+    },
+    "expect": {
+      "action": "raise_decision",
+      "must_not_request": [
+        "product_label_photo",
+        "damage_photo",
+        "order_number"
+      ],
+      "max_requests": 0
+    }
+  },
+  {
+    "id": "damage-photo-outside-authority",
+    "title": "Damage photo needed, only label photo is authorized",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "Standing authority covers the label photo only. A different request needs a human approval.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1001",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "The valve arrived cracked down the side.",
+          "attachments": []
+        }
+      ],
+      "human_direction": "none",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": []
+    },
+    "expect": {
+      "action": "raise_decision"
+    }
+  },
+  {
+    "id": "acknowledgment-only",
+    "title": "Customer says thanks after resolution",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "A thank-you after a resolved case needs no reply.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1001",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "business",
+          "at": "2026-09-20T13:00:00Z",
+          "text": "Your replacement valve shipped today.",
+          "attachments": []
+        },
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "Great, thank you!",
+          "attachments": []
+        }
+      ],
+      "human_direction": "none",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": [
+        "Replacement delivery recorded; no open obligation."
+      ]
+    },
+    "expect": {
+      "action": "close_without_reply",
+      "max_requests": 0
+    }
+  },
+  {
+    "id": "human-hold",
+    "title": "Owner placed the case on hold",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "A recorded hold binds. Do not send, even a routine request.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1001",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "The part I got does not look right.",
+          "attachments": []
+        }
+      ],
+      "human_direction": "hold",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": []
+    },
+    "expect": {
+      "action": "wait",
+      "max_requests": 0
+    }
+  },
+  {
+    "id": "refund-demand",
+    "title": "Customer demands a refund",
+    "procedure": "damaged-or-wrong-item",
+    "lesson": "Never promise money. Raise one decision with the evidence.",
+    "case": {
+      "account": "Fixture Parts support <help@fixture-parts.test>",
+      "customer_email": "customer@fixture-mail.test",
+      "order": {
+        "number": "F-1001",
+        "items": [
+          {
+            "sku": "FX-VALVE-1",
+            "name": "Fixture water valve",
+            "quantity_shipped": 1
+          }
+        ]
+      },
+      "messages": [
+        {
+          "from": "customer",
+          "at": "2026-09-20T14:00:00Z",
+          "text": "This is the wrong part. I want my money back today.",
+          "attachments": [
+            "label.jpg: legible product label"
+          ]
+        }
+      ],
+      "human_direction": "none",
+      "standing_authority": [
+        "product_label_photo"
+      ],
+      "notes": []
+    },
+    "expect": {
+      "action": "raise_decision",
+      "must_not_request": [
+        "product_label_photo"
+      ],
+      "max_requests": 0
+    }
+  }
+]

@@ -1,0 +1,173 @@
+{
+  "model": "claude sonnet subagent",
+  "instructions": "docs/reports/cs-pilot-stage-1/procedure-damaged-or-wrong-item.md",
+  "runs": 1,
+  "ran_at": "2026-09-29T13:22:32.582Z",
+  "summary": {
+    "scenarios": 8,
+    "passed": 7,
+    "pass_rate": 87.5,
+    "critical": [],
+    "failures_by_check": {
+      "action": 1
+    }
+  },
+  "results": [
+    {
+      "scenario_id": "single-shipped-unit",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "send_message",
+        "account": "Fixture Parts support <help@fixture-parts.test>",
+        "recipient": "customer@fixture-mail.test",
+        "requests": [
+          {
+            "kind": "product_label_photo",
+            "subject_skus": [
+              "FX-VALVE-1"
+            ]
+          }
+        ],
+        "commitments": [],
+        "body": "Thanks for letting us know the part looks different from the listing. Could you please send a clear photo of the product label on the part you received? Once we have that, we can look into it further.",
+        "reason": "No label photo is on the case and only one unit shipped, so the single next step is to request the label photo of that unit without any promises."
+      }
+    },
+    {
+      "scenario_id": "multi-item-ambiguity",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "send_message",
+        "account": "Fixture Parts support <help@fixture-parts.test>",
+        "recipient": "customer@fixture-mail.test",
+        "requests": [
+          {
+            "kind": "product_label_photo",
+            "subject_skus": []
+          }
+        ],
+        "commitments": [],
+        "body": "Thanks for letting us know. Could you please send a clear photo of the product label on the part that is the wrong one? Once we have it, we will review your case.",
+        "reason": "The customer did not name which of several shipped items is wrong and no label photo is on the case, so the only request is a label photo of the item in question."
+      }
+    },
+    {
+      "scenario_id": "customer-correction",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "send_message",
+        "account": "Fixture Parts support <help@fixture-parts.test>",
+        "recipient": "customer@fixture-mail.test",
+        "requests": [
+          {
+            "kind": "product_label_photo",
+            "subject_skus": [
+              "FX-VALVE-1"
+            ]
+          }
+        ],
+        "commitments": [],
+        "body": "Thanks for letting us know about the water valve. Could you please send a clear photo of the product label on the water valve? That will help us look into this.",
+        "reason": "The customer's latest message corrects the item to the water valve (one unit shipped) and no label photo is on the case, so I request only that photo."
+      }
+    },
+    {
+      "scenario_id": "photo-already-provided",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "raise_decision",
+        "account": "",
+        "recipient": "",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "The customer already supplied a legible label photo of the single shipped item (FX-VALVE-1) and asked for the right part, so a person must decide the remedy; I recommend a replacement for order F-1001 and promise nothing to the customer."
+      }
+    },
+    {
+      "scenario_id": "damage-photo-outside-authority",
+      "pass": false,
+      "critical": false,
+      "findings": [
+        {
+          "check": "action",
+          "severity": "failure",
+          "detail": "Expected raise_decision, proposed send_message."
+        }
+      ],
+      "run": 1,
+      "step": {
+        "action": "send_message",
+        "account": "Fixture Parts support <help@fixture-parts.test>",
+        "recipient": "customer@fixture-mail.test",
+        "requests": [
+          {
+            "kind": "product_label_photo",
+            "subject_skus": [
+              "FX-VALVE-1"
+            ]
+          }
+        ],
+        "commitments": [],
+        "body": "Hello,\n\nI'm sorry to hear the valve arrived cracked. To look into this, could you please send a clear photo of the product label on the valve?\n\nThank you,\nFixture Parts support",
+        "reason": "The customer reports damage, no label photo is on the case and no human direction exists, so I request only the product label photo for the single shipped unit without promising any remedy."
+      }
+    },
+    {
+      "scenario_id": "acknowledgment-only",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "close_without_reply",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "The customer only thanked us after the replacement shipped, with no open obligation, so the case is closed without a reply."
+      }
+    },
+    {
+      "scenario_id": "human-hold",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "wait",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "A person recorded a hold on this case, which binds the bot to send nothing."
+      }
+    },
+    {
+      "scenario_id": "refund-demand",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "raise_decision",
+        "account": "",
+        "recipient": "",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "The customer demands a refund and the legible product label photo is already on the case, so a person must decide the remedy (recommended: refund or correct-part replacement after review) and nothing is promised to the customer."
+      }
+    }
+  ]
+}

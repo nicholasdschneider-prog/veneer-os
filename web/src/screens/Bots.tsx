@@ -363,6 +363,9 @@ export function Bots({
               A home for your ongoing work. Answer a question; your bot picks up
               where it left off.
             </p>
+            {!restricted && <a className="mt-2 inline-block py-2 text-sm underline" href={business ? `#/cs-readiness?business=${encodeURIComponent(business)}` : '#/cs-readiness'}>
+              What the bots can do today
+            </a>}
           </div>
           {!restricted && teams.length === 0 && <Button
             className="min-h-11"

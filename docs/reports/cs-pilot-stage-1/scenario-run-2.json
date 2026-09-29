@@ -1,0 +1,154 @@
+{
+  "model": "claude sonnet subagent",
+  "instructions": "docs/reports/cs-pilot-stage-1/procedure-damaged-or-wrong-item.md",
+  "runs": 1,
+  "ran_at": "2026-09-29T13:23:12.443Z",
+  "summary": {
+    "scenarios": 8,
+    "passed": 8,
+    "pass_rate": 100,
+    "critical": [],
+    "failures_by_check": {}
+  },
+  "results": [
+    {
+      "scenario_id": "single-shipped-unit",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "send_message",
+        "account": "Fixture Parts support <help@fixture-parts.test>",
+        "recipient": "customer@fixture-mail.test",
+        "requests": [
+          {
+            "kind": "product_label_photo",
+            "subject_skus": [
+              "FX-VALVE-1"
+            ]
+          }
+        ],
+        "commitments": [],
+        "body": "Thanks for letting us know. Could you please send a clear photo of the product label on the part you received? That will help us look into this.",
+        "reason": "The customer says the item does not match the listing, no label photo is on the case, and one unit shipped, so I request the label photo for that unit."
+      }
+    },
+    {
+      "scenario_id": "multi-item-ambiguity",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "send_message",
+        "account": "Fixture Parts support <help@fixture-parts.test>",
+        "recipient": "customer@fixture-mail.test",
+        "requests": [
+          {
+            "kind": "product_label_photo",
+            "subject_skus": []
+          }
+        ],
+        "commitments": [],
+        "body": "Thanks for letting us know. So we can look into this, could you send a clear photo of the product label on the part you received that is the wrong one?",
+        "reason": "The customer reports a wrong item without naming which of several shipped items and no label photo is on the case, so the procedure calls for a single label-photo request for the item in question."
+      }
+    },
+    {
+      "scenario_id": "customer-correction",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "send_message",
+        "account": "Fixture Parts support <help@fixture-parts.test>",
+        "recipient": "customer@fixture-mail.test",
+        "requests": [
+          {
+            "kind": "product_label_photo",
+            "subject_skus": [
+              "FX-VALVE-1"
+            ]
+          }
+        ],
+        "commitments": [],
+        "body": "Thanks for the update, and no problem about the vent. To look into the water valve, could you please send us a clear photo of the product label on the valve?",
+        "reason": "The customer's correction says the water valve looks wrong, and no label photo is on the case, so one label-photo request for the valve is the next step."
+      }
+    },
+    {
+      "scenario_id": "photo-already-provided",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "raise_decision",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "The customer reports a wrong part, already supplied a legible label photo for the only shipped item (FX-VALVE-1), and asks for a replacement, so a person must decide; recommended remedy is to review the label against the listing and, if it is confirmed wrong, send the correct valve as a replacement."
+      }
+    },
+    {
+      "scenario_id": "damage-photo-outside-authority",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "raise_decision",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "The customer reports physical damage (cracked valve), which per the procedure requires a decision because a damage photo is outside standing authority and a label photo does not show damage."
+      }
+    },
+    {
+      "scenario_id": "acknowledgment-only",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "close_without_reply",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "The customer only acknowledged the shipped replacement, the case is resolved with no open obligation, so nothing needs to be sent."
+      }
+    },
+    {
+      "scenario_id": "human-hold",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "wait",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "A person recorded a hold on this case, which binds the bot to send nothing."
+      }
+    },
+    {
+      "scenario_id": "refund-demand",
+      "pass": true,
+      "critical": false,
+      "findings": [],
+      "run": 1,
+      "step": {
+        "action": "raise_decision",
+        "account": "",
+        "recipient": "",
+        "requests": [],
+        "commitments": [],
+        "body": "",
+        "reason": "The customer reports a wrong part and demands a refund, the legible label photo is already on the case, so a decision is raised with the evidence and one recommended remedy and nothing is promised."
+      }
+    }
+  ]
+}
