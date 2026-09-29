@@ -92,3 +92,9 @@ validation and deployment results follow below.
 Root Node24 typecheck and full tests passed: server 2,831 passed / 5 skipped, web 909 passed, browser-manager 54 passed, installer 29 passed. Focused suite: 138 passed. Operator syntax and whitespace diff checks passed. No live customer or provider acceptance tests were run.
 
 Production build passed before restart (standard bundle-size advisory only). A names-only config check confirmed VP_COMPOSE_SERVICE_REGISTRY_FILE absent; final trust activation remains disabled.
+
+## Deployment receipt
+
+Implementation `e1d03c58cce412eaaa3cfdf2942fb30e938bf986` pushed to origin main. Supported root restart completed on Node24.21.0. At 2026-09-29T00:31:27.700618+00:00, all five local services returned HTTP200 and all 4,547 artifacts matched the pre-restart inventory. Migration0132 applied with matching content hash and all150 dependency-clock triggers present. Protected429/434 registry hashes/UID501/0600 permissions remain unchanged. VP_COMPOSE_SERVICE_REGISTRY_FILE is absent: no native trust activation. Authenticated public chat and customer SMS were not tested.
+
+[Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build440-runtime.json). Source441 remains separately owned by ae5d6289. Final registry installation waits actual source identity/config/guard/reader/sender acceptance; unfinished unknown-scope obligations additionally require authenticated compose scope evidence and original owner classification. No duplicate human message approval is requested.

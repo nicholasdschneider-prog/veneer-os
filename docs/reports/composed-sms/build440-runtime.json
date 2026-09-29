@@ -1,0 +1,40 @@
+{
+  "verifiedAt": "2026-09-29T00:31:27.700618+00:00",
+  "implementationCommit": "e1d03c58cce412eaaa3cfdf2942fb30e938bf986",
+  "health": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  },
+  "artifactCount": 4547,
+  "artifactMismatches": [],
+  "artifactManifestHash": "eb16015ceecac29a94f71ecf966697a0aba10105d50c1d7c7a298d22fadeab83",
+  "migration": {
+    "name": "0132_compose_context.sql",
+    "applied_at": "2026-09-29 00:30:23",
+    "content_hash": "c829a7dc44b60a0f6fc90c49d36dbfdc2194d7a63108482bff5f6ee7d8a6e0ce"
+  },
+  "dependencyClockTriggers": 150,
+  "protectedRegistries": {
+    "approved-case-registry.json": {
+      "unchanged": true,
+      "sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+      "uid": 501,
+      "mode": "0o600",
+      "regularNonSymlink": true
+    },
+    "compose-correspondence-registry.json": {
+      "unchanged": true,
+      "sha256": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c",
+      "uid": 501,
+      "mode": "0o600",
+      "regularNonSymlink": true
+    }
+  },
+  "composeServiceRegistryConfigured": false,
+  "customerOrProviderActions": false,
+  "sourceRuntimeInstallation": false,
+  "nativeTrustActivation": false
+}
