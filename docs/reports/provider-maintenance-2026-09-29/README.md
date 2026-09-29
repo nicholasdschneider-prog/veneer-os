@@ -25,8 +25,10 @@ Both affected providers were provisioned separately with `installer/provider-run
 - Live Sonnet 5.5 no-tool stream-json request returned successful `OK`; Codex Astra completed an ephemeral read-only app-server turn.
 - Root typecheck and all 114 focused runtime, protocol, approval, model, guide and instruction tests passed. Initial test-fixture duplication and an old escaped version expectation were corrected before proceeding.
 - Isolated desktop and restricted mobile browser checks passed for guide access, Sonnet search, dated new callout, setup/selection limits and viewport overflow. The initial direct-navigation fixture timed out during route initialization; the normal Chats-to-guide navigation passed for both roles. No production business data was used.
-- Full `npm test` passed: 2,981 server tests (5 skipped), 909 web tests, 54 browser-manager tests, and the installer suite. Root production build passed with the existing nonfatal large-chunk warning.
-- Deployment verification remains pending until the supported restart finishes.
+- Full `npm test` passed: 2,981 server tests (5 skipped), 909 web tests, 54 browser-manager tests, and 29 installer tests. Root production build passed with the existing nonfatal large-chunk warning.
+- Supported `npm run restart` completed for app-runner, terminal, browser-manager, web and runner. Runner restart interrupted this chat; the queue resumed it automatically. Fresh checks returned HTTP 200 for all five service endpoints. The public front door returned HTTP 302 and the tunnel had four active edge connections; those checks alone do not certify authenticated end-to-end public chat.
+- After restart, runtime verification again confirmed Claude 2.1.284, Codex 0.159.0 and unchanged Grok 1.0.5. Live Veneer discovery now includes Sonnet 5.5 while retaining prior choices and defaults (Opus 5.5 and GPT-6 Astra).
+- Implementation and verification artifacts committed and pushed to `origin main` as `5d17f06` (`Update Claude and Codex runtimes and expose Sonnet 5.5`). Final deployment evidence is recorded in a follow-up documentation commit. No owner blocker remains; build #456 is complete.
 
 ![Desktop guide](./desktop.png)
 ![Restricted employee mobile guide](./employee-mobile.png)
