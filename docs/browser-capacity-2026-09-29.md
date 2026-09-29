@@ -67,7 +67,41 @@ Typecheck passed. The full suite passed with 3,025 server tests (5 skipped),
 910 web tests, 54 browser-manager tests, and 29 installer tests. Final cancellation
 race coverage added two more passing tests; the complete 13-test capacity-wait
 suite and 134-test browser-manager application suite passed after those changes.
-Production build and live acceptance are recorded below after deployment.
+Production build passed. Source commit `4b983d3` was pushed to origin main.
+
+## Deployed acceptance
+
+The supported restart script reported healthy replacements for web, app-runner,
+terminal, and browser-manager. Restarting the runner interrupted this turn; a
+follow-up verified the replacement runner (PID 52434) and healthy local web/runner
+checks. The public front door returned HTTP 302 and the tunnel reported four active
+edge connections; those are connectivity checks, not authenticated public-chat
+acceptance. Migration 0135 was present in the live database.
+
+At 12:40:24 UTC, through the deployed authenticated runner operation for the original
+Fin research chat (after verifying its owner matches this requesting owner), both
+reads succeeded with occupancy **5/5 before and after**:
+
+- [Fin Procedures explained](https://www.intercom.com/help/en/articles/12495167-fin-procedures-explained): 10,001 characters of public text.
+- [How Fin Scales Customer-Defined Behaviour](https://fin.ai/research/how-fin-scales-customer-defined-behaviour/): 13,840 characters of public text.
+
+Both results explicitly returned `mode=public_http`, `rendered=false`. Fin had no
+active browser before or after; no browser slot was needed or created. This proves
+the saturated public-documentation research path, not full video/transcript review.
+
+A normal bot Open in this requesting chat then waited about 20 seconds at capacity
+and returned a saved durable continuation, not a terminal HTTP500. Verification
+wait `3391da49-6574-4fa6-a97f-df7124d317c8` was canceled immediately through the scoped
+Cancel tool. Readback confirmed `status=cancelled`, `wakeup_id=null`, no working copy
+in either the requesting or Fin chat, and exactly five native runtime records.
+There is no leftover verification slot or scheduled test continuation. Actual
+ready/expired wake delivery and restart recovery were verified in isolated tests;
+no protected live copy was forced closed to stage a successful live admission.
+
+The five protected existing copies remain. Browser-only work can still wait or
+expire while all are protected. Missing public captions, JavaScript-only pages and
+video review are separate limitations; this release does not claim to solve those
+by reading metadata. Signed-in profile identities and working files were preserved.
 
 ## Changed files
 
