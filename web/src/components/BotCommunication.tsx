@@ -410,8 +410,8 @@ export function BotCommunication({
   return <BotCommunicationContent {...communication} mode={mode} decisionId={decisionId} version={version} />;
 }
 
-export function BotCommunicationContent({ data, error, refresh, mode = "all", decisionId, version, hideDrafts = false }: ReturnType<typeof useBotCommunication> & {
-  mode?: "all" | "briefing" | "drafts"; decisionId?: string; version?: number; hideDrafts?: boolean;
+export function BotCommunicationContent({ data, error, refresh, mode = "all", decisionId, version, hideDrafts = false, hideObligations = false }: ReturnType<typeof useBotCommunication> & {
+  mode?: "all" | "briefing" | "drafts"; decisionId?: string; version?: number; hideDrafts?: boolean; hideObligations?: boolean;
 }) {
   const drafts = data.drafts.filter((d) =>
     decisionId ? d.decision_id === decisionId : !d.decision_id,
@@ -423,7 +423,7 @@ export function BotCommunicationContent({ data, error, refresh, mode = "all", de
   );
   return (
     <div className="space-y-3">
-      {mode !== 'briefing' && !decisionId && data.approved_obligations?.map(o => <div key={o.decision_id} className="space-y-2 rounded-lg border p-3 text-sm">
+      {!hideObligations && mode !== 'briefing' && !decisionId && data.approved_obligations?.map(o => <div key={o.decision_id} className="space-y-2 rounded-lg border p-3 text-sm">
         <p className="font-medium">Original approved message · {o.ready ? 'awaiting guarded delegation' : 'technically blocked'}</p>
         <p>{o.reason}</p><p>This approval applies only to its exact saved scope, not a different ordinary draft. No delivery is claimed.</p>
         <a className="underline" href={`#/bots/${encodeURIComponent(o.decision_id)}`}>Review original approval · version {o.version}</a>

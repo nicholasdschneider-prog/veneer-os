@@ -124,12 +124,15 @@ function State({ state, label }: { state: string; label?: string }) {
 }
 export function Bots({
   decisionId,
+  embedded = false,
   registrationRequested = false,
   canCall = false,
   restricted = false,
   onNavigate,
 }: {
   decisionId?: string;
+  /** Render the existing guarded decision thread inside a chat panel. */
+  embedded?: boolean;
   registrationRequested?: boolean;
   /** Direct human sessions can call bots within their normal conversation access. */
   canCall?: boolean;
@@ -329,12 +332,12 @@ export function Bots({
   }, [registrationRequested]);
   return (
     <div className="flex h-full min-h-0">
-      <div className="hidden w-72 shrink-0 md:block"><BotConversationRail restricted={restricted} selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>
+      {!embedded && <div className="hidden w-72 shrink-0 md:block"><BotConversationRail restricted={restricted} selectedId={d?.conversation_id} onNavigate={onNavigate} /></div>}
     <div className="flex h-full min-h-0 min-w-0 flex-1 gap-4 overflow-hidden bg-background">
       {/* `relative` keeps the sr-only section labels (position: absolute)
           inside this scroll pane; otherwise they resolve against the shell's
           <main> and stretch the document by the pane's full scroll height. */}
-      <div ref={queuePane} aria-label="Decision queues" className={cn('relative mx-auto h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-6', decisionId ? 'hidden lg:block' : 'max-w-6xl')}>
+      {!embedded && <div ref={queuePane} aria-label="Decision queues" className={cn('relative mx-auto h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 sm:px-6', decisionId ? 'hidden lg:block' : 'max-w-6xl')}>
         {/* One thin toolbar: business picker and conversation drawer on mobile,
             plus the access manager for owners. Everything opens in place so the
             page header stays near the top. */}
@@ -660,7 +663,7 @@ export function Bots({
             </section>
           </div>
         </div>
-      </div>
+      </div>}
           {decisionId && (
             <section
               ref={detailPane}
@@ -675,7 +678,7 @@ export function Bots({
                 All questions
               </button>
               {!d ? (
-                <p>Loading decision…</p>
+                <div>{error ? <p role="alert">{error}</p> : <p>Loading decision…</p>}</div>
               ) : (
                 <>
                   {stale && <div role="alert" className="mb-3 rounded-xl border p-3 text-sm">This proposal has changed. Your unsaved text is preserved. <button className="underline" onClick={()=>void act(refresh)}>Review the new version</button></div>}
@@ -684,7 +687,7 @@ export function Bots({
                     <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
                     <State state={d.state} label={decisionStatusLabel(d)} />
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  {!embedded && <div className="mt-4 flex flex-wrap gap-2">
                     {canCall && (
                       <CallButton className="flex-1 sm:flex-none"
                         onClick={() => liveVoice.open(d.conversation_id, d.id)}
@@ -698,7 +701,10 @@ export function Bots({
                       <MessageSquare className="size-4" />
                       Side chat
                     </Button>
-                  </div>
+                  </div>}
+                  {embedded && <p className="mt-4 text-base font-medium">{d.proposal.question}</p>}
+                  <details open={!embedded} className={embedded ? "mt-3 rounded-xl border p-3" : undefined}>
+                  <summary className={embedded ? "cursor-pointer text-sm font-medium" : "hidden"}>Review proposal and decision options · v{d.version}</summary>
                   <h2 className="mt-4 text-xl font-semibold leading-snug">
                     {decisionTitle(d.proposal)}
                   </h2>
@@ -953,6 +959,7 @@ export function Bots({
                     </div>
                   )}
                   </section>
+                  </details>
                   </details>
                   <div className="mt-6 border-t pt-5">
                     <h3 className="flex flex-wrap items-center gap-2 font-medium">

@@ -1,3 +1,4 @@
+import { OpenQuestionsButton } from '../components/chat/OpenQuestionsPanel';
 import { isResultReplyDelivery } from '../lib/threadReplies';
 import { CoordinationActivity } from '../components/chat/Coordination';
 import {useChatHistory} from '../lib/useChatHistory';
@@ -419,6 +420,7 @@ export function Chat({
   onNavigate,
   onToast,
   sideChatButton = true,
+  openQuestionsButton = true,
 }: {
   conversationId: string; // 'new' for a not-yet-created conversation
   // For a new chat, the project (folder) it will be created in (from the route);
@@ -442,6 +444,7 @@ export function Chat({
   onToast: (message: string, action?: ToastAction) => void;
   /** Hidden when this chat is itself rendered inside a side chat panel. */
   sideChatButton?: boolean;
+  openQuestionsButton?: boolean;
 }) {
   const isNew = conversationId === 'new';
   const { show: showDesktop } = useFloatingDesktop();
@@ -2515,6 +2518,7 @@ export function Chat({
         </div>
         {!isNew ? (
           <div className="flex shrink-0 items-center gap-1">
+            {openQuestionsButton && <OpenQuestionsButton conversationId={conversationId} onNavigate={onNavigate} />}
             {sideChatButton && canSend ? (
               <Button
                 variant="ghost"
@@ -2842,7 +2846,7 @@ export function Chat({
                   />
                 </MessageScrollerItem>
               ))}
-              {!isNew&&<MessageScrollerItem><BotCommunicationContent {...communication} hideDrafts/></MessageScrollerItem>}
+              {!isNew&&<MessageScrollerItem><BotCommunicationContent {...communication} hideDrafts hideObligations/></MessageScrollerItem>}
             </MessageScrollerContent>
           </MessageScrollerViewport>
           <MessageScrollerButton direction="end" className="size-11 rounded-full border bg-background shadow-sm" />

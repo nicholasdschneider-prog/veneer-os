@@ -1,3 +1,4 @@
+import { OpenQuestionsPanel } from './OpenQuestionsPanel';
 import { CoordinationPanel } from './Coordination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
@@ -309,7 +310,9 @@ export function ChatWorkspace({
               : 'Resize artifact preview'
       }
       sidebar={
-        sideChatOpen && sideParam?.startsWith('coordination:') ? (
+        sideChatOpen && (sideParam === 'questions' || sideParam?.startsWith('decision:')) ? (
+          <OpenQuestionsPanel key={conversationId} conversationId={conversationId} decisionId={sideParam.startsWith('decision:') ? sideParam.slice('decision:'.length) : undefined} restricted={restricted} onClose={closeSideChat} onNavigate={onNavigate} />
+        ) : sideChatOpen && sideParam?.startsWith('coordination:') ? (
           <CoordinationPanel threadId={sideParam.slice('coordination:'.length)} onClose={closeSideChat} onNavigate={onNavigate} />
         ) : sideChatOpen && sideParam ? (
           <SideChatPanel

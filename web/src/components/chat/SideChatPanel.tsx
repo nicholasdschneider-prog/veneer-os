@@ -157,6 +157,7 @@ export function SideChatPanel({
             onNavigate={onNavigate}
             onToast={onToast}
             sideChatButton={false}
+            openQuestionsButton={false}
           />
         </div>
       ) : (
