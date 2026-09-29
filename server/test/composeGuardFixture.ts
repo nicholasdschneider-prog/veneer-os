@@ -5,3 +5,5 @@ export function fixtureGuards(r:ComposeRegistration){
  r.guardContractHash=composeHash('compose-sms-guards/v1',r.guardManifest);
  r.guardAcceptance={manifestHash:r.guardContractHash,reviewedBy:r.registrationId,receipt:'synthetic-no-production-acceptance',reviewedAt:'2020-01-01T00:00:00Z',expiresAt:'2099-01-01T00:00:00Z'};
 }
+
+export function fixtureCredentialExpiry(){return {schemaVersion:'compose-credential-expiry/v1' as const,serviceTokenId:'40000000-0000-4000-8000-000000000009',serviceTokenExpiresAt:'2099-01-01T00:00:00Z',custodyExpiresAt:'2099-01-01T00:00:00Z',bearerExpiresAt:'2099-01-01T00:00:00Z',readbackExpiresAt:'2099-01-01T00:00:00Z',verifiedAt:'2020-01-01T00:00:00Z',verifiedBy:'40000000-0000-4000-8000-000000000008',receipt:'synthetic-only',receiptHash:'a'.repeat(64)};}

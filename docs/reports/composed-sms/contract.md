@@ -267,3 +267,11 @@ Dedicated CF provision and approved protected secret destinations now exist. See
 no placeholder source principal, source-registration hash or guard acceptance is
 installed. Actual token expiry is October28 at00:14:26UTC (earlier than prior cap).
 Source installation remains with ae5d6289; issuer/use permission is from a4bc.
+
+## BUILD442 verified service expiry
+
+Protected service registrations require strict `credentialExpiry` (`compose-credential-expiry/v1`): `serviceTokenId` UUID; ISO `serviceTokenExpiresAt`, `custodyExpiresAt`, `bearerExpiresAt`, `readbackExpiresAt`, `verifiedAt`; `verifiedBy` UUID; nonempty `receipt`; SHA256 `receiptHash`. The custodian verifies these facts against the exact enclosing client/audience, bearer hash and readback reference before protected installation. This is protected operator evidence, never bot input or a provider verification performed by the loader. The entire registration, including these facts, remains committed by canonicalSha256(registration); changing evidence invalidates existing registration bindings, never silently upgrades immutable authorities.
+
+Schema rejects registration expiresAt later than any dependency and verification at/after its effective limit. Every runtime check repeats schema validation, rejects future verification, inactive registrations, and now >= earliest expiry. Earlier revocation remains effective. No automatic renewal or receipt/replay entitlement. Guard/sender/authority/prepare expiries still independently narrow the boundary.
+
+Historical provisioned.json expiresAt is the requested cap; requestedExpiresAt explicitly names it. Actual serviceTokenExpiresAt and effectiveExpiresAt are 2026-10-28T00:14:26Z, without renewal. Permission receipt is unchanged. Final registry remains absent pending genuine source/custody acceptance, including bearer/readback expiry evidence. Reader429/434 registries and their hashes are untouched. This correction supplies no scope closure/classification adapter or current sender proof.

@@ -50,5 +50,13 @@
   "sourceRuntimeInstallation": false,
   "nativeRegistryInstalled": false,
   "execute": false,
-  "retainedPermission": "permission-receipt.md"
+  "retainedPermission": "permission-receipt.md",
+  "credentialExpiryRequirement": {
+    "schemaVersion": "compose-credential-expiry/v1",
+    "serviceTokenId": "18a7de02-0b3d-45be-856c-8cfc34521baf",
+    "serviceTokenExpiresAt": "2026-10-28T00:14:26Z",
+    "custodyExpiresAt": "2026-10-28T00:14:26Z",
+    "maximumExpiresAt": "2026-10-28T00:14:26Z",
+    "remaining": "Final custodian-verified bearer/readback expiry and receipt hash required before installation; no placeholders."
+  }
 }

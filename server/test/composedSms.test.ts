@@ -1,3 +1,4 @@
+import {fixtureCredentialExpiry} from './composeGuardFixture.js';
 import {fixtureGuards} from './composeGuardFixture.js';
 import {composedSmsVerifier} from '../src/bots/composedSmsVerifier.js';
 import {bindingHash,type ComposeAuthority} from '../src/bots/composedSmsContract.js';
@@ -31,7 +32,7 @@ beforeEach(()=>{
  db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,request_key,payload_json,created_at) VALUES('draft',?,'ordinary',?,'2099-01-01 00:00:00')").run(ids.executor,JSON.stringify(payload));
  clock=Date.now();allow=true;
  evidence={projection:{cases:[{id:ids.canonical,ticketNumber:'EMAIL',customerId:'customer-one',relatedOrderId:null,customer:{phone:null}},{id:ids.contact,ticketNumber:'PHONE',customerId:'customer-two',relatedOrderId:null,customer:{phone:payload.recipients[0]!}}],messages:[{id:'email',conversationId:ids.canonical,direction:'inbound',channel:'email',messageType:'message',body:'Order fixture, my phone is +12025550111.',fromPhone:null,actorType:null,actorId:null,agentId:null,aiGenerated:false},{id:'sms',conversationId:ids.contact,direction:'inbound',channel:'sms',messageType:'message',body:'Same order fixture.',fromPhone:payload.recipients[0]!,actorType:null,actorId:null,agentId:null,aiGenerated:false}]},snapshot_hash:'a'.repeat(64),registration_hash:'b'.repeat(64),business_id:ids.business,account_id:'source-account',principal_id:'fixture',sms_account:payload.account,sender_phone:'+12025550100',sender_verified:true,dispatch:{supported:true,contract:'native-compose-sms/v1',revision:'fixture-accepted-transport',reason:'Synthetic fenced transport only'},assertFresh(){if(!allow)throw Error('Source authority revoked');}};
- const reg:ComposeRegistration={registrationId:'40000000-0000-4000-8000-000000000001',revision:1,active:true,businessId:ids.business,businessOwnerUserId:1,sourceOrigin:'https://orderops-dev-web-production.up.railway.app',runtime:{projectId:ids.business,environmentId:ids.canonical,serviceId:ids.contact},sourceRegistrationHash:'c'.repeat(64),sourceAccountId:evidence.account_id,servicePrincipalId:'dedicated-fixture',serviceCredentialHash:'d'.repeat(64),nativeAudience:'dedicated-fixture-audience',cfClientId:'dedicated-fixture-client',capabilities:['compose.authority.read','compose.permit.redeem','compose.association.read'],executorBindings:[{conversationId:ids.executor,userId:1,principalId:'executor-fixture'}],senderReceiptIssuerId:'fixture-issuer',guardContractHash:'e'.repeat(64),expiresAt:new Date(clock+3600000).toISOString(),custodyReceipt:'synthetic-only',readbackCredential:{project:'fixture',config:'test',name:'DEDICATED_READBACK'},readbackCustodyReceipt:'synthetic-only'};
+ const reg:ComposeRegistration={registrationId:'40000000-0000-4000-8000-000000000001',revision:1,active:true,businessId:ids.business,businessOwnerUserId:1,sourceOrigin:'https://orderops-dev-web-production.up.railway.app',runtime:{projectId:ids.business,environmentId:ids.canonical,serviceId:ids.contact},sourceRegistrationHash:'c'.repeat(64),sourceAccountId:evidence.account_id,servicePrincipalId:'dedicated-fixture',serviceCredentialHash:'d'.repeat(64),nativeAudience:'dedicated-fixture-audience',cfClientId:'dedicated-fixture-client',capabilities:['compose.authority.read','compose.permit.redeem','compose.association.read'],executorBindings:[{conversationId:ids.executor,userId:1,principalId:'executor-fixture'}],senderReceiptIssuerId:'fixture-issuer',guardContractHash:'e'.repeat(64),expiresAt:new Date(clock+3600000).toISOString(),credentialExpiry:fixtureCredentialExpiry(),custodyReceipt:'synthetic-only',readbackCredential:{project:'fixture',config:'test',name:'DEDICATED_READBACK'},readbackCustodyReceipt:'synthetic-only'};
  fixtureGuards(reg);
  evidence.dispatch_material_hash='f'.repeat(64);
  evidence.boundary={registration:reg,materialHash:'f'.repeat(64),sender:{receiptId:'50000000-0000-4000-8000-000000000001',revision:1,issuerId:'fixture-issuer',providerAccountId:'AC'+'a'.repeat(32),fromPhone:evidence.sender_phone,expiresAt:new Date(clock+3600000).toISOString()},guardContractHash:reg.guardContractHash,assertFresh:()=>evidence.assertFresh()};
@@ -274,4 +275,22 @@ it('rejects new v1 associations and unaccepted or mismatched manifest, without g
 it('bounds context without accepting a partial inventory',async()=>{
  const f=await serviceFixture();db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,request_key,payload_json) VALUES('large',?,'large',?)").run(ids.other,JSON.stringify({body:'x'.repeat(1024*1024)}));
  expect(()=>f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId)).toThrow('bounded coverage');
+});
+
+it.each(['serviceTokenExpiresAt','custodyExpiresAt','bearerExpiresAt','readbackExpiresAt'] as const)('rejects registration exceeding verified %s before entitlement',async field=>{
+ const f=await serviceFixture();f.r.credentialExpiry[field]=new Date(clock+1000).toISOString();
+ await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow('credential expiry');
+ expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});
+});
+it('denies exact expiry and earlier revocation without renewing an issued entitlement',async()=>{
+ const f=await serviceFixture(),first=await f.v.associate(f.r.registrationId,f.p);
+ f.r.active=false;expect(()=>f.v.association(f.r.registrationId,first.associationId)).toThrow('revoked');f.r.active=true;
+ clock=Date.parse(f.r.expiresAt);expect(()=>f.v.association(f.r.registrationId,first.associationId)).toThrow('expired');
+ expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:1});
+});
+it('rejects missing or future verified expiry evidence and binds it in registration hash',async()=>{
+ const f=await serviceFixture();const {checkComposeRegistration}=await import('../src/bots/composedSmsTrust.js');
+ const before=checkComposeRegistration(db,f.r,clock);f.r.credentialExpiry.receipt='different';expect(checkComposeRegistration(db,f.r,clock)).not.toBe(before);
+ f.r.credentialExpiry.verifiedAt=new Date(clock+1).toISOString();expect(()=>checkComposeRegistration(db,f.r,clock)).toThrow('expiry evidence');
+ delete (f.r as Partial<typeof f.r>).credentialExpiry;expect(()=>checkComposeRegistration(db,f.r,clock)).toThrow('expiry evidence');
 });

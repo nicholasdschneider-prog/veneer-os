@@ -27,5 +27,8 @@
     "ervp/prd/OO_COMPOSE_SMS_NATIVE_BEARER",
     "ervp/prd/OO_COMPOSE_SMS_NATIVE_READBACK_CREDENTIAL"
   ],
-  "provisionedAt": "2026-09-29T00:14:30.744387+00:00"
+  "provisionedAt": "2026-09-29T00:14:30.744387+00:00",
+  "requestedExpiresAt": "2026-10-28T21:04:00Z",
+  "effectiveExpiresAt": "2026-10-28T00:14:26Z",
+  "expiresAtMeaning": "Historical requested cap, not effective validity; effectiveExpiresAt is the earlier actual token/custody limit. No token renewal."
 }
