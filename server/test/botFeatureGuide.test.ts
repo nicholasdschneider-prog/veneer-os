@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers native-only correction preflight limits to employees and resumed agents',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='correction-preflight')!;
+    expect(f.isNew).toBe(true);expect(f.agent).toContain('inspect_correction_preflight');expect(f.agent).toContain('EVERY later human message');expect(f.limits).toContain('Reviews are not persisted');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+  });
   it('delivers prospective correction proof limits to employees and full/restricted resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='composed-sms-correction')!;
     expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('composition AND sending');expect(f.limits).toContain('CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE');expect(f.agent).toContain('derive_composed_sms_correction');expect(f.agent).toContain('No replacement after UNKNOWN');

@@ -22,3 +22,11 @@ it('exposes exact correction inspection and derivation without importing evidenc
  const calls:unknown[]=[];await callBotTool({name:'inspect_composed_sms_correction',args:{source_id:'original',correction_source_id:'correction'},callApi:async(...args:unknown[])=>{calls.push(args);return {execute:false};}});
  expect(calls).toEqual([['/api/bots/composed-sms/corrections/inspect',{method:'POST',body:JSON.stringify({source_id:'original',correction_source_id:'correction'})}]]);
 });
+
+it('routes draft-free preflight and read-only semantic review separately from derive',async()=>{
+ for(const [name,suffix] of [['inspect_correction_preflight','inspect'],['review_correction_preflight','review']]){
+  const tool=BOT_TOOL_DEFINITIONS.find(t=>t.name===name)!;expect(tool).toBeTruthy();expect(JSON.stringify(tool.inputSchema)).not.toContain('draft_id');
+  const calls:unknown[]=[];await callBotTool({name:name!,args:{decision_id:'d'},callApi:async(...args:unknown[])=>{calls.push(args);return {execute:false};}});
+  expect(calls).toEqual([['/api/bots/composed-sms/correction-preflight/'+suffix,{method:'POST',body:'{"decision_id":"d"}'}]]);
+ }
+});

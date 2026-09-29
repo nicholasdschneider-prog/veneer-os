@@ -1,3 +1,4 @@
+import {correctionPreflight} from './correctionPreflight.js';
 import {composedSmsCorrection} from './composedSmsCorrection.js';
 import {composedSmsScope,composeScopeReviewSchema} from './composedSmsScope.js';
 import {composeEvidenceReader} from './composedSmsEvidenceReader.js';
@@ -308,6 +309,9 @@ export function createBotsRouter(ctx: AppContext) {
   );
   const composed=composedSmsService(ctx.db,composedSmsReader(ctx));
   const corrections=composedSmsCorrection(ctx.db,composedSmsReader(ctx));
+  const preflight=correctionPreflight(ctx.db);
+  router.post('/composed-sms/correction-preflight/inspect',run((req,res)=>res.json(preflight.inspect(actor(req),req.body))));
+  router.post('/composed-sms/correction-preflight/review',run((req,res)=>res.json(preflight.review(actor(req),req.body))));
   router.post('/composed-sms/corrections/reconcile',run((req,res)=>res.json(corrections.reconcile(actor(req),req.body))));
   router.post('/composed-sms/corrections/inspect',run(async(req,res)=>res.json(await corrections.inspect(actor(req),req.body))));
   router.post('/composed-sms/corrections/derive',run(async(req,res)=>res.json(await corrections.derive(actor(req),req.body))));

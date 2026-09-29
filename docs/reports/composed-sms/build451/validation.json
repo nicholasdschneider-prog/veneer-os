@@ -1,0 +1,40 @@
+{
+  "verifiedAt": "2026-09-29T04:22:07.403280+00:00",
+  "node": "24",
+  "checks": {
+    "typecheck": {
+      "passed": true,
+      "logSha256": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02"
+    },
+    "focused": {
+      "passed": true,
+      "logSha256": "da84bd373463fb2d649f1fabbbe4880e0db99f6ccc0bd357525736508ef87465"
+    },
+    "full": {
+      "passed": true,
+      "logSha256": "5aa7981a90f0dd9c5c9b83ca612ae533a09c39ec4b6ffabf2b3e6c06c9e60b1a"
+    },
+    "build": {
+      "passed": true,
+      "logSha256": "e3384df59bf573676d5dcd6010ad5cdc9ede4a8017f7d099510368323560dff5"
+    },
+    "guide": {
+      "passed": true,
+      "logSha256": "c8935ce7ea8409efb71cc2f6e4a40945f884290ed45f8c176d015a6eb235b188"
+    }
+  },
+  "focusedTests": 95,
+  "fullTests": {
+    "serverPassed": 2926,
+    "serverSkipped": 5,
+    "webPassed": 909,
+    "browserPassed": 54,
+    "installerPassed": 29
+  },
+  "guide": "full/restricted desktop/mobile isolated fixtures passed",
+  "resumedAgentGuidance": "core and instruction-context tests passed",
+  "sourceCalls": false,
+  "credentialCalls": false,
+  "productionBusinessMutation": false,
+  "grantAssessment": "source-owner reported original Grant assessment at04:10:41.750Z; no duplicated request or builder interpretation"
+}
