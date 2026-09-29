@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'compact-agent-messages', title: 'Expand internal chat details when needed', category: 'Daily work', updated: '2026-09-29',
+    audience: 'People with access to a bot conversation',
+    summary: 'Internal agent messages and scheduled follow-ups start as compact, closed rows in chat.',
+    steps: ['Tap the agent message or Scheduled follow-up row to read its full details.', 'Use Copy or an available source-chat link when you need the original context.', 'Tap the row again to collapse it.'],
+    example: 'Show me the details of that internal agent message.',
+    limits: 'No setup is needed. This only changes presentation: stored messages, bot context and decision controls remain intact. Human replies and assistant results are not collapsed by this behavior. Source links retain existing access checks.',
+    announcement: 'Internal agent messages and scheduled follow-ups now stay collapsed until you open them, keeping long coordination payloads out of the way.',
+    agent: 'Internal agent messages and scheduled follow-ups appear as collapsed rows. Tell users to tap the row to inspect details; use the full underlying context for work. Collapsing a row never removes an instruction, changes an approval or grants access. Guide: /#/bot-guide?feature=compact-agent-messages.',
+  },
+  {
     id: 'codex-startup-recovery', title: 'Diagnose a bot that stops before replying', category: 'Daily work', updated: '2026-09-29',
     audience: 'People with access to a Codex conversation',
     summary: 'Codex resumes long chats without returning their entire native history, and startup failures stay in the chat after reload.',

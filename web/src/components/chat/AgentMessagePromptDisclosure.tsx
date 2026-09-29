@@ -3,30 +3,35 @@ import { Bot, ChevronDown, ExternalLink } from 'lucide-react';
 import { CollapsedMessageDisclosure } from '@/components/chat/CollapsedMessageDisclosure';
 import type { MessageOrigin } from '@/lib/types';
 
-type LocalAgentOrigin = MessageOrigin & { kind: 'agent'; local: true };
+type InternalMessageOrigin = MessageOrigin & { kind: 'agent' | 'wakeup' };
 
-export function isLocalAgentOrigin(origin: MessageOrigin): origin is LocalAgentOrigin {
-  return origin.kind === 'agent' && origin.local === true;
+export function isInternalMessageOrigin(origin: MessageOrigin): origin is InternalMessageOrigin {
+  return origin.kind === 'agent' || origin.kind === 'wakeup';
 }
 
 export function AgentMessagePromptDisclosure({
   origin,
   children,
 }: {
-  origin: LocalAgentOrigin;
+  origin: InternalMessageOrigin;
   children: ReactNode;
 }) {
-  const source = origin.sourceChat;
-  const sender = source?.title || origin.from.trim() || 'Agent';
+  const source = origin.kind === 'agent' ? origin.sourceChat : undefined;
+  const sender = source?.title || origin.from.trim();
+  const label = origin.kind === 'wakeup'
+    ? 'Scheduled follow-up'
+    : sender && sender !== 'Agent'
+      ? `Message from ${sender}`
+      : 'Agent message';
 
   return (
     <CollapsedMessageDisclosure
-      aria-label={`Message from ${sender}`}
+      aria-label={label}
       summaryClassName="min-h-12 gap-2 px-3 py-2 text-sm font-medium text-foreground/70"
       summary={(
         <>
           <Bot className="size-4 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate">Message from {sender}</span>
+          <span className="min-w-0 flex-1 truncate">{label}</span>
           <ChevronDown
             className="size-4 shrink-0 stroke-muted-foreground group-open/message-disclosure:rotate-180"
             aria-hidden="true"

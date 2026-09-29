@@ -73,7 +73,7 @@ import type { ProjectFileLocation } from '../lib/projectFilesRoute';
 import { emptyTranscript, reduceEvents, subagentGroupSummary, subagentProgressSummary, transcriptItemsForDisplay, type ChatItem, type TranscriptState } from '../lib/transcript';
 import { agentMessageActivityLabel, agentMessageFocusKey, agentMessageGroupLabel } from '../lib/agentMessageActivity';
 import { AgentMessageToolDetails } from '../components/chat/AgentMessageToolDetails';
-import { AgentMessagePromptDisclosure, isLocalAgentOrigin } from '../components/chat/AgentMessagePromptDisclosure';
+import { AgentMessagePromptDisclosure, isInternalMessageOrigin } from '../components/chat/AgentMessagePromptDisclosure';
 import { CollapsedMessageDisclosure } from '../components/chat/CollapsedMessageDisclosure';
 import {
   groupActivityRuns,
@@ -3824,7 +3824,7 @@ function AgentPromptRow({
     </MessageFooter>
   );
 
-  if (isLocalAgentOrigin(origin)) {
+  if (isInternalMessageOrigin(origin)) {
     return (
       <Message>
         <MessageContent>
