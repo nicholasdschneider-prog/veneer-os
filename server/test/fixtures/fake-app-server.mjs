@@ -90,6 +90,7 @@ rl.on('line', (line) => {
       break;
     case 'thread/resume': {
       const threadId = m.params?.threadId ?? 't1';
+      if (process.env.REQUIRE_METADATA_ONLY === '1' && m.params?.excludeTurns !== true) break;
       if (process.env.RESUME_HANG === '1') break; // never resolves — test times out mid-start
       // RESUME_ERROR_FILE is read per request (the child's env is fixed at
       // spawn), so a test can clear the failure between activations.
@@ -112,13 +113,16 @@ rl.on('line', (line) => {
       send({ id: m.id, result: {} });
       break;
     case 'thread/fork':
+      if (process.env.REQUIRE_METADATA_ONLY === '1' && m.params?.excludeTurns !== true) break;
       // FORK_ERROR_MESSAGE models a fork the app-server cannot prepare (for
       // example a frozen paginated projection); the thread itself stays usable.
       if (process.env.FORK_ERROR_MESSAGE) {
         send({ id: m.id, error: { code: -32603, message: process.env.FORK_ERROR_MESSAGE } });
         break;
       }
-      send({ id: m.id, result: { thread: { id: 't-forked' }, instructionSources: [] } });
+      if (process.env.FORK_DELAY_MS) {
+        setTimeout(() => send({ id: m.id, result: { thread: { id: 't-forked' }, instructionSources: [] } }), Number(process.env.FORK_DELAY_MS));
+      } else send({ id: m.id, result: { thread: { id: 't-forked' }, instructionSources: [] } });
       break;
     case 'thread/compact/start': {
       const threadId = m.params?.threadId ?? 't1';

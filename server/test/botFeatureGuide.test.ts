@@ -4,6 +4,17 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers startup recovery limits to employees and resumed bots', () => {
+    const f = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'codex-startup-recovery')!;
+    expect(f.isNew).toBe(true);
+    expect(f.announcement).toContain('metadata-only');
+    expect(f.limits).toContain('Previously omitted errors cannot be reconstructed');
+    expect(f.agent).toContain('do not infer recovery from Working');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    for (const elevated of [false, true]) {
+      expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'business-bot', elevated })).toContain(f.agent);
+    }
+  });
   it('delivers general bot question guidance to employees and resumed bots', () => {
     const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='decision-review-context')!;
     expect(f.isNew).toBe(true);

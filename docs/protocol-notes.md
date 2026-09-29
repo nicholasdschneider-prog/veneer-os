@@ -245,6 +245,23 @@ approval flags above:
 
 ## Codex thread writer locks (0.153.x, observed 2026-09-19)
 
+### Metadata-only resume and fork (verified September 29, 2026)
+
+The installed CLI's `app-server generate-ts --experimental` schema exposes
+`excludeTurns?: boolean` on both `ThreadResumeParams` and `ThreadForkParams`.
+It returns metadata and live state without populating `thread.turns`; full
+history hydration is deprecated for paginated threads. Veneer consumes only
+the returned thread id and already maintains its own display transcript, so
+reply startup and compaction resume now set `excludeTurns: true`. This does
+not truncate the native context, rewrite rollouts, or change model selection.
+
+Startup failures, disconnects, and timeout terminal events are checkpointed
+to the display transcript, including failures before a first native id is
+acknowledged. Timeout messages identify the startup stage. A late preparation
+response after Stop/timeout cannot adopt a fork or start another turn. These
+guards do not cancel a `turn/start` that has already crossed the provider
+boundary; the existing native interrupt and unknown-effect rules still apply.
+
 - `thread/resume` fails with `thread <id> already has an active writer` when a
   *different* app-server process still has that thread loaded. The lock is a
   file under `$CODEX_HOME/thread-writer-locks/<thread>.lock`, held for as long

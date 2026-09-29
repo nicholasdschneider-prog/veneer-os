@@ -227,6 +227,7 @@ describe('canonical Codex App Server adapter', () => {
       expect.arrayContaining(['thread/resume', 'thread/compact/start']),
     );
     expect(requests.find((request) => request.method === 'thread/compact/start')?.params).toEqual({ threadId: 't1' });
+    expect(requests.find((request) => request.method === 'thread/resume')?.params).toEqual({ threadId: 't1', excludeTurns: true });
     expect(fs.readFileSync(path.join(dir, 't1.jsonl'), 'utf8').trim()).toBe(
       JSON.stringify({ type: 'notice', message: 'Context compacted.' }),
     );
@@ -1331,6 +1332,7 @@ describe('Codex paginated fork preparation failure (resume in place, option A)',
     expect(methods.indexOf('turn/start')).toBeGreaterThan(methods.indexOf('thread/resume'));
     const resume = requests.find((r) => r.method === 'thread/resume')?.params;
     expect(resume?.threadId).toBe('stale-thread');
+    expect(resume?.excludeTurns).toBe(true);
     expect(resume?.developerInstructions).toBe(TEST_DEVELOPER_INSTRUCTIONS);
     // Instructions travel on the resume request only; the user turn is untouched.
     expect(requests.find((r) => r.method === 'turn/start')?.params).toMatchObject({
@@ -1440,5 +1442,70 @@ describe('Codex paginated fork preparation failure (resume in place, option A)',
     expect(starts.map((r) => (r.params?.input as Array<{ text: string }>)[0]?.text)).toEqual(['prompt turn-a', 'prompt turn-b']);
     expect(requests.filter((r) => r.method === 'thread/resume')).toHaveLength(2);
     expect(nativeIds).toEqual(['stale-thread', 'stale-thread']);
+  });
+});
+
+
+describe('Codex startup recovery history', () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    for (const key of ['REQUEST_LOG', 'REQUIRE_METADATA_ONLY', 'FORK_DELAY_MS', 'FORK_ERROR_MESSAGE', 'COMPLETE_TURNS', 'RESUME_HANG']) delete process.env[key];
+    for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+  function setup(overrides: Parameters<typeof createCodexAdapter>[0] = { codexBin: FAKE, turnTimeoutMs: 5_000 }) {
+    const dir = tmpDir(); dirs.push(dir);
+    const requestLog = path.join(dir, 'requests.jsonl');
+    process.env.REQUEST_LOG = requestLog;
+    const adapter = createCodexAdapter({ ...overrides, transcriptsDir: dir, log: silent });
+    return { dir, requestLog, adapter };
+  }
+  function requests(file: string): Array<{ method: string }> {
+    return fs.readFileSync(file, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  }
+  it.each([false, true])('starts exactly one reply without hydrating native turns (refresh=%s)', async refresh => {
+    process.env.REQUIRE_METADATA_ONLY = '1';
+    process.env.COMPLETE_TURNS = '1';
+    const { dir, requestLog, adapter } = setup();
+    const earlier = { type: 'text_final', turnId: 'prior', markdown: 'Retained history' };
+    fs.writeFileSync(path.join(dir, 'old-thread.jsonl'), JSON.stringify(earlier) + '\n');
+    const events: ConversationEvent[] = [];
+    await adapter.runTurn(turnSpec({ firstTurn: false, nativeSessionId: 'old-thread', refreshDeveloperInstructions: refresh }), e => events.push(e)).done;
+    expect(events.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'completed' });
+    expect(requests(requestLog).filter(r => r.method === 'turn/start')).toHaveLength(1);
+    const history = await adapter.readTranscript({ cwd: dir, nativeSessionId: refresh ? 't-forked' : 'old-thread' });
+    expect(history[0]).toEqual(earlier);
+  });
+  it('retains a rejected fork and failed outcome after a fresh adapter reload', async () => {
+    process.env.FORK_ERROR_MESSAGE = 'thread old-thread is archived';
+    const { dir, requestLog, adapter } = setup();
+    const events: ConversationEvent[] = [];
+    await adapter.runTurn(turnSpec({ firstTurn: false, nativeSessionId: 'old-thread', refreshDeveloperInstructions: true }), e => events.push(e)).done;
+    const fresh = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 5_000, transcriptsDir: dir, log: silent });
+    const history = await fresh.readTranscript({ cwd: dir, nativeSessionId: 'old-thread' });
+    expect(history.filter(e => e.type === 'error')).toEqual(events.filter(e => e.type === 'error'));
+    expect(history.filter(e => e.type === 'error')).toHaveLength(1);
+    expect(history.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'failed' });
+    expect(requests(requestLog).some(r => r.method === 'turn/start')).toBe(false);
+  });
+  it('retains an initial spawn failure under the original conversation session id', async () => {
+    const { dir, adapter } = setup({ codexBin: '/no/such/codex-startup-test', turnTimeoutMs: 5_000 });
+    await adapter.runTurn(turnSpec({ nativeSessionId: 'minted-id' }), () => {}).done;
+    const history = await adapter.readTranscript({ cwd: dir, nativeSessionId: 'minted-id' });
+    expect(history.map(e => e.type)).toEqual(['turn_started', 'error', 'turn_done']);
+    expect(history.at(-1)).toMatchObject({ outcome: 'failed' });
+  });
+  it('retains startup timeout stage and never adopts a late fork or starts its turn', async () => {
+    process.env.FORK_DELAY_MS = '1800';
+    const { dir, requestLog, adapter } = setup({ codexBin: FAKE, turnTimeoutMs: 1_000, interruptCompletionTimeoutMs: 20 });
+    const nativeIds: string[] = [];
+    await adapter.runTurn(turnSpec({ firstTurn: false, nativeSessionId: 'old-thread', refreshDeveloperInstructions: true }), () => {}, id => nativeIds.push(id)).done;
+    const history = await adapter.readTranscript({ cwd: dir, nativeSessionId: 'old-thread' });
+    expect(history.filter(e => e.type === 'error')).toEqual([expect.objectContaining({ message: expect.stringContaining('forking the existing session') })]);
+    expect(history.at(-1)).toMatchObject({ type: 'turn_done', outcome: 'timed_out' });
+    await delay(1_200);
+    expect(nativeIds).toEqual([]);
+    expect(requests(requestLog).some(r => r.method === 'turn/start')).toBe(false);
+    expect(fs.existsSync(path.join(dir, 't-forked.jsonl'))).toBe(false);
+    expect(await adapter.readTranscript({ cwd: dir, nativeSessionId: 'old-thread' })).toEqual(history);
   });
 });

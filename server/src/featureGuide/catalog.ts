@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'codex-startup-recovery', title: 'Diagnose a bot that stops before replying', category: 'Daily work', updated: '2026-09-29',
+    audience: 'People with access to a Codex conversation',
+    summary: 'Codex resumes long chats without returning their entire native history, and startup failures stay in the chat after reload.',
+    steps: ['Open the affected chat and check its latest reply and status.', 'If startup fails, reload the chat and read the retained error. A startup timeout identifies the stage that was waiting.', 'Ask Platform Dev to investigate a repeated failure in that existing chat. Keep the original messages and model selection; verify an actual reply before treating recovery as complete.'],
+    example: 'Clara is stuck thinking. Recover her existing chat and preserve my unanswered instructions.',
+    limits: 'This preserves history and avoids an unused full-history response; it does not reset model context or grant business authority. Previously omitted errors cannot be reconstructed. A timeout does not prove an external action had no effect, and recovery must not replay uncertain work.',
+    announcement: 'Long Codex chats now resume with metadata-only responses. Startup errors and timeouts remain visible after reload, and late startup responses cannot change a stopped chat session.',
+    agent: 'For a Codex chat stuck before replying, inspect fresh runtime status and retained startup errors. Resume/fork requests omit returned turns while retaining native history. Keep the existing chat, messages, model and approvals; do not infer recovery from Working or replay uncertain business effects. Startup timeouts identify the waiting stage; older missing errors remain unknown. Verify an actual reply before reporting recovery. Guide: /#/bot-guide?feature=codex-startup-recovery.',
+  },
+  {
     id:'cs-readiness',title:'See what the customer service bots can do today',category:'Daily work',updated:'2026-09-29',
     audience:'The business owner; active bots in the same business read it through read_cs_readiness.',
     summary:'One page lists each customer service task, whether it works today, and the exact next dependency with its owner when it does not.',

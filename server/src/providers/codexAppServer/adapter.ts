@@ -340,9 +340,14 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     ];
     let persistedEvents = 0;
     let historyReady = false;
+    let startupStage = 'preparing the provider';
     function pushPersist(e: ConversationEvent): void {
       persistable.push(e);
       if (historyReady) flushShadowState();
+    }
+    function emitPersisted(e: ConversationEvent): void {
+      pushPersist(e);
+      onEvent(e);
     }
 
     // Live created-file capture, checkpointed alongside durable events and read
@@ -354,16 +359,20 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     // A service restart can exit before Codex acknowledges turn/interrupt.
     // Checkpoint completed events as they arrive, not only in finish().
     function flushShadowState(): void {
-      if (!resolvedThreadId) return;
+      // Before a first thread is acknowledged, the conversation still points
+      // at its minted id. Keep failed startup evidence there without claiming
+      // that a native session was established.
+      const transcriptId = resolvedThreadId ?? (settled ? spec.nativeSessionId : null);
+      if (!transcriptId) return;
       try {
-        appendShadowTranscript(opts.transcriptsDir, resolvedThreadId, persistable.slice(persistedEvents));
+        appendShadowTranscript(opts.transcriptsDir, transcriptId, persistable.slice(persistedEvents));
         persistedEvents = persistable.length;
       } catch (err) {
         log.warn(`[codex] shadow transcript write failed: ${(err as Error).message}`);
       }
       const refs = [...createdFiles].filter(([file, source]) => persistedFiles.get(file) !== source);
       try {
-        appendShadowFiles(opts.transcriptsDir, resolvedThreadId, refs.map(([path, source]) => ({ path, source })));
+        appendShadowFiles(opts.transcriptsDir, transcriptId, refs.map(([path, source]) => ({ path, source })));
         for (const [file, source] of refs) persistedFiles.set(file, source);
       } catch (err) {
         log.warn(`[codex] created-files sidecar write failed: ${(err as Error).message}`);
@@ -700,9 +709,9 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       inactivityMs,
       ceilingMs: opts.turnTimeoutMs,
       onExpire: (reason) => {
-        onEvent({
+        emitPersisted({
           type: 'error',
-          message: turnTimeoutMessage(reason, inactivityMs, opts.turnTimeoutMs),
+          message: `${turnTimeoutMessage(reason, inactivityMs, opts.turnTimeoutMs)}${resolvedTurnId ? '' : ` Startup stopped while ${startupStage}.`}`,
           fatal: false,
         });
         kill('timeout');
@@ -801,8 +810,8 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       // later wait/close.
       // The user hit Stop or steered — confirm with a muted notice, not a red
       // error. On a timeout the turn timer already surfaced its own message.
-      if (reason === 'user') onEvent({ type: 'notice', message: 'Stopped.' });
-      onEvent({
+      if (reason === 'user') emitPersisted({ type: 'notice', message: 'Stopped.' });
+      emitPersisted({
         type: 'turn_done',
         turnId,
         outcome: reason === 'user' ? 'interrupted_by_user' : 'timed_out',
@@ -876,8 +885,8 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             break;
           }
           settleActiveSubagents('stopped');
-          onEvent({ type: 'error', message: 'Codex app-server disconnected unexpectedly.', fatal: false });
-          onEvent({ type: 'turn_done', turnId, outcome: 'failed' });
+          emitPersisted({ type: 'error', message: 'Codex app-server disconnected unexpectedly.', fatal: false });
+          emitPersisted({ type: 'turn_done', turnId, outcome: 'failed' });
           finish();
           break;
         }
@@ -1394,8 +1403,12 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         let threadId: string;
         // History is retained across a fork; the chat just gets a new native id.
         const fork = async (): Promise<string> => {
+          startupStage = 'forking the existing session';
           const res = (await client.request('thread/fork', {
             threadId: spec.nativeSessionId,
+            // Veneer keeps its own transcript. Hydrating all native turns
+            // here can stall long paginated sessions before a reply starts.
+            excludeTurns: true,
             cwd: spec.cwd,
             sandbox,
             approvalPolicy,
@@ -1404,13 +1417,17 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             developerInstructions: spec.developerInstructions ?? undefined,
             dynamicTools: [CODEX_BROWSER_TOOL],
           })) as { thread: { id: string } };
+          if (killed || settled) return res.thread.id;
           await recordCodexFork(opts, res.thread.id, spec.nativeSessionId);
+          if (killed || settled) return res.thread.id;
           onSessionId?.(res.thread.id);
           return res.thread.id;
         };
         const resume = async (): Promise<string> => {
+          startupStage = 'resuming the existing session';
           const res = (await client.request('thread/resume', {
             threadId: spec.nativeSessionId,
+            excludeTurns: true,
             sandbox,
             approvalPolicy,
             config,
@@ -1423,6 +1440,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           return res.thread?.id ?? spec.nativeSessionId;
         };
         if (spec.firstTurn) {
+          startupStage = 'creating the provider session';
           const res = (await client.request('thread/start', {
             cwd: spec.cwd,
             sandbox,
@@ -1433,6 +1451,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             developerInstructions: spec.developerInstructions ?? undefined,
             dynamicTools: [CODEX_BROWSER_TOOL],
           })) as { thread: { id: string } };
+          if (killed || settled) return;
           threadId = res.thread.id;
           onSessionId?.(threadId);
         } else if (spec.refreshDeveloperInstructions) {
@@ -1441,9 +1460,11 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           // a new native id is returned, and the next turn cannot run with stale
           // or missing Core Veneer rules.
           await releaseThreadOwner(spec.nativeSessionId, client);
+          if (killed || settled) return;
           try {
             threadId = await fork();
           } catch (err) {
+            if (killed || settled) return;
             // Only the classified pre-execution preparation failure (a frozen
             // paginated projection) falls back; nothing has run yet, so there
             // is no turn to replay. Every other fork error propagates as before.
@@ -1458,11 +1479,14 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             try {
               threadId = await resume();
             } catch (resumeErr) {
+              if (killed || settled) return;
               if (!isWriterLocked(resumeErr)) throw resumeErr;
               await releaseThreadEverywhere(spec.nativeSessionId, client);
+              if (killed || settled) return;
               // Still locked → propagate; never fork a second time here.
               threadId = await resume();
             }
+            if (killed || settled) return;
             log.warn(
               `[codex] thread/fork could not prepare paginated history for ${spec.nativeSessionId}; resumed in place and sent the current developer instructions with the resume request (accepted by the API, adoption not independently verified)`,
             );
@@ -1476,19 +1500,24 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           // The process that last loaded this thread holds its writer lock
           // until it closes the thread (see threadOwners).
           await releaseThreadOwner(spec.nativeSessionId, client);
+          if (killed || settled) return;
           try {
             threadId = await resume();
           } catch (err) {
+            if (killed || settled) return;
             if (!isWriterLocked(err)) throw err;
             await releaseThreadEverywhere(spec.nativeSessionId, client);
+            if (killed || settled) return;
             try {
               threadId = await resume();
             } catch (retryErr) {
+              if (killed || settled) return;
               if (!isWriterLocked(retryErr)) throw retryErr;
               // Nothing we can reach will release it (another service, or a
               // process that ignores thread/close): continue on a fork rather
               // than leaving the chat stuck behind the lock.
               threadId = await fork();
+              if (killed || settled) return;
               onEvent({
                 type: 'notice',
                 message: 'Codex kept this thread open in another process; Veneer continued it in a new thread with the full history.',
@@ -1496,16 +1525,14 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             }
           }
         }
+        if (killed || settled) return;
         threadOwners.set(threadId, client);
         resolvedThreadId = threadId;
         quarantineUnscopedNativeEvents = fallbackInterruptedThreads.delete(threadId);
-        // A Stop/timeout that landed while thread/start|resume was in flight only set
-        // `killed` (no thread id existed to interrupt) — bail before running the turn.
-        // kill() has already settled `done`.
-        if (killed) return;
         historyReady = true;
         flushShadowState();
         unsubscribe = client.subscribe(threadId, handleServerMessage);
+        startupStage = 'starting the reply';
         const started = (await client.request('turn/start', {
           threadId,
           input: [{ type: 'text', text: spec.prompt }],
@@ -1526,14 +1553,14 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         settleActiveSubagents('failed');
         const message = (err as Error).message;
         const looksUnauthenticated = /not logged in|no .*(credential|auth)|401|unauthorized/i.test(message);
-        onEvent({
+        emitPersisted({
           type: 'error',
           message: looksUnauthenticated
             ? "Codex isn't connected — ask your administrator to connect a Codex account in Settings."
             : `Could not start the assistant: ${message}`,
           fatal: true,
         });
-        onEvent({ type: 'turn_done', turnId, outcome: 'failed' });
+        emitPersisted({ type: 'turn_done', turnId, outcome: 'failed' });
         finish();
       }
     }
@@ -1785,7 +1812,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         // Reload persisted threads after an app-server restart before asking it
         // to compact. Subscribe first so no lifecycle notification can race us.
         await releaseThreadOwner(threadId, client);
-        await client.request('thread/resume', { threadId });
+        await client.request('thread/resume', { threadId, excludeTurns: true });
         threadOwners.set(threadId, client);
         if (killed || settled) {
           finish(completionError());
