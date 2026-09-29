@@ -87,9 +87,25 @@ saturated seven, the confirmation should follow a measurement at seven.
 - web (916): panel shows project slots, hold end time and reason, and the turn-end
   explanation.
 
-## Live verification
+## Live verification (2026-09-29, after deploy at 14:21Z)
 
-See the section appended after deployment.
+- Commit `1146be4`; typecheck, all four suites (server 3075, web 916,
+  browser-manager 49, installer 29) and the build passed before restart. The
+  detached restart died with this chat's turn after restarting web and runner;
+  app-runner, terminal and the browser manager were restarted in the resumed
+  turn with `npm run restart -- <service>`. All services healthy.
+- Existing copies, read-only before any reclamation: Plaud (no turn, last used
+  Sep 27), Grant (no turn, last used Sep 28), Henry (pending turn), Avery
+  (stopped by its owner). No Keep open recorded on any of them, no viewer
+  connected. The first sweep after restart suspended Plaud and Grant
+  (`clone.idle_suspended` 14:22:55Z/14:22:56Z); their working copies remain on
+  disk. Henry stays running with reason `active_turn`. One warm copy is running
+  and is not counted.
+- Capacity from this chat (project Veneer): `1/5` machine, `0/2` this project
+  before open; after `open` `2/5` and `1/2`. A second project opened a browser
+  while ERVP held a slot, without waiting.
+- This chat's copy was left open on purpose at the end of the build turn to
+  observe the turn-end release itself; the result is recorded below.
 
 ## Limits
 
