@@ -104,8 +104,14 @@ saturated seven, the confirmation should follow a measurement at seven.
 - Capacity from this chat (project Veneer): `1/5` machine, `0/2` this project
   before open; after `open` `2/5` and `1/2`. A second project opened a browser
   while ERVP held a slot, without waiting.
-- This chat's copy was left open on purpose at the end of the build turn to
-  observe the turn-end release itself; the result is recorded below.
+- Turn-end release observed live (audit `clone.turn_end_suspended`): this
+  chat's copy paused at 14:24:12Z, 44 seconds after its last command, and
+  Henry's paused at 14:24:09Z when its turn ended. Both rows went to `stopped`
+  with the working directory intact (this chat's copy: 95 MB of Chrome profile
+  data plus its downloads folder still on disk). Avery reopened its copy in the
+  same minute and was correctly retained as `recent_activity` while active.
+- The test copy was then deleted with an explicit `stop`; capacity read `0/5`
+  and `0/2` for this project afterward. No test copy is left running.
 
 ## Limits
 
