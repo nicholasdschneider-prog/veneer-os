@@ -320,3 +320,50 @@ it('caps observations at registration expiry and denies expiry during validation
  const v=composedSmsVerifier(db,{registration:()=>f.r,now:()=>clock,readback:async()=>f.source,nativeCurrent:()=>{clock+=1000;}});
  expect(()=>v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId)).toThrow('dependencies expired');
 });
+
+it('records original-owner exact scope review, refreshes proof, and invalidates changed native inventory',async()=>{
+ const f=await serviceFixture();const other=bots.raise(owner,{source_key:'scope',proposal_key:'scope',proposal:{question:'Other case?',recommendation:'Hold',consequence:'None',blocked_action:'Wait',assignee_id:1,evidence:[],message_delivery:{...JSON.parse((db.prepare('SELECT proposal_json FROM bot_decisions WHERE id=?').get(decision) as any).proposal_json).message_delivery,canonical_case:ids.other}}}).id;
+ const {composedSmsScope}=await import('../src/bots/composedSmsScope.js');let disjoint=true;const proof={rootId:ids.other,scopeEvidenceId:ids.other,materialHash:'a'.repeat(64),disjoint:true,facts:{synthetic:'authenticated closure'},expiresAt:new Date(clock+4000).toISOString(),assertFresh:()=>{if(!disjoint)throw Error('source revoked');}};
+ let observations=0;const scope=composedSmsScope(db,()=>f.r,async()=>({...proof,facts:{...proof.facts,observedAt:String(++observations)}}),s.serviceCurrent,()=>clock);
+ await expect(scope.inspect(executor,f.a.authorityId)).rejects.toThrow('owner');
+ const i=await scope.inspect(owner,f.a.authorityId),row=i.binding.records.find(x=>x.id===other)!;
+ const p={authority_id:f.a.authorityId,inspection_hash:i.inspection_hash,request_key:'review',reviewed_full_context:true,classifications:[{kind:row.kind,id:row.id,revision:row.revision,rootId:ids.other,scopeEvidenceId:ids.other,classification:'unrelated',explanation:'Reviewed complete authenticated disjoint persisted roots'}]};
+ const recorded=await scope.record(owner,p);expect(await scope.record(owner,p)).toEqual(recorded);
+ const raw=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId),apply=await scope.prepare(f.r,f.a,raw),reviewed=apply(raw);expect(reviewed.blockingIds).not.toContain('decision:'+other);expect(reviewed.holds.find(x=>x.id===other)?.scopeStatus).toBe('unrelated');
+ bots.raise(owner,{source_key:'new-unscoped',proposal_key:'new-unscoped',proposal:{question:'New unresolved hold',recommendation:'Wait',consequence:'None',blocked_action:'Hold',assignee_id:1,evidence:[]}});
+ const changed=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);expect(()=>apply(changed)).toThrow('revision changed');const changedApply=await scope.prepare(f.r,f.a,changed);expect(changedApply(changed).blockingIds).toContain('decision:'+other);
+ disjoint=false;expect(()=>apply(raw)).toThrow('revoked');disjoint=true;
+ scope.revoke(owner,recorded.id,'No longer verified');expect(()=>apply(raw)).toThrow('revoked');
+ await expect(scope.record(owner,{...p,classifications:[{...p.classifications[0],explanation:'changed'}]})).rejects.toThrow('Conflicting');
+});
+it('cannot classify absent canonical roots, overlapping source evidence or changed native revisions',async()=>{
+ const f=await serviceFixture(),other=bots.raise(owner,{source_key:'scope2',proposal_key:'scope2',proposal:{question:'Unknown scope?',recommendation:'Hold',consequence:'None',blocked_action:'Wait',assignee_id:1,evidence:[]}}).id;
+ const {composedSmsScope}=await import('../src/bots/composedSmsScope.js');const scope=composedSmsScope(db,()=>f.r,async()=>{throw Error('must not fetch guessed root');},s.serviceCurrent,()=>clock);
+ const i=await scope.inspect(owner,f.a.authorityId),row=i.binding.records.find(x=>x.id===other)!;expect(row.rootId).toBe(null);
+ await expect(scope.record(owner,{authority_id:f.a.authorityId,inspection_hash:i.inspection_hash,request_key:'no',reviewed_full_context:true,classifications:[{kind:row.kind,id:row.id,revision:row.revision,rootId:ids.other,scopeEvidenceId:ids.other,classification:'unrelated',explanation:'Different ID is not proof'}]})).rejects.toThrow('Unknown or overlapping');
+});
+
+it('uses separately granted authenticated sender evidence without changing correspondence v1',async()=>{
+ const f=await serviceFixture();const {composeEvidenceReader}=await import('../src/bots/composedSmsEvidenceReader.js');const {composeHash}=await import('../src/bots/composedSmsContract.js');
+ f.r.guardManifest!.implementationRevision='f'.repeat(64);const issuer=f.r.senderReceiptIssuerId='40000000-0000-4000-8000-000000000004';const account='AC'+'a'.repeat(32),phone='+12025550100';
+ const receipt={schemaVersion:'compose-sms-sender/v1',receiptId:ids.other,revision:1,issuerId:issuer,authorityEvidence:'synthetic',provider:'twilio',providerAccountId:account,fromPhone:phone,ownershipVerified:true,smsCapable:true,active:true,sourceAccountId:f.r.sourceAccountId,nativeBusinessId:f.r.businessId,sourceOrigin:f.r.sourceOrigin,runtime:f.r.runtime,verifiedAt:new Date(clock-1000).toISOString(),expiresAt:new Date(clock+60000).toISOString(),evidenceReferences:['synthetic'],revokedAt:null};
+ const material={schemaVersion:'compose-sms-sender-observation/v1',registrationId:f.r.registrationId,sourceRegistrationHash:f.r.sourceRegistrationHash,receipt,process:{runtime:f.r.runtime,implementationRevision:'f'.repeat(64),processGenerationId:ids.business,clientGenerationId:ids.contact,observedAt:new Date(clock).toISOString(),configuredAccountId:account,effectiveAccountId:account,configuredFromPhone:phone,effectiveFromPhone:phone}};
+ const registry:any={schemaVersion:'compose-evidence-custody/v1',registrations:[{registrationId:f.r.registrationId,sourceRegistrationHash:f.r.sourceRegistrationHash,active:true,ownerConversationId:ids.owner,executorConversationId:ids.executor,payloadAccount:payload.account,expiresAt:f.r.expiresAt,issuedBy:ids.other,receipt:'synthetic',receiptHash:'a'.repeat(64),callers:[{conversationId:ids.owner,userId:1,principalId:'owner-only',credentialExpiresAt:f.r.expiresAt,operations:['sender.read','scope.owner.read'],credential:{project:'fixture',config:'test',name:'OWN_EVIDENCE'}}],scopeAuditIssuance:'immutable-source-evidence-only'}]};let reads=0;
+ const reader=composeEvidenceReader({db,config:{} as any},{registry:()=>registry,registration:()=>f.r,now:()=>clock,secret:async()=>{reads++;return 'synthetic-not-a-real-secret';},get:async()=>({schemaVersion:'compose-sms-evidence/v1',identity:{principalId:'owner-only',fullOrderOpsAccess:true,accountId:f.r.sourceAccountId,nativeBusinessId:f.r.businessId,sourceOrigin:f.r.sourceOrigin,runtime:f.r.runtime},canonicalCaseId:ids.canonical,contactCaseId:ids.contact,sender:{...material,observedAt:new Date(clock).toISOString(),expiresAt:new Date(clock+4000).toISOString(),snapshotHash:composeHash('compose-sms-sender-observation/v1',material)}})});
+ const result=await reader.sender(owner,ids.owner,ids.executor,ids.canonical,ids.contact,payload.account);expect(result.sender.providerAccountId).toBe(account);expect(reads).toBe(1);
+ await expect(reader.sender(executor,ids.owner,ids.executor,ids.canonical,ids.contact,payload.account)).rejects.toThrow('caller');expect(reads).toBe(1);
+ registry.registrations[0].active=false;expect(result.assertFresh).toThrow('custody changed');
+});
+
+it.each([false,true])('v3 scope-aware association clears exact reviewed roots once and denies a revocation race=%s',async race=>{
+ const {composeHash}=await import('../src/bots/composedSmsContract.js');const r=evidence.boundary!.registration;r.guardManifest!.nativeContextContract='compose-sms-current-context/v2';r.guardContractHash=composeHash('compose-sms-guards/v1',r.guardManifest);r.guardAcceptance!.manifestHash=r.guardContractHash;evidence.boundary!.guardContractHash=r.guardContractHash;
+ const f=await serviceFixture(),other=bots.raise(owner,{source_key:'scope-v3',proposal_key:'scope-v3',proposal:{question:'Another case hold',recommendation:'Wait',consequence:'None',blocked_action:'Hold',assignee_id:1,evidence:[],message_delivery:{...JSON.parse((db.prepare('SELECT proposal_json FROM bot_decisions WHERE id=?').get(decision) as any).proposal_json).message_delivery,canonical_case:ids.other}}}).id;
+ const {composedSmsScope}=await import('../src/bots/composedSmsScope.js');const scope=composedSmsScope(db,()=>r,async()=>({rootId:ids.other,scopeEvidenceId:ids.other,materialHash:'a'.repeat(64),disjoint:true,facts:{synthetic:true},expiresAt:new Date(clock+4000).toISOString(),assertFresh:()=>{}}),s.serviceCurrent,()=>clock);
+ const i=await scope.inspect(owner,f.a.authorityId),row=i.binding.records.find(x=>x.id===other)!;
+ const review=await scope.record(owner,{authority_id:f.a.authorityId,inspection_hash:i.inspection_hash,request_key:'scope-v3',reviewed_full_context:true,classifications:[{kind:row.kind,id:row.id,revision:row.revision,rootId:ids.other,scopeEvidenceId:ids.other,classification:'unrelated',explanation:'Reviewed the actual hold and complete disjoint source component'}]});
+ const v=composedSmsVerifier(db,{registration:()=>r,now:()=>clock,nativeCurrent:s.serviceCurrent,scope,readback:async()=>{if(race)scope.revoke(owner,review.id,'Revoked during readback');return f.source;}});
+ const context=await v.currentContextV2(r.registrationId,f.a.authorityId,1,f.a.nativeActionId);expect(context.blockingIds).toEqual([]);
+ const p={...f.p,schemaVersion:'native-compose-sms/v3',contextRevision:context.contextRevision,scopeEvidenceRevision:context.scopeEvidenceRevision};Object.assign(f.source,{schemaVersion:p.schemaVersion,contextRevision:p.contextRevision,scopeEvidenceRevision:p.scopeEvidenceRevision});
+ if(race){await expect(v.associate(r.registrationId,p)).rejects.toThrow('revoked');expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});}
+ else{expect((await v.associate(r.registrationId,p)).dispatchEntitlement).toBe(true);expect((await v.associate(r.registrationId,p)).dispatchEntitlement).toBe(false);expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:1});}
+});

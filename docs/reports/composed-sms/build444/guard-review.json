@@ -1,0 +1,10 @@
+{
+  "sourceCommit": "4745ce652f920ab53a280e53bcf514bcdcd503c5",
+  "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+  "guardManifestHash": "da806ff7a3905e74132e9bdda90c713db3f099bc9209294f55c0a9833ecc7971",
+  "verifiedFileCount": 12,
+  "mismatches": [],
+  "guardAcceptance": null,
+  "reason": "Retained aggregate test counts and test source show real-PG insert-message/STOP lock tests; no retained executed per-writer result for deletion, enrollment revocation, child material changes, canonical lease conflict or complete legacy/common fence race coverage. Source sender/timezone remain null. No blanket coverage certification.",
+  "nativeRegistryInstalled": false
+}

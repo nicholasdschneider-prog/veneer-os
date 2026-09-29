@@ -1,3 +1,5 @@
+import {composeEvidenceReader} from './composedSmsEvidenceReader.js';
+import {composeHash} from './composedSmsContract.js';
 import {composeMaterialHash} from './composedSmsContract.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -7,7 +9,7 @@ import {BotError} from './service.js';
 import {canonicalSha256} from './canonical.js';
 import {approvedCaseRegistrySchema,boundedResolverGet} from './approvedCaseResolver.js';
 import {readSecretValue} from '../secrets/readSecret.js';
-import type {CompositionReader} from './composedSms.js';
+import type {CompositionReader,CompositionEvidence} from './composedSms.js';
 const base=approvedCaseRegistrySchema.shape.registrations.element;
 export const correspondenceRegistrySchema=z.object({schema_version:z.literal('compose-correspondence-registry/v1'),registrations:z.array(base.extend({
  provenance:base.shape.provenance.extend({authority:z.literal('compose-send-correspondence-custody')}),
@@ -58,6 +60,14 @@ export function composedSmsReader(ctx:Pick<AppContext,'db'|'config'|'projectDopp
   // Caller-specific authentication is checked above; material comparison across
   // original owner and executor excludes only their independently checked identity.
   const {identity:ignored,...facts}=material;
-  return {dispatch_material_hash:composeMaterialHash(material),projection:{cases:wire.cases,messages:wire.messages},snapshot_hash:canonicalSha256(facts),registration_hash:hash,business_id:reg.business_id,account_id:reg.account_id,principal_id:caller.principal_id,sms_account:'',sender_phone:'',sender_verified:false,dispatch:{supported:false,contract:null,revision:'approved-case-correspondence/v1',reason:'Verified SMS sender and native action/executor/sender fenced transport are not supplied by this source contract'},assertFresh};
+  const evidence:CompositionEvidence={dispatch_material_hash:composeMaterialHash(material),projection:{cases:wire.cases,messages:wire.messages},snapshot_hash:canonicalSha256(facts),registration_hash:hash,business_id:reg.business_id,account_id:reg.account_id,principal_id:caller.principal_id,sms_account:'',sender_phone:'',sender_verified:false,dispatch:{supported:false,contract:null,revision:'approved-case-correspondence/v1',reason:'Verified SMS sender and native action/executor/sender fenced transport are not supplied by this source contract'},assertFresh};
+  if(ctx.config.composeEvidenceRegistryFile){
+   const positive=await composeEvidenceReader(ctx).sender(a,owner,p.executor_conversation_id,p.canonical_case,p.contact_case,payload.account),r=positive.registration;
+   const assertBoundary=()=>{assertFresh();positive.assertFresh();if(!r.guardManifest||r.guardManifest.nativeContextContract!=='compose-sms-current-context/v2'||!r.guardAcceptance||composeHash('compose-sms-guards/v1',r.guardManifest)!==r.guardContractHash||r.guardAcceptance.manifestHash!==r.guardContractHash||Date.parse(r.guardAcceptance.reviewedAt)>io.now()||Date.parse(r.guardAcceptance.expiresAt)<=io.now())throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: accountable source guard acceptance required');};assertBoundary();
+   evidence.registration_hash=canonicalSha256({correspondence:hash,evidenceCustody:positive.custodyHash});evidence.sms_account=payload.account;evidence.sender_phone=positive.sender.fromPhone;evidence.sender_verified=true;
+   evidence.dispatch={supported:true,contract:'native-compose-sms/v3',revision:r.guardContractHash,reason:'Verified sender; source and native execution guards still required'};
+   evidence.boundary={registration:r,materialHash:evidence.dispatch_material_hash!,sender:positive.sender,guardContractHash:r.guardContractHash,assertFresh:assertBoundary};evidence.assertFresh=assertBoundary;
+  }
+  return evidence;
  };
 }

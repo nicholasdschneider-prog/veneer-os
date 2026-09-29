@@ -197,3 +197,18 @@ source installation, accepted guards/sender adapter and final native service reg
 remain pending. No repeated customer approval or reader setup is needed. The shared
 composed-sms catalog carries these limits to employees and resumed agents. See the
 [current contract](./reports/composed-sms/contract.md).
+
+## Composed SMS sender and scope consumers — September 29, 2026
+
+BUILD444 implements separate authenticated sender evidence and scope-closure consumers,
+plus original-owner `inspect_composed_sms_scope`, `record_composed_sms_scope` and
+`revoke_composed_sms_scope`. Reviews bind actual immutable native tuples to refreshed
+persisted source components. Unsupported or incomplete scope stays blocking. This is
+factual scope review, not another customer approval. Explicit current-context v2 and
+association v3 preserve historical contracts and recheck reviews atomically.
+
+Source installation is disabled. New evidence producers and scoped custody, current
+sender evidence, executed writer coverage and final native service registration remain
+pending; this release does not enable customer dispatch. The shared catalog supplies
+employee and fresh/resumed agent instructions. See the [accepted native consumer
+contract](./reports/composed-sms/build444/contract.md).

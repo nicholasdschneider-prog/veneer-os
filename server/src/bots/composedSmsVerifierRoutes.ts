@@ -1,3 +1,5 @@
+import {composedSmsScope} from './composedSmsScope.js';
+import {composeEvidenceReader} from './composedSmsEvidenceReader.js';
 import express from 'express';
 import {z} from 'zod';
 import type {AppContext} from '../context.js';
@@ -14,7 +16,7 @@ import {uuid} from './composedSmsContract.js';
 export function composeVerifierIO(ctx:AppContext):ComposeVerifierIO{
  const native=composedSmsService(ctx.db,composedSmsReader(ctx));
  const registration=(id:string)=>{const rows=loadComposeServiceRegistry(ctx.config.composeServiceRegistryFile).registrations.filter(r=>r.registrationId===id);if(rows.length!==1)return boundaryUnavailable();return rows[0]!;};
- return {registration,now:Date.now,nativeCurrent:native.serviceCurrent,async readback(r,a){
+ return {scope:composedSmsScope(ctx.db,registration,composeEvidenceReader(ctx).scope,id=>native.serviceCurrent(id)),registration,now:Date.now,nativeCurrent:native.serviceCurrent,async readback(r,a){
   const before=checkComposeRegistration(ctx.db,registration(r.registrationId),Date.now());if(before!==canonicalSha256(r))throw new BotError(403,'Readback custody changed');
   const secret=(await readSecretValue({db:ctx.db,projectDopplerCli:ctx.projectDopplerCli??null},r.readbackCredential)).value;
   if(checkComposeRegistration(ctx.db,registration(r.registrationId),Date.now())!==before)throw new BotError(403,'Readback custody changed');
@@ -33,6 +35,7 @@ export function composedSmsVerifierRoutes(ctx:AppContext,overrides?:{io:ComposeV
   res.locals.registrationId=selector;next();
  })().catch(next);});
  const run=(f:(req:express.Request,id:string)=>unknown)=>(req:express.Request,res:express.Response,next:express.NextFunction)=>{void Promise.resolve().then(()=>f(req,res.locals.registrationId)).then(v=>res.json(v)).catch(next);};
+ router.get('/authorities/:id/current-context-v2',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.currentContextV2(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));
  router.get('/authorities/:id/current-context',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.currentContext(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));
  router.get('/authorities/:id',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.authority(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));
  router.post('/dispatch-associations',run((req,id)=>{z.object({}).strict().parse(req.query);return service.associate(id,req.body);}));

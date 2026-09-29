@@ -23,3 +23,10 @@ it.each(['contextRevision','scopeEvidenceRevision','guardManifestHash'])('requir
  const a={...f.association},s={...f.sourceReadback};delete a[key];delete s[key];
  expect(associationV2Schema.safeParse(a).success).toBe(false);expect(sourceReadbackV2Schema.safeParse(s).success).toBe(false);
 });
+
+it('rejects unrelated clearance without evidence or with inconsistent blockers',async()=>{
+ const {reviewedContextSchema}=await import('../src/bots/composedSmsScope.js');const base={...f.currentContext,schemaVersion:'compose-sms-current-context/v2'};
+ const row={kind:'decision',id:'fixture',revision:'a'.repeat(64),status:'approved',scopeEvidenceId:null,scopeStatus:'unrelated',blocking:false};
+ expect(reviewedContextSchema.safeParse({...base,holds:[row],obligations:[],blockingIds:[]}).success).toBe(false);
+ expect(reviewedContextSchema.safeParse({...base,holds:[{...row,scopeStatus:'unknown'}],obligations:[],blockingIds:[]}).success).toBe(false);
+});

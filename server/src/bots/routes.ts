@@ -1,3 +1,5 @@
+import {composedSmsScope,composeScopeReviewSchema} from './composedSmsScope.js';
+import {composeEvidenceReader} from './composedSmsEvidenceReader.js';
 import {composeVerifierIO} from './composedSmsVerifierRoutes.js';
 import {composedSmsVerifier} from './composedSmsVerifier.js';
 import {composedSmsService,composedInspectionSchema,deriveComposedSchema} from './composedSms.js';
@@ -304,6 +306,10 @@ export function createBotsRouter(ctx: AppContext) {
     }),
   );
   const composed=composedSmsService(ctx.db,composedSmsReader(ctx));
+  const scopeReview=composedSmsScope(ctx.db,composeVerifierIO(ctx).registration,composeEvidenceReader(ctx).scope,id=>composed.serviceCurrent(id));
+  router.post('/composed-sms/:id/scope/inspect',run(async(req,res)=>{z.object({}).strict().parse(req.body);res.json(await scopeReview.inspect(actor(req),z.string().uuid().parse(req.params.id)));}));
+  router.post('/composed-sms/:id/scope/record',run(async(req,res)=>res.json(await scopeReview.record(actor(req),composeScopeReviewSchema.parse({...req.body,authority_id:req.params.id})))));
+  router.post('/composed-sms/scope/:id/revoke',run((req,res)=>{const p=z.object({reason:z.string().min(1).max(2000)}).strict().parse(req.body);res.json(scopeReview.revoke(actor(req),z.string().uuid().parse(req.params.id),p.reason));}));
   router.post('/composed-sms/inspect',run(async(req,res)=>res.json(await composed.inspect(actor(req),composedInspectionSchema.parse(req.body)))));
   router.post('/composed-sms/derive',run(async(req,res)=>res.json(await composed.derive(actor(req),deriveComposedSchema.parse(req.body)))));
   router.get('/composed-sms/:id',run((req,res)=>res.json(composed.reconcile(actor(req),req.params.id!))));
