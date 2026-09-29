@@ -11,7 +11,7 @@ Native now implements authenticated positive sender evidence consumption, comple
 
 ## Source review and registry disposition
 
-Source441 code4745ce652f920ab53a280e53bcf514bcdcd503c5 and configuration deploymente52babaa-1705-4399-8395-c4871651193e succeeded; retained exact-SHA health is 2026-09-29T00:56:52.545Z. Its disabled installation preserves null sender/guard acceptance and empty timezone evidence. Native matched all12 retained writer-file hashes and read the actual lock/fence code. Retained real-PG tests demonstrate the recorded STOP/message and table-lock checks, but do not establish the full requested executed DELETE/enrollment/canonical-conflict and common-wire race matrix. Therefore no blanket guard acceptance was issued.
+Source441 code4745ce652f920ab53a280e53bcf514bcdcd503c5 and configuration deploymente52babaa-1705-4399-8395-c4871651193e succeeded; retained exact-SHA health is 2026-09-29T00:56:52.545Z. Its disabled installation preserves null sender/guard acceptance and empty timezone evidence. Native matched all 12 retained writer-file hashes and read the actual lock/fence code. Retained real-PG tests demonstrate the recorded STOP/message and table-lock checks, but do not establish the full requested executed DELETE/enrollment/canonical-conflict and common-wire race matrix. Therefore no blanket guard acceptance was issued.
 
 Both native service and new evidence registries remain absent. Existing429/434 registry files and authority are preserved. No production authority, scope review, claim, prepare, dispatch, credential read or provider/customer probe occurred.
 
@@ -23,7 +23,7 @@ After those dependencies are established, original Grant uses supported composed
 
 ## Validation and deployment
 
-Node24 root typecheck, focused152 tests, full suites (server2,862 passed/5 skipped; web909; browser54; installer29), and production build passed before restart. The build emitted its standard bundle-size advisory. Isolated browser fixtures verified full and restricted employee guide access, current scope/setup limits and mobile overflow; catalog/core-instruction tests verified fresh/resumed-agent delivery. No production data was used. Runtime readback follows the supported root restart.
+Node24 root typecheck, focused 152 tests, full suites (server 2,862 passed/5 skipped; web 909; browser 54; installer 29), and production build passed before restart. The build emitted its standard bundle-size advisory. Isolated browser fixtures verified full and restricted employee guide access, current scope/setup limits and mobile overflow; catalog/core-instruction tests verified fresh/resumed-agent delivery. No production data was used. Implementation `58c36a9a9d64e7a9242899ccedd4025198cff408` was pushed to origin/main and deployed using root `npm run restart`. At 2026-09-29T01:31:25.757922Z all five services returned HTTP 200, all 4,552 artifacts matched, and migration 0133 plus four immutability triggers were present. Both existing protected registries retained their hashes/UID 501/mode 0600; service/evidence registry configuration remains absent. [Runtime receipt](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build444/runtime.json).
 
 ## Contract and changed files
 

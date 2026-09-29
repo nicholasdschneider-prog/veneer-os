@@ -1,0 +1,49 @@
+{
+  "verifiedAt": "2026-09-29T01:31:25.757922+00:00",
+  "implementationCommit": "58c36a9a9d64e7a9242899ccedd4025198cff408",
+  "health": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  },
+  "artifactCount": 4552,
+  "artifactMismatches": [],
+  "migration": [
+    "0133_compose_scope_reviews.sql",
+    "05c950835c702fd9532f52624bb7b6a7493f654bb92d3dca603650b676215061",
+    "2026-09-29 01:29:42"
+  ],
+  "scopeImmutabilityTriggers": [
+    "compose_scope_reviews_no_delete",
+    "compose_scope_reviews_no_update",
+    "compose_scope_revocations_no_delete",
+    "compose_scope_revocations_no_update"
+  ],
+  "preservedRegistries": [
+    {
+      "name": "approved-case-registry.json",
+      "sha256": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+      "unchanged": true,
+      "uid": 501,
+      "mode": "0o600",
+      "symlink": false
+    },
+    {
+      "name": "compose-correspondence-registry.json",
+      "sha256": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c",
+      "unchanged": true,
+      "uid": 501,
+      "mode": "0o600",
+      "symlink": false
+    }
+  ],
+  "configuredRegistryNames": {
+    "VP_COMPOSE_SERVICE_REGISTRY_FILE": false,
+    "VP_COMPOSE_EVIDENCE_REGISTRY_FILE": false
+  },
+  "guardAcceptance": null,
+  "dispatchEnabled": false,
+  "customerProviderCredentialActions": false
+}
