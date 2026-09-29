@@ -281,6 +281,8 @@ A last pass against the full video narration and the current repository found no
 | Fin comparison | Offline comparison on the same cases first; no purchase or live traffic until the native first-week milestone result is known |
 | Pilot cohort and hours | New eligible email cases only, declared support hours, legacy approved-but-unsent cases kept in their own reconciliation lane |
 
+**Accepted by Nick in chat on September 29, 2026**, all four as recommended. This acceptance sets the plan's scope and order of work. It is not a routine-policy enrollment, a customer-send approval, or a new refund or replacement limit; those keep their existing setup and approval paths.
+
 ## Research index
 
 Primary documentation and engineering sources used above, checked September 28, 2026:
