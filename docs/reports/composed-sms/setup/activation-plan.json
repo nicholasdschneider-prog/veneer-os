@@ -1,0 +1,54 @@
+{
+  "kind": "incomplete-activation-plan-not-a-registry",
+  "permissionFile": "/Users/archerclawdington/Projects/ERVP/Order Ops/.veneer/receipts/composed-sms-custody-permission-20260929-v1.md",
+  "permissionSha256": "7084b559db1385a5d5d4f0527f8a791a3a1b9bc7429a67a1c19968d260828f99",
+  "candidate": {
+    "registrationId": "e0f86977-b32e-4eb4-a995-c27746fafa81",
+    "revision": 1,
+    "active": false,
+    "businessId": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+    "businessOwnerUserId": 1,
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "71cc77d6-9c0d-4770-9d6d-62b8c4bb516c",
+      "environmentId": "530025e2-352d-443c-a8ed-e589fc20621d",
+      "serviceId": "ede1932e-b3f9-4e7b-b1be-45804dfbe842"
+    },
+    "sourceAccountId": "help@elkhartrvparts.com",
+    "serviceCredentialHash": "6de378e3868c30805c6f9bfab57d73f864e553f5d21a2a6e874ca6d31ff9d453",
+    "nativeAudience": "9def2406f3b3797e5c2e2d4cbfcd74911adf4f63e5e011d99944f8b88032095a",
+    "cfClientId": "36e5ccbbc397574ced3934d9c1b92353.access",
+    "capabilities": [
+      "compose.authority.read",
+      "compose.permit.redeem",
+      "compose.association.read"
+    ],
+    "executorBindings": [
+      {
+        "conversationId": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+        "userId": 1,
+        "principalId": "veneer:f8c8f45f-dcc8-4c58-b6b6-f94e3ee7673b"
+      }
+    ],
+    "senderReceiptIssuerId": "a4bc7b0c-e56a-4b90-b4bc-cb71cbc88e68",
+    "expiresAt": "2026-10-28T00:14:26Z",
+    "custodyReceipt": "composed-sms-custody-permission-20260929-v1",
+    "readbackCredential": {
+      "project": "ervp",
+      "config": "prd",
+      "name": "OO_COMPOSE_SMS_NATIVE_READBACK_CREDENTIAL"
+    }
+  },
+  "missing": [
+    "actual source servicePrincipalId",
+    "sourceRegistrationHash committing actual installed source registration",
+    "accepted guardManifest + guardContractHash + accountable guardAcceptance",
+    "action-only reader installation and readbackCustodyReceipt",
+    "accepted positive sender issuer/in-process current-client adapter",
+    "compose-specific closure and owner scope classifications for unknown unfinished obligations"
+  ],
+  "sourceRuntimeInstallation": false,
+  "nativeRegistryInstalled": false,
+  "execute": false,
+  "retainedPermission": "permission-receipt.md"
+}

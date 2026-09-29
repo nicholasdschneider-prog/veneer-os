@@ -1,3 +1,4 @@
+import {fixtureGuards} from './composeGuardFixture.js';
 import {composedSmsVerifier} from '../src/bots/composedSmsVerifier.js';
 import {bindingHash,type ComposeAuthority} from '../src/bots/composedSmsContract.js';
 import type {ComposeRegistration} from '../src/bots/composedSmsTrust.js';
@@ -31,6 +32,7 @@ beforeEach(()=>{
  clock=Date.now();allow=true;
  evidence={projection:{cases:[{id:ids.canonical,ticketNumber:'EMAIL',customerId:'customer-one',relatedOrderId:null,customer:{phone:null}},{id:ids.contact,ticketNumber:'PHONE',customerId:'customer-two',relatedOrderId:null,customer:{phone:payload.recipients[0]!}}],messages:[{id:'email',conversationId:ids.canonical,direction:'inbound',channel:'email',messageType:'message',body:'Order fixture, my phone is +12025550111.',fromPhone:null,actorType:null,actorId:null,agentId:null,aiGenerated:false},{id:'sms',conversationId:ids.contact,direction:'inbound',channel:'sms',messageType:'message',body:'Same order fixture.',fromPhone:payload.recipients[0]!,actorType:null,actorId:null,agentId:null,aiGenerated:false}]},snapshot_hash:'a'.repeat(64),registration_hash:'b'.repeat(64),business_id:ids.business,account_id:'source-account',principal_id:'fixture',sms_account:payload.account,sender_phone:'+12025550100',sender_verified:true,dispatch:{supported:true,contract:'native-compose-sms/v1',revision:'fixture-accepted-transport',reason:'Synthetic fenced transport only'},assertFresh(){if(!allow)throw Error('Source authority revoked');}};
  const reg:ComposeRegistration={registrationId:'40000000-0000-4000-8000-000000000001',revision:1,active:true,businessId:ids.business,businessOwnerUserId:1,sourceOrigin:'https://orderops-dev-web-production.up.railway.app',runtime:{projectId:ids.business,environmentId:ids.canonical,serviceId:ids.contact},sourceRegistrationHash:'c'.repeat(64),sourceAccountId:evidence.account_id,servicePrincipalId:'dedicated-fixture',serviceCredentialHash:'d'.repeat(64),nativeAudience:'dedicated-fixture-audience',cfClientId:'dedicated-fixture-client',capabilities:['compose.authority.read','compose.permit.redeem','compose.association.read'],executorBindings:[{conversationId:ids.executor,userId:1,principalId:'executor-fixture'}],senderReceiptIssuerId:'fixture-issuer',guardContractHash:'e'.repeat(64),expiresAt:new Date(clock+3600000).toISOString(),custodyReceipt:'synthetic-only',readbackCredential:{project:'fixture',config:'test',name:'DEDICATED_READBACK'},readbackCustodyReceipt:'synthetic-only'};
+ fixtureGuards(reg);
  evidence.dispatch_material_hash='f'.repeat(64);
  evidence.boundary={registration:reg,materialHash:'f'.repeat(64),sender:{receiptId:'50000000-0000-4000-8000-000000000001',revision:1,issuerId:'fixture-issuer',providerAccountId:'AC'+'a'.repeat(32),fromPhone:evidence.sender_phone,expiresAt:new Date(clock+3600000).toISOString()},guardContractHash:reg.guardContractHash,assertFresh:()=>evidence.assertFresh()};
  s=composedSmsService(db,async()=>evidence,()=>clock);
@@ -113,12 +115,22 @@ it('serializes against ordinary drafts and copied-payload claims without authori
 });
 
 async function serviceFixture(){
+ const d=db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(decision) as any,proposal=JSON.parse(d.proposal_json),scope=proposal.message_delivery;
+ const completed={state:'verified_completed',evidence:'Synthetic exact provider acceptance'};
+ db.prepare("UPDATE bot_decisions SET state='verified_completed',result_json=? WHERE id=?").run(JSON.stringify(completed),decision);
+ db.prepare("INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,actor_conversation_id,payload_json,request_key) VALUES('completion',?,1,'result',1,?,?,'completion')").run(decision,ids.owner,JSON.stringify(completed));
+ const approval=(db.prepare("SELECT id FROM bot_decision_events WHERE kind='answered' AND decision_id=?").get(decision) as any).id;
+ db.prepare("INSERT INTO bot_message_delegations(id,decision_id,decision_version,owner_conversation_id,executor_conversation_id,executor_user_id,delegator_user_id,approver_user_id,approval_event_id,proposal_hash,payload_hash,scope_json,request_key) VALUES('email-delegation',?,1,?,?,1,1,1,?,?,?,?,'email')").run(decision,ids.owner,ids.owner,approval,canonicalSha256(proposal),canonicalSha256(scope),JSON.stringify(scope));
+ db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,request_key,payload_json,state,delegation_id) VALUES('email-sent',?,'email',?,'sent','email-delegation')").run(ids.owner,JSON.stringify(scope.payload));
+ const proof={provider:'fixture',provider_message_id:'synthetic-provider',account:scope.payload.account,recipients:scope.payload.recipients,canonical_case:scope.canonical_case,payload_hash:canonicalSha256(scope),idempotency_key:'veneer-message:email-sent'};
+ db.prepare("INSERT INTO bot_message_delivery_proofs(draft_id,account,provider,provider_message_id,proof_json) VALUES('email-sent',?,'fixture','synthetic-provider',?)").run(scope.payload.account,JSON.stringify(proof));
  const g=await accept(),claim=await s.claim(executor,g.authority_id,'claim',check());
  const row=db.prepare('SELECT tuple_json FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(g.authority_id) as {tuple_json:string};
  const a=JSON.parse(row.tuple_json) as ComposeAuthority,r=evidence.boundary!.registration;
- const p={schemaVersion:'native-compose-sms/v1',nativeActionId:a.nativeActionId,authorityId:a.authorityId,authorityRevision:1,nativeClaimId:claim.reservation.native_claim_id,sourcePrepareId:'60000000-0000-4000-8000-000000000001',bindingHash:bindingHash(r,a),requestKey:'70000000-0000-4000-8000-000000000001'};
- let source:any={schemaVersion:'native-compose-sms/v1',nativeActionId:a.nativeActionId,prepareId:p.sourcePrepareId,bindingHash:p.bindingHash,nativeClaimId:p.nativeClaimId,associationId:null,attemptId:null,state:'REDEEMING',authorityHash:a.authorityHash,wirePayloadHash:a.wirePayloadHash,idempotencyKey:a.idempotencyKey,providerReceipt:null,observedAt:new Date(clock).toISOString(),prepareExpiresAt:new Date(clock+8000).toISOString(),redeemRequestKey:p.requestKey,execute:false};
+ const p={schemaVersion:'native-compose-sms/v2',nativeActionId:a.nativeActionId,authorityId:a.authorityId,authorityRevision:1,nativeClaimId:claim.reservation.native_claim_id,sourcePrepareId:'60000000-0000-4000-8000-000000000001',contextRevision:'',scopeEvidenceRevision:'',guardManifestHash:r.guardContractHash,bindingHash:bindingHash(r,a),requestKey:'70000000-0000-4000-8000-000000000001'};
+ let source:any={schemaVersion:'native-compose-sms/v2',nativeActionId:a.nativeActionId,prepareId:p.sourcePrepareId,bindingHash:p.bindingHash,nativeClaimId:p.nativeClaimId,associationId:null,attemptId:null,state:'REDEEMING',authorityHash:a.authorityHash,wirePayloadHash:a.wirePayloadHash,idempotencyKey:a.idempotencyKey,providerReceipt:null,observedAt:new Date(clock).toISOString(),prepareExpiresAt:new Date(clock+8000).toISOString(),redeemRequestKey:p.requestKey,execute:false};
  const v=composedSmsVerifier(db,{registration:id=>{if(id!==r.registrationId)throw Error('foreign');return r;},nativeCurrent:s.serviceCurrent,readback:async()=>source,now:()=>clock});
+ const current=v.currentContext(r.registrationId,a.authorityId,1,a.nativeActionId);p.contextRevision=current.contextRevision;p.scopeEvidenceRevision=current.scopeEvidenceRevision;Object.assign(source,{contextRevision:p.contextRevision,scopeEvidenceRevision:p.scopeEvidenceRevision,guardManifestHash:p.guardManifestHash});
  return {g,a,r,p,v,get source(){return source;},set source(value){source=value;}};
 }
 it('models PREPARED->REDEEMING, one native association and a sole source SENDING winner',async()=>{
@@ -209,4 +221,57 @@ it('recomputes binding from protected registration and immutable tuple rather th
  const f=await serviceFixture();f.p.bindingHash='0'.repeat(64);f.source.bindingHash=f.p.bindingHash;
  await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow();
  expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});
+});
+it('exposes exact-action context without bodies and classifies only exact current/completed records',async()=>{
+ const f=await serviceFixture(),c=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);
+ expect(c.complete).toBe(true);expect(c.execute).toBe(false);expect(c.blockingIds).toEqual([]);
+ expect(c.holds[0]).toMatchObject({kind:'decision',id:decision,scopeStatus:'completed',scopeEvidenceId:null});
+ expect(c.obligations.find(x=>x.id==='draft')).toMatchObject({scopeStatus:'current_action'});
+ expect(JSON.stringify(c)).not.toContain(body);expect(c.expiresAt).toBe(new Date(clock+5000).toISOString());
+ expect(()=>f.v.currentContext(f.r.registrationId,f.a.authorityId,1,ids.other)).toThrow('revision/action');
+});
+it.each(['needs_input','verified_completed'])('unfinished/unproven %s decisions are not silently excluded by different case UUID',async state=>{
+ const f=await serviceFixture();const newId=bots.raise(owner,{source_key:'other',proposal_key:'other',proposal:{question:'Other?',recommendation:'Investigate',consequence:'None',blocked_action:'Hold',assignee_id:1,evidence:[]}}).id;
+ if(state==='verified_completed')db.prepare('UPDATE bot_decisions SET state=? WHERE id=?').run(state,newId);
+ const c=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);
+ expect(c.blockingIds).toContain(`decision:${newId}`);expect(c.holds.find(x=>x.id===newId)).toMatchObject({scopeEvidenceId:null,scopeStatus:'unknown'});
+ await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow('context changed');
+ Object.assign(f.p,{contextRevision:c.contextRevision,scopeEvidenceRevision:c.scopeEvidenceRevision});Object.assign(f.source,f.p);
+ await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow();
+});
+it('tracks unbound instruction obligations and revocations without treating revocation as completion',async()=>{
+ const f=await serviceFixture();db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,request_key,payload_json) VALUES('legacy-draft',?,'legacy','{}')").run(ids.other);db.prepare("INSERT INTO bot_instruction_obligations(id,owner_id,source_id,draft_id,request_key,request_hash,snapshot_json) VALUES('legacy',?,?,?,'legacy',?,'{}')").run(ids.owner,source,'legacy-draft','0'.repeat(64));
+ const c=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);
+ expect(c.blockingIds).toContain('instruction:legacy');
+ db.prepare("INSERT INTO bot_instruction_obligation_revocations(obligation_id,actor_id,actor_conversation_id,reason,request_key) VALUES('legacy',1,?,'Review revoked','r')").run(ids.owner);
+ const next=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);
+ expect(next.blockingIds).toContain('instruction:legacy');expect(next.contextRevision).not.toBe(c.contextRevision);
+ expect(next.obligations.find(x=>x.id==='legacy')?.revision).not.toBe(c.obligations.find(x=>x.id==='legacy')?.revision);
+});
+it('retains prior business membership and deleted draft coverage',async()=>{
+ const f=await serviceFixture();db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,request_key,payload_json) VALUES('unbound',?,'unbound','{}')").run(ids.other);
+ db.prepare('UPDATE conversations SET business_team_id=NULL WHERE id=?').run(ids.other);
+ let c=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);expect(c.blockingIds).toContain('draft:unbound');
+ db.prepare("DELETE FROM bot_message_drafts WHERE id='unbound'").run();c=f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);
+ expect(c.obligations.some(x=>x.status==='deleted_unknown'&&x.blocking)).toBe(true);
+});
+it.each(['acl','new-draft','new-decision','same-value-write'])('atomic first association denies %s after source read',async kind=>{
+ const f=await serviceFixture();const v=composedSmsVerifier(db,{registration:()=>f.r,nativeCurrent:s.serviceCurrent,now:()=>clock,readback:async()=>{
+  if(kind==='acl')db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES(?,1,'member')").run(ids.business);
+  if(kind==='new-draft')db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,request_key,payload_json) VALUES('late',?,'late','{}')").run(ids.other);
+  if(kind==='new-decision')bots.raise(owner,{source_key:'late',proposal_key:'late',proposal:{question:'Hold?',recommendation:'Wait',consequence:'None',blocked_action:'Hold',assignee_id:1,evidence:[]}});
+  if(kind==='same-value-write')db.prepare('UPDATE users SET role=role WHERE id=1').run();return f.source;
+ }});
+ await expect(v.associate(f.r.registrationId,f.p)).rejects.toThrow('context changed');
+ expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});
+});
+it('rejects new v1 associations and unaccepted or mismatched manifest, without granting entitlement',async()=>{
+ const f=await serviceFixture();const {contextRevision,scopeEvidenceRevision,guardManifestHash,...old}=f.p;
+ await expect(f.v.associate(f.r.registrationId,{...old,schemaVersion:'native-compose-sms/v1'})).rejects.toThrow('DISPATCH_BOUNDARY_UNAVAILABLE');
+ delete f.r.guardAcceptance;await expect(f.v.associate(f.r.registrationId,f.p)).rejects.toThrow();
+ expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});
+});
+it('bounds context without accepting a partial inventory',async()=>{
+ const f=await serviceFixture();db.prepare("INSERT INTO bot_message_drafts(id,conversation_id,request_key,payload_json) VALUES('large',?,'large',?)").run(ids.other,JSON.stringify({body:'x'.repeat(1024*1024)}));
+ expect(()=>f.v.currentContext(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId)).toThrow('bounded coverage');
 });

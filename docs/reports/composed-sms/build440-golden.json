@@ -1,0 +1,268 @@
+{
+  "description": "Synthetic schema/hash vector only; empty illustrative inventory is not a production clearance receipt. No actual guard acceptance.",
+  "guardManifest": {
+    "schemaVersion": "compose-sms-guards/v1",
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000009",
+      "environmentId": "10000000-0000-4000-8000-000000000010",
+      "serviceId": "10000000-0000-4000-8000-000000000011"
+    },
+    "implementationRevision": "synthetic-only",
+    "migrationRevisions": [
+      "fixture-v1"
+    ],
+    "sourceRegistrationHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "nativeContextContract": "compose-sms-current-context/v1",
+    "normalizationPolicy": "sms-identity-utf8/v1",
+    "recipientTimePolicy": {
+      "id": "synthetic-policy",
+      "revision": "1",
+      "evidenceReference": "synthetic-only",
+      "startInclusive": "07:00",
+      "endExclusive": "22:00",
+      "timezoneEvidenceRequired": true,
+      "unknownTimezone": "deny"
+    },
+    "coverage": [
+      {
+        "guard": "enrollment",
+        "records": [
+          {
+            "table": "synthetic",
+            "revisionFields": [
+              "version"
+            ]
+          }
+        ],
+        "writers": [
+          {
+            "id": "synthetic",
+            "revision": "1"
+          }
+        ],
+        "serialization": {
+          "mechanism": "synthetic-transaction",
+          "lockOrder": [
+            "synthetic"
+          ]
+        },
+        "validationRevision": "synthetic-only"
+      },
+      {
+        "guard": "lease",
+        "records": [
+          {
+            "table": "synthetic",
+            "revisionFields": [
+              "version"
+            ]
+          }
+        ],
+        "writers": [
+          {
+            "id": "synthetic",
+            "revision": "1"
+          }
+        ],
+        "serialization": {
+          "mechanism": "synthetic-transaction",
+          "lockOrder": [
+            "synthetic"
+          ]
+        },
+        "validationRevision": "synthetic-only"
+      },
+      {
+        "guard": "material",
+        "records": [
+          {
+            "table": "synthetic",
+            "revisionFields": [
+              "version"
+            ]
+          }
+        ],
+        "writers": [
+          {
+            "id": "synthetic",
+            "revision": "1"
+          }
+        ],
+        "serialization": {
+          "mechanism": "synthetic-transaction",
+          "lockOrder": [
+            "synthetic"
+          ]
+        },
+        "validationRevision": "synthetic-only"
+      },
+      {
+        "guard": "suppression",
+        "records": [
+          {
+            "table": "synthetic",
+            "revisionFields": [
+              "version"
+            ]
+          }
+        ],
+        "writers": [
+          {
+            "id": "synthetic",
+            "revision": "1"
+          }
+        ],
+        "serialization": {
+          "mechanism": "synthetic-transaction",
+          "lockOrder": [
+            "synthetic"
+          ]
+        },
+        "validationRevision": "synthetic-only"
+      },
+      {
+        "guard": "duplicate",
+        "records": [
+          {
+            "table": "synthetic",
+            "revisionFields": [
+              "version"
+            ]
+          }
+        ],
+        "writers": [
+          {
+            "id": "synthetic",
+            "revision": "1"
+          }
+        ],
+        "serialization": {
+          "mechanism": "synthetic-transaction",
+          "lockOrder": [
+            "synthetic"
+          ]
+        },
+        "validationRevision": "synthetic-only"
+      },
+      {
+        "guard": "holds",
+        "records": [
+          {
+            "table": "synthetic",
+            "revisionFields": [
+              "version"
+            ]
+          }
+        ],
+        "writers": [
+          {
+            "id": "synthetic",
+            "revision": "1"
+          }
+        ],
+        "serialization": {
+          "mechanism": "synthetic-transaction",
+          "lockOrder": [
+            "synthetic"
+          ]
+        },
+        "validationRevision": "synthetic-only"
+      },
+      {
+        "guard": "local_time",
+        "records": [
+          {
+            "table": "synthetic",
+            "revisionFields": [
+              "version"
+            ]
+          }
+        ],
+        "writers": [
+          {
+            "id": "synthetic",
+            "revision": "1"
+          }
+        ],
+        "serialization": {
+          "mechanism": "synthetic-transaction",
+          "lockOrder": [
+            "synthetic"
+          ]
+        },
+        "validationRevision": "synthetic-only"
+      }
+    ]
+  },
+  "scopeHashInput": {
+    "adapter": null,
+    "records": []
+  },
+  "contextHashInput": {
+    "clock": 1,
+    "registrationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorityHash": "a3e53af46a770dee3f9fae0270be2e65a25f944f342665ace237d2c7e0c8c64f",
+    "scopeEvidenceRevision": "614123e155e9d6a3e74e1b72887a4d3dc1f6512942d025a341c7b7454efee051",
+    "projection": [],
+    "acl": {}
+  },
+  "currentContext": {
+    "schemaVersion": "compose-sms-current-context/v1",
+    "registrationId": "10000000-0000-4000-8000-000000000013",
+    "registrationRevision": 1,
+    "sourceRegistrationHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "nativeActionId": "10000000-0000-4000-8000-000000000006",
+    "authorityId": "10000000-0000-4000-8000-000000000007",
+    "authorityRevision": 1,
+    "authorityHash": "a3e53af46a770dee3f9fae0270be2e65a25f944f342665ace237d2c7e0c8c64f",
+    "businessId": "10000000-0000-4000-8000-000000000008",
+    "ownerConversationId": "10000000-0000-4000-8000-000000000002",
+    "executorConversationId": "10000000-0000-4000-8000-000000000005",
+    "canonicalCaseId": "10000000-0000-4000-8000-000000000003",
+    "contactCaseId": "10000000-0000-4000-8000-000000000004",
+    "contextRevision": "2d55101e04ce463110179ab7121d5d0aaacdd2acbc74a2ebf58a0cc44bd27885",
+    "scopeEvidenceRevision": "614123e155e9d6a3e74e1b72887a4d3dc1f6512942d025a341c7b7454efee051",
+    "observedAt": "2026-09-29T00:00:00.123456Z",
+    "expiresAt": "2026-09-29T00:00:05.123456Z",
+    "complete": true,
+    "holds": [],
+    "obligations": [],
+    "blockingIds": [],
+    "execute": false
+  },
+  "association": {
+    "schemaVersion": "native-compose-sms/v2",
+    "nativeActionId": "10000000-0000-4000-8000-000000000006",
+    "authorityId": "10000000-0000-4000-8000-000000000007",
+    "authorityRevision": 1,
+    "nativeClaimId": "10000000-0000-4000-8000-000000000050",
+    "sourcePrepareId": "10000000-0000-4000-8000-000000000051",
+    "bindingHash": "666df69229072a8647d62349af4e40be63d9edb557140fa3239e912ddea66e03",
+    "requestKey": "10000000-0000-4000-8000-000000000052",
+    "contextRevision": "2d55101e04ce463110179ab7121d5d0aaacdd2acbc74a2ebf58a0cc44bd27885",
+    "scopeEvidenceRevision": "614123e155e9d6a3e74e1b72887a4d3dc1f6512942d025a341c7b7454efee051",
+    "guardManifestHash": "4583e50185e6a4b20c2c3f55b98880f88d820b2ac29c69f7187f9c6f0810f0e4"
+  },
+  "sourceReadback": {
+    "schemaVersion": "native-compose-sms/v2",
+    "nativeActionId": "10000000-0000-4000-8000-000000000006",
+    "prepareId": "10000000-0000-4000-8000-000000000051",
+    "bindingHash": "666df69229072a8647d62349af4e40be63d9edb557140fa3239e912ddea66e03",
+    "nativeClaimId": "10000000-0000-4000-8000-000000000050",
+    "associationId": null,
+    "attemptId": null,
+    "state": "REDEEMING",
+    "authorityHash": "a3e53af46a770dee3f9fae0270be2e65a25f944f342665ace237d2c7e0c8c64f",
+    "wirePayloadHash": "9d447fde5a155dee51e885db041b5a13e7a61e2a7089cd1ecd5ea43af99830ce",
+    "idempotencyKey": "veneer-compose-sms:10000000-0000-4000-8000-000000000006",
+    "providerReceipt": null,
+    "observedAt": "2026-09-29T00:00:00.123456Z",
+    "prepareExpiresAt": "2026-09-29T00:00:05.123456Z",
+    "redeemRequestKey": "10000000-0000-4000-8000-000000000052",
+    "execute": false,
+    "contextRevision": "2d55101e04ce463110179ab7121d5d0aaacdd2acbc74a2ebf58a0cc44bd27885",
+    "scopeEvidenceRevision": "614123e155e9d6a3e74e1b72887a4d3dc1f6512942d025a341c7b7454efee051",
+    "guardManifestHash": "4583e50185e6a4b20c2c3f55b98880f88d820b2ac29c69f7187f9c6f0810f0e4"
+  }
+}

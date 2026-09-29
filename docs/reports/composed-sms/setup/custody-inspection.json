@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-29T00:14:26.297530+00:00",
+  "accountId": "c3c49db32586713c075a22a18d18cb11",
+  "nativeOrigin": "https://nicksworld.dev",
+  "appMatches": [],
+  "tokenMatches": [],
+  "sourceDestinationNamesPresent": [],
+  "operatorReference": "main/prd CLOUDFLARE_ACCOUNT_EMAIL + CLOUDFLARE_GLOBAL_API_KEY",
+  "sourceRuntimeInstallation": false,
+  "nativeServiceRegistrationActivated": false
+}

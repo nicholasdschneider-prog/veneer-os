@@ -186,3 +186,14 @@ from delivery. The catalog updates employees and fresh/resumed bots together.
 Dedicated service custody, an accepted positive sender/guard adapter and the source
 prepare expiry/key readback extension remain outstanding; existing correspondence
 reader setup does not need to be repeated. See the [contract](./reports/composed-sms/contract.md).
+
+## Composed SMS current context — September29,2026
+
+BUILD440 adds exact-action service context and explicit v2 dispatch association.
+Native holds, obligations, revocations and ACL changes are rechecked atomically;
+unknown scope remains blocking, never inferred unrelated from case IDs. Dedicated
+CF transport and approved protected credential destinations are provisioned, but
+source installation, accepted guards/sender adapter and final native service registry
+remain pending. No repeated customer approval or reader setup is needed. The shared
+composed-sms catalog carries these limits to employees and resumed agents. See the
+[current contract](./reports/composed-sms/contract.md).

@@ -1,3 +1,4 @@
+import {guardManifestSchema} from './composedSmsContext.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -16,6 +17,8 @@ export const composeServiceRegistrationSchema=z.object({
  senderReceiptIssuerId:text,guardContractHash:hash,expiresAt:time,custodyReceipt:text,
  readbackCredential:z.object({project:segment,config:segment,name:z.string().regex(/^[A-Z][A-Z0-9_]{0,199}$/)}).strict(),
  readbackCustodyReceipt:text,
+ guardManifest:guardManifestSchema.optional(),
+ guardAcceptance:z.object({manifestHash:hash,reviewedBy:uuid,receipt:text,reviewedAt:time,expiresAt:time}).strict().optional(),
 }).strict();
 export const composeServiceRegistrySchema=z.object({schemaVersion:z.literal('compose-service-registry/v1'),registrations:z.array(composeServiceRegistrationSchema).max(30)}).strict();
 export type ComposeRegistration=z.infer<typeof composeServiceRegistrationSchema>;

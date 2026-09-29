@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-09-29T00:14:26.297530+00:00",
+  "accountId": "c3c49db32586713c075a22a18d18cb11",
+  "nativeOrigin": "https://nicksworld.dev",
+  "appMatches": [],
+  "tokenMatches": [],
+  "sourceDestinationNamesPresent": [],
+  "operatorReference": "main/prd CLOUDFLARE_ACCOUNT_EMAIL + CLOUDFLARE_GLOBAL_API_KEY",
+  "sourceRuntimeInstallation": false,
+  "nativeServiceRegistrationActivated": false,
+  "registrationId": "e0f86977-b32e-4eb4-a995-c27746fafa81",
+  "registrationRevision": 1,
+  "expiresAt": "2026-10-28T21:04:00Z",
+  "domain": "nicksworld.dev/api/composed-sms/verifier",
+  "serviceTokenId": "18a7de02-0b3d-45be-856c-8cfc34521baf",
+  "serviceClientId": "36e5ccbbc397574ced3934d9c1b92353.access",
+  "serviceTokenExpiresAt": "2026-10-28T00:14:26Z",
+  "serviceCredentialHash": "6de378e3868c30805c6f9bfab57d73f864e553f5d21a2a6e874ca6d31ff9d453",
+  "readbackCredentialHash": "af087a6816e77eeaa0804f341e15fa67b27f4ed8f5d585ec21e20ad6244c92ab",
+  "applicationId": "85a7479a-05cc-44c0-9029-5a8ca0e95cc3",
+  "audience": "9def2406f3b3797e5c2e2d4cbfcd74911adf4f63e5e011d99944f8b88032095a",
+  "policyId": "d82f3058-a3e0-420f-b511-335a604effc9",
+  "policyVerified": true,
+  "sourceSecretDestinations": [
+    "ervp/prd/OO_COMPOSE_SMS_CF_CLIENT_ID",
+    "ervp/prd/OO_COMPOSE_SMS_CF_CLIENT_SECRET",
+    "ervp/prd/OO_COMPOSE_SMS_NATIVE_BEARER",
+    "ervp/prd/OO_COMPOSE_SMS_NATIVE_READBACK_CREDENTIAL"
+  ],
+  "provisionedAt": "2026-09-29T00:14:30.744387+00:00"
+}

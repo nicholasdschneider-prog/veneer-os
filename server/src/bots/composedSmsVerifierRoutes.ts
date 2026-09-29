@@ -33,6 +33,7 @@ export function composedSmsVerifierRoutes(ctx:AppContext,overrides?:{io:ComposeV
   res.locals.registrationId=selector;next();
  })().catch(next);});
  const run=(f:(req:express.Request,id:string)=>unknown)=>(req:express.Request,res:express.Response,next:express.NextFunction)=>{void Promise.resolve().then(()=>f(req,res.locals.registrationId)).then(v=>res.json(v)).catch(next);};
+ router.get('/authorities/:id/current-context',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.currentContext(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));
  router.get('/authorities/:id',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.authority(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));
  router.post('/dispatch-associations',run((req,id)=>{z.object({}).strict().parse(req.query);return service.associate(id,req.body);}));
  router.get('/dispatch-associations/:id',run((req,id)=>{z.object({}).strict().parse(req.query);return service.association(id,uuid.parse(req.params.id));}));

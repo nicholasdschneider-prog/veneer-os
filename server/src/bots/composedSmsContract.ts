@@ -15,3 +15,7 @@ export function verifyAuthority(value:unknown){const a=authorityTupleSchema.pars
 // Called only AFTER authenticating the complete source envelope, including identity.
 // A new namespace deliberately does not alter BUILD432's persisted material digest.
 export function composeMaterialHash(stable:Record<string,unknown>&{identity:Record<string,unknown>}){const {principalId,...identity}=stable.identity;return composeHash('compose-correspondence-material/v1',{...stable,identity});}
+
+// Explicit extension: never reinterpret the historical strict v1 request/readback.
+export const associationV2Schema=associationInputSchema.extend({schemaVersion:z.literal('native-compose-sms/v2'),contextRevision:hash,scopeEvidenceRevision:hash,guardManifestHash:hash}).strict();
+export const sourceReadbackV2Schema=sourceReadbackSchema.innerType().extend({schemaVersion:z.literal('native-compose-sms/v2'),contextRevision:hash,scopeEvidenceRevision:hash,guardManifestHash:hash}).strict().refine(p=>p.state!=='REDEEMING'||p.redeemRequestKey!==null,{message:'REDEEMING requires a durable UUID redemption key',path:['redeemRequestKey']});

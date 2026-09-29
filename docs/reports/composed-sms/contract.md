@@ -199,3 +199,71 @@ non-AC account for current schema tests. Only the synthetic sender account and i
 consequent wire/authority/binding digests change; BUILD437's historical file remains.
 This is schema alignment only; sender, guard and service trust activation remain
 unavailable. Employee steps and agent setup instructions are unchanged.
+
+## BUILD440 current native context and explicit v2
+
+Service-only exact GET `/api/composed-sms/verifier/authorities/:authorityId/current-context?revision=1&actionId=UUID`
+uses the existing independent bearer + dedicated CF JWT checks and exact registered
+authority/executor bindings. No listing, broad inventory endpoint or customer text is
+returned. `compose-sms-current-context/v1` carries registration/action/authority and
+business/owner/executor/canonical/contact identities, `contextRevision`,
+`scopeEvidenceRevision`, observed/expiry timestamps, `complete:true`, `holds`,
+`obligations`, `blockingIds` and `execute:false`. Observation lifetime is at most five
+seconds and never extends authority, sender or registration expiry.
+
+Each record is `{kind,id,revision,status,scopeEvidenceId,scopeStatus,blocking}`.
+Kinds: decision, instruction, composition, draft, delegation, routine. Arrays sort by
+ordinal kind then ID. `revision` is canonical SHA256 of the actual row and applicable
+audit/proof rows; it is not an invented sequence/version. Decision completion needs
+same-version owner result audit and exact stored delegated provider proof, not a
+state label alone. Current authority/draft linkage is structural, not a case alias.
+Revoked intent and deleted ordinary drafts remain visible blockers.
+
+`scopeEvidenceRevision` uses domain `compose-sms-scope-evidence/v1`, committing actual
+absence: `{adapter:null,records:[{kind,id,scopeEvidenceId:null,scopeStatus}]}`. No
+compose-permitted complete source closure/classification adapter exists yet. Different
+UUIDs do not prove unrelatedness; all other unfinished unbound records block. Existing
+routine scope trust is not reused. Complete native inventory is **not** complete
+verified source scope or live execution readiness.
+
+`contextRevision` uses domain `compose-sms-current-context/v1`, committing the durable
+native dependency clock, exact protected registration hash, immutable authority hash,
+scope revision, complete row/audit projection and actual ACL projection. Migration0132
+adds insert/update/delete triggers for native decision, human context, draft,
+delegation, obligation, composition, routine scope/trust and ACL dependencies. All
+writers through those tables serialize on SQLite. Historical business memberships are
+retained prospectively across moves; deleting ordinary drafts retains immutable
+unknown coverage. Global change-clock invalidation is conservative, including changes
+outside this business. Both internal projection and final response are capped at1MiB,
+5,000 combined records; overflow rejects without partial clearance.
+
+New association and source readback use **`native-compose-sms/v2`**, with all existing
+strict fields plus required `contextRevision`, `scopeEvidenceRevision`,
+`guardManifestHash`. Source persists these before REDEEMING. Native checks the exact
+persisted readback and recomputes context in the immediate first-association transaction.
+Unknown blockers or any revision drift deny. Existing identical winner lookup returns
+no entitlement; post-association clock changes never create another attempt. V1 new
+associations deny; historical v1 receipt reconciliation remains supported, without
+upgrading stored tuples. Authority tuple/hash and authority GET remain unchanged v1.
+Source readback needs no full authority extension. Association response uses its stored
+version. No cross-system atomicity is claimed; source still fences REDEEMING/SENDING
+and rechecks its own guards before the sole provider call.
+
+`guardManifestSchema` in `composedSmsContext.ts` is the jointly accepted strict
+`compose-sms-guards/v1`: seven distinct categories enrollment, lease, material,
+suppression, duplicate, holds, local_time. Each supplies actual table/revision fields,
+writer IDs/revisions, serialization mechanism/lock order and validation revision.
+Runtime/origin, implementation/migration revisions, source registration hash, native
+context contract, unchanged wire normalization and recipient-time policy provenance
+are committed by `composeHash('compose-sms-guards/v1',manifest)`. Hours are07:00 inclusive
+to22:00 exclusive recipient-local; unknown timezone denies. Schema validation does not
+prove actual writer coverage. The protected registration must additionally carry the
+manifest and an accountable review receipt/hash/time/expiry. No production accepted
+manifest or source guard installation is claimed by BUILD440.
+
+Dedicated CF provision and approved protected secret destinations now exist. See
+[setup receipt](./setup/provisioned.json) and the deliberately incomplete
+[activation plan](./setup/activation-plan.json). The latter is NOT a runtime registry;
+no placeholder source principal, source-registration hash or guard acceptance is
+installed. Actual token expiry is October28 at00:14:26UTC (earlier than prior cap).
+Source installation remains with ae5d6289; issuer/use permission is from a4bc.
