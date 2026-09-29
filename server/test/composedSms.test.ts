@@ -294,3 +294,29 @@ it('rejects missing or future verified expiry evidence and binds it in registrat
  f.r.credentialExpiry.verifiedAt=new Date(clock+1).toISOString();expect(()=>checkComposeRegistration(db,f.r,clock)).toThrow('expiry evidence');
  delete (f.r as Partial<typeof f.r>).credentialExpiry;expect(()=>checkComposeRegistration(db,f.r,clock)).toThrow('expiry evidence');
 });
+
+it('caps authority observations at fifteen seconds without renewing durable authority or entitlement',async()=>{
+ const f=await serviceFixture(),read=()=>f.v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);
+ const durable=()=>db.prepare('SELECT * FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(f.a.authorityId);
+ const before=durable(),first=read();expect(Date.parse(first.expiresAt)-Date.parse(first.observedAt)).toBe(15000);
+ clock+=1000;const next=read();expect(next.authority).toEqual(first.authority);expect(next.execute).toBe(false);
+ expect(Date.parse(next.expiresAt)-Date.parse(next.observedAt)).toBe(15000);expect(durable()).toEqual(before);
+ expect(db.prepare('SELECT count(*) n FROM bot_composed_sms_associations').get()).toEqual({n:0});
+});
+it('preserves short durable authority bounds and denies their exact expiry',async()=>{
+ const f=await serviceFixture();const row=db.prepare('SELECT expires_at,sender_expires_at FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(f.a.authorityId) as {expires_at:string;sender_expires_at:string};
+ const expiry=Math.min(Date.parse(row.expires_at),Date.parse(row.sender_expires_at),Date.parse(f.r.expiresAt));clock=expiry-2000;
+ const read=()=>f.v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId);
+ expect(Date.parse(read().expiresAt)).toBe(expiry);clock=expiry;expect(read).toThrow(/expired/);
+});
+it('preserves a short sender evidence expiry',async()=>{
+ evidence.boundary!.sender.expiresAt=new Date(clock+2000).toISOString();const f=await serviceFixture();
+ expect(f.v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId).expiresAt).toBe(evidence.boundary!.sender.expiresAt);
+ clock+=2000;expect(()=>f.v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId)).toThrow('expired');
+});
+it('caps observations at registration expiry and denies expiry during validation',async()=>{
+ evidence.boundary!.registration.expiresAt=new Date(clock+1000).toISOString();const f=await serviceFixture();
+ expect(f.v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId).expiresAt).toBe(f.r.expiresAt);
+ const v=composedSmsVerifier(db,{registration:()=>f.r,now:()=>clock,readback:async()=>f.source,nativeCurrent:()=>{clock+=1000;}});
+ expect(()=>v.authority(f.r.registrationId,f.a.authorityId,1,f.a.nativeActionId)).toThrow('dependencies expired');
+});
