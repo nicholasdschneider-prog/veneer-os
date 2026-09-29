@@ -1,0 +1,156 @@
+{
+  "description": "Synthetic validator vectors only; partial registration is not installable, closure is an abstract graph fixture, no real custody or case completeness claim.",
+  "checkedAt": "2026-09-29T12:00:00.000Z",
+  "registrationVerifierInputs": {
+    "registrationId": "10000000-0000-4000-8000-000000000001",
+    "businessId": "10000000-0000-4000-8000-000000000002",
+    "sourceAccountId": "fixture",
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000003",
+      "environmentId": "10000000-0000-4000-8000-000000000004",
+      "serviceId": "10000000-0000-4000-8000-000000000005"
+    },
+    "sourceRegistrationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "senderReceiptIssuerId": "10000000-0000-4000-8000-000000000006",
+    "expiresAt": "2026-09-29T12:01:00.000Z",
+    "guardManifest": {
+      "implementationRevision": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  },
+  "senderObservation": {
+    "schemaVersion": "compose-sms-sender-observation/v1",
+    "registrationId": "10000000-0000-4000-8000-000000000001",
+    "sourceRegistrationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "receipt": {
+      "schemaVersion": "compose-sms-sender/v1",
+      "receiptId": "10000000-0000-4000-8000-000000000007",
+      "revision": 1,
+      "issuerId": "10000000-0000-4000-8000-000000000006",
+      "authorityEvidence": "synthetic issuer evidence",
+      "provider": "twilio",
+      "providerAccountId": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "fromPhone": "+12025550100",
+      "ownershipVerified": true,
+      "smsCapable": true,
+      "active": true,
+      "sourceAccountId": "fixture",
+      "nativeBusinessId": "10000000-0000-4000-8000-000000000002",
+      "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+      "runtime": {
+        "projectId": "10000000-0000-4000-8000-000000000003",
+        "environmentId": "10000000-0000-4000-8000-000000000004",
+        "serviceId": "10000000-0000-4000-8000-000000000005"
+      },
+      "verifiedAt": "2026-09-29T11:59:59.000Z",
+      "expiresAt": "2026-09-29T12:00:30.000Z",
+      "evidenceReferences": [
+        "synthetic"
+      ],
+      "revokedAt": null
+    },
+    "process": {
+      "runtime": {
+        "projectId": "10000000-0000-4000-8000-000000000003",
+        "environmentId": "10000000-0000-4000-8000-000000000004",
+        "serviceId": "10000000-0000-4000-8000-000000000005"
+      },
+      "implementationRevision": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "processGenerationId": "10000000-0000-4000-8000-000000000020",
+      "clientGenerationId": "10000000-0000-4000-8000-000000000021",
+      "observedAt": "2026-09-29T12:00:00.000Z",
+      "configuredAccountId": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "effectiveAccountId": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "configuredFromPhone": "+12025550100",
+      "effectiveFromPhone": "+12025550100"
+    },
+    "observedAt": "2026-09-29T12:00:00.000Z",
+    "expiresAt": "2026-09-29T12:00:05.000Z",
+    "snapshotHash": "fcb37cff5a9b498ff5cec29e565d8ce0787bc59d49d96f08105232adfcc72b39"
+  },
+  "closure": {
+    "schemaVersion": "compose-sms-scope/v1",
+    "identity": {
+      "principalId": "own",
+      "fullOrderOpsAccess": true,
+      "accountId": "fixture",
+      "nativeBusinessId": "10000000-0000-4000-8000-000000000002",
+      "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+      "runtime": {
+        "projectId": "10000000-0000-4000-8000-000000000003",
+        "environmentId": "10000000-0000-4000-8000-000000000004",
+        "serviceId": "10000000-0000-4000-8000-000000000005"
+      }
+    },
+    "sourceRegistrationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "seeds": [
+      "10000000-0000-4000-8000-000000000010",
+      "10000000-0000-4000-8000-000000000011",
+      "10000000-0000-4000-8000-000000000012"
+    ],
+    "nodes": [
+      {
+        "id": "case:10000000-0000-4000-8000-000000000010",
+        "kind": "case",
+        "value": "10000000-0000-4000-8000-000000000010",
+        "provenance": [
+          {
+            "table": "cs_conversations",
+            "rowId": "10000000-0000-4000-8000-000000000010",
+            "field": "id",
+            "storedValue": "10000000-0000-4000-8000-000000000010",
+            "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ]
+      },
+      {
+        "id": "case:10000000-0000-4000-8000-000000000011",
+        "kind": "case",
+        "value": "10000000-0000-4000-8000-000000000011",
+        "provenance": [
+          {
+            "table": "cs_conversations",
+            "rowId": "10000000-0000-4000-8000-000000000011",
+            "field": "id",
+            "storedValue": "10000000-0000-4000-8000-000000000011",
+            "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ]
+      },
+      {
+        "id": "case:10000000-0000-4000-8000-000000000012",
+        "kind": "case",
+        "value": "10000000-0000-4000-8000-000000000012",
+        "provenance": [
+          {
+            "table": "cs_conversations",
+            "rowId": "10000000-0000-4000-8000-000000000012",
+            "field": "id",
+            "storedValue": "10000000-0000-4000-8000-000000000012",
+            "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ]
+      }
+    ],
+    "edges": [],
+    "coverage": {
+      "model": "persisted-cs-case-contact-closure/v1",
+      "normalization": "ordinal-uuid-email-trim-lower-phone-nanp-evidence/v1",
+      "fixedPoint": true,
+      "complete": true,
+      "unresolved": [],
+      "omitted": []
+    },
+    "scopeEvidenceId": "10000000-0000-4000-8000-000000000015",
+    "observedAt": "2026-09-29T12:00:00.000Z",
+    "expiresAt": "2026-09-29T12:00:05.000Z",
+    "snapshotHash": "69e85d1b0be0697ce255a64ad314a1c11adef28ff9fa162c88898ba95ba18079",
+    "materialHash": "29d4540b9219b9d523704b966c0abd4d933e2877bdbafc14f9e1f9eb1631e762"
+  },
+  "expected": {
+    "disjoint": true,
+    "senderSnapshotHash": "fcb37cff5a9b498ff5cec29e565d8ce0787bc59d49d96f08105232adfcc72b39",
+    "closureSnapshotHash": "69e85d1b0be0697ce255a64ad314a1c11adef28ff9fa162c88898ba95ba18079",
+    "closureMaterialHash": "29d4540b9219b9d523704b966c0abd4d933e2877bdbafc14f9e1f9eb1631e762"
+  }
+}
