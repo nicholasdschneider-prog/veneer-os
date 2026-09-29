@@ -8,7 +8,7 @@ See [exact contract](./contract.md), [synthetic proof vector](./synthetic-correc
 
 ## Validation
 
-Node24 root typecheck, 150 focused tests, full suites (server 2,904 passed/5 skipped, web 909, browser 54, installer 29), and production build passed before restart. Full/restricted employee guide and mobile layout passed isolated browser checks; current and resumed-agent instructions passed. Source independently reproduced the new synthetic authority, wire, correction-source and shared action hashes at 03:25:02.871Z; source coupling is not accepted. Runtime receipt follows the supported restart.
+Node24 root typecheck, 150 focused tests, full suites (server 2,904 passed/5 skipped, web 909, browser 54, installer 29), and production build passed before restart. Full/restricted employee guide and mobile layout passed isolated browser checks; current and resumed-agent instructions passed. Source independently reproduced the new synthetic authority, wire, correction-source and shared action hashes at 03:25:02.871Z; source coupling is not accepted. Implementation commit `cf85e686cbd54ecd423eb00fd505451b5078d90b` was pushed and restarted once through the supported root command. All five services returned HTTP200; all 4,553 built artifact hashes matched. Existing protected service/evidence and429/434 reader registry hashes were unchanged. This verifies the native release, not source acceptance or customer readiness.
 
 ## Changed files
 
@@ -29,3 +29,5 @@ Node24 root typecheck, 150 focused tests, full suites (server 2,904 passed/5 ski
 - [contract.md](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build450/contract.md)
 - [synthetic-correction-v1.json](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build450/synthetic-correction-v1.json)
 - [validation.json](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build450/validation.json)
+
+- [runtime.json](/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build450/runtime.json)

@@ -1,0 +1,32 @@
+{
+  "observedAt": "2026-09-29T03:27:48.954731+00:00",
+  "commit": "cf85e686cbd54ecd423eb00fd505451b5078d90b",
+  "restart": "supported root npm run restart; completed once",
+  "node": "v24.21.0",
+  "healthHttpStatuses": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  },
+  "artifactCount": 4553,
+  "artifactMismatches": [],
+  "preservedRegistryHashes": {
+    "compose-service-registry.json": "647bac515a174edf35e15de5c242425d9183e105e6a74d90db050b7f6a75688e",
+    "compose-evidence-registry.json": "c8ce2003ffcc8a4efcc149c05eb4d43536f38759d6bcdb1303fcf1b624fdb9c9",
+    "approved-case-registry.json": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+    "compose-correspondence-registry.json": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c"
+  },
+  "sourceCouplingAccepted": false,
+  "productionAuthorityCreated": false,
+  "customerEffects": false,
+  "credentialRetrieval": false,
+  "sourceOrProviderProbes": false,
+  "remainingDependencies": [
+    "Accepted versioned source correction authority projection/export/prepare/readback contract",
+    "Fresh authenticated sender and actual dispatcher configured/effective identity",
+    "Complete native/source scope classification; intentionally incomplete freeform coverage is not unrelatedness",
+    "Recipient timezone/current source execution checks"
+  ]
+}
