@@ -2421,6 +2421,7 @@ export function Chat({
         </Button>
       ) : null}
       {!isNew && <MobileChatHeader id={conversationId} name={title?.trim() || agentName} status={`${creator?.displayName ?? ''} · ${liveStatus || status} · ${visibility}`} onBack={() => onNavigate(backHash ?? (projectId ? `#/?project=${projectId}` : '#/'))} onComputer={onOpenBrowser}>
+        {openQuestionsButton && <DropdownMenuItem className="min-h-[44px]" onSelect={() => onNavigate(withSideParam(window.location.hash, 'questions'))}>Open questions</DropdownMenuItem>}
         {sideChatButton && canSend && <DropdownMenuItem onSelect={() => onNavigate(withSideParam(window.location.hash, 'open'))}>Side chat</DropdownMenuItem>}
         {canSend && <DropdownMenuItem className="min-h-[44px]" onSelect={() => liveVoice.open(conversationId)}><span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white"><CallIcon className="size-4" /></span>Talk with this bot</DropdownMenuItem>}
         {canChangeVisibility && <DropdownMenuItem disabled={menuBusy} onSelect={() => setVisibilityDialogOpen(true)}>Change visibility · {visibility}</DropdownMenuItem>}
