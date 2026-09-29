@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-09-29T05:35:19.294900+00:00",
+  "node": "24.21.0",
+  "typecheck": "passed",
+  "focusedTests": 298,
+  "full": {
+    "serverPassed": 2980,
+    "serverSkipped": 5,
+    "webPassed": 909,
+    "browserPassed": 54,
+    "installerPassed": 29
+  },
+  "build": "passed",
+  "guide": "isolated full/restricted desktop/mobile and resumed instructions passed",
+  "logSha256": {
+    "typecheck": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "focused": "211172b0787538cadfdaf40407ba45ba151ca8f8ce694043ebb511d3262e61ba",
+    "full": "554221d3a88a522bc1e7770d7fc4b830d23a915b011be6c164ee8a0e4e705d26",
+    "build": "119b44b6e345b64f9c818e084f3258e55cd56c9bd3886b04777f145865c96a79",
+    "guide": "c8935ce7ea8409efb71cc2f6e4a40945f884290ed45f8c176d015a6eb235b188"
+  },
+  "productionBusinessActions": false
+}

@@ -4,6 +4,11 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers integrated review steps and unaccepted source boundaries to full/restricted/resumed agents',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='correction-integration')!;
+    expect(f.isNew).toBe(true);expect(f.agent).toContain('context_review INPUT');expect(f.agent).toContain('no correction amendment');expect(f.limits).toContain('UNKNOWN');expect(f.steps.join(' ')).toContain('same key');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+  });
   it('delivers native-only correction preflight limits to employees and resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='correction-preflight')!;
     expect(f.isNew).toBe(true);expect(f.agent).toContain('inspect_correction_preflight');expect(f.agent).toContain('EVERY later human message');expect(f.limits).toContain('Reviews are not persisted');

@@ -1,3 +1,6 @@
+import {reserveComposeLineage} from './composedSmsLineage.js';
+import {composedSmsCorrectionV2} from './composedSmsCorrectionV2.js';
+import {CORRECTION_V2,CORRECTION_DISPATCH} from './composedSmsCorrectionContract.js';
 import {persistComposeDispatchAuthority,type ComposeBoundaryEvidence} from './composedSmsAuthority.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -7,37 +10,13 @@ import {BotError,createBotService,type Actor} from './service.js';
 import {createInstructionObligations,obligationInspectionSchema} from './instructionObligations.js';
 import {sendCheckSchema} from './messageDelegation.js';
 import type {UserRow} from '../db/db.js';
-const id=z.string().min(1).max(200),hash=z.string().regex(/^[a-f0-9]{64}$/);
-export const composedInspectionSchema=obligationInspectionSchema.extend({canonical_case:z.string().uuid(),contact_case:z.string().uuid()}).strict();
-export type ComposedInput=z.infer<typeof composedInspectionSchema>;
-const citation=z.object({id,text:z.string().min(1).max(12000)}).strict();
-export const compositionReviewSchema=z.object({
- mode:z.enum(['compose_and_send','channel_only','ambiguous']), reviewed_full_context:z.literal(true),
- recipient_instruction:citation,composition_instruction:citation,channel_instruction:citation,
- purpose:z.string().min(1).max(1000),relationship_explanation:z.string().min(1).max(2000),
- customer_message_ids:z.array(id).min(2).max(20),
- parts:z.array(z.object({start:z.number().int().nonnegative(),end:z.number().int().positive(),
-  assessment:z.enum(['supported','unsupported','ambiguous']),human_ids:z.array(id).max(20),message_ids:z.array(id).max(20),explanation:z.string().min(1).max(1000)}).strict()).min(1).max(100),
- unresolved_choices:z.array(z.string().min(1).max(500)).max(20),
-}).strict();
-export const deriveComposedSchema=composedInspectionSchema.extend({inspection_hash:hash,request_key:id,review:compositionReviewSchema}).strict();
-// Only a server-owned authenticated reader can produce this object. It is never
-// parsed from a tool request or copied evidence file. assertFresh rechecks custody.
-export interface CompositionEvidence {
- projection: {cases:Array<{id:string;ticketNumber:string|null;customerId:string;relatedOrderId:string|null;customer:{phone:string|null}}>;messages:Array<{id:string;conversationId:string;direction:string|null;channel:string|null;messageType:string|null;body:string;fromPhone:string|null;actorType:string|null;actorId:string|null;agentId:string|null;aiGenerated:boolean|null}>};
- snapshot_hash:string;registration_hash:string;business_id:string;account_id:string;principal_id:string;
- sms_account:string;sender_phone:string;sender_verified:boolean;
- dispatch: {supported:boolean;contract:string|null;revision:string;reason:string};
- dispatch_material_hash?:string;
- boundary?:ComposeBoundaryEvidence;
- assertFresh:()=>void;
-}
-export type CompositionReader=(a:Actor,input:ComposedInput,owner:string)=>Promise<CompositionEvidence>;
+export * from './composedSmsTypes.js';
+import {composedInspectionSchema,compositionReviewSchema,deriveComposedSchema,type ComposedInput,type CompositionEvidence,type CompositionReader} from './composedSmsTypes.js';
 type Authority={id:string;action_id:string;owner_id:string;executor_id:string;source_id:string;draft_id:string;request_key:string;request_hash:string;snapshot_json:string;expires_at:string;created_at:string};
 type Native=ReturnType<ReturnType<typeof createInstructionObligations>['inspect']>;
 function nativeInput(p:ComposedInput){const {canonical_case,contact_case,...input}=p;return input;}
 export function composedSmsService(db:Database.Database,reader:CompositionReader,now=Date.now){
- const obligations=createInstructionObligations(db),bots=createBotService(db);
+ const obligations=createInstructionObligations(db),bots=createBotService(db),corrections=composedSmsCorrectionV2(db,reader,now);
  function native(a:Actor,p:ComposedInput,authority?:Authority){
   const n=authority && a.conversationId===authority.executor_id && a.conversationId!==authority.owner_id
    ? obligations.inspectDerivedDependency(a,nativeInput(p),authority.id) : obligations.inspect(a,nativeInput(p));
@@ -108,28 +87,29 @@ export function composedSmsService(db:Database.Database,reader:CompositionReader
     const g={id:crypto.randomUUID(),action_id:actionId,owner_id:a.conversationId!,executor_id:p.executor_conversation_id,source_id:p.source_id,draft_id:p.draft_id,request_key,request_hash:requestHash,
      snapshot_json:canonicalJson({binding,scope:{canonical_case:p.canonical_case,contact_case:p.contact_case,executor_conversation_id:p.executor_conversation_id,payload:n.draft.payload},native:n,source_projection:e.projection,review:assessment,reviewer_user_id:a.user.id,reviewer_conversation_id:a.conversationId}),expires_at:new Date(now()+30*60_000).toISOString()};
     db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(@id,@action_id,@owner_id,@executor_id,@source_id,@draft_id,@request_key,@request_hash,@snapshot_json,@expires_at)').run(g);
+    reserveComposeLineage(db,g.id);
     if(e.boundary){if(e.dispatch_material_hash!==e.boundary.materialHash)throw new BotError(409,'Versioned correspondence material hash differs');persistComposeDispatchAuthority(db,g,e.boundary,now());}
     return result(a,read(a,g.id));
    }).immediate();
   },
   reconcile(a:Actor,id:string){return result(a,read(a,id));},
-  async accept(a:Actor,id:string,key:string,payloadHash:string){const g=read(a,id);if(a.conversationId!==g.executor_id)throw new BotError(403,'Named executor only');const saved=JSON.parse(g.snapshot_json);if(saved.proofKind==='native-compose-sms-correction/v1')throw new BotError(503,'CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE: versioned source correction proof required; no unchanged-consumption fallback');const p=saved.binding.input as ComposedInput;const current=await prepare(a,p,g);
-   return db.transaction(()=>{usable(g);current.e.assertFresh();if(native(a,p,g).inspection_hash!==saved.binding.native_hash||canonicalSha256(current.binding)!==canonicalSha256(saved.binding)||payloadHash!==saved.binding.payload_hash)throw new BotError(409,'Exact authority or source snapshot changed');append(a,g,'accepted',key,{payload_hash:payloadHash});return result(a,g);}).immediate();},
+  async accept(a:Actor,id:string,key:string,payloadHash:string){const g=read(a,id);if(a.conversationId!==g.executor_id)throw new BotError(403,'Named executor only');const saved=JSON.parse(g.snapshot_json);if(saved.proofKind==='native-compose-sms-correction/v1')throw new BotError(503,'CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE: versioned source correction proof required; no unchanged-consumption fallback');const p=saved.binding.input as ComposedInput;const corrected=saved.proofKind===CORRECTION_V2?await corrections.prepareExisting(a,saved):null;const current=corrected?null:await prepare(a,p,g);
+   return db.transaction(()=>{usable(g);(corrected?.e??current!.e).assertFresh();corrected?.nativeFresh();if((!corrected&&(native(a,p,g).inspection_hash!==saved.binding.native_hash||canonicalSha256(current!.binding)!==canonicalSha256(saved.binding)))||payloadHash!==saved.binding.payload_hash)throw new BotError(409,'Exact authority or source snapshot changed');append(a,g,'accepted',key,{payload_hash:payloadHash});return result(a,g);}).immediate();},
   async claim(a:Actor,id:string,key:string,checkInput:unknown){const g=read(a,id);if(a.conversationId!==g.executor_id)throw new BotError(403,'Named executor only');
-   if(event(id,'claimed'))return result(a,g);const saved=JSON.parse(g.snapshot_json);if(saved.proofKind==='native-compose-sms-correction/v1')throw new BotError(503,'CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE: versioned source correction proof required; no unchanged-consumption fallback');const p=saved.binding.input as ComposedInput,current=await prepare(a,p,g);const check=sendCheckSchema.parse(checkInput);
-   return db.transaction(()=>{usable(g);current.e.assertFresh();if(event(id,'claimed'))return result(a,g);
-    if(!event(id,'accepted')||check.payload_hash!==saved.binding.payload_hash||native(a,p,g).inspection_hash!==saved.binding.native_hash||canonicalSha256(current.binding)!==canonicalSha256(saved.binding))throw new BotError(409,'Acceptance, exact payload or fresh evidence changed');
-    if(!current.e.dispatch.supported||current.e.dispatch.contract!=='native-compose-sms/v1')throw new BotError(409,'SOURCE_NATIVE_ACTION_TRANSPORT_UNAVAILABLE: '+current.e.dispatch.reason);
+   if(event(id,'claimed'))return result(a,g);const saved=JSON.parse(g.snapshot_json);if(saved.proofKind==='native-compose-sms-correction/v1')throw new BotError(503,'CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE: versioned source correction proof required; no unchanged-consumption fallback');const p=saved.binding.input as ComposedInput,corrected=saved.proofKind===CORRECTION_V2?await corrections.prepareExisting(a,saved):null,current=corrected?null:await prepare(a,p,g),e=corrected?.e??current!.e;const check=sendCheckSchema.parse(checkInput);
+   return db.transaction(()=>{usable(g);e.assertFresh();corrected?.nativeFresh();if(event(id,'claimed'))return result(a,g);
+    if(!event(id,'accepted')||check.payload_hash!==saved.binding.payload_hash||(!corrected&&(native(a,p,g).inspection_hash!==saved.binding.native_hash||canonicalSha256(current!.binding)!==canonicalSha256(saved.binding))))throw new BotError(409,'Acceptance, exact payload or fresh evidence changed');
+    if(!e.dispatch.supported||e.dispatch.contract!==(corrected?CORRECTION_DISPATCH:'native-compose-sms/v1'))throw new BotError(409,'SOURCE_NATIVE_ACTION_TRANSPORT_UNAVAILABLE: '+e.dispatch.reason);
     const dispatch=db.prepare('SELECT tuple_json FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(id) as {tuple_json:string}|undefined;
     if(!dispatch)throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: accepted prospective service authority required');
     const tuple=JSON.parse(dispatch.tuple_json);
-    const boundary=current.e.boundary;if(!boundary)throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: current accepted sender and source guard evidence required');
+    const boundary=e.boundary;if(!boundary)throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: current accepted sender and source guard evidence required');
     boundary.assertFresh();
     const stored=db.prepare('SELECT registration_hash,sender_expires_at FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(id) as {registration_hash:string;sender_expires_at:string};
-    if(boundary.guardContractHash!==boundary.registration.guardContractHash||boundary.sender.issuerId!==boundary.registration.senderReceiptIssuerId||Date.parse(boundary.sender.expiresAt)<=now()||canonicalSha256(boundary.registration)!==stored.registration_hash||Date.parse(stored.sender_expires_at)<=now()||current.e.dispatch_material_hash!==tuple.materialHash||boundary.materialHash!==tuple.materialHash||boundary.sender.receiptId!==tuple.senderReceiptId||boundary.sender.revision!==tuple.senderReceiptRevision||boundary.sender.providerAccountId!==tuple.senderAccountId||boundary.sender.fromPhone!==tuple.fromPhone)throw new BotError(409,'Current service boundary changed');
+    if(boundary.guardContractHash!==boundary.registration.guardContractHash||boundary.sender.issuerId!==boundary.registration.senderReceiptIssuerId||Date.parse(boundary.sender.expiresAt)<=now()||canonicalSha256(boundary.registration)!==stored.registration_hash||Date.parse(stored.sender_expires_at)<=now()||e.dispatch_material_hash!==tuple.materialHash||boundary.materialHash!==tuple.materialHash||boundary.sender.receiptId!==tuple.senderReceiptId||boundary.sender.revision!==tuple.senderReceiptRevision||boundary.sender.providerAccountId!==tuple.senderAccountId||boundary.sender.fromPhone!==tuple.fromPhone)throw new BotError(409,'Current service boundary changed');
     const claim=crypto.randomUUID(),idempotency=tuple.idempotencyKey;
-    append(a,g,'claimed',key,{claim_key:claim,native_claim_id:claim,native_action_id:tuple.nativeActionId,authority_hash:tuple.authorityHash,payload_hash:check.payload_hash,idempotency_key:idempotency,transport:current.e.dispatch,check});
-    return {...result(a,g),execute:false,native_claim_id:claim,native_action_id:tuple.nativeActionId,claim_key:claim,idempotency_key:idempotency,scope:saved.scope,transport:current.e.dispatch};
+    append(a,g,'claimed',key,{claim_key:claim,native_claim_id:claim,native_action_id:tuple.nativeActionId,authority_hash:tuple.authorityHash,payload_hash:check.payload_hash,idempotency_key:idempotency,transport:e.dispatch,check});
+    return {...result(a,g),execute:false,native_claim_id:claim,native_action_id:tuple.nativeActionId,claim_key:claim,idempotency_key:idempotency,scope:saved.scope,transport:e.dispatch};
    }).immediate();
   },
   // Provider IDs submitted by a bot are not an authenticated source receipt.
@@ -148,6 +128,7 @@ export function composedSmsService(db:Database.Database,reader:CompositionReader
    // Native dependency validation only: no external credential or caller impersonation.
    const actor={user,conversationId:g.owner_id},saved=JSON.parse(g.snapshot_json);
    read(actor,id);if(saved.proofKind==='native-compose-sms-correction/v1')throw new BotError(503,'CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE: versioned source correction proof required');if(!receiptOnly)usable(g);
+   if(saved.proofKind===CORRECTION_V2){corrections.nativeCurrent(saved);return;}
    if(native(actor,saved.binding.input,g).inspection_hash!==saved.binding.native_hash)throw new BotError(409,'Original source or current native context changed');
   },
   revoke(a:Actor,id:string,key:string,reason:string){return db.transaction(()=>{const g=read(a,id);if(a.conversationId!==g.owner_id)throw new BotError(403,'Original owner only');append(a,g,'revoked',key,{reason:z.string().min(1).max(2000).parse(reason)});return result(a,g);}).immediate();},

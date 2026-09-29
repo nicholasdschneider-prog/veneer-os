@@ -30,3 +30,9 @@ it('routes draft-free preflight and read-only semantic review separately from de
   expect(calls).toEqual([['/api/bots/composed-sms/correction-preflight/'+suffix,{method:'POST',body:'{"decision_id":"d"}'}]]);
  }
 });
+it('routes integrated v2 review input without replacing historical tools',async()=>{
+ for(const [name,path] of [['inspect_composed_sms_correction_v2','inspect'],['derive_composed_sms_correction_v2','derive'],['read_composed_sms_correction_v2','reconcile']]){
+  const tool=BOT_TOOL_DEFINITIONS.find(t=>t.name===name)!;expect(tool).toBeTruthy();if(path==='derive'){expect(JSON.stringify(tool.inputSchema)).toContain('context_review');expect(JSON.stringify(tool.inputSchema)).toContain('continuity');}
+  const calls:unknown[]=[];await callBotTool({name:name!,args:{decision_id:'d'},callApi:async(...args:unknown[])=>{calls.push(args);return {execute:false};}});expect(calls).toEqual([['/api/bots/composed-sms/corrections-v2/'+path,{method:'POST',body:'{"decision_id":"d"}'}]]);
+ }
+});

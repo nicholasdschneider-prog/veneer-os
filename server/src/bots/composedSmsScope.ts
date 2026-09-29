@@ -1,23 +1,25 @@
+import {isCorrection,verifyDispatch,type DispatchAuthority} from './composedSmsDispatchProof.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import {z} from 'zod';
-import {composeHash,uuid,hash,time,verifyAuthority,type ComposeAuthority} from './composedSmsContract.js';
+import {composeHash,uuid,hash,time,verifyAuthority} from './composedSmsContract.js';
 import {canonicalSha256} from './canonical.js';
 import {composeCurrentContext,currentContextSchema,contextRecordSchema} from './composedSmsContext.js';
-import {checkComposeRegistration,type ComposeRegistration} from './composedSmsTrust.js';
+import {checkCorrectionAcceptance,checkComposeRegistration,type ComposeRegistration} from './composedSmsTrust.js';
 import {BotError,createBotService,type Actor} from './service.js';
 const reviewedRecord=contextRecordSchema.extend({scopeStatus:z.enum(['unknown','current_action','completed','unrelated'])});
 export const reviewedContextSchema=currentContextSchema.extend({schemaVersion:z.literal('compose-sms-current-context/v2'),holds:z.array(reviewedRecord).max(5000),obligations:z.array(reviewedRecord).max(5000)}).refine(c=>[...c.holds,...c.obligations].every(x=>(x.scopeStatus!=='unrelated'||x.scopeEvidenceId!==null)&&x.blocking===(x.scopeStatus==='unknown'))&&canonicalSha256(c.blockingIds)===canonicalSha256([...c.holds,...c.obligations].filter(x=>x.blocking).map(x=>x.kind+':'+x.id)),'Scope clearance requires evidence and consistent blockers');
 type Context=z.infer<typeof currentContextSchema>;
 // Internal authenticated-adapter result. Never accepted from a bot tool payload.
 export interface ComposeScopeProof {rootId:string;scopeEvidenceId:string;materialHash:string;disjoint:boolean;facts:unknown;expiresAt:string;assertFresh:()=>void}
-export type ComposeScopeReader=(r:ComposeRegistration,a:ComposeAuthority,root:string,actor:Actor|null)=>Promise<ComposeScopeProof>;
+export type ComposeScopeReader=(r:ComposeRegistration,a:DispatchAuthority,root:string,actor:Actor|null)=>Promise<ComposeScopeProof>;
 const item=z.object({kind:z.enum(['decision','instruction','composition','draft','delegation','routine']),id:z.string().min(1).max(200),revision:hash,rootId:uuid,scopeEvidenceId:uuid,classification:z.literal('unrelated'),explanation:z.string().min(1).max(2000)}).strict();
 export const composeScopeReviewSchema=z.object({authority_id:uuid,inspection_hash:hash,request_key:z.string().min(1).max(200),reviewed_full_context:z.literal(true),classifications:z.array(item).min(1).max(500)}).strict();
 export function composedSmsScope(db:Database.Database,registration:(id:string)=>ComposeRegistration,reader:ComposeScopeReader,nativeCurrent:(id:string)=>void,now=Date.now){
  function target(id:string,actor?:Actor){
   const d=db.prepare('SELECT * FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?').get(id) as {registration_id:string;registration_hash:string;tuple_json:string;expires_at:string;sender_expires_at:string}|undefined;
-  if(!d)throw new BotError(404,'Exact composed authority required');nativeCurrent(id);const a=verifyAuthority(JSON.parse(d.tuple_json)),r=registration(d.registration_id);
+  if(!d)throw new BotError(404,'Exact composed authority required');nativeCurrent(id);const a=verifyDispatch(JSON.parse(d.tuple_json)),r=registration(d.registration_id);
+  if(isCorrection(a))checkCorrectionAcceptance(r,now());
   if(checkComposeRegistration(db,r,now())!==d.registration_hash)throw new BotError(403,'Scope registration changed');
   if(actor){if(actor.conversationId!==a.ownerConversationId)throw new BotError(403,'Original composition owner only');const chat=createBotService(db).chat(actor,a.ownerConversationId);if(chat.archived||chat.user_id!==actor.user.id||!db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(chat.id))throw new BotError(403,'Scope owner access revoked');}
   if(db.prepare("SELECT 1 FROM bot_composed_sms_events WHERE authority_id=? AND kind='revoked'").get(id)||Math.min(Date.parse(d.expires_at),Date.parse(d.sender_expires_at))<=now())throw new BotError(409,'Authority expired or revoked');
@@ -58,7 +60,7 @@ export function composedSmsScope(db:Database.Database,registration:(id:string)=>
    }).immediate();
   },
   revoke(actor:Actor,id:string,reason:string){if(!reason.trim()||reason.length>2000)throw new BotError(400,'Reason required');const row=db.prepare('SELECT authority_id,owner_id FROM compose_scope_reviews WHERE id=?').get(id) as {authority_id:string;owner_id:string}|undefined;if(!row)throw new BotError(404,'Review not found');target(row.authority_id,actor);const old=db.prepare('SELECT reason FROM compose_scope_revocations WHERE review_id=?').get(id) as {reason:string}|undefined;if(old&&old.reason!==reason)throw new BotError(409,'Conflicting scope revocation');db.prepare('INSERT OR IGNORE INTO compose_scope_revocations(review_id,reason) VALUES(?,?)').run(id,reason);return {execute:false,revoked:true};},
-  async prepare(r:ComposeRegistration,a:ComposeAuthority,base:Context){
+  async prepare(r:ComposeRegistration,a:DispatchAuthority,base:Context){
    const rows=db.prepare('SELECT * FROM compose_scope_reviews WHERE authority_id=? AND context_revision=? AND NOT EXISTS(SELECT 1 FROM compose_scope_revocations WHERE review_id=compose_scope_reviews.id) ORDER BY rowid').all(a.authorityId,base.contextRevision) as Array<{id:string;evidence_json:string}>;
    const accepted=new Map<string,{item:z.infer<typeof item>;proof:ComposeScopeProof;reviewId:string}>();
    for(const row of rows)for(const e of JSON.parse(row.evidence_json) as Array<z.infer<typeof item>&{materialHash:string}>){const proof=await reader(r,a,e.rootId,null);proof.assertFresh();if(proof.rootId!==e.rootId||proof.materialHash!==e.materialHash||proof.scopeEvidenceId!==e.scopeEvidenceId||!proof.disjoint)throw new BotError(409,'Scope source changed');accepted.set(e.kind+':'+e.id,{item:e,proof,reviewId:row.id});}

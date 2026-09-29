@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import {reserveComposeLineage} from './composedSmsLineage.js';
 import {z} from 'zod';
 import type Database from 'better-sqlite3';
 import {canonicalSha256,canonicalJson} from './canonical.js';
@@ -41,7 +41,7 @@ export function persistComposeDispatchAuthority(db:Database.Database,g:{id:strin
  const cases=saved.source_projection.cases as {id:string;ticketNumber:string|null}[];
  const wire=wireSchema.parse({senderAccountId:e.sender.providerAccountId,fromPhone:e.sender.fromPhone,toPhone:payload.recipients[0],wireBody:payload.body,media:[],normalizationPolicy:'sms-identity-utf8/v1'});
  if(payload.channel!=='sms'||payload.attachments.length||payload.recipients.length!==1)throw new BotError(409,'Exact plain SMS scope required');
- const nativeActionId=crypto.randomUUID();
+ const nativeActionId=reserveComposeLineage(db,g.id).native_action_id;
  const tuple={...wire,...originalHashes,nativeActionId,authorityId:g.id,authorityRevision:1 as const,scopeHash:canonicalSha256(scope),materialHash:e.materialHash,materialHashVersion:'compose-correspondence-material/v1' as const,sourceInstructionId:g.source_id,businessId:r.businessId,sourceOrigin:r.sourceOrigin,runtime:r.runtime,ownerConversationId:g.owner_id,executorConversationId:g.executor_id,executorPrincipalId:executor.principalId,canonicalCaseId:scope.canonical_case,canonicalTicket:cases.find(x=>x.id===scope.canonical_case)?.ticketNumber,contactCaseId:scope.contact_case,contactTicket:payload.ticket,senderReceiptId:e.sender.receiptId,senderReceiptRevision:e.sender.revision,wirePayloadHash:composeHash('native-compose-sms/wire/v1',wire),idempotencyKey:`veneer-compose-sms:${nativeActionId}`};
  const authority:ComposeAuthority=verifyAuthority({...tuple,authorityHash:composeHash('native-compose-sms/authority/v1',tuple)});
  db.prepare('INSERT INTO bot_composed_sms_dispatch_authorities(authority_id,action_id,registration_id,registration_hash,tuple_json,sender_expires_at,expires_at) VALUES(?,?,?,?,?,?,?)').run(g.id,nativeActionId,r.registrationId,rh,canonicalJson(authority),e.sender.expiresAt,g.expires_at);

@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "parserValidated": true,
+  "originalGoldenUnchanged": true,
+  "version": "native-compose-sms-correction-dispatch/v1",
+  "digests": {
+    "payload": "6ac8dcd3c2646721d883c9e7749292c436be8672caa4bbf0b5e16e189f9f0215",
+    "wire": "5801168cb79fb69ec0c8d9da40aca9ec64b9c1682f70ab8da59e767062016e5f",
+    "scope": "9c1b9d05aca1432c3770fd188c033b8b38f8791c6ec3bad8a1defecfb37aeb3c",
+    "lineage": "2c5abc6f38400c8526793aa11838e50a8d7e1f1308ea99940e78b27fcd5d104b",
+    "originalAction": "39d505643fb99b41ed1a7a0d4caea51e071707df6483999b3e5f86be2ac6fc28",
+    "authority": "4290c97ae99862cf07f9fe64652cb855ec00d3cd4d1851f3d280a4f93ce69d33",
+    "binding": "8d6774ce12f413c27d5bf55900fca53cd3817e044fac1629eee25028e11715f4"
+  },
+  "productionEvidence": false
+}

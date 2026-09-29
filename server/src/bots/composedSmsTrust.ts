@@ -25,6 +25,11 @@ export const composeServiceRegistrationSchema=z.object({
  credentialExpiry:credentialExpirySchema,
  readbackCredential:z.object({project:segment,config:segment,name:z.string().regex(/^[A-Z][A-Z0-9_]{0,199}$/)}).strict(),
  readbackCustodyReceipt:text,
+ correctionAcceptance:z.object({schemaVersion:z.literal('compose-correction-acceptance/v1'),nativeIssuer:z.string().url().refine(s=>new URL(s).protocol==='https:'&&new URL(s).origin===s),sourceRegistrationHash:hash,
+  contractHash:hash,sourceImplementationHash:hash,lineageAdoptionReceiptHash:hash,custodyAmendmentHash:hash,
+  reviewedBy:uuid,receipt:text,reviewedAt:time,expiresAt:time,
+  capabilities:z.tuple([z.literal('compose.correction.read'),z.literal('compose.lineage.read'),z.literal('compose.correction.associate'),z.literal('compose.correction.readback'),z.literal('compose.correction.scope')]),
+ }).strict().optional(),
  guardManifest:guardManifestSchema.optional(),
  guardAcceptance:z.object({manifestHash:hash,reviewedBy:uuid,receipt:text,reviewedAt:time,expiresAt:time}).strict().optional(),
 }).strict().refine(r=>Date.parse(r.expiresAt)<=credentialExpiryLimit(r.credentialExpiry)&&Date.parse(r.credentialExpiry.verifiedAt)<credentialExpiryLimit(r.credentialExpiry),{message:'Registration exceeds verified credential/custody expiry'});
@@ -41,4 +46,10 @@ export function checkComposeRegistration(db:Database.Database,r:ComposeRegistrat
  if(new Set(r.executorBindings.map(x=>x.conversationId)).size!==r.executorBindings.length||new Set(r.executorBindings.map(x=>x.principalId)).size!==r.executorBindings.length)throw new BotError(403,'Ambiguous service executor bindings');
  for(const b of r.executorBindings){const row=db.prepare('SELECT user_id,business_team_id,archived FROM conversations WHERE id=?').get(b.conversationId) as {user_id:number;business_team_id:string;archived:number}|undefined;if(!row||row.archived||row.user_id!==b.userId||row.business_team_id!==r.businessId||!db.prepare("SELECT 1 FROM users WHERE id=? AND status='active'").get(b.userId)||!db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(b.conversationId))throw new BotError(403,'Composed service executor access changed');}
  return canonicalSha256(r);
+}
+
+export function checkCorrectionAcceptance(r:ComposeRegistration,now:number){
+ const p=r.correctionAcceptance;
+ if(!p||p.contractHash!=='6457641ca5d576fbd43c7828e1da6d4e81af84549ac0b0c67b8f5ef1914b1479'||p.sourceRegistrationHash!==r.sourceRegistrationHash||Date.parse(p.reviewedAt)>now||Date.parse(p.expiresAt)<=now||Date.parse(p.expiresAt)>Math.min(Date.parse(r.expiresAt),credentialExpiryLimit(r.credentialExpiry)))return boundaryUnavailable();
+ return p;
 }

@@ -1,10 +1,12 @@
+import {checkCorrectionAcceptance} from './composedSmsTrust.js';
+import {isCorrection,verifyDispatch,type DispatchAuthority} from './composedSmsDispatchProof.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {z} from 'zod';
 import type {AppContext} from '../context.js';
 import type {Actor} from './service.js';
 import {BotError} from './service.js';
-import {uuid,time,hash,text,type ComposeAuthority} from './composedSmsContract.js';
+import {uuid,time,hash,text} from './composedSmsContract.js';
 import {checkComposeRegistration,loadComposeServiceRegistry,type ComposeRegistration} from './composedSmsTrust.js';
 import {canonicalSha256} from './canonical.js';
 import {boundedResolverGet} from './approvedCaseResolver.js';
@@ -35,7 +37,7 @@ export function composeEvidenceReader(ctx:Pick<AppContext,'db'|'config'|'project
   const caller=current();let value:unknown;try{const credential=await io.secret(caller.credential);current();value=await io.get(r.sourceOrigin+route,credential,AbortSignal.timeout(10000));}catch{throw new BotError(503,'Authenticated composed evidence unavailable');}current();
   const assertFresh=()=>{current();if(io.now()<start||io.now()-start>=5000)throw new BotError(409,'Evidence observation expired');};assertFresh();return {value,caller,assertFresh,reg,digest};
  }
- const scope:ComposeScopeReader=async(r,a,root,actor)=>{uuid.parse(root);const route=actor?`/api/cs/composed-sms/scope/${a.canonicalCaseId}/${a.contactCaseId}/${root}`:`/api/cs/composed-sms/scope/actions/${a.nativeActionId}/${root}`;
+ const scope:ComposeScopeReader=async(r,a,root,actor)=>{if(isCorrection(a))checkCorrectionAcceptance(r,io.now());uuid.parse(root);const route=actor?`/api/cs/composed-sms/scope/${a.canonicalCaseId}/${a.contactCaseId}/${root}`:`/api/cs/composed-sms/scope/actions/${a.nativeActionId}/${root}`;
   const read=await fetch(r,a.ownerConversationId,a.executorConversationId,actor,route);let raw=read.value;if(!actor){const service=serviceScopeEnvelopeSchema.parse(raw);if(service.servicePrincipalId!==read.caller.principalId||service.registrationId!==r.registrationId||service.sourceRegistrationHash!==r.sourceRegistrationHash||service.nativeActionId!==a.nativeActionId||service.authorityId!==a.authorityId||service.authorityRevision!==a.authorityRevision||service.authorityHash!==a.authorityHash)throw new BotError(403,'Service scope action binding differs');raw=service.closure;}const p=verifyComposeClosure(raw,r,[a.canonicalCaseId,a.contactCaseId,root],actor?read.caller.principalId:a.executorPrincipalId,io.now(),true);return {...p,assertFresh:()=>{read.assertFresh();verifyComposeClosure(raw,r,[a.canonicalCaseId,a.contactCaseId,root],actor?read.caller.principalId:a.executorPrincipalId,io.now(),true);}};};
  return {scope,async sender(actor:Actor,owner:string,executor:string,canonical:string,contact:string,payloadAccount:string){
   uuid.parse(canonical);uuid.parse(contact);const candidates=io.registry().registrations.filter(x=>x.ownerConversationId===owner&&x.executorConversationId===executor&&x.payloadAccount===payloadAccount);if(candidates.length!==1)throw new BotError(503,'Exact sender evidence custody required');const r=io.registration(candidates[0]!.registrationId);

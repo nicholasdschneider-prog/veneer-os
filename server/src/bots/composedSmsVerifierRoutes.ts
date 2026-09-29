@@ -35,6 +35,8 @@ export function composedSmsVerifierRoutes(ctx:AppContext,overrides?:{io:ComposeV
   res.locals.registrationId=selector;next();
  })().catch(next);});
  const run=(f:(req:express.Request,id:string)=>unknown)=>(req:express.Request,res:express.Response,next:express.NextFunction)=>{void Promise.resolve().then(()=>f(req,res.locals.registrationId)).then(v=>res.json(v)).catch(next);};
+ router.get('/correction-authorities/:id',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.correctionAuthority(id,uuid.parse(req.params.id),1,q.actionId);}));
+ router.get('/actions/:id/lineage',run((req,id)=>{z.object({}).strict().parse(req.query);return service.lineage(id,uuid.parse(req.params.id));}));
  router.get('/authorities/:id/current-context-v2',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.currentContextV2(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));
  router.get('/authorities/:id/current-context',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.currentContext(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));
  router.get('/authorities/:id',run((req,id)=>{const q=z.object({revision:z.literal('1'),actionId:uuid}).strict().parse(req.query);return service.authority(id,uuid.parse(req.params.id),Number(q.revision),q.actionId);}));

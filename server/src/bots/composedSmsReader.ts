@@ -1,3 +1,5 @@
+import {checkCorrectionAcceptance} from './composedSmsTrust.js';
+import {CORRECTION_DISPATCH} from './composedSmsCorrectionContract.js';
 import {composeEvidenceReader} from './composedSmsEvidenceReader.js';
 import {composeHash} from './composedSmsContract.js';
 import {composeMaterialHash} from './composedSmsContract.js';
@@ -65,7 +67,8 @@ export function composedSmsReader(ctx:Pick<AppContext,'db'|'config'|'projectDopp
    const positive=await composeEvidenceReader(ctx).sender(a,owner,p.executor_conversation_id,p.canonical_case,p.contact_case,payload.account),r=positive.registration;
    const assertBoundary=()=>{assertFresh();positive.assertFresh();if(!r.guardManifest||r.guardManifest.nativeContextContract!=='compose-sms-current-context/v2'||!r.guardAcceptance||composeHash('compose-sms-guards/v1',r.guardManifest)!==r.guardContractHash||r.guardAcceptance.manifestHash!==r.guardContractHash||Date.parse(r.guardAcceptance.reviewedAt)>io.now()||Date.parse(r.guardAcceptance.expiresAt)<=io.now())throw new BotError(503,'DISPATCH_BOUNDARY_UNAVAILABLE: accountable source guard acceptance required');};assertBoundary();
    evidence.registration_hash=canonicalSha256({correspondence:hash,evidenceCustody:positive.custodyHash});evidence.sms_account=payload.account;evidence.sender_phone=positive.sender.fromPhone;evidence.sender_verified=true;
-   evidence.dispatch={supported:true,contract:'native-compose-sms/v3',revision:r.guardContractHash,reason:'Verified sender; source and native execution guards still required'};
+   const correction='correction_source_id' in p;if(correction&&r.correctionAcceptance)checkCorrectionAcceptance(r,io.now());
+   evidence.dispatch={supported:true,contract:correction&&r.correctionAcceptance?CORRECTION_DISPATCH:'native-compose-sms/v3',revision:r.guardContractHash,reason:'Verified sender; source and native execution guards still required'};
    evidence.boundary={registration:r,materialHash:evidence.dispatch_material_hash!,sender:positive.sender,guardContractHash:r.guardContractHash,assertFresh:assertBoundary};evidence.assertFresh=assertBoundary;
   }
   return evidence;

@@ -1,7 +1,8 @@
+import {verifyDispatch,type DispatchAuthority} from './composedSmsDispatchProof.js';
 import type Database from 'better-sqlite3';
 import {z} from 'zod';
 import {canonicalJson,canonicalSha256} from './canonical.js';
-import {composeHash,uuid,hash,time,runtimeSchema,type ComposeAuthority} from './composedSmsContract.js';
+import {composeHash,uuid,hash,time,runtimeSchema} from './composedSmsContract.js';
 import type {ComposeRegistration} from './composedSmsTrust.js';
 import {BotError} from './service.js';
 const revision=z.string().min(1).max(200);
@@ -12,7 +13,7 @@ type Row=Record<string,unknown>;type RecordView=z.infer<typeof contextRecordSche
 // Append-only historical membership prevents moving a chat from erasing its obligations.
 // Scope exclusions require a future separately accepted compose proof. Routine trust
 // does not supply compose scope. Unknown rows are always explicit blockers.
-export function composeCurrentContext(db:Database.Database,r:ComposeRegistration,a:ComposeAuthority,now:number,authorityExpiry:number){
+export function composeCurrentContext(db:Database.Database,r:ComposeRegistration,a:DispatchAuthority,now:number,authorityExpiry:number){
  const rows=(sql:string,...args:unknown[])=>{const xs=db.prepare(sql).all(...args) as Row[];if(xs.length>5000||Buffer.byteLength(canonicalJson(xs))>1024*1024)throw new BotError(503,'Native context inventory exceeds bounded coverage');return xs;};
  const owner=`SELECT conversation_id FROM compose_context_memberships WHERE business_id=?`;
  const holds:RecordView[]=[],obligations:RecordView[]=[];const projection:unknown[]=[];
