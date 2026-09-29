@@ -37,6 +37,9 @@ type ToolContent = { type: 'text'; text: string } | { type: 'image'; data: strin
 
 const EMPTY = { type: 'object', properties: {}, additionalProperties: false };
 const TOOLS: ToolDef[] = [
+  { name: 'read_public', description: 'Read public HTML or plain text without Chrome, cookies, or a signed-in profile. Works when every browser slot is occupied. Use first for public research. Returns source text, not JavaScript-rendered content, video or transcripts; do not claim full video review. Private/local addresses and credential URLs are refused. Use fetch_url when an authorized signed-in or rendered page is required.', inputSchema: { type: 'object', properties: { url: { type: 'string' }, max_chars: { type: 'integer', minimum: 100, maximum: 100000 }, timeout_ms: { type: 'integer', minimum: 1000, maximum: 30000 } }, required: ['url'], additionalProperties: false } },
+  { name: 'wait_for_capacity', description: 'Persist one bounded browser wait for this owning chat after a capacity error. Supply a stable request_key and the exact unfinished task context. After this turn ends, the runner opens the same selected profile when capacity frees and wakes this chat once. Survives restarts, expires with one blocker notification, and cancels on owner/profile/project/new-human-instruction changes. No browser mutation is saved or replayed; after wake inspect tabs, fresh evidence and original approvals. Do not repeatedly create waits after expiration.', inputSchema: { type: 'object', properties: { request_key: { type: 'string', maxLength: 100 }, task: { type: 'string', maxLength: 1500 }, timeout_minutes: { type: 'integer', minimum: 1, maximum: 120 } }, required: ['request_key','task'], additionalProperties: false } },
+  { name: 'cancel_capacity_wait', description: 'Cancel this chat durable browser wait and any undelivered wake. Does not stop or delete a browser or undo a business action.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'fetch_url', description: 'Read a URL in one call using this chat browser profile. Loads a temporary background tab, waits for rendered text and optional readiness conditions, returns JSON with text, tables, final_url, fetched_at, truncation and errors, then closes the tab. For SPAs specify wait_for text, CSS selector, or min_rows (includes headers). Reads rendered DOM, not raw API JSON; does not scroll virtualized tables. Cross-origin top-level redirects are refused. Page timeout is separate from browser startup. For recurring local scripts without an AI turn, use scripts/veneer-browser-fetch.mjs; it uses existing local runner authentication.', inputSchema: { type: 'object', properties: { url: { type: 'string', maxLength: 4000 }, wait_for: { type: 'object', properties: { selector: { type: 'string', maxLength: 500 }, text: { type: 'string', maxLength: 1000 }, min_rows: { type: 'integer', minimum: 1, maximum: 1000 } }, additionalProperties: false }, timeout_ms: { type: 'integer', minimum: 1000, maximum: 60000 }, max_chars: { type: 'integer', minimum: 100, maximum: 200000 } }, required: ['url'], additionalProperties: false } },
   { name: 'list', description: 'List the reusable Veneer Browser profiles available to this chat.', inputSchema: EMPTY },
   { name: 'create', description: 'Create a reusable browser profile for this chat scope. Use only when the user asks for a new profile.', inputSchema: { type: 'object', properties: { name: { type: 'string', minLength: 1, maxLength: 100 } }, required: ['name'], additionalProperties: false } },
@@ -142,6 +145,7 @@ function sessionText(view: VeneerBrowserSessionView, captureActive = false): str
     `Veneer Browser is ${view.active ? 'active' : view.status}.`,
     `Profile: ${view.profileName ?? 'none'}.`,
     `Advanced capture: ${captureActive ? 'on' : 'off'}.`,
+    ...(view.capacityWait ? [`Capacity continuation: ${view.capacityWait.status}; deadline: ${view.capacityWait.expiresAt}.`] : []),
     ...(view.capacity ? [`Browser slots: ${view.capacity.active}/${view.capacity.limit}; waiting: ${view.capacity.waiting}.`] : []),
     ...(view.temporaryClone ? [`Keep open: ${view.keepOpen ? 'on' : 'off'}.`, ...(view.retentionReason ? [`Idle status: ${view.retentionReason}.`] : [])] : []),
     view.temporaryClone
@@ -724,6 +728,10 @@ export async function handleVeneerBrowserMcp(
     if (memberActor && CREDENTIAL_TOOLS.has(name) && !['fill_secret','fill_totp'].includes(name)) throw new Error(CREDENTIAL_TOOLS_MEMBER_REFUSAL);
     if (memberActor && ['fill_secret','fill_totp'].includes(name) && !activeLoginGrants(db,user.id,conversationId).length) throw new Error(CREDENTIAL_TOOLS_MEMBER_REFUSAL);
     if (memberActor && ['fill_secret','fill_totp'].includes(name)) authorizeLoginSecret(db,user.id,conversationId,args,name === 'fill_secret' ? 'password' : 'totp');
+    if (name === 'read_public') {
+      const read=await manager.readPublic(user.id,conversationId,args);
+      return void sendJson(res,200,{jsonrpc:'2.0',id,result:{...textResult(JSON.stringify(read),!read.ok),structuredContent:read}});
+    }
     const session = await manager.conversationSession(user.id, conversationId);
     // Read-only here. The grant is written solely by the authenticated user's
     // HTTP route; nothing on this path may create or widen one.
@@ -763,6 +771,13 @@ export async function handleVeneerBrowserMcp(
       // Same double check as fill_sms_code: the list is a hint, not a gate.
       if (!emailCodeAvailable(emailCodes, memberActor)) throw new Error(EMAIL_CODE_UNAVAILABLE);
       result = textResult(await fillEmailCodeTool({ manager, userId: user.id, conversationId, emailCodes: emailCodes! }, args));
+
+    } else if (name === 'wait_for_capacity') {
+      const wait = manager.capacityWaits.register(user.id,conversationId,args);
+      result = textResult(JSON.stringify(wait) + '\nEnd this turn after retaining task context. The platform will wake this chat once ready or expired; no business action will be replayed.');
+    } else if (name === 'cancel_capacity_wait') {
+      manager.capacityWaits.cancel(user.id,conversationId);
+      result = textResult('Browser capacity wait canceled. Existing browser work is unchanged.');
     } else if (name === 'fetch_url') {
       const read = await manager.fetchUrl(user.id, conversationId, args);
       result = { ...textResult(JSON.stringify(read), !read.ok), structuredContent: read };
@@ -779,7 +794,16 @@ export async function handleVeneerBrowserMcp(
       manager.selectForConversation(user.id, conversationId, String(args.profile_id ?? ''));
       result = textResult('Selected the browser profile for this chat.');
     } else if (name === 'open') {
-      const opened = await manager.openConversation(user.id, conversationId);
+      let opened: VeneerBrowserSessionView;
+      try { opened = await manager.openConversation(user.id, conversationId); }
+      catch (error) {
+        if (!/^Browser capacity is busy/.test((error as Error).message)) throw error;
+        const wait=manager.capacityWaits.automatic(user.id,conversationId);
+        const pending=['waiting','admitting'].includes(wait.status);
+        return void sendJson(res,200,{jsonrpc:'2.0',id,result:textResult(JSON.stringify(wait) + (pending
+          ? '\nBrowser capacity continuation is saved. Retain the unfinished task context and end this turn; this chat will wake when ready or expired. No navigation or business action was replayed. For public research use read_public without a Chrome slot.'
+          : '\nThis task already used its bounded capacity wait. No new wake was scheduled. Inspect status and report the remaining blocker; do not loop.'),!pending)});
+      }
       const capture = manager.captureGrantActive(conversationId);
       const reuse = args.url ? `\n${await goToUrl(manager, user.id, conversationId, String(args.url))}` : '';
       result = textResult(`${await sessionTextWithTabs(manager, user.id, conversationId, opened, capture)}${reuse}`);

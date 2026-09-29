@@ -91,3 +91,7 @@ Additional setup that only the container backend needs:
   a raw browser URL.
 - Chrome runs as UID 10001 in one container per active profile, with its sandbox
   enabled, and that copy's downloads directory mounted at `/downloads`.
+
+Public text research uses the application `read_public` path without Chrome or saved
+credentials. Capacity-blocked bot Open calls persist a bounded same-chat continuation;
+see [capacity and recovery](./INSTALL-MACOS.md) for limits and cancellation.

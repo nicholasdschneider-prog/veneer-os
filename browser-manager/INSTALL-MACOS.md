@@ -153,9 +153,9 @@ the installed launch agent); headless mode is not an extra pool of capacity.
 
 Use saved profiles for distinct business/account identities, and assign those
 profiles only to authorized projects. Each chat has an independent working copy.
-Adding profiles does not increase the runtime limit. Projects without a saved
-profile can use automatically allocated signed-out copies for public read-only
-work; those copies are eligible for idle suspension too. Explicit Fresh/sign-in
+Adding profiles does not increase the runtime limit. Public HTML/plain-text research should use `read_public`: it needs no Chrome
+slot or saved profile. Rendered work still uses an isolated working copy. Projects
+without a saved profile can allocate a signed-out copy when rendering is required. Explicit Fresh/sign-in
 sessions stay protected. Prefer existing authorized
 connectors for structured work and public reads when browser interaction is not
 needed. Do not route around an unavailable signed-in browser using another identity.
@@ -191,7 +191,39 @@ Starts enter a FIFO queue capped at 32 waiters, waiting up to 20 seconds for a s
 queue does not hold the runtime lock: suspensions and ongoing work can free capacity.
 Warm-copy adoption shares admission. A timed-out/disconnected waiter is removed;
 no browser command or unknown-effect request is replayed. This queue is intentionally
-not durable across manager restart and does not schedule an agent continuation.
+not durable across manager restart. Above it, the September 29 application layer
+persists owner-bound capacity continuations in SQLite. A bot Open capacity timeout
+automatically creates a one-hour wait; explicit `wait_for_capacity` supports up to
+two hours, with at most 32 pending waits globally. No navigation or mutation is saved.
+After the requesting turn ends, maintenance admits one eligible waiter in arrival
+order and creates one existing-platform wake in the same transaction as its result.
+Active requesting chats are skipped. Before foreground cold allocation, older
+eligible durable waiters get an admission opportunity. Actual start and warm-copy
+adoption still enforce the global manager cap atomically.
+
+Waits survive runner restarts. An interrupted allocation only reconciles a known
+active copy; an unknown outcome generates a failure wake, never a blind new start.
+Keys are idempotent for identical scope/task/deadline duration. Owner, profile,
+project, native provider session or new human instruction changes invalidate the
+old continuation, rechecked again at wake dispatch. Cancel wait cancels pending
+allocation and an undelivered wake; it never kills a copy already allocated. Stop
+also cancels waiting. Expiration emits one blocker wake, not an endless retry.
+An automatic wait is not renewed for the same unchanged task context. On wake the
+bot must inspect current state and original authority before doing any work.
+
+`read_public` accepts only public HTTP(S) HTML/plain text, uses no cookie jar,
+Authorization, saved profile, scripts or Chrome, validates DNS and pins the approved
+address on each connection, and revalidates redirects. Private/local ranges and
+credential URLs are rejected. Four concurrent requests, 30-second deadlines,
+2 MiB response limits and bounded text output limit its resource use. HTTP reads
+cannot supply JavaScript rendering, private account data, videos or guaranteed
+captions. There is no hidden extra Chrome pool.
+
+Idle checks now distinguish checked state from a checkbox's default "on" value.
+Only explicit search controls whose unchanged query is already in the URL are
+recoverable without retaining the page. Edited search text, ordinary hydrated
+forms, password fields, editors, and exit handlers stay protected. This is a narrow
+false-positive correction, not permission to discard arbitrary page state.
 
 The panel shows global counts and names of occupying chats only when its user already
 has browser access to them. It shows this copy's last retention reason and Keep open

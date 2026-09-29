@@ -8,13 +8,20 @@ export const FORM_BUSY_EXPRESSION = `(() => {
     const root = roots.pop();
     for (const el of root.querySelectorAll('*')) {
       if (el.shadowRoot) roots.push(el.shadowRoot);
+      // A query already present in this page URL is recoverable on reopen.
+      // Only explicit search controls qualify; drafts and hydrated form values do not.
+      const search = el.type === 'search' || !!el.closest('[role=search]');
+      if (search && (el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && ['text','search'].includes(el.type))) && el.value && el.value === el.defaultValue
+          && [...new URL(location.href).searchParams.values()].includes(el.value)) continue;
       if (el.isContentEditable && (el.textContent.trim() || document.activeElement === el)) return true;
       if (el instanceof HTMLTextAreaElement && el.value) return true;
       if (el instanceof HTMLSelectElement && [...el.options].some(o => o.selected !== o.defaultSelected)) return true;
       if (el instanceof HTMLInputElement) {
         if (el.type === 'hidden' || el.type === 'submit' || el.type === 'button') continue;
         if (!['checkbox', 'radio', 'range', 'color'].includes(el.type) && el.value) return true;
-        if (el.value !== el.defaultValue || el.checked !== el.defaultChecked) return true;
+        if (['checkbox', 'radio'].includes(el.type)) {
+          if (el.checked !== el.defaultChecked) return true;
+        } else if (el.value !== el.defaultValue) return true;
       }
     }
   }

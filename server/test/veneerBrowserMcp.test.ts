@@ -64,6 +64,8 @@ describe('Veneer Browser runner tool scope', () => {
   const updateConversationProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Saved login' }));
   const saveConversationAsProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Other login' }));
   const setKeepOpen = vi.fn();
+  const readPublic = vi.fn(async () => ({ok:true,mode:'public_http',rendered:false,text:'public research'}));
+  const capacityWaits={register:vi.fn(()=>({id:'wait',status:'waiting',expiresAt:'2026-09-29T15:00:00Z'})),automatic:vi.fn(()=>({id:'auto',status:'waiting',expiresAt:'2026-09-29T15:00:00Z'})),cancel:vi.fn()};
   const stopConversation = vi.fn(async () => conversationSession());
   const runCommand = vi.fn(async () => ({ stdout: 'opened', stderr: '', exitCode: 0, screenshotPath: null }));
   const runCommands = vi.fn(async () => ({ steps: [], failure: null, released: false }));
@@ -88,7 +90,7 @@ describe('Veneer Browser runner tool scope', () => {
       updateConversationProfile,
       saveConversationAsProfile,
       stopConversation,
-      setKeepOpen,
+      setKeepOpen, readPublic, capacityWaits,
       runCommand,
       runCommands,
       probeCommand,
@@ -138,6 +140,29 @@ describe('Veneer Browser runner tool scope', () => {
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
     });
   }
+
+  it('public research works without touching an unavailable or full browser manager', async () => {
+    conversationSession.mockRejectedValueOnce(new Error('all five slots full'));
+    const body=await (await call('read_public',{url:'https://example.com/'})).json();
+    expect(body.result.structuredContent.mode).toBe('public_http');
+    expect(readPublic).toHaveBeenCalledWith(1,'token-chat',{url:'https://example.com/'});
+    expect(conversationSession).not.toHaveBeenCalled();
+    conversationSession.mockReset();
+  });
+  it('saves a continuation after capacity-only Open refusal without navigating',async()=>{
+    openConversation.mockRejectedValueOnce(new Error('Browser capacity is busy after waiting 20 seconds.'));
+    const body=await(await call('open',{url:'https://example.com/'})).json();
+    expect(body.result.isError).not.toBe(true);expect(capacityWaits.automatic).toHaveBeenCalledWith(1,'token-chat');
+    expect(runCommand).not.toHaveBeenCalled();expect(body.result.content[0].text).toContain('continuation is saved');
+  });
+  it('does not queue uncertain Open errors',async()=>{
+    openConversation.mockRejectedValueOnce(new Error('lost response'));
+    const body=await(await call('open')).json();expect(body.result.isError).toBe(true);expect(capacityWaits.automatic).not.toHaveBeenCalled();
+  });
+  it('scopes durable wait and cancellation to the authenticated chat',async()=>{
+    await call('wait_for_capacity',{request_key:'one',task:'research'});expect(capacityWaits.register).toHaveBeenCalledWith(1,'token-chat',{request_key:'one',task:'research'});
+    await call('cancel_capacity_wait');expect(capacityWaits.cancel).toHaveBeenCalledWith(1,'token-chat');
+  });
 
   it('changes only the token chat Keep open setting', async () => {
     const response = await call('keep_open', { active: true });

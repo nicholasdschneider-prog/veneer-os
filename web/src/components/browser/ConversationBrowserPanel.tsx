@@ -1162,6 +1162,14 @@ export function ConversationBrowserPanel({
           </details> : null}
         </div>
       ) : null}
+      {session?.capacityWait && ['waiting','admitting'].includes(session.capacityWait.status) ? (
+        <div className="flex items-center justify-between gap-2 border-b px-3 py-2 text-xs" role="status">
+          <span>Waiting for browser capacity. This chat will resume when ready. Deadline: {new Date(session.capacityWait.expiresAt).toLocaleTimeString()}.</span>
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void action(async () => {
+            await requestJson(`/api/veneer-browser/conversations/${encodeURIComponent(conversationId)}/capacity-wait`, {method:'DELETE'});
+          })}>Cancel wait</Button>
+        </div>
+      ) : null}
       {session?.temporaryClone ? (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs">
           <span className="text-muted-foreground">{browserRetentionLabel(session.retentionReason) ?? 'Idle browsers pause safely and retain their files.'}</span>

@@ -1,3 +1,5 @@
+import { createCapacityWaits } from './capacityWait.js';
+import { PublicReadSchema, readPublicUrl, type PublicReadResult } from './publicReader.js';
 import { activeLoginGrants, authorizeLoginSecret, guardedLoginScript } from './loginGrants.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -86,6 +88,7 @@ export interface VeneerBrowserProfileList {
 }
 
 export interface VeneerBrowserSessionView {
+  capacityWait?: { id: string; status: string; expiresAt: string } | null;
   capacity?: { active: number; limit: number; waiting: number; occupants?: Array<{ conversationId: string; title: string; reason: string | null }> };
   keepOpen?: boolean;
   retentionReason?: string | null;
@@ -245,6 +248,7 @@ export class VeneerBrowserManager {
   private readonly queues = new Map<string, SerialQueue>();
   private readonly runtimeCache = new Map<string, ConversationRuntimeCache>();
   private readonly probeAddresses = new Map<string, ProbeAddress>();
+  readonly capacityWaits: ReturnType<typeof createCapacityWaits>;
   private readonly maintenanceTimer: NodeJS.Timeout;
 
   constructor(options: VeneerBrowserManagerOptions) {
@@ -254,9 +258,25 @@ export class VeneerBrowserManager {
     this.runBrowser = options.runBrowser ?? runAgentBrowser;
     this.closeBrowserSession = options.closeBrowserSession ?? closeVeneerBrowserSession;
     this.readUrl = options.readUrl ?? readBrowserUrl;
+    this.capacityWaits = createCapacityWaits({ db: this.db, clientScope: () => this.clientScope(),
+      authorize: (userId, id) => { this.conversation(id, userId, true); },
+      available: async () => { const c = await this.remote.capacity?.(); return !!c && c.active < c.limit; },
+      busy: id => this.queue(`conversation:${id}`).depth > 0 || !!this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id=?').get(id),
+      open: async (userId, id, recovering, stillValid) => {
+        await this.queue(`conversation:${id}`).run(async () => {
+          if(!stillValid())throw new Error('Browser wait scope changed.');
+          if(this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id=?').get(id))throw new Error('Browser capacity is busy while this chat is active.');
+          const context = this.conversation(id,userId,true);
+          if (recovering) {
+            const copy=this.cloneSession(id);
+            if (!copy || !(await this.remote.status(copy.project_id,copy.clone_profile_id)).active) throw new Error('Unconfirmed browser allocation after restart.');
+          } else await this.startForContext(context);
+        });
+      },
+    });
     this.maintenanceTimer = setInterval(() => {
       this.evictIdleRuntimeCache();
-      void this.reconcile().catch(() => undefined);
+      void this.reconcile().then(() => this.capacityWaits.tick()).catch(() => undefined);
     }, 60_000);
     this.maintenanceTimer.unref();
   }
@@ -970,7 +990,10 @@ export class VeneerBrowserManager {
 
   private async startForContext(context: ConversationContext): Promise<ConversationRuntime> {
     const existing = this.cloneSession(context.id);
-    if (!existing || existing.status !== 'active') await this.reconcile(context.id);
+    if (!existing || existing.status !== 'active') {
+      await this.reconcile(context.id);
+      await this.capacityWaits.tick();
+    }
     if (existing) {
       const key = existing.source_profile_id ?? existing.clone_profile_id;
       return this.queue(key).run(() => this.startWorkingCopy(context, existing));
@@ -1229,6 +1252,14 @@ export class VeneerBrowserManager {
     return { runtime: current, result: outcome, thrown: null };
   }
 
+  async readPublic(userId: number, conversationId: string, input: unknown): Promise<PublicReadResult> {
+    this.conversation(conversationId,userId,true);
+    const user=this.db.prepare('SELECT status FROM users WHERE id=?').get(userId) as {status:string}|undefined;
+    if(user?.status!=='active')throw new Error('An active chat owner is required.');
+    const parsed=PublicReadSchema.parse(input);
+    return readPublicUrl(parsed);
+  }
+
   async fetchUrl(userId: number, conversationId: string, input: unknown): Promise<ReadUrlResult> {
     const parsed = ReadUrlSchema.safeParse(input);
     if (!parsed.success) return readUrlFailure('invalid_request', 'Supply an HTTP(S) URL, valid readiness options, and supported timeout/output limits.');
@@ -1454,6 +1485,7 @@ export class VeneerBrowserManager {
   async conversationSession(userId: number, conversationId: string): Promise<VeneerBrowserSessionView> {
     const context = this.conversation(conversationId, userId, true);
     if (!this.configured()) return this.emptySession(context, false);
+    const capacityWait = this.capacityWaits.status(context.id);
     const storedCopy = this.cloneSession(context.id);
     const copy = storedCopy ? await this.refreshCloneSession(storedCopy) : null;
     const counts = await this.remote.capacity?.().catch(() => undefined);
@@ -1463,7 +1495,7 @@ export class VeneerBrowserManager {
         ? this.profileInProject(copy.project_id, copy.source_profile_id)
         : null;
       return {
-        capacity,
+        capacity, capacityWait,
         keepOpen: this.copyHeld(copy),
         retentionReason: this.retentionReason(copy),
         configured: true,
@@ -1482,10 +1514,10 @@ export class VeneerBrowserManager {
       };
     }
     const profile = this.effectiveProfile(context);
-    if (!profile) return { ...this.emptySession(context, true), capacity };
+    if (!profile) return { ...this.emptySession(context, true), capacity, capacityWait };
     const current = this.view(profile);
     return {
-      capacity,
+      capacity, capacityWait,
       configured: true,
       active: false,
       projectId: profile.project_id,
@@ -1658,6 +1690,7 @@ export class VeneerBrowserManager {
   }
 
   async stopConversation(userId: number, conversationId: string): Promise<VeneerBrowserSessionView> {
+    this.capacityWaits.cancel(userId,conversationId);
     let context = this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${context.id}`).run(async () => {
       context = this.conversation(conversationId, userId, true);

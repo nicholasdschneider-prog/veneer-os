@@ -1,3 +1,4 @@
+import { browserCapacityWakeAllowed } from '../veneerBrowser/capacityWait.js';
 import { botWakeAllowed, botWakeDelivered, botWakeCancelled } from '../bots/delivery.js';
 import crypto from 'node:crypto';
 import type { EventEmitter } from 'node:events';
@@ -201,7 +202,7 @@ export function createConversationWakeupScheduler({
    * on purpose (delivery threw) so the next tick can retry the same key.
    */
   function deliver(row: ConversationWakeupRow, conv: ConversationRow): boolean {
-    if (!botWakeAllowed(db, row, conv)) {
+    if ((row.wake_key.startsWith('browser-capacity:') && !browserCapacityWakeAllowed(db,row.id)) || !botWakeAllowed(db, row, conv)) {
       db.transaction(() => {
         db.prepare("UPDATE conversation_wakeups SET status='cancelled',cancelled_at=datetime('now') WHERE id=?").run(row.id);
         botWakeCancelled(db, row);

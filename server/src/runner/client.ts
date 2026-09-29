@@ -143,6 +143,9 @@ export interface RunnerClient {
   veneerBrowserConversationSaveAs(userId: number, convId: string, name: string): Promise<VeneerBrowserSessionView>;
   veneerBrowserConversationStop(userId: number, convId: string): Promise<VeneerBrowserSessionView>;
   veneerBrowserConversationTicket(userId: number, convId: string): Promise<{ ticket: string; caFile: string | null }>;
+  veneerBrowserCapacityWait(userId: number, convId: string, input: unknown): Promise<unknown>;
+  veneerBrowserCancelCapacityWait(userId: number, convId: string): Promise<void>;
+  veneerBrowserReadPublic(userId: number, convId: string, input: unknown): Promise<unknown>;
   veneerBrowserConversationKeepOpen(userId: number, convId: string, active: boolean): Promise<void>;
   /** Advanced capture is user-only state: no agent/MCP path may set it. */
   veneerBrowserConversationCaptureGet(userId: number, convId: string): Promise<VeneerBrowserCaptureView>;
@@ -371,6 +374,9 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     veneerBrowserConversationTicket: (userId, convId) =>
       rpc<{ ticket: string; caFile?: string | null }>('/rpc/veneerBrowserConversationTicket', { userId, convId })
         .then((r) => ({ ticket: r.ticket, caFile: r.caFile ?? null })),
+    veneerBrowserCapacityWait: (userId, convId, input) => rpc('/rpc/veneerBrowserCapacityWait', {userId,convId,input}),
+    veneerBrowserCancelCapacityWait: (userId, convId) => rpc('/rpc/veneerBrowserCancelCapacityWait', {userId,convId}),
+    veneerBrowserReadPublic: (userId, convId, input) => rpc('/rpc/veneerBrowserReadPublic', {userId,convId,input}),
     veneerBrowserConversationKeepOpen: (userId, convId, active) => rpc<void>('/rpc/veneerBrowserConversationKeepOpen', { userId, convId, active }),
     veneerBrowserConversationCaptureGet: (userId, convId) =>
       rpc<{ capture: VeneerBrowserCaptureView }>('/rpc/veneerBrowserConversationCaptureGet', { userId, convId }).then((r) => r.capture),

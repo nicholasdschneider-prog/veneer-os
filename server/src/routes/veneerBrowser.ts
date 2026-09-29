@@ -182,6 +182,11 @@ export function createVeneerBrowserRouter(ctx: AppContext): Router {
       .catch((error) => res.status(/Browser capacity is busy/.test(safeError(error)) ? 429 : 409).json({ ok: false, error: safeError(error) }));
   });
 
+  router.delete('/conversations/:conversationId/capacity-wait', (req,res) => {
+    void ctx.manager.veneerBrowserCancelCapacityWait(req.user!.id,req.params.conversationId)
+      .then(() => res.json({ok:true})).catch(error => res.status(409).json({ok:false,error:safeError(error)}));
+  });
+
   router.put('/conversations/:conversationId/keep-open', (req, res) => {
     const body = CaptureSchema.safeParse(req.body);
     if (!body.success) return void res.status(400).json({ ok: false, error: 'Choose Keep open on or off.' });

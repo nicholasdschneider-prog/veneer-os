@@ -41,4 +41,18 @@ test('real isolated Chrome protects forms, shadow DOM, and page beforeunload han
   assert.equal((await inspectIdlePages(url)).reason, 'unfinished_page');
   await evaluate(`document.body.innerHTML=''`);
   assert.deepEqual(await inspectIdlePages(url), { safe: true });
+  // A standard checkbox has value="on" and defaultValue=""; that is not a draft.
+  await evaluate(`document.body.innerHTML='<input type="checkbox"><input type="radio">'`);
+  assert.deepEqual(await inspectIdlePages(url), { safe: true });
+  await evaluate(`document.querySelector('input').checked=true`);
+  assert.equal((await inspectIdlePages(url)).reason, 'unfinished_page');
+  await send('Page.navigate', { url: 'about:blank?q=saved-query' }, sessionId);
+  await new Promise(resolve => setTimeout(resolve,100));
+  await evaluate(`document.body.innerHTML='<form role="search"><textarea>saved-query</textarea></form>'`);
+  assert.deepEqual(await inspectIdlePages(url), { safe: true });
+  await evaluate(`document.querySelector('textarea').value='new-query'`);
+  assert.equal((await inspectIdlePages(url)).reason, 'unfinished_page');
+  await evaluate(`document.body.innerHTML='<textarea>saved-query</textarea>'`);
+  assert.equal((await inspectIdlePages(url)).reason, 'unfinished_page');
+
 });

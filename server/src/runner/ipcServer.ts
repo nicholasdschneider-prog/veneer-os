@@ -483,6 +483,13 @@ export function createIpcServer({
         return void sendJson(res, 200, await veneerBrowser.viewerTicketForConversation(
           Number(body.userId), String(body.convId ?? ''),
         ));
+      case '/rpc/veneerBrowserCapacityWait':
+        return void sendJson(res,200,veneerBrowser.capacityWaits.register(Number(body.userId),String(body.convId ?? ''),body.input));
+      case '/rpc/veneerBrowserCancelCapacityWait':
+        veneerBrowser.capacityWaits.cancel(Number(body.userId),String(body.convId ?? ''));
+        return void sendJson(res,200,{ok:true});
+      case '/rpc/veneerBrowserReadPublic':
+        return void sendJson(res,200,await veneerBrowser.readPublic(Number(body.userId),String(body.convId ?? ''),body.input));
       case '/rpc/veneerBrowserConversationKeepOpen':
         if (typeof body.active !== 'boolean') return void sendJson(res, 400, { error: 'Choose Keep open on or off.' });
         await veneerBrowser.setKeepOpen(Number(body.userId), String(body.convId ?? ''), body.active);

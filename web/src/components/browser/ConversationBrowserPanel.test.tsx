@@ -646,6 +646,11 @@ describe('ConversationBrowserPanel', () => {
 
 
 describe('browser capacity lifecycle presentation', () => {
+  it('shows a cancellable durable wait deadline', () => {
+    const html=renderToStaticMarkup(<ConversationBrowserPanel conversationId="chat-1" onClose={() => {}} onToast={() => {}}
+      initialSession={{...baseSession,capacityWait:{id:'w',status:'waiting',expiresAt:'2026-09-29T15:00:00Z'}}} />);
+    expect(html).toContain('Waiting for browser capacity');expect(html).toContain('Cancel wait');
+  });
   it('shows capacity and an explicit Keep open control without internal errors', () => {
     const html = renderToStaticMarkup(<ConversationBrowserPanel conversationId="conv-1" onClose={() => {}} onToast={() => {}}
       initialSession={{ ...baseSession, temporaryClone: true, keepOpen: true, capacity: { active: 5, limit: 5, waiting: 2 }, retentionReason: 'keep_open' }} />);
