@@ -18,7 +18,7 @@ This document proposes work; it does not change bot training, schedules, authori
 
 The research uses official Fin/Intercom product documentation and engineering articles, alongside a bounded read-only review of current ERVP training, recent bot conversations, the weekly autonomy audit, and relevant Veneer implementation records. This is enough to identify concrete failure mechanisms and propose a plan. It is not a representative audit of every ticket or an independent benchmark of Fin.
 
-The supplied [video, “What is Fin? (The #1 AI Agent for Customer Service)”](https://www.youtube.com/watch?v=Nq4OT3omdg8) is 6 minutes 37 seconds. Its public metadata lists performance analysis at 1:07, support content at 2:18, guidance at 2:38, complex tasks at 3:01, testing at 3:46, deployment at 5:13, and integrations at 5:35. I retrieved the description and chapters, but the public caption endpoint returned an empty body and the managed browser reported capacity unavailable. I did not review the complete audiovisual content. The detailed findings below come from the linked documentation, which also covers newer Procedures functionality.
+The supplied [video, “What is Fin? (The #1 AI Agent for Customer Service)”](https://www.youtube.com/watch?v=Nq4OT3omdg8) is 6 minutes 37 seconds. Its public metadata lists performance analysis at 1:07, support content at 2:18, guidance at 2:38, complex tasks at 3:01, testing at 3:46, deployment at 5:13, and integrations at 5:35. On September 29 I transcribed the complete audio track locally and checked it against this plan; the on-screen visuals were not reviewed, because the managed browser was still at capacity. The narration confirms the analyze → train → test → deploy loop and adds the points recorded in the final review below. The detailed findings come from the linked documentation, which also covers newer Procedures functionality.
 
 Product claims are labeled as claims. Dates in implementation reports describe those reports; they do not certify fresh customer delivery. Recent conversation results are bot-reported evidence unless independently corroborated here.
 
@@ -262,13 +262,32 @@ Make onboarding produce a capability matrix: what works, what passed testing, wh
 
 The immediate product priority is a reliable ERVP customer-service loop. Once it demonstrably reduces human work, package that implementation for repeatable deployment.
 
+## Final review, September 29
+
+A last pass against the full video narration and the current repository found no reason to change the recommendation. It added five items.
+
+1. **The video's worked example is ERVP's failing case.** A customer reports a damaged delivery; Fin confirms the order, collects a photo, analyzes it, refunds when damage is found, and escalates to a person when it is not (3:10–3:40). The first procedure should therefore be written as that whole branch: confirm the order, request the one needed photo, assess it, then act within authority or raise one decision. The photo request alone is a step, as section 5 already says.
+2. **Score every conversation without surveys.** The video describes a customer experience score computed across all conversations (1:18–1:25) and suggestions grouped by topic. ERVP's six survey ratings cannot support measurement. Add an automatic quality review of every closed pilot case to the outcome report, calibrated against a human-reviewed sample, and group failures by topic so fixes target the highest-volume problems.
+3. **Last week's baseline is stark.** The four customer service bots ran 310 turns from September 22 to 29 and raised seven decisions: six blocked, one verified complete, and no draft recorded as sent ([trial baseline](/Users/archerclawdington/veneer-os/docs/reports/sonnet-5-5-cs-trial/README.md)). This supports the execution-path diagnosis and gives the pilot a starting number. It counts decisions and drafts, not every customer message.
+4. **The Sonnet 5.5 trial overlaps the pilot.** Nora and Owen are due to move to Claude Sonnet 5.5 while Miles and Tess stay on GPT-6 Sol, measured October 6. Report pilot results by model group, and change the delivery path and the model on separate dates where possible, so an improvement can be attributed.
+5. **Start with analysis.** The video's loop begins with Analyze. The baseline stage in section 6 stays first and should not be skipped to reach the build sooner.
+
+### Decisions needed from Nick before kickoff
+
+| Decision | Recommendation |
+| --- | --- |
+| First procedure to prove end to end | Damaged or wrong item: photo request through resolution, within the existing product-label-photo policy scope |
+| Standing authority for that procedure | Confirm the existing enrolled scope; any refund or replacement limit beyond it is a separate business decision |
+| Fin comparison | Offline comparison on the same cases first; no purchase or live traffic until the native first-week milestone result is known |
+| Pilot cohort and hours | New eligible email cases only, declared support hours, legacy approved-but-unsent cases kept in their own reconciliation lane |
+
 ## Research index
 
 Primary documentation and engineering sources used above, checked September 28, 2026:
 
 | Source | Why it matters |
 | --- | --- |
-| [User-supplied video](https://www.youtube.com/watch?v=Nq4OT3omdg8) | Limited review of description and chapter metadata; full transcript unavailable |
+| [User-supplied video](https://www.youtube.com/watch?v=Nq4OT3omdg8) | Full narration transcribed locally September 29; visuals not reviewed |
 | [Fin AI Engine](https://fin.ai/ai-engine) | Retrieval, reranking, generation, validation, and vendor performance claims |
 | [How Fin scales customer-defined behavior](https://fin.ai/research/how-fin-scales-customer-defined-behaviour/) | September 25 engineering detail on selecting applicable instructions and tools |
 | [Agency, control, and reliability](https://fin.ai/research/agency-control-reliability-the-tradeoffs-in-customer-support-agents/) | Historical experimental rationale for bounded tasks and repeated-success evaluation |
