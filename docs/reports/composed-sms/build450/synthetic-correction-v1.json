@@ -1,0 +1,69 @@
+{
+  "notice": "Synthetic parser/hash vector only. No live evidence, approval or sender proof.",
+  "payload": {
+    "channel": "sms",
+    "account": "Synthetic SMS +12025550100",
+    "recipients": [
+      "+12025550111"
+    ],
+    "subject": "",
+    "body": "Please reply with a photo of the unit received.",
+    "attachments": [],
+    "customer": "Synthetic fixture",
+    "ticket": "SYNTHETIC-PHONE",
+    "context": "Synthetic correction fixture only"
+  },
+  "authority": {
+    "schemaVersion": "native-compose-sms-correction/v1",
+    "authorityId": "10000000-0000-4000-8000-000000000002",
+    "actionId": "e26c03324e52892cacf9920a5005de4c8abff71da2f94fccbf80bde4a0110e87",
+    "decisionId": "10000000-0000-4000-8000-000000000004",
+    "decisionVersion": 2,
+    "correction": {
+      "kind": "direct_message",
+      "source": {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "actor_id": 1,
+        "text": "Compose and send the corrected SMS requesting only a photo of the received unit, using the same number and executor.",
+        "created_at": "2026-09-29T00:00:00.000Z"
+      },
+      "anchor": null
+    },
+    "sourceInstructionHash": "75b0fefebeae6040bb619c711546fb33bb58a1ec31b72ea2907f5f0a52335398",
+    "contextHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ownerConversationId": "10000000-0000-4000-8000-000000000005",
+    "executorConversationId": "10000000-0000-4000-8000-000000000006",
+    "businessId": "10000000-0000-4000-8000-000000000003",
+    "canonicalCaseId": "10000000-0000-4000-8000-000000000007",
+    "contactCaseId": "10000000-0000-4000-8000-000000000008",
+    "payloadHash": "7df94d51c2b7e323c58a883320cc723e055b6567068298a154dbdd0e310da8af",
+    "wirePayloadHash": "26722f040228538333538ca4ac1b89f109b0ee658e4fe2df01a1871e08bd4bad",
+    "wire": {
+      "senderAccountId": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "fromPhone": "+12025550100",
+      "toPhone": "+12025550111",
+      "wireBody": "Please reply with a photo of the unit received.",
+      "media": [],
+      "normalizationPolicy": "sms-identity-utf8/v1"
+    },
+    "nativeBindingHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "reviewHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "historicalConsumptionHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "materialHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "sourcePrincipalId": "synthetic-owner",
+    "executorPrincipalId": "synthetic-executor",
+    "sourceOrigin": "https://synthetic.example",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000009",
+      "environmentId": "10000000-0000-4000-8000-000000000010",
+      "serviceId": "10000000-0000-4000-8000-000000000011"
+    },
+    "senderReceiptId": "10000000-0000-4000-8000-000000000012",
+    "senderReceiptRevision": 1,
+    "evidenceHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "registrationHash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "derivedAt": "2026-09-29T00:00:01.000Z",
+    "expiresAt": "2026-09-29T00:10:01.000Z",
+    "authorityHash": "92a99ca88187409cdd8d1a8e06b1532b0936845d19c47e596e2e06f9e31d766e"
+  }
+}

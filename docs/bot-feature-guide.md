@@ -227,3 +227,9 @@ cannot turn that incomplete model into unrelatedness. Report the concrete eviden
 limit rather than requesting duplicate consent, merging cases or changing records.
 The shared catalog exposes these setup limits to employees and resumed agents.
 See the [installation report](./reports/composed-sms/build447/README.md).
+
+## Prospective human correction review — September 29, 2026
+
+The original source owner can use `inspect_composed_sms_correction` to read a later authenticated correction, full native context and exact corrected draft without rewriting the earlier answer or consumption. Explicit unconditional composition AND sending requires semantic review; edits, status questions, quotations, conditions and ambiguity fail closed. With verified source/sender evidence, `derive_composed_sms_correction` records an immutable prospective proof under the shared original action fence. `read_composed_sms_correction` reconciles a lost response read-only by the same decision, source and request key.
+
+The source authority contract does not yet accept this distinct correction proof. No corrected authority may use old accept/claim/export; no customer effect or readiness is implied. Sender/process, scope completeness and timezone remain independent requirements. The dated `composed-sms-correction` catalog entry reaches full/restricted employees and new/resumed agents. [BUILD450 contract and validation](./reports/composed-sms/build450/README.md).

@@ -1,0 +1,40 @@
+{
+  "observedAt": "2026-09-29T03:26:16.491196+00:00",
+  "node": "24",
+  "checks": {
+    "typecheck": {
+      "sha256": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+      "passed": true
+    },
+    "focused": {
+      "sha256": "9faf4d5d1c84c961161d3f48e966d2782c015df303bc3bebc7235ed5da7bc523",
+      "passed": true
+    },
+    "full": {
+      "sha256": "b71e313f6a5efba9c88b06fec5b44b164e9301e911bf94555c74caf36276c024",
+      "passed": true
+    },
+    "build": {
+      "sha256": "a037317738864cd3ab54131f97e7b1c06b31b1c44a42f6f320d12a8d461f95de",
+      "passed": true
+    },
+    "guide": {
+      "sha256": "c8935ce7ea8409efb71cc2f6e4a40945f884290ed45f8c176d015a6eb235b188",
+      "passed": true
+    }
+  },
+  "focusedTests": 150,
+  "fullTests": {
+    "serverPassed": 2904,
+    "serverSkipped": 5,
+    "webPassed": 909,
+    "browserPassed": 54,
+    "installerPassed": 29
+  },
+  "employeeGuide": "isolated full desktop and restricted mobile; no overflow",
+  "resumedAgents": "core instruction and instruction-context tests passed",
+  "sourceIndependentVectorReviewAt": "2026-09-29T03:25:02.871Z",
+  "productionBusinessActions": false,
+  "credentialsOrProviderProbes": false,
+  "sourceCouplingAccepted": false
+}

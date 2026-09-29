@@ -1,3 +1,4 @@
+import {composedSmsCorrection} from './composedSmsCorrection.js';
 import {composedSmsScope,composeScopeReviewSchema} from './composedSmsScope.js';
 import {composeEvidenceReader} from './composedSmsEvidenceReader.js';
 import {composeVerifierIO} from './composedSmsVerifierRoutes.js';
@@ -306,6 +307,10 @@ export function createBotsRouter(ctx: AppContext) {
     }),
   );
   const composed=composedSmsService(ctx.db,composedSmsReader(ctx));
+  const corrections=composedSmsCorrection(ctx.db,composedSmsReader(ctx));
+  router.post('/composed-sms/corrections/reconcile',run((req,res)=>res.json(corrections.reconcile(actor(req),req.body))));
+  router.post('/composed-sms/corrections/inspect',run(async(req,res)=>res.json(await corrections.inspect(actor(req),req.body))));
+  router.post('/composed-sms/corrections/derive',run(async(req,res)=>res.json(await corrections.derive(actor(req),req.body))));
   const scopeReview=composedSmsScope(ctx.db,composeVerifierIO(ctx).registration,composeEvidenceReader(ctx).scope,id=>composed.serviceCurrent(id));
   router.post('/composed-sms/:id/scope/inspect',run(async(req,res)=>{z.object({}).strict().parse(req.body);res.json(await scopeReview.inspect(actor(req),z.string().uuid().parse(req.params.id)));}));
   router.post('/composed-sms/:id/scope/record',run(async(req,res)=>res.json(await scopeReview.record(actor(req),composeScopeReviewSchema.parse({...req.body,authority_id:req.params.id})))));

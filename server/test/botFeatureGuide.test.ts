@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers prospective correction proof limits to employees and full/restricted resumed agents',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='composed-sms-correction')!;
+    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('composition AND sending');expect(f.limits).toContain('CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE');expect(f.agent).toContain('derive_composed_sms_correction');expect(f.agent).toContain('No replacement after UNKNOWN');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+  });
   it('delivers composed SMS source and execution limits to full, restricted and resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='composed-sms')!;
     expect(f.agent).toContain('inspect_composed_sms_scope');expect(f.agent).toContain('native service/evidence registries are configured');expect(f.agent).toContain('Synthetic complete graphs do not establish Brian or global inventory readiness');expect(f.agent).toContain('association/readback v3');expect(f.steps.join(' ')).toContain('no extra customer approval');expect(f.agent).toContain('contextRevision');expect(f.agent).toContain('unknown scopes');expect(f.announcement).toContain('provisioned');

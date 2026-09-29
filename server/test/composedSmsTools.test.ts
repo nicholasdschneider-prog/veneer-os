@@ -16,3 +16,9 @@ it('advertises reservation only and source receipt reconciliation without accept
 });
 
 it('routes scope review tools without turning classification into send',async()=>{const calls:unknown[]=[];await callBotTool({name:'inspect_composed_sms_scope',args:{authority_id:'exact'},callApi:async(...args:unknown[])=>{calls.push(args);return {execute:false};}});expect(calls).toEqual([['/api/bots/composed-sms/exact/scope/inspect',{method:'POST',body:'{}'}]]);});
+
+it('exposes exact correction inspection and derivation without importing evidence or replacing old tools',async()=>{
+ for(const name of ['inspect_composed_sms_correction','derive_composed_sms_correction'])expect(BOT_TOOL_DEFINITIONS.some(t=>t.name===name)).toBe(true);
+ const calls:unknown[]=[];await callBotTool({name:'inspect_composed_sms_correction',args:{source_id:'original',correction_source_id:'correction'},callApi:async(...args:unknown[])=>{calls.push(args);return {execute:false};}});
+ expect(calls).toEqual([['/api/bots/composed-sms/corrections/inspect',{method:'POST',body:JSON.stringify({source_id:'original',correction_source_id:'correction'})}]]);
+});
