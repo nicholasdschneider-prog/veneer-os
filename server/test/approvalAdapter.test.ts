@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 describe('claude adapter approval round trip (fake CLI)', () => {
-  it('lists Opus 5.5 while preserving the existing current Claude models', async () => {
+  it('lists Sonnet 5.5 while preserving the existing current Claude models', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -70,6 +70,7 @@ describe('claude adapter approval round trip (fake CLI)', () => {
           { id: 'claude-opus-5-5', display_name: 'Claude Opus 5.5' },
           { id: 'claude-opus-5', display_name: 'Claude Opus 5' },
           { id: 'claude-opus-4-8', display_name: 'Claude Opus 4.8' },
+          { id: 'claude-sonnet-5-5', display_name: 'Claude Sonnet 5.5' },
           { id: 'claude-sonnet-5', display_name: 'Claude Sonnet 5' },
           { id: 'claude-opus-4-7', display_name: 'Claude Opus 4.7' },
         ],
@@ -85,6 +86,7 @@ describe('claude adapter approval round trip (fake CLI)', () => {
       { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
       { id: 'claude-opus-5', label: 'Claude Opus 5' },
       { id: 'claude-opus-4-8', label: 'Claude Opus 4.8' },
+      { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
       { id: 'claude-sonnet-5', label: 'Claude Sonnet 5' },
     ]);
   });

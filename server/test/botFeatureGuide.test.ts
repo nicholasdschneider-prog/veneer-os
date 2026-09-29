@@ -4,6 +4,16 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('announces Sonnet 5.5 to employees and current agent instructions without migrating selections', () => {
+    const feature = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'provider-model-updates')!;
+    expect(feature.isNew).toBe(true);
+    expect(feature.announcement).toContain('Sonnet 5.5');
+    expect(feature.limits).toContain('does not migrate explicit conversation or bot selections');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    for (const elevated of [false, true]) {
+      expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'business-bot', elevated })).toContain(feature.agent);
+    }
+  });
   it('delivers integrated review steps and unaccepted source boundaries to full/restricted/resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='correction-integration')!;
     expect(f.isNew).toBe(true);expect(f.agent).toContain('context_review INPUT');expect(f.agent).toContain('no correction amendment');expect(f.limits).toContain('UNKNOWN');expect(f.steps.join(' ')).toContain('same key');
