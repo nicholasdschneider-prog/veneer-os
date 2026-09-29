@@ -124,6 +124,10 @@ on a second dedicated OrderOps adapter of the same design family. Two options:
 
 I recommend option 2, decided after #459 reports its result. Neither is started.
 
+**Nick chose option 2 in chat on September 29, 2026.** This selects the design to build. It is not the
+policy enrollment: standing authority begins only when Nick authorizes the finished policy himself on
+the owner setup page.
+
 ## Test harness
 
 Saved scenarios live in
