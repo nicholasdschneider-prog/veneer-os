@@ -182,3 +182,15 @@ answer-grading modes were used instead.
 
 `npm run typecheck` passed. `npm test` passed: server 251 files and 3,052 tests, web 134 files and
 912 tests, with browser manager and installer suites passing. `npm run build` passed.
+
+## Deployment
+
+Commit `7e8f97f` was pushed to `origin main`. Only the web service was restarted
+(`node scripts/restart.mjs veneer-pro`): it came back healthy, and the built page asset and bot tool
+are present. The runner, app runner and terminal services were left running on purpose. This build
+changed none of their code, and restarting the runner would have interrupted ERVP build #461, which
+was running at the time. Bots receive `read_cs_readiness` on their next turn.
+
+Not verified: the page in a signed-in browser. Unauthenticated local requests return 403 by design,
+so the readiness shown above was read through the same service code against the production
+database, read-only.
