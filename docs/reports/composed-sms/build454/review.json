@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "native-compose-correction-review/v1",
+  "reviewedAt": "2026-09-29T06:10:01.092Z",
+  "reviewedBy": "732adce5-ea99-45d4-be9d-07ae47e02133",
+  "sourceCommit": "92dcb3ebad0a5597abe2a83c56ab5ace9d37e87f",
+  "sourceDeployment": "2e46e174-733f-4727-9b0a-54315d192886",
+  "sourceRuntimeObservedAt": "2026-09-29T06:02:57.397548+00:00",
+  "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+  "manifestHash": "67e9053be8129c5a6f4f882ff58442bce51ceef376ea76581f10943805d23bfd",
+  "lineageAdoptionReceiptHash": "f05e1959d3d4e1d8b07d9da2e52368ce2d659316676f01bf6f1fa567d0d7ebb1",
+  "custodyAmendmentHash": "4f867e2fcb519446a9957b04efe9c981016da0bedb82b8a01e8cb10056717999",
+  "contractHash": "6457641ca5d576fbd43c7828e1da6d4e81af84549ac0b0c67b8f5ef1914b1479",
+  "verifiedWriterFiles": 25,
+  "verifiedValidationArtifacts": 5,
+  "sourceTests": "Retained executed 61 passing tests reviewed; not rerun in native slot. Source full typecheck has 285 errors outside composed-SMS modules.",
+  "acceptance": "Bounded acceptance of exact deployed implementation and all-proof intent/audit serialization protocol; not universal writer or live mapping certification.",
+  "productionHistoricalMapping": "not_performed",
+  "expiresAt": "2026-10-28T00:14:26.000Z",
+  "limits": [
+    "Source counterpart remains separately installed by original source owner.",
+    "No business authority or execution readiness.",
+    "Expired sender, empty timezone and incomplete freeform scope remain independent blockers.",
+    "No distributed atomicity or post-commit revocation guarantee."
+  ]
+}

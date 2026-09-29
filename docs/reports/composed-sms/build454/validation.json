@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-09-29T06:10:01.092Z",
+  "strictSchema": true,
+  "positiveAcceptance": true,
+  "negativeMissingExpiredContractRegistrationAndCredentialCap": true,
+  "beforeFileHash": "647bac515a174edf35e15de5c242425d9183e105e6a74d90db050b7f6a75688e",
+  "beforeCanonicalRegistrationHash": "68b77f8f26ed7da1ba3c8611f4cd5f282c0a08294bb0fe30855f4b8d59566921",
+  "afterCanonicalRegistrationHash": "a791849c6e91410f613bbe75205406bd695e3e968eda9c64ebc23a0f9befe0d5",
+  "counterpartSha256": "e9aac721902a721623c47db196a5909efe5be1e61d93584dab6b01d000df4ee9",
+  "untouched": {
+    "compose-evidence-registry.json": "c8ce2003ffcc8a4efcc149c05eb4d43536f38759d6bcdb1303fcf1b624fdb9c9",
+    "approved-case-registry.json": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+    "compose-correspondence-registry.json": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c"
+  }
+}

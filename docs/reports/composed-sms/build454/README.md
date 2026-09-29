@@ -1,0 +1,13 @@
+# BUILD454 — Native correction acceptance installed
+
+Installed 2026-09-29T06:10:01.103Z into the existing protected service registry, UID501/mode0600/non-symlink, using atomic replacement with original-byte drift checks. Actual deployed loader readback passed. Only guardManifest, guardContractHash, guardAcceptance and correctionAcceptance changed; other registrations and the three independent registries are preserved.
+
+Registry file SHA256 `45f48021e8f0614bb9699d0c018c7f657c4516ade4939afc9597a7b7347b370b`; canonical native registration hash `a791849c6e91410f613bbe75205406bd695e3e968eda9c64ebc23a0f9befe0d5`. Source registration descriptor remains `22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a`. Historical dispatch hashes were not changed.
+
+The exact deployed source453 manifest is accepted only within the [bounded review](./review.json). All25 writer files and five validation artifacts matched their retained commitments; committed source files also matched final92dcb3e. Retained61 source tests were reviewed, not rerun. Source full typecheck remains failing with285 errors outside composed-SMS modules. No live historical adoption was performed.
+
+[Exact source counterpart](./counterpart.json) SHA256 `e9aac721902a721623c47db196a5909efe5be1e61d93584dab6b01d000df4ee9` contains the two acceptance objects for the existing source owner's separately queued installation. Neither source configuration nor source records were changed here. Both acceptances expire no later than2026-10-28T00:14:26.000Z and remain subject to earlier revocation and dependency expiry.
+
+Validation: deployed strict registry schema, positive acceptance and negative missing/expired/wrong-contract/wrong-registration/credential-cap checks passed; [58 focused native tests](./focused-tests.txt) passed. [Validation hashes](./validation.json), [installation readback](./installation.json), and [runtime health](./runtime.json) retain the evidence. All five service health checks returned200 using their documented paths; the initially tried generic health paths are retained transparently. No executable source changed. Registry reads occur per operation, so no rebuild or restart was required or performed.
+
+This installs native trust acceptance, not source acceptance, customer approval, live lineage mappings or SMS readiness. Expired sender evidence, absent timezone evidence and incomplete freeform scope closure remain separate blockers. No credentials, provider/case endpoints, production authorities, drafts, claims or customer effects were accessed or changed. Source owner ae5d retains the counterpart installation and original Grant/Tess retain any later authorized review/execution.

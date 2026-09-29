@@ -1,0 +1,16 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run test/composedSmsVerifierRoutes.test.ts test/composedSmsCorrectionContract.test.ts test/composedSmsCorrectionV2.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/composedSmsCorrectionContract.test.ts (11 tests) 7ms
+ ✓ test/composedSmsVerifierRoutes.test.ts (10 tests) 386ms
+ ✓ test/composedSmsCorrectionV2.test.ts (37 tests) 2702ms
+
+ Test Files  3 passed (3)
+      Tests  58 passed (58)
+   Start at  02:09:39
+   Duration  3.02s (transform 184ms, setup 0ms, collect 411ms, tests 3.09s, environment 0ms, prepare 99ms)
+

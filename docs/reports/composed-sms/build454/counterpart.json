@@ -1,0 +1,29 @@
+{
+  "guardAcceptance": {
+    "manifestHash": "67e9053be8129c5a6f4f882ff58442bce51ceef376ea76581f10943805d23bfd",
+    "reviewedBy": "732adce5-ea99-45d4-be9d-07ae47e02133",
+    "receipt": "/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build454/review.json#ca5354214b324e9b4d29e37d92fbf0b06a2502fd1cc86c282ced34a61c184704",
+    "reviewedAt": "2026-09-29T06:10:01.092Z",
+    "expiresAt": "2026-10-28T00:14:26.000Z"
+  },
+  "correctionAcceptance": {
+    "schemaVersion": "compose-correction-acceptance/v1",
+    "nativeIssuer": "https://nicksworld.dev",
+    "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+    "contractHash": "6457641ca5d576fbd43c7828e1da6d4e81af84549ac0b0c67b8f5ef1914b1479",
+    "sourceImplementationHash": "67e9053be8129c5a6f4f882ff58442bce51ceef376ea76581f10943805d23bfd",
+    "lineageAdoptionReceiptHash": "f05e1959d3d4e1d8b07d9da2e52368ce2d659316676f01bf6f1fa567d0d7ebb1",
+    "custodyAmendmentHash": "4f867e2fcb519446a9957b04efe9c981016da0bedb82b8a01e8cb10056717999",
+    "reviewedBy": "732adce5-ea99-45d4-be9d-07ae47e02133",
+    "receipt": "/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build454/review.json#ca5354214b324e9b4d29e37d92fbf0b06a2502fd1cc86c282ced34a61c184704",
+    "reviewedAt": "2026-09-29T06:10:01.092Z",
+    "expiresAt": "2026-10-28T00:14:26.000Z",
+    "capabilities": [
+      "compose.correction.read",
+      "compose.lineage.read",
+      "compose.correction.associate",
+      "compose.correction.readback",
+      "compose.correction.scope"
+    ]
+  }
+}

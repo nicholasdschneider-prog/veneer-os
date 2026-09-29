@@ -1,0 +1,17 @@
+{
+  "installedAt": "2026-09-29T06:10:01.103Z",
+  "file": "/Users/archerclawdington/.config/veneer-pro/compose-service-registry.json",
+  "fileSha256": "45f48021e8f0614bb9699d0c018c7f657c4516ade4939afc9597a7b7347b370b",
+  "canonicalRegistrationHash": "a791849c6e91410f613bbe75205406bd695e3e968eda9c64ebc23a0f9befe0d5",
+  "uid": 501,
+  "mode": "0600",
+  "nonsymlink": true,
+  "dynamicLoaderReadback": true,
+  "restartRequired": false,
+  "reason": "Existing running verifier and evidence reader load protected registry for each operation; no executable or startup config changed.",
+  "untouched": {
+    "compose-evidence-registry.json": "c8ce2003ffcc8a4efcc149c05eb4d43536f38759d6bcdb1303fcf1b624fdb9c9",
+    "approved-case-registry.json": "60d22ba319fc8922d2f3ef7714949695b058d3f86135bfc46dd7ac3426ea7729",
+    "compose-correspondence-registry.json": "7f2507f44577a8b9d5ec06516bb0be4a9d1222d7123461fc0910db4968c6b55c"
+  }
+}

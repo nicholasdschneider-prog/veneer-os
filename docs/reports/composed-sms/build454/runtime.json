@@ -1,0 +1,18 @@
+{
+  "observedAt": "2026-09-29T06:10:40.125047+00:00",
+  "restartPerformed": false,
+  "initialHealthPathChecks": {
+    "web": 200,
+    "runner": "HTTP Error 405: Method Not Allowed",
+    "app-runner": "HTTP Error 405: Method Not Allowed",
+    "terminal": "HTTP Error 404: Not Found",
+    "browser-manager": 200
+  },
+  "health": {
+    "web": 200,
+    "runner": 200,
+    "app-runner": 200,
+    "terminal": 200,
+    "browser-manager": 200
+  }
+}
