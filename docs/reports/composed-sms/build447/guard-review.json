@@ -1,0 +1,73 @@
+{
+  "reviewedAt": "2026-09-29T02:11:54.137588Z",
+  "reviewedBy": "732adce5-ea99-45d4-be9d-07ae47e02133",
+  "sourceCommit": "52529d8ebf607e66c031f9ee2dcbab79c85400f8",
+  "manifestHash": "5d07c815da5a030e8db76b26afbcf4b1ffff94cd35c1038b758a6cae47cf5129",
+  "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+  "decision": "accepted-bounded-implementation-coverage",
+  "scope": "Exact pinned source guard implementation and exercised concurrency/failure cases, not case readiness or universal coverage",
+  "expiresAt": "2026-10-28T00:14:26Z",
+  "writerHashes": {
+    "server/bot-principal-enrollment.ts": "c2287cfaa2c3d50a216fed17cddd32f06b008b2620f85d157ec0251898641db4",
+    "server/composed-sms-evidence-routes.ts": "f382f6f5e489bb14126a8592691633ac44bf1b06fc6dc624c357568648845b05",
+    "server/composed-sms-closure.ts": "0d0c2aa098d451bc403bcdc977574d349b57db46b4535449c49cccf2824cec50",
+    "server/composed-sms-evidence-contract.ts": "61606c256b2245721039c4c3c5e6309446d633032fab6f1dda22dde2eb4c7821",
+    "server/composed-sms-contract.ts": "a82adecb6a3aa9da6a8cbfb22f586f8fb219a687232c89e6ad27dc4607999018",
+    "server/composed-sms-verifier-client.ts": "bd6f085e4f8336babedde18f650c1529e1c7716e3d01bf25ab8daf5afb16fab8",
+    "server/cs-ticket-leases.ts": "2ba791cd1aa9dff8c5501e863c635c42b4a2082f98304180dfb2bda5d6c67d7b",
+    "server/storage.ts": "ebf9c6a0915786c8aa382deef2079c0f5a5461c01c838e76389a2b956ae05429",
+    "server/twilio-sms-support.ts": "23e1fec39c675600ef0a608b68d794da930c01196d6a000875ae37ef1e0348dd",
+    "server/routes.ts": "432389df2a1178c6948790f58c8589b5a055dc705b4ea0a124d3632a31f56214",
+    "server/cs-solicitation-suppression.ts": "d86ce8fd666921294a9f93f0cd3801e1bf5abd6b45b9f5213d4adb495242961b",
+    "server/twilio.ts": "6e3777ce651d707b2ff9e155311af641ea00cdd14212d52fd9dc7b716e748ee6",
+    "server/composed-sms-wire-fence.ts": "12f3c7cd4339d931c6f13ec2b9734fd9fad140c7f404dc52ff0125033439138a",
+    "server/composed-sms-dispatch.ts": "dda181faa69c4ad4c24ae07a866f0a86aedd11aa2f7e714dacf3dc11d58d0200",
+    "server/cs-escalations.ts": "60ccb2bcf48a797bc3119e401be0090f4a6f258b7786783861fc65fc7d4aa7de",
+    "server/composed-sms-installation.ts": "b54cd3f13e6c52d3f36f80ad3c720a3ac30f238b70533d2800c7d15d28e0258c",
+    "server/composed-sms-guards.ts": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+  },
+  "retainedReceiptHashes": {
+    "build446-source-integration.md": "a7c61783da6b4fc1fbed0223669aab7801c17cd9e2a3a9132dc0555dc7c772f7",
+    "build446-focused-tests.txt": "ae176b9eabf43abec3b0ca71229d36caaa6c9a47320667a0f071b526fbea38fc",
+    "build446-final-tests.txt": "ce398771c22e3b0f5cfe36f9bc550e3dc131031d2573bd346c47f7bc0fc304ed",
+    "build446-build.txt": "66adecd303772782f99f9efd6e16a51c2b52185494cdbce26087b7e2370a4f9e",
+    "build446-final-build.txt": "8ddd21d6990f1e3f4ce7f34e2dadec9525f5588c3eb96e7620e85b27de9c3641",
+    "build446-typecheck.txt": "2c4f951965f03595efa2e7ec5bfb5d6af5bc9eb67a19c02cf3808581f7f9d88c",
+    "build446-validation.json": "4c10a8bd5ba5c5861bef9f23698684f96ad91a1cfe1989a647127dc40f5d7b9e",
+    "build446-runtime.json": "6f5b408b6d9a03168ce8010bd7e7d12052c05a09a89a31369784a17f171a2858",
+    "build446-installation-readback.json": "b5f52480135c93357a763360bc08d6363656171975d6e8418ce763eb6fc4234d",
+    "build446-negative-runtime.json": "2bf8eb9e421c289fecd25ddf7d55bede91197c25ecaf9bb1ae60d668fb1e25e4",
+    "build446-migration.json": "ce0b35305f41fa7fc7d90b91c4c859dae447572ce28e170414e192af30cd1736",
+    "build446-final-installed-custody.json": "e3caeb4bb2939a43d2223e6c38152034a77cce632ac8f6337bb82b928e556a96",
+    "build446-installed-evidence-acl.json": "3a8c49ca9ad3683b04823e71e6be9c35465114d550d41c8ba920a32f7a03611e",
+    "composed-sms-evidence-scope-custody-20260929-v2.md": "3d154dac15fbb4eb00faa64e1c9f5d723295c8e0d14353b05860c89e9b25455a",
+    "composed-sms-action-binding-audit-permission-20260929-v1.md": "981de2e02839c9590df982d30d86477a2a1e0986537b6439054541eb3b2f7e57"
+  },
+  "validationRevisionMeaning": "SHA256 server/composed-sms-guards.ts, not test file",
+  "finalTestFileHash": "f2e06d3330eaa14d5a0515dd7137e79ea3d384bbfde3195d3b27819ac88e09f2",
+  "executedSourceTests": {
+    "focused": 53,
+    "finalComposed": 35,
+    "failed": 0,
+    "sourceFullTypecheckErrors": 285,
+    "changedModuleTypecheckErrors": 0,
+    "sourceBuild": "passed"
+  },
+  "acceptedCoverage": [
+    "Nine PG SHARE ROW EXCLUSIVE table locks held in fixed order until source commit; executed STOP UPDATE, message INSERT/DELETE, customer material UPDATE, case DELETE, enrollment revoke, canonical lease INSERT and escalation INSERT contention",
+    "Fresh active enrollment/fingerprint; own SMS lease and canonical-owner conflict; current correspondence material and complete source account/runtime/identity",
+    "Notes, assignment, additional persisted relations, unresolved escalations, suppression and missing timezone fail closed",
+    "Common immutable wire fence exercised through actual legacy sendSMS entry before synthetic provider; durable REDEEMING/SENDING, v3 first entitlement, lost commit/response and UNKNOWN remain nonretryable",
+    "Current protected sender issuer evidence and actual configured/effective dispatcher client checked independently; short observations never renew original authority",
+    "Explicit authorized nonexecuting precontext action-binding audit and scope snapshot issuance; stable source evidence IDs, ACL/revocation, immutable dispatch version"
+  ],
+  "limits": [
+    "Locks end at source SENDING commit; no distributed atomicity or postcommit revocation guarantee",
+    "Source senderReceipt remains null and timezoneEvidence empty; no current positive sender proof accepted",
+    "Closure incomplete for correspondence/subjects/notes/QA/tags/unsupported references/non-E164; no evidence Brian or global native inventory can clear",
+    "Source full typecheck not green; no clean-baseline or universal writer proof claimed",
+    "Acceptance revokes on owner/custodian withdrawal, tuple/implementation/manifest drift, credential expiry or earlier effective bounds"
+  ],
+  "sourceGuardAcceptanceInstalled": false,
+  "customerProviderCredentialProbes": false
+}

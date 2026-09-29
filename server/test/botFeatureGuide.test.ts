@@ -6,7 +6,7 @@ import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 describe('living bot guide release contract', () => {
   it('delivers composed SMS source and execution limits to full, restricted and resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='composed-sms')!;
-    expect(f.agent).toContain('inspect_composed_sms_scope');expect(f.agent).toContain('association/readback v3');expect(f.steps.join(' ')).toContain('no extra customer approval');expect(f.agent).toContain('contextRevision');expect(f.agent).toContain('unknown scopes');expect(f.announcement).toContain('provisioned');
+    expect(f.agent).toContain('inspect_composed_sms_scope');expect(f.agent).toContain('native service/evidence registries are configured');expect(f.agent).toContain('Synthetic complete graphs do not establish Brian or global inventory readiness');expect(f.agent).toContain('association/readback v3');expect(f.steps.join(' ')).toContain('no extra customer approval');expect(f.agent).toContain('contextRevision');expect(f.agent).toContain('unknown scopes');expect(f.announcement).toContain('provisioned');
     expect(f.isNew).toBe(true);expect(f.limits).toContain('SMS_SENDER_OWNERSHIP_UNVERIFIED');expect(f.agent).toContain('inspect_composed_sms');expect(f.agent).toContain('do not ask for duplicate reader setup');expect(f.limits).toContain('Grant, Owen, Avery, Nora, Miles and Tess');expect(f.agent).toContain('no generic manual-SMS fallback');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);

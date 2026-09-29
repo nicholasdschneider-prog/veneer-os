@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "compose-evidence-custody/v1",
+  "registrations": [
+    {
+      "registrationId": "e0f86977-b32e-4eb4-a995-c27746fafa81",
+      "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+      "active": true,
+      "ownerConversationId": "cb4ade24-c960-4235-956a-220260e5adac",
+      "executorConversationId": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+      "payloadAccount": "OrderOps SMS +15746756919",
+      "expiresAt": "2026-10-28T00:14:26Z",
+      "issuedBy": "a4bc7b0c-e56a-4b90-b4bc-cb71cbc88e68",
+      "receipt": "composed-sms-evidence-scope-custody-20260929-v2",
+      "receiptHash": "3d154dac15fbb4eb00faa64e1c9f5d723295c8e0d14353b05860c89e9b25455a",
+      "callers": [
+        {
+          "principalId": "veneer:3104b3b2-6d9f-48f2-943c-7b7f2f9013c1",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_GRANT_BOT_CREDENTIAL"
+          },
+          "credentialExpiresAt": "2026-10-28T00:14:26Z",
+          "operations": [
+            "sender.read",
+            "scope.owner.read"
+          ],
+          "conversationId": "cb4ade24-c960-4235-956a-220260e5adac",
+          "userId": 1
+        },
+        {
+          "principalId": "veneer:f8c8f45f-dcc8-4c58-b6b6-f94e3ee7673b",
+          "credential": {
+            "project": "ervp",
+            "config": "prd",
+            "name": "ORDEROPS_HENRY_W3_BOT_CREDENTIAL"
+          },
+          "credentialExpiresAt": "2026-10-28T00:14:26Z",
+          "operations": [
+            "sender.read"
+          ],
+          "conversationId": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+          "userId": 1
+        }
+      ],
+      "serviceScopeReader": {
+        "principalId": "a56c2846-d4e1-4b5e-8287-7953c08998f0",
+        "credential": {
+          "project": "ervp",
+          "config": "prd",
+          "name": "OO_COMPOSE_SMS_SCOPE_EVIDENCE_CREDENTIAL"
+        },
+        "credentialExpiresAt": "2026-10-28T00:14:26Z",
+        "operations": [
+          "scope.action.read"
+        ]
+      },
+      "scopeAuditIssuance": "immutable-source-evidence-only"
+    }
+  ]
+}

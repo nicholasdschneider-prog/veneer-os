@@ -212,3 +212,18 @@ sender evidence, executed writer coverage and final native service registration 
 pending; this release does not enable customer dispatch. The shared catalog supplies
 employee and fresh/resumed agent instructions. See the [accepted native consumer
 contract](./reports/composed-sms/build444/contract.md).
+
+## Scoped composed-SMS registry setup — September 29, 2026
+
+BUILD447 configures the dedicated service/evidence registries using actual installed
+source ACLs and final scoped custody. It accepts only the exact reviewed source
+guard implementation and executed lock/failure coverage, not case readiness or
+post-commit revocation. Fresh sender/process proof, recipient-timezone evidence
+and source installation of the native acceptance remain independent prerequisites.
+
+The source closure deliberately stays incomplete for correspondence, subjects,
+notes, QA, tags, unsupported references and non-E164 phones. Original-owner review
+cannot turn that incomplete model into unrelatedness. Report the concrete evidence
+limit rather than requesting duplicate consent, merging cases or changing records.
+The shared catalog exposes these setup limits to employees and resumed agents.
+See the [installation report](./reports/composed-sms/build447/README.md).

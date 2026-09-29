@@ -1,0 +1,537 @@
+{
+  "schemaVersion": "compose-service-registry/v1",
+  "registrations": [
+    {
+      "registrationId": "e0f86977-b32e-4eb4-a995-c27746fafa81",
+      "revision": 1,
+      "active": true,
+      "businessId": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "businessOwnerUserId": 1,
+      "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+      "runtime": {
+        "projectId": "71cc77d6-9c0d-4770-9d6d-62b8c4bb516c",
+        "environmentId": "530025e2-352d-443c-a8ed-e589fc20621d",
+        "serviceId": "ede1932e-b3f9-4e7b-b1be-45804dfbe842"
+      },
+      "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+      "sourceAccountId": "help@elkhartrvparts.com",
+      "servicePrincipalId": "a56c2846-d4e1-4b5e-8287-7953c08998f0",
+      "serviceCredentialHash": "6de378e3868c30805c6f9bfab57d73f864e553f5d21a2a6e874ca6d31ff9d453",
+      "nativeAudience": "9def2406f3b3797e5c2e2d4cbfcd74911adf4f63e5e011d99944f8b88032095a",
+      "cfClientId": "36e5ccbbc397574ced3934d9c1b92353.access",
+      "capabilities": [
+        "compose.authority.read",
+        "compose.permit.redeem",
+        "compose.association.read"
+      ],
+      "executorBindings": [
+        {
+          "conversationId": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+          "userId": 1,
+          "principalId": "veneer:f8c8f45f-dcc8-4c58-b6b6-f94e3ee7673b"
+        }
+      ],
+      "senderReceiptIssuerId": "a4bc7b0c-e56a-4b90-b4bc-cb71cbc88e68",
+      "guardContractHash": "5d07c815da5a030e8db76b26afbcf4b1ffff94cd35c1038b758a6cae47cf5129",
+      "expiresAt": "2026-10-28T00:14:26Z",
+      "custodyReceipt": "composed-sms-custody-permission-20260929-v1#7084b559db1385a5d5d4f0527f8a791a3a1b9bc7429a67a1c19968d260828f99",
+      "credentialExpiry": {
+        "schemaVersion": "compose-credential-expiry/v1",
+        "serviceTokenId": "18a7de02-0b3d-45be-856c-8cfc34521baf",
+        "serviceTokenExpiresAt": "2026-10-28T00:14:26Z",
+        "custodyExpiresAt": "2026-10-28T00:14:26Z",
+        "bearerExpiresAt": "2026-10-28T00:14:26Z",
+        "readbackExpiresAt": "2026-10-28T00:14:26Z",
+        "verifiedAt": "2026-09-29T01:37:38Z",
+        "verifiedBy": "a4bc7b0c-e56a-4b90-b4bc-cb71cbc88e68",
+        "receipt": "composed-sms-evidence-scope-custody-20260929-v2",
+        "receiptHash": "3d154dac15fbb4eb00faa64e1c9f5d723295c8e0d14353b05860c89e9b25455a"
+      },
+      "readbackCredential": {
+        "project": "ervp",
+        "config": "prd",
+        "name": "OO_COMPOSE_SMS_NATIVE_READBACK_CREDENTIAL"
+      },
+      "readbackCustodyReceipt": "composed-sms-custody-permission-20260929-v1#7084b559db1385a5d5d4f0527f8a791a3a1b9bc7429a67a1c19968d260828f99",
+      "guardManifest": {
+        "schemaVersion": "compose-sms-guards/v1",
+        "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+        "runtime": {
+          "projectId": "71cc77d6-9c0d-4770-9d6d-62b8c4bb516c",
+          "environmentId": "530025e2-352d-443c-a8ed-e589fc20621d",
+          "serviceId": "ede1932e-b3f9-4e7b-b1be-45804dfbe842"
+        },
+        "implementationRevision": "52529d8ebf607e66c031f9ee2dcbab79c85400f8",
+        "migrationRevisions": [
+          "0105:31f492486b209075c67a7f2c883054c8a952d6a1c54eb7532389c4be2b74cdff",
+          "0106:5451e3ee28e8faa3d2e3f955e797899df044d058ea5393ac18ae7b776d61ade6"
+        ],
+        "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+        "nativeContextContract": "compose-sms-current-context/v2",
+        "normalizationPolicy": "sms-identity-utf8/v1",
+        "recipientTimePolicy": {
+          "id": "ervp-cs-recipient-local-hours",
+          "revision": "4438b266872e3d7b7083aa18da35ed76a3a4ee2cd6c06db65e676916929f464c",
+          "evidenceReference": "/Users/archerclawdington/Projects/ERVP/.agents/skills/henry-cs-case-owner/SKILL.md:218",
+          "startInclusive": "07:00",
+          "endExclusive": "22:00",
+          "timezoneEvidenceRequired": true,
+          "unknownTimezone": "deny"
+        },
+        "coverage": [
+          {
+            "guard": "enrollment",
+            "records": [
+              {
+                "table": "orderops_bot_principals",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              }
+            ],
+            "writers": [
+              {
+                "id": "server/bot-principal-enrollment.ts",
+                "revision": "c2287cfaa2c3d50a216fed17cddd32f06b008b2620f85d157ec0251898641db4"
+              },
+              {
+                "id": "all PostgreSQL INSERT UPDATE DELETE TRUNCATE writers (table lock conflict enforcement)",
+                "revision": "postgres-share-row-exclusive-v1"
+              },
+              {
+                "id": "server/composed-sms-evidence-routes.ts",
+                "revision": "f382f6f5e489bb14126a8592691633ac44bf1b06fc6dc624c357568648845b05"
+              },
+              {
+                "id": "server/composed-sms-closure.ts",
+                "revision": "0d0c2aa098d451bc403bcdc977574d349b57db46b4535449c49cccf2824cec50"
+              },
+              {
+                "id": "server/composed-sms-evidence-contract.ts",
+                "revision": "61606c256b2245721039c4c3c5e6309446d633032fab6f1dda22dde2eb4c7821"
+              },
+              {
+                "id": "server/composed-sms-contract.ts",
+                "revision": "a82adecb6a3aa9da6a8cbfb22f586f8fb219a687232c89e6ad27dc4607999018"
+              },
+              {
+                "id": "server/composed-sms-verifier-client.ts",
+                "revision": "bd6f085e4f8336babedde18f650c1529e1c7716e3d01bf25ab8daf5afb16fab8"
+              }
+            ],
+            "serialization": {
+              "mechanism": "PG SHARE ROW EXCLUSIVE tables; wire advisory xact 89522/hashtext; immutable ledger before provider",
+              "lockOrder": [
+                "prepare action advisory OR dispatch intent row",
+                "orderops_bot_principals",
+                "cs_ticket_leases",
+                "cs_conversations",
+                "cs_customers",
+                "cs_messages",
+                "cs_escalations",
+                "cs_sms_support_state",
+                "cs_solicitation_suppression_keys",
+                "cs_sms_outbound_intents",
+                "wire advisory 89522/hashtext"
+              ]
+            },
+            "validationRevision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+          },
+          {
+            "guard": "lease",
+            "records": [
+              {
+                "table": "cs_ticket_leases",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_conversations",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              }
+            ],
+            "writers": [
+              {
+                "id": "server/cs-ticket-leases.ts",
+                "revision": "2ba791cd1aa9dff8c5501e863c635c42b4a2082f98304180dfb2bda5d6c67d7b"
+              },
+              {
+                "id": "server/storage.ts",
+                "revision": "ebf9c6a0915786c8aa382deef2079c0f5a5461c01c838e76389a2b956ae05429"
+              },
+              {
+                "id": "all PostgreSQL INSERT UPDATE DELETE TRUNCATE writers (table lock conflict enforcement)",
+                "revision": "postgres-share-row-exclusive-v1"
+              }
+            ],
+            "serialization": {
+              "mechanism": "PG SHARE ROW EXCLUSIVE tables; wire advisory xact 89522/hashtext; immutable ledger before provider",
+              "lockOrder": [
+                "prepare action advisory OR dispatch intent row",
+                "orderops_bot_principals",
+                "cs_ticket_leases",
+                "cs_conversations",
+                "cs_customers",
+                "cs_messages",
+                "cs_escalations",
+                "cs_sms_support_state",
+                "cs_solicitation_suppression_keys",
+                "cs_sms_outbound_intents",
+                "wire advisory 89522/hashtext"
+              ]
+            },
+            "validationRevision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+          },
+          {
+            "guard": "material",
+            "records": [
+              {
+                "table": "cs_conversations",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_customers",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_messages",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              }
+            ],
+            "writers": [
+              {
+                "id": "server/storage.ts",
+                "revision": "ebf9c6a0915786c8aa382deef2079c0f5a5461c01c838e76389a2b956ae05429"
+              },
+              {
+                "id": "server/twilio-sms-support.ts",
+                "revision": "23e1fec39c675600ef0a608b68d794da930c01196d6a000875ae37ef1e0348dd"
+              },
+              {
+                "id": "server/routes.ts",
+                "revision": "432389df2a1178c6948790f58c8589b5a055dc705b4ea0a124d3632a31f56214"
+              },
+              {
+                "id": "all PostgreSQL INSERT UPDATE DELETE TRUNCATE writers (table lock conflict enforcement)",
+                "revision": "postgres-share-row-exclusive-v1"
+              },
+              {
+                "id": "server/composed-sms-evidence-routes.ts",
+                "revision": "f382f6f5e489bb14126a8592691633ac44bf1b06fc6dc624c357568648845b05"
+              },
+              {
+                "id": "server/composed-sms-closure.ts",
+                "revision": "0d0c2aa098d451bc403bcdc977574d349b57db46b4535449c49cccf2824cec50"
+              },
+              {
+                "id": "server/composed-sms-evidence-contract.ts",
+                "revision": "61606c256b2245721039c4c3c5e6309446d633032fab6f1dda22dde2eb4c7821"
+              },
+              {
+                "id": "server/composed-sms-contract.ts",
+                "revision": "a82adecb6a3aa9da6a8cbfb22f586f8fb219a687232c89e6ad27dc4607999018"
+              },
+              {
+                "id": "server/composed-sms-verifier-client.ts",
+                "revision": "bd6f085e4f8336babedde18f650c1529e1c7716e3d01bf25ab8daf5afb16fab8"
+              }
+            ],
+            "serialization": {
+              "mechanism": "PG SHARE ROW EXCLUSIVE tables; wire advisory xact 89522/hashtext; immutable ledger before provider",
+              "lockOrder": [
+                "prepare action advisory OR dispatch intent row",
+                "orderops_bot_principals",
+                "cs_ticket_leases",
+                "cs_conversations",
+                "cs_customers",
+                "cs_messages",
+                "cs_escalations",
+                "cs_sms_support_state",
+                "cs_solicitation_suppression_keys",
+                "cs_sms_outbound_intents",
+                "wire advisory 89522/hashtext"
+              ]
+            },
+            "validationRevision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+          },
+          {
+            "guard": "suppression",
+            "records": [
+              {
+                "table": "cs_sms_support_state",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_solicitation_suppression_keys",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              }
+            ],
+            "writers": [
+              {
+                "id": "server/twilio-sms-support.ts",
+                "revision": "23e1fec39c675600ef0a608b68d794da930c01196d6a000875ae37ef1e0348dd"
+              },
+              {
+                "id": "server/cs-solicitation-suppression.ts",
+                "revision": "d86ce8fd666921294a9f93f0cd3801e1bf5abd6b45b9f5213d4adb495242961b"
+              },
+              {
+                "id": "all PostgreSQL INSERT UPDATE DELETE TRUNCATE writers (table lock conflict enforcement)",
+                "revision": "postgres-share-row-exclusive-v1"
+              }
+            ],
+            "serialization": {
+              "mechanism": "PG SHARE ROW EXCLUSIVE tables; wire advisory xact 89522/hashtext; immutable ledger before provider",
+              "lockOrder": [
+                "prepare action advisory OR dispatch intent row",
+                "orderops_bot_principals",
+                "cs_ticket_leases",
+                "cs_conversations",
+                "cs_customers",
+                "cs_messages",
+                "cs_escalations",
+                "cs_sms_support_state",
+                "cs_solicitation_suppression_keys",
+                "cs_sms_outbound_intents",
+                "wire advisory 89522/hashtext"
+              ]
+            },
+            "validationRevision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+          },
+          {
+            "guard": "duplicate",
+            "records": [
+              {
+                "table": "cs_sms_outbound_intents",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_composed_sms_intents",
+                "revisionFields": [
+                  "immutable context/hash/protected evidence"
+                ]
+              },
+              {
+                "table": "cs_composed_sms_wire_fences",
+                "revisionFields": [
+                  "immutable context/hash/protected evidence"
+                ]
+              },
+              {
+                "table": "cs_composed_sms_legacy_attempts",
+                "revisionFields": [
+                  "immutable context/hash/protected evidence"
+                ]
+              },
+              {
+                "table": "cs_messages",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              }
+            ],
+            "writers": [
+              {
+                "id": "server/twilio.ts",
+                "revision": "6e3777ce651d707b2ff9e155311af641ea00cdd14212d52fd9dc7b716e748ee6"
+              },
+              {
+                "id": "server/twilio-sms-support.ts",
+                "revision": "23e1fec39c675600ef0a608b68d794da930c01196d6a000875ae37ef1e0348dd"
+              },
+              {
+                "id": "server/composed-sms-wire-fence.ts",
+                "revision": "12f3c7cd4339d931c6f13ec2b9734fd9fad140c7f404dc52ff0125033439138a"
+              },
+              {
+                "id": "server/composed-sms-dispatch.ts",
+                "revision": "dda181faa69c4ad4c24ae07a866f0a86aedd11aa2f7e714dacf3dc11d58d0200"
+              },
+              {
+                "id": "all PostgreSQL INSERT UPDATE DELETE TRUNCATE writers (table lock conflict enforcement)",
+                "revision": "postgres-share-row-exclusive-v1"
+              }
+            ],
+            "serialization": {
+              "mechanism": "PG SHARE ROW EXCLUSIVE tables; wire advisory xact 89522/hashtext; immutable ledger before provider",
+              "lockOrder": [
+                "prepare action advisory OR dispatch intent row",
+                "orderops_bot_principals",
+                "cs_ticket_leases",
+                "cs_conversations",
+                "cs_customers",
+                "cs_messages",
+                "cs_escalations",
+                "cs_sms_support_state",
+                "cs_solicitation_suppression_keys",
+                "cs_sms_outbound_intents",
+                "wire advisory 89522/hashtext"
+              ]
+            },
+            "validationRevision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+          },
+          {
+            "guard": "holds",
+            "records": [
+              {
+                "table": "cs_escalations",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_messages",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_customers",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_conversations",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              }
+            ],
+            "writers": [
+              {
+                "id": "server/cs-escalations.ts",
+                "revision": "60ccb2bcf48a797bc3119e401be0090f4a6f258b7786783861fc65fc7d4aa7de"
+              },
+              {
+                "id": "server/storage.ts",
+                "revision": "ebf9c6a0915786c8aa382deef2079c0f5a5461c01c838e76389a2b956ae05429"
+              },
+              {
+                "id": "server/routes.ts",
+                "revision": "432389df2a1178c6948790f58c8589b5a055dc705b4ea0a124d3632a31f56214"
+              },
+              {
+                "id": "all PostgreSQL INSERT UPDATE DELETE TRUNCATE writers (table lock conflict enforcement)",
+                "revision": "postgres-share-row-exclusive-v1"
+              },
+              {
+                "id": "server/composed-sms-evidence-routes.ts",
+                "revision": "f382f6f5e489bb14126a8592691633ac44bf1b06fc6dc624c357568648845b05"
+              },
+              {
+                "id": "server/composed-sms-closure.ts",
+                "revision": "0d0c2aa098d451bc403bcdc977574d349b57db46b4535449c49cccf2824cec50"
+              },
+              {
+                "id": "server/composed-sms-evidence-contract.ts",
+                "revision": "61606c256b2245721039c4c3c5e6309446d633032fab6f1dda22dde2eb4c7821"
+              },
+              {
+                "id": "server/composed-sms-contract.ts",
+                "revision": "a82adecb6a3aa9da6a8cbfb22f586f8fb219a687232c89e6ad27dc4607999018"
+              },
+              {
+                "id": "server/composed-sms-verifier-client.ts",
+                "revision": "bd6f085e4f8336babedde18f650c1529e1c7716e3d01bf25ab8daf5afb16fab8"
+              }
+            ],
+            "serialization": {
+              "mechanism": "PG SHARE ROW EXCLUSIVE tables; wire advisory xact 89522/hashtext; immutable ledger before provider",
+              "lockOrder": [
+                "prepare action advisory OR dispatch intent row",
+                "orderops_bot_principals",
+                "cs_ticket_leases",
+                "cs_conversations",
+                "cs_customers",
+                "cs_messages",
+                "cs_escalations",
+                "cs_sms_support_state",
+                "cs_solicitation_suppression_keys",
+                "cs_sms_outbound_intents",
+                "wire advisory 89522/hashtext"
+              ]
+            },
+            "validationRevision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+          },
+          {
+            "guard": "local_time",
+            "records": [
+              {
+                "table": "protected installation timezoneEvidence",
+                "revisionFields": [
+                  "immutable context/hash/protected evidence"
+                ]
+              },
+              {
+                "table": "cs_customers",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              },
+              {
+                "table": "cs_conversations",
+                "revisionFields": [
+                  "complete current row under table lock"
+                ]
+              }
+            ],
+            "writers": [
+              {
+                "id": "server/composed-sms-installation.ts",
+                "revision": "b54cd3f13e6c52d3f36f80ad3c720a3ac30f238b70533d2800c7d15d28e0258c"
+              },
+              {
+                "id": "server/composed-sms-guards.ts",
+                "revision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+              },
+              {
+                "id": "all PostgreSQL INSERT UPDATE DELETE TRUNCATE writers (table lock conflict enforcement)",
+                "revision": "postgres-share-row-exclusive-v1"
+              }
+            ],
+            "serialization": {
+              "mechanism": "PG SHARE ROW EXCLUSIVE tables; wire advisory xact 89522/hashtext; immutable ledger before provider",
+              "lockOrder": [
+                "prepare action advisory OR dispatch intent row",
+                "orderops_bot_principals",
+                "cs_ticket_leases",
+                "cs_conversations",
+                "cs_customers",
+                "cs_messages",
+                "cs_escalations",
+                "cs_sms_support_state",
+                "cs_solicitation_suppression_keys",
+                "cs_sms_outbound_intents",
+                "wire advisory 89522/hashtext"
+              ]
+            },
+            "validationRevision": "541065c1e515864b267a9a69187946166500afa5d0435c8e81007f8244f6a172"
+          }
+        ]
+      },
+      "guardAcceptance": {
+        "manifestHash": "5d07c815da5a030e8db76b26afbcf4b1ffff94cd35c1038b758a6cae47cf5129",
+        "reviewedBy": "732adce5-ea99-45d4-be9d-07ae47e02133",
+        "receipt": "/Users/archerclawdington/veneer-os/docs/reports/composed-sms/build447/guard-review.json#2d356d7ffdbb070bc9467f358ddf7d58498730e2c5610991a9b0c4ebc9444117",
+        "reviewedAt": "2026-09-29T02:11:54.137588Z",
+        "expiresAt": "2026-10-28T00:14:26Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "verifiedAt": "2026-09-29T02:13:30.804Z",
+  "sourceRegistrationHash": "22bb6bf3a0434e22ce34af24ac4aac01fe972d0e447a1a5c61b3622024dd010a",
+  "guardManifestHash": "5d07c815da5a030e8db76b26afbcf4b1ffff94cd35c1038b758a6cae47cf5129",
+  "nativeRegistrationHash": "68b77f8f26ed7da1ba3c8611f4cd5f282c0a08294bb0fe30855f4b8d59566921",
+  "identities": [
+    {
+      "id": "cb4ade24-c960-4235-956a-220260e5adac",
+      "user_id": 1,
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "archived": 0,
+      "status": "active",
+      "active": 1
+    },
+    {
+      "id": "1e96b7bb-1071-4f1d-b710-310f9fbbc9e1",
+      "user_id": 1,
+      "business_team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "archived": 0,
+      "status": "active",
+      "active": 1
+    }
+  ],
+  "payloadAccount": "OrderOps SMS +15746756919",
+  "payloadHash": "894f6968415a70c02d8c3b2578739512139f1a9b76da0cac62d21742d402ddca",
+  "retainedArtifact": "/Users/archerclawdington/Projects/ERVP/out/grant/brian-source-evidence-20260928/native-inspection.json",
+  "retainedArtifactSha256": "ac1ceb19f4de9ca89d985ed2b831ceb256a3e19516e23308cecc4728312b7631",
+  "serviceSchema": true,
+  "evidenceSchema": true,
+  "credentialReads": false,
+  "liveCaseOrProviderReads": false
+}
