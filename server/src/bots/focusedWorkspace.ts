@@ -40,7 +40,7 @@ export function focusedAutomations(db: Database.Database, user: UserRow) {
     .map(row => ({ id: row.id, name: row.name, botId: row.conversation_id, botName: row.bot_name,
       enabled: row.enabled === 1, nextRunAt: row.next_run_at, timezone: row.timezone,
       schedule: row.kind === 'schedule' && row.schedule_json ? describeSchedule(parseScheduleSpec(row.schedule_json), row.timezone)
-        : row.kind === 'ticket.created' ? 'When a ticket arrives' : 'When a customer replies',
+        : row.kind === 'ticket.created' ? 'When a ticket arrives' : row.kind === 'ticket.merged' ? 'When tickets are merged' : row.kind === 'ticket.duplicate_candidate' ? 'When a duplicate ticket is suspected' : 'When a customer replies',
     }));
 }
 

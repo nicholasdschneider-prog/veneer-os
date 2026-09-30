@@ -520,6 +520,16 @@ export const BOT_FEATURES: BotFeature[] = [
     agent: 'Keep ongoing work in the existing bot conversation, preserve task context, use available authorized tools, and report verified outcomes and remaining blockers. On mobile, guide users to the bot name for secondary chat actions and Computer for the connected browser; do not imply access they lack.',
   },
   {
+    id: 'merge-questions', title: 'Approve merging two tickets', category: 'Teamwork', updated: '2026-09-30',
+    announcement: 'When OrderOps suspects two tickets are the same customer and issue, the case bot asks one question per pair. Your answer is the proof OrderOps redeems before it merges; nothing merges on its own.',
+    audience: 'Business owners and assigned decision makers',
+    summary: 'Merging two tickets is human-approved per pair, the source ticket is always retained, and the approval can be used exactly once.',
+    steps: ['OrderOps registers the pair and its evidence, then the case bot raises one question naming both tickets and the direction it recommends.', 'Tap Merge to approve that exact pair and direction, or Keep separate. A new customer message or new duplicate evidence marks the question stale until the bot refreshes it.', 'OrderOps reserves and redeems your approval before it touches either ticket, and reports the merge back. The merged-away ticket stays on record, and any open question on either ticket is marked stale for its bot to revisit.'],
+    example: 'Merge ticket 100121932 (email) into 100121940 (SMS)? Same customer, same order, same problem.',
+    limits: 'One approval covers one pair, one direction, one merge. Nothing merges automatically, historical duplicates are not merged in bulk, and a revoked or expired reservation never undoes a merge that already happened.',
+    agent: 'A merge question is raised only after OrderOps has registered the pair: set proposal.merge_intent {pairReceiptId, intentRevision, direction} and make the approve choice\'s answer equal the intentHash Veneer reports for that triple; offer Merge <from> into <into> (approve) and Keep separate (reject). One unresolved question per unordered pair; new evidence or a direction change is update_decision, never a second question. Put the sibling ticket in as_of.related_ticket_ids. Never merge, delete or repoint anything yourself: the human answer is a proof OrderOps redeems once; ticket.merged and ticket.duplicate_candidate events wake you with reference data only. A stale merge question must be revised or withdrawn, not answered.',
+  },
+  {
     id: 'question-cards', title: 'Answer with clickable choice cards', category: 'Daily work', updated: '2026-09-25',
     announcement: 'Bots can present Yes/No or any number of relevant choices as clickable cards. Tap a single choice to answer immediately.',
     audience: 'People with access to the bot conversation',

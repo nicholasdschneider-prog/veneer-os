@@ -1,4 +1,5 @@
 import { createBotService } from '../bots/service.js';
+import { mergeAuthorization, type MergeIO } from '../bots/mergeAuthorization.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -27,7 +28,7 @@ export const RoutineInput = z
   .object({
     name: z.string().trim().min(1).max(100),
     instructions: z.string().trim().min(1).max(12000),
-    kind: z.enum(['schedule', 'ticket.created', 'customer.replied']),
+    kind: z.enum(['schedule', 'ticket.created', 'customer.replied', 'ticket.merged', 'ticket.duplicate_candidate']),
     source: z.string().max(100).default(''),
     schedule: z.unknown().optional(),
     timezone: timezone.default('UTC'),
@@ -56,6 +57,9 @@ export const EventInput = z
     assigned_bot: z.string().uuid().optional(),
   })
   .strict();
+/** Merge-contract events carry their own strict envelopes (mergeAuthorizationContract); everything else is EventInput. */
+const EventKind = z.object({ type: z.enum(['ticket.created', 'customer.replied', 'connection.test', 'ticket.merged', 'ticket.duplicate_candidate']) });
+export interface EventAcceptance { queued: number; accepted?: unknown }
 
 export function routineChat(
   db: Database.Database,
@@ -181,13 +185,34 @@ export function acceptEvent(
   db: Database.Database,
   sourceId: string,
   input: unknown,
+  mergeIO?: MergeIO,
 ): number {
-  const p = EventInput.parse(input);
+  return acceptEventDetailed(db, sourceId, input, mergeIO).queued;
+}
+export function acceptEventDetailed(
+  db: Database.Database,
+  sourceId: string,
+  input: unknown,
+  mergeIO?: MergeIO,
+): EventAcceptance {
   const source = db
     .prepare('SELECT team_id FROM bot_event_sources WHERE id=? AND enabled=1')
     .get(sourceId) as { team_id: string } | undefined;
   if (!source) throw new BotError(404, 'Event source unavailable');
-  if (p.type === 'connection.test') return 0;
+  const kind = EventKind.parse(typeof input === 'object' && input ? { type: (input as { type?: unknown }).type } : {}).type;
+  if (kind === 'ticket.merged' || kind === 'ticket.duplicate_candidate') {
+    const bots = createBotService(db);
+    const merges = mergeAuthorization(db, mergeIO ?? { registration: () => { throw new BotError(503, 'MERGE_AUTHORIZATION_UNAVAILABLE'); }, attemptReadback: async () => { throw new BotError(503, 'MERGE_AUTHORIZATION_UNAVAILABLE'); }, now: Date.now });
+    const wake = (event: { id: string; assigned_bot?: string }) => {
+      const routines = db.prepare(`SELECT r.* FROM bot_routines r JOIN conversations c ON c.id=r.conversation_id WHERE r.enabled=1 AND r.source=? AND r.kind=? AND c.business_team_id=?`).all(sourceId, kind, source.team_id) as Routine[];
+      return routines.filter((r) => !event.assigned_bot || r.conversation_id === event.assigned_bot).reduce((n, r) => n + Number(deliverRoutine(db, r, `${sourceId}:${event.id}`, JSON.stringify(event))), 0);
+    };
+    const stale = merges && ((ids: string[], mark: Parameters<typeof bots.markStaleForCase>[1]) => bots.markStaleForCase(ids, mark));
+    const response = kind === 'ticket.merged' ? merges.acceptMerged(sourceId, source.team_id, input, stale, wake) : merges.acceptCandidate(sourceId, source.team_id, input, stale, wake);
+    return { queued: response.queued, accepted: response.accepted };
+  }
+  const p = EventInput.parse(input);
+  if (p.type === 'connection.test') return { queued: 0 };
   // The case moved on: open questions on this ticket are stale until their bot re-reads it.
   createBotService(db).markStaleForCase([p.ticket_id], {
     reason: p.type === 'customer.replied' ? 'customer_replied' : 'ticket_created',
@@ -205,14 +230,14 @@ export function acceptEvent(
       `SELECT r.* FROM bot_routines r JOIN conversations c ON c.id=r.conversation_id WHERE r.enabled=1 AND r.source=? AND r.kind=? AND c.business_team_id=?`,
     )
     .all(sourceId, p.type, source.team_id) as Routine[];
-  return routines
+  return { queued: routines
     .filter((r) => !p.assigned_bot || r.conversation_id === p.assigned_bot)
     .reduce(
       (n, r) =>
         n +
         Number(deliverRoutine(db, r, `${sourceId}:${p.id}`, JSON.stringify(p))),
       0,
-    );
+    ) };
 }
 export function tickRoutines(db: Database.Database, now = new Date()) {
   for (const r of db

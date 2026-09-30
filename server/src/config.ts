@@ -18,6 +18,7 @@ const EnvSchema = z.object({
   // Protected operator registration of approved-message source/caller custody.
   VP_COMPOSE_EVIDENCE_REGISTRY_FILE: z.string().trim().optional(),
   VP_CASE_CUSTODY_REGISTRY_FILE: z.string().trim().optional(),
+  VP_MERGE_AUTHORIZATION_REGISTRY_FILE: z.string().trim().optional(),
   VP_CONTACT_VERIFICATION_REGISTRY_FILE: z.string().trim().optional(),
   VP_COMPOSE_SERVICE_REGISTRY_FILE: z.string().trim().optional(),
   VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE: z.string().trim().optional(),
@@ -146,6 +147,7 @@ export interface Config {
   cfAud: string | null;
   composeEvidenceRegistryFile?: string | null;
   caseCustodyRegistryFile?: string | null;
+  mergeAuthorizationRegistryFile?: string | null;
   contactVerificationRegistryFile?: string | null;
   composeServiceRegistryFile?: string | null;
   composeCorrespondenceRegistryFile?: string | null;
@@ -287,6 +289,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cfAud: parsed.VP_CF_AUD ?? null,
     composeEvidenceRegistryFile: parsed.VP_COMPOSE_EVIDENCE_REGISTRY_FILE || null,
     caseCustodyRegistryFile: parsed.VP_CASE_CUSTODY_REGISTRY_FILE || null,
+    mergeAuthorizationRegistryFile: parsed.VP_MERGE_AUTHORIZATION_REGISTRY_FILE || null,
     contactVerificationRegistryFile: parsed.VP_CONTACT_VERIFICATION_REGISTRY_FILE || null,
     composeServiceRegistryFile: parsed.VP_COMPOSE_SERVICE_REGISTRY_FILE || null,
     composeCorrespondenceRegistryFile: parsed.VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE || null,

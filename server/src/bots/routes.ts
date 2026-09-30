@@ -1,5 +1,7 @@
 import {contactVerificationRoutes} from './contactVerificationRoutes.js';
 import {caseCustodyRoutes} from './caseCustodyRoutes.js';
+import { mergeAuthorizationRoutes, mergeIO } from './mergeAuthorizationRoutes.js';
+import { mergeAuthorization, type MergeIO } from './mergeAuthorization.js';
 import {composedSmsCorrectionV2} from './composedSmsCorrectionV2.js';
 import {correctionPreflight} from './correctionPreflight.js';
 import {composedSmsCorrection} from './composedSmsCorrection.js';
@@ -27,7 +29,7 @@ const mutation = z.object({
   expected_version: z.number().int().positive(),
   request_key: key,
 });
-export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: EvidenceFetchers } = {}) {
+export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: EvidenceFetchers; mergeIO?: MergeIO } = {}) {
   const evidenceFetchers = deps.evidenceFetchers ?? composioGmailFetchers();
   const router = express.Router();
   const s = createBotService(ctx.db);
@@ -39,6 +41,8 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   });
   router.use(createDecisionHandoffRouter(ctx));
   router.use(caseCustodyRoutes(ctx));
+  router.use(mergeAuthorizationRoutes(ctx, deps.mergeIO));
+  const merges = mergeAuthorization(ctx.db, deps.mergeIO ?? mergeIO(ctx));
   router.use(contactVerificationRoutes(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
@@ -228,9 +232,16 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
       if (!req.agentConversationId) throw new BotError(403, 'A bot conversation is required');
       validateDecisionChoices(p.proposal.choices);
       validateDecisionEvidence(p.proposal);
+      // A merge question is bound to one registered intent revision and direction; its approve answer IS the intentHash.
+      const binding = p.proposal.merge_intent ? merges.prepareBinding(p.proposal.merge_intent, req.agentConversationId, p.proposal.choices) : null;
       p.proposal = await bindDecisionImages(ctx, actor(req), req.agentConversationId, p.proposal);
       p.proposal = await bindDecisionEvidence(ctx, actor(req), req.agentConversationId, p.proposal, evidenceFetchers);
-      res.json({ decision: s.raise(actor(req), p) });
+      const raised = ctx.db.transaction(() => {
+        const d = s.raise(actor(req), p);
+        if (binding && !ctx.db.prepare('SELECT 1 FROM merge_intent_bindings WHERE decision_id=? AND decision_version=?').get(d.id, d.version)) merges.recordBinding(d.id, d.version, binding);
+        return d;
+      })();
+      res.json({ decision: raised });
     }),
   );
   router.get('/decisions/:id/evidence/:version/:index', run((req, res) => {
@@ -277,16 +288,21 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
       const current = s.read(actor(req), req.params.id!);
       // A revised proposal is a fresh question: bots must re-supply researched choices.
       if (req.agentConversationId) { validateDecisionChoices(p.proposal.choices); validateDecisionEvidence(p.proposal); }
+      const binding = p.proposal.merge_intent ? merges.prepareBinding(p.proposal.merge_intent, current.conversation_id, p.proposal.choices, current.id) : null;
       p.proposal = await bindDecisionImages(ctx, actor(req), current.conversation_id, p.proposal);
       p.proposal = await bindDecisionEvidence(ctx, actor(req), current.conversation_id, p.proposal, evidenceFetchers);
       res.json({
-        decision: s.revise(
-          actor(req),
-          req.params.id!,
-          p.expected_version,
-          p.request_key,
-          p.proposal,
-        ),
+        decision: ctx.db.transaction(() => {
+          const d = s.revise(
+            actor(req),
+            req.params.id!,
+            p.expected_version,
+            p.request_key,
+            p.proposal,
+          );
+          if (binding && !ctx.db.prepare('SELECT 1 FROM merge_intent_bindings WHERE decision_id=? AND decision_version=?').get(d.id, d.version)) merges.recordBinding(d.id, d.version, binding);
+          return d;
+        })(),
       });
     }),
   );

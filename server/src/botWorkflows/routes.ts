@@ -2,6 +2,7 @@ import { teachingAudioRouter } from './teachingAudio.js';
 import { botFeatureCatalog } from '../featureGuide/catalog.js';
 import crypto from 'node:crypto';
 import express from 'express';
+import { mergeIO } from '../bots/mergeAuthorizationRoutes.js';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { BotError } from '../bots/service.js';
@@ -15,7 +16,7 @@ import {
   RoutineInput,
   routineChat,
   saveRoutine,
-  acceptEvent,
+  acceptEventDetailed,
 } from './routines.js';
 import {
   NotificationPreference,
@@ -462,19 +463,22 @@ export function createBotEventsWebhook(ctx: AppContext) {
         return;
       }
       try {
-        const queued = acceptEvent(
+        const result = acceptEventDetailed(
           ctx.db,
           req.params.source!,
           JSON.parse(raw.toString('utf8')),
+          mergeIO(ctx),
         );
         ctx.db
           .prepare('UPDATE bot_event_sources SET last_event_at=? WHERE id=?')
           .run(new Date().toISOString(), req.params.source);
-        res.json({ ok: true, queued });
+        res.json({ ok: true, queued: result.queued, ...(result.accepted ? { accepted: result.accepted } : {}) });
       } catch (e) {
+        // Merge-contract conflicts carry their reason code so the source can reconcile; other rejections stay opaque.
+        const reason = e instanceof BotError && e.status === 409 ? e.message : 'Event rejected';
         res
           .status(e instanceof BotError ? e.status : 400)
-          .json({ error: 'Event rejected' });
+          .json({ error: reason });
       }
     },
   );

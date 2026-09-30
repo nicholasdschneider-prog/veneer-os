@@ -540,6 +540,12 @@ function Routines({
               <option value="customer.replied">
                 A customer replies in OrderOps
               </option>
+              <option value="ticket.merged">
+                OrderOps merges two tickets
+              </option>
+              <option value="ticket.duplicate_candidate">
+                OrderOps suspects a duplicate ticket
+              </option>
             </select>
           </label>
           {kind === 'schedule' ? (

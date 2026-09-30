@@ -23,7 +23,7 @@ export const TemplateConfig = z
         z.object({
           name: z.string(),
           instructions: z.string(),
-          kind: z.enum(['schedule', 'ticket.created', 'customer.replied']),
+          kind: z.enum(['schedule', 'ticket.created', 'customer.replied', 'ticket.merged', 'ticket.duplicate_candidate']),
           source: z.string(),
           schedule_json: z.string().nullable(),
           timezone: z.string(),

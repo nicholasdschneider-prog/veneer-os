@@ -118,8 +118,12 @@ export const asOfSchema = z.object({
   ticket_status: z.string().trim().min(1).max(80).optional(),
   last_inbound: z.array(z.object({ channel: z.string().trim().min(1).max(40), message_id: z.string().trim().min(1).max(200), at: z.string().datetime({ offset: true }).optional() }).strict()).max(12).default([]),
   evidence_hashes: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(48).default([]),
+  /** Other tickets this question depends on (a merge pair's sibling, a related order); events on any of them stale the question. */
+  related_ticket_ids: z.array(z.object({ ticket_id: z.string().trim().min(1).max(200), material_revision: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict()).max(12).optional(),
 }).strict();
-export interface StaleMark { reason: 'customer_replied' | 'ticket_created' | 'status_changed' | 'evidence_changed' | 'ticket_closed'; since: string; detail: string; event_id?: string }
+/** Binding of a merge question to one registered intent revision and direction (merge-authorization contract §3). */
+export const mergeIntentRefSchema = z.object({ pairReceiptId: z.string().uuid(), intentRevision: z.number().int().positive(), direction: z.enum(['a_into_b', 'b_into_a']) }).strict();
+export interface StaleMark { reason: 'customer_replied' | 'ticket_created' | 'status_changed' | 'evidence_changed' | 'ticket_closed' | 'ticket_merged' | 'duplicate_evidence_changed'; since: string; detail: string; event_id?: string }
 export const decisionImageSchema = z.object({
   conversation_id: z.string().min(1).max(200),
   path: z.string().min(1).max(4096),
@@ -159,6 +163,7 @@ export const proposalSchema = z
     images: z.array(decisionImageSchema).max(12).optional(),
     evidence_items: z.array(evidenceItemSchema).max(24).optional(),
     as_of: asOfSchema.optional(),
+    merge_intent: mergeIntentRefSchema.optional(),
     evidence: z.array(evidenceSchema).max(30).default([]),
     blocked_action: text,
     blocks_scope: z.enum(['task', 'workload']).default('task'),
@@ -1117,14 +1122,22 @@ export function createBotService(db: Database.Database) {
      * answer the customer, or withdraw. Idempotent per (decision, event).
      */
     markStaleForCase(caseIds: string[], mark: Omit<StaleMark, 'since'> & { since?: string }): string[] {
-      const ids = caseIds.map((c) => c.trim()).filter(Boolean);
-      if (!ids.length) return [];
+      // Alias resolution (merge contract §6): a merged-away ticket and its
+      // survivor name the same case for staling, in both directions and along chains.
+      const ids = new Set(caseIds.map((c) => c.trim()).filter(Boolean));
+      let grew = ids.size > 0;
+      while (grew) {
+        grew = false;
+        for (const t of [...ids]) for (const row of db.prepare('SELECT from_ticket,into_ticket FROM case_merges WHERE from_ticket=? OR into_ticket=?').all(t, t) as { from_ticket: string; into_ticket: string }[])
+          for (const x of [row.from_ticket, row.into_ticket]) if (!ids.has(x)) { ids.add(x); grew = true; }
+      }
+      if (!ids.size) return [];
       const marked: string[] = [];
       db.transaction(() => {
         for (const d of db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input'").all() as Decision[]) {
-          const proposal = JSON.parse(d.proposal_json) as { message_delivery?: { canonical_case: string; payload: { ticket: string } }; as_of?: { ticket_id?: string } };
-          const cases = [proposal.message_delivery?.canonical_case, proposal.message_delivery?.payload.ticket, proposal.as_of?.ticket_id].filter((x): x is string => !!x);
-          if (!cases.some((c) => ids.includes(c))) continue;
+          const proposal = JSON.parse(d.proposal_json) as { message_delivery?: { canonical_case: string; payload: { ticket: string } }; as_of?: { ticket_id?: string; related_ticket_ids?: { ticket_id: string }[] } };
+          const cases = [proposal.message_delivery?.canonical_case, proposal.message_delivery?.payload.ticket, proposal.as_of?.ticket_id, ...(proposal.as_of?.related_ticket_ids ?? []).map((r) => r.ticket_id)].filter((x): x is string => !!x);
+          if (!cases.some((c) => ids.has(c))) continue;
           const key = `stale:${mark.event_id ?? `${mark.reason}:${mark.since ?? 'now'}`}`;
           if (db.prepare('SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(d.id, key)) continue;
           const stale: StaleMark = { ...mark, since: mark.since ?? new Date().toISOString() };
