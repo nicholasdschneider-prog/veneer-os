@@ -1,0 +1,131 @@
+{
+  "implementationCommit": "4509ee222083d403b865694fc9cb8702b01b0922",
+  "before": {
+    "observedAt": "2026-09-30T03:27:49.924Z",
+    "phase": "before",
+    "node": "v24.21.0",
+    "uid": 501,
+    "pids": {
+      "veneer-pro": 23135,
+      "veneer-pro-runner": 23195,
+      "veneer-pro-app-runner": 23901,
+      "veneer-pro-term": 23917,
+      "veneer-browser-manager": 23920
+    },
+    "health": {
+      "web": {
+        "status": 200,
+        "ok": true
+      },
+      "runner": {
+        "status": 200,
+        "ok": true
+      },
+      "appRunner": {
+        "status": 200,
+        "ok": true
+      },
+      "terminal": {
+        "status": 200,
+        "ok": true
+      },
+      "browserManager": {
+        "status": 200,
+        "ok": true
+      }
+    },
+    "registryKeyPresent": false,
+    "migration": null,
+    "counts": {},
+    "immutableTriggers": 0,
+    "artifacts": {
+      "server/src/bots/contactVerification.ts": "feaffe0b8eed642603b7605fb8b514fdfdd940deb18f33c49b6c868c6ac78995",
+      "server/src/bots/contactVerificationContract.ts": "4c35de5784da04579cf9951b31d7b3a02c5ab925855f515f2341b04fbaf65d07",
+      "server/src/bots/contactVerificationRoutes.ts": "7bd1988a07504bc8fd69309c084eca52200bfb965f5aa84b7b27cc6c0925d893",
+      "server/src/db/migrations/0139_contact_verification.sql": "33378fe448c049b3491b2bcc109daaf124bfdde497332dddcd17c1830cad63bd"
+    }
+  },
+  "after": {
+    "observedAt": "2026-09-30T03:49:11.009Z",
+    "phase": "after",
+    "node": "v24.21.0",
+    "uid": 501,
+    "pids": {
+      "veneer-pro": 53705,
+      "veneer-pro-runner": 53727,
+      "veneer-pro-app-runner": 54803,
+      "veneer-pro-term": 54819,
+      "veneer-browser-manager": 54822
+    },
+    "health": {
+      "web": {
+        "status": 200,
+        "ok": true
+      },
+      "runner": {
+        "status": 200,
+        "ok": true
+      },
+      "appRunner": {
+        "status": 200,
+        "ok": true
+      },
+      "terminal": {
+        "status": 200,
+        "ok": true
+      },
+      "browserManager": {
+        "status": 200,
+        "ok": true
+      }
+    },
+    "registryKeyPresent": false,
+    "migration": {
+      "name": "0139_contact_verification.sql",
+      "content_hash": "33378fe448c049b3491b2bcc109daaf124bfdde497332dddcd17c1830cad63bd",
+      "applied_at": "2026-09-30 03:46:08"
+    },
+    "counts": {
+      "contact_verification_associations": 0,
+      "contact_verification_authorities": 0,
+      "contact_verification_enrollments": 0,
+      "contact_verification_generations": 0,
+      "contact_verification_pair_blocks": 0,
+      "contact_verification_receipts": 0,
+      "contact_verification_revocations": 0
+    },
+    "immutableTriggers": 14,
+    "artifacts": {
+      "server/src/bots/contactVerification.ts": "feaffe0b8eed642603b7605fb8b514fdfdd940deb18f33c49b6c868c6ac78995",
+      "server/src/bots/contactVerificationContract.ts": "4c35de5784da04579cf9951b31d7b3a02c5ab925855f515f2341b04fbaf65d07",
+      "server/src/bots/contactVerificationRoutes.ts": "7bd1988a07504bc8fd69309c084eca52200bfb965f5aa84b7b27cc6c0925d893",
+      "server/src/db/migrations/0139_contact_verification.sql": "33378fe448c049b3491b2bcc109daaf124bfdde497332dddcd17c1830cad63bd",
+      "server/dist/bots/contactVerification.js": "4c7e585e4fbb0b9027dd83207007df213d5a0d387a91971d4db1e3cec46d6b03",
+      "server/dist/bots/contactVerificationContract.js": "89e1f3bae197ebcd624b521a9e29a0d49f9ae859be2996e4f4fa764b44d50b5f",
+      "server/dist/bots/contactVerificationRoutes.js": "c7bbbb922c7b3c219e7a8a24f53931a631ed0b3c3845af7f34b3b2b89030765d",
+      "server/dist/db/migrations/0139_contact_verification.sql": "33378fe448c049b3491b2bcc109daaf124bfdde497332dddcd17c1830cad63bd",
+      "web/dist/index.html": "fe464524c166d0db1d1cedf0d9284a653ea6672823911d52c7a7033989391c3c"
+    }
+  },
+  "restart": {
+    "initialCommand": "npm run restart",
+    "initialDisposition": "Interrupted after web and runner restarted; fresh PID and health readback verified both before continuing.",
+    "remainingCommand": "npm run restart -- veneer-pro-app-runner veneer-pro-term veneer-browser-manager",
+    "remainingExitCode": 0,
+    "logs": [
+      {
+        "name": "build487-restart.txt",
+        "sha256": "8f9ce6b3d8c88b255fb37a9008dffa8aecb2d42103e445905f2de514fd772676",
+        "text": "\n> veneer-os@0.1.0 restart\n> node scripts/restart.mjs\n\n[restart] preflight: /opt/homebrew/opt/node@24/bin/node v24.21.0 ABI 137; native modules load\n[restart] veneer-pro: draining pid 23135\n[restart] veneer-pro: healthy as pid 53705\n[restart] veneer-pro-runner: draining pid 23195\n"
+      },
+      {
+        "name": "build487-restart-remaining.txt",
+        "sha256": "a1f554d3f7a9d24b1978c278b3f1bf6aae97feccea5e6cf73f1c6665bcc357e6",
+        "text": "\n> veneer-os@0.1.0 restart\n> node scripts/restart.mjs veneer-pro-app-runner veneer-pro-term veneer-browser-manager\n\n[restart] preflight: /opt/homebrew/opt/node@24/bin/node v24.21.0 ABI 137; native modules load\n[restart] veneer-pro-app-runner: draining pid 23901\n[restart] veneer-pro-app-runner: healthy as pid 54803\n[restart] veneer-pro-term: draining pid 23917\n[restart] veneer-pro-term: healthy as pid 54819\n[restart] veneer-browser-manager: healthy\n[health] local web and runner: healthy\n[health] public front door: HTTP 302; public front door reachable, origin/authenticated chat unverified\n[health] Veneer tunnel: 4 active edge connections; authenticated public chat remains unverified\n[health] These checks do not prove authenticated end-to-end chat delivery.\n"
+      }
+    ]
+  },
+  "operationalReady": false,
+  "productionRegistryInstalled": false,
+  "businessActionsPerformed": false
+}
