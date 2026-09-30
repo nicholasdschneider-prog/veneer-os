@@ -1,0 +1,33 @@
+# BUILD485 changed files
+
+- [README.md](/Users/archerclawdington/veneer-os/README.md)
+- [docs/bot-feature-guide.md](/Users/archerclawdington/veneer-os/docs/bot-feature-guide.md)
+- [server/src/bots/routes.ts](/Users/archerclawdington/veneer-os/server/src/bots/routes.ts)
+- [server/src/config.ts](/Users/archerclawdington/veneer-os/server/src/config.ts)
+- [server/src/featureGuide/catalog.ts](/Users/archerclawdington/veneer-os/server/src/featureGuide/catalog.ts)
+- [server/src/index.ts](/Users/archerclawdington/veneer-os/server/src/index.ts)
+- [server/src/mcp/botTools.ts](/Users/archerclawdington/veneer-os/server/src/mcp/botTools.ts)
+- [server/src/bots/caseCustody.ts](/Users/archerclawdington/veneer-os/server/src/bots/caseCustody.ts)
+- [server/src/bots/caseCustodyContract.ts](/Users/archerclawdington/veneer-os/server/src/bots/caseCustodyContract.ts)
+- [server/src/bots/caseCustodyRoutes.ts](/Users/archerclawdington/veneer-os/server/src/bots/caseCustodyRoutes.ts)
+- [server/src/db/migrations/0138_case_custody.sql](/Users/archerclawdington/veneer-os/server/src/db/migrations/0138_case_custody.sql)
+- [server/test/caseCustody.test.ts](/Users/archerclawdington/veneer-os/server/test/caseCustody.test.ts)
+- [server/test/caseCustodyContract.test.ts](/Users/archerclawdington/veneer-os/server/test/caseCustodyContract.test.ts)
+- [server/test/botFeatureGuide.test.ts](/Users/archerclawdington/veneer-os/server/test/botFeatureGuide.test.ts)
+- [server/test/instructionContext.test.ts](/Users/archerclawdington/veneer-os/server/test/instructionContext.test.ts)
+- [server/test/purchaseTiming.test.ts](/Users/archerclawdington/veneer-os/server/test/purchaseTiming.test.ts)
+- [docs/reports/case-custody/build485/contract.md](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/contract.md)
+- [docs/reports/case-custody/build485/golden.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/golden.json)
+- [docs/reports/case-custody/build485/setup.md](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/setup.md)
+- [docs/reports/case-custody/build485/agreement.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/agreement.json)
+- [server/test/historySocket.test.ts](/Users/archerclawdington/veneer-os/server/test/historySocket.test.ts)
+- [docs/reports/case-custody/build485/source-agreement-messages.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/source-agreement-messages.json)
+
+Report artifacts:
+
+- [README.md](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/README.md)
+- [implementation-manifest.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/implementation-manifest.json)
+- [changed-files.md](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/changed-files.md)
+- [validation.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/validation.json)
+- [runtime.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/runtime.json)
+- [restart.txt](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/restart.txt)

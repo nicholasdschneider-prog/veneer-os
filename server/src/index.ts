@@ -1,3 +1,4 @@
+import {caseCustodyVerifierRoutes} from './bots/caseCustodyRoutes.js';
 import {composedSmsVerifierRoutes} from './bots/composedSmsVerifierRoutes.js';
 import { purchaseTimingVerifierRoutes } from './bots/purchaseTimingRoutes.js';
 import { autoshipCandidateRoutes } from './botWorkflows/autoshipCandidateRoutes.js';
@@ -205,6 +206,7 @@ app.use('/webhooks/composio', createComposioWebhookRouter(ctx));
 // service identity, mounted ahead of the human /api identity gate so the
 // service JWT is accepted here and nowhere else. Disabled (404) unless configured.
 app.use('/api/autoship/candidates', autoshipCandidateRoutes(ctx));
+app.use('/api/case-custody/verifier', caseCustodyVerifierRoutes(ctx));
 app.use('/api/composed-sms/verifier', composedSmsVerifierRoutes(ctx));
 app.use('/api/routine-message/verifier', routineVerifierRoutes(ctx));
 app.use('/api/purchase-timing/verifier', purchaseTimingVerifierRoutes(ctx));

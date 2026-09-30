@@ -17,6 +17,7 @@ const EnvSchema = z.object({
   // values; all three absent disables the verifier and it fails closed.
   // Protected operator registration of approved-message source/caller custody.
   VP_COMPOSE_EVIDENCE_REGISTRY_FILE: z.string().trim().optional(),
+  VP_CASE_CUSTODY_REGISTRY_FILE: z.string().trim().optional(),
   VP_COMPOSE_SERVICE_REGISTRY_FILE: z.string().trim().optional(),
   VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE: z.string().trim().optional(),
   VP_APPROVED_CASE_REGISTRY_FILE: z.string().trim().optional(),
@@ -141,6 +142,7 @@ export interface Config {
   cfTeamDomain: string | null;
   cfAud: string | null;
   composeEvidenceRegistryFile?: string | null;
+  caseCustodyRegistryFile?: string | null;
   composeServiceRegistryFile?: string | null;
   composeCorrespondenceRegistryFile?: string | null;
   approvedCaseRegistryFile?: string | null;
@@ -279,6 +281,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cfTeamDomain: parsed.VP_CF_TEAM_DOMAIN ?? null,
     cfAud: parsed.VP_CF_AUD ?? null,
     composeEvidenceRegistryFile: parsed.VP_COMPOSE_EVIDENCE_REGISTRY_FILE || null,
+    caseCustodyRegistryFile: parsed.VP_CASE_CUSTODY_REGISTRY_FILE || null,
     composeServiceRegistryFile: parsed.VP_COMPOSE_SERVICE_REGISTRY_FILE || null,
     composeCorrespondenceRegistryFile: parsed.VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE || null,
     approvedCaseRegistryFile: parsed.VP_APPROVED_CASE_REGISTRY_FILE || null,

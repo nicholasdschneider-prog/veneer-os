@@ -43,6 +43,8 @@ describe('instruction context migration', () => {
     db.prepare("UPDATE assistants SET instructions = 'A later unrelated role.' WHERE id=1").run();
     const result = prepareConversationInstructions(db, { workspaceDir: '/repo', assistantSlug: 'assistant', elevated: false }, 'existing');
     expect(result.developerInstructions).toContain('Current Veneer bot capabilities');
+    expect(result.developerInstructions).toContain('inspect_case_custody');
+    expect(result.developerInstructions).toContain('No production trust installed by this release');
     expect(result.developerInstructions).toContain('Routine training text, procedural documentation, task records and isolated artifacts do not require enqueue_build');
     expect(result.developerInstructions).toContain('Keep software source, executable automation, dependencies, schemas and deployment work in the build queue');
     expect(result.developerInstructions).toContain('defer that edit and continue unrelated work');

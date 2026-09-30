@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-09-30T02:07:43.365664+00:00",
+  "nodeMajor": 24,
+  "allExitCodes": 0,
+  "typecheck": "passed",
+  "scoped": {
+    "files": 6,
+    "passed": 133
+  },
+  "isolatedHistoryTest": {
+    "passed": 1
+  },
+  "full": {
+    "installerPassed": 29,
+    "serverPassed": 3138,
+    "serverSkipped": 5,
+    "webPassed": 931,
+    "browserManagerPassed": 49
+  },
+  "build": "passed; Vite large-chunk warning only",
+  "productionBusinessTests": false,
+  "sourcePostgresTests": false,
+  "logSha256": {
+    "typecheck": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "scoped": "421e843cffb19695b9b37d6f1b363f2bf36bf95e1f8ff0af1106632ecb8c273a",
+    "history": "e6b69ede45782b30e3bdbe5904d9c845d67349d850b70271e80ec5c32a6ce29b",
+    "full": "a465c144d2e1f6871102502c5fdb035dad6fa765a9fd473765c8cfff2bb87376",
+    "build": "7753b16dfa41a192893a4117090443d06ac0c13f0264b2e121cba614aa5ee847"
+  },
+  "earlierFailuresResolved": [
+    "Identical native authority issuance race: transactional same-key reconciliation",
+    "Purchase-timing fixture clock sampled before SQLite answer under contention: sample after answer",
+    "WebSocket fixture fixed20ms delay: wait for actual calls/frames"
+  ]
+}

@@ -317,3 +317,15 @@ network route. These diagnostics do not change network settings or automatically
 restart the tunnel. The boot report remains a one-shot check, not a continuous
 outage monitor. Run `node scripts/boot-probe.mjs --now --no-email` for its detailed
 report without sending email.
+
+### Prospective completed-case custody (optional, inactive until enrolled)
+
+`VP_CASE_CUSTODY_REGISTRY_FILE` is an absolute protected regular non-symlink file,
+owned by the service user with mode0600 and bounded to128KiB. It contains only
+nonsecret dedicated registration metadata, credential references and hash
+commitments. It is independent of message/return/routine trust. Do not populate
+it with guessed identities or copied grants. An actual owner must confirm the
+exact authenticated source enrollment through the dedicated human APIs before
+review or service use. No production registry is installed by BUILD485. See the
+[versioned contract](docs/reports/case-custody/build485/contract.md) for schemas,
+source acceptance, expiry/revocation, and irreversible claim reconciliation.

@@ -1,0 +1,12 @@
+{
+  "coordinationThread": "9c58c4e8-e076-4954-8032-b32851ef4c01",
+  "sourceOwner": "9bb5b47e-b9c9-43c0-a83b-7dc485166c0f",
+  "nativeOwner": "732adce5-ea99-45d4-be9d-07ae47e02133",
+  "agreedAt": "2026-09-30T01:44:09.406Z",
+  "contractSha256": "970c6170699273aa42222fc7dcd4565383ef942e43bd22c0d7ce052db4603131",
+  "scope": "Final interface agreement for source assessment and committed schema/golden exchange only",
+  "sourceConsumerAcceptance": false,
+  "productionEnrollment": false,
+  "productionAuthority": false,
+  "keyRefinement": "UNKNOWN may have null claimId after lost native response; terminal outcomes require actual native claim ID and complete outcome proof."
+}

@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers unavailable-until-enrolled prospective custody guidance to employees and resumed agents',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(f=>f.id==='prospective-case-custody')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('historical');expect(f.agent).toContain('Never issue as builder');
+    expect(f.agent).toContain('No production trust installed');expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+  });
   it('delivers startup recovery limits to employees and resumed bots', () => {
     const f = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'codex-startup-recovery')!;
     expect(f.isNew).toBe(true);

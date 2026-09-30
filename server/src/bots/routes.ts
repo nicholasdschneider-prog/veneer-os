@@ -1,3 +1,4 @@
+import {caseCustodyRoutes} from './caseCustodyRoutes.js';
 import {composedSmsCorrectionV2} from './composedSmsCorrectionV2.js';
 import {correctionPreflight} from './correctionPreflight.js';
 import {composedSmsCorrection} from './composedSmsCorrection.js';
@@ -34,6 +35,7 @@ export function createBotsRouter(ctx: AppContext) {
     next();
   });
   router.use(createDecisionHandoffRouter(ctx));
+  router.use(caseCustodyRoutes(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
     (

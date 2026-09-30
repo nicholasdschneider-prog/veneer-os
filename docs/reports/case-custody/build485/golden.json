@@ -1,0 +1,287 @@
+{
+  "synthetic": true,
+  "evidence": {
+    "schemaVersion": "case-custody-evidence/v1",
+    "registrationId": "10000000-0000-4000-8000-000000000001",
+    "registrationRevision": 1,
+    "servicePrincipalId": "fixture:service",
+    "businessId": "10000000-0000-4000-8000-000000000003",
+    "accountId": "fixture-account",
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000020",
+      "environmentId": "10000000-0000-4000-8000-000000000021",
+      "serviceId": "10000000-0000-4000-8000-000000000022"
+    },
+    "caseId": "10000000-0000-4000-8000-000000000002",
+    "ticket": "SYNTHETIC",
+    "caseVersion": "2026-09-18 16:27:45.824123",
+    "materialRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": "complete",
+    "closedAt": null,
+    "resolvedAt": null,
+    "completion": {
+      "eventCaseId": "10000000-0000-4000-8000-000000000002",
+      "eventId": "123",
+      "eventHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "principalId": "fixture:historical",
+      "eventAt": "2026-09-18 16:28:00.000001",
+      "caseVersion": "2026-09-18 16:27:45.824123",
+      "chronology": "event_after_case_version_unbound",
+      "linkage": "unbound"
+    },
+    "from": {
+      "id": "10000000-0000-4000-8000-000000000010",
+      "revision": 1,
+      "principalId": "fixture:historical",
+      "mode": "historical_only",
+      "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revoked": false,
+      "retired": true
+    },
+    "to": {
+      "id": "10000000-0000-4000-8000-000000000011",
+      "revision": 1,
+      "principalId": "fixture:destination",
+      "mode": "active_destination",
+      "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revoked": false,
+      "retired": false
+    },
+    "transition": {
+      "schemaVersion": "prospective-custody-transition/v1",
+      "ledger": "cs_prospective_custody",
+      "caseId": "10000000-0000-4000-8000-000000000002",
+      "expectedCustodyRevision": 0,
+      "expectedCustodyOwner": null,
+      "destinationPrincipalId": "fixture:destination",
+      "permittedChanges": [
+        "insert_prospective_custody_ledger"
+      ],
+      "caseMutation": false,
+      "historicalMutation": false
+    },
+    "transitionHash": "7f8f6cc1430e582f7657b5751269321713b757ea15cdfc391f1d31a0d39b41d7",
+    "blockers": [],
+    "priorEffects": [],
+    "coverage": {
+      "complete": true,
+      "omissions": []
+    },
+    "observedAt": "2026-09-30T01:00:00.000Z",
+    "expiresAt": "2026-09-30T01:00:15.000Z",
+    "snapshotHash": "1ef7ab2ceaa8d3da9e535620228e1700011167a429e546cb331f423a01871c56"
+  },
+  "authority": {
+    "schemaVersion": "prospective-case-custody/v1",
+    "id": "10000000-0000-4000-8000-000000000004",
+    "revision": 1,
+    "registrationId": "10000000-0000-4000-8000-000000000001",
+    "registrationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "businessId": "10000000-0000-4000-8000-000000000003",
+    "accountId": "fixture-account",
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000020",
+      "environmentId": "10000000-0000-4000-8000-000000000021",
+      "serviceId": "10000000-0000-4000-8000-000000000022"
+    },
+    "caseId": "10000000-0000-4000-8000-000000000002",
+    "caseVersion": "2026-09-18 16:27:45.824123",
+    "materialRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "completion": {
+      "eventCaseId": "10000000-0000-4000-8000-000000000002",
+      "eventId": "123",
+      "eventHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "principalId": "fixture:historical",
+      "eventAt": "2026-09-18 16:28:00.000001",
+      "caseVersion": "2026-09-18 16:27:45.824123",
+      "chronology": "event_after_case_version_unbound",
+      "linkage": "unbound"
+    },
+    "closedAt": null,
+    "resolvedAt": null,
+    "from": {
+      "id": "10000000-0000-4000-8000-000000000010",
+      "revision": 1,
+      "principalId": "fixture:historical",
+      "mode": "historical_only",
+      "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revoked": false,
+      "retired": true
+    },
+    "to": {
+      "id": "10000000-0000-4000-8000-000000000011",
+      "revision": 1,
+      "principalId": "fixture:destination",
+      "mode": "active_destination",
+      "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revoked": false,
+      "retired": false
+    },
+    "transition": {
+      "schemaVersion": "prospective-custody-transition/v1",
+      "ledger": "cs_prospective_custody",
+      "caseId": "10000000-0000-4000-8000-000000000002",
+      "expectedCustodyRevision": 0,
+      "expectedCustodyOwner": null,
+      "destinationPrincipalId": "fixture:destination",
+      "permittedChanges": [
+        "insert_prospective_custody_ledger"
+      ],
+      "caseMutation": false,
+      "historicalMutation": false
+    },
+    "transitionHash": "7f8f6cc1430e582f7657b5751269321713b757ea15cdfc391f1d31a0d39b41d7",
+    "reviewerConversationId": "10000000-0000-4000-8000-000000000005",
+    "executorConversationId": "10000000-0000-4000-8000-000000000006",
+    "contextHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "instructionHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reviewHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sourceEvidenceHash": "1ef7ab2ceaa8d3da9e535620228e1700011167a429e546cb331f423a01871c56",
+    "provenance": {
+      "instructionKind": "direct_message",
+      "instructionId": "10000000-0000-4000-8000-000000000007",
+      "humanAuthorId": 1,
+      "authorityBasis": "current_business_owner_instruction",
+      "authorityBasisRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "reviewRecordId": "10000000-0000-4000-8000-000000000008",
+      "contextManifest": [
+        {
+          "kind": "direct_message",
+          "id": "10000000-0000-4000-8000-000000000007",
+          "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    "scope": "prospective_completed_case_custody_only",
+    "issuedAt": "2026-09-30T01:00:00.000Z",
+    "expiresAt": "2026-09-30T01:10:00.000Z",
+    "authorityHash": "3798406319a8406208fb170ac386cc73cef0150f135e80b31936a61ad23aca0b"
+  },
+  "lostResponseIntent": {
+    "schemaVersion": "case-custody-intent/v1",
+    "registrationId": "10000000-0000-4000-8000-000000000001",
+    "servicePrincipalId": "fixture:service",
+    "businessId": "10000000-0000-4000-8000-000000000003",
+    "accountId": "fixture-account",
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000020",
+      "environmentId": "10000000-0000-4000-8000-000000000021",
+      "serviceId": "10000000-0000-4000-8000-000000000022"
+    },
+    "caseId": "10000000-0000-4000-8000-000000000002",
+    "sourceRequestId": "10000000-0000-4000-8000-000000000009",
+    "sourceRequestHash": "aa0771beb7ec87dadb33506cfcf5b021d68dcc5f9b8dd417005bc16bb667d512",
+    "authorityId": "10000000-0000-4000-8000-000000000004",
+    "authorityHash": "3798406319a8406208fb170ac386cc73cef0150f135e80b31936a61ad23aca0b",
+    "requestKey": "10000000-0000-4000-8000-000000000012",
+    "executorPrincipalId": "fixture:destination",
+    "state": "UNKNOWN",
+    "claimId": null,
+    "receiptHash": null,
+    "preparation": {
+      "preparedEventId": "10000000-0000-4000-8000-000000000013",
+      "preparedAt": "2026-09-30T00:59:59.000Z",
+      "preparedContentHash": "aa0771beb7ec87dadb33506cfcf5b021d68dcc5f9b8dd417005bc16bb667d512",
+      "redeemingEventId": "10000000-0000-4000-8000-000000000014",
+      "redeemingAt": "2026-09-30T01:00:00.000Z",
+      "transitionRevision": 1
+    },
+    "transition": {
+      "schemaVersion": "prospective-custody-transition/v1",
+      "ledger": "cs_prospective_custody",
+      "caseId": "10000000-0000-4000-8000-000000000002",
+      "expectedCustodyRevision": 0,
+      "expectedCustodyOwner": null,
+      "destinationPrincipalId": "fixture:destination",
+      "permittedChanges": [
+        "insert_prospective_custody_ledger"
+      ],
+      "caseMutation": false,
+      "historicalMutation": false
+    },
+    "transitionHash": "7f8f6cc1430e582f7657b5751269321713b757ea15cdfc391f1d31a0d39b41d7",
+    "outcome": null,
+    "observedAt": "2026-09-30T01:00:00.000Z",
+    "expiresAt": "2026-09-30T01:00:15.000Z"
+  },
+  "appliedIntent": {
+    "schemaVersion": "case-custody-intent/v1",
+    "registrationId": "10000000-0000-4000-8000-000000000001",
+    "servicePrincipalId": "fixture:service",
+    "businessId": "10000000-0000-4000-8000-000000000003",
+    "accountId": "fixture-account",
+    "sourceOrigin": "https://orderops-dev-web-production.up.railway.app",
+    "runtime": {
+      "projectId": "10000000-0000-4000-8000-000000000020",
+      "environmentId": "10000000-0000-4000-8000-000000000021",
+      "serviceId": "10000000-0000-4000-8000-000000000022"
+    },
+    "caseId": "10000000-0000-4000-8000-000000000002",
+    "sourceRequestId": "10000000-0000-4000-8000-000000000009",
+    "sourceRequestHash": "aa0771beb7ec87dadb33506cfcf5b021d68dcc5f9b8dd417005bc16bb667d512",
+    "authorityId": "10000000-0000-4000-8000-000000000004",
+    "authorityHash": "3798406319a8406208fb170ac386cc73cef0150f135e80b31936a61ad23aca0b",
+    "requestKey": "10000000-0000-4000-8000-000000000012",
+    "executorPrincipalId": "fixture:destination",
+    "state": "APPLIED",
+    "claimId": "10000000-0000-4000-8000-000000000016",
+    "receiptHash": "a758712dd943ac99468fc5eed388002bbd9438aa995f695db25be101307f50fa",
+    "preparation": {
+      "preparedEventId": "10000000-0000-4000-8000-000000000013",
+      "preparedAt": "2026-09-30T00:59:59.000Z",
+      "preparedContentHash": "aa0771beb7ec87dadb33506cfcf5b021d68dcc5f9b8dd417005bc16bb667d512",
+      "redeemingEventId": "10000000-0000-4000-8000-000000000014",
+      "redeemingAt": "2026-09-30T01:00:00.000Z",
+      "transitionRevision": 1
+    },
+    "transition": {
+      "schemaVersion": "prospective-custody-transition/v1",
+      "ledger": "cs_prospective_custody",
+      "caseId": "10000000-0000-4000-8000-000000000002",
+      "expectedCustodyRevision": 0,
+      "expectedCustodyOwner": null,
+      "destinationPrincipalId": "fixture:destination",
+      "permittedChanges": [
+        "insert_prospective_custody_ledger"
+      ],
+      "caseMutation": false,
+      "historicalMutation": false
+    },
+    "transitionHash": "7f8f6cc1430e582f7657b5751269321713b757ea15cdfc391f1d31a0d39b41d7",
+    "outcome": {
+      "kind": "APPLIED",
+      "auditEventId": "10000000-0000-4000-8000-000000000015",
+      "committedAt": "2026-09-30T01:00:00.000Z",
+      "beforeCaseVersion": "2026-09-18 16:27:45.824123",
+      "afterCaseVersion": "2026-09-18 16:27:45.824123",
+      "beforeCustodyRevision": 0,
+      "afterCustodyRevision": 1,
+      "transition": {
+        "schemaVersion": "prospective-custody-transition/v1",
+        "ledger": "cs_prospective_custody",
+        "caseId": "10000000-0000-4000-8000-000000000002",
+        "expectedCustodyRevision": 0,
+        "expectedCustodyOwner": null,
+        "destinationPrincipalId": "fixture:destination",
+        "permittedChanges": [
+          "insert_prospective_custody_ledger"
+        ],
+        "caseMutation": false,
+        "historicalMutation": false
+      },
+      "transitionHash": "7f8f6cc1430e582f7657b5751269321713b757ea15cdfc391f1d31a0d39b41d7"
+    },
+    "observedAt": "2026-09-30T01:00:00.000Z",
+    "expiresAt": "2026-09-30T01:00:15.000Z"
+  },
+  "digests": {
+    "transition": "7f8f6cc1430e582f7657b5751269321713b757ea15cdfc391f1d31a0d39b41d7",
+    "evidence": "1ef7ab2ceaa8d3da9e535620228e1700011167a429e546cb331f423a01871c56",
+    "authority": "3798406319a8406208fb170ac386cc73cef0150f135e80b31936a61ad23aca0b",
+    "request": "aa0771beb7ec87dadb33506cfcf5b021d68dcc5f9b8dd417005bc16bb667d512",
+    "outcome": "a758712dd943ac99468fc5eed388002bbd9438aa995f695db25be101307f50fa"
+  }
+}

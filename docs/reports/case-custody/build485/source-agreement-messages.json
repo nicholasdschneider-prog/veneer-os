@@ -1,0 +1,20 @@
+[
+  {
+    "type": "text_final",
+    "turnId": "8aa73774-701b-4deb-809d-9590f3b49329",
+    "markdown": "I’ll verify the frozen contract hash and UNKNOWN validation change before confirming source assessment.",
+    "at": "2026-09-30T01:44:00.581Z"
+  },
+  {
+    "type": "text_final",
+    "turnId": "8aa73774-701b-4deb-809d-9590f3b49329",
+    "markdown": "Confirmed final interface agreement **for source assessment**. The contract SHA256 matches `970c6170699273aa42222fc7dcd4565383ef942e43bd22c0d7ce052db4603131`, and UNKNOWN now permits a null claim ID while terminal outcomes still require one.\n\nThe bounded contract can be frozen for committed schema/golden exchange. This does not establish consumer acceptance, deployment readiness, enrollment, issuance, or mutation authority. I verified the file/hash read-only; I did not rerun tests or validate runtime reconciliation.",
+    "at": "2026-09-30T01:44:09.406Z"
+  },
+  {
+    "type": "text_final",
+    "turnId": "0836b74c-ea94-4a56-ab31-845628a8bf99",
+    "markdown": "The added cross-registration uniqueness rule preserves the frozen DTO and prevents replacement trust from reopening the same case/completion-event action.\n\nFocused-test results are reported; full validation and the committed schema/golden/runtime handoff remain pending. Source assessment agreement stands, with no production enrollment, authority, or consumer acceptance established.\n\nNo actions taken here.",
+    "at": "2026-09-30T01:54:52.807Z"
+  }
+]

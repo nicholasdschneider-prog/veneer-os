@@ -27,6 +27,9 @@ function ready(approve=true,structured=true){
   db.prepare("UPDATE conversation_wakeups SET status='delivered'").run();
   db.prepare("UPDATE bot_decisions SET state='action_pending' WHERE id=?").run(d.id);
   bots.result(bot,d.id,1,'running',{state:'running',evidence:'Fixture material unchanged',material_evidence_unchanged:true});
+  // SQLite records the answer on its real clock; fixture setup may take over a
+  // second under full-suite contention. Sample the verifier clock after it.
+  time=Date.now();
  }
  const args:TimingRequest={schema_version:'veneer-purchase-timing-request/v1',trust_id:trustId,request_key:'intent-1',decision_id:d.id,decision_version:1,native_proposal_hash:canonicalSha256(proposal),source_capture_id:c.capture_id};
  return {args,scope,d,proposal};
