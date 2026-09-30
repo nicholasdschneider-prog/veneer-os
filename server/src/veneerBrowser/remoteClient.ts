@@ -43,6 +43,7 @@ export interface BrowserIdentity {
 }
 
 export interface RemoteProfileStatus {
+  processGeneration?: string;
   active: boolean;
   status: string;
   runtimeId?: string;

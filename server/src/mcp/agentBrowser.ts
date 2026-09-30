@@ -10,7 +10,7 @@ import {
   type BrowserTab,
 } from '../veneerBrowser/tabReuse.js';
 import { createSerialQueue } from './serialQueue.js';
-import { pinnedCdpAddress, closePinnedCdpBridge } from '../veneerBrowser/pinnedCdpBridge.js';
+import { pinnedCdpAddress, closePinnedCdpBridge, disconnectPinnedCdpBridge } from '../veneerBrowser/pinnedCdpBridge.js';
 
 const MAX_ARGS = 100;
 const MAX_ARG_LENGTH = 4_000;
@@ -42,6 +42,8 @@ interface VeneerBrowserBrokerState {
   activeUrl: string | null;
   refsExpired?: boolean;
 }
+const disconnectedSessions = new Set<string>();
+const recoveryReads = new Set<string>();
 const veneerBrowserStates = new Map<string, VeneerBrowserBrokerState>();
 
 const BLOCKED_COMMANDS = new Set([
@@ -480,6 +482,10 @@ async function runAgentBrowserRaw(
   );
 
   return await queue!.run(async () => {
+    if (disconnectedSessions.has(session)) throw new Error('Controller recovery is incomplete; no browser command was dispatched.');
+    if (recoveryReads.has(session) && !isTabList(requestedArgs) && requestedArgs[0] !== 'snapshot') {
+      throw new Error('Controller recovered; list tabs and read a fresh snapshot before interacting. Earlier operation remains unknown.');
+    }
     const previous = veneerBrowserStates.get(session);
     const beforeGeneration = veneerBrowserDaemonGeneration(session);
     // The daemon hashes its control address into its launch identity, so a
@@ -537,6 +543,7 @@ async function runAgentBrowserRaw(
       return brokerFailure(normalized, 'Page references expired after browser recovery. Take a fresh snapshot before interacting.', options.remoteCdpUrl);
     }
     const result = await execute(normalized);
+    if (result.exitCode === 0 && effectiveArgs[0] === 'snapshot') recoveryReads.delete(session);
 
     // Failed lookups can follow a redirect or reconnect too. Observe tabs even
     // when the requested command fails; never retry that command. Otherwise a
@@ -611,9 +618,20 @@ export async function closeVeneerBrowserSession(options: {
     : SESSION_CLOSE_TIMEOUT_MS;
 
   try {
-    await queue.run(() => new Promise<void>((resolve, reject) => {
+    await queue.run(() => stopControllerCli(session, options.workspaceDir, timeoutMs),
+      { waitTimeoutMs: EXTERNAL_BROWSER_WAIT_TIMEOUT_MS });
+  } finally {
+    closePinnedCdpBridge(session);
+    veneerBrowserQueues.delete(session);
+    veneerBrowserStates.delete(session);
+  }
+}
+
+async function stopControllerCli(session: string, workspaceDir: string, timeoutMs: number): Promise<void> {
+  const { binary, config } = resolveAgentBrowserPaths();
+  await new Promise<void>((resolve, reject) => {
       const child = spawn(binary, ['--config', config, '--session', session, 'close'], {
-        cwd: path.resolve(options.workspaceDir),
+        cwd: path.resolve(workspaceDir),
         env: safeBrowserEnvironment('veneer'),
         stdio: ['ignore', 'ignore', 'pipe'],
       });
@@ -638,10 +656,34 @@ export async function closeVeneerBrowserSession(options: {
         finish(() => reject(new Error(`agent-browser close timed out after ${timeoutMs}ms.`)));
       }, timeoutMs);
       timer.unref();
-    }), { waitTimeoutMs: EXTERNAL_BROWSER_WAIT_TIMEOUT_MS });
-  } finally {
-    closePinnedCdpBridge(session);
-    veneerBrowserQueues.delete(session);
+  });
+}
+
+/** Disconnect the proven local bridge BEFORE asking the controller to exit.
+ * No CDP message is emitted by disconnect, and there is no Chrome fallback.
+ * Previously forwarded operations are unknown, not canceled or retried.
+ */
+export async function reconnectVeneerBrowserController(options: {
+  conversationId: string; remoteSessionId: string; workspaceDir: string;
+}): Promise<void> {
+  const session = veneerBrowserSessionName(options.conversationId, options.remoteSessionId);
+  const queue = veneerBrowserQueue(session);
+  await queue.run(async () => {
+    const { binary, config } = resolveAgentBrowserPaths();
+    if (!fs.existsSync(binary) || !fs.existsSync(config)) throw new Error('Controller installation unavailable.');
+    // No unpinned/direct-CDP or unknown-provenance controller may be closed.
+    if (!disconnectPinnedCdpBridge(session)) throw new Error('Live pinned controller bridge not proven; recovery unavailable.');
+    disconnectedSessions.add(session);
     veneerBrowserStates.delete(session);
-  }
+    try {
+      await stopControllerCli(session, options.workspaceDir, SESSION_CLOSE_TIMEOUT_MS);
+      if (veneerBrowserDaemonGeneration(session)) {
+        throw new Error('Controller termination not confirmed.');
+      }
+    } catch {
+      throw new Error('Controller disconnect retained; shutdown outcome unknown. No Chrome fallback or command replay.');
+    }
+    recoveryReads.add(session);
+    disconnectedSessions.delete(session);
+  }, { waitTimeoutMs: EXTERNAL_BROWSER_WAIT_TIMEOUT_MS });
 }

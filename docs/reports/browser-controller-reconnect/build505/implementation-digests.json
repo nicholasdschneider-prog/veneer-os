@@ -1,0 +1,19 @@
+{
+  "baseCommit": "b0478ad604ec33f6b42833e8b8d3e0038f198f22",
+  "files": {
+    "browser-manager/backends/native.mjs": "313abe8b23a62bcadeb81c7bce177bd420d1501c69ec81a4617f73dc4479bf72",
+    "browser-manager/manager.mjs": "0b90dee0264aa44ffa86ea3a4db3ebb6e3fae93a546ad9771d5222580e2f776b",
+    "browser-manager/manager.test.mjs": "962f796861c3690a9487cd07d3b105425ade019bf3864344282b1819c0c4ed85",
+    "docs/bot-feature-guide.md": "73a573f92f80c63d77d933afd6ccca99f93af3907532dcb069591dc779f88830",
+    "server/src/featureGuide/catalog.ts": "f0e3cc9c1f602b2671ab5006de57221fba931c3d6a25f86e161bbd5029143d37",
+    "server/src/mcp/agentBrowser.ts": "9d268cf2ad64857edc68b6cdb0ad9677904afc4aa38eaa7eb5e4fd91eee50808",
+    "server/src/veneerBrowser/manager.ts": "24aa67ee2af4082b025c0aacf70875637cdc00335718e68cd5b512a290558603",
+    "server/src/veneerBrowser/mcp.ts": "5ca9ad6ddd8fcfb8fecedb70eb31102b94fa185e52db98c5ef6dab9d70ef317e",
+    "server/src/veneerBrowser/pinnedCdpBridge.ts": "050f8bec6a6505f8936e3cf68150f5a1f88de10e8d3e41141f26b8a3f2d8495f",
+    "server/src/veneerBrowser/remoteClient.ts": "a9f986214400f94604df03cbe548ab53282e66079f4316cd4b03b574a1ef1e2c",
+    "server/test/botFeatureGuide.test.ts": "ae25a822ccdd5216a2da48ad01c8fea9ac6684ed05195f663305ca35fdc72bf3",
+    "server/test/pinnedCdpBridge.test.ts": "9eaf78d337c7d5add0f08949923abd12eec822a4ace84adad04e2c419f93aa88",
+    "server/test/veneerBrowser.test.ts": "67b5e8889eae2cd6025d05bc6e4b17b290c06e97c53060600085d7109adfa3d0",
+    "server/src/db/migrations/0142_browser_controller_recovery.sql": "aa28de7ed74a5b73592ef5398b466dbffad7db1be75cbfa7aa52b0a8ea21845e"
+  }
+}

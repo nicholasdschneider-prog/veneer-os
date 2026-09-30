@@ -1162,6 +1162,11 @@ test('opens a working copy as a native chrome process and stops it again', async
   assert.equal(version.Browser, 'Chrome/fake-native');
   assert.match(version.webSocketDebuggerUrl, new RegExp(`^wss://127\\.0\\.0\\.1:${native.port}/cdp/`));
 
+  const retainedStatus = await (await native.call(`/v1/profiles/native-work?projectId=${projectId}`)).json();
+  assert.equal(retainedStatus.runtimeId, work.container);
+  assert.equal(retainedStatus.processGeneration, crypto.createHash('sha256').update(JSON.stringify([entry.pid, entry.startedAt])).digest('hex'));
+  assert.equal((await (await native.call(`/v1/profiles/native-work?projectId=${projectId}`)).json()).processGeneration, retainedStatus.processGeneration);
+
   const stopped = await native.call('/v1/profiles/native-work/stop', {
     method: 'POST',
     body: JSON.stringify({ projectId }),

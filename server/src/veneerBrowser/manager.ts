@@ -2,6 +2,7 @@ import { createCapacityWaits } from './capacityWait.js';
 import { PublicReadSchema, readPublicUrl, type PublicReadResult } from './publicReader.js';
 import { activeLoginGrants, authorizeLoginSecret, guardedLoginScript } from './loginGrants.js';
 import crypto from 'node:crypto';
+import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
@@ -15,6 +16,7 @@ import type {
 } from '../db/db.js';
 import {
   closeVeneerBrowserSession,
+  reconnectVeneerBrowserController,
   runAgentBrowser,
   type BrowserRunResult,
 } from '../mcp/agentBrowser.js';
@@ -210,6 +212,7 @@ export interface VeneerBrowserManagerOptions {
   runBrowser?: typeof runAgentBrowser;
   closeBrowserSession?: typeof closeVeneerBrowserSession;
   readUrl?: typeof readBrowserUrl;
+  reconnectController?: typeof reconnectVeneerBrowserController;
 }
 
 function now(): string {
@@ -262,6 +265,7 @@ export class VeneerBrowserManager {
   private readonly remote: VeneerBrowserRemote;
   private readonly runBrowser: typeof runAgentBrowser;
   private readonly closeBrowserSession: typeof closeVeneerBrowserSession;
+  private readonly reconnectController: typeof reconnectVeneerBrowserController;
   private readonly readUrl: typeof readBrowserUrl;
   private readonly queues = new Map<string, SerialQueue>();
   private readonly runtimeCache = new Map<string, ConversationRuntimeCache>();
@@ -275,6 +279,7 @@ export class VeneerBrowserManager {
     this.remote = options.remote;
     this.runBrowser = options.runBrowser ?? runAgentBrowser;
     this.closeBrowserSession = options.closeBrowserSession ?? closeVeneerBrowserSession;
+    this.reconnectController = options.reconnectController ?? reconnectVeneerBrowserController;
     this.readUrl = options.readUrl ?? readBrowserUrl;
     this.capacityWaits = createCapacityWaits({ db: this.db, clientScope: () => this.clientScope(),
       authorize: (userId, id) => { this.conversation(id, userId, true); },
@@ -1043,6 +1048,19 @@ export class VeneerBrowserManager {
    * The database updates still run every time; only the round trip is skipped.
    */
   private async conversationRuntime(context: ConversationContext): Promise<ConversationRuntime> {
+    const recovery = this.db.prepare('SELECT clone_id,process_generation,runtime_id,outcome FROM browser_controller_recovery WHERE conversation_id=? ORDER BY id DESC LIMIT 1').get(context.id) as {clone_id:string;process_generation:string;runtime_id:string;outcome:string}|undefined;
+    if (recovery && recovery.outcome !== 'read_verified') {
+      if (recovery.outcome !== 'detached') throw new Error('Controller recovery unresolved; browser commands are blocked.');
+      const row=this.cloneSession(context.id);
+      if (!row || row.clone_profile_id !== recovery.clone_id || row.status !== 'active') {
+        throw new Error('Recovered working copy unavailable; automatic start or replacement is forbidden.');
+      }
+      const status=await this.remote.status(row.project_id,row.clone_profile_id);
+      if (!status.active || status.runtimeId !== recovery.runtime_id || status.processGeneration !== recovery.process_generation) {
+        throw new Error('Recovered Chrome process changed; automatic start or replacement is forbidden.');
+      }
+      return {row,auditProfileId:this.auditProfileId(row)};
+    }
     const cached = this.runtimeCache.get(context.id);
     if (cached && Date.now() - cached.activeCheckedAt < ACTIVE_CHECK_MS) {
       const row = this.cloneSession(context.id);
@@ -1221,6 +1239,15 @@ export class VeneerBrowserManager {
     args: unknown,
     options: { recover: boolean; timeoutMs?: number; redact?: string[]; auditCommand?: string },
   ): Promise<{ runtime: ConversationRuntime; result: BrowserRunResult | null; thrown: unknown }> {
+    const unresolved = this.db.prepare("SELECT 1 FROM browser_controller_recovery r WHERE conversation_id=? AND clone_id=? AND outcome='started' AND NOT EXISTS (SELECT 1 FROM browser_controller_recovery f WHERE f.conversation_id=r.conversation_id AND f.request_key=r.request_key AND f.outcome='detached')").get(context.id,runtime.row.clone_profile_id);
+    if (unresolved) throw new Error('Controller recovery unresolved; browser commands are blocked.');
+    const recovery = this.db.prepare("SELECT * FROM browser_controller_recovery WHERE conversation_id=? AND clone_id=? ORDER BY id DESC LIMIT 1").get(context.id,runtime.row.clone_profile_id) as {outcome:string;actor_user_id:number;source_profile_id:string;source_generation:number;runtime_id:string;process_generation:string;request_key:string;request_hash:string}|undefined;
+    if (recovery?.outcome === 'detached') {
+      if (userId !== recovery.actor_user_id) throw new Error('Original owner must perform the post-recovery read.');
+      const command = Array.isArray(args) ? args : [];
+      const read = command[0] === 'snapshot' || (command[0] === 'tab' && (!command[1] || command[1] === 'list'));
+      if (!read) throw new Error('Read tabs and a fresh snapshot after controller recovery before interacting.');
+    }
     const passthrough = {
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
       ...(options.redact?.length ? { redact: options.redact } : {}),
@@ -1243,7 +1270,8 @@ export class VeneerBrowserManager {
       if (result && !LOST_CONNECTION.test(result.stderr) && held) {
         this.runtimeCache.set(context.id, { activeCheckedAt: 0, ticket: held });
       }
-      if (options.recover && await this.workingCopyLost(context, result)) {
+      if (options.recover && !this.db.prepare("SELECT 1 FROM browser_controller_recovery WHERE conversation_id=? AND clone_id=?").get(context.id,current.row.clone_profile_id)
+        && await this.workingCopyLost(context, result)) {
         this.runtimeCache.delete(context.id);
         await this.closeCommandSession(current.row).catch(() => undefined);
         // The retry carries nothing forward: it re-opens the copy and takes a
@@ -1261,6 +1289,12 @@ export class VeneerBrowserManager {
       }
     }
     const outcome = result!;
+    if (recovery?.outcome === 'detached' && outcome.exitCode === 0 && Array.isArray(args) && args[0] === 'snapshot') {
+      this.db.prepare(`INSERT INTO browser_controller_recovery
+        (conversation_id,actor_user_id,clone_id,source_profile_id,source_generation,runtime_id,process_generation,request_key,request_hash,outcome)
+        VALUES (?,?,?,?,?,?,?,?,?,'read_verified')`).run(context.id,recovery.actor_user_id,runtime.row.clone_profile_id,
+          recovery.source_profile_id,recovery.source_generation,recovery.runtime_id,recovery.process_generation,recovery.request_key,recovery.request_hash);
+    }
     const timestamp = now();
     this.db.prepare(
       `UPDATE veneer_browser_clone_sessions SET status = 'active', last_used_at = ?,
@@ -1310,6 +1344,83 @@ export class VeneerBrowserManager {
     } catch {
       return readUrlFailure('browser_unavailable', 'The browser is busy or unavailable. Try again when it is ready.');
     }
+  }
+
+  async inspectAutomationController(userId: number, conversationId: string) {
+    this.conversation(conversationId,userId);
+    return this.queue(`conversation:${conversationId}`).run(async()=>{
+      this.conversation(conversationId,userId);
+      const user=this.db.prepare('SELECT status FROM users WHERE id=?').get(userId) as {status:string}|undefined;
+      const row=this.cloneSession(conversationId);
+      if(user?.status!=='active'||!row)throw new Error('Active original owner and existing copy required.');
+      const status=await this.remote.status(row.project_id,row.clone_profile_id);
+      this.conversation(conversationId,userId);
+      const current=this.cloneSession(conversationId);
+      if(!current||JSON.stringify(current)!==JSON.stringify(row))throw new Error('Copy changed during inspection.');
+      return {execute:false,active:status.active && !!status.processGeneration,
+        clone_id:row.clone_profile_id,source_profile_id:row.source_profile_id,source_generation:row.source_generation,
+        runtime_id:status.runtimeId??null,process_generation:status.processGeneration??null,earlierOperation:'UNKNOWN',retryPriorOperation:false,
+        recovery:this.db.prepare('SELECT request_key,outcome,created_at FROM browser_controller_recovery WHERE conversation_id=? AND clone_id=? ORDER BY id DESC LIMIT 1').get(conversationId,row.clone_profile_id)??null};
+    });
+  }
+
+  /** Original-owner only; never starts, adopts, suspends or stops a copy. */
+  async reconnectAutomationController(userId: number, conversationId: string, input: unknown) {
+    const request = z.object({ clone_id: z.string().uuid(), source_profile_id: z.string().uuid(),
+      source_generation: z.number().int().positive(), runtime_id: z.string().min(1).max(200),
+      process_generation: z.string().regex(/^[a-f0-9]{64}$/), request_key: z.string().uuid() }).strict().parse(input);
+    this.conversation(conversationId, userId);
+    return this.queue(`conversation:${conversationId}`).run(async () => {
+      const authorize = () => {
+        this.conversation(conversationId, userId);
+        const user = this.db.prepare('SELECT status FROM users WHERE id=?').get(userId) as {status:string}|undefined;
+        const row = this.cloneSession(conversationId);
+        if (user?.status !== 'active' || !row || row.status !== 'active'
+          || row.clone_profile_id !== request.clone_id || row.source_profile_id !== request.source_profile_id
+          || row.source_generation !== request.source_generation || (row.remote_runtime_id !== null && row.remote_runtime_id !== request.runtime_id)) {
+          throw new Error('Active owner and exact live copy/profile/generation/runtime required.');
+        }
+        this.profile(row.project_id, request.source_profile_id, userId);
+        return row;
+      };
+      const row = authorize();
+      const digest = crypto.createHash('sha256').update(JSON.stringify(request)).digest('hex');
+      const prior = this.db.prepare('SELECT * FROM browser_controller_recovery WHERE conversation_id=? AND request_key=? ORDER BY id').all(conversationId, request.request_key) as Array<{request_hash:string;outcome:string}>;
+      if (prior.length) {
+        if (prior[0]!.request_hash !== digest) throw new Error('Recovery key conflict.');
+        return { execute:false, replay:true, outcome:prior.at(-1)!.outcome, earlierOperation:'UNKNOWN', retryPriorOperation:false };
+      }
+      const held = this.db.prepare("SELECT 1 FROM browser_controller_recovery r WHERE conversation_id=? AND clone_id=? AND outcome='started' AND NOT EXISTS (SELECT 1 FROM browser_controller_recovery f WHERE f.conversation_id=r.conversation_id AND f.request_key=r.request_key AND f.outcome='detached')").get(conversationId, row.clone_profile_id);
+      if (held) throw new Error('Earlier controller recovery is unresolved; no new recovery or operation permitted.');
+      const checkRuntime = async () => {
+        const status = await this.remote.status(row.project_id, row.clone_profile_id);
+        if (!status.active || status.runtimeId !== request.runtime_id || status.processGeneration !== request.process_generation) throw new Error('Working copy runtime changed or unavailable.');
+        authorize();
+      };
+      await checkRuntime();
+      const audit = (outcome: string) => this.db.prepare(`INSERT INTO browser_controller_recovery
+        (conversation_id,actor_user_id,clone_id,source_profile_id,source_generation,runtime_id,process_generation,request_key,request_hash,outcome)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`).run(conversationId,userId,row.clone_profile_id,request.source_profile_id,
+          request.source_generation,request.runtime_id,request.process_generation,request.request_key,digest,outcome);
+      this.db.transaction(() => {
+        authorize();
+        const occupied = this.db.prepare("SELECT 1 FROM browser_controller_recovery r WHERE conversation_id=? AND clone_id=? AND outcome='started' AND NOT EXISTS (SELECT 1 FROM browser_controller_recovery f WHERE f.conversation_id=r.conversation_id AND f.request_key=r.request_key AND f.outcome='detached')").get(conversationId,row.clone_profile_id);
+        if (occupied) throw new Error('Concurrent recovery is unresolved.');
+        audit('started');
+      }).immediate();
+      this.runtimeCache.delete(conversationId);
+      this.probeAddresses.delete(conversationId);
+      try {
+        await this.reconnectController({conversationId,remoteSessionId:row.clone_profile_id,workspaceDir:this.dataDir});
+        await checkRuntime();
+        // Next original-owner read obtains a fresh manager ticket. Recovery does not run tabs, Print or any page command.
+        audit('detached');
+      } catch {
+        audit('unknown');
+        throw new Error('Recovery unavailable or incomplete; prior operation remains UNKNOWN. Working copy was not stopped; no retry or Chrome fallback.');
+      }
+      return {execute:false,replay:false,outcome:'detached',reconnectPending:true,earlierOperation:'UNKNOWN',retryPriorOperation:false};
+    });
   }
 
   async runCommand(

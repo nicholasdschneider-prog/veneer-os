@@ -3,6 +3,7 @@
 // the isolation that matters is the per-profile user-data-dir plus the store's
 // 0700 directories.
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { cleanClose, freeLoopbackPort, ID, sleep, waitForCdp } from './common.mjs';
@@ -198,7 +199,10 @@ export function createNativeBackend({ store, chromeBin, headless = true, windowS
     async status(s) {
       const entry = entryFor(s.container);
       if (!entry) return { exists: false, running: false, paused: false, status: 'stopped' };
-      return { exists: true, running: true, paused: false, status: 'running' };
+      return { exists: true, running: true, paused: false, status: 'running',
+        processGeneration: typeof entry.startedAt === 'string' && entry.chromeDir === s.chromeDir
+          && commandLine(entry.pid).includes(`--user-data-dir=${s.chromeDir}`)
+          ? crypto.createHash('sha256').update(JSON.stringify([entry.pid, entry.startedAt])).digest('hex') : undefined };
     },
 
     // The downloads directory as the browser itself sees it. The relay refuses a

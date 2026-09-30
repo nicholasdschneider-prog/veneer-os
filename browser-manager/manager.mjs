@@ -918,7 +918,7 @@ async function suspendProfile(s, expectedLastUsedAt) {
 
 async function statusProfile(s) {
   const state = await runtimeStatus(s);
-  return { active: state.running, status: state.status, profile: readMeta(s), connections: { agents: agentConnections.get(s.key)?.size ?? 0, viewers: cursorViewers.get(s.key)?.size ?? 0 } };
+  return { active: state.running, status: state.status, runtimeId: state.running ? s.container : undefined, processGeneration: state.processGeneration, profile: readMeta(s), connections: { agents: agentConnections.get(s.key)?.size ?? 0, viewers: cursorViewers.get(s.key)?.size ?? 0 } };
 }
 
 async function readBody(req) {

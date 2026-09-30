@@ -22,6 +22,7 @@ describe('Veneer Browser manager', () => {
   let runBrowser: ReturnType<typeof vi.fn>;
   let closeBrowserSession: ReturnType<typeof vi.fn>;
   let readUrl: ReturnType<typeof vi.fn>;
+  let reconnectController: ReturnType<typeof vi.fn>;
   let running: Set<string>;
 
   beforeEach(() => {
@@ -63,6 +64,7 @@ describe('Veneer Browser manager', () => {
       suspend: vi.fn(async (_projectId: string, profileId: string) => { running.delete(profileId); return { suspended: true }; }),
       stop: vi.fn(async (_projectId: string, profileId: string) => { running.delete(profileId); }),
       status: vi.fn(async (_projectId: string, profileId: string) => ({
+        processGeneration:'a'.repeat(64),
         profile: { lastUsedAt: '2026-09-01T00:00:00Z' },
         active: running.has(profileId),
         status: running.has(profileId) ? 'running' : 'stopped',
@@ -98,12 +100,14 @@ describe('Veneer Browser manager', () => {
     runBrowser = vi.fn(async () => ({ args: ['snapshot', '-i'], stdout: 'page snapshot', stderr: '', exitCode: 0 }));
     closeBrowserSession = vi.fn(async () => undefined);
     readUrl = vi.fn(async () => ({ ok: true, final_url: 'https://example.com/', fetched_at: new Date().toISOString(), title: 'Example', text: 'Ready', tables: [], truncated: false }));
+    reconnectController = vi.fn(async () => undefined);
     manager = new VeneerBrowserManager({
       db,
       dataDir,
       remote,
       runBrowser: runBrowser as never,
       closeBrowserSession: closeBrowserSession as never,
+      reconnectController: reconnectController as never,
       readUrl: readUrl as never,
     });
   });
@@ -112,6 +116,93 @@ describe('Veneer Browser manager', () => {
     manager.shutdown();
     db.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  async function recoveryFixture() {
+    const profile = await manager.createProfile(1,'project-1','Recovery fixture');
+    manager.selectForConversation(1,'conv-1',profile.id);
+    await manager.runCommand(1,'conv-1',['snapshot']);
+    const row = db.prepare('SELECT * FROM veneer_browser_clone_sessions WHERE conversation_id=?').get('conv-1') as Record<string,unknown>;
+    return {clone_id:row.clone_profile_id,source_profile_id:profile.id,source_generation:row.source_generation,
+      runtime_id:row.remote_runtime_id,process_generation:'a'.repeat(64),request_key:'cccec360-a028-4628-8d7f-36322a9bdb37'};
+  }
+
+  it('detaches only exact original-owner scope, preserves copy and immutable UNKNOWN audit, and reconciles without replay',async()=>{
+    const req=await recoveryFixture();
+    expect(await manager.inspectAutomationController(1,'conv-1')).toMatchObject({clone_id:req.clone_id,source_generation:req.source_generation,active:true,execute:false});
+    const before=db.prepare('SELECT * FROM veneer_browser_clone_sessions').all();
+    const commandCount=runBrowser.mock.calls.length;
+    await expect(manager.reconnectAutomationController(2,'conv-1',req)).rejects.toThrow();
+    await expect(manager.reconnectAutomationController(1,'conv-1',{...req,source_generation:99})).rejects.toThrow();
+    expect(reconnectController).not.toHaveBeenCalled();
+    expect(await manager.reconnectAutomationController(1,'conv-1',req)).toMatchObject({outcome:'detached',earlierOperation:'UNKNOWN',retryPriorOperation:false});
+    expect(await manager.reconnectAutomationController(1,'conv-1',req)).toMatchObject({replay:true,outcome:'detached'});
+    expect(reconnectController).toHaveBeenCalledOnce();
+    expect(runBrowser).toHaveBeenCalledTimes(commandCount);
+    expect(db.prepare('SELECT * FROM veneer_browser_clone_sessions').all()).toEqual(before);
+    expect(remote.stop).not.toHaveBeenCalled();expect(remote.suspend).not.toHaveBeenCalled();expect(remote.delete).not.toHaveBeenCalled();
+    expect(closeBrowserSession).not.toHaveBeenCalled();
+    expect(()=>db.prepare('DELETE FROM browser_controller_recovery').run()).toThrow('immutable');
+    expect(()=>db.prepare("UPDATE browser_controller_recovery SET outcome='detached'").run()).toThrow('immutable');
+    await expect(manager.runCommand(1,'conv-1',['click','@e1'])).rejects.toThrow('fresh snapshot');
+    await manager.runCommand(1,'conv-1',['tab','list']);
+    await manager.runCommand(1,'conv-1',['snapshot']);
+    expect(db.prepare("SELECT earlier_operation FROM browser_controller_recovery WHERE outcome='read_verified'").get()).toEqual({earlier_operation:'UNKNOWN'});
+    expect(remote.ticket).toHaveBeenCalled();
+  });
+
+  it('preserves uncertain shutdown with no fallback, replay, new recovery or subsequent command',async()=>{
+    const req=await recoveryFixture();
+    reconnectController.mockRejectedValueOnce(new Error('synthetic secret-bearing error must not be retained'));
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('UNKNOWN');
+    expect(await manager.reconnectAutomationController(1,'conv-1',req)).toMatchObject({outcome:'unknown',replay:true});
+    await expect(manager.reconnectAutomationController(1,'conv-1',{...req,request_key:'5179c156-35cb-4c52-97ec-504f77f55b96'})).rejects.toThrow('unresolved');
+    await expect(manager.runCommand(1,'conv-1',['pdf','receipt.pdf'])).rejects.toThrow('unresolved');
+    expect(runBrowser).toHaveBeenCalledOnce();expect(remote.stop).not.toHaveBeenCalled();
+    expect(JSON.stringify(db.prepare('SELECT * FROM browser_controller_recovery').all())).not.toContain('secret-bearing');
+  });
+
+  it('serializes an inflight command and rechecks revocation/runtime before detaching',async()=>{
+    const req=await recoveryFixture();
+    let release!:()=>void;
+    runBrowser.mockImplementationOnce(async()=>{await new Promise<void>(r=>{release=r;});return {args:[],stdout:'',stderr:'',exitCode:0};});
+    const pending=manager.runCommand(1,'conv-1',['snapshot']);
+    await vi.waitFor(()=>expect(release).toBeTypeOf('function'));
+    const recovery=manager.reconnectAutomationController(1,'conv-1',req);
+    expect(reconnectController).not.toHaveBeenCalled();
+    db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
+    release();await pending;
+    await expect(recovery).rejects.toThrow('Active owner');
+    expect(reconnectController).not.toHaveBeenCalled();
+  });
+
+  it('refuses unavailable or replaced runtime without closing or starting anything',async()=>{
+    const req=await recoveryFixture();
+    remote.status.mockResolvedValueOnce({active:true,runtimeId:'replacement'});
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('runtime');
+    expect(reconnectController).not.toHaveBeenCalled();expect(remote.stop).not.toHaveBeenCalled();
+    expect(db.prepare('SELECT count(*) AS n FROM browser_controller_recovery').get()).toEqual({n:0});
+  });
+
+  it('denies Chrome process replacement even when the working-copy runtime ID is unchanged',async()=>{
+    const req=await recoveryFixture();
+    remote.status.mockResolvedValueOnce({active:true,runtimeId:req.runtime_id,processGeneration:'b'.repeat(64)});
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('runtime');
+    expect(reconnectController).not.toHaveBeenCalled();
+    reconnectController.mockImplementationOnce(async()=>{remote.status.mockResolvedValueOnce({active:true,runtimeId:req.runtime_id,processGeneration:'b'.repeat(64)});});
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('UNKNOWN');
+    expect(db.prepare("SELECT outcome FROM browser_controller_recovery ORDER BY id").all()).toEqual([{outcome:'started'},{outcome:'unknown'}]);
+    expect(remote.stop).not.toHaveBeenCalled();expect(remote.start).not.toHaveBeenCalled();
+  });
+
+  it('never auto-starts or adopts a replacement when the recovered copy disappears before the owner read',async()=>{
+    const req=await recoveryFixture();
+    await manager.reconnectAutomationController(1,'conv-1',req);
+    const opens=remote.open.mock.calls.length;
+    running.clear();
+    await expect(manager.runCommand(1,'conv-1',['tab','list'])).rejects.toThrow('automatic start or replacement');
+    expect(remote.open).toHaveBeenCalledTimes(opens);expect(remote.start).not.toHaveBeenCalled();
+    expect(runBrowser).toHaveBeenCalledOnce();
   });
 
   function shareBusinessBrowser() {
@@ -776,12 +867,14 @@ describe('Veneer Browser manager', () => {
   it('uses a short-lived ticket without storing it or browser output', async () => {
     const runBrowser = vi.fn(async () => ({ args: [], stdout: 'private page text', stderr: '', exitCode: 0 }));
     manager.shutdown();
+    reconnectController = vi.fn(async () => undefined);
     manager = new VeneerBrowserManager({
       db,
       dataDir,
       remote,
       runBrowser: runBrowser as never,
       closeBrowserSession: closeBrowserSession as never,
+      reconnectController: reconnectController as never,
     });
     await manager.runCommand(1, 'conv-1', ['snapshot', '-i']);
     expect(remote.ticket).toHaveBeenLastCalledWith('project-1', expect.any(String), 'agent');
@@ -1164,6 +1257,7 @@ describe('Veneer Browser manager', () => {
         remote,
         runBrowser: runBrowser as never,
         closeBrowserSession: closeBrowserSession as never,
+      reconnectController: reconnectController as never,
       });
       // Read directly: the cache is a round-trip saver with no visible effect
       // after ten minutes anyway, so only the memory it holds can be observed.

@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-09-30T19:42:39.465583+00:00",
+  "node": "24",
+  "typecheck": "passed",
+  "scoped": {
+    "files": 5,
+    "passed": 260
+  },
+  "full": {
+    "installer": 29,
+    "server": 3234,
+    "serverSkipped": 5,
+    "web": 963,
+    "browserManager": 49,
+    "totalPassed": 4275,
+    "exitCode": 0,
+    "workers": 2
+  },
+  "build": {
+    "exitCode": 0,
+    "warning": "Vite large chunks"
+  },
+  "logSha256": {
+    "build505-final-typecheck.txt": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "build505-final-scoped.txt": "d1d51e0ace81cc508dc8641000f5a7e3e55e98a8b34fc78dd8ff24564704b6fc",
+    "build505-release-full.txt": "998d6b48413c491a54b899ad60d68600ad8fab6608a56e10b49d62fa7d286dfb",
+    "build505-build.txt": "a5539b8fe75a755f20c381c59bb5936ce5cd5f595d0feb29d5133882249cce0f"
+  },
+  "deployment": {
+    "restartPerformed": false,
+    "liveMigrationPerformedByBuilder": false,
+    "liveRecoveryPerformed": false,
+    "liveBrowserReadinessVerified": false,
+    "pdfExportPerformed": false,
+    "blocker": "Coordinated server/manager deployment requires restart; user expressly forbids broad restart while preserving preview. No hot-load or control bypass."
+  }
+}

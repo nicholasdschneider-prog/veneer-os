@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('labels controller recovery as staged and retains original-owner UNKNOWN limits in employee and resumed guidance',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(f=>f.id==='browser-controller-reconnect')!;
+    expect(f.limits).toContain('pending deployment');expect(f.agent).toContain('UNKNOWN');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'browser-bot',elevated})).toContain(f.agent);
+  });
   it('delivers paired contact limits to employees and both resumed instruction modes',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(x=>x.id==='paired-contact-verification')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('Production is disabled');expect(f.agent).toContain('No outreach approval ask before executable manifest');expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);

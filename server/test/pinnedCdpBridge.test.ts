@@ -1,3 +1,4 @@
+import { reconnectVeneerBrowserController, veneerBrowserSessionName, runAgentBrowser } from '../src/mcp/agentBrowser.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -85,6 +86,61 @@ describe('pinned CDP adapter', () => {
     await rejected(previous);
     closePinnedCdpBridge('rotate');
     await rejected(next);
+  });
+
+  it('cuts only controller sockets before shutdown, preserving upstream and independent preview with no CDP close or replay', async () => {
+    const options={conversationId:'recovery-fixture',remoteSessionId:'clone-fixture',workspaceDir:dir};
+    const session=veneerBrowserSessionName(options.conversationId,options.remoteSessionId);
+    const url=await pinnedCdpAddress(session,target,ca);
+    const messages:string[]=[];
+    const observe=(socket:WebSocket)=>socket.on('message',data=>messages.push(data.toString()));
+    wss.on('connection',observe);
+    const controller=new WebSocket(url);
+    const preview=new WebSocket(target,{ca:fs.readFileSync(ca)});
+    await Promise.all([controller,preview].map(socket=>new Promise<void>((resolve,reject)=>{socket.once('open',resolve);socket.once('error',reject);} )));
+    const old={bin:process.env.VP_AGENT_BROWSER_BIN,config:process.env.VP_AGENT_BROWSER_CONFIG};
+    const binary=path.join(dir,'controller-stub');
+    const config=path.join(dir,'controller-config.json');
+    // The shutdown stub tries to reconnect to its only known controller endpoint.
+    // The bridge must already be unreachable before this process is spawned; no CDP command can cross it.
+    fs.writeFileSync(binary,`#!${process.execPath}
+const net=require('node:net');const s=net.connect(${new URL(url).port},'127.0.0.1');s.on('connect',()=>process.exit(9));s.on('error',()=>process.exit(0));`,{mode:0o700});
+    fs.writeFileSync(config,'{}');
+    process.env.VP_AGENT_BROWSER_BIN=binary;process.env.VP_AGENT_BROWSER_CONFIG=config;
+    try {
+      const disconnected=new Promise<void>(resolve=>controller.once('close',()=>resolve()));
+      await reconnectVeneerBrowserController(options);await disconnected;
+      expect(messages).toEqual([]);
+      expect(preview.readyState).toBe(WebSocket.OPEN);
+      expect(server.listening).toBe(true);
+      await rejected(url);
+      await expect(runAgentBrowser(['click','@e1'],{...options,remoteCdpUrl:target,trustedCdpOrigin:target,cdpCaFile:ca})).rejects.toThrow('fresh snapshot');
+      await expect(reconnectVeneerBrowserController(options)).rejects.toThrow('not proven');
+    } finally {
+      controller.terminate();preview.terminate();wss.off('connection',observe);closePinnedCdpBridge(session);
+      if(old.bin===undefined)delete process.env.VP_AGENT_BROWSER_BIN;else process.env.VP_AGENT_BROWSER_BIN=old.bin;
+      if(old.config===undefined)delete process.env.VP_AGENT_BROWSER_CONFIG;else process.env.VP_AGENT_BROWSER_CONFIG=old.config;
+    }
+  });
+
+  it('quarantines failed shutdown without a new ticket, browser command or fallback', async () => {
+    const options={conversationId:'failed-recovery-fixture',remoteSessionId:'failed-clone',workspaceDir:dir};
+    const session=veneerBrowserSessionName(options.conversationId,options.remoteSessionId);
+    const url=await pinnedCdpAddress(session,target,ca);
+    const old={bin:process.env.VP_AGENT_BROWSER_BIN,config:process.env.VP_AGENT_BROWSER_CONFIG};
+    const binary=path.join(dir,'failed-controller-stub');const config=path.join(dir,'failed-config.json');
+    fs.writeFileSync(binary,'#!/bin/sh\nexit 1\n',{mode:0o700});fs.writeFileSync(config,'{}');
+    process.env.VP_AGENT_BROWSER_BIN=binary;process.env.VP_AGENT_BROWSER_CONFIG=config;
+    try {
+      await expect(reconnectVeneerBrowserController(options)).rejects.toThrow('shutdown outcome unknown');
+      await rejected(url);
+      await expect(runAgentBrowser(['snapshot'],{...options,remoteCdpUrl:target,trustedCdpOrigin:target,cdpCaFile:ca})).rejects.toThrow('recovery is incomplete');
+      expect(server.listening).toBe(true);
+    } finally {
+      closePinnedCdpBridge(session);
+      if(old.bin===undefined)delete process.env.VP_AGENT_BROWSER_BIN;else process.env.VP_AGENT_BROWSER_BIN=old.bin;
+      if(old.config===undefined)delete process.env.VP_AGENT_BROWSER_CONFIG;else process.env.VP_AGENT_BROWSER_CONFIG=old.config;
+    }
   });
 
   it('refuses plaintext upstreams', async () => {

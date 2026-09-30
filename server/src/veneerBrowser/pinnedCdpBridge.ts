@@ -32,8 +32,9 @@ export async function pinnedCdpAddress(session: string, target: string, caFile: 
   const server = http.createServer((_req, res) => { res.writeHead(404).end(); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 * 1024 });
   const upstreams = new Set<WebSocket>();
+  let closed = false;
   server.on('upgrade', (req, socket, head) => {
-    if (req.url !== capability || req.headers.origin || req.headers.host !== new URL(bridge.url).host) {
+    if (closed || req.url !== capability || req.headers.origin || req.headers.host !== new URL(bridge.url).host) {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       return;
     }
@@ -61,16 +62,16 @@ export async function pinnedCdpAddress(session: string, target: string, caFile: 
     socket.on('error', abort);
     socket.on('close', () => upstream.terminate());
     upstream.once('open', () => {
-      if (socket.destroyed) { upstream.terminate(); return; }
+      if (closed || socket.destroyed) { upstream.terminate(); return; }
       wss.handleUpgrade(req, socket, head, (client) => {
         downstream = client;
         client.on('error', abort);
         client.on('close', () => upstream.terminate());
         client.on('message', (data, isBinary) => {
-          if (upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary: isBinary });
+          if (!closed && upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary: isBinary });
         });
         upstream.on('message', (data, isBinary) => {
-          if (client.readyState === WebSocket.OPEN) client.send(data, { binary: isBinary });
+          if (!closed && client.readyState === WebSocket.OPEN) client.send(data, { binary: isBinary });
         });
       });
     });
@@ -78,6 +79,7 @@ export async function pinnedCdpAddress(session: string, target: string, caFile: 
   const bridge: Bridge = {
     target, certificate, url: '',
     close: () => {
+      closed = true;
       for (const socket of upstreams) socket.terminate();
       for (const socket of wss.clients) socket.terminate();
       wss.close();
@@ -99,4 +101,11 @@ export async function pinnedCdpAddress(session: string, target: string, caFile: 
 export function closePinnedCdpBridge(session: string): void {
   bridges.get(session)?.close();
   bridges.delete(session);
+}
+
+/** Fail closed unless this process owns the exact controller's pinned bridge. */
+export function disconnectPinnedCdpBridge(session: string): boolean {
+  if (!bridges.has(session)) return false;
+  closePinnedCdpBridge(session);
+  return true;
 }

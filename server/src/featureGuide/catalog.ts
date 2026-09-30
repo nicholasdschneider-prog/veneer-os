@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'browser-controller-reconnect',title:'Reconnect browser automation without closing the working copy',category:'Automation',updated:'2026-09-30',
+    audience:'Only the original chat owner using that chat’s authenticated browser connection.',
+    summary:'A scoped controller detach preserves the managed Chrome working copy and never repeats a timed-out operation.',
+    steps:['After this release is deployed, obtain the exact tuple with inspect_controller, then use reconnect_controller with the exact clone, source profile, generation, runtime and stable request key.', 'Read the recovery result. Missing pinned-bridge proof or uncertain shutdown blocks automation; never close Chrome as a fallback.', 'After detached success, the original bot lists tabs and reads a fresh snapshot before interacting. Independently reconcile any earlier unknown operation.'],
+    example:'Reconnect only this stalled browser controller, preserve its preview and tabs, and do not repeat Print.',
+    limits:'Implementation staged pending deployment; BUILD505 does not authorize a service restart or live recovery. Only a currently proven pinned controller bridge is supported. No copy start, stop, suspension, deletion, reassignment, tab close or page command occurs during recovery. Earlier operations remain UNKNOWN; a successful detach is not PDF export or business readiness. The hold expiry is not extended.',
+    announcement:'A scoped recovery implementation is staged; activation awaits a deployment that can preserve the working copy. No live recovery has been performed.',
+    agent:'After deployment, only the original owner uses inspect_controller for the exact nonsecret tuple, then may use reconnect_controller with clone_id, source_profile_id, source_generation, runtime_id, process_generation and a stable UUID request_key. Never borrow identity or guess scope. The server serializes recovery, disconnects the proven pinned bridge before stopping its controller, invalidates cached tickets/refs and records immutable sanitized UNKNOWN history. No automatic replay or Chrome fallback. Lost response: repeat the identical request only to read its audit, never a new key. After detached success, list tabs and read a fresh snapshot under the original identity; confirm the intended page before any separately authorized action. Failure leaves automation blocked. BUILD505 is staged, not deployed or verified recovered; no restart was authorized. Guide: /#/bot-guide?feature=browser-controller-reconnect.',
+  },
+  {
     id:'paired-contact-verification',title:'Review an exact email and SMS verification pair',category:'Teamwork',updated:'2026-09-30',
     audience:'The original case owner and named executor, after dedicated source integration and actual human technical enrollment.',
     summary:'Bind a human-approved pair of public templates to two independently generated source-only links without putting their secrets in native records.',
