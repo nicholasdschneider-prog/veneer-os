@@ -28,7 +28,31 @@ export const decisionChoiceSchema = z.object({
   label: z.string().trim().min(1).max(120),
   description: z.string().trim().max(300).optional(),
   action: z.enum(['approve', 'reject', 'defer', 'withdraw']),
+  /** The concrete value a tap hands back to the bot (a pack, a date, a wording). */
+  answer: z.string().trim().min(1).max(300).optional(),
+  /** The bot's researched best guess; rendered first. At most one per proposal. */
+  recommended: z.boolean().optional(),
 }).strict();
+/** The reserved id of the human's typed "Something else" answer; never a bot-supplied choice. */
+export const CUSTOM_CHOICE_ID = 'custom';
+export const CUSTOM_CHOICE_LABEL = 'Something else';
+const GENERIC_CHOICE_LABELS = new Set(['yes','no','ok','okay','approve','approved','approve recommendation','approve as proposed','approve proposal','approve this','confirm','confirmed','accept','accepted','reject','rejected','reject proposal','decline','declined','proceed','go ahead','do it','sounds good','not now','hold','withdraw','withdraw request','cancel','other','something else']);
+const normalizeLabel = (label: string) => label.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+/**
+ * A bot-raised question must arrive with researched, self-explaining options:
+ * an informed best guess and viable alternatives the human can tap without
+ * re-deriving the answer. Generic labels without a description are refused;
+ * the human's own typed answer is reserved as `custom`.
+ */
+export function validateDecisionChoices(choices: z.infer<typeof decisionChoiceSchema>[] | undefined): void {
+  if (!choices || choices.length < 2) throw new BotError(400, 'Supply at least two researched proposal.choices: your best guess with its evidence and a viable alternative. Generic approve/reject buttons are not offered by default.');
+  if (choices.some(c => c.id === CUSTOM_CHOICE_ID || normalizeLabel(c.label) === normalizeLabel(CUSTOM_CHOICE_LABEL))) throw new BotError(400, 'The "Something else" typed answer is added by Veneer; do not supply it as a choice');
+  if (choices.filter(c => c.recommended).length > 1) throw new BotError(400, 'Mark at most one choice as recommended');
+  for (const c of choices) {
+    if (!c.description && GENERIC_CHOICE_LABELS.has(normalizeLabel(c.label)))
+      throw new BotError(400, `Choice "${c.label}" is generic. Name the concrete action or answer (for example "10×4×4 poly, 27 oz" or "Send this reply to the customer") or add a description explaining what the tap does.`);
+  }
+}
 export const defaultDecisionChoices = [
   { id: 'approve', label: 'Approve as proposed', action: 'approve' },
   { id: 'reject', label: 'Reject proposal', action: 'reject' },
@@ -410,7 +434,7 @@ export function createBotService(db: Database.Database) {
         409,
         'Restore the bot chat before sending a decision or message',
       );
-    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize execution. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. Revalidate material evidence and call record_decision_result with state running and this version before executing. After discussion establishes a concrete changed recommendation or customer reply, call update_decision with the current expected_version and the complete exact revised proposal; do not leave the displayed recommendation stale while describing different text only in discussion. Keep review_summary consistent with the revised scope. Do not revise unchanged proposals or treat a request to edit as approval. Human reply edits create a new version; reread it before responding. Fresh version-bound instructions after defer may answer ONLY the unchanged exact proposal through record_discussion_decision; the service preserves the old defer and creates a successor version. If the human requests different quantities, actions, conditions or message text, revise and review that changed scope instead. Never reuse a legacy null instruction or treat questions, conditional requests or investigation findings as consent. The existing case owner remains accountable through verified delivery and unresolved follow-through. A voice call ending does not cancel this durable wake or require another approval. Technical send/setup failures belong in record_decision_result with one named technical repair owner and a concrete blocker, not a repeated human approval or a claim of completion. Preserve existing executor bindings; do not introduce a routine managerial relay. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
+    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw, custom and discussion do not authorize execution. A custom answer is the human's own typed direction (payload.answer): read it as the answer to this question, then act on it or raise a revised proposal under the existing guards; it authorizes no exact executable action from the old proposal. A choice payload.answer is the concrete value the human selected; use it directly. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. Revalidate material evidence and call record_decision_result with state running and this version before executing. After discussion establishes a concrete changed recommendation or customer reply, call update_decision with the current expected_version and the complete exact revised proposal; do not leave the displayed recommendation stale while describing different text only in discussion. Keep review_summary consistent with the revised scope. Do not revise unchanged proposals or treat a request to edit as approval. Human reply edits create a new version; reread it before responding. Fresh version-bound instructions after defer may answer ONLY the unchanged exact proposal through record_discussion_decision; the service preserves the old defer and creates a successor version. If the human requests different quantities, actions, conditions or message text, revise and review that changed scope instead. Never reuse a legacy null instruction or treat questions, conditional requests or investigation findings as consent. The existing case owner remains accountable through verified delivery and unresolved follow-through. A voice call ending does not cancel this durable wake or require another approval. Technical send/setup failures belong in record_decision_result with one named technical repair owner and a concrete blocker, not a repeated human approval or a claim of completion. Preserve existing executor bindings; do not introduce a routine managerial relay. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
     db.prepare(
       'INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)',
     ).run(
@@ -701,15 +725,31 @@ export function createBotService(db: Database.Database) {
         return createBotService(db).answer(actor, id, version, key, {
           action: choice.action, text: note.trim() || choice.label, scope,
           choice_id: choice.id, choice_label: choice.label,
+          ...('answer' in choice && choice.answer ? { answer: choice.answer } : {}),
         }, handlingRevision);
       })();
+    },
+    /**
+     * The human's own typed direction ("Something else"). It resolves the
+     * question on the same version and wakes the bot with the text, but it is
+     * recorded as `custom`, never `approve`: nothing in the proposal becomes
+     * executable from it. The bot reads it and revises or acts under the
+     * existing guards.
+     */
+    answerCustom(actor: Actor, id: string, version: number, key: string, text: string, handlingRevision?: number): ReturnType<typeof view> {
+      const answer = text.trim();
+      if (!answer) throw new BotError(400, 'Type what you want to happen before submitting');
+      return createBotService(db).answer(actor, id, version, key, {
+        action: 'custom', text: answer, scope: 'this_case',
+        choice_id: CUSTOM_CHOICE_ID, choice_label: CUSTOM_CHOICE_LABEL, answer,
+      }, handlingRevision);
     },
     answer(
       actor: Actor,
       id: string,
       version: number,
       key: string,
-      payload: { action: string; text: string; scope: string; choice_id?: string; choice_label?: string },
+      payload: { action: string; text: string; scope: string; choice_id?: string; choice_label?: string; answer?: string },
       handlingRevision?: number,
     ) {
       return db.transaction(() => {

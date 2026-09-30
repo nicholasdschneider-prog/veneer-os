@@ -39,7 +39,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,
     /^\/bot-workflows\/push\/?$/,
     /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|connected|end))?\/?$/,
-    /^\/bots\/decisions\/[^/]+\/(answer|choice|thread|handling|dismiss|reply|handoffs)\/?$/,
+    /^\/bots\/decisions\/[^/]+\/(answer|choice|custom|thread|handling|dismiss|reply|handoffs)\/?$/,
     /^\/conversations\/[^/]+\/messages\/?$/,
   ].some(pattern => pattern.test(path));
   return false;

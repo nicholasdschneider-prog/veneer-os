@@ -28,7 +28,7 @@ export interface BotProposal {
     action_title: string; request?: string; customer_request?: string; background: string[];
     refund?: { status: 'not_verified' } | { status: 'none'; source: string; as_of: string; scope: string; evidence_kind: 'complete_refund_history' } | { status: 'partial' | 'full'; source: string; as_of: string; scope: string; evidence_kind: 'completed_refund'; receipt: string; amount: number; currency: string };
   };
-  choices?: { id: string; label: string; description?: string; action: string }[];
+  choices?: { id: string; label: string; description?: string; action: string; answer?: string; recommended?: boolean }[];
   question: string;
   recommendation: string;
   consequence: string;
@@ -58,6 +58,7 @@ export interface BotDecision {
     actor_id: number;
     choice_id?: string;
     choice_label?: string;
+    answer?: string;
   } | null;
   result: { state: string; evidence: string } | null;
   parked: { released_leases: string[]; evidence: string } | null;

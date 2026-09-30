@@ -20,7 +20,7 @@ import { canViewConversation } from '../conversations/access.js';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
-import { BotError, createBotService, proposalInputSchema } from './service.js';
+import { BotError, createBotService, proposalInputSchema, validateDecisionChoices } from './service.js';
 const key = z.string().min(1).max(200);
 const mutation = z.object({
   expected_version: z.number().int().positive(),
@@ -217,6 +217,7 @@ export function createBotsRouter(ctx: AppContext) {
         .strict()
         .parse(req.body);
       if (!req.agentConversationId) throw new BotError(403, 'A bot conversation is required');
+      validateDecisionChoices(p.proposal.choices);
       p.proposal = await bindDecisionImages(ctx, actor(req), req.agentConversationId, p.proposal);
       res.json({ decision: s.raise(actor(req), p) });
     }),
@@ -247,6 +248,8 @@ export function createBotsRouter(ctx: AppContext) {
         .strict()
         .parse(req.body);
       const current = s.read(actor(req), req.params.id!);
+      // A revised proposal is a fresh question: bots must re-supply researched choices.
+      if (req.agentConversationId) validateDecisionChoices(p.proposal.choices);
       p.proposal = await bindDecisionImages(ctx, actor(req), current.conversation_id, p.proposal);
       res.json({
         decision: s.revise(
@@ -275,6 +278,13 @@ export function createBotsRouter(ctx: AppContext) {
     }).strict().parse(req.body);
     res.json({ decision: s.choose(actor(req), req.params.id!, p.expected_version, p.request_key,
       p.choice_id, p.note, p.scope, p.expected_handling_revision) });
+  }));
+  router.post('/decisions/:id/custom', run((req, res) => {
+    const p = mutation.extend({
+      text: z.string().trim().min(1).max(2000),
+      expected_handling_revision: z.number().int().nonnegative().optional(),
+    }).strict().parse(req.body);
+    res.json({ decision: s.answerCustom(actor(req), req.params.id!, p.expected_version, p.request_key, p.text, p.expected_handling_revision) });
   }));
   router.post(
     '/decisions/:id/answer',

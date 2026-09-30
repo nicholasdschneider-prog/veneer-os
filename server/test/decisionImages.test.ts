@@ -30,7 +30,7 @@ describe('decision image evidence', () => {
     ctx={db, manager:{listSessionFiles:vi.fn(async (id:string)=>id==='source'?[{path:file,source:'write'}]:[])}} as unknown as AppContext;
   });
   afterEach(async () => {for(const server of servers.splice(0)) await new Promise<void>(resolve=>server.close(()=>resolve())); db.close(); rmSync(dir,{recursive:true,force:true});});
-  const proposal = (images: unknown = undefined) => proposalSchema.parse({question:'Review the supplied photo?',recommendation:'Review the evidence.',consequence:'Fixture only.',blocked_action:'Wait for the decision.',assignee_id:1, ...(images ? {images} : {})});
+  const proposal = (images: unknown = undefined) => proposalSchema.parse({question:'Review the supplied photo?',recommendation:'Review the evidence.',consequence:'Fixture only.',blocked_action:'Wait for the decision.',assignee_id:1,choices:[{id:'damaged',label:'Photo shows shipping damage',description:'Files a carrier claim',action:'approve',recommended:true},{id:'fine',label:'Photo shows no damage',description:'Closes the claim',action:'reject'}], ...(images ? {images} : {})});
   const refs = () => [{conversation_id:'source',path:file,label:'Customer photo',source:'Customer · fixture ticket'}];
   async function raise() {const p=await bindDecisionImages(ctx,actor,'bot',proposal(refs()));return s.raise(actor,{source_key:'fixture',proposal_key:'photo',proposal:p});}
   it('binds exact bytes and serves them only for the current decision version', async()=>{

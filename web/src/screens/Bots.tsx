@@ -315,7 +315,7 @@ export function Bots({
   const mutate = (kind: string, body: Record<string, unknown>) =>
     send(decisionId!, kind, {
       expected_version: detail!.decision.version,
-      ...((kind === 'answer' || kind === 'choice' || kind === 'handling') && detail!.decision.shared_queue ? { expected_handling_revision: detail!.decision.handling_revision } : {}),
+      ...((kind === 'answer' || kind === 'choice' || kind === 'custom' || kind === 'handling') && detail!.decision.shared_queue ? { expected_handling_revision: detail!.decision.handling_revision } : {}),
       ...body,
     });
   const needs = decisions.filter((d) => decisionSection(d) === 'input');
@@ -732,6 +732,9 @@ export function Bots({
                         <p className="mt-1 text-sm text-muted-foreground">Applies to: {scope === 'this_case' ? 'This case only' : 'Standing rule intent — existing approvals still apply'}</p>
                         <DecisionChoices choices={d.proposal.choices} disabled={busy || stale || replyEditing || editing} onChoose={choice_id => void act(async () => {
                           await mutate('choice', { choice_id, note: answer, scope });
+                          setAnswer('');
+                        })} onCustom={text => void act(async () => {
+                          await mutate('custom', { text });
                           setAnswer('');
                         })} />
                         <details className="mt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm">Add a note or change scope</summary>

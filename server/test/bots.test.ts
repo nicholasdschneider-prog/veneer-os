@@ -11,6 +11,7 @@ import { migrate } from '../src/db/migrate.js';
 import {
   createBotService,
   proposalSchema,
+  validateDecisionChoices,
   type Actor,
 } from '../src/bots/service.js';
 import { createConversationWakeupScheduler } from '../src/scheduled/wakeups.js';
@@ -175,6 +176,40 @@ describe('VeneerBots', () => {
     expect(() => proposal({ choices: [...choices, choices[0]] })).toThrow();
   });
 
+  it('refuses bot-raised questions without researched, self-explaining options', () => {
+    expect(() => validateDecisionChoices(undefined)).toThrow('at least two researched');
+    expect(() => validateDecisionChoices([{ id: 'a', label: '10×4×4 poly, 27 oz', action: 'approve' }])).toThrow('at least two');
+    expect(() => validateDecisionChoices([{ id: 'yes', label: 'Yes', action: 'approve' }, { id: 'no', label: 'Reject proposal', action: 'reject' }])).toThrow('generic');
+    expect(() => validateDecisionChoices([{ id: 'yes', label: 'Approve recommendation', action: 'approve' }, { id: 'hold', label: 'Not now', action: 'defer' }])).toThrow('generic');
+    expect(() => validateDecisionChoices([{ id: 'a', label: '27 oz', action: 'approve', recommended: true }, { id: 'b', label: '2 lb', action: 'approve', recommended: true }])).toThrow('at most one');
+    expect(() => validateDecisionChoices([{ id: 'a', label: '27 oz', action: 'approve' }, { id: 'custom', label: 'Type it', action: 'approve' }])).toThrow('Something else');
+    expect(() => validateDecisionChoices([{ id: 'a', label: '27 oz', action: 'approve' }, { id: 'b', label: 'Something else', action: 'approve' }])).toThrow('Something else');
+    // Generic words become acceptable once the description says what the tap does.
+    validateDecisionChoices([{ id: 'yes', label: 'Yes', description: 'Send this exact reply to Robert LeBlanc', action: 'approve' }, { id: 'hold', label: 'Hold', description: 'Wait for the vendor reply first', action: 'defer' }]);
+    validateDecisionChoices([{ id: 'a', label: '10×4×4 poly, 27 oz', description: 'Between the 6 and 12 packs', action: 'approve', answer: '10x4x4:27oz', recommended: true }, { id: 'b', label: '10×4×4 poly, 2 lb', action: 'approve', answer: '10x4x4:32oz' }]);
+  });
+  it('hands the chosen concrete value back to the bot and records the human’s own typed answer as custom', () => {
+    const d = s.raise(bot, { source_key: 'pack', proposal_key: 'ten', proposal: proposal({ choices: [
+      { id: 'mid', label: '10×4×4 poly, 27 oz', description: 'Between the 6 and 12 packs', action: 'approve', answer: '10x4x4:27oz', recommended: true },
+      { id: 'twolb', label: '10×4×4 poly, 2 lb', action: 'approve', answer: '10x4x4:32oz' },
+    ] }) });
+    expect(s.choose(human, d.id, 1, 'pick', 'mid', '', 'this_case').answer).toMatchObject({ action: 'approve', choice_id: 'mid', answer: '10x4x4:27oz' });
+    expect(db.prepare('SELECT reason FROM conversation_wakeups ORDER BY rowid DESC LIMIT 1').get()).toMatchObject({ reason: expect.stringContaining('10x4x4:27oz') });
+    const typed = s.raise(bot, { source_key: 'pack', proposal_key: 'twelve', proposal: proposal({ choices: [
+      { id: 'a', label: '12×4×4 poly, 2 lb', action: 'approve', answer: '12x4x4:32oz' }, { id: 'b', label: '12×6×4 poly, 3 lb', action: 'approve', answer: '12x6x4:48oz' },
+    ] }) });
+    expect(() => s.answerCustom(bot, typed.id, 1, 'bot-typed', 'Ship it')).toThrow();
+    expect(() => s.answerCustom(human, typed.id, 1, 'blank', '   ')).toThrow('Type what you want');
+    expect(() => s.answerCustom(human, typed.id, 2, 'stale', 'Two boxes of 6')).toThrow();
+    const answered = s.answerCustom(human, typed.id, 1, 'typed', 'Two boxes of 6, each 10×4×4 at 15 oz');
+    expect(answered).toMatchObject({ state: 'decided', answer: { action: 'custom', choice_id: 'custom', choice_label: 'Something else', answer: 'Two boxes of 6, each 10×4×4 at 15 oz', scope: 'this_case' } });
+    expect(s.answerCustom(human, typed.id, 1, 'typed', 'Two boxes of 6, each 10×4×4 at 15 oz').state).toBe('decided');
+    expect(s.thread(human, typed.id).events.filter(e => e.kind === 'answered')).toHaveLength(1);
+    expect(() => s.answerCustom(human, typed.id, 1, 'typed', 'Different text')).toThrow();
+    expect(db.prepare('SELECT reason FROM conversation_wakeups ORDER BY rowid DESC LIMIT 1').get()).toMatchObject({ reason: expect.stringContaining('Two boxes of 6') });
+    // A typed direction never unlocks the proposal's exact executable action.
+    expect(() => s.result(bot, typed.id, 1, 'execute', { state: 'running', evidence: 'checked', material_evidence_unchanged: true })).toThrow();
+  });
   it('derives a contextual choice on the server and records a single versioned answer without typing', () => {
     const d = s.raise(bot, {source_key:'choices', proposal_key:'draft', proposal:proposal({choices:[
       {id:'yes', label:'Yes — queue Auto-Ship', action:'approve'},
@@ -987,6 +1022,38 @@ describe('VeneerBots', () => {
     else if (change === 'interrupt') manager.interrupt('fixture-a');
     else manager.shutdown();
     expect(status()).toBe('awaiting_reply');
+  });
+  it('rejects bot-raised decisions without choices at the API while humans still answer legacy ones', async () => {
+    let requestActor: Actor = bot;
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => { req.user = requestActor.user; req.agentConversationId = requestActor.conversationId; next(); });
+    app.use('/api/bots', createBotsRouter({ db, manager: { statusOf: async () => 'idle' } } as unknown as AppContext));
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/bots`;
+    const post = (path: string, body: object) => fetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    try {
+      const bare = await post('/decisions', { source_key: 'api', proposal_key: 'bare', proposal: proposal() });
+      expect(bare.status).toBe(400);
+      expect((await bare.json()).error).toContain('researched');
+      const generic = await post('/decisions', { source_key: 'api', proposal_key: 'generic', proposal: proposal({ choices: [{ id: 'y', label: 'Yes', action: 'approve' }, { id: 'n', label: 'No', action: 'reject' }] }) });
+      expect(generic.status).toBe(400);
+      const ok = await post('/decisions', { source_key: 'api', proposal_key: 'ok', proposal: proposal({ choices: [{ id: 'a', label: 'Use draft A', description: 'Publishes the internal fixture as drafted', action: 'approve', recommended: true }, { id: 'b', label: 'Use draft B', description: 'Shorter wording', action: 'approve' }] }) });
+      expect(ok.status).toBe(200);
+      const { decision } = await ok.json();
+      const revised = await post(`/decisions/${decision.id}/proposal`, { expected_version: 1, request_key: 'rev', proposal: proposal() });
+      expect(revised.status).toBe(400);
+      const legacy = s.raise(bot, { source_key: 'api', proposal_key: 'legacy', proposal: proposal() });
+      requestActor = human;
+      const custom = await post(`/decisions/${legacy.id}/custom`, { expected_version: 1, request_key: 'typed', text: 'Use draft C with the new footer' });
+      expect(custom.status).toBe(200);
+      expect((await custom.json()).decision).toMatchObject({ state: 'decided', answer: { action: 'custom', text: 'Use draft C with the new footer' } });
+      const legacyChoice = await post(`/decisions/${decision.id}/choice`, { expected_version: 1, request_key: 'click', choice_id: 'a', scope: 'this_case' });
+      expect((await legacyChoice.json()).decision.answer).toMatchObject({ choice_id: 'a', action: 'approve' });
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
   });
   it('orders bots by activity with personal pins and preserves personal unread state', async () => {
     let requestActor = human;

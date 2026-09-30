@@ -31,7 +31,7 @@ export function decisionStatusLabel(d: DecisionStatus): string {
   if (d.state === 'action_pending') return 'Queued for execution';
   if (d.state === 'decided') {
     return ({ approve: 'Approved · Awaiting execution', reject: 'Rejected · No execution authorized',
-      withdraw: 'Withdrawn · No execution authorized', defer: 'Deferred · Awaiting follow-up' } as Record<string, string>)[d.answer?.action ?? ''] ?? 'Decision recorded · Awaiting follow-up';
+      withdraw: 'Withdrawn · No execution authorized', defer: 'Deferred · Awaiting follow-up', custom: 'Answered in your words · Bot follows up' } as Record<string, string>)[d.answer?.action ?? ''] ?? 'Decision recorded · Awaiting follow-up';
   }
   return decisionLabel(d.state);
 }
