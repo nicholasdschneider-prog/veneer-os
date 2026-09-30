@@ -197,6 +197,12 @@ export interface CodexAdapterOptions {
   getAccountId?: () => string | null;
   /** CODEX_HOME for an account; called before every spawn so the profile is ready. */
   codexHomeFor?: (accountId: string) => string;
+  /**
+   * Whether an account is still registered. A disconnected account's cached
+   * app-server keeps its CODEX_HOME, thread writer locks and (revoked)
+   * credential; it is shut down on the next spawn rather than reused.
+   */
+  accountExists?: (accountId: string) => boolean;
   /** A turn died on the subscription's usage limit — see ../codex/accountFailover.ts. */
   onUsageLimit?: (event: CodexUsageLimitEvent) => void;
 }
@@ -252,11 +258,27 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
   // the app-server reads its credential from there at spawn, so switching
   // accounts means a different long-lived process, not a different argument.
   const clients = new Map<string, AppServerClient>();
+  const clientAccounts = new Map<AppServerClient, string>();
+  /** Drop app-servers whose account was disconnected since they were spawned. */
+  function reapRemovedAccountClients(): void {
+    if (!opts.accountExists) return;
+    for (const [key, client] of [...clients]) {
+      const accountId = clientAccounts.get(client);
+      if (!accountId || opts.accountExists(accountId)) continue;
+      clients.delete(key);
+      clientAccounts.delete(client);
+      liveClients.delete(client);
+      for (const [threadId, owner] of [...threadOwners]) if (owner === client) threadOwners.delete(threadId);
+      log.warn(`[codex] shutting down app-server for disconnected account ${accountId}`);
+      client.shutdown();
+    }
+  }
   // A bounded interrupt fallback can release Veneer before app-server releases
   // its native turn. The next turn on that thread must quarantine unscoped late
   // notifications as well as rejecting messages carrying the old turn id.
   const fallbackInterruptedThreads = new Set<string>();
   function clientFor(fullAccess: boolean, accountId: string | null): AppServerClient {
+    reapRemovedAccountClients();
     const key = `${accountId ?? ''}\u0000${fullAccess ? 'full' : 'safe'}`;
     let existing = clients.get(key);
     if (!existing) {
@@ -264,6 +286,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       if (accountId && opts.codexHomeFor) env.CODEX_HOME = opts.codexHomeFor(accountId);
       existing = new AppServerClient({ codexBin: opts.codexBin, env, log });
       clients.set(key, existing);
+      if (accountId) clientAccounts.set(existing, accountId);
       liveClients.add(existing);
     }
     return existing;

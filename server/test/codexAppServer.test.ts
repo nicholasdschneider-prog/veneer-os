@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { appServerArgs, AppServerClient } from '../src/providers/codexAppServer/protocol.js';
 import { createCodexAdapter } from '../src/providers/codexAppServer/adapter.js';
 import { codexMcpServers } from '../src/providers/agentsMcp.js';
@@ -206,6 +206,26 @@ describe('canonical Codex App Server adapter', () => {
         cachedInputTokens: 61_952,
       },
     });
+  });
+
+  it('retires the app-server of an account that was disconnected since it was spawned', async () => {
+    const dir = tmpDir();
+    dirs.push(dir);
+    const registered = new Set(['a']);
+    let account = 'a';
+    const warn = vi.fn();
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 5_000, transcriptsDir: dir, log: { ...silent, warn },
+      getAccountId: () => account, codexHomeFor: (id) => path.join(dir, `home-${id}`), accountExists: (id) => registered.has(id) });
+    await adapter.runTurn(turnSpec(), () => undefined).done;
+    expect(warn).not.toHaveBeenCalled();
+    // Account a is disconnected in the web process and b becomes active.
+    registered.delete('a'); registered.add('b'); account = 'b';
+    await adapter.runTurn({ ...turnSpec(), turnId: 'turn-2' }, () => undefined).done;
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('disconnected account a'));
+    // b stays cached: no second retirement on the next spawn.
+    warn.mockClear();
+    await adapter.runTurn({ ...turnSpec(), turnId: 'turn-3' }, () => undefined).done;
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it('compacts an existing thread through the native app-server lifecycle', async () => {

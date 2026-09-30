@@ -85,6 +85,34 @@ describe('codex account store', () => {
     expect(store.activeAccountId()).toBeNull();
   });
 
+  it('gives a reconnecting email its old id back so recorded rollout paths keep resolving', () => {
+    const { dataDir, homes } = fixture();
+    const store = createCodexAccountStore(dataDir, homes);
+    const a = store.add({ email: 'a@example.com', planType: 'pro' });
+    const b = store.add({ email: 'b@example.com' });
+    expect(store.remove(a.id)).toBe(true);
+    expect(store.list().map((x) => x.id)).toEqual([b.id]);
+    const raw = JSON.parse(fs.readFileSync(path.join(dataDir, 'codex-accounts.json'), 'utf8'));
+    expect(raw.retired).toMatchObject([{ id: a.id, email: 'a@example.com' }]);
+    // Same email signs in again: same id, tombstone consumed, activated like any sign-in.
+    const again = store.add({ email: 'a@example.com', planType: 'plus' });
+    expect(again.id).toBe(a.id);
+    expect(store.activeAccountId()).toBe(a.id);
+    expect(JSON.parse(fs.readFileSync(path.join(dataDir, 'codex-accounts.json'), 'utf8')).retired).toBeUndefined();
+    // A different email never inherits a retired id; an explicit id wins over a tombstone.
+    store.remove(a.id);
+    expect(store.add({ email: 'c@example.com' }).id).not.toBe(a.id);
+    expect(store.add({ id: 'fixed', email: 'a@example.com' }).id).toBe('fixed');
+    // Disconnect-all retires every account with an email, and a plain reconnect reuses it.
+    store.clear();
+    expect(store.list()).toEqual([]);
+    expect(store.add({ email: 'b@example.com' }).id).toBe(b.id);
+    // Legacy `primary` is never tombstoned: its home is the shared profile itself.
+    store.add({ id: LEGACY_CODEX_ACCOUNT_ID, email: 'p@example.com' });
+    store.remove(LEGACY_CODEX_ACCOUNT_ID);
+    expect(store.add({ email: 'p@example.com' }).id).not.toBe(LEGACY_CODEX_ACCOUNT_ID);
+  });
+
   it('keeps a user-chosen label but follows the email for generated ones', () => {
     const { dataDir, homes } = fixture();
     const store = createCodexAccountStore(dataDir, homes);
@@ -165,9 +193,11 @@ describe('codex account homes', () => {
     expect(readCodexIdentity(primary)?.plan).toBe('pro');
     expect(store.list()).toHaveLength(2);
 
-    // Removing: a sibling home goes entirely; the primary keeps its history.
+    // Removing drops only the credential. The sibling home stays: Codex's shared
+    // thread index addresses every rollout through it (2026-09-30 incident).
     removeCodexAccountFiles(store, two.id, homes);
-    expect(fs.existsSync(store.homeFor(two.id))).toBe(false);
+    expect(fs.existsSync(store.homeFor(two.id))).toBe(true);
+    expect(fs.existsSync(path.join(store.homeFor(two.id), 'auth.json'))).toBe(false);
     fs.mkdirSync(path.join(primary, 'sessions'), { recursive: true });
     removeCodexAccountFiles(store, LEGACY_CODEX_ACCOUNT_ID, homes);
     expect(fs.existsSync(path.join(primary, 'auth.json'))).toBe(false);

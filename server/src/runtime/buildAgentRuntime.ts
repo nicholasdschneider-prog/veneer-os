@@ -213,6 +213,9 @@ export function buildAgentRuntime({
       // Every account is its own CODEX_HOME sharing the primary profile's
       // history through links; refresh those links before each spawn.
       codexHomeFor: (accountId) => ensureCodexAccountHome(codexAccounts.homeFor(accountId)),
+      // The registry is a shared file: a disconnect made in the web process is
+      // seen here on the next spawn, and that account's app-server is retired.
+      accountExists: (accountId) => codexAccounts.list().some((account) => account.id === accountId),
       onUsageLimit: (event) => {
         void codexFailover.handleUsageLimit(event);
       },

@@ -48,9 +48,23 @@ export type CodexAccountSummary = StoredCodexAccount & {
   connected: boolean;
 };
 
+/** An account that was disconnected. Its id is reused when the same email signs in again. */
+interface RetiredCodexAccount {
+  id: string;
+  email: string;
+  retiredAt: string;
+}
+
 interface CodexAccountsFile {
   accounts?: StoredCodexAccount[];
   activeAccountId?: string;
+  /**
+   * Disconnected accounts, kept so a reconnect of the same email gets the same
+   * id. Codex's shared thread index records every rollout path THROUGH the
+   * account home (…/.codex-accounts/<id>/sessions/…), so an id is an address
+   * that history keeps pointing at long after the credential is gone.
+   */
+  retired?: RetiredCodexAccount[];
 }
 
 export interface AddCodexAccountInput {
@@ -211,6 +225,23 @@ function normalize(file: CodexAccountsFile): StoredCodexAccount[] {
   return out;
 }
 
+function normalizeRetired(file: CodexAccountsFile): RetiredCodexAccount[] {
+  const out: RetiredCodexAccount[] = [];
+  for (const raw of Array.isArray(file.retired) ? file.retired : []) {
+    const id = nonEmpty(raw?.id), email = nonEmpty(raw?.email);
+    if (id && email && !out.some((r) => r.id === id)) out.push({ id, email, retiredAt: nonEmpty(raw.retiredAt) ?? new Date(0).toISOString() });
+  }
+  return out;
+}
+
+/** Tombstones for `gone` (those with an email), newest first per email. */
+function retire(retired: RetiredCodexAccount[], gone: StoredCodexAccount[]): RetiredCodexAccount[] {
+  const at = new Date().toISOString();
+  const fresh = gone.filter((a): a is StoredCodexAccount & { email: string } => !!a.email && a.id !== LEGACY_CODEX_ACCOUNT_ID)
+    .map((a) => ({ id: a.id, email: a.email, retiredAt: at }));
+  return [...fresh, ...retired.filter((r) => !fresh.some((f) => f.email === r.email || f.id === r.id))];
+}
+
 function resolveActive(file: CodexAccountsFile, accounts: StoredCodexAccount[]): StoredCodexAccount | null {
   if (accounts.length === 0) return null;
   const wanted = nonEmpty(file.activeAccountId);
@@ -220,25 +251,29 @@ function resolveActive(file: CodexAccountsFile, accounts: StoredCodexAccount[]):
 export function createCodexAccountStore(dataDir: string, homes: Homes = currentHomes()): CodexAccountStore {
   const file = path.join(dataDir, 'codex-accounts.json');
 
-  function load(): { file: CodexAccountsFile; accounts: StoredCodexAccount[]; active: StoredCodexAccount | null } {
+  function load(): { file: CodexAccountsFile; accounts: StoredCodexAccount[]; active: StoredCodexAccount | null; retired: RetiredCodexAccount[] } {
     const current = readFileSafe(file);
     const accounts = normalize(current);
-    return { file: current, accounts, active: resolveActive(current, accounts) };
+    return { file: current, accounts, active: resolveActive(current, accounts), retired: normalizeRetired(current) };
   }
 
   /**
    * `keepActiveFromDisk` re-reads the active id at write time: a background
    * profile refresh must never undo a switch the user made meanwhile.
    */
-  function save(accounts: StoredCodexAccount[], activeId: string | null, keepActiveFromDisk = false): void {
-    const wanted = keepActiveFromDisk ? nonEmpty(readFileSafe(file).activeAccountId) ?? activeId : activeId;
+  function save(accounts: StoredCodexAccount[], activeId: string | null, keepActiveFromDisk = false, retired?: RetiredCodexAccount[]): void {
+    const onDisk = readFileSafe(file);
+    const wanted = keepActiveFromDisk ? nonEmpty(onDisk.activeAccountId) ?? activeId : activeId;
+    const keep = (retired ?? normalizeRetired(onDisk)).filter((r) => !accounts.some((a) => a.id === r.id));
+    const tombstones = keep.length ? { retired: keep } : {};
     if (accounts.length === 0) {
-      writeAtomic(file, {});
+      writeAtomic(file, { ...tombstones });
       return;
     }
     writeAtomic(file, {
       accounts,
       activeAccountId: wanted && accounts.some((a) => a.id === wanted) ? wanted : accounts[0]!.id,
+      ...tombstones,
     });
   }
 
@@ -265,9 +300,12 @@ export function createCodexAccountStore(dataDir: string, homes: Homes = currentH
     add(input) {
       const email = nonEmpty(input.email);
       const connectedAt = input.connectedAt ?? new Date().toISOString();
-      const { accounts, active } = load();
+      const { accounts, active, retired } = load();
       const fixedId = nonEmpty(input.id);
       const existing = accounts.find((a) => (fixedId && a.id === fixedId) || (email && a.email === email));
+      // A returning email gets its old id back so the rollout paths Codex
+      // recorded under that home keep resolving.
+      const returning = !existing && !fixedId && email ? retired.find((r) => r.email === email) : undefined;
       const account: StoredCodexAccount = existing
         ? {
             ...existing,
@@ -277,7 +315,7 @@ export function createCodexAccountStore(dataDir: string, homes: Homes = currentH
             label: nonEmpty(input.label) ?? existing.label,
           }
         : {
-            id: fixedId ?? crypto.randomUUID(),
+            id: fixedId ?? returning?.id ?? crypto.randomUUID(),
             label: nonEmpty(input.label) ?? email ?? `Codex account ${accounts.length + 1}`,
             email,
             planType: nonEmpty(input.planType),
@@ -304,11 +342,12 @@ export function createCodexAccountStore(dataDir: string, homes: Homes = currentH
       return true;
     },
     remove(accountId) {
-      const { accounts, active } = load();
-      if (!accounts.some((a) => a.id === accountId)) return false;
+      const { accounts, active, retired } = load();
+      const target = accounts.find((a) => a.id === accountId);
+      if (!target) return false;
       const next = accounts.filter((a) => a.id !== accountId);
       const activeId = active && active.id !== accountId ? active.id : next[0]?.id ?? null;
-      save(next, activeId);
+      save(next, activeId, false, retire(retired, [target]));
       return true;
     },
     updateProfile(accountId, profile) {
@@ -324,7 +363,8 @@ export function createCodexAccountStore(dataDir: string, homes: Homes = currentH
       save(accounts.map((a) => (a.id === accountId ? { ...a, email, planType, label } : a)), active?.id ?? null, true);
     },
     clear() {
-      save([], null);
+      const { accounts, retired } = load();
+      save([], null, false, retire(retired, accounts));
     },
     homeFor,
   };
@@ -382,15 +422,16 @@ export function adoptCodexLogin(
 }
 
 /**
- * Forget an account and its credential. The primary profile keeps everything
- * but its auth.json (that profile IS the shared history); a sibling home is
- * removed outright — it held nothing but links and the credential.
+ * Forget an account's credential. Only auth.json goes, for every profile:
+ * Codex's shared thread index (state_5.sqlite) records each rollout path
+ * through the home the thread was started in, so deleting a sibling home
+ * orphans every thread ever run on that account ("no rollout found",
+ * "missing source rollout") and any app-server still running there loses its
+ * credential mid-flight (401). The links it holds are worthless but harmless;
+ * they are reused when the same email signs in again (see `retired`).
+ * Incident: 2026-09-30, 1,545 threads.
  */
 export function removeCodexAccountFiles(store: CodexAccountStore, accountId: string, homes: Homes = currentHomes()): void {
-  const home = store.homeFor(accountId);
-  if (accountId === LEGACY_CODEX_ACCOUNT_ID || path.resolve(home) === path.resolve(proCodexHome(homes))) {
-    fs.rmSync(path.join(home, 'auth.json'), { force: true });
-    return;
-  }
-  fs.rmSync(home, { recursive: true, force: true });
+  void homes;
+  fs.rmSync(path.join(store.homeFor(accountId), 'auth.json'), { force: true });
 }

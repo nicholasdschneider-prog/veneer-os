@@ -1466,8 +1466,8 @@ function CodexAccountCard({
             <DialogTitle>{accounts.length > 1 ? 'Disconnect every Codex account?' : 'Disconnect Codex?'}</DialogTitle>
             <DialogDescription>
               {accounts.length > 1
-                ? "Removes this machine's credentials for all connected Codex accounts. You can connect them again anytime."
-                : "Removes this machine's Codex credentials. You can connect again anytime."}
+                ? "Removes this machine's credentials for all connected Codex accounts. Chat history stays on this machine; each account's profile folder is kept so existing Codex threads still resume when the same account signs in again."
+                : "Removes this machine's Codex credentials. Chat history stays on this machine; the profile folder is kept so existing Codex threads still resume when you sign in again."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
