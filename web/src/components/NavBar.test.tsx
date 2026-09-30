@@ -325,3 +325,17 @@ describe('NavCountBadge', () => {
     expect(renderToStaticMarkup(<NavCountBadge count={120} label="120 decisions need your input" />)).toContain('99+');
   });
 });
+
+describe('NavShell for a focused business member', () => {
+  it('offers Chats, Automations and Settings only, without meters or workspace destinations', () => {
+    const html = renderToStaticMarkup(
+      <NavShell current="bots" canManage={false} focused signedInEmail="accounting@example.com" onNavigate={() => {}} navigation={terminalNavigation}>
+        <div>Content</div>
+      </NavShell>,
+    );
+    for (const label of ['Chats', 'Automations', 'Settings', 'Account menu']) expect(html).toContain(`aria-label="${label}"`);
+    for (const label of ['Workspace', 'Bot guide', 'Todos', 'Pages', 'Apps', 'Terminal']) expect(html).not.toContain(`aria-label="${label}"`);
+    expect(html).not.toContain('System usage');
+    expect(html).not.toContain('5-hour');
+  });
+});

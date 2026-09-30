@@ -581,6 +581,14 @@ export const BOT_FEATURES: BotFeature[] = [
     limits: 'Business membership is not platform administration. Browser, project training, bot management, and customer actions retain their own permissions.',
     agent: 'Use manage_business_team only with its required owner/delegated authority. Explain scoped access and verify explicit identities; never infer action grants from membership.',
   },
+  {
+    id: 'focused-shell', title: 'Work with your assigned bots in the shared app', category: 'Teamwork', updated: '2026-09-30', announcement: 'Teammates focused on a few assigned bots now use the same Veneer app as everyone else, with only Chats, Automations and Settings in the rail. Questions and Side chat work in their chats.',
+    audience: 'Teammates with a focused bot assignment, and the owners who configure it', summary: 'One app for everyone: a focused teammate sees fewer destinations, not a different product.',
+    steps: ['Sign in as usual. The rail shows Chats, Automations and Settings; Workspace, Todos, Pages, Apps, Terminal and pinned Mini Apps are not offered.', 'Open a bot from Chats. The chat has the same header, Questions button, Side chat, Listen, Reply and file previews as any other chat.', 'Open Automations to read the schedules behind your bots. To change one, ask the bot in its chat.', 'Settings holds Appearance only. Ask the workspace owner for anything else.', 'Owners assign bots with business access management (focus); nothing is installed separately for the teammate.'],
+    example: 'Open my bot, check its open questions, and start a side chat about the vendor invoice.',
+    limits: 'Focus narrows what the teammate can open; it grants nothing. Only assigned bots, the teammate’s own side chats of those bots, coordination threads those bots take part in, and the read-only automation list are reachable. New top-level chats, the general scheduler, projects, files and administration stay closed. Any other address returns to Chats.',
+    agent: 'A focused teammate uses the shared shell: never describe a separate accounting app or ask them to use a different sign-in. Point them to Chats for their bots, Automations for read-only routine schedules, and Settings for appearance. Questions and Side chat are available in their chats; ask the workspace owner (manage_business_team focus) for assignment changes. Bot turns acting for a focused teammate keep normal business reach.',
+  },
 ];
 
 export function isNewFeature(feature: BotFeature, now = Date.now()): boolean {

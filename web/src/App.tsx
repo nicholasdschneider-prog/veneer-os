@@ -3,7 +3,7 @@ import { RoutineScopeReview } from './screens/RoutineScopeReview';
 import { RoutineOwnerSetup } from './screens/RoutineOwnerSetup';
 import { CsReadiness } from './screens/CsReadiness';
 import { CsPhotoRequestSetup } from './screens/CsPhotoRequestSetup';
-import { FocusedWorkspace } from './screens/FocusedWorkspace';
+import { FocusedAutomations } from './screens/FocusedWorkspace';
 import { ReturnOwnerSetup } from './screens/ReturnOwnerSetup';
 import { TeamMessages } from './screens/TeamMessages';
 import { BotGuide } from './screens/BotGuide';
@@ -132,6 +132,16 @@ function useHashRoute(): [string, (hash: string) => void] {
     window.location.hash = next;
   }, []);
   return [hash, navigate];
+}
+
+/** Routes a focused business member may open; everything else lands on Chats. */
+export function isFocusedRoute(routePath: string, params: URLSearchParams): boolean {
+  if (routePath === '#/bots') return !params.has('register');
+  if (routePath.startsWith('#/bots/')) return routePath.split('/')[2] !== 'talk';
+  if (routePath.startsWith('#/messages/')) return true;
+  if (/^#\/chat\/[^/]+$/.test(routePath)) return routePath !== '#/chat/new' && !params.has('files') && !params.has('browser');
+  if (routePath === '#/automations' || routePath === '#/scheduled') return true;
+  return routePath === '#/settings' || routePath.startsWith('#/settings/');
 }
 
 export function App() {
@@ -296,8 +306,6 @@ export function App() {
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/autoship-candidate-setup') return <ReturnOwnerSetup key="candidate" candidate />;
   if (me.user?.employeeWorkspace && hash.split('?')[0] === '#/return-service-setup') return <ReturnOwnerSetup key="return" />;
 
-  if (me.user?.focusedWorkspace && !me.user.employeeWorkspace) return <><FocusedWorkspace hash={hash} onNavigate={navigate} email={me.user.email} onToast={showToast} />{toastNode}</>;
-
   if (me.user?.employeeWorkspace) return <><EmployeeWorkspace hash={hash} onNavigate={navigate} email={me.user.email} onToast={showToast} />{toastNode}</>;
 
   const role = me.user?.role ?? 'member';
@@ -308,6 +316,16 @@ export function App() {
   // matching sees a clean path and screens can read params.
   const routePath = hash.split('?')[0] ?? hash;
   const params = new URLSearchParams(hash.split('?')[1] ?? '');
+
+  // A focused business member (see docs/focused-accounting-workspace.md) uses
+  // this same shell with fewer destinations: their bots' chats, the read-only
+  // list of those bots' automations, and personal appearance settings. Any
+  // other route lands on Chats. The server enforces the bot scope itself.
+  const focused = Boolean(me.user?.focusedWorkspace);
+  if (focused && !isFocusedRoute(routePath, params)) {
+    navigate('#/bots');
+    return null;
+  }
 
   // Which primary-nav item is active. Settings, plus the admin screens reached
   // from within it (terminal included), all count as "settings"; everything
@@ -343,24 +361,24 @@ export function App() {
               : 'chats';
 
   if (routePath === '#/autoship-candidate-setup') return (
-    <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><ReturnOwnerSetup key="candidate" candidate /></NavShell>
+    <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><ReturnOwnerSetup key="candidate" candidate /></NavShell>
   );
 
-  if (routePath === '#/purchase-timing-setup') return <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><PurchaseTimingSetup /></NavShell>;
+  if (routePath === '#/purchase-timing-setup') return <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><PurchaseTimingSetup /></NavShell>;
   if (routePath === '#/return-service-setup') return (
-    <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+    <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
       <ReturnOwnerSetup key="return" />
     </NavShell>
   );
 
   if (routePath === '#/bot-guide') return (
-    <NavShell current="guide" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+    <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
       <BotGuide hash={hash} onNavigate={navigate} />
     </NavShell>
   );
 
   if (routePath.startsWith('#/messages/')) return (
-    <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+    <NavShell current="bots" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
       <TeamMessages roomId={routePath.split('/')[2]} fromBots={true} onNavigate={navigate} />
     </NavShell>
   );
@@ -368,15 +386,15 @@ export function App() {
   if (routePath === '#/huddles' || routePath.startsWith('#/huddles/')) {
     const huddleId = routePath.split('/')[2];
     return (
-      <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <NavShell current="bots" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
         <Huddles huddleId={huddleId ? decodeURIComponent(huddleId) : undefined} onNavigate={navigate} />
       </NavShell>
     );
   }
 
   if (routePath === '#/messages' || (routePath === '#/bots' && !params.has('view') && !params.has('register'))) return (
-    <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-      <SplitView storageKey="split:chats" sidebar={<BotConversationRail onNavigate={navigate} />}><SplitPlaceholder title="Choose a conversation" hint="Your people, bots, and groups are on the left." /></SplitView>
+    <NavShell current="bots" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+      <SplitView storageKey="split:chats" sidebar={<BotConversationRail restricted={focused} onNavigate={navigate} />}><SplitPlaceholder title="Choose a conversation" hint="Your people, bots, and groups are on the left." /></SplitView>
     </NavShell>
   );
 
@@ -387,7 +405,7 @@ export function App() {
       if (!canManage) { navigate('#/bots'); return null; }
       const talkDecision = params.get('decision');
       return (
-        <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+        <NavShell current="bots" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
           <Suspense fallback={<p role="status" className="p-6">Opening voice…</p>}>
             <LiveVoice
               botConversationId={decodeURIComponent(botsSegments[3])}
@@ -400,8 +418,8 @@ export function App() {
       );
     }
     return (
-      <NavShell current="bots" canManage={canManage} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
-        <Bots registrationRequested={params.get('register') === '1'} decisionId={botsSegments[2]} canCall={true} onNavigate={navigate} />
+      <NavShell current="bots" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+        <Bots registrationRequested={params.get('register') === '1'} decisionId={botsSegments[2]} canCall={true} restricted={focused} onNavigate={navigate} />
       </NavShell>
     );
   }
@@ -417,6 +435,7 @@ export function App() {
         <NavShell
           current={navCurrent}
           canManage={canManage}
+          focused={focused}
           signedInEmail={signedInEmail}
           onNavigate={navigate}
           navigation={navigation}
@@ -451,7 +470,9 @@ export function App() {
     }
     screen = <FileBrowser onBack={() => navigate('#/tools')} onToast={showToast} />;
   } else if (hash.startsWith('#/automations') || hash.startsWith('#/scheduled')) {
-    screen = <Scheduled onNavigate={navigate} onToast={showToast} focusTaskId={params.get('task')} />;
+    screen = focused
+      ? <FocusedAutomations onNavigate={navigate} />
+      : <Scheduled onNavigate={navigate} onToast={showToast} focusTaskId={params.get('task')} />;
   } else if (hash.startsWith('#/todos')) {
     if (!canManage) {
       navigate('#/');
@@ -487,6 +508,7 @@ export function App() {
           onToast={showToast}
           navigation={navigation}
           onNavigationChange={updateNavigation}
+          focused={focused}
         />
       );
     }
@@ -498,6 +520,7 @@ export function App() {
         <NavShell
           current={navCurrent}
           canManage={canManage}
+          focused={focused}
           signedInEmail={signedInEmail}
           onNavigate={navigate}
           navigation={navigation}
@@ -540,7 +563,7 @@ export function App() {
   const chatTodoId = chatId ? params.get('todo') : null;
   const chatBackHash = chatId && ['scheduled', 'automations'].includes(params.get('from') ?? '')
     ? '#/automations'
-    : chatId && params.get('from') === 'bots' ? '#/bots' : null;
+    : chatId && (params.get('from') === 'bots' || focused) ? '#/bots' : null;
   const chatFocusMessageId = chatId ? params.get('message') : null;
   const artifactParam = chatId ? params.get('artifact') : null;
   const sideParam = chatId ? params.get('side') : null;
@@ -601,7 +624,7 @@ export function App() {
     updateProjectFilesHash(`#/${query ? `?${query}` : ''}`, true);
   };
 
-  const sidebar = chatBackHash === '#/bots' ? <BotConversationRail selectedId={chatId} onNavigate={navigate} /> : sidebarProjectId ? (
+  const sidebar = chatBackHash === '#/bots' ? <BotConversationRail restricted={focused} selectedId={chatId} onNavigate={navigate} /> : sidebarProjectId ? (
     <ProjectView
       projectId={sidebarProjectId}
       role={role}
@@ -641,6 +664,7 @@ export function App() {
       <NavShell
         current={chatBackHash === '#/bots' ? 'bots' : navCurrent}
         canManage={canManage}
+        focused={focused}
         signedInEmail={signedInEmail}
         onNavigate={navigate}
         mobileHidden={chatId !== null || projectFilesId !== null || projectBrowserId !== null}

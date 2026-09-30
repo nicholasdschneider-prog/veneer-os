@@ -59,6 +59,8 @@ const CHATS: Item = { key: 'chats', label: 'Workspace', icon: MessageSquare, has
 const BOTS: Item = { key: 'bots', label: 'Chats', icon: Bot, hash: '#/bots' };
 const GUIDE: Item = { key: 'guide', label: 'Bot guide', icon: BookOpen, hash: '#/bot-guide' };
 const SETTINGS: Item = { key: 'settings', label: 'Settings', icon: Settings, hash: '#/settings' };
+/** A focused member's whole rail: their bots' chats and the routines behind them. */
+const FOCUSED_AUTOMATIONS: Item = { key: 'automations', label: BUILTIN_NAVIGATION.automations.label, icon: BUILTIN_NAVIGATION.automations.icon, hash: BUILTIN_NAVIGATION.automations.hash };
 const SYSTEM_USAGE_POLL_MS = 5_000;
 const BOT_INPUT_POLL_MS = 30_000;
 /** Where a usage ring goes when tapped (see resolveSettingsRoute in App.tsx). */
@@ -282,6 +284,10 @@ function UsageRailRings({
  *
  * `mobileHidden` drops the bar on mobile for the chat screen, which owns the
  * full viewport (composer + safe area) — the rail still shows on desktop.
+ *
+ * `focused` is the same shell for a focused business member: Chats, their
+ * Automations and Settings only. Workspace, the guide, configured destinations
+ * and the host/subscription meters are left out; the server enforces scope.
  */
 export function NavShell({
   current,
@@ -291,12 +297,14 @@ export function NavShell({
   chatOpen = false,
   navigation = DEFAULT_WORKSPACE_NAVIGATION,
   signedInEmail,
+  focused = false,
   children,
 }: {
   current: NavSelection;
   canManage: boolean;
   onNavigate: (hash: string) => void;
   mobileHidden?: boolean;
+  focused?: boolean;
   /** A conversation is on screen — the only state that earns a usage re-probe. */
   chatOpen?: boolean;
   navigation?: WorkspaceNavigation;
@@ -352,7 +360,7 @@ export function NavShell({
     setClientLogoUrl(null);
   };
 
-  const configuredItems: Item[] = navigation.items
+  const configuredItems: Item[] = (focused ? [] : navigation.items)
     .filter((item) => item.visible && isNavigationItemAllowed(item, canManage))
     .map((item) => {
       if (item.kind === 'builtin') {
@@ -366,12 +374,12 @@ export function NavShell({
         hash: `#/apps/${encodeURIComponent(item.appId)}`,
       };
     });
-  const desktopItems = [CHATS, BOTS, GUIDE, ...configuredItems];
+  const desktopItems = focused ? [BOTS, FOCUSED_AUTOMATIONS] : [CHATS, BOTS, GUIDE, ...configuredItems];
   // Mobile bar, left to right: Workspace · Chats · More · Claude ring ·
   // Settings. Every configured item, including Automations and pinned Mini Apps,
   // sits behind More so the
   // bar has room for the usage ring and stays comfortable for thumbs.
-  const mobileOverflow = [GUIDE, ...configuredItems];
+  const mobileOverflow = focused ? [FOCUSED_AUTOMATIONS] : [GUIDE, ...configuredItems];
   const renderItem = (it: Item, desktop = false) => {
     const active = it.key === current;
     const Icon = it.icon;
@@ -458,7 +466,7 @@ export function NavShell({
         </div>
         <div className={cn('flex min-w-0 flex-1 items-stretch', isDesktop && 'min-h-0 flex-col')}>
           <div className={cn('min-w-0 flex-1 items-stretch', isDesktop ? 'hidden' : 'flex')}>
-            {renderItem(CHATS)}
+            {!focused && renderItem(CHATS)}
             {renderItem(BOTS)}
             {mobileOverflow.length ? (
               <DropdownMenu>
@@ -495,7 +503,7 @@ export function NavShell({
             ) : null}
             {/* Claude's 5hr window only: one glanceable meter, no Codex ring and
                 no tooltip — the bar is 64px tall and a thumb, not a pointer. */}
-            {claudeRing ? (
+            {claudeRing && !focused ? (
               <div className="flex flex-1 items-center justify-center">
                 <UsageRing
                   provider={claudeRing.provider}
@@ -523,8 +531,8 @@ export function NavShell({
                   readout, then the gear. Grouped so the pair share one mt-auto
                   rather than each claiming half the slack between them. */}
               <div className="mt-auto flex w-full flex-col items-center gap-4 pt-3">
-                <UsageRailRings claude={claudeRing} codex={codexRing} onNavigate={onNavigate} />
-                <SystemUsageMeter />
+                {!focused && <UsageRailRings claude={claudeRing} codex={codexRing} onNavigate={onNavigate} />}
+                {!focused && <SystemUsageMeter />}
               </div>
               {renderItem(SETTINGS, true)}
             </TooltipPrimitive.Provider>

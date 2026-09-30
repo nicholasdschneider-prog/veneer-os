@@ -256,6 +256,17 @@ describe('focused business members', () => {
     expect(isFocusedMember(db, 2)).toBe(false);
     expect(canViewConversation(actor(2).user, db.prepare("SELECT * FROM conversations WHERE id='grant'").get() as ConversationRow, db)).toBe(true);
   });
+  it('keeps the member\'s own side chats of an assigned bot in scope, and nothing else beside it', () => {
+    fullMember(); focus();
+    const team = (db.prepare("SELECT business_team_id FROM conversations WHERE id='nora'").get() as { business_team_id: string }).business_team_id;
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,visibility,title,provider,native_session_id,side_chat_of,business_team_id) VALUES('nora-side',1,2,'private','Side chat · nora','codex','fixture-nora-side','nora',?),('nora-side-owner',1,1,'private','Side chat · nora','codex','fixture-nora-side-owner','nora',?),('grant-side',1,2,'private','Side chat · grant','codex','fixture-grant-side','grant',?)").run(team, team, team);
+    const row = (id: string) => db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow;
+    expect(canViewConversation(actor(2).user, row('nora-side'), db)).toBe(true);
+    expect(canSendToConversation(actor(2).user, row('nora-side'), db)).toBe(true);
+    expect(canViewConversation(actor(2).user, row('nora-side-owner'), db)).toBe(false);
+    expect(canViewConversation(actor(2).user, row('grant-side'), db)).toBe(false);
+    expect(db.prepare(`SELECT id FROM conversations c WHERE ${businessScopeSql(2)} ORDER BY id`).all()).toEqual([{ id: 'nora' }, { id: 'nora-side' }]);
+  });
   it('requires verified owner configuration and keeps revoked bot scope closed', () => {
     fullMember();
     expect(() => teams.manage(owner, { action: 'focus', team_id: teamId, user_id: 2, email: 'wrong@fixture.test', conversation_ids: ['nora'] })).toThrow('verified');
@@ -311,6 +322,8 @@ describe('focused business members', () => {
       expect((await fetch(base + '/scheduled-tasks')).status).toBe(403);
       expect((await fetch(base + '/scheduled-tasks/task/run-now', { method: 'POST' })).status).toBe(403);
       expect((await fetch(base + '/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status).toBe(403);
+      // Side chats beside an assigned bot are ordinary chat features, not new top-level chats.
+      expect((await fetch(base + '/conversations/nora/side-chats')).status).toBe(200);
       expect((await fetch(base + '/focused-workspace/automations')).status).toBe(200);
       expect((await fetch(base + '/admin/users')).status).toBe(403);
     } finally { await new Promise<void>(r => server.close(() => r())); }

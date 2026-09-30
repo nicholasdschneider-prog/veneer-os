@@ -17,6 +17,7 @@ export function focusApplies(db: Database.Database, user: FocusActor): boolean {
 }
 
 // This scope complements existing membership and visibility checks; it never grants access.
+// An assigned bot's chat and the member's own side chats of it are in scope; nothing else is.
 export function focusedScopeSql(actor: number | FocusActor, alias = 'c'): string {
   const userId = typeof actor === 'number' ? actor : actor.id;
   if (!Number.isSafeInteger(userId)) return '0';
@@ -25,7 +26,9 @@ export function focusedScopeSql(actor: number | FocusActor, alias = 'c'): string
     SELECT 1 FROM focused_bot_access fa JOIN focused_workspaces fw ON fw.user_id=fa.user_id
     JOIN business_bot_members bm ON bm.conversation_id=fa.conversation_id AND bm.team_id=fw.team_id
     JOIN bot_registrations br ON br.conversation_id=bm.conversation_id AND br.active=1
-    WHERE fa.user_id=${userId} AND fa.conversation_id=${alias}.id AND ${alias}.business_team_id=fw.team_id AND ${alias}.archived=0))`;
+    WHERE fa.user_id=${userId} AND fa.conversation_id=COALESCE(${alias}.side_chat_of, ${alias}.id)
+    AND (${alias}.side_chat_of IS NULL OR ${alias}.user_id=${userId})
+    AND ${alias}.business_team_id=fw.team_id AND ${alias}.archived=0))`;
 }
 
 export function focusedAutomations(db: Database.Database, user: UserRow) {

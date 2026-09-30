@@ -440,6 +440,7 @@ export function Settings({
   onToast,
   navigation,
   onNavigationChange,
+  focused = false,
 }: {
   section: SettingsSection;
   role: string;
@@ -447,9 +448,12 @@ export function Settings({
   onToast: (message: string) => void;
   navigation: WorkspaceNavigation;
   onNavigationChange: (navigation: WorkspaceNavigation) => Promise<WorkspaceNavigation>;
+  /** A focused business member: only the personal appearance section applies. */
+  focused?: boolean;
 }) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const admin = role !== 'member';
+  const allowed = (destination: Destination) => (!destination.adminOnly || admin) && (!focused || destination.section === 'appearance');
   const [query, setQuery] = useState('');
   const visibleGroups = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -457,26 +461,25 @@ export function Settings({
       ...group,
       destinations: group.destinations.filter(
         (destination) =>
-          (!destination.adminOnly || admin) &&
+          allowed(destination) &&
           (!normalized ||
             `${destination.title} ${destination.description} ${group.label}`
               .toLocaleLowerCase()
               .includes(normalized)),
       ),
     })).filter((group) => group.destinations.length > 0);
-  }, [admin, query]);
+  }, [admin, focused, query]);
 
-  const requested = section === 'index' ? 'providers' : section;
+  const fallback = focused ? 'appearance' : 'providers';
+  const requested = section === 'index' ? fallback : section;
   const requestedDestination = DESTINATIONS.find((destination) => destination.section === requested);
-  const activeSection =
-    requestedDestination?.adminOnly && !admin
-      ? 'providers'
-      : requested;
+  const denied = Boolean(requestedDestination && !allowed(requestedDestination));
+  const activeSection = denied ? fallback : requested;
   const activeDestination = DESTINATIONS.find((destination) => destination.section === activeSection)!;
 
   useEffect(() => {
-    if (requestedDestination?.adminOnly && !admin) onNavigate('#/settings/providers');
-  }, [admin, onNavigate, requestedDestination?.adminOnly]);
+    if (denied) onNavigate(`#/settings/${fallback}`);
+  }, [denied, fallback, onNavigate]);
 
   const sidebar = (
     <div className="mx-auto flex h-full max-w-2xl flex-col pt-[env(safe-area-inset-top)]">
