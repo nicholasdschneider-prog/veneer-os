@@ -89,7 +89,14 @@ export function createBotsRouter(ctx: AppContext) {
       const a = actor(req);
       const selected = typeof req.query.business === 'string' ? req.query.business : null;
       const inTeam = (id: string) => !selected || s.chat(a, id).business_team_id === selected;
-      const decisions = s.list(a, String(req.query.filter ?? 'all')).filter(d => inTeam(d.conversation_id));
+      // One chat's own questions, for the conversation page's poller: the full
+      // list is over a megabyte and was being fetched every few seconds.
+      const conversation = typeof req.query.conversation === 'string' && req.query.conversation ? req.query.conversation : null;
+      const decisions = s.list(a, String(req.query.filter ?? 'all')).filter(d => inTeam(d.conversation_id) && (!conversation || d.conversation_id === conversation));
+      if (conversation) {
+        res.json({ bots: [], decisions, approvers: [], teams: teams.list(a) });
+        return;
+      }
       const allDecisions = s.list(a);
       const bots = [];
       for (const r of ctx.db

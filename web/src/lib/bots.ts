@@ -130,6 +130,9 @@ export const botsApi = {
     requestJson<{ bots: Bot[]; decisions: BotDecision[]; teams: BusinessTeam[] }>(
       `/api/bots?filter=${filter}${business ? `&business=${encodeURIComponent(business)}` : ''}`,
     ),
+  /** Only this conversation's decisions; no bot rows or runner status calls. */
+  decisionsFor: (conversationId: string) =>
+    requestJson<{ decisions: BotDecision[] }>(`/api/bots?filter=all&conversation=${encodeURIComponent(conversationId)}`),
   detail: (id: string) =>
     requestJson<BotThread>(`/api/bots/decisions/${encodeURIComponent(id)}`),
   candidates: () =>

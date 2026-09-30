@@ -1051,6 +1051,16 @@ describe('VeneerBots', () => {
       expect((await custom.json()).decision).toMatchObject({ state: 'decided', answer: { action: 'custom', text: 'Use draft C with the new footer' } });
       const legacyChoice = await post(`/decisions/${decision.id}/choice`, { expected_version: 1, request_key: 'click', choice_id: 'a', scope: 'this_case' });
       expect((await legacyChoice.json()).decision.answer).toMatchObject({ choice_id: 'a', action: 'approve' });
+      // A chat page polls only its own questions: no bot rows, no runner status calls.
+      const other = s.raise({ ...human, conversationId: 'fixture-b' }, { source_key: 'api', proposal_key: 'other', proposal: proposal() });
+      const scoped = await (await fetch(`${base}?filter=all&conversation=fixture-a`)).json();
+      expect(scoped.bots).toEqual([]);
+      expect(scoped.decisions.length).toBeGreaterThan(0);
+      expect(scoped.decisions.every((d: { conversation_id: string }) => d.conversation_id === 'fixture-a')).toBe(true);
+      expect(scoped.decisions.some((d: { id: string }) => d.id === other.id)).toBe(false);
+      const full = await (await fetch(`${base}?filter=all`)).json();
+      expect(full.bots.length).toBeGreaterThan(0);
+      expect(full.decisions.some((d: { id: string }) => d.id === other.id)).toBe(true);
     } finally {
       await new Promise<void>(resolve => server.close(() => resolve()));
     }

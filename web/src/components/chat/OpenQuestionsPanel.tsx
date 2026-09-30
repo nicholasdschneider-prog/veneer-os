@@ -11,27 +11,72 @@ export function questionsForConversation(decisions: BotDecision[], conversationI
 }
 
 export const CHAT_DECISIONS_CHANGED = 'chat-decisions-changed';
+const POLL_MS = 5000;
+
+interface DecisionFeed { decisions: BotDecision[]; loaded: boolean; error: string }
+interface FeedEntry { feed: DecisionFeed; listeners: Set<() => void>; inFlight: boolean; timer: number | null; issued: number; applied: number; stop?: () => void }
+/**
+ * One poller per conversation, shared by every consumer on the page (chat
+ * transcript, header button, side panel). A completed response is applied
+ * unless a newer one was already applied; a slow reply is never thrown away
+ * because the next poll started. The next poll is scheduled only after the
+ * previous one settles.
+ */
+const feeds = new Map<string, FeedEntry>();
+
+function emit(entry: FeedEntry) { for (const l of entry.listeners) l(); }
+
+function poll(conversationId: string, entry: FeedEntry): void {
+  if (entry.inFlight || !entry.listeners.size) return;
+  entry.inFlight = true;
+  const request = ++entry.issued;
+  const settle = (next: Partial<DecisionFeed>) => {
+    entry.inFlight = false;
+    if (request > entry.applied) { entry.applied = request; entry.feed = { ...entry.feed, ...next }; emit(entry); }
+    if (entry.listeners.size) entry.timer = window.setTimeout(() => { entry.timer = null; poll(conversationId, entry); }, POLL_MS);
+  };
+  botsApi.decisionsFor(conversationId)
+    .then(result => settle({ decisions: result.decisions.filter(d => d.conversation_id === conversationId), loaded: true, error: '' }))
+    .catch(() => settle({ error: 'Could not refresh open questions.' }));
+}
+
+function refreshNow(conversationId: string, entry: FeedEntry): void {
+  if (entry.timer !== null) { window.clearTimeout(entry.timer); entry.timer = null; }
+  poll(conversationId, entry);
+}
+
+export function subscribeChatDecisions(conversationId: string, listener: () => void): () => void {
+  let entry = feeds.get(conversationId);
+  if (!entry) { entry = { feed: { decisions: [], loaded: false, error: '' }, listeners: new Set(), inFlight: false, timer: null, issued: 0, applied: 0 }; feeds.set(conversationId, entry); }
+  entry.listeners.add(listener);
+  if (entry.listeners.size === 1) {
+    const wake = () => { if (document.visibilityState !== 'hidden') refreshNow(conversationId, entry!); };
+    window.addEventListener(CHAT_DECISIONS_CHANGED, wake);
+    window.addEventListener('focus', wake);
+    document.addEventListener('visibilitychange', wake);
+    entry.stop = () => { window.removeEventListener(CHAT_DECISIONS_CHANGED, wake); window.removeEventListener('focus', wake); document.removeEventListener('visibilitychange', wake); };
+    refreshNow(conversationId, entry);
+  }
+  return () => {
+    entry!.listeners.delete(listener);
+    if (entry!.listeners.size === 0) {
+      entry!.stop?.();
+      if (entry!.timer !== null) { window.clearTimeout(entry!.timer); entry!.timer = null; }
+      // Keep the last feed so a remount shows questions immediately; the next subscriber refreshes.
+    }
+  };
+}
+
+export function readChatDecisions(conversationId: string): DecisionFeed | undefined { return feeds.get(conversationId)?.feed; }
 
 export function useChatDecisions(conversationId: string) {
-  const [data, setData] = useState<{ conversationId: string; decisions: BotDecision[] } | null>(null);
-  const [error, setError] = useState('');
+  const [, rerender] = useState(0);
   useEffect(() => {
-    let active = true;
-    setError('');
     if (!conversationId) return;
-    let sequence = 0;
-    const load = () => { const request = ++sequence; return void botsApi.list('all').then(result => {
-      if (active && request === sequence) {
-        setData({ conversationId, decisions: result.decisions.filter(d => d.conversation_id === conversationId) });
-        setError('');
-      }
-    }).catch(() => { if (active && request === sequence) setError('Could not refresh open questions.'); }); };
-    load();
-    const timer = window.setInterval(load, 5000);
-    window.addEventListener(CHAT_DECISIONS_CHANGED, load);
-    return () => { active = false; window.clearInterval(timer); window.removeEventListener(CHAT_DECISIONS_CHANGED, load); };
+    return subscribeChatDecisions(conversationId, () => rerender(n => n + 1));
   }, [conversationId]);
-  return { decisions: data?.conversationId === conversationId ? data.decisions : [], loading: data?.conversationId !== conversationId, error };
+  const feed = conversationId ? feeds.get(conversationId)?.feed : undefined;
+  return { decisions: feed?.decisions ?? [], loading: !feed?.loaded, error: feed?.error ?? '' };
 }
 
 export function OpenQuestionsButton({ conversationId, onNavigate }: { conversationId: string; onNavigate: (hash: string) => void }) {
