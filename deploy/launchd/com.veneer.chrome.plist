@@ -40,8 +40,9 @@
   <dict>
     <key>PATH</key>
     <string>__PATH__</string>
+    <!-- macOS Keychain uses the login home; the profile stays in __HOME__. -->
     <key>HOME</key>
-    <string>__HOME__</string>
+    <string>__USER_HOME__</string>
   </dict>
 </dict>
 </plist>
