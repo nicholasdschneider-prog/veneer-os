@@ -4,6 +4,11 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers paired contact limits to employees and both resumed instruction modes',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(x=>x.id==='paired-contact-verification')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('Production is disabled');expect(f.agent).toContain('No outreach approval ask before executable manifest');expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+  });
   it('delivers unavailable-until-enrolled prospective custody guidance to employees and resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(f=>f.id==='prospective-case-custody')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('historical');expect(f.agent).toContain('Never issue as builder');

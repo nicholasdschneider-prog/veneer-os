@@ -1,0 +1,59 @@
+{
+  "recordedAt": "2026-09-30T03:45:24.253466+00:00",
+  "node": "24.21.0",
+  "commands": {
+    "typecheck": {
+      "command": "npm run typecheck",
+      "exitCode": 0
+    },
+    "serverScoped": {
+      "exitCode": 0,
+      "files": 5,
+      "passed": 104
+    },
+    "webScoped": {
+      "exitCode": 0,
+      "files": 3,
+      "passed": 10
+    },
+    "full": {
+      "command": "npm test",
+      "exitCode": 0,
+      "environment": {
+        "VITEST_MAX_FORKS": "2",
+        "VITEST_MIN_FORKS": "1",
+        "VITEST_MAX_THREADS": "2",
+        "VITEST_MIN_THREADS": "1"
+      },
+      "installerPassed": 29,
+      "serverPassed": 3203,
+      "serverSkipped": 5,
+      "webPassed": 933,
+      "browserManagerPassed": 49,
+      "totalPassed": 4214,
+      "totalSkipped": 5
+    },
+    "build": {
+      "command": "npm run build",
+      "exitCode": 0,
+      "warning": "Vite reported chunks larger than500kB; build succeeded."
+    }
+  },
+  "earlierTimeouts": {
+    "defaultConcurrencyRuns": 2,
+    "tests": [
+      "viewer newtab publishes active tab:20-second test timeout",
+      "viewer follows agent tab:CDP Target.setDiscoverTargets15-second timeout"
+    ],
+    "isolatedViewerPassed": 17,
+    "classification": "Observed validation timeouts; no pre-existing-defect or causal diagnosis claimed. No test or timeout changed; complete suite passed with two workers."
+  },
+  "logDigests": {
+    "typecheck": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "serverScoped": "21c522e903058fd7aea41a14aa82dd594af2a136a203e1cc4473a1862e70a4cf",
+    "webScoped": "7dcbadd934f5d77d185ea75aaa3ec2a8c63e6d7f020247329ea7fc6437787a56",
+    "full": "22fa46da88f76517fb4e859756cbf10201e9b230f326120f8555b14f99e28441",
+    "build": "9276dc8e3a827134e2f9cdeae7b0119639af365374b709b99778e62dc9ad58fb",
+    "isolatedViewer": "01b518b4812e09ac7280b1ace661632ec1cfdba1c257cb23aa5c91dd6583e77a"
+  }
+}

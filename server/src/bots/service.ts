@@ -1,3 +1,4 @@
+import {manifestSchema as contactVerificationManifestSchema} from './contactVerificationContract.js';
 import { timingProposalSchema, timingHumanContext } from './purchaseTimingSchema.js';
 import { withEditedReply } from './replyEdit.js';
 import { approvedMessageSchema } from './draftPayload.js';
@@ -69,6 +70,7 @@ export const proposalSchema = z
     deadline: z.string().datetime({ offset: true }).nullable().default(null),
     message_delivery: approvedMessageSchema.optional(),
     purchase_timing: timingProposalSchema.optional(),
+    contact_verification: contactVerificationManifestSchema.optional(),
     images: z.array(decisionImageSchema).max(12).optional(),
     evidence: z.array(evidenceSchema).max(30).default([]),
     blocked_action: text,

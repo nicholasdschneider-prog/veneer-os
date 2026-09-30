@@ -1,0 +1,33 @@
+# BUILD487 — paired contact verification native implementation
+
+Native Platform732 continuation of source BUILD486. Source custody BUILD488 is separate. No OrderOps source/configuration was edited and no source job was queued.
+
+## Delivered
+
+Strict paired public manifest and exact native human-approval issuer; dedicated authenticated service authority export, independently read source-intent association, immutable paired generation/channel reservations, and authenticated receipt-only reconciliation. Original-owner tools prepare/inspect/issue/read/revoke are available in the employee guide and full/restricted resumed instructions. Technical enrollment is actual-human-only. No bot association, enrollment or secret-substitution assertion is accepted. Both chat and detailed decision views display the exact public pair and slot placeholders before answer controls; identifiers/revisions remain in the expandable public manifest. Queue quick-approval is disabled for this proposal type, so the pair must be opened for review. No actual source secret or rendered link enters this display.
+
+One authority covers exactly email and SMS with distinct source-only secrets. Native stores only public slot policy and nonsecret source commitments. Both source intents must be durable first. First association only grants its exact reservation; all replays and reconciliation return execute:false and no entitlement. Email must reserve first; SMS waits for authenticated email SENT_ACCEPTED; UNKNOWN or rollback never releases a channel, generation, key or target reservation. Revocation before reservation blocks, reservation before revocation is irreversible. No distributed cancellation promise.
+
+## Contract and source handoff
+
+[Exact native candidate contract](/Users/archerclawdington/veneer-os/docs/reports/contact-verification/build487/contract.md), [strict schemas](/Users/archerclawdington/veneer-os/server/src/bots/contactVerificationContract.ts), and [two parser-validated synthetic golden targets](/Users/archerclawdington/veneer-os/docs/reports/contact-verification/build487/golden.json).
+
+The fragment format explicitly carries generation/channel/secret, matching the inputs the existing source redeemer needs. This changes the earlier candidate golden vectors. Native never receives the secret or recomputes secret wire bytes; source must independently implement and validate the exact slot/wire hash preimages and provider-boundary renderer. Existing486 attempt keys are not the new genuine UUID intent IDs.
+
+Boris reviewed the earlier candidate and identified SMS-first, permanent sibling blocking and lost-ID reconciliation defects. The implementation now corrects these and publishes strict shared semantic validators. Candidate proposals and refinements were sent to Boris in existing coordination9c58c4e8-e076-4954-8032-b32851ef4c01 before any source coupling. **Boris accepted final interface freeze/source assessment at2026-09-30T03:22:59.448Z**, exact contract SHA2569ff5bb2cbbdd687b5d590a3395ac24f0eda0ecf9750b44e9e3d01faeda3379fb. [Original review receipt](/Users/archerclawdington/veneer-os/docs/reports/contact-verification/build487/source-agreement.json). This agreement is not accepted source implementation, source mutation enablement or purchaser verification. The final suite also adds one stricter negative vector for SENDING association retention and an HTTP export/association/lookup/receipt-body regression; no contract bytes changed. Only Boris owns any later agreed source adapter work.
+
+## Validation and deployment
+
+Node24.21.0 typecheck passed; scoped server104 and web10 tests passed. Complete root npm test passed with two workers: installer29, server3203 plus5 declared skips, web933, browser-manager49 — total4214 passed/5 skipped. Build passed; Vite emitted a large-chunk warning. Two earlier default-concurrency runs timed out in different desktop-viewer tests; that file passed17 tests in isolation and the complete bounded-worker run passed. No tests or timeouts were changed, and no pre-existing-defect claim is made. [Validation receipt](/Users/archerclawdington/veneer-os/docs/reports/contact-verification/build487/validation.json). Deployment readback follows the supported restart; no runtime success is asserted yet.
+
+Offline tests exercise two independently registered targets sharing one executor, exact human approval and post-approval drift, enrollment/access/revocation/expiry, missing target facts, cross-target manifest/authority/generation/channel/intent/receipt substitution, immutable history, competing SQLite connections, lost responses/UNKNOWN, rollback, sibling gating, original expiry, source SENDING fence and receipt correlation. Synthetic wire/slot commitments do not certify a real source renderer or PostgreSQL lifecycle.
+
+## Operational limits and named prerequisites
+
+- Boris: interface accepted; implement independently authenticated source manifest/intent producers, durable paired generation/REDEEMING/SENDING and receipt adapter, all source dispatch guards, secure renderer and public redemption; execute source dual-registered-target and security/race tests. No overlapping source work was commissioned here.
+- Actual source custodian and human owner: provide independently authenticated Nora principal/account/sender/target evidence and separate dedicated scoped service/reader/CF custody, then one actual-owner technical enrollment. [Prepared exact setup](/Users/archerclawdington/veneer-os/docs/reports/contact-verification/build487/setup.md) lists fields; it is not an enrollment or approval request.
+- Original owner/executor Nora: only after executable setup and authenticated exact public manifest, obtain actual exact outreach approval through the supported structured proposal. No outreach approval is requested by this build. Existing custody, SMS, ordinary draft or financial approvals cannot authorize secret substitution.
+
+121399 and121007 remain separate. Retained121007 order-customer/contact/material nulls remain blocking. Neither test fixtures nor another packet fill them. No live case/customer/provider/credential reads, enrollment, issuance, challenge, lease, send, business mutation or public redemption deployment occurred. No verification or financial readiness is claimed.
+
+[Changed files and artifact index](/Users/archerclawdington/veneer-os/docs/reports/contact-verification/build487/changed-files.md).

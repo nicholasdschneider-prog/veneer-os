@@ -329,3 +329,13 @@ exact authenticated source enrollment through the dedicated human APIs before
 review or service use. No production registry is installed by BUILD485. See the
 [versioned contract](docs/reports/case-custody/build485/contract.md) for schemas,
 source acceptance, expiry/revocation, and irreversible claim reconciliation.
+
+### Paired contact-verification integration (optional, disabled)
+
+`VP_CONTACT_VERIFICATION_REGISTRY_FILE` is a separate absolute, regular,
+non-symlink, service-owned 0600 file of at most 128 KiB. It contains dedicated
+nonsecret service metadata, hash commitments and reader references only. The
+actual owner must confirm exact authenticated technical enrollment after source,
+renderer/dispatch and secure-redemption acceptance. No production configuration
+is installed by BUILD487. Existing return, SMS and custody grants cannot be reused.
+See [the paired contract](docs/reports/contact-verification/build487/contract.md).

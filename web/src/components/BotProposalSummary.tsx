@@ -1,3 +1,4 @@
+import { ContactVerificationProposal } from './ContactVerificationProposal';
 import { useId, useState } from 'react';
 import type { BotDecision } from '@/lib/bots';
 import { decisionCopy } from '@/lib/decisionPresentation';
@@ -39,6 +40,7 @@ export function BotProposalSummary({ decision, showIdentifiers = false, compact 
         <p>Scope: {refund.scope}</p><p>Source: {refund.source}</p><p>Checked as of: <time dateTime={refund.as_of}>{refund.as_of}</time></p>
       </div>}
     </dl>
+    {proposal.contact_verification && <ContactVerificationProposal manifest={proposal.contact_verification} />}
     {draft ? <section className="space-y-2 rounded-xl border p-3" aria-label="Proposed customer reply">
       <h3 className="font-medium">{delivery ? 'Exact customer message to authorize' : 'Proposed customer reply'}</h3>
       {delivery?.payload.subject && <p className="text-sm">Subject: {delivery.payload.subject}</p>}

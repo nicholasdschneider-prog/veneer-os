@@ -1,3 +1,4 @@
+import {contactVerificationRoutes} from './contactVerificationRoutes.js';
 import {caseCustodyRoutes} from './caseCustodyRoutes.js';
 import {composedSmsCorrectionV2} from './composedSmsCorrectionV2.js';
 import {correctionPreflight} from './correctionPreflight.js';
@@ -36,6 +37,7 @@ export function createBotsRouter(ctx: AppContext) {
   });
   router.use(createDecisionHandoffRouter(ctx));
   router.use(caseCustodyRoutes(ctx));
+  router.use(contactVerificationRoutes(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
     (

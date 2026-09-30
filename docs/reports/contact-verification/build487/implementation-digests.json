@@ -1,0 +1,91 @@
+{
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "3ec049192f2759d3c0876a66369dc28b412101f54b964f76b03b0e84d927762b"
+    },
+    {
+      "path": "docs/bot-feature-guide.md",
+      "sha256": "5a809c16c87138a019ce28e5259acfa8c41c38fe0dca7cd6cbeb80ba7601bc4e"
+    },
+    {
+      "path": "server/src/bots/contactVerification.ts",
+      "sha256": "feaffe0b8eed642603b7605fb8b514fdfdd940deb18f33c49b6c868c6ac78995"
+    },
+    {
+      "path": "server/src/bots/contactVerificationContract.ts",
+      "sha256": "4c35de5784da04579cf9951b31d7b3a02c5ab925855f515f2341b04fbaf65d07"
+    },
+    {
+      "path": "server/src/bots/contactVerificationRoutes.ts",
+      "sha256": "7bd1988a07504bc8fd69309c084eca52200bfb965f5aa84b7b27cc6c0925d893"
+    },
+    {
+      "path": "server/src/bots/routes.ts",
+      "sha256": "b39065df79e7baabf92d6e5633afea9dff9bc7b3aaf9e67b355e4352b46ae50a"
+    },
+    {
+      "path": "server/src/bots/service.ts",
+      "sha256": "6bf1ac9540d6778574d952b8eb032c16ec93b9b29ed4cb20fa81d67f4359d547"
+    },
+    {
+      "path": "server/src/config.ts",
+      "sha256": "b44e231bd01580aa1bcc32f41332cef6f25dfe54bdc847aba5690bab6d56bb62"
+    },
+    {
+      "path": "server/src/featureGuide/catalog.ts",
+      "sha256": "7df95b99a18bc53fbd7917f0e3edd29e15826d40d3798e393750439629628154"
+    },
+    {
+      "path": "server/src/index.ts",
+      "sha256": "18869f8b80f709f16be37ef11d628692beb300a2ef02ada624dbad51fbe3ccbf"
+    },
+    {
+      "path": "server/src/mcp/botTools.ts",
+      "sha256": "c95b3bce79f7ab0678c210a05a9caa42253100f19c3e5e752bf41279f383eb81"
+    },
+    {
+      "path": "server/src/db/migrations/0139_contact_verification.sql",
+      "sha256": "33378fe448c049b3491b2bcc109daaf124bfdde497332dddcd17c1830cad63bd"
+    },
+    {
+      "path": "server/test/contactVerification.test.ts",
+      "sha256": "b3717c4f74e883e71f4e3f2666038a350886d51ddf30613c4bd4891dd5e25d15"
+    },
+    {
+      "path": "server/test/contactVerificationContract.test.ts",
+      "sha256": "e88e9519f81fd1ffaada05c5f2f8c38ea90c754fd4173ed83e7151e69e28fbb9"
+    },
+    {
+      "path": "server/test/botFeatureGuide.test.ts",
+      "sha256": "695848c1069849f1063acd2eba3f7fc5221cb19e3d327cae878921be176c4f92"
+    },
+    {
+      "path": "server/test/instructionContext.test.ts",
+      "sha256": "8df1d65efb7f2fd7aec01b458e5324cfadc13cfe7bd1aea1c30c4b4f6900f4d8"
+    },
+    {
+      "path": "web/src/lib/bots.ts",
+      "sha256": "0ebc20005394c596df18720e07661f452b5a146b1a224db1d8cb615e834342e1"
+    },
+    {
+      "path": "web/src/screens/Bots.tsx",
+      "sha256": "f4b67adf74f40f31c6eecbf87db63082684ff1015664d21ce2ad82753a399bab"
+    },
+    {
+      "path": "web/src/components/BotProposalSummary.tsx",
+      "sha256": "cd3056ff706c265883dc5e906c93b743066d95d35e59253bd803fcfb7b2448e3"
+    },
+    {
+      "path": "web/src/components/ContactVerificationProposal.tsx",
+      "sha256": "5e3e87a3bbd28d3cf36851b291231de3d9c1f002de820f209eb1c6a99614b556"
+    },
+    {
+      "path": "web/src/components/ContactVerificationProposal.test.tsx",
+      "sha256": "cec2fce1f9de1e04b65b6f61c15d24f582902fbe0805e59b4c0d9cc6b8e2376e"
+    }
+  ],
+  "contractSha256": "9ff5bb2cbbdd687b5d590a3395ac24f0eda0ecf9750b44e9e3d01faeda3379fb",
+  "goldenSha256": "f716167c54d4a952028b3bf9f5fefdbb82c67224b69443a06e10a67642ed6587",
+  "negativeGoldenSha256": "09176cc7356f67c5bcc97c146579ed1c8d785efd7f6dd53e05eed53debb93f60"
+}

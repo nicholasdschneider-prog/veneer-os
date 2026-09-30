@@ -1,0 +1,1146 @@
+{
+  "syntheticOnly": true,
+  "noActualSecrets": true,
+  "targets": [
+    {
+      "manifest": {
+        "schemaVersion": "paired-contact-manifest/v1",
+        "manifestId": "00000000-0000-4000-8000-000000000073",
+        "manifestRevision": 1,
+        "registrationId": "00000000-0000-4000-8000-000000000064",
+        "registrationRevision": 1,
+        "businessId": "00000000-0000-4000-8000-000000000006",
+        "accountId": "synthetic-source",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000001",
+          "environmentId": "00000000-0000-4000-8000-000000000002",
+          "serviceId": "00000000-0000-4000-8000-000000000003"
+        },
+        "target": {
+          "caseId": "00000000-0000-4000-8000-000000000065",
+          "orderId": "00000000-0000-4000-8000-000000000066",
+          "caseCustomerId": "00000000-0000-4000-8000-000000000067",
+          "orderCustomerId": "00000000-0000-4000-8000-000000000068",
+          "caseRevision": "2026-09-30 00:00:00.123456",
+          "orderRevision": "order-1",
+          "caseCustomerRevision": "customer-1",
+          "orderCustomerRevision": "customer-2",
+          "contactRevision": "2f64d23e759201e105ef1065e445c1e802902cbc8d5918201b262149c78875c0",
+          "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f"
+        },
+        "executor": {
+          "conversationId": "00000000-0000-4000-8000-000000000004",
+          "userId": 1,
+          "principalId": "synthetic:original-executor",
+          "enrollmentId": "00000000-0000-4000-8000-000000000005",
+          "enrollmentRevision": 1,
+          "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "statement": "I am the purchaser of this exact order.",
+        "statementHash": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+        "channels": [
+          {
+            "channel": "email",
+            "accountId": "synthetic-email",
+            "from": "support@example.test",
+            "recipient": "recipient@example.test",
+            "subject": "Exact order verification",
+            "segments": [
+              {
+                "kind": "literal",
+                "text": "Confirm whether you purchased this exact order: "
+              },
+              {
+                "kind": "slot",
+                "slotId": "00000000-0000-4000-8000-00000000006e"
+              }
+            ],
+            "slot": {
+              "slotId": "00000000-0000-4000-8000-00000000006e",
+              "kind": "source_generated_single_use_link",
+              "channel": "email",
+              "entropyBits": 256,
+              "encoding": "base64url",
+              "origin": "https://verification.example.test",
+              "path": "/verify",
+              "placement": "fragment",
+              "fragmentEncoding": "generation-channel-secret/v1",
+              "generationBinding": "authority_generation_channel_intent"
+            },
+            "attachments": [],
+            "renderingVersion": "contact-template-utf8/v1",
+            "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448"
+          },
+          {
+            "channel": "sms",
+            "accountId": "synthetic-sms",
+            "from": "+15550000001",
+            "recipient": "+15550000002",
+            "subject": "",
+            "segments": [
+              {
+                "kind": "literal",
+                "text": "Confirm whether you purchased this exact order: "
+              },
+              {
+                "kind": "slot",
+                "slotId": "00000000-0000-4000-8000-00000000006f"
+              }
+            ],
+            "slot": {
+              "slotId": "00000000-0000-4000-8000-00000000006f",
+              "kind": "source_generated_single_use_link",
+              "channel": "sms",
+              "entropyBits": 256,
+              "encoding": "base64url",
+              "origin": "https://verification.example.test",
+              "path": "/verify",
+              "placement": "fragment",
+              "fragmentEncoding": "generation-channel-secret/v1",
+              "generationBinding": "authority_generation_channel_intent"
+            },
+            "attachments": [],
+            "renderingVersion": "contact-template-utf8/v1",
+            "templateHash": "7b898af544b6fbc2063d72985e36e45676015d24808fb4fb482d012fa4619031"
+          }
+        ],
+        "manifestHash": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f"
+      },
+      "evidence": {
+        "schemaVersion": "paired-contact-evidence/v1",
+        "registrationId": "00000000-0000-4000-8000-000000000064",
+        "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+        "servicePrincipalId": "synthetic:contact-service",
+        "manifest": {
+          "schemaVersion": "paired-contact-manifest/v1",
+          "manifestId": "00000000-0000-4000-8000-000000000073",
+          "manifestRevision": 1,
+          "registrationId": "00000000-0000-4000-8000-000000000064",
+          "registrationRevision": 1,
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "accountId": "synthetic-source",
+          "sourceOrigin": "https://source.example.test",
+          "runtime": {
+            "projectId": "00000000-0000-4000-8000-000000000001",
+            "environmentId": "00000000-0000-4000-8000-000000000002",
+            "serviceId": "00000000-0000-4000-8000-000000000003"
+          },
+          "target": {
+            "caseId": "00000000-0000-4000-8000-000000000065",
+            "orderId": "00000000-0000-4000-8000-000000000066",
+            "caseCustomerId": "00000000-0000-4000-8000-000000000067",
+            "orderCustomerId": "00000000-0000-4000-8000-000000000068",
+            "caseRevision": "2026-09-30 00:00:00.123456",
+            "orderRevision": "order-1",
+            "caseCustomerRevision": "customer-1",
+            "orderCustomerRevision": "customer-2",
+            "contactRevision": "2f64d23e759201e105ef1065e445c1e802902cbc8d5918201b262149c78875c0",
+            "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f"
+          },
+          "executor": {
+            "conversationId": "00000000-0000-4000-8000-000000000004",
+            "userId": 1,
+            "principalId": "synthetic:original-executor",
+            "enrollmentId": "00000000-0000-4000-8000-000000000005",
+            "enrollmentRevision": 1,
+            "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "statement": "I am the purchaser of this exact order.",
+          "statementHash": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+          "channels": [
+            {
+              "channel": "email",
+              "accountId": "synthetic-email",
+              "from": "support@example.test",
+              "recipient": "recipient@example.test",
+              "subject": "Exact order verification",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-00000000006e"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-00000000006e",
+                "kind": "source_generated_single_use_link",
+                "channel": "email",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448"
+            },
+            {
+              "channel": "sms",
+              "accountId": "synthetic-sms",
+              "from": "+15550000001",
+              "recipient": "+15550000002",
+              "subject": "",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-00000000006f"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-00000000006f",
+                "kind": "source_generated_single_use_link",
+                "channel": "sms",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "7b898af544b6fbc2063d72985e36e45676015d24808fb4fb482d012fa4619031"
+            }
+          ],
+          "manifestHash": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f"
+        },
+        "sourceRevision": "8770c6b80f03ea76c3e0a7e2384a3eae5aaf7f29620f472e9a102a6074acf76d",
+        "coverage": {
+          "complete": true,
+          "omissions": []
+        },
+        "blockers": [],
+        "evidenceHash": "8153e685679b157735e646090ca4e222f6ddd47ce8245efc7fa7117f02a8e79c",
+        "observedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:00:15.000Z"
+      },
+      "authority": {
+        "schemaVersion": "paired-contact-authority/v1",
+        "authorityId": "00000000-0000-4000-8000-000000000078",
+        "revision": 1,
+        "registrationId": "00000000-0000-4000-8000-000000000064",
+        "registrationRevision": 1,
+        "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+        "decisionId": "00000000-0000-4000-8000-000000000079",
+        "decisionVersion": 1,
+        "approvalEventId": "00000000-0000-4000-8000-00000000007a",
+        "approverUserId": 1,
+        "proposalHash": "0eb08969d7e1944d5c44211a994b63071072e6948da1eb5be0afe0cff3e3b4c8",
+        "contextHash": "a05602d64b8b59447c70e9e40268eedb5156fb4cdece0ede6cd8c23119aa1373",
+        "manifest": {
+          "schemaVersion": "paired-contact-manifest/v1",
+          "manifestId": "00000000-0000-4000-8000-000000000073",
+          "manifestRevision": 1,
+          "registrationId": "00000000-0000-4000-8000-000000000064",
+          "registrationRevision": 1,
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "accountId": "synthetic-source",
+          "sourceOrigin": "https://source.example.test",
+          "runtime": {
+            "projectId": "00000000-0000-4000-8000-000000000001",
+            "environmentId": "00000000-0000-4000-8000-000000000002",
+            "serviceId": "00000000-0000-4000-8000-000000000003"
+          },
+          "target": {
+            "caseId": "00000000-0000-4000-8000-000000000065",
+            "orderId": "00000000-0000-4000-8000-000000000066",
+            "caseCustomerId": "00000000-0000-4000-8000-000000000067",
+            "orderCustomerId": "00000000-0000-4000-8000-000000000068",
+            "caseRevision": "2026-09-30 00:00:00.123456",
+            "orderRevision": "order-1",
+            "caseCustomerRevision": "customer-1",
+            "orderCustomerRevision": "customer-2",
+            "contactRevision": "2f64d23e759201e105ef1065e445c1e802902cbc8d5918201b262149c78875c0",
+            "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f"
+          },
+          "executor": {
+            "conversationId": "00000000-0000-4000-8000-000000000004",
+            "userId": 1,
+            "principalId": "synthetic:original-executor",
+            "enrollmentId": "00000000-0000-4000-8000-000000000005",
+            "enrollmentRevision": 1,
+            "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "statement": "I am the purchaser of this exact order.",
+          "statementHash": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+          "channels": [
+            {
+              "channel": "email",
+              "accountId": "synthetic-email",
+              "from": "support@example.test",
+              "recipient": "recipient@example.test",
+              "subject": "Exact order verification",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-00000000006e"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-00000000006e",
+                "kind": "source_generated_single_use_link",
+                "channel": "email",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448"
+            },
+            {
+              "channel": "sms",
+              "accountId": "synthetic-sms",
+              "from": "+15550000001",
+              "recipient": "+15550000002",
+              "subject": "",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-00000000006f"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-00000000006f",
+                "kind": "source_generated_single_use_link",
+                "channel": "sms",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "7b898af544b6fbc2063d72985e36e45676015d24808fb4fb482d012fa4619031"
+            }
+          ],
+          "manifestHash": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f"
+        },
+        "manifestHash": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f",
+        "sourceRevision": "8770c6b80f03ea76c3e0a7e2384a3eae5aaf7f29620f472e9a102a6074acf76d",
+        "evidenceHash": "8153e685679b157735e646090ca4e222f6ddd47ce8245efc7fa7117f02a8e79c",
+        "issuedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:10:00.000Z",
+        "authorityHash": "a8c6db0c00bc75a275abe9d94696b7b0d66fe9040a88077be70dc06d39632782"
+      },
+      "generation": {
+        "schemaVersion": "paired-contact-generation/v1",
+        "generationId": "00000000-0000-4000-8000-000000000082",
+        "authorityId": "00000000-0000-4000-8000-000000000078",
+        "authorityHash": "a8c6db0c00bc75a275abe9d94696b7b0d66fe9040a88077be70dc06d39632782",
+        "registrationId": "00000000-0000-4000-8000-000000000064",
+        "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+        "businessId": "00000000-0000-4000-8000-000000000006",
+        "manifestHash": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f",
+        "sourceRevision": "8770c6b80f03ea76c3e0a7e2384a3eae5aaf7f29620f472e9a102a6074acf76d",
+        "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f",
+        "executorPrincipalId": "synthetic:original-executor",
+        "preparedEventId": "00000000-0000-4000-8000-000000000083",
+        "preparedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:10:00.000Z",
+        "intents": [
+          {
+            "intentId": "00000000-0000-4000-8000-00000000008c",
+            "channel": "email",
+            "requestKey": "00000000-0000-4000-8000-000000000096",
+            "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448",
+            "slotCommitment": "c55ccfdeb7140cecd3c957ccfe57029353f0bcbc7e05ec392f8fe277892d5948",
+            "wirePayloadHash": "d6beeefdd1a6766144227e2b28960d5acdf9f21334d7b6d56ef3d82f8f7798d7",
+            "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a0",
+            "intentHash": "1275c580ded9668bb37344cfb727df6fddefa62e0c6f1fd0d508dcd7921add34"
+          },
+          {
+            "intentId": "00000000-0000-4000-8000-00000000008d",
+            "channel": "sms",
+            "requestKey": "00000000-0000-4000-8000-000000000097",
+            "templateHash": "7b898af544b6fbc2063d72985e36e45676015d24808fb4fb482d012fa4619031",
+            "slotCommitment": "d5f0442d248d6804cd5803abe8471280c2dd5910bb2b73bdbe87c9702cee59a9",
+            "wirePayloadHash": "bdb92611d495c1d79bba6708205d5fde705632a131dfd820e7e1b2d57f97da2a",
+            "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a1",
+            "intentHash": "345f1deba7656ffdad61d3812ede47e698125bfd8a8c99c1a1d087776bb41d5e"
+          }
+        ],
+        "generationHash": "f2ef7de71150f4ae30b221dc6d803f6aaa6d02c9bba190cd89219cb8924c1932"
+      },
+      "intent": {
+        "schemaVersion": "contact-dispatch-evidence/v1",
+        "registrationId": "00000000-0000-4000-8000-000000000064",
+        "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+        "servicePrincipalId": "synthetic:contact-service",
+        "generation": {
+          "schemaVersion": "paired-contact-generation/v1",
+          "generationId": "00000000-0000-4000-8000-000000000082",
+          "authorityId": "00000000-0000-4000-8000-000000000078",
+          "authorityHash": "a8c6db0c00bc75a275abe9d94696b7b0d66fe9040a88077be70dc06d39632782",
+          "registrationId": "00000000-0000-4000-8000-000000000064",
+          "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "manifestHash": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f",
+          "sourceRevision": "8770c6b80f03ea76c3e0a7e2384a3eae5aaf7f29620f472e9a102a6074acf76d",
+          "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f",
+          "executorPrincipalId": "synthetic:original-executor",
+          "preparedEventId": "00000000-0000-4000-8000-000000000083",
+          "preparedAt": "2026-09-30T03:00:00.000Z",
+          "expiresAt": "2026-09-30T03:10:00.000Z",
+          "intents": [
+            {
+              "intentId": "00000000-0000-4000-8000-00000000008c",
+              "channel": "email",
+              "requestKey": "00000000-0000-4000-8000-000000000096",
+              "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448",
+              "slotCommitment": "c55ccfdeb7140cecd3c957ccfe57029353f0bcbc7e05ec392f8fe277892d5948",
+              "wirePayloadHash": "d6beeefdd1a6766144227e2b28960d5acdf9f21334d7b6d56ef3d82f8f7798d7",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a0",
+              "intentHash": "1275c580ded9668bb37344cfb727df6fddefa62e0c6f1fd0d508dcd7921add34"
+            },
+            {
+              "intentId": "00000000-0000-4000-8000-00000000008d",
+              "channel": "sms",
+              "requestKey": "00000000-0000-4000-8000-000000000097",
+              "templateHash": "7b898af544b6fbc2063d72985e36e45676015d24808fb4fb482d012fa4619031",
+              "slotCommitment": "d5f0442d248d6804cd5803abe8471280c2dd5910bb2b73bdbe87c9702cee59a9",
+              "wirePayloadHash": "bdb92611d495c1d79bba6708205d5fde705632a131dfd820e7e1b2d57f97da2a",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a1",
+              "intentHash": "345f1deba7656ffdad61d3812ede47e698125bfd8a8c99c1a1d087776bb41d5e"
+            }
+          ],
+          "generationHash": "f2ef7de71150f4ae30b221dc6d803f6aaa6d02c9bba190cd89219cb8924c1932"
+        },
+        "intentId": "00000000-0000-4000-8000-00000000008c",
+        "state": "REDEEMING",
+        "redeemingEventId": "00000000-0000-4000-8000-0000000000aa",
+        "redeemingAt": "2026-09-30T03:00:00.000Z",
+        "sendingEventId": null,
+        "sendingAt": null,
+        "pairBlock": null,
+        "associationId": null,
+        "outcome": null,
+        "evidenceHash": "276bf9325c69e8778ee180145189e6bb145f5cc69340d527081db8ef593c0662",
+        "observedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:00:15.000Z"
+      },
+      "request": {
+        "schemaVersion": "contact-dispatch-association/v1",
+        "authorityId": "00000000-0000-4000-8000-000000000078",
+        "authorityHash": "a8c6db0c00bc75a275abe9d94696b7b0d66fe9040a88077be70dc06d39632782",
+        "registrationId": "00000000-0000-4000-8000-000000000064",
+        "registrationRevision": 1,
+        "generationId": "00000000-0000-4000-8000-000000000082",
+        "intentId": "00000000-0000-4000-8000-00000000008c",
+        "channel": "email",
+        "requestKey": "00000000-0000-4000-8000-000000000096",
+        "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448",
+        "slotCommitment": "c55ccfdeb7140cecd3c957ccfe57029353f0bcbc7e05ec392f8fe277892d5948",
+        "wirePayloadHash": "d6beeefdd1a6766144227e2b28960d5acdf9f21334d7b6d56ef3d82f8f7798d7",
+        "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a0",
+        "intentHash": "1275c580ded9668bb37344cfb727df6fddefa62e0c6f1fd0d508dcd7921add34",
+        "sourceRevision": "8770c6b80f03ea76c3e0a7e2384a3eae5aaf7f29620f472e9a102a6074acf76d",
+        "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f"
+      },
+      "association": {
+        "id": "00000000-0000-4000-8000-0000000000b4",
+        "binding": {
+          "schemaVersion": "contact-dispatch-association/v1",
+          "authorityId": "00000000-0000-4000-8000-000000000078",
+          "authorityHash": "a8c6db0c00bc75a275abe9d94696b7b0d66fe9040a88077be70dc06d39632782",
+          "registrationId": "00000000-0000-4000-8000-000000000064",
+          "registrationRevision": 1,
+          "generationId": "00000000-0000-4000-8000-000000000082",
+          "intentId": "00000000-0000-4000-8000-00000000008c",
+          "channel": "email",
+          "requestKey": "00000000-0000-4000-8000-000000000096",
+          "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448",
+          "slotCommitment": "c55ccfdeb7140cecd3c957ccfe57029353f0bcbc7e05ec392f8fe277892d5948",
+          "wirePayloadHash": "d6beeefdd1a6766144227e2b28960d5acdf9f21334d7b6d56ef3d82f8f7798d7",
+          "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a0",
+          "intentHash": "1275c580ded9668bb37344cfb727df6fddefa62e0c6f1fd0d508dcd7921add34",
+          "sourceRevision": "8770c6b80f03ea76c3e0a7e2384a3eae5aaf7f29620f472e9a102a6074acf76d",
+          "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f"
+        },
+        "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+        "generationHash": "f2ef7de71150f4ae30b221dc6d803f6aaa6d02c9bba190cd89219cb8924c1932",
+        "createdAt": "2026-09-30T03:00:00.000Z"
+      },
+      "accepted": {
+        "schemaVersion": "contact-dispatch-evidence/v1",
+        "registrationId": "00000000-0000-4000-8000-000000000064",
+        "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+        "servicePrincipalId": "synthetic:contact-service",
+        "generation": {
+          "schemaVersion": "paired-contact-generation/v1",
+          "generationId": "00000000-0000-4000-8000-000000000082",
+          "authorityId": "00000000-0000-4000-8000-000000000078",
+          "authorityHash": "a8c6db0c00bc75a275abe9d94696b7b0d66fe9040a88077be70dc06d39632782",
+          "registrationId": "00000000-0000-4000-8000-000000000064",
+          "registrationHash": "f5d2b4a01b0b228835c6a53125926bc1c57517dabdac436cd521785aee70f73f",
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "manifestHash": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f",
+          "sourceRevision": "8770c6b80f03ea76c3e0a7e2384a3eae5aaf7f29620f472e9a102a6074acf76d",
+          "materialRevision": "7f4518706506be9bbc37bcc6dd53ed217a320af3e3bfe77ca9b37073eb10727f",
+          "executorPrincipalId": "synthetic:original-executor",
+          "preparedEventId": "00000000-0000-4000-8000-000000000083",
+          "preparedAt": "2026-09-30T03:00:00.000Z",
+          "expiresAt": "2026-09-30T03:10:00.000Z",
+          "intents": [
+            {
+              "intentId": "00000000-0000-4000-8000-00000000008c",
+              "channel": "email",
+              "requestKey": "00000000-0000-4000-8000-000000000096",
+              "templateHash": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448",
+              "slotCommitment": "c55ccfdeb7140cecd3c957ccfe57029353f0bcbc7e05ec392f8fe277892d5948",
+              "wirePayloadHash": "d6beeefdd1a6766144227e2b28960d5acdf9f21334d7b6d56ef3d82f8f7798d7",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a0",
+              "intentHash": "1275c580ded9668bb37344cfb727df6fddefa62e0c6f1fd0d508dcd7921add34"
+            },
+            {
+              "intentId": "00000000-0000-4000-8000-00000000008d",
+              "channel": "sms",
+              "requestKey": "00000000-0000-4000-8000-000000000097",
+              "templateHash": "7b898af544b6fbc2063d72985e36e45676015d24808fb4fb482d012fa4619031",
+              "slotCommitment": "d5f0442d248d6804cd5803abe8471280c2dd5910bb2b73bdbe87c9702cee59a9",
+              "wirePayloadHash": "bdb92611d495c1d79bba6708205d5fde705632a131dfd820e7e1b2d57f97da2a",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a1",
+              "intentHash": "345f1deba7656ffdad61d3812ede47e698125bfd8a8c99c1a1d087776bb41d5e"
+            }
+          ],
+          "generationHash": "f2ef7de71150f4ae30b221dc6d803f6aaa6d02c9bba190cd89219cb8924c1932"
+        },
+        "intentId": "00000000-0000-4000-8000-00000000008c",
+        "state": "SENT_ACCEPTED",
+        "redeemingEventId": "00000000-0000-4000-8000-0000000000aa",
+        "redeemingAt": "2026-09-30T03:00:00.000Z",
+        "sendingEventId": "00000000-0000-4000-8000-0000000000b6",
+        "sendingAt": "2026-09-30T03:00:00.000Z",
+        "pairBlock": null,
+        "associationId": "00000000-0000-4000-8000-0000000000b4",
+        "outcome": {
+          "schemaVersion": "contact-dispatch-outcome/v1",
+          "state": "SENT_ACCEPTED",
+          "associationId": "00000000-0000-4000-8000-0000000000b4",
+          "providerId": "synthetic-provider-reference",
+          "providerAccountId": "synthetic-email",
+          "providerIdempotencyKey": "00000000-0000-4000-8000-0000000000a0",
+          "wirePayloadHash": "d6beeefdd1a6766144227e2b28960d5acdf9f21334d7b6d56ef3d82f8f7798d7",
+          "auditEventId": "00000000-0000-4000-8000-0000000000b5",
+          "recordedAt": "2026-09-30T03:00:00.000Z",
+          "noRetry": true,
+          "outcomeHash": "59f52753ac61ec467fc303a7b3082fde3b11cb8dceb50b141dd28c7f405b0337"
+        },
+        "evidenceHash": "88666a4bacf15789976f87f6acd3013893449ba23cb68f474730c6e972127753",
+        "observedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:00:15.000Z"
+      },
+      "digests": {
+        "templateEmail": "632ea02fce4dbfc5dfa18da396479a5017b473ec784095aaecacb99ff09e3448",
+        "templateSms": "7b898af544b6fbc2063d72985e36e45676015d24808fb4fb482d012fa4619031",
+        "statement": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+        "manifest": "39171956ca1d01319fd7f6008e7e98b797d38a8b064a13e0fe3ed6c6d5a50e0f",
+        "evidence": "8153e685679b157735e646090ca4e222f6ddd47ce8245efc7fa7117f02a8e79c",
+        "authority": "a8c6db0c00bc75a275abe9d94696b7b0d66fe9040a88077be70dc06d39632782",
+        "generation": "f2ef7de71150f4ae30b221dc6d803f6aaa6d02c9bba190cd89219cb8924c1932",
+        "emailIntent": "1275c580ded9668bb37344cfb727df6fddefa62e0c6f1fd0d508dcd7921add34",
+        "smsIntent": "345f1deba7656ffdad61d3812ede47e698125bfd8a8c99c1a1d087776bb41d5e",
+        "dispatchEvidence": "276bf9325c69e8778ee180145189e6bb145f5cc69340d527081db8ef593c0662",
+        "outcome": "59f52753ac61ec467fc303a7b3082fde3b11cb8dceb50b141dd28c7f405b0337",
+        "acceptedEvidence": "88666a4bacf15789976f87f6acd3013893449ba23cb68f474730c6e972127753"
+      }
+    },
+    {
+      "manifest": {
+        "schemaVersion": "paired-contact-manifest/v1",
+        "manifestId": "00000000-0000-4000-8000-00000000013b",
+        "manifestRevision": 1,
+        "registrationId": "00000000-0000-4000-8000-00000000012c",
+        "registrationRevision": 1,
+        "businessId": "00000000-0000-4000-8000-000000000006",
+        "accountId": "synthetic-source",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000001",
+          "environmentId": "00000000-0000-4000-8000-000000000002",
+          "serviceId": "00000000-0000-4000-8000-000000000003"
+        },
+        "target": {
+          "caseId": "00000000-0000-4000-8000-00000000012d",
+          "orderId": "00000000-0000-4000-8000-00000000012e",
+          "caseCustomerId": "00000000-0000-4000-8000-00000000012f",
+          "orderCustomerId": "00000000-0000-4000-8000-000000000130",
+          "caseRevision": "2026-09-30 00:00:00.123456",
+          "orderRevision": "order-1",
+          "caseCustomerRevision": "customer-1",
+          "orderCustomerRevision": "customer-2",
+          "contactRevision": "81e0f23769284b93396ff549098d7493665d5c8b94588111859c7ff5168cf19f",
+          "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4"
+        },
+        "executor": {
+          "conversationId": "00000000-0000-4000-8000-000000000004",
+          "userId": 1,
+          "principalId": "synthetic:original-executor",
+          "enrollmentId": "00000000-0000-4000-8000-000000000005",
+          "enrollmentRevision": 1,
+          "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "statement": "I am the purchaser of this exact order.",
+        "statementHash": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+        "channels": [
+          {
+            "channel": "email",
+            "accountId": "synthetic-email",
+            "from": "support@example.test",
+            "recipient": "recipient@example.test",
+            "subject": "Exact order verification",
+            "segments": [
+              {
+                "kind": "literal",
+                "text": "Confirm whether you purchased this exact order: "
+              },
+              {
+                "kind": "slot",
+                "slotId": "00000000-0000-4000-8000-000000000136"
+              }
+            ],
+            "slot": {
+              "slotId": "00000000-0000-4000-8000-000000000136",
+              "kind": "source_generated_single_use_link",
+              "channel": "email",
+              "entropyBits": 256,
+              "encoding": "base64url",
+              "origin": "https://verification.example.test",
+              "path": "/verify",
+              "placement": "fragment",
+              "fragmentEncoding": "generation-channel-secret/v1",
+              "generationBinding": "authority_generation_channel_intent"
+            },
+            "attachments": [],
+            "renderingVersion": "contact-template-utf8/v1",
+            "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2"
+          },
+          {
+            "channel": "sms",
+            "accountId": "synthetic-sms",
+            "from": "+15550000001",
+            "recipient": "+15550000002",
+            "subject": "",
+            "segments": [
+              {
+                "kind": "literal",
+                "text": "Confirm whether you purchased this exact order: "
+              },
+              {
+                "kind": "slot",
+                "slotId": "00000000-0000-4000-8000-000000000137"
+              }
+            ],
+            "slot": {
+              "slotId": "00000000-0000-4000-8000-000000000137",
+              "kind": "source_generated_single_use_link",
+              "channel": "sms",
+              "entropyBits": 256,
+              "encoding": "base64url",
+              "origin": "https://verification.example.test",
+              "path": "/verify",
+              "placement": "fragment",
+              "fragmentEncoding": "generation-channel-secret/v1",
+              "generationBinding": "authority_generation_channel_intent"
+            },
+            "attachments": [],
+            "renderingVersion": "contact-template-utf8/v1",
+            "templateHash": "5ac09326c1f3bb125ef17a62857e262552b934426e06b08d28bae70fd8866496"
+          }
+        ],
+        "manifestHash": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d"
+      },
+      "evidence": {
+        "schemaVersion": "paired-contact-evidence/v1",
+        "registrationId": "00000000-0000-4000-8000-00000000012c",
+        "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+        "servicePrincipalId": "synthetic:contact-service",
+        "manifest": {
+          "schemaVersion": "paired-contact-manifest/v1",
+          "manifestId": "00000000-0000-4000-8000-00000000013b",
+          "manifestRevision": 1,
+          "registrationId": "00000000-0000-4000-8000-00000000012c",
+          "registrationRevision": 1,
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "accountId": "synthetic-source",
+          "sourceOrigin": "https://source.example.test",
+          "runtime": {
+            "projectId": "00000000-0000-4000-8000-000000000001",
+            "environmentId": "00000000-0000-4000-8000-000000000002",
+            "serviceId": "00000000-0000-4000-8000-000000000003"
+          },
+          "target": {
+            "caseId": "00000000-0000-4000-8000-00000000012d",
+            "orderId": "00000000-0000-4000-8000-00000000012e",
+            "caseCustomerId": "00000000-0000-4000-8000-00000000012f",
+            "orderCustomerId": "00000000-0000-4000-8000-000000000130",
+            "caseRevision": "2026-09-30 00:00:00.123456",
+            "orderRevision": "order-1",
+            "caseCustomerRevision": "customer-1",
+            "orderCustomerRevision": "customer-2",
+            "contactRevision": "81e0f23769284b93396ff549098d7493665d5c8b94588111859c7ff5168cf19f",
+            "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4"
+          },
+          "executor": {
+            "conversationId": "00000000-0000-4000-8000-000000000004",
+            "userId": 1,
+            "principalId": "synthetic:original-executor",
+            "enrollmentId": "00000000-0000-4000-8000-000000000005",
+            "enrollmentRevision": 1,
+            "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "statement": "I am the purchaser of this exact order.",
+          "statementHash": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+          "channels": [
+            {
+              "channel": "email",
+              "accountId": "synthetic-email",
+              "from": "support@example.test",
+              "recipient": "recipient@example.test",
+              "subject": "Exact order verification",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-000000000136"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-000000000136",
+                "kind": "source_generated_single_use_link",
+                "channel": "email",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2"
+            },
+            {
+              "channel": "sms",
+              "accountId": "synthetic-sms",
+              "from": "+15550000001",
+              "recipient": "+15550000002",
+              "subject": "",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-000000000137"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-000000000137",
+                "kind": "source_generated_single_use_link",
+                "channel": "sms",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "5ac09326c1f3bb125ef17a62857e262552b934426e06b08d28bae70fd8866496"
+            }
+          ],
+          "manifestHash": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d"
+        },
+        "sourceRevision": "19a02a0ddbe101a2738e98000b0e51593e79abbefd5d0083aa40c33cb52ddc2d",
+        "coverage": {
+          "complete": true,
+          "omissions": []
+        },
+        "blockers": [],
+        "evidenceHash": "2d1bcf4040aa7f0a8a09ec0f713678c1a43c1b3fd80d3d3ce5739c831ac70cd7",
+        "observedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:00:15.000Z"
+      },
+      "authority": {
+        "schemaVersion": "paired-contact-authority/v1",
+        "authorityId": "00000000-0000-4000-8000-000000000140",
+        "revision": 1,
+        "registrationId": "00000000-0000-4000-8000-00000000012c",
+        "registrationRevision": 1,
+        "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+        "decisionId": "00000000-0000-4000-8000-000000000141",
+        "decisionVersion": 1,
+        "approvalEventId": "00000000-0000-4000-8000-000000000142",
+        "approverUserId": 1,
+        "proposalHash": "54888f4503c8ca172960fd43903b8974666a2a9dc2739daa528910d960439192",
+        "contextHash": "0542e8fbf0124b626f5ad50cff56d3cbd9a918840a23f9bfa4663627cc26f456",
+        "manifest": {
+          "schemaVersion": "paired-contact-manifest/v1",
+          "manifestId": "00000000-0000-4000-8000-00000000013b",
+          "manifestRevision": 1,
+          "registrationId": "00000000-0000-4000-8000-00000000012c",
+          "registrationRevision": 1,
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "accountId": "synthetic-source",
+          "sourceOrigin": "https://source.example.test",
+          "runtime": {
+            "projectId": "00000000-0000-4000-8000-000000000001",
+            "environmentId": "00000000-0000-4000-8000-000000000002",
+            "serviceId": "00000000-0000-4000-8000-000000000003"
+          },
+          "target": {
+            "caseId": "00000000-0000-4000-8000-00000000012d",
+            "orderId": "00000000-0000-4000-8000-00000000012e",
+            "caseCustomerId": "00000000-0000-4000-8000-00000000012f",
+            "orderCustomerId": "00000000-0000-4000-8000-000000000130",
+            "caseRevision": "2026-09-30 00:00:00.123456",
+            "orderRevision": "order-1",
+            "caseCustomerRevision": "customer-1",
+            "orderCustomerRevision": "customer-2",
+            "contactRevision": "81e0f23769284b93396ff549098d7493665d5c8b94588111859c7ff5168cf19f",
+            "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4"
+          },
+          "executor": {
+            "conversationId": "00000000-0000-4000-8000-000000000004",
+            "userId": 1,
+            "principalId": "synthetic:original-executor",
+            "enrollmentId": "00000000-0000-4000-8000-000000000005",
+            "enrollmentRevision": 1,
+            "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "statement": "I am the purchaser of this exact order.",
+          "statementHash": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+          "channels": [
+            {
+              "channel": "email",
+              "accountId": "synthetic-email",
+              "from": "support@example.test",
+              "recipient": "recipient@example.test",
+              "subject": "Exact order verification",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-000000000136"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-000000000136",
+                "kind": "source_generated_single_use_link",
+                "channel": "email",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2"
+            },
+            {
+              "channel": "sms",
+              "accountId": "synthetic-sms",
+              "from": "+15550000001",
+              "recipient": "+15550000002",
+              "subject": "",
+              "segments": [
+                {
+                  "kind": "literal",
+                  "text": "Confirm whether you purchased this exact order: "
+                },
+                {
+                  "kind": "slot",
+                  "slotId": "00000000-0000-4000-8000-000000000137"
+                }
+              ],
+              "slot": {
+                "slotId": "00000000-0000-4000-8000-000000000137",
+                "kind": "source_generated_single_use_link",
+                "channel": "sms",
+                "entropyBits": 256,
+                "encoding": "base64url",
+                "origin": "https://verification.example.test",
+                "path": "/verify",
+                "placement": "fragment",
+                "fragmentEncoding": "generation-channel-secret/v1",
+                "generationBinding": "authority_generation_channel_intent"
+              },
+              "attachments": [],
+              "renderingVersion": "contact-template-utf8/v1",
+              "templateHash": "5ac09326c1f3bb125ef17a62857e262552b934426e06b08d28bae70fd8866496"
+            }
+          ],
+          "manifestHash": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d"
+        },
+        "manifestHash": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d",
+        "sourceRevision": "19a02a0ddbe101a2738e98000b0e51593e79abbefd5d0083aa40c33cb52ddc2d",
+        "evidenceHash": "2d1bcf4040aa7f0a8a09ec0f713678c1a43c1b3fd80d3d3ce5739c831ac70cd7",
+        "issuedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:10:00.000Z",
+        "authorityHash": "9a635b2b97a88f4d7d00507b94ec8a0d63da3ca5233bde19842cb1e5e65e1d3e"
+      },
+      "generation": {
+        "schemaVersion": "paired-contact-generation/v1",
+        "generationId": "00000000-0000-4000-8000-00000000014a",
+        "authorityId": "00000000-0000-4000-8000-000000000140",
+        "authorityHash": "9a635b2b97a88f4d7d00507b94ec8a0d63da3ca5233bde19842cb1e5e65e1d3e",
+        "registrationId": "00000000-0000-4000-8000-00000000012c",
+        "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+        "businessId": "00000000-0000-4000-8000-000000000006",
+        "manifestHash": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d",
+        "sourceRevision": "19a02a0ddbe101a2738e98000b0e51593e79abbefd5d0083aa40c33cb52ddc2d",
+        "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4",
+        "executorPrincipalId": "synthetic:original-executor",
+        "preparedEventId": "00000000-0000-4000-8000-00000000014b",
+        "preparedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:10:00.000Z",
+        "intents": [
+          {
+            "intentId": "00000000-0000-4000-8000-000000000154",
+            "channel": "email",
+            "requestKey": "00000000-0000-4000-8000-00000000015e",
+            "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2",
+            "slotCommitment": "276cc74fb67d8c0d1fb3eea4af292eec980e3205d016d4405131cea5e636368f",
+            "wirePayloadHash": "2849540030c1da0d7dc05d946429b22666daeb52ccabb2dc200d3cd7e6da3a57",
+            "providerIdempotencyKey": "00000000-0000-4000-8000-000000000168",
+            "intentHash": "7add185fe04c9b04c65d2aff41f3a1b74fc2294913b579bab39e23bd336e2b9c"
+          },
+          {
+            "intentId": "00000000-0000-4000-8000-000000000155",
+            "channel": "sms",
+            "requestKey": "00000000-0000-4000-8000-00000000015f",
+            "templateHash": "5ac09326c1f3bb125ef17a62857e262552b934426e06b08d28bae70fd8866496",
+            "slotCommitment": "c252a1f03cc10332d672ed78d8015cbd3e67f9fa8fa2bced5f23a59437c3c73a",
+            "wirePayloadHash": "71a34d2efd0ae7f8fa0c19d3c6bc0f7ddff34e9917bddf21d4faaf1fc54399ec",
+            "providerIdempotencyKey": "00000000-0000-4000-8000-000000000169",
+            "intentHash": "669e857e115efe44601be070134224020c49d63993e3cd6e6a5cc2a1f3ba336d"
+          }
+        ],
+        "generationHash": "4b19127422eee3969d244f17deaf5ee096483f4ba36b17e522ceeaa269397244"
+      },
+      "intent": {
+        "schemaVersion": "contact-dispatch-evidence/v1",
+        "registrationId": "00000000-0000-4000-8000-00000000012c",
+        "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+        "servicePrincipalId": "synthetic:contact-service",
+        "generation": {
+          "schemaVersion": "paired-contact-generation/v1",
+          "generationId": "00000000-0000-4000-8000-00000000014a",
+          "authorityId": "00000000-0000-4000-8000-000000000140",
+          "authorityHash": "9a635b2b97a88f4d7d00507b94ec8a0d63da3ca5233bde19842cb1e5e65e1d3e",
+          "registrationId": "00000000-0000-4000-8000-00000000012c",
+          "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "manifestHash": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d",
+          "sourceRevision": "19a02a0ddbe101a2738e98000b0e51593e79abbefd5d0083aa40c33cb52ddc2d",
+          "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4",
+          "executorPrincipalId": "synthetic:original-executor",
+          "preparedEventId": "00000000-0000-4000-8000-00000000014b",
+          "preparedAt": "2026-09-30T03:00:00.000Z",
+          "expiresAt": "2026-09-30T03:10:00.000Z",
+          "intents": [
+            {
+              "intentId": "00000000-0000-4000-8000-000000000154",
+              "channel": "email",
+              "requestKey": "00000000-0000-4000-8000-00000000015e",
+              "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2",
+              "slotCommitment": "276cc74fb67d8c0d1fb3eea4af292eec980e3205d016d4405131cea5e636368f",
+              "wirePayloadHash": "2849540030c1da0d7dc05d946429b22666daeb52ccabb2dc200d3cd7e6da3a57",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-000000000168",
+              "intentHash": "7add185fe04c9b04c65d2aff41f3a1b74fc2294913b579bab39e23bd336e2b9c"
+            },
+            {
+              "intentId": "00000000-0000-4000-8000-000000000155",
+              "channel": "sms",
+              "requestKey": "00000000-0000-4000-8000-00000000015f",
+              "templateHash": "5ac09326c1f3bb125ef17a62857e262552b934426e06b08d28bae70fd8866496",
+              "slotCommitment": "c252a1f03cc10332d672ed78d8015cbd3e67f9fa8fa2bced5f23a59437c3c73a",
+              "wirePayloadHash": "71a34d2efd0ae7f8fa0c19d3c6bc0f7ddff34e9917bddf21d4faaf1fc54399ec",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-000000000169",
+              "intentHash": "669e857e115efe44601be070134224020c49d63993e3cd6e6a5cc2a1f3ba336d"
+            }
+          ],
+          "generationHash": "4b19127422eee3969d244f17deaf5ee096483f4ba36b17e522ceeaa269397244"
+        },
+        "intentId": "00000000-0000-4000-8000-000000000154",
+        "state": "REDEEMING",
+        "redeemingEventId": "00000000-0000-4000-8000-000000000172",
+        "redeemingAt": "2026-09-30T03:00:00.000Z",
+        "sendingEventId": null,
+        "sendingAt": null,
+        "pairBlock": null,
+        "associationId": null,
+        "outcome": null,
+        "evidenceHash": "9ab5223152969d998ad3b5f0d14e3cad1578ce9298fc4f4b60b4d53f2b574fd9",
+        "observedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:00:15.000Z"
+      },
+      "request": {
+        "schemaVersion": "contact-dispatch-association/v1",
+        "authorityId": "00000000-0000-4000-8000-000000000140",
+        "authorityHash": "9a635b2b97a88f4d7d00507b94ec8a0d63da3ca5233bde19842cb1e5e65e1d3e",
+        "registrationId": "00000000-0000-4000-8000-00000000012c",
+        "registrationRevision": 1,
+        "generationId": "00000000-0000-4000-8000-00000000014a",
+        "intentId": "00000000-0000-4000-8000-000000000154",
+        "channel": "email",
+        "requestKey": "00000000-0000-4000-8000-00000000015e",
+        "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2",
+        "slotCommitment": "276cc74fb67d8c0d1fb3eea4af292eec980e3205d016d4405131cea5e636368f",
+        "wirePayloadHash": "2849540030c1da0d7dc05d946429b22666daeb52ccabb2dc200d3cd7e6da3a57",
+        "providerIdempotencyKey": "00000000-0000-4000-8000-000000000168",
+        "intentHash": "7add185fe04c9b04c65d2aff41f3a1b74fc2294913b579bab39e23bd336e2b9c",
+        "sourceRevision": "19a02a0ddbe101a2738e98000b0e51593e79abbefd5d0083aa40c33cb52ddc2d",
+        "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4"
+      },
+      "association": {
+        "id": "00000000-0000-4000-8000-00000000017c",
+        "binding": {
+          "schemaVersion": "contact-dispatch-association/v1",
+          "authorityId": "00000000-0000-4000-8000-000000000140",
+          "authorityHash": "9a635b2b97a88f4d7d00507b94ec8a0d63da3ca5233bde19842cb1e5e65e1d3e",
+          "registrationId": "00000000-0000-4000-8000-00000000012c",
+          "registrationRevision": 1,
+          "generationId": "00000000-0000-4000-8000-00000000014a",
+          "intentId": "00000000-0000-4000-8000-000000000154",
+          "channel": "email",
+          "requestKey": "00000000-0000-4000-8000-00000000015e",
+          "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2",
+          "slotCommitment": "276cc74fb67d8c0d1fb3eea4af292eec980e3205d016d4405131cea5e636368f",
+          "wirePayloadHash": "2849540030c1da0d7dc05d946429b22666daeb52ccabb2dc200d3cd7e6da3a57",
+          "providerIdempotencyKey": "00000000-0000-4000-8000-000000000168",
+          "intentHash": "7add185fe04c9b04c65d2aff41f3a1b74fc2294913b579bab39e23bd336e2b9c",
+          "sourceRevision": "19a02a0ddbe101a2738e98000b0e51593e79abbefd5d0083aa40c33cb52ddc2d",
+          "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4"
+        },
+        "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+        "generationHash": "4b19127422eee3969d244f17deaf5ee096483f4ba36b17e522ceeaa269397244",
+        "createdAt": "2026-09-30T03:00:00.000Z"
+      },
+      "accepted": {
+        "schemaVersion": "contact-dispatch-evidence/v1",
+        "registrationId": "00000000-0000-4000-8000-00000000012c",
+        "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+        "servicePrincipalId": "synthetic:contact-service",
+        "generation": {
+          "schemaVersion": "paired-contact-generation/v1",
+          "generationId": "00000000-0000-4000-8000-00000000014a",
+          "authorityId": "00000000-0000-4000-8000-000000000140",
+          "authorityHash": "9a635b2b97a88f4d7d00507b94ec8a0d63da3ca5233bde19842cb1e5e65e1d3e",
+          "registrationId": "00000000-0000-4000-8000-00000000012c",
+          "registrationHash": "cc5eb5cbe22e58a76ca69f3ecd33b83874d33cfd1b19d92ab9b0caa3c1597ad2",
+          "businessId": "00000000-0000-4000-8000-000000000006",
+          "manifestHash": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d",
+          "sourceRevision": "19a02a0ddbe101a2738e98000b0e51593e79abbefd5d0083aa40c33cb52ddc2d",
+          "materialRevision": "fdded9dc1253228eeac388ab83d01dd4566057f4b43c3633a042ec4733b016f4",
+          "executorPrincipalId": "synthetic:original-executor",
+          "preparedEventId": "00000000-0000-4000-8000-00000000014b",
+          "preparedAt": "2026-09-30T03:00:00.000Z",
+          "expiresAt": "2026-09-30T03:10:00.000Z",
+          "intents": [
+            {
+              "intentId": "00000000-0000-4000-8000-000000000154",
+              "channel": "email",
+              "requestKey": "00000000-0000-4000-8000-00000000015e",
+              "templateHash": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2",
+              "slotCommitment": "276cc74fb67d8c0d1fb3eea4af292eec980e3205d016d4405131cea5e636368f",
+              "wirePayloadHash": "2849540030c1da0d7dc05d946429b22666daeb52ccabb2dc200d3cd7e6da3a57",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-000000000168",
+              "intentHash": "7add185fe04c9b04c65d2aff41f3a1b74fc2294913b579bab39e23bd336e2b9c"
+            },
+            {
+              "intentId": "00000000-0000-4000-8000-000000000155",
+              "channel": "sms",
+              "requestKey": "00000000-0000-4000-8000-00000000015f",
+              "templateHash": "5ac09326c1f3bb125ef17a62857e262552b934426e06b08d28bae70fd8866496",
+              "slotCommitment": "c252a1f03cc10332d672ed78d8015cbd3e67f9fa8fa2bced5f23a59437c3c73a",
+              "wirePayloadHash": "71a34d2efd0ae7f8fa0c19d3c6bc0f7ddff34e9917bddf21d4faaf1fc54399ec",
+              "providerIdempotencyKey": "00000000-0000-4000-8000-000000000169",
+              "intentHash": "669e857e115efe44601be070134224020c49d63993e3cd6e6a5cc2a1f3ba336d"
+            }
+          ],
+          "generationHash": "4b19127422eee3969d244f17deaf5ee096483f4ba36b17e522ceeaa269397244"
+        },
+        "intentId": "00000000-0000-4000-8000-000000000154",
+        "state": "SENT_ACCEPTED",
+        "redeemingEventId": "00000000-0000-4000-8000-000000000172",
+        "redeemingAt": "2026-09-30T03:00:00.000Z",
+        "sendingEventId": "00000000-0000-4000-8000-00000000017e",
+        "sendingAt": "2026-09-30T03:00:00.000Z",
+        "pairBlock": null,
+        "associationId": "00000000-0000-4000-8000-00000000017c",
+        "outcome": {
+          "schemaVersion": "contact-dispatch-outcome/v1",
+          "state": "SENT_ACCEPTED",
+          "associationId": "00000000-0000-4000-8000-00000000017c",
+          "providerId": "synthetic-provider-reference",
+          "providerAccountId": "synthetic-email",
+          "providerIdempotencyKey": "00000000-0000-4000-8000-000000000168",
+          "wirePayloadHash": "2849540030c1da0d7dc05d946429b22666daeb52ccabb2dc200d3cd7e6da3a57",
+          "auditEventId": "00000000-0000-4000-8000-00000000017d",
+          "recordedAt": "2026-09-30T03:00:00.000Z",
+          "noRetry": true,
+          "outcomeHash": "b4ee8b4c9f1505ecebf215e88ea4d0bab31acc5f1d61f08956e22540ffa7507a"
+        },
+        "evidenceHash": "c27f3662533e70907f944b1e65775db17cca926a6275d633a080e7bdc50f553c",
+        "observedAt": "2026-09-30T03:00:00.000Z",
+        "expiresAt": "2026-09-30T03:00:15.000Z"
+      },
+      "digests": {
+        "templateEmail": "56cfbbb60edbb41b3811dc70280dc49855a91791ad242c310a46c808e066f6b2",
+        "templateSms": "5ac09326c1f3bb125ef17a62857e262552b934426e06b08d28bae70fd8866496",
+        "statement": "10abd196215542d76d6f5640752bf4af7f459d61626de887f568fde26fc5d9c0",
+        "manifest": "a595613a7046b91ef63e7a19c0112875cff39aa871844589107dad05faa1392d",
+        "evidence": "2d1bcf4040aa7f0a8a09ec0f713678c1a43c1b3fd80d3d3ce5739c831ac70cd7",
+        "authority": "9a635b2b97a88f4d7d00507b94ec8a0d63da3ca5233bde19842cb1e5e65e1d3e",
+        "generation": "4b19127422eee3969d244f17deaf5ee096483f4ba36b17e522ceeaa269397244",
+        "emailIntent": "7add185fe04c9b04c65d2aff41f3a1b74fc2294913b579bab39e23bd336e2b9c",
+        "smsIntent": "669e857e115efe44601be070134224020c49d63993e3cd6e6a5cc2a1f3ba336d",
+        "dispatchEvidence": "9ab5223152969d998ad3b5f0d14e3cad1578ce9298fc4f4b60b4d53f2b574fd9",
+        "outcome": "b4ee8b4c9f1505ecebf215e88ea4d0bab31acc5f1d61f08956e22540ffa7507a",
+        "acceptedEvidence": "c27f3662533e70907f944b1e65775db17cca926a6275d633a080e7bdc50f553c"
+      }
+    }
+  ]
+}

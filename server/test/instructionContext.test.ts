@@ -44,6 +44,8 @@ describe('instruction context migration', () => {
     const result = prepareConversationInstructions(db, { workspaceDir: '/repo', assistantSlug: 'assistant', elevated: false }, 'existing');
     expect(result.developerInstructions).toContain('Current Veneer bot capabilities');
     expect(result.developerInstructions).toContain('inspect_case_custody');
+    expect(result.developerInstructions).toContain('inspect_contact_verification');
+    expect(result.developerInstructions).toContain('No outreach approval ask before executable manifest');
     expect(result.developerInstructions).toContain('No production trust installed by this release');
     expect(result.developerInstructions).toContain('Routine training text, procedural documentation, task records and isolated artifacts do not require enqueue_build');
     expect(result.developerInstructions).toContain('Keep software source, executable automation, dependencies, schemas and deployment work in the build queue');

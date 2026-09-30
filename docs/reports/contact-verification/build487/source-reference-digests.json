@@ -1,0 +1,25 @@
+{
+  "kind": "read-only retained source references; not live source acceptance",
+  "files": [
+    {
+      "path": "/Users/archerclawdington/Projects/ERVP/Order Ops/docs/cs-contact-verification.md",
+      "sha256": "03b6b6468d50fa33a4c20284c51a848bbf162cf82cc3cbec8614f58a82294b9c"
+    },
+    {
+      "path": "/Users/archerclawdington/Projects/ERVP/out/boris/build486-completion.md",
+      "sha256": "b76e436902da4ea91453a8ed55aa817bbc57eadc81dc2d5a0a8f4a32bd2186a5"
+    },
+    {
+      "path": "/Users/archerclawdington/Projects/ERVP/out/boris/build486/registration-review.json",
+      "sha256": "ae8123256f09e60a2907af01434dc2dc67cac4d1fe89fadcecacaad1306c7ab3"
+    },
+    {
+      "path": "/Users/archerclawdington/Projects/ERVP/out/boris/build486/121007-preparation-review.json",
+      "sha256": "3ea45dbe0714fc544b6f96866eff759716580273757b902ebdf79aecf8148d7a"
+    },
+    {
+      "path": "/Users/archerclawdington/Projects/ERVP/Order Ops/server/cs-contact-verification.ts",
+      "sha256": "c0caeaa0af14ad3da6a1dc3da684e4b3d08b4bf3f3407158e309e95f3e51061a"
+    }
+  ]
+}
