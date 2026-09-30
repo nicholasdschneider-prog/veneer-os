@@ -49,6 +49,8 @@ const EnvSchema = z.object({
   // Idle time with no provider progress before a turn is reaped. Poll-style
   // tool calls deliberately do not count as progress.
   VP_TURN_INACTIVITY_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  // A question left stale (case moved on) this long without a revision is withdrawn with an audit note.
+  VP_STALE_QUESTION_WITHDRAW_MS: z.coerce.number().int().positive().default(3 * 24 * 60 * 60 * 1000),
   VP_APPROVAL_TIMEOUT_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
   SONIOX_API_KEY: z.string().optional(),
   // Legacy OpenRouter environment fallback. Client Doppler sits ahead of this;
@@ -168,6 +170,7 @@ export interface Config {
   turnTimeoutMs: number;
   /** Idle time with no provider progress before a turn is reaped. */
   turnInactivityMs: number;
+  staleQuestionWithdrawMs: number;
   /** Pending approvals auto-deny after this long (spec workstream B: 10 min). */
   approvalTimeoutMs: number;
   /** Fixed identity used when identity mode is `dev`. */
@@ -309,6 +312,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     ),
     turnTimeoutMs: parsed.VP_TURN_TIMEOUT_MS,
     turnInactivityMs: parsed.VP_TURN_INACTIVITY_MS,
+    staleQuestionWithdrawMs: parsed.VP_STALE_QUESTION_WITHDRAW_MS,
     approvalTimeoutMs: parsed.VP_APPROVAL_TIMEOUT_MS,
     devEmail: parsed.VP_DEV_EMAIL,
     sonioxApiKey: parsed.SONIOX_API_KEY ?? null,

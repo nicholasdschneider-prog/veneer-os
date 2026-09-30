@@ -1,5 +1,6 @@
 import type { AppContext } from '../context.js';
 import { tickRoutines } from './routines.js';
+import { createBotService } from '../bots/service.js';
 import { tickSearch } from './search.js';
 import { tickNotifications, queueNotification } from './notifications.js';
 export function startBotWorkflows(ctx: AppContext) {
@@ -10,6 +11,7 @@ export function startBotWorkflows(ctx: AppContext) {
     busy = true;
     try {
       tickRoutines(ctx.db);
+      createBotService(ctx.db).withdrawStaleQuestions(ctx.config.staleQuestionWithdrawMs);
       await tickNotifications(ctx);
     } catch {
       console.warn('[bot-workflows] Background pass failed; retrying.');

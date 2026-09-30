@@ -25,7 +25,8 @@ export function decisionSection(d: DecisionStatus) {
   return 'execution';
 }
 
-export function decisionStatusLabel(d: DecisionStatus): string {
+export function decisionStatusLabel(d: DecisionStatus & { stale?: { detail: string } | null }): string {
+  if (d.state === 'needs_input' && d.stale) return 'Stale · Bot is refreshing this question';
   if (d.state === 'verified_completed') return 'Scoped task complete';
   if (d.state === 'running') return 'Executing this task';
   if (d.state === 'action_pending') return 'Queued for execution';
@@ -43,6 +44,14 @@ export function discussionTimestamp(value: string): string {
   return Number.isNaN(date.getTime()) ? 'Time unavailable' : new Intl.DateTimeFormat(undefined, {
     year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
   }).format(date);
+}
+
+/** How long ago the case moved on, for the stale banner. */
+export function staleSummary(stale: { reason: string; since: string; detail: string }, now = Date.now()): string {
+  const minutes = Math.max(0, Math.round((now - Date.parse(stale.since)) / 60000));
+  const ago = minutes < 1 ? 'just now' : minutes < 60 ? `${minutes} min ago` : minutes < 1440 ? `${Math.round(minutes / 60)} h ago` : `${Math.round(minutes / 1440)} d ago`;
+  const what = stale.reason === 'customer_replied' ? 'customer replied' : stale.reason === 'ticket_created' ? 'new ticket on this case' : stale.reason === 'status_changed' ? 'case status changed' : stale.reason === 'evidence_changed' ? 'evidence changed' : 'case closed';
+  return `Stale: ${what} ${ago}`;
 }
 
 /** Presentation only. Never interpret spend, authorization or a proposed refund as history. */

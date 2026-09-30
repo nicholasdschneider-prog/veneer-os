@@ -18,7 +18,17 @@ export function rasterType(bytes: Buffer): string | null {
   return null;
 }
 
-async function load(ctx: AppContext, actor: Actor, botId: string, image: Image) {
+/** PDF alongside the passive rasters, for document evidence. */
+export function documentType(bytes: Buffer): string | null {
+  return rasterType(bytes) ?? (bytes.subarray(0, 5).toString() === '%PDF-' ? 'application/pdf' : null);
+}
+
+/** Read a file the bot conversation is known to hold, with the same exact-membership and ACL rules as decision images. */
+export async function loadConversationFile(ctx: AppContext, actor: Actor, botId: string, ref: { conversation_id: string; path: string }, accept: (bytes: Buffer) => string | null) {
+  return load(ctx, actor, botId, ref, accept);
+}
+
+async function load(ctx: AppContext, actor: Actor, botId: string, image: { conversation_id: string; path: string }, accept: (bytes: Buffer) => string | null = rasterType) {
   const service = createBotService(ctx.db);
   const source = service.chat(actor, image.conversation_id);
   if (!sameBusiness(ctx.db, botId, source)) throw unavailable();
@@ -51,7 +61,7 @@ async function load(ctx: AppContext, actor: Actor, botId: string, image: Image) 
       if (!count) throw unavailable();
       offset += count;
     }
-    const type = rasterType(bytes);
+    const type = accept(bytes);
     if (!type) throw unavailable();
     const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
     return { bytes, type, sha256 };

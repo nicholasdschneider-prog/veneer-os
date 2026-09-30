@@ -37,6 +37,29 @@ export const decisionChoiceSchema = z.object({
 export const CUSTOM_CHOICE_ID = 'custom';
 export const CUSTOM_CHOICE_LABEL = 'Something else';
 const GENERIC_CHOICE_LABELS = new Set(['yes','no','ok','okay','approve','approved','approve recommendation','approve as proposed','approve proposal','approve this','confirm','confirmed','accept','accepted','reject','rejected','reject proposal','decline','declined','proceed','go ahead','do it','sounds good','not now','hold','withdraw','withdraw request','cancel','other','something else']);
+const PHOTO_RE = /\b(photo|photos|picture|pictures|image|images|attachment|attachments|screenshot|screenshots)\b/i;
+const MONEY_RE = /\b(refund|refunded|refunds|reimburse|chargeback|credit back|money back|store credit|partial credit)\b/i;
+/**
+ * A question must carry what the human needs to answer it. If it talks about
+ * photos, the photos are on the card. If it touches money, the refund facts
+ * are verified and cited, never "not verified" next to a recommended refund.
+ */
+export function validateDecisionEvidence(p: { question: string; recommendation: string; consequence: string; review_summary?: { request?: string; customer_request?: string; background?: string[]; refund?: { status: string } } | undefined; message_delivery?: { payload: { body: string } } | undefined; images?: unknown[] | undefined; evidence_items?: EvidenceItem[] | undefined }): void {
+  const items = p.evidence_items ?? [];
+  const humanText = [p.question, p.review_summary?.request, p.review_summary?.customer_request, ...(p.review_summary?.background ?? [])].filter(Boolean).join('\n');
+  const files = (p.images?.length ?? 0) + items.filter(i => i.kind === 'image' || i.kind === 'document').length;
+  if (PHOTO_RE.test(humanText) && files === 0)
+    throw new BotError(400, 'This question refers to photos or attachments but attaches none. Add them as evidence_items (kind image/document from gmail, orderops or a chat file) so the human can see them on the card. If the right photos do not exist yet, ask the customer for them first and raise the question afterwards.');
+  const moneyText = [humanText, p.recommendation, p.consequence, p.message_delivery?.payload.body].filter(Boolean).join('\n');
+  if (MONEY_RE.test(moneyText) || p.review_summary?.refund) {
+    const refund = p.review_summary?.refund;
+    if (!refund || refund.status === 'not_verified')
+      throw new BotError(400, 'This question involves a refund or credit but review_summary.refund is not verified. Read the order’s refund history (Shopify/OrderOps) first and supply refund with status none, partial or full plus its source, scope and as_of.');
+    if (!items.some(i => i.kind === 'record' && (i.source.system === 'shopify' || i.source.system === 'orderops')))
+      throw new BotError(400, 'Cite the refund facts as a record evidence item from shopify or orderops (order id, refund ids and amounts in text) so the human sees them on the card.');
+  }
+}
+
 const normalizeLabel = (label: string) => label.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 /**
  * A bot-raised question must arrive with researched, self-explaining options:
@@ -59,6 +82,44 @@ export const defaultDecisionChoices = [
   { id: 'defer', label: 'Not now', action: 'defer' },
   { id: 'withdraw', label: 'Withdraw request', action: 'withdraw' },
 ] as const;
+/**
+ * Evidence the bot brings onto the card so the human decides in one place.
+ * Files are fetched/retained by the server at raise time and bound by hash;
+ * record excerpts are the bot's own read of a source system and carry the
+ * exact ids so they can be re-checked.
+ */
+export const evidenceSourceSchema = z.discriminatedUnion('system', [
+  // A file already detected in a bot conversation (today's images path).
+  z.object({ system: z.literal('chat_file'), conversation_id: z.string().min(1).max(200), path: z.string().min(1).max(4096) }).strict(),
+  // A file a human uploaded from the chat composer (DATA_DIR/uploads).
+  z.object({ system: z.literal('upload'), path: z.string().min(1).max(4096) }).strict(),
+  z.object({ system: z.literal('gmail'), account: z.string().trim().min(1).max(320).optional(), message_id: z.string().trim().min(1).max(200), attachment_id: z.string().trim().min(1).max(400).optional(), filename: z.string().trim().min(1).max(300).optional() }).strict(),
+  z.object({ system: z.literal('orderops'), ticket_id: z.string().trim().min(1).max(200), attachment_id: z.string().trim().min(1).max(200).optional(), message_id: z.string().trim().min(1).max(200).optional() }).strict(),
+  z.object({ system: z.literal('shopify'), order_id: z.string().trim().min(1).max(200), order_number: z.string().trim().min(1).max(100).optional(), refund_ids: z.array(z.string().trim().min(1).max(200)).max(20).optional() }).strict(),
+]);
+export const evidenceItemSchema = z.object({
+  kind: z.enum(['image', 'document', 'message', 'record']),
+  label: z.string().trim().min(1).max(200),
+  source: evidenceSourceSchema,
+  /** Excerpt for message/record items (sender, time, quoted text, or the facts read). */
+  text: z.string().trim().max(2000).optional(),
+  /** Server-set for retained bytes; preserve on revise, omit for new files. */
+  sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  /** Server-set: bytes retained and served from the decision. */
+  retained: z.boolean().optional(),
+  captured_at: z.string().datetime({ offset: true }).optional(),
+  added_by: z.enum(['bot', 'human']).optional(),
+}).strict();
+export type EvidenceItem = z.infer<typeof evidenceItemSchema>;
+/** What the world looked like when the question was asked. */
+export const asOfSchema = z.object({
+  captured_at: z.string().datetime({ offset: true }),
+  ticket_id: z.string().trim().min(1).max(200).optional(),
+  ticket_status: z.string().trim().min(1).max(80).optional(),
+  last_inbound: z.array(z.object({ channel: z.string().trim().min(1).max(40), message_id: z.string().trim().min(1).max(200), at: z.string().datetime({ offset: true }).optional() }).strict()).max(12).default([]),
+  evidence_hashes: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(48).default([]),
+}).strict();
+export interface StaleMark { reason: 'customer_replied' | 'ticket_created' | 'status_changed' | 'evidence_changed' | 'ticket_closed'; since: string; detail: string; event_id?: string }
 export const decisionImageSchema = z.object({
   conversation_id: z.string().min(1).max(200),
   path: z.string().min(1).max(4096),
@@ -96,6 +157,8 @@ export const proposalSchema = z
     purchase_timing: timingProposalSchema.optional(),
     contact_verification: contactVerificationManifestSchema.optional(),
     images: z.array(decisionImageSchema).max(12).optional(),
+    evidence_items: z.array(evidenceItemSchema).max(24).optional(),
+    as_of: asOfSchema.optional(),
     evidence: z.array(evidenceSchema).max(30).default([]),
     blocked_action: text,
     blocks_scope: z.enum(['task', 'workload']).default('task'),
@@ -177,6 +240,7 @@ export type Decision = {
   assignee_id: number;
   handler_id: number | null;
   handling_revision: number;
+  stale_json: string | null;
   answer_json: string | null;
   result_json: string | null;
   parked_json: string | null;
@@ -414,6 +478,12 @@ export function createBotService(db: Database.Database) {
       );
     return true;
   }
+  /** A stale version is not answerable: the bot must revise, answer the customer, or withdraw. */
+  function staleGuard(d: Decision) {
+    if (!d.stale_json) return;
+    const stale = JSON.parse(d.stale_json) as StaleMark;
+    throw new BotError(409, `This question is stale (${stale.detail}). The bot has been asked to re-check the case and revise it; answer the revised version.`);
+  }
   function cas(d: Decision, version: number) {
     if (d.version !== version)
       throw new BotError(
@@ -526,7 +596,11 @@ export function createBotService(db: Database.Database) {
       answer: parse(d.answer_json),
       result: parse(d.result_json),
       parked: parse(d.parked_json),
+      stale: parse(d.stale_json) as StaleMark | null,
+      // Evidence humans attached to this version (uploads on an answer or reply).
+      human_evidence: db.prepare("SELECT payload_json FROM bot_decision_events WHERE decision_id=? AND version=? AND kind='evidence_added' ORDER BY rowid").all(d.id, d.version).map((row) => JSON.parse((row as { payload_json: string }).payload_json)),
       proposal_json: undefined,
+      stale_json: undefined,
       answer_json: undefined,
       result_json: undefined,
       parked_json: undefined,
@@ -654,7 +728,7 @@ export function createBotService(db: Database.Database) {
         decisionEvidenceAllowed({user:assigned},p,d);
         const permanentOwner=db.prepare('SELECT * FROM users WHERE id=?').get(conversation(d.conversation_id)!.user_id) as UserRow;
         evidenceAllowed({user:permanentOwner},p,d.conversation_id);
-        db.prepare("UPDATE bot_decisions SET version=version+1,handler_id=NULL,handling_revision=handling_revision+1,state='needs_input',proposal_json=?,answer_json=NULL,result_json=NULL,parked_json=NULL,updated_at=datetime('now') WHERE id=?").run(JSON.stringify(p),id);
+        db.prepare("UPDATE bot_decisions SET version=version+1,handler_id=NULL,handling_revision=handling_revision+1,state='needs_input',proposal_json=?,answer_json=NULL,result_json=NULL,parked_json=NULL,stale_json=NULL,updated_at=datetime('now') WHERE id=?").run(JSON.stringify(p),id);
         event(actor,read(actor,id),'revised',p,key+':revision');
         const result=view(actor,read(actor,id));
         event(actor,read(actor,id),'reply_edited',{expected_version:version,body,actor_id:actor.user.id},key);
@@ -689,7 +763,7 @@ export function createBotService(db: Database.Database) {
           );
         validateProposal(actor, p, d.conversation_id, d);
         db.prepare(
-          "UPDATE bot_decisions SET version=version+1,handler_id=NULL,handling_revision=handling_revision+1,state='needs_input',proposal_json=?,assignee_id=?,answer_json=NULL,result_json=NULL,parked_json=NULL,updated_at=datetime('now') WHERE id=?",
+          "UPDATE bot_decisions SET version=version+1,handler_id=NULL,handling_revision=handling_revision+1,state='needs_input',proposal_json=?,assignee_id=?,answer_json=NULL,result_json=NULL,parked_json=NULL,stale_json=NULL,updated_at=datetime('now') WHERE id=?",
         ).run(JSON.stringify(p), p.assignee_id, id);
         const revised = read(actor, id);
         event(actor, revised, 'revised', p, key);
@@ -763,6 +837,7 @@ export function createBotService(db: Database.Database) {
         }
         if (d.state !== 'needs_input')
           throw new BotError(409, 'This proposal already has an answer');
+        staleGuard(d);
         db.prepare(
           "UPDATE bot_decisions SET state='decided',answer_json=?,updated_at=datetime('now') WHERE id=? AND version=? AND state='needs_input'",
         ).run(
@@ -823,6 +898,7 @@ export function createBotService(db: Database.Database) {
         db.prepare(`SELECT 1 FROM bot_message_replies r JOIN bot_message_threads t ON t.id=r.thread_id WHERE t.conversation_id=? AND r.actor_conversation_id IS NULL AND r.id<>? AND (julianday(r.created_at)>julianday(?) OR (?='result_reply' AND r.seq>(SELECT seq FROM bot_message_replies WHERE id=?))) LIMIT 1`).get(d.conversation_id,sourceId,source.created_at,kind,sourceId) ||
         db.prepare('SELECT 1 FROM bot_decision_threads WHERE decision_id=? AND actor_conversation_id IS NULL AND julianday(created_at)>=julianday(?) LIMIT 1').get(id,source.created_at))) throw new BotError(409,'Newer human context requires a current instruction');
       if(!receipt && d.state!=='needs_input') throw new BotError(409,'Proposal already answered; preserve the existing decision');
+      if(!receipt) staleGuard(d);
       const binding={decision_id:id,version,owner_conversation_id:d.conversation_id,proposal_hash:proposalHash,handling_revision:d.handling_revision,source_kind:kind,source_id:sourceId,source_hash:sourceHash,
         source_context_hash:canonicalSha256(context),recent_direct_hash:canonicalSha256(recentDirect),thread_hash:canonicalSha256(service.thread(actor,id))};
       return {source,context,proposal, binding, inspection_hash:canonicalSha256(binding),recorded:receipt??null,
@@ -1034,6 +1110,69 @@ export function createBotService(db: Database.Database) {
         event(actor, d, 'parked', payload, key);
         return view(actor, read(actor, id));
       })();
+    },
+    /**
+     * The case moved on (customer replied, ticket changed). Every open question
+     * on that case is marked stale and its bot is woken to re-read and revise,
+     * answer the customer, or withdraw. Idempotent per (decision, event).
+     */
+    markStaleForCase(caseIds: string[], mark: Omit<StaleMark, 'since'> & { since?: string }): string[] {
+      const ids = caseIds.map((c) => c.trim()).filter(Boolean);
+      if (!ids.length) return [];
+      const marked: string[] = [];
+      db.transaction(() => {
+        for (const d of db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input'").all() as Decision[]) {
+          const proposal = JSON.parse(d.proposal_json) as { message_delivery?: { canonical_case: string; payload: { ticket: string } }; as_of?: { ticket_id?: string } };
+          const cases = [proposal.message_delivery?.canonical_case, proposal.message_delivery?.payload.ticket, proposal.as_of?.ticket_id].filter((x): x is string => !!x);
+          if (!cases.some((c) => ids.includes(c))) continue;
+          const key = `stale:${mark.event_id ?? `${mark.reason}:${mark.since ?? 'now'}`}`;
+          if (db.prepare('SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(d.id, key)) continue;
+          const stale: StaleMark = { ...mark, since: mark.since ?? new Date().toISOString() };
+          db.prepare("UPDATE bot_decisions SET stale_json=?,updated_at=datetime('now') WHERE id=? AND version=?").run(JSON.stringify(stale), d.id, d.version);
+          const c = conversation(d.conversation_id)!;
+          const actor: Actor = { user: db.prepare('SELECT * FROM users WHERE id=?').get(c.user_id) as UserRow };
+          const ev = event(actor, d, 'stale', stale, key);
+          if (!c.archived) db.prepare('INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)').run(
+            ev, c.id, c.user_id, `bot-decision:${ev}`,
+            `VeneerBots stale question. Decision ${d.id}, proposal version ${d.version}. ${stale.detail}\nThe case changed after you asked this question, so the human can no longer answer it. Re-read the case (new messages, status, refunds, photos), then do exactly one of: update_decision with the current expected_version and a complete revised proposal including fresh evidence_items and as_of; answer the customer yourself if the question is now moot; or withdraw via record_decision_result/reply_to_decision explaining why. Never ask the human to answer the old version.`,
+            new Date().toISOString());
+          marked.push(d.id);
+        }
+      })();
+      return marked;
+    },
+    /** A human attaches a file to a question (uploaded from the composer). Recorded as an event on this version and shown to the bot. */
+    addHumanEvidence(actor: Actor, id: string, version: number, key: string, item: EvidenceItem) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        human(actor);
+        approver(actor, d);
+        cas(d, version);
+        const payload = { ...item, added_by: 'human' as const, actor_id: actor.user.id, captured_at: item.captured_at ?? new Date().toISOString() };
+        if (replay(actor, d, key, 'evidence_added', payload)) return view(actor, d);
+        event(actor, d, 'evidence_added', payload, key);
+        return view(actor, read(actor, id));
+      })();
+    },
+    /**
+     * Questions left stale for longer than `maxAgeMs` without a revision are
+     * withdrawn with an audit note: the bot never refreshed them, so the human
+     * must not be shown an answerable card for a case that moved on.
+     */
+    withdrawStaleQuestions(maxAgeMs: number, now = Date.now()): string[] {
+      const withdrawn: string[] = [];
+      for (const d of db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input' AND stale_json IS NOT NULL").all() as Decision[]) {
+        const stale = JSON.parse(d.stale_json!) as StaleMark;
+        if (now - Date.parse(stale.since) < maxAgeMs) continue;
+        const c = conversation(d.conversation_id)!;
+        const actor: Actor = { user: db.prepare('SELECT * FROM users WHERE id=?').get(c.user_id) as UserRow };
+        const payload = { action: 'withdraw', text: `Withdrawn automatically: stale since ${stale.since} (${stale.detail}) and never revised.`, scope: 'this_case', actor_id: actor.user.id, automatic: true };
+        const changed = db.prepare("UPDATE bot_decisions SET state='decided',answer_json=?,updated_at=datetime('now') WHERE id=? AND version=? AND state='needs_input'").run(JSON.stringify(payload), d.id, d.version).changes;
+        if (!changed) continue;
+        event(actor, d, 'answered', payload, `stale-withdraw:${d.id}:${d.version}`);
+        withdrawn.push(d.id);
+      }
+      return withdrawn;
     },
     dismiss(actor: Actor, id: string, version: number) {
       const d = read(actor, id);

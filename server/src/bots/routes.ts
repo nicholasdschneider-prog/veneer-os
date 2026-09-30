@@ -12,6 +12,7 @@ import {composedSmsReader} from './composedSmsReader.js';
 import { createInstructionObligations, obligationInspectionSchema, obligationRecordSchema } from './instructionObligations.js';
 import { createDecisionHandoffRouter } from './decisionHandoffRoutes.js';
 import { bindDecisionImages, readDecisionImage } from './decisionImages.js';
+import { bindDecisionEvidence, bindHumanEvidence, composioGmailFetchers, readDecisionEvidence, type EvidenceFetchers } from './decisionEvidence.js';
 import {createOrganizationService,latestBotPreview} from './organization.js';
 import { createTeamService } from './teams.js';
 import express from 'express';
@@ -20,13 +21,14 @@ import { canViewConversation } from '../conversations/access.js';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
-import { BotError, createBotService, proposalInputSchema, validateDecisionChoices } from './service.js';
+import { BotError, createBotService, proposalInputSchema, validateDecisionChoices, validateDecisionEvidence } from './service.js';
 const key = z.string().min(1).max(200);
 const mutation = z.object({
   expected_version: z.number().int().positive(),
   request_key: key,
 });
-export function createBotsRouter(ctx: AppContext) {
+export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: EvidenceFetchers } = {}) {
+  const evidenceFetchers = deps.evidenceFetchers ?? composioGmailFetchers();
   const router = express.Router();
   const s = createBotService(ctx.db);
   const teams = createTeamService(ctx.db);
@@ -225,10 +227,28 @@ export function createBotsRouter(ctx: AppContext) {
         .parse(req.body);
       if (!req.agentConversationId) throw new BotError(403, 'A bot conversation is required');
       validateDecisionChoices(p.proposal.choices);
+      validateDecisionEvidence(p.proposal);
       p.proposal = await bindDecisionImages(ctx, actor(req), req.agentConversationId, p.proposal);
+      p.proposal = await bindDecisionEvidence(ctx, actor(req), req.agentConversationId, p.proposal, evidenceFetchers);
       res.json({ decision: s.raise(actor(req), p) });
     }),
   );
+  router.get('/decisions/:id/evidence/:version/:index', run((req, res) => {
+    const version = z.coerce.number().int().positive().parse(req.params.version);
+    const index = z.coerce.number().int().min(0).max(63).parse(req.params.index);
+    const found = readDecisionEvidence(ctx, actor(req), req.params.id!, version, index);
+    res.set('Content-Type', found.type).set('X-Content-Type-Options', 'nosniff')
+      .set('Cache-Control', 'private, no-store').set('Content-Security-Policy', "default-src 'none'; sandbox")
+      .set('Content-Disposition', `inline; filename="${found.item.label.replace(/[^\w.-]+/g, '_').slice(0, 80) || 'evidence'}"`)
+      .send(found.bytes);
+  }));
+  /** A human attaches a composer upload to a question (kept as an event on this version, visible to the bot). */
+  router.post('/decisions/:id/evidence', run((req, res) => {
+    if (req.agentConversationId) throw new BotError(403, 'Bots attach evidence through the proposal');
+    const p = mutation.extend({ path: z.string().min(1).max(4096), label: z.string().trim().min(1).max(200) }).strict().parse(req.body);
+    const item = bindHumanEvidence(ctx, { path: p.path, label: p.label });
+    res.json({ decision: s.addHumanEvidence(actor(req), req.params.id!, p.expected_version, p.request_key, item) });
+  }));
   router.get('/decisions/:id/images/:version/:index', run(async (req, res) => {
     const version = z.coerce.number().int().positive().parse(req.params.version);
     const index = z.coerce.number().int().min(0).max(11).parse(req.params.index);
@@ -256,8 +276,9 @@ export function createBotsRouter(ctx: AppContext) {
         .parse(req.body);
       const current = s.read(actor(req), req.params.id!);
       // A revised proposal is a fresh question: bots must re-supply researched choices.
-      if (req.agentConversationId) validateDecisionChoices(p.proposal.choices);
+      if (req.agentConversationId) { validateDecisionChoices(p.proposal.choices); validateDecisionEvidence(p.proposal); }
       p.proposal = await bindDecisionImages(ctx, actor(req), current.conversation_id, p.proposal);
+      p.proposal = await bindDecisionEvidence(ctx, actor(req), current.conversation_id, p.proposal, evidenceFetchers);
       res.json({
         decision: s.revise(
           actor(req),
@@ -290,8 +311,12 @@ export function createBotsRouter(ctx: AppContext) {
     const p = mutation.extend({
       text: z.string().trim().min(1).max(2000),
       expected_handling_revision: z.number().int().nonnegative().optional(),
+      // Files the human attached with the typed answer; each becomes a retained evidence event first.
+      evidence: z.array(z.object({ path: z.string().min(1).max(4096), label: z.string().trim().min(1).max(200) }).strict()).max(12).optional(),
     }).strict().parse(req.body);
-    res.json({ decision: s.answerCustom(actor(req), req.params.id!, p.expected_version, p.request_key, p.text, p.expected_handling_revision) });
+    const a = actor(req);
+    for (const [i, upload] of (p.evidence ?? []).entries()) s.addHumanEvidence(a, req.params.id!, p.expected_version, `${p.request_key}:evidence:${i}`, bindHumanEvidence(ctx, upload));
+    res.json({ decision: s.answerCustom(a, req.params.id!, p.expected_version, p.request_key, p.text, p.expected_handling_revision) });
   }));
   router.post(
     '/decisions/:id/answer',

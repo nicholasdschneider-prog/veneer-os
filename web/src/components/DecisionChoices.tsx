@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { defaultDecisionChoices, type BotProposal } from '@/lib/bots';
 
@@ -12,10 +12,12 @@ const actionNote = (c: Choice) => c.action === 'approve' ? 'Approves this propos
  * the caller's reviewed proposal version; a typed answer is recorded as `custom`.
  */
 export function DecisionChoices({ choices, disabled, onChoose, onCustom }: {
-  choices?: BotProposal['choices']; disabled: boolean; onChoose: (id: string) => void; onCustom?: (text: string) => void;
+  choices?: BotProposal['choices']; disabled: boolean; onChoose: (id: string) => void; onCustom?: (text: string, files: File[]) => void;
 }) {
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const picker = useRef<HTMLInputElement | null>(null);
   const supplied = choices ?? defaultDecisionChoices;
   const ordered = [...supplied].sort((a, b) => Number(!!b.recommended) - Number(!!a.recommended));
   const hasPrimary = ordered.some(c => !secondaryAction(c));
@@ -37,8 +39,13 @@ export function DecisionChoices({ choices, disabled, onChoose, onCustom }: {
           <textarea className="mt-1 block w-full rounded-lg border bg-background p-2 text-sm" rows={3} autoFocus value={custom} placeholder="Tell the bot what should happen instead" onChange={e => setCustom(e.target.value)} />
         </label>
         <p className="text-xs text-muted-foreground">Submitting records this as your answer. The bot follows your direction; it does not authorize the proposal’s exact action.</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <input ref={picker} type="file" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" multiple className="hidden" onChange={e => { setFiles(f => [...f, ...Array.from(e.target.files ?? [])]); e.target.value = ''; }} />
+          <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => picker.current?.click()}>Attach photo or PDF</Button>
+          {files.map((f, i) => <span key={`${f.name}-${i}`} className="rounded-full border px-2 py-0.5">{f.name} <button type="button" aria-label={`Remove ${f.name}`} className="ml-1" onClick={() => setFiles(list => list.filter((_, j) => j !== i))}>×</button></span>)}
+        </div>
         <div className="flex gap-2">
-          <Button type="button" disabled={disabled || !custom.trim()} onClick={() => { onCustom(custom.trim()); setCustom(''); setCustomOpen(false); }}>Submit answer</Button>
+          <Button type="button" disabled={disabled || !custom.trim()} onClick={() => { onCustom(custom.trim(), files); setCustom(''); setFiles([]); setCustomOpen(false); }}>Submit answer</Button>
           <Button type="button" variant="ghost" disabled={disabled} onClick={() => setCustomOpen(false)}>Cancel</Button>
         </div>
       </div> : <Button type="button" className="h-auto min-h-12 justify-start whitespace-normal py-3" variant="outline" disabled={disabled} onClick={() => setCustomOpen(true)}>

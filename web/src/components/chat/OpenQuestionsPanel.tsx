@@ -6,8 +6,12 @@ import { withSideParam } from '@/lib/sideChat';
 import { Button } from '../ui/button';
 import { Bots } from '../../screens/Bots';
 
+/** Latest case activity first (a stale mark records when the customer moved on), then newest question. */
+export function questionActivity(d: BotDecision): number {
+  return Math.max(d.stale ? Date.parse(d.stale.since) || 0 : 0, Date.parse(d.created_at.replace(' ', 'T') + (/[zZ]|[+-]\d{2}:?\d{2}$/.test(d.created_at) ? '' : 'Z')) || 0);
+}
 export function questionsForConversation(decisions: BotDecision[], conversationId: string) {
-  return decisions.filter(d => d.conversation_id === conversationId && d.state === 'needs_input');
+  return decisions.filter(d => d.conversation_id === conversationId && d.state === 'needs_input').sort((a, b) => questionActivity(b) - questionActivity(a));
 }
 
 export const CHAT_DECISIONS_CHANGED = 'chat-decisions-changed';

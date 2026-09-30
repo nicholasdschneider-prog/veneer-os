@@ -1,3 +1,4 @@
+import { createBotService } from '../bots/service.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -187,6 +188,13 @@ export function acceptEvent(
     .get(sourceId) as { team_id: string } | undefined;
   if (!source) throw new BotError(404, 'Event source unavailable');
   if (p.type === 'connection.test') return 0;
+  // The case moved on: open questions on this ticket are stale until their bot re-reads it.
+  createBotService(db).markStaleForCase([p.ticket_id], {
+    reason: p.type === 'customer.replied' ? 'customer_replied' : 'ticket_created',
+    since: p.occurred_at,
+    detail: p.type === 'customer.replied' ? 'the customer replied after this question was asked' : 'a new ticket was opened on this case after this question was asked',
+    event_id: `${sourceId}:${p.id}`,
+  });
   if (p.type === 'customer.replied' && !p.assigned_bot)
     throw new BotError(
       400,

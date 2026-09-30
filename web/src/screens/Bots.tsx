@@ -2,6 +2,8 @@ import { DecisionHandoffStatus } from '@/components/DecisionHandoffStatus';
 import { decisionTitle } from '@/lib/decisionPresentation';
 import { CallButton } from '@/components/CallButton';
 import { DecisionImages } from '../components/DecisionImages';
+import { DecisionEvidence } from '../components/DecisionEvidence';
+import { api } from '@/lib/api';
 import { isPeopleConversation } from '@/lib/teamRooms';
 import {NewGroupChat} from '@/components/NewGroupChat';
 import {GroupConversationRow} from '@/components/GroupConversationRow';
@@ -9,7 +11,7 @@ import {useBotGroups,mergeBotGroups} from '@/lib/botGroups';
 import { DecisionChoices } from '../components/DecisionChoices';
 import { BotCommunication, VoiceBriefing } from '../components/BotCommunication';
 import { BotGuideNotice } from '@/components/BotGuideNotice';
-import { decisionCopy, decisionSection, decisionStatusLabel, discussionTimestamp } from '@/lib/decisionPresentation';
+import { decisionCopy, decisionSection, decisionStatusLabel, discussionTimestamp, staleSummary } from '@/lib/decisionPresentation';
 import { BusinessAccess } from '@/components/BusinessAccess';
 import { BusinessSelector, useBusinessSelection } from '@/components/BusinessSelector';
 import type { BusinessTeam } from '@/lib/bots';
@@ -723,7 +725,8 @@ export function Bots({
                       {d.can_release && <Button variant="outline" disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'release' }))}>Release question</Button>}
                     </div>
                   )}
-                  {d.state === 'needs_input' &&
+                  {d.state === 'needs_input' && d.stale && <p role="status" className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"><span className="font-medium">{staleSummary(d.stale)}.</span> The bot is re-reading the case and will refresh or withdraw this question. It cannot be answered as asked.</p>}
+                  {d.state === 'needs_input' && !d.stale &&
                     (d.can_answer ? (
                       <div className="mt-6 border-t pt-5">
                         <h3 className="font-medium">
@@ -733,8 +736,9 @@ export function Bots({
                         <DecisionChoices choices={d.proposal.choices} disabled={busy || stale || replyEditing || editing} onChoose={choice_id => void act(async () => {
                           await mutate('choice', { choice_id, note: answer, scope });
                           setAnswer('');
-                        })} onCustom={text => void act(async () => {
-                          await mutate('custom', { text });
+                        })} onCustom={(text, files) => void act(async () => {
+                          const evidence = files.length ? await Promise.all(files.map(async f => ({ path: (await api.uploadFile(f)).path, label: f.name }))) : undefined;
+                          await mutate('custom', { text, ...(evidence ? { evidence } : {}) });
                           setAnswer('');
                         })} />
                         <details className="mt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm">Add a note or change scope</summary>
@@ -863,6 +867,7 @@ export function Bots({
                     <BotProposalDetails decision={d} showIdentifiers />
                   <BotCommunication mode="briefing" key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
                   <p className="mt-3 text-sm text-muted-foreground">Approval scope: {d.proposal.blocks_scope === 'task' ? 'This task only. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</p>
+                  <DecisionEvidence key={`evidence-${d.id}-${d.version}`} decision={d} defaultOpen />
                   <DecisionImages key={`${d.id}-${d.version}`} decision={d} />
                   {d.answer && (
                     <div className="mt-4 rounded-xl border p-3 text-sm">

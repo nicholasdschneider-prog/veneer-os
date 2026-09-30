@@ -14,6 +14,17 @@ export const defaultDecisionChoices: NonNullable<BotProposal['choices']> = [
   { id: 'defer', label: 'Not now', action: 'defer' },
   { id: 'withdraw', label: 'Withdraw request', action: 'withdraw' },
 ];
+export interface EvidenceItem {
+  kind: 'image' | 'document' | 'message' | 'record';
+  label: string;
+  source: { system: 'chat_file' | 'upload' | 'gmail' | 'orderops' | 'shopify'; [key: string]: unknown };
+  text?: string;
+  sha256?: string;
+  retained?: boolean;
+  captured_at?: string;
+  added_by?: 'bot' | 'human';
+}
+export interface StaleMark { reason: string; since: string; detail: string }
 export interface BotProposal {
   contact_verification?: {
     schemaVersion: 'paired-contact-manifest/v1'; manifestId: string; manifestRevision: number;
@@ -29,6 +40,8 @@ export interface BotProposal {
     refund?: { status: 'not_verified' } | { status: 'none'; source: string; as_of: string; scope: string; evidence_kind: 'complete_refund_history' } | { status: 'partial' | 'full'; source: string; as_of: string; scope: string; evidence_kind: 'completed_refund'; receipt: string; amount: number; currency: string };
   };
   choices?: { id: string; label: string; description?: string; action: string; answer?: string; recommended?: boolean }[];
+  evidence_items?: EvidenceItem[];
+  as_of?: { captured_at: string; ticket_id?: string; ticket_status?: string; last_inbound: { channel: string; message_id: string; at?: string }[]; evidence_hashes: string[] };
   question: string;
   recommendation: string;
   consequence: string;
@@ -62,6 +75,8 @@ export interface BotDecision {
   } | null;
   result: { state: string; evidence: string } | null;
   parked: { released_leases: string[]; evidence: string } | null;
+  stale?: StaleMark | null;
+  human_evidence?: (EvidenceItem & { actor_id?: number })[];
   created_at: string;
   updated_at: string;
   answered_by?: string | null;
@@ -145,6 +160,9 @@ export const botsApi = {
       method: 'PUT',
       body: JSON.stringify({ name, active }),
     }),
+  /** Attach a composer upload to a question as human evidence. */
+  attachEvidence: (id: string, body: { path: string; label: string; expected_version: number; request_key: string }) =>
+    requestJson<{ decision: BotDecision }>(`/api/bots/decisions/${encodeURIComponent(id)}/evidence`, { method: 'POST', body: JSON.stringify(body) }),
   mutate: (id: string, action: string, body: Record<string, unknown>) =>
     requestJson(`/api/bots/decisions/${encodeURIComponent(id)}/${action}`, {
       method: 'POST',

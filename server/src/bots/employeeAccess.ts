@@ -21,7 +21,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/bots\/?$/,
     /^\/bots\/organization\/?$/,
     /^\/bots\/teams\/?$/,
-    /^\/bots\/decisions\/[^/]+(?:\/images\/\d+\/\d+)?\/?$/,
+    /^\/bots\/decisions\/[^/]+(?:\/(?:images|evidence)\/\d+\/\d+)?\/?$/,
     /^\/conversations\/?$/,
     /^\/recent-conversations\/?$/,
     /^\/conversations\/[^/]+\/?$/,
@@ -39,7 +39,7 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/bot-communication\/(drafts\/[^/]+|decisions\/[^/]+\/briefing|briefings\/[^/]+\/audio|chats\/[^/]+\/threads|threads\/[^/]+\/(seen|replies|reactions))\/?$/,
     /^\/bot-workflows\/push\/?$/,
     /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|connected|end))?\/?$/,
-    /^\/bots\/decisions\/[^/]+\/(answer|choice|custom|thread|handling|dismiss|reply|handoffs)\/?$/,
+    /^\/bots\/decisions\/[^/]+\/(answer|choice|custom|evidence|thread|handling|dismiss|reply|handoffs)\/?$/,
     /^\/conversations\/[^/]+\/messages\/?$/,
   ].some(pattern => pattern.test(path));
   return false;
