@@ -31,3 +31,4 @@ Report artifacts:
 - [validation.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/validation.json)
 - [runtime.json](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/runtime.json)
 - [restart.txt](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/restart.txt)
+- [restart-completion.txt](/Users/archerclawdington/veneer-os/docs/reports/case-custody/build485/restart-completion.txt)

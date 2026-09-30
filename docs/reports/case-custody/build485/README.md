@@ -33,4 +33,16 @@ The final root suite passed: installer 29; server 3138 passed/5 skipped in 254 f
 
 Validation exposed an identical-issuance race, now reconciled transactionally. Two test-only synchronization fixes were also needed: purchase-timing samples its verifier clock after SQLite writes the human answer; the WebSocket history test waits for the observed frame instead of sleeping 20 ms. No purchase-timing or WebSocket application behavior changed. Earlier failed runs were not used to authorize restart.
 
-Root build passed (Vite reported its nonfatal large-chunk warning). See [validation receipt](validation.json). Runtime verification follows the implementation commit.
+Root build passed (Vite reported its nonfatal large-chunk warning). See [validation receipt](validation.json). Implementation commit `30cd51b` was pushed to origin/main before restart.
+
+## Deployment
+
+All five services returned HTTP 200 at 2026-09-30T02:09:47.087Z. Migration 0138 applied at 2026-09-30 02:08:06 UTC with content hash 45620fe0bc0037fd073125cecf3fcea61d394b23e58bb2dee4d7a8ea1a531f65, matching source and built SQL. Enrollment, authority, revocation, claim and receipt table counts are all zero.
+
+The first supported root restart was interrupted after web and runner respawned. The remaining app-runner, terminal and browser-manager services were then restarted with the root script’s exact service arguments; web/runner were not restarted again. An initial ad hoc health request used the SPA path; the final health receipt uses the actual /healthz and app-runner statuses contracts. No business endpoint was probed.
+
+- [Runtime and built-artifact receipt](runtime.json)
+- [Initial restart log](restart.txt)
+- [Restart completion log](restart-completion.txt)
+
+This is a deployed native capability, not source consumer acceptance or case readiness. No dedicated trust/enrollment was installed. Boris retains the source implementation/acceptance handoff under the frozen contract; historical/destination principal evidence, scoped custody, actual owner technical enrollment, Henry’s human-context/effect review and Nora’s own acceptance remain necessary.

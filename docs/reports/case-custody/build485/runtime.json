@@ -1,0 +1,62 @@
+{
+  "verifiedAt": "2026-09-30T02:09:08.195Z",
+  "implementationCommit": "30cd51bc0cdb5c045ba22d03ef5f2f93267d4d33",
+  "migration": {
+    "name": "0138_case_custody.sql",
+    "applied_at": "2026-09-30 02:08:06",
+    "content_hash": "45620fe0bc0037fd073125cecf3fcea61d394b23e58bb2dee4d7a8ea1a531f65"
+  },
+  "sourceMigrationSha256": "45620fe0bc0037fd073125cecf3fcea61d394b23e58bb2dee4d7a8ea1a531f65",
+  "builtMigrationSha256": "45620fe0bc0037fd073125cecf3fcea61d394b23e58bb2dee4d7a8ea1a531f65",
+  "newTableCounts": {
+    "enrollments": 0,
+    "authorities": 0,
+    "revocations": 0,
+    "claims": 0,
+    "receipts": 0
+  },
+  "artifacts": {
+    "caseCustody": {
+      "source": "95e4e1c54cc4b3ca2f99740680f9afecd69da642e73f1cfaaa83ad794c8f86c8",
+      "built": "74e98498345f4a8bc060319c9629002bf99abc214062672ba2fdb17c92d37df2"
+    },
+    "caseCustodyContract": {
+      "source": "81d391e8b22006fc2b8308b669854c0c1440706c143142e4b2bba329532b46dc",
+      "built": "3dedf186d7083bb9c55d385485ae92bb4448db04e4f0730b77d107762a4e514e"
+    },
+    "caseCustodyRoutes": {
+      "source": "ba1054e0a65dd65d27396757f771e417a826dc0babe3de0bf23aa46d7a5ca6de",
+      "built": "65b817455e0d859c5b9398c626c8479636b4dd181933727bd408e8600c7856e4"
+    }
+  },
+  "healthVerifiedAt": "2026-09-30T02:09:47.087Z",
+  "health": [
+    {
+      "service": "web",
+      "status": 200,
+      "healthy": true
+    },
+    {
+      "service": "runner",
+      "status": 200,
+      "healthy": true
+    },
+    {
+      "service": "appRunner",
+      "status": 200,
+      "healthy": true
+    },
+    {
+      "service": "terminal",
+      "status": 200,
+      "healthy": true
+    },
+    {
+      "service": "browserManager",
+      "status": 200,
+      "healthy": true
+    }
+  ],
+  "restartDisposition": "Initial supported restart interrupted after web and runner respawned; remaining three services restarted through root npm run restart with exact service arguments.",
+  "healthProbeCorrection": "Initial ad hoc web /health request returned SPA HTML; corrected to existing /healthz and app-runner statuses contract. No business endpoint probed."
+}
