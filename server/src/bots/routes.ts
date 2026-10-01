@@ -462,6 +462,27 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
     }),
   );
   router.post(
+    '/decisions/:id/withdraw',
+    run((req, res) => {
+      const p = mutation
+        .extend({
+          reason: z.string().trim().min(1).max(600),
+          evidence: z.string().trim().min(1).max(12000),
+        })
+        .strict()
+        .parse(req.body);
+      res.json({
+        decision: s.withdraw(
+          actor(req),
+          req.params.id!,
+          p.expected_version,
+          p.request_key,
+          { reason: p.reason, evidence: p.evidence },
+        ),
+      });
+    }),
+  );
+  router.post(
     '/decisions/:id/dismiss',
     run((req, res) => {
       const p = z

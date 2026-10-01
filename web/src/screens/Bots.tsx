@@ -725,7 +725,7 @@ export function Bots({
                       {d.can_release && <Button variant="outline" disabled={busy || stale} onClick={() => void act(() => mutate('handling', { action: 'release' }))}>Release question</Button>}
                     </div>
                   )}
-                  {d.state === 'needs_input' && d.stale && <p role="status" className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"><span className="font-medium">{staleSummary(d.stale)}.</span> The bot is re-reading the case and will refresh or withdraw this question. It cannot be answered as asked.</p>}
+                  {d.state === 'needs_input' && d.stale && <p role="status" className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"><span className="font-medium">{staleSummary(d.stale)}.</span> {d.stale.resolved ? 'This looks handled already, so it has left your open questions. The bot is confirming and will withdraw it.' : 'The bot is re-reading the case and will refresh or withdraw this question. It cannot be answered as asked.'}</p>}
                   {d.state === 'needs_input' && !d.stale &&
                     (d.can_answer ? (
                       <div className="mt-6 border-t pt-5">

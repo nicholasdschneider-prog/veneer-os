@@ -24,7 +24,11 @@ export interface EvidenceItem {
   captured_at?: string;
   added_by?: 'bot' | 'human';
 }
-export interface StaleMark { reason: string; since: string; detail: string }
+export interface StaleMark { reason: string; since: string; detail: string; resolved?: boolean }
+/** A question the human can still answer: waiting, and not already settled somewhere else. */
+export function isOpenQuestion(d: { state: string; stale?: { resolved?: boolean } | null }): boolean {
+  return d.state === 'needs_input' && !d.stale?.resolved;
+}
 export interface BotProposal {
   contact_verification?: {
     schemaVersion: 'paired-contact-manifest/v1'; manifestId: string; manifestRevision: number;
@@ -41,7 +45,7 @@ export interface BotProposal {
   };
   choices?: { id: string; label: string; description?: string; action: string; answer?: string; recommended?: boolean }[];
   evidence_items?: EvidenceItem[];
-  as_of?: { captured_at: string; ticket_id?: string; ticket_status?: string; last_inbound: { channel: string; message_id: string; at?: string }[]; evidence_hashes: string[] };
+  as_of?: { captured_at: string; ticket_id?: string; ticket_status?: string; last_inbound: { channel: string; message_id: string; at?: string }[]; evidence_hashes: string[]; orders?: { order_number: string; order_id?: string }[]; moot_when?: string[] };
   question: string;
   recommendation: string;
   consequence: string;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { discussionTimestamp, decisionCopy, decisionSection, decisionStatusLabel, decisionTitle } from './decisionPresentation';
-import type { BotDecision, BotProposal } from './bots';
+import { discussionTimestamp, decisionCopy, decisionSection, decisionStatusLabel, decisionTitle, staleSummary } from './decisionPresentation';
+import { isOpenQuestion, type BotDecision, type BotProposal } from './bots';
 
 describe('readable proposal copy', () => {
   const base = { recommendation: 'Ask the customer for photos.', consequence: '$0 message only. No replacement approved. Delivery is an estimate.', blocked_action: 'Check both parcels. EXACT DRAFT: Hi Branden, UPS has not received the second parcel. We cannot confirm a delivery date.' } as BotDecision['proposal'];
@@ -66,4 +66,16 @@ it('uses explicit human titles or neutral legacy fallbacks without interpreting 
  expect(decisionTitle(proposal)).toBe('Review the proposed customer reply');
  expect(decisionCopy(proposal).draft).toBe('Exact body.  \n');
  expect(decisionTitle({...proposal,review_summary:{action_title:'Send Scott an update',customer_request:'Update requested',background:[],refund:{status:'not_verified'}}})).toBe('Send Scott an update');
+});
+
+it('takes a question settled elsewhere out of the answer queue while an ordinary stale one stays', () => {
+  const settled = { state: 'needs_input', answer: null, stale: { reason: 'order_fulfilled', since: '2026-10-01T15:00:00Z', detail: 'order #1 was fulfilled', resolved: true } } as unknown as BotDecision;
+  const moved = { state: 'needs_input', answer: null, stale: { reason: 'customer_replied', since: '2026-10-01T15:00:00Z', detail: 'the customer replied' } } as unknown as BotDecision;
+  expect(decisionSection(settled)).toBe('history');
+  expect(decisionStatusLabel(settled)).toBe('Settled elsewhere · No answer needed');
+  expect(isOpenQuestion(settled)).toBe(false);
+  expect(decisionSection(moved)).toBe('input');
+  expect(isOpenQuestion(moved)).toBe(true);
+  expect(staleSummary(settled.stale!, Date.parse('2026-10-01T15:05:00Z'))).toBe('Settled elsewhere: order shipped 5 min ago');
+  expect(decisionStatusLabel({ state: 'decided', answer: { action: 'withdraw', automatic: true } } as unknown as BotDecision)).toBe('Withdrawn · No execution authorized');
 });

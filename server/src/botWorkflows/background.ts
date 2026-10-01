@@ -11,7 +11,9 @@ export function startBotWorkflows(ctx: AppContext) {
     busy = true;
     try {
       tickRoutines(ctx.db);
-      createBotService(ctx.db).withdrawStaleQuestions(ctx.config.staleQuestionWithdrawMs);
+      const bots = createBotService(ctx.db);
+      bots.withdrawStaleQuestions(ctx.config.staleQuestionWithdrawMs, Date.now(), ctx.config.resolvedQuestionWithdrawMs);
+      bots.queueQuestionRechecks(ctx.config.questionRecheckMs);
       await tickNotifications(ctx);
     } catch {
       console.warn('[bot-workflows] Background pass failed; retrying.');

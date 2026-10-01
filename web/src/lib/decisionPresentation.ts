@@ -13,9 +13,10 @@ export function decisionCopy(proposal: BotProposal) {
   };
 }
 
-type DecisionStatus = Pick<BotDecision, 'state' | 'answer'>;
+type DecisionStatus = Pick<BotDecision, 'state' | 'answer'> & { stale?: { resolved?: boolean } | null };
 export function decisionSection(d: DecisionStatus) {
-  if (d.state === 'needs_input') return 'input';
+  // Settled somewhere else: out of the answer queue at once, kept in history.
+  if (d.state === 'needs_input') return d.stale?.resolved ? 'history' : 'input';
   if (d.state === 'verified_completed') return 'history';
   if (d.state === 'blocked' || d.state === 'failed') return 'attention';
   if (d.state === 'decided') {
@@ -25,8 +26,9 @@ export function decisionSection(d: DecisionStatus) {
   return 'execution';
 }
 
-export function decisionStatusLabel(d: DecisionStatus & { stale?: { detail: string } | null }): string {
-  if (d.state === 'needs_input' && d.stale) return 'Stale · Bot is refreshing this question';
+export function decisionStatusLabel(d: DecisionStatus & { stale?: { detail: string; resolved?: boolean } | null }): string {
+  if (d.state === 'needs_input' && d.stale) return d.stale.resolved ? 'Settled elsewhere · No answer needed' : 'Stale · Bot is refreshing this question';
+  if (d.state === 'decided' && d.answer?.action === 'withdraw') return 'Withdrawn · No execution authorized';
   if (d.answer?.automatic) return d.state === 'verified_completed' ? 'Automatic · Done under your standing rule' : 'Automatic · Approved under your standing rule';
   if (d.state === 'verified_completed') return 'Scoped task complete';
   if (d.state === 'running') return 'Executing this task';
@@ -51,8 +53,9 @@ export function discussionTimestamp(value: string): string {
 export function staleSummary(stale: { reason: string; since: string; detail: string }, now = Date.now()): string {
   const minutes = Math.max(0, Math.round((now - Date.parse(stale.since)) / 60000));
   const ago = minutes < 1 ? 'just now' : minutes < 60 ? `${minutes} min ago` : minutes < 1440 ? `${Math.round(minutes / 60)} h ago` : `${Math.round(minutes / 1440)} d ago`;
-  const what = stale.reason === 'customer_replied' ? 'customer replied' : stale.reason === 'ticket_created' ? 'new ticket on this case' : stale.reason === 'status_changed' ? 'case status changed' : stale.reason === 'evidence_changed' ? 'evidence changed' : 'case closed';
-  return `Stale: ${what} ${ago}`;
+  const what = stale.reason === 'customer_replied' ? 'customer replied' : stale.reason === 'ticket_created' ? 'new ticket on this case' : stale.reason === 'status_changed' ? 'case status changed' : stale.reason === 'evidence_changed' ? 'evidence changed'
+    : stale.reason === 'order_fulfilled' ? 'order shipped' : stale.reason === 'order_cancelled' ? 'order cancelled' : stale.reason === 'order_closed' ? 'order closed' : 'case closed';
+  return `${stale.reason.startsWith('order_') || stale.reason === 'ticket_closed' ? 'Settled elsewhere' : 'Stale'}: ${what} ${ago}`;
 }
 
 /** Presentation only. Never interpret spend, authorization or a proposed refund as history. */

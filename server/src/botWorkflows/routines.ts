@@ -59,7 +59,23 @@ export const EventInput = z
   })
   .strict();
 /** Merge-contract events carry their own strict envelopes (mergeAuthorizationContract); everything else is EventInput. */
-const EventKind = z.object({ type: z.enum(['ticket.created', 'customer.replied', 'connection.test', 'ticket.merged', 'ticket.duplicate_candidate']) });
+const EventKind = z.object({ type: z.enum(['ticket.created', 'customer.replied', 'connection.test', 'ticket.merged', 'ticket.duplicate_candidate', 'order.fulfilled', 'order.cancelled', 'order.closed', 'ticket.closed']) });
+/** The situation behind open questions was settled in the source: an order shipped, was cancelled or closed, or a ticket closed. */
+export const ResolvedEventInput = z.discriminatedUnion('type', [
+  z.object({
+    id: z.string().regex(/^[a-zA-Z0-9_.:-]{1,150}$/),
+    type: z.enum(['order.fulfilled', 'order.cancelled', 'order.closed']),
+    order_number: z.string().trim().regex(/^#?[a-zA-Z0-9_.-]{1,100}$/),
+    order_id: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/).optional(),
+    occurred_at: z.string().datetime(),
+  }).strict(),
+  z.object({
+    id: z.string().regex(/^[a-zA-Z0-9_.:-]{1,150}$/),
+    type: z.literal('ticket.closed'),
+    ticket_id: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),
+    occurred_at: z.string().datetime(),
+  }).strict(),
+]);
 export interface EventAcceptance { queued: number; accepted?: unknown }
 
 export function routineChat(
@@ -220,6 +236,19 @@ export function acceptEventDetailed(
     const stale = merges && ((ids: string[], mark: Parameters<typeof bots.markStaleForCase>[1]) => bots.markStaleForCase(ids, mark));
     const response = kind === 'ticket.merged' ? merges.acceptMerged(sourceId, source.team_id, input, stale, wake) : merges.acceptCandidate(sourceId, source.team_id, input, stale, wake);
     return { queued: response.queued, accepted: response.accepted };
+  }
+  if (kind === 'order.fulfilled' || kind === 'order.cancelled' || kind === 'order.closed' || kind === 'ticket.closed') {
+    // Settled elsewhere: questions tied to it leave Open questions and their bots are woken to withdraw. No routine runs.
+    const r = ResolvedEventInput.parse(input);
+    const bots = createBotService(db);
+    const event_id = `${sourceId}:${r.id}`;
+    if (r.type === 'ticket.closed')
+      return { queued: bots.markStaleForCase([r.ticket_id], { reason: 'ticket_closed', since: r.occurred_at, detail: 'the ticket was closed after this question was asked', event_id }).length };
+    const what = { 'order.fulfilled': 'fulfilled', 'order.cancelled': 'cancelled', 'order.closed': 'closed' }[r.type];
+    return { queued: bots.markStaleForOrder(source.team_id, [r.order_number], {
+      reason: `order_${what}` as 'order_fulfilled' | 'order_cancelled' | 'order_closed', since: r.occurred_at,
+      detail: `order #${r.order_number.replace(/^#/, '')} was ${what} after this question was asked`, event_id,
+    }).length };
   }
   const p = EventInput.parse(input);
   if (p.type === 'connection.test') return { queued: 0 };

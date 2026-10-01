@@ -58,7 +58,7 @@ export function ChatDecisionCard({ decision: d, unavailable = false }: { decisio
       {exact && <BotProposalSummary decision={d} inline hideDetails />}
       <DecisionEvidence decision={d} />
       {!!d.proposal.images?.length && <DecisionImages decision={d} />}
-      {d.stale ? <p role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"><span className="font-medium">{staleSummary(d.stale)}.</span> {d.bot_name} is re-reading the case and will refresh or withdraw this question. It cannot be answered as asked.</p>
+      {d.stale ? <p role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"><span className="font-medium">{staleSummary(d.stale)}.</span> {d.stale.resolved ? `This looks handled already, so it has left your open questions. ${d.bot_name} is confirming and will withdraw it.` : `${d.bot_name} is re-reading the case and will refresh or withdraw this question. It cannot be answered as asked.`}</p>
       : d.can_answer ? <>
         <DecisionChoices choices={d.proposal.choices} disabled={busy || unavailable} onChoose={id => void submit('choice', id)} onCustom={(text, files) => void submit('custom', text, files)} />
         <p className="text-sm text-muted-foreground">Or answer in the chat below. Applies to this case only.</p>

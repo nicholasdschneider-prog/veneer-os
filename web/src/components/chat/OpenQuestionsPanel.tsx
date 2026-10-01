@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MessageCircleQuestion, X } from 'lucide-react';
-import { botsApi, type BotDecision } from '@/lib/bots';
+import { botsApi, isOpenQuestion, type BotDecision } from '@/lib/bots';
 import { decisionStatusLabel } from '@/lib/decisionPresentation';
 import { withSideParam } from '@/lib/sideChat';
 import { Button } from '../ui/button';
@@ -11,7 +11,7 @@ export function questionActivity(d: BotDecision): number {
   return Math.max(d.stale ? Date.parse(d.stale.since) || 0 : 0, Date.parse(d.created_at.replace(' ', 'T') + (/[zZ]|[+-]\d{2}:?\d{2}$/.test(d.created_at) ? '' : 'Z')) || 0);
 }
 export function questionsForConversation(decisions: BotDecision[], conversationId: string) {
-  return decisions.filter(d => d.conversation_id === conversationId && d.state === 'needs_input').sort((a, b) => questionActivity(b) - questionActivity(a));
+  return decisions.filter(d => d.conversation_id === conversationId && isOpenQuestion(d)).sort((a, b) => questionActivity(b) - questionActivity(a));
 }
 
 export const CHAT_DECISIONS_CHANGED = 'chat-decisions-changed';

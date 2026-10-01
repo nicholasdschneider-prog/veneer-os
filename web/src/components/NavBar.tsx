@@ -12,7 +12,7 @@ import { useEffect, useRef, useState, type ReactElement, type ReactNode } from '
 import { Tooltip as TooltipPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
 import { api, type SystemUsage } from '@/lib/api';
-import { botsApi } from '@/lib/bots';
+import { botsApi, isOpenQuestion } from '@/lib/bots';
 import { CLIENT_LOGO_CHANGED_EVENT } from '@/lib/clientLogo';
 import {
   BUILTIN_NAVIGATION,
@@ -81,7 +81,7 @@ export function useBotInputCount(current: NavSelection): number {
         .list('me')
         .then((result) => {
           if (!active) return;
-          setCount(result.decisions.filter((d) => d.state === 'needs_input').length);
+          setCount(result.decisions.filter(isOpenQuestion).length);
         })
         .catch(() => {
           // Keep the last count; the bots screen surfaces the error itself.

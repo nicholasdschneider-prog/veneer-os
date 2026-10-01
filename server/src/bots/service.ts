@@ -113,6 +113,16 @@ export const evidenceItemSchema = z.object({
   added_by: z.enum(['bot', 'human']).optional(),
 }).strict();
 export type EvidenceItem = z.infer<typeof evidenceItemSchema>;
+/** The situation behind a question was settled outside the question, so no human answer is needed any more. */
+export const MOOT_REASONS = ['order_fulfilled', 'order_cancelled', 'order_closed', 'ticket_closed'] as const;
+export type MootReason = (typeof MOOT_REASONS)[number];
+/** Order numbers compare without the leading # and case. */
+export function normalizeOrderNumber(value: string): string { return value.trim().replace(/^#+/, '').trim().toLowerCase(); }
+interface MootProposal { shopify_order?: { number?: string } | null; as_of?: { orders?: { order_number: string }[]; moot_when?: MootReason[] } }
+/** Every order a question is bound to: the declared as_of.orders plus its Shopify order reference. */
+export function decisionOrders(proposal: MootProposal): string[] {
+  return [...new Set([...(proposal.as_of?.orders ?? []).map((o) => o.order_number), proposal.shopify_order?.number ?? ''].map(normalizeOrderNumber).filter(Boolean))];
+}
 /** What the world looked like when the question was asked. */
 export const asOfSchema = z.object({
   captured_at: z.string().datetime({ offset: true }),
@@ -122,10 +132,19 @@ export const asOfSchema = z.object({
   evidence_hashes: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(48).default([]),
   /** Other tickets this question depends on (a merge pair's sibling, a related order); events on any of them stale the question. */
   related_ticket_ids: z.array(z.object({ ticket_id: z.string().trim().min(1).max(200), material_revision: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict()).max(12).optional(),
+  /** Orders this question depends on. When one is fulfilled, cancelled or closed the question no longer needs a human answer. */
+  orders: z.array(z.object({ order_number: z.string().trim().min(1).max(100), order_id: z.string().trim().min(1).max(200).optional() }).strict()).max(12).optional(),
+  /** Which outside resolutions make the question moot. Omitted means all of them. */
+  moot_when: z.array(z.enum(MOOT_REASONS)).min(1).max(MOOT_REASONS.length).optional(),
 }).strict();
 /** Binding of a merge question to one registered intent revision and direction (merge-authorization contract §3). */
 export const mergeIntentRefSchema = z.object({ pairReceiptId: z.string().uuid(), intentRevision: z.number().int().positive(), direction: z.enum(['a_into_b', 'b_into_a']) }).strict();
-export interface StaleMark { reason: 'customer_replied' | 'ticket_created' | 'status_changed' | 'evidence_changed' | 'ticket_closed' | 'ticket_merged' | 'duplicate_evidence_changed'; since: string; detail: string; event_id?: string }
+export interface StaleMark {
+  reason: 'customer_replied' | 'ticket_created' | 'status_changed' | 'evidence_changed' | 'ticket_closed' | 'ticket_merged' | 'duplicate_evidence_changed' | 'order_fulfilled' | 'order_cancelled' | 'order_closed';
+  since: string; detail: string; event_id?: string;
+  /** The situation was settled elsewhere: the question leaves Open questions at once and is withdrawn unless the bot revises it. */
+  resolved?: boolean;
+}
 export const decisionImageSchema = z.object({
   conversation_id: z.string().min(1).max(200),
   path: z.string().min(1).max(4096),
@@ -497,6 +516,34 @@ export function createBotService(db: Database.Database) {
         409,
         'Proposal changed. Reload and review the current version.',
       );
+  }
+  type StaleProposal = MootProposal & { message_delivery?: { canonical_case: string; payload: { ticket: string } }; as_of?: { ticket_id?: string; related_ticket_ids?: { ticket_id: string }[] } };
+  /** Mark every matching open question stale once per event and wake its bot. */
+  function markStale(input: Omit<StaleMark, 'since'> & { since?: string }, matches: (d: Decision, proposal: StaleProposal) => boolean): string[] {
+    const marked: string[] = [];
+    db.transaction(() => {
+      for (const d of db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input'").all() as Decision[]) {
+        const proposal = JSON.parse(d.proposal_json) as StaleProposal;
+        if (!matches(d, proposal)) continue;
+        const moot = (MOOT_REASONS as readonly string[]).includes(input.reason);
+        if (moot && proposal.as_of?.moot_when && !proposal.as_of.moot_when.includes(input.reason as MootReason)) continue;
+        const key = `stale:${input.event_id ?? `${input.reason}:${input.since ?? 'now'}`}`;
+        if (db.prepare('SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(d.id, key)) continue;
+        const stale: StaleMark = { ...input, since: input.since ?? new Date().toISOString(), ...(moot ? { resolved: true } : {}) };
+        db.prepare("UPDATE bot_decisions SET stale_json=?,updated_at=datetime('now') WHERE id=? AND version=?").run(JSON.stringify(stale), d.id, d.version);
+        const c = conversation(d.conversation_id)!;
+        const actor: Actor = { user: db.prepare('SELECT * FROM users WHERE id=?').get(c.user_id) as UserRow };
+        const ev = event(actor, d, 'stale', stale, key);
+        if (!c.archived) db.prepare('INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)').run(
+          ev, c.id, c.user_id, `bot-decision:${ev}`,
+          stale.resolved
+            ? `VeneerBots question settled elsewhere. Decision ${d.id}, proposal version ${d.version}. ${stale.detail}\nThe human appears to have handled this already, so the question has left their Open questions and can no longer be answered. Confirm the current state in your own source, then do exactly one of: withdraw_decision with the reason and the evidence you read if the answer is no longer needed; or, only if the question genuinely still needs a human answer, update_decision with the current expected_version and a complete revised proposal including fresh evidence_items and as_of. If you do nothing it is withdrawn automatically. Never ask the human to answer the old version, and take no business action on the strength of this notice.`
+            : `VeneerBots stale question. Decision ${d.id}, proposal version ${d.version}. ${stale.detail}\nThe case changed after you asked this question, so the human can no longer answer it. Re-read the case (new messages, status, refunds, photos), then do exactly one of: update_decision with the current expected_version and a complete revised proposal including fresh evidence_items and as_of; answer the customer yourself if the question is now moot and withdraw_decision; or withdraw_decision explaining why. Never ask the human to answer the old version.`,
+          new Date().toISOString());
+        marked.push(d.id);
+      }
+    })();
+    return marked;
   }
   function wake(
     actor: Actor,
@@ -1134,27 +1181,68 @@ export function createBotService(db: Database.Database) {
           for (const x of [row.from_ticket, row.into_ticket]) if (!ids.has(x)) { ids.add(x); grew = true; }
       }
       if (!ids.size) return [];
-      const marked: string[] = [];
-      db.transaction(() => {
-        for (const d of db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input'").all() as Decision[]) {
-          const proposal = JSON.parse(d.proposal_json) as { message_delivery?: { canonical_case: string; payload: { ticket: string } }; as_of?: { ticket_id?: string; related_ticket_ids?: { ticket_id: string }[] } };
-          const cases = [proposal.message_delivery?.canonical_case, proposal.message_delivery?.payload.ticket, proposal.as_of?.ticket_id, ...(proposal.as_of?.related_ticket_ids ?? []).map((r) => r.ticket_id)].filter((x): x is string => !!x);
-          if (!cases.some((c) => ids.has(c))) continue;
-          const key = `stale:${mark.event_id ?? `${mark.reason}:${mark.since ?? 'now'}`}`;
-          if (db.prepare('SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(d.id, key)) continue;
-          const stale: StaleMark = { ...mark, since: mark.since ?? new Date().toISOString() };
-          db.prepare("UPDATE bot_decisions SET stale_json=?,updated_at=datetime('now') WHERE id=? AND version=?").run(JSON.stringify(stale), d.id, d.version);
-          const c = conversation(d.conversation_id)!;
-          const actor: Actor = { user: db.prepare('SELECT * FROM users WHERE id=?').get(c.user_id) as UserRow };
-          const ev = event(actor, d, 'stale', stale, key);
-          if (!c.archived) db.prepare('INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)').run(
-            ev, c.id, c.user_id, `bot-decision:${ev}`,
-            `VeneerBots stale question. Decision ${d.id}, proposal version ${d.version}. ${stale.detail}\nThe case changed after you asked this question, so the human can no longer answer it. Re-read the case (new messages, status, refunds, photos), then do exactly one of: update_decision with the current expected_version and a complete revised proposal including fresh evidence_items and as_of; answer the customer yourself if the question is now moot; or withdraw via record_decision_result/reply_to_decision explaining why. Never ask the human to answer the old version.`,
-            new Date().toISOString());
-          marked.push(d.id);
-        }
+      return markStale(mark, (_d, proposal) => {
+        const cases = [proposal.message_delivery?.canonical_case, proposal.message_delivery?.payload.ticket, proposal.as_of?.ticket_id, ...(proposal.as_of?.related_ticket_ids ?? []).map((r) => r.ticket_id)].filter((x): x is string => !!x);
+        return cases.some((c) => ids.has(c));
+      });
+    },
+    /**
+     * An authenticated source reported that an order was fulfilled, cancelled
+     * or closed. Open questions bound to that order in the source's own
+     * business are settled elsewhere: they leave Open questions at once and
+     * their bot is woken to confirm and withdraw. Idempotent per (decision, event).
+     */
+    markStaleForOrder(teamId: string, orderNumbers: string[], mark: Omit<StaleMark, 'since' | 'resolved'> & { since?: string }): string[] {
+      const numbers = new Set(orderNumbers.map(normalizeOrderNumber).filter(Boolean));
+      if (!numbers.size) return [];
+      return markStale({ ...mark, resolved: true }, (d, proposal) =>
+        conversation(d.conversation_id)?.business_team_id === teamId && decisionOrders(proposal).some((n) => numbers.has(n)));
+    },
+    /**
+     * The owning bot found its own open question no longer needs an answer
+     * (the order shipped, the ticket closed, the human handled it elsewhere).
+     * Withdrawing authorizes nothing and keeps the question in history.
+     */
+    withdraw(actor: Actor, id: string, version: number, key: string, payload: { reason: string; evidence: string }) {
+      return db.transaction(() => {
+        const d = read(actor, id);
+        owner(actor, d);
+        const answer = { action: 'withdraw', text: `Withdrawn by the bot: ${payload.reason}`, evidence: payload.evidence, scope: 'this_case', actor_id: actor.user.id, by_bot: true };
+        if (replay(actor, d, key, 'answered', answer)) return view(actor, d);
+        cas(d, version);
+        if (d.state !== 'needs_input') throw new BotError(409, 'Only a question still waiting for an answer can be withdrawn');
+        db.prepare("UPDATE bot_decisions SET state='decided',answer_json=?,updated_at=datetime('now') WHERE id=?").run(JSON.stringify(answer), id);
+        event(actor, d, 'answered', answer, key);
+        return view(actor, read(actor, id));
       })();
-      return marked;
+    },
+    /**
+     * Periodic re-verification for open questions bound to an order: no source
+     * event is needed. Each owning bot gets at most one wake per interval naming
+     * its order-bound questions older than the interval; it re-reads the orders
+     * in its own source and withdraws the settled ones.
+     */
+    queueQuestionRechecks(intervalMs: number, now = Date.now()): string[] {
+      const byBot = new Map<string, { d: Decision; orders: string[] }[]>();
+      for (const d of db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input' AND stale_json IS NULL").all() as Decision[]) {
+        if (now - Date.parse(d.updated_at.replace(' ', 'T') + (/[zZ]$/.test(d.updated_at) ? '' : 'Z')) < intervalMs) continue;
+        const orders = decisionOrders(JSON.parse(d.proposal_json) as MootProposal);
+        if (orders.length) byBot.set(d.conversation_id, [...(byBot.get(d.conversation_id) ?? []), { d, orders }]);
+      }
+      const woken: string[] = [];
+      const bucket = Math.floor(now / intervalMs);
+      for (const [conversationId, items] of byBot) {
+        const c = conversation(conversationId);
+        if (!c || c.archived) continue;
+        // One wake per bot per interval, and never a second while one is still pending.
+        if (db.prepare("SELECT 1 FROM conversation_wakeups WHERE conversation_id=? AND (wake_key=? OR (status='pending' AND wake_key LIKE 'question-recheck:%'))").get(conversationId, `question-recheck:${bucket}`)) continue;
+        db.prepare('INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)').run(
+          crypto.randomUUID(), c.id, c.user_id, `question-recheck:${bucket}`,
+          `VeneerBots open question re-check. You have ${items.length} open question(s) tied to an order:\n${items.map(({ d, orders }) => `- Decision ${d.id}, proposal version ${d.version}, order ${orders.map((o) => `#${o}`).join(', ')}`).join('\n')}\nThe human may already have handled the situation somewhere else. For each one, read the order's current state in your own source. If the order is fulfilled, cancelled or closed, or the answer is otherwise no longer needed, call withdraw_decision with the reason and the evidence you read. If the question is still needed, leave it exactly as it is: do not revise it, reply to it or message the human. This re-check grants no authority and is not an answer.`,
+          new Date(now).toISOString());
+        woken.push(conversationId);
+      }
+      return woken;
     },
     /** A human attaches a file to a question (uploaded from the composer). Recorded as an event on this version and shown to the bot. */
     addHumanEvidence(actor: Actor, id: string, version: number, key: string, item: EvidenceItem) {
@@ -1174,14 +1262,16 @@ export function createBotService(db: Database.Database) {
      * withdrawn with an audit note: the bot never refreshed them, so the human
      * must not be shown an answerable card for a case that moved on.
      */
-    withdrawStaleQuestions(maxAgeMs: number, now = Date.now()): string[] {
+    withdrawStaleQuestions(maxAgeMs: number, now = Date.now(), resolvedMaxAgeMs = maxAgeMs): string[] {
       const withdrawn: string[] = [];
       for (const d of db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input' AND stale_json IS NOT NULL").all() as Decision[]) {
         const stale = JSON.parse(d.stale_json!) as StaleMark;
-        if (now - Date.parse(stale.since) < maxAgeMs) continue;
+        // Measured from when Veneer learned of it: a source may report an old event late.
+        const marked = stale.resolved ? Date.parse(d.updated_at.replace(' ', 'T') + (/[zZ]$/.test(d.updated_at) ? '' : 'Z')) : Date.parse(stale.since);
+        if (now - marked < (stale.resolved ? resolvedMaxAgeMs : maxAgeMs)) continue;
         const c = conversation(d.conversation_id)!;
         const actor: Actor = { user: db.prepare('SELECT * FROM users WHERE id=?').get(c.user_id) as UserRow };
-        const payload = { action: 'withdraw', text: `Withdrawn automatically: stale since ${stale.since} (${stale.detail}) and never revised.`, scope: 'this_case', actor_id: actor.user.id, automatic: true };
+        const payload = { action: 'withdraw', text: stale.resolved ? `Withdrawn automatically: ${stale.detail}, so the answer is no longer needed.` : `Withdrawn automatically: stale since ${stale.since} (${stale.detail}) and never revised.`, scope: 'this_case', actor_id: actor.user.id, automatic: true };
         const changed = db.prepare("UPDATE bot_decisions SET state='decided',answer_json=?,updated_at=datetime('now') WHERE id=? AND version=? AND state='needs_input'").run(JSON.stringify(payload), d.id, d.version).changes;
         if (!changed) continue;
         event(actor, d, 'answered', payload, `stale-withdraw:${d.id}:${d.version}`);
