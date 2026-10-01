@@ -1,10 +1,10 @@
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
-import { BotError, createBotService, type Actor } from './service.js';
+import { BotError, createBotService, proposalSchema, type Actor } from './service.js';
 import { canonicalSha256 } from './canonical.js';
 import {
   attemptReadbackSchema, candidateEventSchema, casesInput, commitHashOf, candidateHashOf, directionSchema, directedIntent, eventHashOf, evidenceRevisionOf,
-  intentBase, intentBaseHash, intentHashFor, intentInput, mergeHash, mergedEventSchema, nonexecutionInput, redeemInput, registrationSchema, reservationInput,
+  intentBase, intentBaseHash, intentHashFor, intentInput, mergeHash, mergedEventSchema, nonexecutionInput, redeemInput, registrationSchema, reservationInput, standingApprovalInput, standingToggleInput,
   MERGE_CONTRACT_HASH, type CandidateEvent, type IntentInput, type MergedEvent, type Registration,
 } from './mergeAuthorizationContract.js';
 
@@ -178,6 +178,19 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
     return { binding: b, answerEventId: st.answerEventId };
   }
 
+  // ── standing rule (addendum) ──────────────────────────────────────────────
+  type StandingRow = { id: string; registration_id: string; enabled: number; reason: string; created_at: string };
+  function standingRow(registrationId: string): StandingRow | undefined {
+    return db.prepare('SELECT * FROM merge_standing_policies WHERE registration_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1').get(registrationId) as StandingRow | undefined;
+  }
+  function standingOn(registrationId: string): StandingRow | null { const row = standingRow(registrationId); return row?.enabled ? row : null; }
+  /** An automatic approval stays usable only while the owner's standing rule is on. */
+  function automaticGuard(b: Binding, registrationId: string) {
+    const d = decision(b.decision_id);
+    const answer = d?.answer_json ? JSON.parse(d.answer_json) as { automatic?: boolean } : null;
+    if (answer?.automatic && !standingOn(registrationId)) deny('STANDING_RULE_OFF');
+  }
+
   // ── §6 locks and merged-away ──────────────────────────────────────────────
   function caseIds(row: IntentRow) { return [row.case_a, row.case_b].sort(); }
   function overlapCheck(s: Scope, row: IntentRow) {
@@ -228,6 +241,7 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
       if (f?.state === 'committed') deny('PAIR_COMMITTED');
       if (f?.state === 'fenced') throw new BotError(409, `CASE_PENDING:${p.pairReceiptId}`);
       const approval = currentApproval(p.pairReceiptId, p.intentHash);
+      automaticGuard(approval.binding, r.id);
       overlapCheck(s, row);
       const generation = ((db.prepare('SELECT max(generation) g FROM merge_reservations WHERE pair_receipt_id=?').get(p.pairReceiptId) as { g: number | null }).g ?? 0) + 1;
       const issuedAt = iso(), expiresAt = new Date(io.now() + RESERVATION_TTL_MS).toISOString(), reservationId = crypto.randomUUID();
@@ -247,7 +261,7 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
       if (res.state !== 'issued') throw new BotError(409, `RESERVATION_${res.state.toUpperCase()}`);
       if (io.now() >= Date.parse(res.expires_at)) deny('RESERVATION_EXPIRED');
       registration(regId);
-      currentApproval(res.pair_receipt_id, res.intent_hash, { decisionId: res.decision_id, decisionVersion: res.decision_version, answerEventId: res.answer_event_id });
+      automaticGuard(currentApproval(res.pair_receipt_id, res.intent_hash, { decisionId: res.decision_id, decisionVersion: res.decision_version, answerEventId: res.answer_event_id }).binding, r.id);
       const f = fence(res.pair_receipt_id);
       if (f?.state !== 'fenced' || f.live_generation !== res.generation) deny('GENERATION_NOT_LIVE');
       overlapCheck(s, intentRow(s, res.pair_receipt_id));
@@ -297,11 +311,65 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
     }).immediate();
   }
 
+  /**
+   * Addendum: record an already-approved merge decision for a clear duplicate
+   * under the owner's standing rule. Nothing merges here; OrderOps continues
+   * with the unchanged reserve → redeem → commit flow against this approval.
+   */
+  function standingApprove(regId: string, raw: unknown) {
+    const p = standingApprovalInput.parse(raw), r = registration(regId), s = scopeOf(r), requestHash = canonicalSha256(p);
+    return db.transaction(() => {
+      const replay = db.prepare('SELECT request_hash,response_json FROM merge_standing_approvals WHERE source_id=? AND business_team_id=? AND request_key=?').get(s.sourceId, s.businessId, p.requestKey) as { request_hash: string; response_json: string } | undefined;
+      if (replay) { if (replay.request_hash !== requestHash) deny('IDEMPOTENCY_CONFLICT'); return JSON.parse(replay.response_json); }
+      const policy = standingOn(r.id);
+      if (!policy) deny('STANDING_RULE_OFF');
+      const row = intentRow(s, p.pairReceiptId), rev = revisionRow(p.pairReceiptId, p.intentRevision);
+      if (!rev) deny('INTENT_UNKNOWN');
+      const i = intentInput.parse(JSON.parse(rev.intent_json));
+      if (!i.offeredDirections.includes(p.direction)) deny('DIRECTION_NOT_OFFERED');
+      for (const g of db.prepare('SELECT * FROM merge_reservations WHERE pair_receipt_id=?').all(p.pairReceiptId) as Reservation[]) settle(g);
+      const f = fence(p.pairReceiptId);
+      if (f?.state === 'committed') deny('PAIR_COMMITTED');
+      if (f?.state === 'fenced') throw new BotError(409, `CASE_PENDING:${p.pairReceiptId}`);
+      const open = openBindingForPair(p.pairReceiptId);
+      if (open) throw new BotError(409, `MERGE_QUESTION_OPEN:${open.decision_id}`);
+      overlapCheck(s, row);
+      const intentHash = intentHashFor(s.sourceId, s.businessId, i, rev.intent_revision, rev.intent_base_hash, p.direction);
+      const from = p.direction === 'a_into_b' ? i.cases.a : i.cases.b, into = p.direction === 'a_into_b' ? i.cases.b : i.cases.a;
+      const now = iso(), decisionId = crypto.randomUUID(), raisedId = crypto.randomUUID(), answeredId = crypto.randomUUID();
+      const proposal = proposalSchema.parse({
+        question: `Merged automatically: ticket ${from.ticket} into ${into.ticket}`,
+        recommendation: `Combine ticket ${from.ticket} into ${into.ticket}; ticket ${from.ticket} is kept on record.`,
+        consequence: 'Both tickets are open and share the same customer record and the same order, so this was approved under the owner’s standing rule without asking anyone. Nothing else changes.',
+        blocked_action: 'OrderOps merges this exact pair once, after redeeming this approval. No other ticket is affected.',
+        assignee_id: r.ownerUserId,
+        review_summary: { action_title: `Merge ticket ${from.ticket} into ${into.ticket}`, request: 'No action needed. Recorded for your reference.', background: ['Rule: same customer record and same order, both tickets open.', `Tickets: ${from.ticket} and ${into.ticket}.`] },
+        choices: [{ id: 'merge', label: `Merge ${from.ticket} into ${into.ticket}`, description: 'Combines the two tickets; the source ticket is retained', action: 'approve', answer: intentHash, recommended: true }, { id: 'keep', label: 'Keep separate', description: 'Leaves both tickets as they are', action: 'reject' }],
+        merge_intent: { pairReceiptId: p.pairReceiptId, intentRevision: rev.intent_revision, direction: p.direction },
+        as_of: { captured_at: now, ticket_id: into.ticket, last_inbound: [], related_ticket_ids: [{ ticket_id: from.ticket, material_revision: from.materialRevision }] },
+      });
+      const answer = { action: 'approve', text: 'Approved automatically under the owner standing rule same_customer_record_and_order', scope: 'this_case', choice_id: 'merge', choice_label: `Merge ${from.ticket} into ${into.ticket}`, answer: intentHash, automatic: true, standing_policy_id: policy.id };
+      db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id,state,answer_json) VALUES(?,?,?,?,?,?,'decided',?)")
+        .run(decisionId, row.executor_conversation_id, `merge:${p.pairReceiptId}`, `standing:${rev.intent_revision}:${p.direction}:${p.requestKey}`, JSON.stringify(proposal), r.ownerUserId, JSON.stringify({ ...answer, actor_id: r.ownerUserId }));
+      const ev = db.prepare('INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,actor_conversation_id,payload_json,request_key) VALUES(?,?,?,?,?,?,?,?)');
+      ev.run(raisedId, decisionId, 1, 'raised', r.ownerUserId, row.executor_conversation_id, JSON.stringify({ source_key: `merge:${p.pairReceiptId}`, proposal, standing_policy_id: policy.id, basis: p.basis }), `standing-raise:${p.requestKey}`);
+      ev.run(answeredId, decisionId, 1, 'answered', r.ownerUserId, null, JSON.stringify({ ...answer, basis: p.basis }), `standing-answer:${p.requestKey}`);
+      recordBinding(decisionId, 1, { pairReceiptId: p.pairReceiptId, intentRevision: rev.intent_revision, direction: p.direction, intentHash });
+      const response = { execute: false as const, decisionId, decisionVersion: 1, intentHash, answerEventId: answeredId, standingPolicyId: policy.id };
+      db.prepare('INSERT INTO merge_standing_approvals VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(s.sourceId, s.businessId, p.requestKey, requestHash, p.pairReceiptId, decisionId, 1, intentHash, answeredId, policy.id, JSON.stringify(p.basis), JSON.stringify(response), now);
+      return response;
+    }).immediate();
+  }
+  function standingFor(decisionId: string, version: number) {
+    const row = db.prepare('SELECT standing_policy_id,basis_json FROM merge_standing_approvals WHERE decision_id=? AND decision_version=?').get(decisionId, version) as { standing_policy_id: string; basis_json: string } | undefined;
+    return row ? { automatic: true as const, standingPolicyId: row.standing_policy_id, basis: JSON.parse(row.basis_json) } : { automatic: false as const };
+  }
+
   // ── read models ───────────────────────────────────────────────────────────
   function readIntent(s: Scope, pairReceiptId: string) {
     const row = intentRow(s, pairReceiptId);
     const revisions = (db.prepare('SELECT * FROM merge_intent_revisions WHERE pair_receipt_id=? ORDER BY intent_revision').all(pairReceiptId) as RevisionRow[]).map((rev) => ({ intentRevision: rev.intent_revision, intentBaseHash: rev.intent_base_hash, intent: JSON.parse(rev.intent_json), intentHashes: hashesFor(s, rev), createdAt: rev.created_at }));
-    const bindings = (db.prepare('SELECT * FROM merge_intent_bindings WHERE pair_receipt_id=? ORDER BY rowid').all(pairReceiptId) as Binding[]).map((b) => ({ decisionId: b.decision_id, decisionVersion: b.decision_version, intentRevision: b.intent_revision, direction: b.direction, intentHash: b.intent_hash, ...bindingState(b) }));
+    const bindings = (db.prepare('SELECT * FROM merge_intent_bindings WHERE pair_receipt_id=? ORDER BY rowid').all(pairReceiptId) as Binding[]).map((b) => ({ decisionId: b.decision_id, decisionVersion: b.decision_version, intentRevision: b.intent_revision, direction: b.direction, intentHash: b.intent_hash, ...bindingState(b), ...standingFor(b.decision_id, b.decision_version) }));
     const reservations = (db.prepare('SELECT * FROM merge_reservations WHERE pair_receipt_id=? ORDER BY generation').all(pairReceiptId) as Reservation[]).map((g) => readback(db.transaction(() => settle(g)).immediate()));
     const merge = db.prepare('SELECT * FROM case_merges WHERE pair_receipt_id=?').get(pairReceiptId) as Record<string, unknown> | undefined;
     const candidates = db.prepare('SELECT candidate_id,intent_revision,evidence_revision,state,supersedes,accepted_at FROM duplicate_candidates WHERE pair_receipt_id=? ORDER BY rowid').all(pairReceiptId);
@@ -314,7 +382,7 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
     const row = intentRow(scopeOf(r), b.pair_receipt_id);
     void row;
     const st = bindingState(b), d = decision(decisionId)!;
-    return { execute: false as const, decisionId, decisionVersion: version, currentVersion: d.version, pairReceiptId: b.pair_receipt_id, intentRevision: b.intent_revision, direction: b.direction, intentHash: b.intent_hash, ...st,
+    return { execute: false as const, decisionId, decisionVersion: version, currentVersion: d.version, pairReceiptId: b.pair_receipt_id, intentRevision: b.intent_revision, direction: b.direction, intentHash: b.intent_hash, ...st, ...standingFor(decisionId, version),
       answeredAt: st.answerEventId ? (db.prepare('SELECT created_at FROM bot_decision_events WHERE id=?').get(st.answerEventId) as { created_at: string }).created_at : null };
   }
   function receipt(regId: string, eventId: string) {
@@ -368,6 +436,9 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
       unlock(s, c.pairReceiptId);
       setFence(c.pairReceiptId, s, 'committed', null);
       db.prepare("UPDATE duplicate_candidates SET state='superseded_by_merge' WHERE pair_receipt_id=?").run(c.pairReceiptId);
+      // An automatic approval has no bot waiting to report back: the commit evidence completes its record.
+      if (standingFor(res.decision_id, res.decision_version).automatic)
+        db.prepare("UPDATE bot_decisions SET state='verified_completed',result_json=?,updated_at=datetime('now') WHERE id=? AND version=? AND state='decided'").run(JSON.stringify({ state: 'verified_completed', evidence: `OrderOps reported the merge (event ${e.id}, commit ${c.result.sourceCommitId}).` }), res.decision_id, res.decision_version);
       const staled = stale([di.from.ticket, di.into.ticket], { reason: 'ticket_merged', since: e.occurred_at, detail: `ticket ${di.from.ticket} was merged into ${di.into.ticket} after this question was asked`, event_id: `${sourceId}:${e.id}` });
       const wakes = wake(e);
       return accept(sourceId, businessId, e, eventHash, c.commitHash, { mergeRecorded: true, staledDecisions: staled.length, wakesEnqueued: wakes });
@@ -402,7 +473,7 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
   }
 
   return {
-    registration, registerCases, registerIntent, readIntent, prepareBinding, recordBinding, reserve, redeem, readReservation, readByRequestKey, revoke, nonexecution, exportApproval, receipt, acceptMerged, acceptCandidate,
+    registration, registerCases, registerIntent, readIntent, prepareBinding, recordBinding, standingApprove, reserve, redeem, readReservation, readByRequestKey, revoke, nonexecution, exportApproval, receipt, acceptMerged, acceptCandidate,
     /** Owner-only enrollment of a registry entry (never a bot, never the reviewer). */
     enroll(a: Actor, registrationId: string) {
       return db.transaction(() => {
@@ -410,6 +481,17 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
         const h = canonicalSha256(r);
         if (!db.prepare('SELECT 1 FROM merge_authorization_enrollments WHERE registration_id=? AND registration_hash=?').get(r.id, h)) db.prepare('INSERT INTO merge_authorization_enrollments VALUES(?,?,?,?)').run(r.id, h, a.user.id, iso());
         return { execute: false as const, enrolled: true };
+      }).immediate();
+    },
+    /** Owner-only switch for the standing rule. Append-only history; turning it off never undoes a redeemed merge. */
+    setStanding(a: Actor, raw: unknown) {
+      const p = standingToggleInput.parse(raw);
+      return db.transaction(() => {
+        const r = registration(p.registrationId); owner(a, r);
+        const current = standingRow(r.id);
+        if (!!current?.enabled !== p.enabled) db.prepare('INSERT INTO merge_standing_policies VALUES(?,?,?,?,?,?,?,?)').run(crypto.randomUUID(), r.id, canonicalSha256(r), a.user.id, 'same_customer_record_and_order', Number(p.enabled), p.reason ?? '', iso());
+        const now = standingRow(r.id)!;
+        return { execute: false as const, standing: { enabled: !!now.enabled, since: now.created_at } };
       }).immediate();
     },
     /**
@@ -426,7 +508,10 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
         configured: mine.length > 0,
         registrations: mine.map((r) => {
           const row = db.prepare('SELECT created_at FROM merge_authorization_enrollments WHERE registration_id=? AND registration_hash=?').get(r.id, canonicalSha256(r)) as { created_at: string } | undefined;
-          return { id: r.id, enrolled: !!row, enrolledAt: row?.created_at ?? null, expiresAt: r.expiresAt, reviewerName: name(r.reviewerConversationId), executorName: name(r.executorConversationId) };
+          const standing = standingRow(r.id);
+          const automatic = (db.prepare('SELECT count(*) n FROM merge_standing_approvals a JOIN merge_intents i ON i.pair_receipt_id=a.pair_receipt_id WHERE i.source_id=? AND i.business_team_id=?').get(r.sourceId, r.businessId) as { n: number }).n;
+          return { id: r.id, enrolled: !!row, enrolledAt: row?.created_at ?? null, expiresAt: r.expiresAt, reviewerName: name(r.reviewerConversationId), executorName: name(r.executorConversationId),
+            standing: { enabled: !!standing?.enabled, since: standing?.created_at ?? null }, automaticMerges: automatic };
         }),
       };
     },

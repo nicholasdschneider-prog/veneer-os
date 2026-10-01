@@ -102,4 +102,9 @@ export type CandidateEvent = z.infer<typeof candidateEventSchema>;
 /** §1 bot-event/v1: the full canonical envelope. */
 export function eventHashOf(sourceId: string, event: object) { return mergeHash('bot-event/v1', { sourceId, ...event }); }
 
+/** Addendum (standing rule): OrderOps asserts under custody that a pair is a clear duplicate. */
+export const standingBasisSchema = z.object({ kind: z.literal('same_customer_record_and_order'), customerRecordHash: hash, orderHash: hash, bothTicketsOpen: z.literal(true) }).strict();
+export const standingApprovalInput = z.object({ pairReceiptId: uuid, intentRevision: revision, direction: directionSchema, basis: standingBasisSchema, requestKey: uuid }).strict();
+export const standingToggleInput = z.object({ registrationId: uuid, enabled: z.boolean(), reason: z.string().trim().max(500).optional() }).strict();
+
 export const MERGE_CONTRACT_HASH = '3d4356ab24624f99cee4840170597ea40918b9bedd8d1fa980ff8d1c870b634e';

@@ -62,6 +62,15 @@ describe('merge authorization contract (build 498)', () => {
   }
   function approve(id: string, version = 1) { return bots.choose(owner, id, version, `approve-${id}-${version}`, 'merge', '', 'this_case'); }
   function setupApproved(pair = uid()) { tuples(); s.registerIntent(reg.id, intentBody(pair)); const { decision, hash } = raiseMerge(pair); approve(decision.id); return { pair, decision, hash }; }
+  function setupApprovedSecondPair() {
+    const caseD = uid(), pair = uid();
+    s.registerCases(reg.id, { cases: [{ ticket: 'T-C', caseId: caseC, materialRevision: H('c'), observedAt: new Date(now).toISOString() }, { ticket: 'T-D', caseId: caseD, materialRevision: H('d'), observedAt: new Date(now).toISOString() }] });
+    const body = intentBody(pair, { cases: { a: { ticket: 'T-C', caseId: caseC, materialRevision: H('c') }, b: { ticket: 'T-D', caseId: caseD, materialRevision: H('d') } } });
+    s.registerIntent(reg.id, body);
+    const hash = hashFor(pair, 1, 'a_into_b', body);
+    const { decision } = raiseMerge(pair, 1, 'a_into_b', hash); approve(decision.id);
+    return { pair, hash };
+  }
   function reserve(pair: string, hash: string, key = uid()) { return s.reserve(reg.id, { pairReceiptId: pair, intentHash: hash, requestKey: key }); }
   const mergedEvent = (pair: string, res: { reservationId: string; generation: number; intentHash: string }, redemptionId: string, attemptId: string, overrides: Record<string, unknown> = {}, commitOverrides: Record<string, unknown> = {}) => {
     const commit = { schemaVersion: 'orderops-merge-commit/v1', pairReceiptId: pair, generation: res.generation, reservationId: res.reservationId, redemptionId, attemptId, intentHash: res.intentHash, preconditions: { fromMaterialRevision: H('a'), intoMaterialRevision: H('b') }, result: { fromMaterialRevision: H('a'), intoMaterialRevision: H('e'), sourceRetained: true, sourceCommitId: 'oo-commit-1' }, ...commitOverrides } as Parameters<typeof commitHashOf>[0];
@@ -281,6 +290,75 @@ describe('merge authorization contract (build 498)', () => {
     // A never-enrolled registration is refused outright.
     reg = { ...reg, id: uid() };
     expect(() => reserve(pair, hash)).toThrow('MERGE_AUTHORIZATION_UNAVAILABLE');
+  });
+
+  it('lets the owner switch the standing rule on and off, with history, and never a bot', () => {
+    expect(s.status(owner).registrations[0].standing).toEqual({ enabled: false, since: null });
+    expect(() => s.setStanding(executor, { registrationId: reg.id, enabled: true })).toThrow('human');
+    expect(s.setStanding(owner, { registrationId: reg.id, enabled: true }).standing.enabled).toBe(true);
+    expect(s.setStanding(owner, { registrationId: reg.id, enabled: true }).standing.enabled).toBe(true);
+    now += 1000;
+    expect(s.setStanding(owner, { registrationId: reg.id, enabled: false, reason: 'A wrong merge' }).standing.enabled).toBe(false);
+    now += 1000;
+    s.setStanding(owner, { registrationId: reg.id, enabled: true });
+    expect(db.prepare('SELECT enabled,reason FROM merge_standing_policies ORDER BY created_at').all()).toEqual([{ enabled: 1, reason: '' }, { enabled: 0, reason: 'A wrong merge' }, { enabled: 1, reason: '' }]);
+    expect(() => db.prepare('DELETE FROM merge_standing_policies').run()).toThrow('Immutable');
+    expect(s.status(owner).registrations[0].standing.enabled).toBe(true);
+  });
+
+  it('approves a clear duplicate automatically under the standing rule and merges it end to end with no question raised', () => {
+    tuples(); const pair = uid(); s.registerIntent(reg.id, intentBody(pair));
+    const basis = { kind: 'same_customer_record_and_order', customerRecordHash: H('c'), orderHash: H('d'), bothTicketsOpen: true };
+    const body = { pairReceiptId: pair, intentRevision: 1, direction: 'a_into_b', basis, requestKey: uid() };
+    expect(() => s.standingApprove(reg.id, body)).toThrow('STANDING_RULE_OFF');
+    s.setStanding(owner, { registrationId: reg.id, enabled: true });
+    expect(() => s.standingApprove(reg.id, { ...body, requestKey: uid(), intentRevision: 2 })).toThrow('INTENT_UNKNOWN');
+    const wakesBefore = (db.prepare('SELECT count(*) n FROM conversation_wakeups').get() as { n: number }).n;
+    const approved = s.standingApprove(reg.id, body);
+    expect(approved).toMatchObject({ execute: false, decisionVersion: 1, intentHash: hashFor(pair, 1, 'a_into_b') });
+    expect(s.standingApprove(reg.id, body)).toEqual(approved);
+    expect(() => s.standingApprove(reg.id, { ...body, direction: 'b_into_a' })).toThrow('IDEMPOTENCY_CONFLICT');
+    // A decided record, bound and logged, with nobody asked and no bot woken.
+    const d = bots.view(owner, bots.read(owner, approved.decisionId));
+    expect(d).toMatchObject({ state: 'decided', answer: { action: 'approve', automatic: true, answer: approved.intentHash }, proposal: { question: 'Merged automatically: ticket T-A into T-B' } });
+    expect(bots.list(owner).filter(x => x.state === 'needs_input')).toHaveLength(0);
+    expect((db.prepare('SELECT count(*) n FROM conversation_wakeups').get() as { n: number }).n).toBe(wakesBefore);
+    expect(s.exportApproval(reg.id, approved.decisionId, 1)).toMatchObject({ state: 'approved', automatic: true, basis, answerEventId: approved.answerEventId });
+    // The unchanged contract flow completes the merge and closes the record.
+    const res = reserve(pair, approved.intentHash);
+    const red = s.redeem(reg.id, res.reservationId, { requestKey: uid(), attemptId: uid() });
+    const attempt = s.readReservation(reg.id, res.reservationId).attemptId!;
+    expect(acceptEventDetailed(db, source, mergedEvent(pair, res, red.redemptionId, attempt), stub()).accepted).toMatchObject({ effects: { mergeRecorded: true } });
+    expect(bots.view(owner, bots.read(owner, approved.decisionId))).toMatchObject({ state: 'verified_completed' });
+    expect(() => s.standingApprove(reg.id, { ...body, requestKey: uid() })).toThrow('PAIR_COMMITTED');
+  });
+
+  it('refuses automatic approval when a question is open or the pair is fenced, and turning the rule off blocks only unredeemed automatic merges', () => {
+    tuples(); const pair = uid(); s.registerIntent(reg.id, intentBody(pair, { offeredDirections: ['a_into_b'] }));
+    s.setStanding(owner, { registrationId: reg.id, enabled: true });
+    const basis = { kind: 'same_customer_record_and_order', customerRecordHash: H('c'), orderHash: H('d'), bothTicketsOpen: true };
+    const body = (overrides: Record<string, unknown> = {}) => ({ pairReceiptId: pair, intentRevision: 1, direction: 'a_into_b', basis, requestKey: uid(), ...overrides });
+    expect(() => s.standingApprove(reg.id, body({ direction: 'b_into_a' }))).toThrow('DIRECTION_NOT_OFFERED');
+    const oneWay = intentBody(pair, { offeredDirections: ['a_into_b'] });
+    const q = raiseMerge(pair, 1, 'a_into_b', hashFor(pair, 1, 'a_into_b', oneWay));
+    expect(() => s.standingApprove(reg.id, body())).toThrow(`MERGE_QUESTION_OPEN:${q.decision.id}`);
+    bots.choose(owner, q.decision.id, 1, 'keep', 'keep', '', 'this_case');
+    const approved = s.standingApprove(reg.id, body());
+    // Rule off between issue and redeem: the unredeemed automatic merge is blocked; state unchanged.
+    const res = reserve(pair, approved.intentHash);
+    expect(() => s.standingApprove(reg.id, body())).toThrow(`CASE_PENDING:${pair}`);
+    s.setStanding(owner, { registrationId: reg.id, enabled: false, reason: 'pause' });
+    expect(() => s.redeem(reg.id, res.reservationId, { requestKey: uid(), attemptId: uid() })).toThrow('STANDING_RULE_OFF');
+    expect(s.readReservation(reg.id, res.reservationId).state).toBe('issued');
+    // Back on: redeem succeeds; turning it off afterwards does not undo the redemption or block its commit.
+    s.setStanding(owner, { registrationId: reg.id, enabled: true });
+    const red = s.redeem(reg.id, res.reservationId, { requestKey: uid(), attemptId: uid() });
+    s.setStanding(owner, { registrationId: reg.id, enabled: false, reason: 'pause again' });
+    const attempt = s.readReservation(reg.id, res.reservationId).attemptId!;
+    expect(acceptEventDetailed(db, source, mergedEvent(pair, res, red.redemptionId, attempt), stub()).accepted).toMatchObject({ effects: { mergeRecorded: true } });
+    // A human approval is never affected by the standing rule being off.
+    const other = setupApprovedSecondPair();
+    expect(reserve(other.pair, other.hash).state).toBe('issued');
   });
 
   it('shows the owner a plain on/off status and never to bots or non-owners', () => {

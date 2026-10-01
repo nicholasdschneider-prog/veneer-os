@@ -72,6 +72,8 @@ export interface BotDecision {
     choice_id?: string;
     choice_label?: string;
     answer?: string;
+    /** Recorded by the owner's standing rule, not by a person. */
+    automatic?: boolean;
   } | null;
   result: { state: string; evidence: string } | null;
   parked: { released_leases: string[]; evidence: string } | null;

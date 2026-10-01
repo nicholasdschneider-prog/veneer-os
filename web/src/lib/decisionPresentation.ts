@@ -27,6 +27,7 @@ export function decisionSection(d: DecisionStatus) {
 
 export function decisionStatusLabel(d: DecisionStatus & { stale?: { detail: string } | null }): string {
   if (d.state === 'needs_input' && d.stale) return 'Stale · Bot is refreshing this question';
+  if (d.answer?.automatic) return d.state === 'verified_completed' ? 'Automatic · Done under your standing rule' : 'Automatic · Approved under your standing rule';
   if (d.state === 'verified_completed') return 'Scoped task complete';
   if (d.state === 'running') return 'Executing this task';
   if (d.state === 'action_pending') return 'Queued for execution';

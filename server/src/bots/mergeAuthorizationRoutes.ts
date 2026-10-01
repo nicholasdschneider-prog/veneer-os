@@ -50,6 +50,7 @@ export function mergeAuthorizationRoutes(ctx: AppContext, io: MergeIO = mergeIO(
   const run = (f: (q: express.Request) => unknown): express.RequestHandler => (q, r, n) => { void Promise.resolve().then(() => { z.object({}).strict().parse(q.query); return f(q); }).then((v) => r.json(v)).catch(n); };
   const actor = (q: express.Request) => ({ user: q.user!, conversationId: q.agentConversationId });
   router.get('/merge-authorization/status', run((q) => s.status(actor(q))));
+  router.post('/merge-authorization/standing', run((q) => s.setStanding(actor(q), q.body)));
   router.post('/merge-authorization/enroll', run((q) => { const p = z.object({ registrationId: uuid }).strict().parse(q.body); return s.enroll(actor(q), p.registrationId); }));
   router.get('/merge-authorization/:registrationId/intents/:pairReceiptId', run((q) => s.readIntentAs(actor(q), uuid.parse(q.params.registrationId), uuid.parse(q.params.pairReceiptId))));
   router.post('/merge-authorization/reservations/:id/revoke', run((q) => { const p = z.object({ reason: text }).strict().parse(q.body); return s.revoke(actor(q), uuid.parse(q.params.id), p.reason); }));
@@ -80,6 +81,7 @@ export function mergeAuthorizationServiceRoutes(ctx: AppContext, override?: { io
   router.post('/cases', run((q, id) => s.registerCases(id, q.body)));
   router.post('/intents', run((q, id) => s.registerIntent(id, q.body)));
   router.get('/intents/:pairReceiptId', run((q, id) => s.readIntentFor(id, uuid.parse(q.params.pairReceiptId))));
+  router.post('/standing-approvals', run((q, id) => s.standingApprove(id, q.body)));
   router.post('/reservations', run((q, id) => s.reserve(id, q.body)));
   router.post('/reservations/:id/redeem', run((q, id) => s.redeem(id, uuid.parse(q.params.id), q.body)));
   router.get('/reservations/:id', run((q, id) => s.readReservation(id, uuid.parse(q.params.id))));
