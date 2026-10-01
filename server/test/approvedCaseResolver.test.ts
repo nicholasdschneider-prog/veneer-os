@@ -106,6 +106,8 @@ describe('authenticated approved UUID/ticket mapping',()=>{
   capDrift='revoked';await expect(services(executor,id,true)).rejects.toThrow('capability');
  });
  it('uses the authenticated resolver through HTTP inspect/delegate/accept/claim/receipt with one racing claim',async()=>{
+  // HTTP uses the real clock; the synthetic registry must not expire on a calendar date.
+  registry.registrations[0]!.expires_at=new Date(Date.now()+60_000).toISOString();
   const {id,p}=approve();const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mapping-route-'));const file=path.join(dir,'registry.json');fs.writeFileSync(file,JSON.stringify(registry),{mode:0o600});
   const readSecret=vi.spyOn(secrets,'readSecretValue').mockImplementation(async(_deps,ref)=>({name:ref.name,project:ref.project??null,config:ref.config??null,value:ref.name}));
   const realFetch=globalThis.fetch;vi.stubGlobal('fetch',async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{

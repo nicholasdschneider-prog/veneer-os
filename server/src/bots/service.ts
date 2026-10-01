@@ -88,12 +88,14 @@ export const defaultDecisionChoices = [
  * record excerpts are the bot's own read of a source system and carry the
  * exact ids so they can be re-checked.
  */
+// Gmail attachment IDs are opaque: preserve every character. 4096 is a local
+// resource bound (not a claimed provider maximum), with headroom above observed ~450-character IDs.
 export const evidenceSourceSchema = z.discriminatedUnion('system', [
   // A file already detected in a bot conversation (today's images path).
   z.object({ system: z.literal('chat_file'), conversation_id: z.string().min(1).max(200), path: z.string().min(1).max(4096) }).strict(),
   // A file a human uploaded from the chat composer (DATA_DIR/uploads).
   z.object({ system: z.literal('upload'), path: z.string().min(1).max(4096) }).strict(),
-  z.object({ system: z.literal('gmail'), account: z.string().trim().min(1).max(320).optional(), message_id: z.string().trim().min(1).max(200), attachment_id: z.string().trim().min(1).max(400).optional(), filename: z.string().trim().min(1).max(300).optional() }).strict(),
+  z.object({ system: z.literal('gmail'), account: z.string().trim().min(1).max(320).optional(), message_id: z.string().trim().min(1).max(200), attachment_id: z.string().min(1).max(4096).optional(), filename: z.string().trim().min(1).max(300).optional() }).strict(),
   z.object({ system: z.literal('orderops'), ticket_id: z.string().trim().min(1).max(200), attachment_id: z.string().trim().min(1).max(200).optional(), message_id: z.string().trim().min(1).max(200).optional() }).strict(),
   z.object({ system: z.literal('shopify'), order_id: z.string().trim().min(1).max(200), order_number: z.string().trim().min(1).max(100).optional(), refund_ids: z.array(z.string().trim().min(1).max(200)).max(20).optional() }).strict(),
 ]);

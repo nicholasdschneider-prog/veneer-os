@@ -1,0 +1,41 @@
+{
+  "recordedAt": "2026-10-01T12:17:10.055872+00:00",
+  "baseCommit": "232bdaf3770d19e4a313a53b81f03cd0e10a8385",
+  "sourceSha256": {
+    "server/src/bots/service.ts": "7cf407686b5cad79b6085d113f38619862b9866ee58d339657362747fcb8c276",
+    "server/test/decisionEvidence.test.ts": "d9125a51db3e1a739778f4d95e17301dbfdc3eca0afcb9e0f123097c27d2da2d",
+    "server/test/approvedCaseResolver.test.ts": "8f0695c87f63cd98ed018fd0cf9a01ef9ebb1d4026b617ff552bf1b8b8894dcf"
+  },
+  "typecheck": "passed",
+  "scopedPassed": 59,
+  "full": {
+    "installerPassed": 29,
+    "serverPassed": 3244,
+    "serverSkipped": 5,
+    "webPassed": 963,
+    "browserManagerPassed": 49,
+    "totalPassed": 4285,
+    "vitestWorkers": 2,
+    "exitCode": 0
+  },
+  "build": {
+    "exitCode": 0,
+    "warning": "Vite large chunks"
+  },
+  "initialFailure": "approvedCaseResolver HTTP synthetic registration expired at fixed 2026-10-01 midnight; reproduced isolated, corrected only fixture expiry to actual run time +60s; production expiry checks unchanged",
+  "logsSha256": {
+    "build510-final-typecheck.txt": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "build510-final-scoped.txt": "9dac87cfe111cee20355ec7050cc00acb2e7176d6d791960e1b7d2588ef02c54",
+    "build510-final-full.txt": "508f8df5f04f65aec8cdd21bddc6b0f1971c5b0083e725a3de3eec45fb788537",
+    "build510-build.txt": "6e403262688f8d0c72c3d7107668a7a9596049b519289c48da70fdcc4d8001f9",
+    "build510-full.txt": "82d2ec975feb67ff5b64ab5d62ac158bbfa8a2aadf2ef2b0b345ac4a552180c7",
+    "build510-resolver-recheck.txt": "09836f68fe4b2f971eae37481589bca71af7ac0c32d76f1fc8cd40341665d9fc"
+  },
+  "deployment": {
+    "status": "staged",
+    "restartPerformed": false,
+    "blocker": "Outstanding BUILD505 exact-copy preview preservation; no authenticated bridge continuity across runner restart and no scoped deployment exception. Hold expiry does not authorize state loss."
+  },
+  "providerCalls": 0,
+  "productionDecisionMutations": 0
+}

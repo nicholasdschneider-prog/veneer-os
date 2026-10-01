@@ -8,12 +8,18 @@ import express from 'express';
 import type { Server } from 'node:http';
 import { migrate } from '../src/db/migrate.js';
 import { createBotService, proposalSchema, validateDecisionEvidence, type Actor } from '../src/bots/service.js';
-import { bindDecisionEvidence, bindHumanEvidence, readDecisionEvidence, ORDEROPS_ATTACHMENT_UNAVAILABLE } from '../src/bots/decisionEvidence.js';
+import { bindDecisionEvidence, composioGmailFetchers, bindHumanEvidence, readDecisionEvidence, ORDEROPS_ATTACHMENT_UNAVAILABLE } from '../src/bots/decisionEvidence.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 import { createBotsRouter } from '../src/bots/routes.js';
 import { acceptEvent } from '../src/botWorkflows/routines.js';
 import type { AppContext } from '../src/context.js';
 import type { UserRow } from '../src/db/db.js';
+
+const gmailMock = vi.hoisted(() => ({ execute: vi.fn(), rows: [] as unknown[] }));
+vi.mock('@composio/core',()=>({Composio: class { sessions={use:async()=>({execute:gmailMock.execute})}; }}));
+vi.mock('../src/connectors/access.js',async importOriginal=>({...await importOriginal<object>(),connectedConnectorRowsForConversation:()=>gmailMock.rows}));
+vi.mock('../src/secrets/apiKeys.js',()=>({effectiveApiKey:()=>({value:'synthetic-api-key'})}));
+vi.mock('../src/connectors/accessModes.js',async importOriginal=>({...await importOriginal<object>(),connectorAccessModeProfile:()=>({composio:{toolSlugs:['GMAIL_GET_ATTACHMENT']}})}));
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6ZEAAAAAASUVORK5CYII=', 'base64');
 const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
@@ -42,6 +48,39 @@ describe('decision evidence and staleness', () => {
   });
   afterEach(async () => { for (const server of servers.splice(0)) await new Promise<void>(resolve => server.close(() => resolve())); db.close(); rmSync(dir, { recursive: true, force: true }); });
   const proposal = (extra: Record<string, unknown> = {}) => proposalSchema.parse({ question: 'Refund the rooftop AC line for #100120886?', recommendation: 'Refund after return.', consequence: 'Covers one line only.', blocked_action: 'Refund only after the unit is received.', assignee_id: 1, choices, review_summary: { action_title: 'Refund the AC line', background: [], refund }, evidence_items: [refundRecord], ...extra });
+
+  it.each([401,450,4096])('preserves a %i-character opaque Gmail ID through raise, revise and real transport argument construction',async length=>{
+    const id=' '+('Ab/_-+=:é'.repeat(600)).slice(0,length-2)+' ';
+    gmailMock.rows=[{connector_slug:'gmail',label:'Evidence inbox',config_json:JSON.stringify({sessionId:'synthetic-session'})}];
+    gmailMock.execute.mockReset();gmailMock.execute.mockResolvedValue({data:{data:png.toString('base64')}});
+    const source={system:'gmail',account:'Evidence inbox',message_id:'m1',attachment_id:id,filename:'photo.png'};
+    const p=proposal({evidence_items:[{kind:'image',label:'Customer photo',source},refundRecord]});
+    expect(p.evidence_items![0].source).toMatchObject({attachment_id:id});
+    const bound=await bindDecisionEvidence(ctx,bot,'bot',p,composioGmailFetchers());
+    const decision=s.raise(bot,{source_key:'gmail-fixture',proposal_key:'question',proposal:bound});
+    expect(decision.proposal.evidence_items![0].source).toMatchObject({attachment_id:id});
+    const revised=await bindDecisionEvidence(ctx,bot,'bot',proposal({...bound,recommendation:'Revised bounded recommendation.'}),composioGmailFetchers());
+    const next=s.revise(bot,decision.id,1,'revision',revised);
+    expect(next.proposal.evidence_items![0].source).toMatchObject({attachment_id:id});
+    expect(gmailMock.execute).toHaveBeenCalledTimes(2);
+    for(const call of gmailMock.execute.mock.calls)expect(call).toEqual(['GMAIL_GET_ATTACHMENT',{message_id:'m1',attachment_id:id,file_name:'photo.png',user_id:'me'}]);
+    expect(readDecisionEvidence(ctx,human,decision.id,2,0)).toMatchObject({bytes:png,type:'image/png'});
+    gmailMock.rows=[];
+    await expect(bindDecisionEvidence(ctx,bot,'bot',p,composioGmailFetchers())).rejects.toThrow('No Gmail connection');
+    expect(gmailMock.execute).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['',null,123,{},[], 'x'.repeat(4097)])('rejects invalid or oversized Gmail IDs without transport: %j',id=>{
+    const calls=gmailMock.execute.mock.calls.length;
+    expect(()=>proposal({evidence_items:[{kind:'image',label:'Photo',source:{system:'gmail',message_id:'m1',attachment_id:id}}]})).toThrow();
+    expect(gmailMock.execute).toHaveBeenCalledTimes(calls);
+  });
+
+  it('keeps unrelated source limits and strict fields unchanged',()=>{
+    expect(()=>proposal({evidence_items:[{kind:'image',label:'Photo',source:{system:'orderops',ticket_id:'T1',attachment_id:'x'.repeat(201)}}]})).toThrow();
+    expect(()=>proposal({evidence_items:[{kind:'image',label:'Photo',source:{system:'gmail',message_id:'x'.repeat(201),attachment_id:'x'.repeat(450)}}]})).toThrow();
+    expect(()=>proposal({evidence_items:[{kind:'image',label:'Photo',source:{system:'gmail',message_id:'m1',attachment_id:'a',unexpected:true}}]})).toThrow();
+  });
 
   it('refuses a question that mentions photos without attaching them or a money question with unverified refund facts', () => {
     expect(() => validateDecisionEvidence(proposalSchema.parse({ question: 'Approve the refund? 24 photos show box damage.', recommendation: 'Refund', consequence: 'x', blocked_action: 'x', assignee_id: 1, choices, review_summary: { action_title: 'Refund', background: [], refund }, evidence_items: [refundRecord] }))).toThrow('attaches none');
