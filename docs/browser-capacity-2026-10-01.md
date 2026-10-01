@@ -115,3 +115,38 @@ Script and raw output: `out/browser-capacity/saturation.mjs`,
 ## After-measurements
 
 Appended below as they are taken.
+
+### 2026-10-01 22:00Z, about two hours after deployment
+
+Read-only, from the audit trail since 19:46Z.
+
+| Measure | Before | After (2 h 14 m) |
+|---|---|---|
+| Capacity waits created | 14 on Oct 1 before deploy, 37 in three days | 0 |
+| Waits that ended with a browser | 1 of 37 | n/a, nobody had to wait |
+| Peak chats driving a browser in one ten-minute window, ERVP | 2 | 5 |
+| Same, whole machine | 3 | 5 |
+| Hold renewals refused | n/a | 0 |
+| Copies held more than 4 h after their last action | 1 (25 h) | 0 |
+
+- **The parked copy paused on schedule.** Its bound was 21:35:14Z; the sweep
+  paused it at 21:36:21Z with files and sign-in kept. Its owner checked it after
+  the notice and found the page it had been preserving for a day was not on
+  screen at all: the tabs showed a different order. That is recorded in the
+  BUILD505 reconnect report (commit 1ac896b).
+- **Who used the freed capacity:** Piper (1,010 commands), the afternoon Lippert
+  sweep (198), AutoShip Worker (157), Finn (48), Clara, Sage, Avery.
+- **Script tool:** 320 scripts, 304 succeeded (95%), carrying 1,688 steps, out of
+  1,445 browser calls. Piper ran 190 of 190 successfully.
+- **Notices do not resume a parked task.** `send_message` runs in a side
+  coordination lane of the target bot; it does not post into or wake the bot's
+  main chat. "Auto PO not created" and Nora acknowledged in that lane and their
+  main chats stayed idle with no browser activity. They pick up the new limits on
+  their next turn, which needs a person or a schedule to start.
+- **Memory:** 35% free with no managed browser running. Swap grew to 14.8 of
+  16 GB used. Browsers are not the cause: 389 `mcp-remote` helper processes hold
+  about 7 GB, 194 of them children of one long-lived agent server process. That
+  is a separate problem from browser capacity and is the main memory risk on
+  this Mac.
+- Services were restarted again at 19:55Z by an unrelated build; limits and the
+  hold bound were unaffected.
