@@ -10,6 +10,8 @@ import {
 
 export interface MergeIO {
   registration: (id: string) => Registration;
+  /** Every registry entry, for the owner's setup page. Absent or unreadable registry → []. */
+  registrations?: () => Registration[];
   /** Native's own authenticated readback of ${sourceOrigin}/api/cs/merge-attempts/:attemptId. */
   attemptReadback: (r: Registration, attemptId: string) => Promise<unknown>;
   now: () => number;
@@ -409,6 +411,24 @@ export function mergeAuthorization(db: Database.Database, io: MergeIO) {
         if (!db.prepare('SELECT 1 FROM merge_authorization_enrollments WHERE registration_id=? AND registration_hash=?').get(r.id, h)) db.prepare('INSERT INTO merge_authorization_enrollments VALUES(?,?,?,?)').run(r.id, h, a.user.id, iso());
         return { execute: false as const, enrolled: true };
       }).immediate();
+    },
+    /**
+     * What the owner's setup page shows: each registration this human owns and
+     * whether its current revision is switched on. Humans only; no hashes, no secrets.
+     */
+    status(a: Actor) {
+      if (a.conversationId) throw new BotError(403, 'Only the business owner can view ticket merging setup');
+      const mine = (io.registrations?.() ?? []).filter((r) => r.ownerUserId === a.user.id && r.active);
+      const ownsBusiness = !!db.prepare('SELECT 1 FROM business_teams WHERE owner_id=?').get(a.user.id);
+      if (!mine.length && !ownsBusiness) throw new BotError(403, 'Only the business owner can view ticket merging setup');
+      const name = (cid: string) => (db.prepare('SELECT name FROM bot_registrations WHERE conversation_id=?').get(cid) as { name: string } | undefined)?.name ?? 'Unknown bot';
+      return {
+        configured: mine.length > 0,
+        registrations: mine.map((r) => {
+          const row = db.prepare('SELECT created_at FROM merge_authorization_enrollments WHERE registration_id=? AND registration_hash=?').get(r.id, canonicalSha256(r)) as { created_at: string } | undefined;
+          return { id: r.id, enrolled: !!row, enrolledAt: row?.created_at ?? null, expiresAt: r.expiresAt, reviewerName: name(r.reviewerConversationId), executorName: name(r.executorConversationId) };
+        }),
+      };
     },
     /** Owner, reviewer or executor read of one pair. */
     readIntentAs(a: Actor, registrationId: string, pairReceiptId: string) {

@@ -5,6 +5,7 @@ import { CsReadiness } from './screens/CsReadiness';
 import { CsPhotoRequestSetup } from './screens/CsPhotoRequestSetup';
 import { FocusedAutomations } from './screens/FocusedWorkspace';
 import { ReturnOwnerSetup } from './screens/ReturnOwnerSetup';
+import { TicketMergeSetup } from './screens/TicketMergeSetup';
 import { TeamMessages } from './screens/TeamMessages';
 import { BotGuide } from './screens/BotGuide';
 import { EmployeeWorkspace } from './screens/EmployeeWorkspace';
@@ -364,6 +365,7 @@ export function App() {
     <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><ReturnOwnerSetup key="candidate" candidate /></NavShell>
   );
 
+  if (routePath === '#/ticket-merge-setup') return <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><TicketMergeSetup /></NavShell>;
   if (routePath === '#/purchase-timing-setup') return <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}><PurchaseTimingSetup /></NavShell>;
   if (routePath === '#/return-service-setup') return (
     <NavShell current="guide" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>

@@ -29,6 +29,7 @@ export function mergeIO(ctx: AppContext): MergeIO {
   const registration = (id: string) => { const rs = loadMergeRegistry(ctx.config.mergeAuthorizationRegistryFile).registrations.filter((r) => r.id === id); if (rs.length !== 1) throw new BotError(503, 'Exact merge registration required'); return rs[0]!; };
   return {
     registration, now: Date.now,
+    registrations: () => { try { return loadMergeRegistry(ctx.config.mergeAuthorizationRegistryFile).registrations; } catch { return []; } },
     async attemptReadback(r: Registration, attemptId: string) {
       const before = canonicalSha256(registration(r.id));
       if (before !== canonicalSha256(r)) throw new BotError(503, 'Dedicated merge readback credential required');
@@ -48,6 +49,7 @@ export function mergeAuthorizationRoutes(ctx: AppContext, io: MergeIO = mergeIO(
   router.use((_q, r, n) => { r.set('Cache-Control', 'no-store'); n(); });
   const run = (f: (q: express.Request) => unknown): express.RequestHandler => (q, r, n) => { void Promise.resolve().then(() => { z.object({}).strict().parse(q.query); return f(q); }).then((v) => r.json(v)).catch(n); };
   const actor = (q: express.Request) => ({ user: q.user!, conversationId: q.agentConversationId });
+  router.get('/merge-authorization/status', run((q) => s.status(actor(q))));
   router.post('/merge-authorization/enroll', run((q) => { const p = z.object({ registrationId: uuid }).strict().parse(q.body); return s.enroll(actor(q), p.registrationId); }));
   router.get('/merge-authorization/:registrationId/intents/:pairReceiptId', run((q) => s.readIntentAs(actor(q), uuid.parse(q.params.registrationId), uuid.parse(q.params.pairReceiptId))));
   router.post('/merge-authorization/reservations/:id/revoke', run((q) => { const p = z.object({ reason: text }).strict().parse(q.body); return s.revoke(actor(q), uuid.parse(q.params.id), p.reason); }));

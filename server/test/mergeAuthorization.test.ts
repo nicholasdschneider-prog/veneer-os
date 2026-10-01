@@ -41,7 +41,7 @@ describe('merge authorization contract (build 498)', () => {
       audience: 'merge-aud', cfClientId: 'merge-client', bearerHash: crypto.createHash('sha256').update(bearer).digest('hex'), readbackCredential: { project: 'orderops', config: 'prd', name: 'MERGE_AUTHORIZATION_READBACK' },
       contractHash: MERGE_CONTRACT_HASH, expiresAt: '2026-12-31T00:00:00Z' });
     readback = null;
-    io = { registration: () => structuredClone(reg), attemptReadback: async () => structuredClone(readback), now: () => now };
+    io = { registration: () => structuredClone(reg), registrations: () => [structuredClone(reg)], attemptReadback: async () => structuredClone(readback), now: () => now };
     s = mergeAuthorization(db, io); bots = createBotService(db);
     s.enroll(owner, reg.id);
   });
@@ -281,6 +281,22 @@ describe('merge authorization contract (build 498)', () => {
     // A never-enrolled registration is refused outright.
     reg = { ...reg, id: uid() };
     expect(() => reserve(pair, hash)).toThrow('MERGE_AUTHORIZATION_UNAVAILABLE');
+  });
+
+  it('shows the owner a plain on/off status and never to bots or non-owners', () => {
+    expect(s.status(owner)).toMatchObject({ configured: true, registrations: [{ id: reg.id, enrolled: true, reviewerName: reviewerId, executorName: executorId }] });
+    expect(JSON.stringify(s.status(owner))).not.toContain(reg.bearerHash);
+    // A rotated revision is off until the owner switches it on again.
+    reg = { ...reg, revision: 2 };
+    expect(s.status(owner).registrations[0]).toMatchObject({ enrolled: false, enrolledAt: null });
+    s.enroll(owner, reg.id);
+    expect(s.status(owner).registrations[0].enrolled).toBe(true);
+    expect(() => s.status(executor)).toThrow('Only the business owner');
+    db.prepare("INSERT INTO users(id,email,display_name,role,status) VALUES(2,'ali@test','Ali','member','active')").run();
+    expect(() => s.status({ user: db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow })).toThrow('Only the business owner');
+    // No registry: an owner sees "not set up", not an error.
+    io.registrations = () => [];
+    expect(s.status(owner)).toEqual({ configured: false, registrations: [] });
   });
 
   it('serves the contract only to the dedicated bearer and rejects bots at the human surface', async () => {
