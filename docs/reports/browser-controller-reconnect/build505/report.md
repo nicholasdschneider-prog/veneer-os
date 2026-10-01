@@ -45,4 +45,18 @@ Boris owns incident coordination; original Miles alone owns the eventual scoped 
 
 Only after a supported successful recovery may original Miles list tabs/read, verify the visible July 10 Shopify order 6035776536728 confirmation for warranty 7158080, and perform the separately authorized PDF export. The builder did none of those actions.
 
+## October 1, 2026 preservation discrepancy
+
+Reported by original Miles from a read-only check at approximately 19:54Z; recorded here as reported, not independently verified by the builder.
+
+- Browser status still carries the AZLD34 hold reason naming July 10 Shopify order 6035776536728 and the earlier UNKNOWN outcome. Hold expiry `2026-10-01T20:30:24.336Z`; maximum renewal boundary `2026-10-01T21:35:14.000Z`.
+- The actual tabs do not match that reason: t1 shows Shopify order `#100119376` (`6050243018904`), t2 is `about:blank`. No AZLD34 preview and no preview identifier is visible.
+- The download tool returned no ready downloads.
+- The retained screenshot shows the different order and is explicitly not AZLD34 evidence.
+- Miles performed no navigation, click, keystroke, controller recovery, replay, refund, send, profile update or stop.
+
+The hold reason is retained text, not proof that the expected preview still exists. When and how the preview left the working copy is not established. The earlier operation stays UNKNOWN and must not be replayed; the expected preview preservation gap remains open, and the recovery path above can no longer be assumed to end at the July 10 confirmation page. No new authority was requested or granted.
+
+Case record: [browser-preservation-20261001.md](/Users/archerclawdington/Projects/ERVP/out/miles/AZLD34/browser-preservation-20261001.md) · [browser-observed-20261001.png](/Users/archerclawdington/Projects/ERVP/out/miles/AZLD34/browser-observed-20261001.png)
+
 [Changed-file index](/Users/archerclawdington/veneer-os/docs/reports/browser-controller-reconnect/build505/changed-files.md) · [Implementation digests](/Users/archerclawdington/veneer-os/docs/reports/browser-controller-reconnect/build505/implementation-digests.json)
