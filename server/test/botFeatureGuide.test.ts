@@ -4,6 +4,15 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers periodic coalescing limits to employees and fresh/resumed agents', () => {
+    const f = botFeatureCatalog(Date.parse('2026-10-01')).features.find(f => f.id === 'routines')!;
+    expect(f.isNew).toBe(true);
+    expect(f.announcement).toContain('one pending backup check per routine');
+    expect(f.limits).toContain('UNKNOWN');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    for (const elevated of [false, true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
+    expect(botFeatureInstructions()).toContain(f.agent);
+  });
   it('labels controller recovery as staged and retains original-owner UNKNOWN limits in employee and resumed guidance',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(f=>f.id==='browser-controller-reconnect')!;
     expect(f.limits).toContain('pending deployment');expect(f.agent).toContain('UNKNOWN');
@@ -194,10 +203,10 @@ describe('living bot guide release contract', () => {
   });
   it('shows announcements for 30 days, never before release, retaining older instructions', () => {
     const feature = BOT_FEATURES.find(feature => feature.id === 'routines')!;
-    expect(isNewFeature(feature, Date.parse('2026-09-21T23:59:59Z'))).toBe(false);
-    expect(isNewFeature(feature, Date.parse('2026-09-22T00:00:00Z'))).toBe(true);
-    expect(isNewFeature(feature, Date.parse('2026-10-21T23:59:59Z'))).toBe(true);
-    expect(isNewFeature(feature, Date.parse('2026-10-22T00:00:00Z'))).toBe(false);
+    expect(isNewFeature(feature, Date.parse('2026-09-30T23:59:59Z'))).toBe(false);
+    expect(isNewFeature(feature, Date.parse('2026-10-01T00:00:00Z'))).toBe(true);
+    expect(isNewFeature(feature, Date.parse('2026-10-30T23:59:59Z'))).toBe(true);
+    expect(isNewFeature(feature, Date.parse('2026-10-31T00:00:00Z'))).toBe(false);
     expect(isNewFeature({ ...feature, announcement: null }, Date.parse('2026-09-23'))).toBe(false);
     expect(botFeatureCatalog(Date.parse('2027-01-01')).features).toHaveLength(BOT_FEATURES.length);
   });

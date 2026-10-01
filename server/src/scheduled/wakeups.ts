@@ -202,6 +202,8 @@ export function createConversationWakeupScheduler({
    * on purpose (delivery threw) so the next tick can retry the same key.
    */
   function deliver(row: ConversationWakeupRow, conv: ConversationRow): boolean {
+    // Earlier delivery in this batch can coalesce a later periodic wakeup.
+    if (readWakeup(row.id, row.conversation_id)?.status !== PENDING) return false;
     if ((row.wake_key.startsWith('browser-capacity:') && !browserCapacityWakeAllowed(db,row.id)) || !botWakeAllowed(db, row, conv)) {
       db.transaction(() => {
         db.prepare("UPDATE conversation_wakeups SET status='cancelled',cancelled_at=datetime('now') WHERE id=?").run(row.id);

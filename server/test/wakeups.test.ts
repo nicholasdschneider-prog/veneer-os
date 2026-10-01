@@ -1,3 +1,6 @@
+import { saveRoutine, tickRoutines, type Routine } from '../src/botWorkflows/routines.js';
+import { coalescePeriodicChecks, routineReason } from '../src/botWorkflows/periodicChecks.js';
+import type { UserRow } from '../src/db/db.js';
 import { EventEmitter } from 'node:events';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -98,6 +101,119 @@ describe('conversation wake-up scheduler', () => {
     await flush();
     db.close();
     vi.clearAllMocks();
+  });
+
+  function periodic() {
+    db.prepare('INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,?,1)').run(conv.id, 'Backup');
+    const user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
+    const r = saveRoutine(db, user, conv.id, {
+      name: 'Backup', instructions: 'Check changed work', kind: 'schedule',
+      schedule: {type: 'cron', expression: '* * * * *'}, enabled: true,
+    });
+    db.prepare('UPDATE bot_routines SET next_run_at=? WHERE id=?').run(BASE.toISOString(), r.id);
+    return r;
+  }
+
+  function legacyCheck(r: Routine, id: string, minute: number, queued = true, trigger: string | null = null) {
+    const at = new Date(BASE.getTime() + minute * 60_000).toISOString();
+    const reason = routineReason(r.name, r.instructions, `Scheduled for ${at}`);
+    db.prepare('INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for,status) VALUES(?,?,1,?,?,?,?)')
+      .run(id, conv.id, `bot-routine:${r.id}:${id}`, reason, at, queued ? 'delivered' : 'pending');
+    db.prepare('INSERT INTO bot_routine_deliveries(id,routine_id,event_id,wakeup_id,trigger_kind) VALUES(?,?,?,?,?)')
+      .run(id, r.id, `schedule:${at}`, id, trigger);
+    if (!queued) return null;
+    const prompt = `Hey, can you pick this back up for me?\n\n${reason}\n\nPlease check what changed while you were away before you continue.`;
+    const messageId = Number(db.prepare("INSERT INTO queued_messages(conversation_id,prompt,actor_user_id,origin_json,sort_order) VALUES(?,?,1,?,?)")
+      .run(conv.id, prompt, JSON.stringify({kind:'wakeup',from:'Backup',to:'Backup'}), minute).lastInsertRowid);
+    db.prepare("INSERT INTO hub_inbound_messages(idempotency_key,conversation_id,message_id,source_kind) VALUES(?,?,?,'wakeup')")
+      .run(`wakeup:${id}`, conv.id, messageId);
+    return messageId;
+  }
+
+  it('keeps one periodic backup behind a busy chat, then permits one behind its running check', async () => {
+    periodic();
+    manager.postMessage(conv, 'Real work');
+    await flush();
+    for (let minute = 0; minute < 8; minute++) {
+      current = new Date(BASE.getTime() + minute * 60_000);
+      tickRoutines(db, current);
+      scheduler.tick();
+    }
+    expect(db.prepare('SELECT count(*) n FROM queued_messages').get()).toEqual({n:1});
+    expect(db.prepare('SELECT count(*) n FROM bot_routine_deliveries').get()).toEqual({n:8});
+    expect(adapter.runs).toHaveLength(1);
+    adapter.runs[0]!.finish();
+    await flush();
+    expect(adapter.runs).toHaveLength(2);
+    current = new Date(BASE.getTime() + 8 * 60_000);
+    tickRoutines(db, current); scheduler.tick();
+    expect(db.prepare('SELECT count(*) n FROM queued_messages').get()).toEqual({n:1});
+    expect(adapter.runs).toHaveLength(2);
+  });
+
+  it('coalesces proven legacy backlog at startup without replaying it or losing receipts', async () => {
+    const r = periodic();
+    const keep = legacyCheck(r, 'old-1', 0);
+    legacyCheck(r, 'old-2', 1);
+    legacyCheck(r, 'old-3', 2, false);
+    manager.resumeInterruptedTurns();
+    await flush();
+    expect(adapter.runs).toHaveLength(1);
+    expect(db.prepare('SELECT count(*) n FROM bot_routine_coalescing').get()).toEqual({n:2});
+    expect(db.prepare('SELECT count(*) n FROM hub_inbound_messages').get()).toEqual({n:2});
+    expect(db.prepare('SELECT count(*) n FROM queued_messages').get()).toEqual({n:0});
+    expect(manager.deliverWakeup(conv, 'ignored retry', 'old-2').disposition).toBe('duplicate');
+    expect(db.prepare('SELECT message_id FROM hub_inbound_messages WHERE idempotency_key=?').get('wakeup:old-1')).toEqual({message_id:keep});
+    adapter.runs[0]!.finish(); await flush();
+    expect(adapter.runs).toHaveLength(1);
+  });
+
+  it('preserves events, one-shots, edited messages, unrelated messages and uncertain dispatches', () => {
+    const r = periodic();
+    legacyCheck(r, 'keep', 0);
+    legacyCheck(r, 'redundant', 1);
+    const event = legacyCheck(r, 'event', 2, true, 'event');
+    const once = legacyCheck(r, 'once', 3, true, 'once');
+    const edited = legacyCheck(r, 'edited', 4);
+    db.prepare('UPDATE queued_messages SET prompt=? WHERE id=?').run('Human correction', edited);
+    const unknown = legacyCheck(r, 'unknown', 5);
+    db.prepare("INSERT INTO turn_origins(conversation_id,turn_id,prompt_text,event_at,message_id,origin_json) VALUES(?,'uncertain','opaque',?,?,?)")
+      .run(conv.id, BASE.toISOString(), unknown, '{}');
+    const protectedId = legacyCheck(r, 'steering', 6)!;
+    const dispatched = legacyCheck(r, 'dispatched', 7)!;
+    db.prepare('DELETE FROM queued_messages WHERE id=?').run(dispatched);
+    const human = Number(db.prepare('INSERT INTO queued_messages(conversation_id,prompt) VALUES(?,?)').run(conv.id, 'Run your routine Backup').lastInsertRowid);
+    expect(coalescePeriodicChecks(db, conv.id, new Set([protectedId]))).toHaveLength(1);
+    const ids = (db.prepare('SELECT id FROM queued_messages').all() as {id:number}[]).map(x=>x.id);
+    for (const id of [event, once, edited, unknown, protectedId, human]) expect(ids).toContain(id);
+    expect(db.prepare("SELECT status FROM conversation_wakeups WHERE id='dispatched'").get()).toEqual({status:'delivered'});
+    expect(coalescePeriodicChecks(db, conv.id, new Set([protectedId]))).toEqual([]);
+  });
+
+  it('keeps distinct routines and ambiguous legacy provenance separate', () => {
+    const r = periodic();
+    legacyCheck(r, 'one', 0);
+    legacyCheck(r, 'two', 1);
+    db.prepare("UPDATE bot_routine_deliveries SET event_id='source:real-event' WHERE id='two'").run();
+    const r2 = {...r, id:'second'};
+    db.prepare("INSERT INTO bot_routines(id,conversation_id,created_by,name,instructions,kind,schedule_json,timezone,enabled) VALUES(?,?,1,?,?,'schedule',?,'UTC',1)")
+      .run(r2.id, conv.id, r2.name, r2.instructions, r2.schedule_json);
+    legacyCheck(r2, 'three', 2);
+    expect(coalescePeriodicChecks(db,conv.id)).toEqual([]);
+    expect(db.prepare('SELECT count(*) n FROM queued_messages').get()).toEqual({n:3});
+  });
+
+  it('coalesces pending wakeups before dispatch even when the scheduler already read the due batch', async () => {
+    const r = periodic();
+    manager.postMessage(conv,'Busy'); await flush();
+    legacyCheck(r, 'pending-1', 0, false);
+    legacyCheck(r, 'pending-2', 1, false);
+    current = new Date(BASE.getTime()+120_000);
+    scheduler.tick();
+    expect(db.prepare('SELECT count(*) n FROM queued_messages').get()).toEqual({n:1});
+    expect(db.prepare("SELECT status FROM conversation_wakeups WHERE id='pending-2'").get()).toEqual({status:'cancelled'});
+    adapter.runs[0]!.finish(); await flush();
+    expect(adapter.runs).toHaveLength(2);
   });
 
   it('replaces a pending wake with the same key and supports list and cancel', () => {

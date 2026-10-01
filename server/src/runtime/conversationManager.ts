@@ -1,3 +1,4 @@
+import { coalescePeriodicChecks } from '../botWorkflows/periodicChecks.js';
 import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js';
 import { coordinationLane, coordinationFamily } from '../coordination/store.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
@@ -1394,6 +1395,15 @@ export function createConversationManager({
     });
   }
 
+  function reconcilePeriodicQueue(conversationId: string): void {
+    const entry = entryFor(conversationId);
+    const removed = new Set(coalescePeriodicChecks(db, conversationId, entry.steering));
+    if (removed.size) {
+      entry.queue = entry.queue.filter(item => item.id === null || !removed.has(item.id));
+      emitQueue(conversationId);
+    }
+  }
+
   async function runNext(conv: ConversationRow): Promise<void> {
     const entry = entryFor(conv.id);
     if (entry.turn || entry.maintenance) return;
@@ -1410,6 +1420,7 @@ export function createConversationManager({
     // A turn that exhausted recovery remains visible/retryable. Do not run later
     // messages past it until the user explicitly retries or skips it.
     if (failedTurnStmt.get(conv.id)) return;
+    reconcilePeriodicQueue(conv.id);
     const item = entry.queue.shift();
     if (item === undefined) return;
     if (lane) {
@@ -2115,6 +2126,9 @@ export function createConversationManager({
       return enqueueMessage(conv, text, false, requestKey ? {key:requestKey,sourceKind:'coordination'} : undefined, actorUserId, origin);
     },
     deliverWakeup(conv, text, wakeupId, actorUserId = conv.user_id) {
+      reconcilePeriodicQueue(conv.id);
+      const coalesced = db.prepare('SELECT 1 FROM bot_routine_coalescing WHERE wakeup_id=?').get(wakeupId);
+      if (coalesced) return { messageId: 0, disposition: 'duplicate', queue: queueSnapshot(conv.id) };
       const resultReply = resultReplyWake(db, wakeupId);
       if (resultReply) {
         if (resultReply.wake.conversation_id !== conv.id || !botWakeAllowed(db, resultReply.wake, conv))
@@ -2483,6 +2497,9 @@ export function createConversationManager({
       // design: the CLI process dies with the runner, so it either never read
       // the line or read it without ever getting to answer. Re-running it is
       // the only outcome that cannot silently lose the message.
+      for (const row of db.prepare('SELECT DISTINCT conversation_id FROM queued_messages').all() as {conversation_id: string}[]) {
+        reconcilePeriodicQueue(row.conversation_id);
+      }
       const queued = listQueuedMessagesStmt.all() as {
         id: number;
         conversation_id: string;

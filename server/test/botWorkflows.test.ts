@@ -148,6 +148,25 @@ describe('Bot workflows', () => {
         .get(),
     ).toEqual({ n: 2 });
   });
+  it('requires exact assigned-bot reply routing and keeps distinct reply events', () => {
+    const target = '00000000-0000-4000-8000-000000000001';
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES(?,1,1,'Replies','claude','reply-session','team','team-a')").run(target);
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,'Replies',1)").run(target);
+    db.prepare("INSERT INTO business_bot_members(conversation_id,team_id,role) VALUES(?,'team-a','bot')").run(target);
+    saveRoutine(db, user, target, {name:'Replies', instructions:'Check reply', kind:'customer.replied', source:'source-a', enabled:true});
+    expect(() => acceptEvent(db, 'source-a', {...event, type:'customer.replied'})).toThrow('responsible bot ID');
+    expect(acceptEvent(db, 'source-a', {...event, type:'customer.replied', assigned_bot:'00000000-0000-4000-8000-000000000002'})).toBe(0);
+    for (const id of ['reply-1','reply-2']) expect(acceptEvent(db, 'source-a', {...event, id, type:'customer.replied', assigned_bot:target})).toBe(1);
+    expect(acceptEvent(db, 'source-a', {...event, id:'reply-1', type:'customer.replied', assigned_bot:target})).toBe(0);
+    expect(db.prepare('SELECT count(*) n FROM conversation_wakeups WHERE conversation_id=?').get(target)).toEqual({n:2});
+  });
+
+  it('cannot prepare even a paused routine for an inactive bot registration', () => {
+    db.prepare("UPDATE bot_registrations SET active=0 WHERE conversation_id='a'").run();
+    expect(() => rule(false)).toThrow('Bot unavailable');
+    expect(db.prepare('SELECT count(*) n FROM bot_routines').get()).toEqual({n:0});
+  });
+
   it('cancels undelivered events on pause and refuses delivery after access revocation', () => {
     const r = rule();
     acceptEvent(db, 'source-a', event);

@@ -451,13 +451,13 @@ export const BOT_FEATURES: BotFeature[] = [
     agent: 'Proactively suggest relevant capabilities and include a usable example or guide link in task help. The guide is at /#/bot-guide; this catalog is refreshed in instructions each turn, including resumed chats.',
   },
   {
-    id: 'routines', title: 'Run a bot on a schedule', category: 'Automation', updated: '2026-09-22',
-    announcement: 'Routines run in the bot’s existing conversation, preserving its working context.',
+    id: 'routines', title: 'Run a bot on a schedule', category: 'Automation', updated: '2026-10-01',
+    announcement: 'Recurring routines now retain one pending backup check per routine while the bot is busy. Redundant proven periodic checks are coalesced with audit history; customer events and one-time reminders stay separate.',
     audience: 'Bot managers', summary: 'Give recurring work a named bot, outcome, schedule, and timezone.',
     steps: ['In the chat sidebar, open the bot’s Actions menu → Bot settings and routines → Routines.', 'Enter a name and instructions, choose a schedule and timezone, then select Create paused routine. Review it and select Enable when ready.', 'Return to Routines to pause work or inspect delivery history. Check existing automations before enabling a replacement.'],
     example: 'Every weekday at 9 AM America/Indiana/Indianapolis, review open tickets and summarize blockers here. Do not contact customers.',
-    limits: 'Management access is required. Other scheduled agents are separate; adding a routine does not replace them. Delivery history records dispatch, not proof of completed work.',
-    agent: 'Use list_bot_routines before save_bot_routine. Require authorized outcome and unambiguous timing; create paused when setup is incomplete. Preserve the full definition on update and avoid duplicate scheduled workers.',
+    limits: 'Management access is required. Other scheduled agents are separate; adding a routine does not replace them. Delivery history records dispatch, not proof of completed work. Coalescing covers bot routines, not separate scheduled agents or business execution attempts. Ambiguous legacy messages, edited checks, in-flight work and UNKNOWN outcomes are preserved.',
+    agent: 'Use list_bot_routines before save_bot_routine. Require authorized outcome and unambiguous timing; create paused when setup is incomplete. Preserve the full definition on update and avoid duplicate scheduled workers. Recurring bot routines keep at most one pending backup check per routine across wakeups and the chat queue; do not create replacement checks to defeat coalescing. Proven redundant legacy checks retain audit and idempotency receipts. Actual customer/order events, one-shot reminders, ambiguous or edited legacy rows and already dispatched/UNKNOWN work remain separate. This does not change business authority or another owner’s schedule.',
   },
   {
     id: 'events', title: 'React to ticket events', category: 'Automation', updated: '2026-09-22',
