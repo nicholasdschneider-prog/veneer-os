@@ -14,6 +14,8 @@ describe('browser script request boundary', () => {
   it('accepts only the fixed step vocabulary', () => {
     expect(valid([{ op: 'open', url: 'https://example.com' }, { op: 'wait', text: 'Ready' }, { op: 'text', selector: 'main', as: 'status' }])).toBe(true);
     expect(valid([{ op: 'click', text: 'Search', role: 'button' }, { op: 'fill', label: 'Order number', value: '123', submit: true }])).toBe(true);
+    expect(valid([{ op: 'click', text: 'Search', timeout_ms: 2000 }, { op: 'text', selector: 'main', timeout_ms: 30000 }])).toBe(true);
+    expect(valid([{ op: 'text', selector: 'main', timeout_ms: 30001 }])).toBe(false);
     for (const step of [
       { op: 'eval', code: 'document.cookie' }, { op: 'js', code: '1' }, { op: 'cookies' }, { op: 'storage' }, { op: 'network' },
       { op: 'text', selector: 'main', script: 'x' }, { op: 'wait', fn: '() => true' },
@@ -50,7 +52,8 @@ describe('browser script request boundary', () => {
       expect(method).not.toMatch(/cookie/i);
     }
     for (const method of ['Runtime.evaluate', 'Runtime.compileScript', 'Runtime.runScript', 'Page.addScriptToEvaluateOnNewDocument',
-      'Page.setDownloadBehavior', 'Page.captureScreenshot', 'Page.printToPDF', 'DOM.getOuterHTML', 'DOM.setFileInputFiles', 'Fetch.getResponseBody']) {
+      'Page.setDownloadBehavior', 'Page.captureScreenshot', 'Page.printToPDF', 'DOM.getOuterHTML', 'DOM.setFileInputFiles', 'Fetch.getResponseBody',
+      'Accessibility.getFullAXTree', 'Accessibility.getPartialAXTree', 'DOM.getDocument', 'DOM.describeNode', 'DOM.getAttributes']) {
       expect(SCRIPT_CDP_METHODS.has(method), method).toBe(false);
     }
   });
@@ -89,6 +92,27 @@ describe.skipIf(!process.env.VENEER_BROWSER_TEST_CHROME)('browser scripts in Chr
       res.setHeader('content-type', 'text/html');
       if (req.url === '/dialog') { res.end('<title>Dialog</title><body><button onclick="alert(1)">Delete</button></body>'); return; }
       if (req.url === '/large') { res.end(`<title>Large</title><body><main>${'x'.repeat(5000)}</main></body>`); return; }
+      if (req.url === '/checkout') {
+        res.end(`<title>Checkout</title><style>label.required::after { content: " *"; }</style><body><main>
+          <label class="required" for="first">First Name</label><input id="first" required>
+          <input type="password" value="do-not-return">
+          <button id="proceed">Proceed to Review &amp; Payments <i role="img" aria-label="arrow-right-alt"></i></button>
+          <div role="button" tabindex="0" id="plain" onclick="document.title='Plain clicked'"><span>Save for later</span></div>
+          <script>
+            document.cookie = 'session=secret-cookie';
+            localStorage.setItem('token', 'secret-storage');
+            document.getElementById('proceed').addEventListener('click', e => {
+              if (!e.isTrusted) return;
+              setTimeout(() => {
+                const review = document.createElement('div');
+                review.id = 'review';
+                review.innerText = 'Review ready for ' + document.getElementById('first').value;
+                document.body.appendChild(review);
+              }, 800);
+            });
+          </script></main></body>`);
+        return;
+      }
       if (req.url === '/details') { res.end('<title>Details</title><body><main>Detail page</main></body>'); return; }
       res.end(`<title>Orders</title><body>
         <div id="banner">Promo <button id="dismiss" onclick="this.parentNode.remove()">No thanks</button></div>
@@ -198,12 +222,65 @@ describe.skipIf(!process.env.VENEER_BROWSER_TEST_CHROME)('browser scripts in Chr
   });
 
   it('stops at the failing step with a fixed message and no unknown outcome before anything was pressed', async () => {
-    const result = await run({ steps: [{ op: 'open', url: `${base}/form` }, { op: 'click', text: 'Place order' }, { op: 'text' }] });
+    const result = await run({ steps: [{ op: 'open', url: `${base}/form` }, { op: 'click', text: 'Place order', timeout_ms: 300 }, { op: 'text' }] });
     expect(result).toMatchObject({ ok: false, steps_run: 1, steps_total: 3, results: [],
       error: { step: 2, op: 'click', code: 'not_found', outcome_unknown: false } });
     expect((await run({ steps: [{ op: 'open', url: `${base}/form` }, { op: 'text', selector: 'a[' }] })).error?.code).toBe('invalid_selector');
-    expect((await run({ steps: [{ op: 'text' }] })).error?.code).toBe('no_page');
     expect((await run({ steps: [{ op: 'open', url: `${base}/form` }, { op: 'wait', text: 'Never', timeout_ms: 400 }] })).error?.code).toBe('wait_timeout');
+  });
+
+  it('finds fields and buttons by the names a bot reads, and waits for what a click reveals', async () => {
+    sent.length = 0;
+    const result = await run({ steps: [
+      { op: 'open', url: `${base}/checkout` },
+      { op: 'fill', label: 'First Name *', value: 'Ada' },
+      { op: 'exists', text: 'Proceed to Review & Payments arrow-right-alt', as: 'button' },
+      { op: 'click', text: 'Proceed to Review & Payments arrow-right-alt' },
+      { op: 'text', selector: '#review', as: 'review' },
+      { op: 'click', text: 'Save for later', role: 'button' },
+      { op: 'url' },
+    ] });
+    expect(result.error).toBeUndefined();
+    const values = Object.fromEntries(result.results.map(item => [item.as ?? item.op, item.value]));
+    expect(values.button).toBe(true);
+    expect(values.review).toBe('Review ready for Ada');
+    expect(values.url).toMatchObject({ title: 'Plain clicked' });
+    const everything = JSON.stringify(result);
+    for (const secret of ['do-not-return', 'secret-cookie', 'secret-storage']) expect(everything).not.toContain(secret);
+    expect(sent).toContain('Accessibility.queryAXTree');
+    for (const method of sent) expect(SCRIPT_CDP_METHODS.has(method), method).toBe(true);
+  });
+
+  it('gives up on a missing element only after its wait, and skips an optional one quickly', async () => {
+    const slow = await run({ steps: [{ op: 'open', url: `${base}/checkout` }, { op: 'fill', label: 'Company *', value: 'x', timeout_ms: 600 }] });
+    expect(slow.error).toMatchObject({ step: 2, op: 'fill', code: 'not_found', outcome_unknown: false });
+    expect(slow.duration_ms).toBeGreaterThan(600);
+    const quick = await run({ steps: [{ op: 'open', url: `${base}/checkout` }, { op: 'click', text: 'Accept cookies', optional: true }, { op: 'exists', text: 'Accept cookies' }] });
+    expect(quick.results.map(item => item.value)).toEqual(['skipped', false]);
+    expect(quick.duration_ms).toBeLessThan(3500);
+  });
+
+  it('uses the one open web page when a script names none, and refuses to guess among several', async () => {
+    for (const target of (await observer.send('Target.getTargets')).targetInfos as { targetId: string; type: string; url: string }[]) {
+      if (target.type === 'page' && target.url.startsWith('http')) await observer.send('Target.closeTarget', { targetId: target.targetId });
+    }
+    await pageTargets();
+    expect((await run({ steps: [{ op: 'text' }] })).error).toMatchObject({ code: 'no_page', message: 'No web page is open in this browser. Start with an open step.' });
+    await run({ steps: [{ op: 'open', url: `${base}/details`, keep: true }] });
+    const only = await run({ steps: [{ op: 'text', selector: 'main' }] });
+    expect(only).toMatchObject({ ok: true, results: [{ step: 1, op: 'text', value: 'Detail page' }] });
+    // The page the script adopted is the user's own tab: it is left open.
+    expect((await pageTargets()).filter(url => url.startsWith('http'))).toEqual([`${base}/details`]);
+    await run({ steps: [{ op: 'open', url: `${base}/large?order=PRIVATE-9`, keep: true }] });
+    const several = await run({ steps: [{ op: 'text', selector: 'main' }] });
+    expect(several.error?.code).toBe('no_page');
+    expect(several.error?.message).toContain('2 tabs are open');
+    expect(several.error?.message).toContain('/details');
+    expect(several.error?.message).not.toContain('PRIVATE-9');
+    for (const target of (await observer.send('Target.getTargets')).targetInfos as { targetId: string; type: string; url: string }[]) {
+      if (target.type === 'page' && target.url.startsWith('http')) await observer.send('Target.closeTarget', { targetId: target.targetId });
+    }
+    await pageTargets();
   });
 
   it('refuses a redirect to a loopback address', async () => {

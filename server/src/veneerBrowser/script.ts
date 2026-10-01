@@ -19,6 +19,11 @@ import { readableUrl } from './readUrl.js';
 
 export const SCRIPT_MAX_STEPS = 40;
 const DEFAULT_WAIT_MS = 15_000;
+// How long a step waits for its element before it reports not_found.
+const ELEMENT_WAIT_MS = 5_000;
+const OPTIONAL_WAIT_MS = 1_000;
+// The accessibility tree is recomputed on every query, so it is consulted less often than the DOM.
+const AX_INTERVAL_MS = 1_000;
 const POLL_MS = 200;
 
 const webUrl = z.string().max(4000).refine(readableUrl, 'Use a network-accessible HTTP(S) URL without embedded credentials.');
@@ -31,6 +36,8 @@ const KEYS = ['Enter', 'Tab', 'Escape', 'Backspace', 'Delete', 'Space', 'ArrowDo
 // was just entered into a field. `value` is deliberately absent.
 const ATTRIBUTES = ['href', 'src', 'alt', 'title', 'aria-label', 'aria-checked', 'aria-selected', 'aria-expanded',
   'aria-disabled', 'aria-current', 'role', 'id', 'class', 'name', 'type', 'checked', 'disabled'] as const;
+
+const elementWait = z.number().int().min(100).max(30_000).optional();
 
 const locator = {
   selector: selector.optional(),
@@ -48,20 +55,20 @@ const StepSchema = z.discriminatedUnion('op', [
     gone: selector.optional(), url_contains: words.optional(), ms: z.number().int().min(1).max(10_000).optional(),
     timeout_ms: z.number().int().min(100).max(60_000).optional() }).strict(),
   z.object({ op: z.literal('click'), ...locator, x: z.number().min(0).max(10_000).optional(),
-    y: z.number().min(0).max(10_000).optional(), optional: z.boolean().optional() }).strict(),
+    y: z.number().min(0).max(10_000).optional(), optional: z.boolean().optional(), timeout_ms: elementWait }).strict(),
   z.object({ op: z.literal('fill'), selector: selector.optional(), label: words.optional(), exact: z.boolean().optional(),
-    nth: z.number().int().min(0).max(500).optional(), value: z.string().max(5000), submit: z.boolean().optional() }).strict(),
+    nth: z.number().int().min(0).max(500).optional(), value: z.string().max(5000), submit: z.boolean().optional(), timeout_ms: elementWait }).strict(),
   z.object({ op: z.literal('press'), key: z.enum(KEYS) }).strict(),
   z.object({ op: z.literal('select'), selector: selector.optional(), label: words.optional(), exact: z.boolean().optional(),
-    nth: z.number().int().min(0).max(500).optional(), option: z.string().min(1).max(500) }).strict(),
+    nth: z.number().int().min(0).max(500).optional(), option: z.string().min(1).max(500), timeout_ms: elementWait }).strict(),
   z.object({ op: z.literal('scroll'), selector: selector.optional(), to: z.enum(['top', 'bottom']).optional(),
-    by: z.number().int().min(-20_000).max(20_000).optional() }).strict(),
+    by: z.number().int().min(-20_000).max(20_000).optional(), timeout_ms: elementWait }).strict(),
   z.object({ op: z.literal('text'), selector: selector.optional(), all: z.boolean().optional(),
-    max_chars: z.number().int().min(1).max(50_000).optional(), as: label.optional() }).strict(),
-  z.object({ op: z.literal('table'), selector: selector.optional(), max_rows: z.number().int().min(1).max(1000).optional(), as: label.optional() }).strict(),
+    max_chars: z.number().int().min(1).max(50_000).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
+  z.object({ op: z.literal('table'), selector: selector.optional(), max_rows: z.number().int().min(1).max(1000).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
   z.object({ op: z.literal('links'), selector: selector.optional(), contains: words.optional(),
-    max: z.number().int().min(1).max(200).optional(), as: label.optional() }).strict(),
-  z.object({ op: z.literal('attr'), selector, name: z.enum(ATTRIBUTES), nth: z.number().int().min(0).max(500).optional(), as: label.optional() }).strict(),
+    max: z.number().int().min(1).max(200).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
+  z.object({ op: z.literal('attr'), selector, name: z.enum(ATTRIBUTES), nth: z.number().int().min(0).max(500).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
   z.object({ op: z.literal('exists'), ...locator, as: label.optional() }).strict(),
   z.object({ op: z.literal('url'), as: label.optional() }).strict(),
 ]);
@@ -145,7 +152,10 @@ export const SCRIPT_CDP_METHODS: ReadonlySet<string> = new Set([
   'Emulation.setFocusEmulationEnabled',
   'Fetch.enable', 'Fetch.continueRequest', 'Fetch.failRequest',
   'Runtime.callFunctionOn', 'Runtime.releaseObject',
-  'DOM.scrollIntoViewIfNeeded', 'DOM.getContentQuads', 'DOM.focus',
+  'DOM.scrollIntoViewIfNeeded', 'DOM.getContentQuads', 'DOM.focus', 'DOM.resolveNode',
+  // Used only to find which element carries a name. Its nodes can hold field
+  // values, so nothing from a reply but the element's identity is ever used.
+  'Accessibility.queryAXTree',
   'Input.dispatchMouseEvent', 'Input.dispatchKeyEvent', 'Input.insertText',
 ]);
 
@@ -156,6 +166,8 @@ const HELPERS = `
     && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none';
   const norm = value => String(value || '').replace(/\\s+/g, ' ').trim().toLowerCase();
   const matches = (value, wanted, exact) => { const have = norm(value); return !!have && (exact ? have === wanted : have.includes(wanted)); };
+  // A required marker is often drawn by CSS, so the name a bot read ('First Name *') and the label text ('First Name') differ only by it.
+  const bare = value => norm(value).replace(/\\s*[*:]+$/, '').trim();
   const ROLE = {
     button: 'button,[role="button"],input[type="submit"],input[type="button"]',
     link: 'a[href],[role="link"]', tab: '[role="tab"]', menuitem: '[role="menuitem"]',
@@ -167,12 +179,12 @@ const HELPERS = `
     let list = [];
     if (query.selector) list = [...document.querySelectorAll(query.selector)];
     else if (query.label) {
-      const wanted = norm(query.label);
+      const wanted = bare(query.label);
       for (const el of document.querySelectorAll('input,textarea,select,[contenteditable=""],[contenteditable="true"],[role="textbox"],[role="combobox"]')) {
         const names = [el.getAttribute('aria-label'), el.getAttribute('placeholder'), el.getAttribute('name'),
           ...(el.labels ? [...el.labels].map(item => item.innerText) : [])];
         for (const id of (el.getAttribute('aria-labelledby') || '').split(/\\s+/).filter(Boolean)) names.push(document.getElementById(id)?.innerText);
-        if (names.some(name => matches(name, wanted, query.exact))) list.push(el);
+        if (wanted && names.some(name => { const have = bare(name); return !!have && (query.exact ? have === wanted : have.includes(wanted)); })) list.push(el);
       }
     } else if (query.text) {
       const wanted = norm(query.text);
@@ -253,6 +265,17 @@ const PAGE_STATE = `function(options) {${HELPERS}
     hasText: options.text ? body.includes(options.text) : false, selectorVisible, goneVisible };
 }`;
 
+const DOCUMENT = 'function() { return document; }';
+
+// Turns a node the accessibility tree named into the visible element to act on.
+const AS_ELEMENT = `function(kind) {${HELPERS}
+  const el = this.nodeType === 1 ? this : this.parentElement;
+  if (!visible(el)) return null;
+  if (kind === 'fill' && !el.matches('input,textarea,select,[contenteditable=""],[contenteditable="true"],[role="textbox"],[role="searchbox"],[role="combobox"],[role="spinbutton"]')) return null;
+  if (kind === 'select' && !(el instanceof HTMLSelectElement)) return null;
+  return el;
+}`;
+
 // Selects the field's current content so the insert that follows replaces it.
 const SELECT_CONTENT = `function() {
   this.focus();
@@ -283,6 +306,15 @@ const SCROLL_PAGE = `function(options) {
   else scrollBy(0, options.by);
   return true;
 }`;
+
+type LocateKind = 'click' | 'fill' | 'select' | 'scroll' | 'exists';
+const AX_PREFERRED: Record<LocateKind, string[]> = {
+  click: ['button', 'link', 'menuitem', 'tab', 'checkbox', 'radio', 'option', 'switch'],
+  fill: ['textbox', 'searchbox', 'combobox', 'spinbutton'],
+  select: ['combobox', 'listbox'],
+  scroll: [], exists: [],
+};
+const AX_TEXT_ROLES = new Set(['StaticText', 'InlineTextBox']);
 
 const KEY_CODES: Record<(typeof KEYS)[number], { code: string; keyCode: number; text?: string; key?: string }> = {
   Enter: { code: 'Enter', keyCode: 13, text: '\r' }, Tab: { code: 'Tab', keyCode: 9 }, Escape: { code: 'Escape', keyCode: 27 },
@@ -354,6 +386,20 @@ export async function runBrowserScript(
     return page;
   };
 
+  /**
+   * A script that starts without open or tab means "the page I am on". That is
+   * only knowable when the working copy has a single web page; with several,
+   * choosing one could act on the wrong site, so the script is refused instead.
+   */
+  const adoptOnlyPage = async (): Promise<void> => {
+    const targets = ((await send('Target.getTargets')).targetInfos ?? []) as Array<{ targetId: string; type: string; url: string }>;
+    const web = targets.filter(item => item.type === 'page' && readableUrl(item.url));
+    if (web.length === 1) { page = await attach(web[0]!.targetId, false, true); return; }
+    if (!web.length) throw new StepFailure('no_page', 'No web page is open in this browser. Start with an open step.');
+    const names = web.slice(0, 6).map(item => { const url = new URL(item.url); return `${url.host}${url.pathname}`.slice(0, 80); });
+    throw new StepFailure('no_page', `${web.length} tabs are open (${names.join(', ')}${web.length > 6 ? ', …' : ''}). Start with a tab step naming part of the address you mean, or an open step.`);
+  };
+
   /** Call fixed platform code in a fresh isolated world of the current page. */
   const inPage = async (declaration: string, argument: unknown, byValue = true): Promise<any> => {
     const target = current();
@@ -421,10 +467,74 @@ export async function runBrowserScript(
     throw new StepFailure('timeout', 'The page did not finish loading in time.');
   };
 
-  const locate = async (query: Record<string, unknown>, what: string): Promise<string> => {
-    const found = await inPage(LOCATE, query, false);
-    if (found.subtype !== 'node' || !found.objectId) throw new StepFailure('not_found', `No visible element matched this ${what} step.`);
-    return found.objectId as string;
+  /**
+   * Elements whose accessible name is exactly `name`, as visible element handles.
+   *
+   * Bots copy names from the `read` snapshot, which is this same tree, so a name
+   * that includes an icon's label or a CSS-drawn required marker matches here
+   * when the page text does not. Only node identity leaves the reply.
+   */
+  const byAccessibleName = async (name: string, role: string | undefined, kind: LocateKind): Promise<string[]> => {
+    const target = current();
+    try {
+      const tree = await send('Page.getFrameTree', {}, target.sessionId);
+      const world = await send('Page.createIsolatedWorld', { frameId: tree.frameTree.frame.id, worldName: 'veneer-script' }, target.sessionId);
+      const root = await send('Runtime.callFunctionOn', { functionDeclaration: DOCUMENT, executionContextId: world.executionContextId, returnByValue: false }, target.sessionId);
+      if (!root.result?.objectId) return [];
+      const reply = await send('Accessibility.queryAXTree', { objectId: root.result.objectId, accessibleName: name, ...(role ? { role } : {}) }, target.sessionId);
+      const nodes = ((reply.nodes ?? []) as Array<{ ignored?: boolean; role?: { value?: string }; backendDOMNodeId?: number }>)
+        .filter(node => !node.ignored && typeof node.backendDOMNodeId === 'number');
+      const controls = nodes.filter(node => !AX_TEXT_ROLES.has(String(node.role?.value)));
+      // Bare text is the fallback: a clickable block with no role of its own
+      // carries its name only on the text inside it.
+      const pool = controls.length ? controls : nodes;
+      const preferred = AX_PREFERRED[kind];
+      const rank = (node: { role?: { value?: string } }): number => (preferred.includes(String(node.role?.value)) ? 0 : 1);
+      const ordered = [...pool].sort((a, b) => rank(a) - rank(b)).slice(0, 30);
+      const found: string[] = [];
+      for (const node of ordered) {
+        const resolved = await send('DOM.resolveNode', { backendNodeId: node.backendDOMNodeId, executionContextId: world.executionContextId }, target.sessionId);
+        if (!resolved.object?.objectId) continue;
+        const element = await send('Runtime.callFunctionOn', { functionDeclaration: AS_ELEMENT, objectId: resolved.object.objectId,
+          arguments: [{ value: kind }], returnByValue: false }, target.sessionId);
+        if (element.result?.subtype === 'node' && element.result.objectId) found.push(element.result.objectId as string);
+      }
+      return found;
+    } catch (error) {
+      if (error instanceof StepFailure) throw error;
+      // A navigation in the middle, or a browser without this query: not found yet.
+      return [];
+    }
+  };
+
+  /** Wait for the step's element: page text first, then the accessible name a bot would have read. */
+  const locate = async (query: { selector?: string; text?: string; label?: string; role?: string; exact?: boolean; nth?: number },
+    kind: LocateKind, waitMs = ELEMENT_WAIT_MS): Promise<string> => {
+    const until = Date.now() + Math.min(waitMs, remaining());
+    const name = query.text ?? query.label;
+    let nextAx = 0;
+    for (;;) {
+      const found = await inPage(LOCATE, query, false);
+      if (found.subtype === 'node' && found.objectId) return found.objectId as string;
+      if (name && Date.now() >= nextAx) {
+        nextAx = Date.now() + AX_INTERVAL_MS;
+        const named = await byAccessibleName(name, query.role, kind);
+        if (named[query.nth ?? 0]) return named[query.nth ?? 0]!;
+      }
+      if (Date.now() >= until) throw new StepFailure('not_found', `No visible element matched this ${kind} step.`);
+      await sleep(Math.min(POLL_MS, remaining()));
+    }
+  };
+
+  /** Wait for a reading step's element to appear, so a read right after a click sees the new page. */
+  const read = async (declaration: string, options: Record<string, unknown>, missing: (value: any) => boolean, what: string, waitMs = ELEMENT_WAIT_MS): Promise<any> => {
+    const until = Date.now() + Math.min(waitMs, remaining());
+    for (;;) {
+      const value = (await inPage(declaration, options)).value;
+      if (!missing(value)) return value;
+      if (Date.now() >= until) throw new StepFailure('not_found', `No visible element matched this ${what} step.`);
+      await sleep(Math.min(POLL_MS, remaining()));
+    }
   };
 
   const center = async (objectId: string): Promise<{ x: number; y: number }> => {
@@ -478,6 +588,7 @@ export async function runBrowserScript(
   };
 
   const execute = async (step: ScriptStep, index: number): Promise<void> => {
+    if (!page && step.op !== 'open' && step.op !== 'tab') await adoptOnlyPage();
     switch (step.op) {
       case 'open': {
         const blank = `about:blank#veneer-script-${randomUUID()}`;
@@ -519,7 +630,7 @@ export async function runBrowserScript(
         if (step.x !== undefined && step.y !== undefined) { current(); await clickAt(step.x, step.y); return; }
         const query = { selector: step.selector, text: step.text, role: step.role, exact: step.exact, nth: step.nth };
         let objectId: string;
-        try { objectId = await locate(query, 'click'); }
+        try { objectId = await locate(query, 'click', step.timeout_ms ?? (step.optional ? OPTIONAL_WAIT_MS : ELEMENT_WAIT_MS)); }
         catch (error) {
           if (step.optional && error instanceof StepFailure && error.code === 'not_found') { record(index, step, 'skipped'); return; }
           throw error;
@@ -530,7 +641,7 @@ export async function runBrowserScript(
       }
       case 'fill': {
         const target = current();
-        const objectId = await locate({ selector: step.selector, label: step.label, exact: step.exact, nth: step.nth }, 'fill');
+        const objectId = await locate({ selector: step.selector, label: step.label, exact: step.exact, nth: step.nth }, 'fill', step.timeout_ms);
         await send('DOM.scrollIntoViewIfNeeded', { objectId }, target.sessionId);
         await send('DOM.focus', { objectId }, target.sessionId);
         await send('Runtime.callFunctionOn', { functionDeclaration: SELECT_CONTENT, objectId, returnByValue: true }, target.sessionId);
@@ -550,7 +661,7 @@ export async function runBrowserScript(
         return;
       case 'select': {
         const target = current();
-        const objectId = await locate({ selector: step.selector, label: step.label, exact: step.exact, nth: step.nth }, 'select');
+        const objectId = await locate({ selector: step.selector, label: step.label, exact: step.exact, nth: step.nth }, 'select', step.timeout_ms);
         const chosen = (await send('Runtime.callFunctionOn', {
           functionDeclaration: CHOOSE_OPTION, objectId, arguments: [{ value: step.option }], returnByValue: true,
         }, target.sessionId)).result?.value;
@@ -560,20 +671,18 @@ export async function runBrowserScript(
       }
       case 'scroll': {
         if (step.selector) {
-          const objectId = await locate({ selector: step.selector }, 'scroll');
+          const objectId = await locate({ selector: step.selector }, 'scroll', step.timeout_ms);
           await send('DOM.scrollIntoViewIfNeeded', { objectId }, current().sessionId);
         } else await inPage(SCROLL_PAGE, { to: step.to, by: step.by });
         return;
       }
       case 'text': {
-        const value = (await inPage(READ_TEXT, { selector: step.selector, all: step.all })).value;
-        if (value === null || value === undefined) throw new StepFailure('not_found', 'No visible element matched this text step.');
+        const value = await read(READ_TEXT, { selector: step.selector, all: step.all }, found => found === null || found === undefined, 'text', step.timeout_ms);
         record(index, step, clip(String(value), step.max_chars ?? budget));
         return;
       }
       case 'table': {
-        const value = (await inPage(READ_TABLE, { selector: step.selector, max_rows: step.max_rows ?? 200 })).value;
-        if (!value) throw new StepFailure('not_found', 'No visible table matched this step.');
+        const value = await read(READ_TABLE, { selector: step.selector, max_rows: step.max_rows ?? 200 }, found => !found, 'table', step.timeout_ms);
         const rows: string[][] = [];
         for (const row of value.rows as string[][]) {
           if (budget <= 0) { truncated = true; break; }
@@ -584,8 +693,7 @@ export async function runBrowserScript(
         return;
       }
       case 'links': {
-        const value = (await inPage(READ_LINKS, { selector: step.selector, contains: step.contains, max: step.max ?? 50 })).value;
-        if (!value) throw new StepFailure('not_found', 'No element matched this links step.');
+        const value = await read(READ_LINKS, { selector: step.selector, contains: step.contains, max: step.max ?? 50 }, found => !found, 'links', step.timeout_ms);
         const links: Array<{ text: string; href: string }> = [];
         for (const link of value.links as Array<{ text: string; href: string }>) {
           if (budget <= 0) { truncated = true; break; }
@@ -596,13 +704,13 @@ export async function runBrowserScript(
         return;
       }
       case 'attr': {
-        const value = (await inPage(READ_ATTR, { selector: step.selector, name: step.name, nth: step.nth })).value;
-        if (!value || value.missing) throw new StepFailure('not_found', 'No visible element matched this attr step.');
+        const value = await read(READ_ATTR, { selector: step.selector, name: step.name, nth: step.nth }, found => !found || found.missing, 'attr', step.timeout_ms);
         record(index, step, typeof value.value === 'string' ? clip(value.value) : value.value);
         return;
       }
       case 'exists': {
-        const total = (await inPage(COUNT, { selector: step.selector, text: step.text, role: step.role, exact: step.exact })).value as number;
+        let total = (await inPage(COUNT, { selector: step.selector, text: step.text, role: step.role, exact: step.exact })).value as number;
+        if (!total && step.text) total = (await byAccessibleName(step.text, step.role, 'exists')).length;
         record(index, step, total > (step.nth ?? 0));
         return;
       }

@@ -110,3 +110,70 @@ Both carriers returned the correct current status. The audit trail recorded one
 `command.executed` row with command `script.read`, `success: true`, `steps: 6`
 and `duration_ms: 9616`. No tab was left open. The four node services were
 restarted; the browser manager was not, because none of its code changed.
+
+## First real use and build #515 (2026-10-01)
+
+### What happened
+
+Sage (a Codex bot) took a Lippert dropship order at 12:49Z, twelve minutes after
+deployment. In seven minutes it issued 89 browser commands, 10 of them scripts.
+Four scripts failed, including all three that did real work, and Sage went back
+to single-step tools, using `script` only as `tab` plus `wait ms`.
+
+| Sage's step | Result | Cause |
+|---|---|---|
+| `fill` with label `First Name *` | `not_found` | The asterisk is drawn by CSS. It is in the accessible name a bot reads, not in the label text. |
+| `click` with text `Proceed to Review & Payments arrow-right-alt` | `not_found` | The icon's label is part of the accessible name, not of the visible text. |
+| `text` on `body` straight after an Add to Cart click | `not_found` | The page was re-rendering and the step did not wait. |
+| `wait ms` then `text`, with no `open` or `tab` | `no_page` | Sage meant the page it was already on. |
+
+Every failure happened before anything was pressed, except the third, where the
+two preceding clicks had already completed normally.
+
+### Fixes
+
+- **Names as bots read them.** When page text does not match, `click` text,
+  `exists` text and `fill`/`select` label fall back to Chrome's accessibility
+  tree with the exact accessible name (and role when given), which is the tree
+  the `read` snapshot is built from. Label matching also ignores a trailing
+  required marker. `Accessibility.queryAXTree` and `DOM.resolveNode` joined the
+  method allowlist; only the matched element's identity is used, never a node's
+  value or properties.
+- **Steps wait for their element.** `click`, `fill`, `select`, `scroll`, `text`,
+  `table`, `links` and `attr` poll for up to 5 seconds (`timeout_ms` per step,
+  1 second for an `optional` click) before reporting `not_found`. `exists`
+  stays immediate.
+- **The page you are on.** A script with no `open` or `tab` uses the open page
+  when the working copy has exactly one web page tab. With several it is refused
+  with a message naming the tabs (host and path only), rather than guessing.
+- Tool description, server instructions and the guide entry now say so.
+
+Real-Chrome tests grew from 11 to 14 and reproduce each failure. Full suite:
+server 3,262 passed (15 skipped), web 966, browser-manager 49, installer 29.
+
+### Correction to the original evidence
+
+The estimate above treated every browser command as one model turn. That holds
+for bots that call the browser tools directly. Codex bots already chain calls
+through their `exec` tool: on 2026-10-01 Sage wrote 140 browser calls across 61
+turns, about 2.3 per turn. For those bots the saving is per-command latency and
+fewer snapshots, not an eightfold cut in turns.
+
+### Measured use on Lippert the same morning
+
+| Run | Browser calls | Scripts | Scripts succeeded | Steps carried inside scripts |
+|---|---|---|---|---|
+| Sage, before #512, 11:43Z to 12:43Z | 293 | 0 | n/a | 0 |
+| Sage, first order after #512, 12:49Z to 12:56Z | 89 | 10 | 6 | 23 |
+| Lippert dropship sweep chat, 13:03Z to 13:18Z, still running | 116 | 40 | 36 | 321 |
+
+The sweep chat ran on the #512 version, before these fixes. Its 116 calls did
+the work of roughly 397 single steps, and its largest script carried 37 steps.
+
+### Deployment note
+
+`npm run restart` restarts the runner and interrupts every bot's in-flight turn.
+The #512 restart at 12:37Z landed while Sage was working. Check
+`veneer_browser_audit` for recent commands and wait for a quiet moment before
+restarting; the detached restart is cut off after the runner, so restart
+`veneer-pro-app-runner` and `veneer-pro-term` individually afterwards.
