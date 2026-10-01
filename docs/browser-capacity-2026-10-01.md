@@ -70,6 +70,48 @@ unchanged. Live browsers survive a browser-manager restart.
   release always allowed), the bot-facing messages, and the panel route.
 - web 968, installer 29. Typecheck and build pass.
 
-## Live saturation test and after-measurements
+## Live saturation test (2026-10-01 19:49Z, real manager, real Chrome)
 
-Appended below after deployment.
+The browser manager was restarted alone at 19:46Z during a lull; running browsers
+survive that restart. The test used disposable signed-out copies in two throwaway
+projects through the manager's own API, never a bot's chat or profile, and loaded
+a real page in each (USPS, UPS, FedEx, Wikipedia, MDN and others). One bot copy
+was running throughout.
+
+| Check | Result |
+|---|---|
+| Limits reported by the manager | 7 machine, 4 per project |
+| Project A, copies 1 to 4 | started, about 0.5 s each |
+| Project A, copy 5 | refused after the 20 s admission wait (project cap) |
+| Project B, copies 1 and 2 | started; machine at 7 of 7 |
+| Machine copy 8 | refused after the 20 s admission wait |
+| Running at any point | never above 7 |
+| After cleanup | back to 1 running; 8 test profiles removed |
+
+In an earlier run the eighth copy waited 11.7 s and was admitted the moment a
+bot's browser paused, with the count still at 7.
+
+Memory on the 16 GB Mac:
+
+| | Free | Managed copies | Their RSS | All Chrome RSS |
+|---|---|---|---|---|
+| Before | 42% | 3 (one running, two paused or warm) | 0.86 GB | 1.8 GB |
+| Seven running with pages loaded | 32% | 9 | 7.8 GB | 8.5 GB |
+| After | 42% | 3 | | |
+
+- Free memory stayed above the 20% floor set for this test, so the limit stays at 7.
+- RSS double-counts memory shared between Chrome processes, so 7.8 GB overstates
+  the real cost; the 10-point drop in free memory (about 1.6 GB) is the better
+  measure. Heavy carrier pages ran 0.9 to 1.6 GB RSS per copy, well above the
+  0.3 to 0.4 GB measured on September 29 for typical bot pages.
+- **Caution:** swap was already 9.7 of 10.2 GB used before the test and reached
+  9.95 GB during it. Seven browsers did not cause that, but the Mac has little
+  swap headroom. If free memory at a real seven-browser peak falls under 20%, drop
+  `VENEER_BROWSER_MAX_ACTIVE` to 6.
+
+Script and raw output: `out/browser-capacity/saturation.mjs`,
+`out/browser-capacity/saturation-result-2.json`.
+
+## After-measurements
+
+Appended below as they are taken.
