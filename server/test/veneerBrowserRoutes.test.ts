@@ -315,7 +315,8 @@ describe('Veneer Browser MCP endpoint', () => {
   const captureGrantActive = vi.fn(() => false);
   const fetchUrl = vi.fn(async () => ({ ok: true, final_url: 'https://example.com', fetched_at: '2026-09-10T00:00:00Z', text: 'Ready', tables: [], title: 'Example', truncated: false }));
   const db = { prepare: () => ({ get: () => ({ id: 1 }) }) } as unknown as Database.Database;
-  const manager = { runCommand, conversationSession, captureGrantActive, fetchUrl } as unknown as VeneerBrowserManager;
+  const runScript = vi.fn(async () => ({ ok: true, steps_run: 2, steps_total: 2, duration_ms: 5, results: [{ step: 2, op: 'text', value: 'Delivered' }], truncated: false, url: 'https://example.com/', title: 'Example', kept_tabs: [], page_opened_tabs: [] }));
+  const manager = { runCommand, conversationSession, captureGrantActive, fetchUrl, runScript } as unknown as VeneerBrowserManager;
 
   const call = async (name: string, args: Record<string, unknown> = {}): Promise<{ text: string; isError: boolean }> => {
     const response = await fetch(base, {
@@ -365,6 +366,31 @@ describe('Veneer Browser MCP endpoint', () => {
     expect(JSON.parse(result.text).text).toBe('Ready');
     expect(fetchUrl).toHaveBeenCalledWith(1, 'chat-1', request);
     expect(runCommand).not.toHaveBeenCalled();
+  });
+
+  it('lists the script tool and routes a step list to the manager without spawning commands', async () => {
+    const response = await fetch(base, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-vp-agent-token': 'token' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    });
+    const listed = await response.json() as { result: { tools: { name: string; description: string }[] } };
+    const tool = listed.result.tools.find((item) => item.name === 'script');
+    expect(tool?.description).toContain('not code');
+    const request = { steps: [{ op: 'open', url: 'https://example.com' }, { op: 'text', selector: 'main' }] };
+    const result = await call('script', request);
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.text).results[0].value).toBe('Delivered');
+    expect(runScript).toHaveBeenCalledWith(1, 'chat-1', request, { secretLive: false });
+    expect(runCommand).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed script as an error result', async () => {
+    runScript.mockResolvedValueOnce({ ok: false, steps_run: 0, steps_total: 1, duration_ms: 1, results: [], truncated: false, url: null, title: '', kept_tabs: [], page_opened_tabs: [],
+      error: { step: 1, op: 'click', code: 'not_found', message: 'No visible element matched this click step.', outcome_unknown: false } } as never);
+    const result = await call('script', { steps: [{ op: 'click', text: 'Missing' }] });
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.text).error.code).toBe('not_found');
   });
 
   it('passes a safe raw command through the escape hatch', async () => {

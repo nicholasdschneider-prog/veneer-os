@@ -24,6 +24,7 @@ import { createSerialQueue, type SerialQueue } from '../mcp/serialQueue.js';
 import { canSendToConversation } from '../conversations/access.js';
 import { isEmployee } from '../bots/employeeAccess.js';
 import { ReadUrlSchema, readBrowserUrl, readUrlFailure, type ReadUrlResult } from './readUrl.js';
+import { ScriptSchema, runBrowserScript, scriptFailure, scriptMutates, scriptReadsPage, type ScriptResult } from './script.js';
 import { hasLiveSecretField } from './secretFill.js';
 import {
   isVeneerBrowserRemoteError,
@@ -45,7 +46,7 @@ const HOLD_MAX_MS = 2 * 60 * 60_000;
 // only to tell the bot, on reopen, that an earlier action needs verifying; it
 // no longer keeps a browser running.
 const IDLE_SAFE_COMMANDS = new Set(['open', 'get', 'snapshot', 'screenshot', 'tab', 'scroll',
-  'scrollintoview', 'wait', 'back', 'forward', 'reload', 'fetch_url']);
+  'scrollintoview', 'wait', 'back', 'forward', 'reload', 'fetch_url', 'script.read']);
 const UNFILED_SCOPE_PREFIX = 'unfiled-user-';
 // A chat that is already running commands re-checks the remote runtime at most
 // this often.
@@ -212,6 +213,7 @@ export interface VeneerBrowserManagerOptions {
   runBrowser?: typeof runAgentBrowser;
   closeBrowserSession?: typeof closeVeneerBrowserSession;
   readUrl?: typeof readBrowserUrl;
+  runScript?: typeof runBrowserScript;
   reconnectController?: typeof reconnectVeneerBrowserController;
 }
 
@@ -267,6 +269,7 @@ export class VeneerBrowserManager {
   private readonly closeBrowserSession: typeof closeVeneerBrowserSession;
   private readonly reconnectController: typeof reconnectVeneerBrowserController;
   private readonly readUrl: typeof readBrowserUrl;
+  private readonly script: typeof runBrowserScript;
   private readonly queues = new Map<string, SerialQueue>();
   private readonly runtimeCache = new Map<string, ConversationRuntimeCache>();
   private readonly probeAddresses = new Map<string, ProbeAddress>();
@@ -281,6 +284,7 @@ export class VeneerBrowserManager {
     this.closeBrowserSession = options.closeBrowserSession ?? closeVeneerBrowserSession;
     this.reconnectController = options.reconnectController ?? reconnectVeneerBrowserController;
     this.readUrl = options.readUrl ?? readBrowserUrl;
+    this.script = options.runScript ?? runBrowserScript;
     this.capacityWaits = createCapacityWaits({ db: this.db, clientScope: () => this.clientScope(),
       authorize: (userId, id) => { this.conversation(id, userId, true); },
       available: async (conversationId) => {
@@ -1343,6 +1347,59 @@ export class VeneerBrowserManager {
       }, { waitTimeoutMs: parsed.data.timeout_ms });
     } catch {
       return readUrlFailure('browser_unavailable', 'The browser is busy or unavailable. Try again when it is ready.');
+    }
+  }
+
+  /**
+   * Run a list of browser steps in one call and return only what they read.
+   *
+   * Like fetchUrl, this takes its own ticket and connection, so the
+   * agent-browser daemon's cached ticket, selected tab and @refs are untouched.
+   * Nothing is retried or replayed: a script that pressed or typed and then
+   * failed is recorded as an action whose outcome needs checking.
+   */
+  async runScript(userId: number, conversationId: string, input: unknown, options: { secretLive?: boolean } = {}): Promise<ScriptResult> {
+    const parsed = ScriptSchema.safeParse(input);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const where = issue?.path[0] === 'steps' && typeof issue.path[1] === 'number' ? `Step ${issue.path[1] + 1}: ` : '';
+      // Zod's own text for a union or an unknown key can echo the input; only
+      // this module's fixed messages are passed through.
+      const text = issue?.code === 'custom' ? issue.message : 'check the step fields against the script tool description.';
+      return scriptFailure('invalid_request', `${where}${text}`);
+    }
+    const request = parsed.data;
+    const total = request.steps.length;
+    if (options.secretLive && scriptReadsPage(request)) {
+      return scriptFailure('secret_live', 'A field in this chat was just filled with a secret, so scripts cannot return page content until the page changes. Finish the sign-in with click, then run the script.', total);
+    }
+    const context = this.conversation(conversationId, userId, true);
+    const mutates = scriptMutates(request);
+    try {
+      return await this.queue(`conversation:${context.id}`).run(async () => {
+        // Recheck after waiting; chat ownership may have changed in the queue.
+        const currentContext = this.conversation(conversationId, userId, true);
+        const user = this.db.prepare('SELECT status FROM users WHERE id = ?').get(userId) as { status: string } | undefined;
+        if (user?.status !== 'active') return scriptFailure('access_denied', 'An active chat owner is required.', total);
+        const runtime = await this.conversationRuntime(currentContext);
+        const recovery = this.db.prepare('SELECT outcome FROM browser_controller_recovery WHERE conversation_id=? AND clone_id=? ORDER BY id DESC LIMIT 1')
+          .get(context.id, runtime.row.clone_profile_id) as { outcome: string } | undefined;
+        if (recovery && recovery.outcome !== 'read_verified') {
+          return scriptFailure('recovery_pending', 'Controller recovery is not finished for this browser. List tabs and read the page before running a script.', total);
+        }
+        if (mutates) this.audit(runtime.row.project_id, runtime.auditProfileId, 'clone.interaction', userId, context.id);
+        const ticket = await this.remote.ticket(runtime.row.project_id, runtime.row.clone_profile_id, 'agent');
+        const result = await this.script(request, { cdpUrl: ticket.cdpUrl, caFile: this.remote.cdpCaFile(ticket.cdpUrl) });
+        this.db.prepare('UPDATE veneer_browser_clone_sessions SET last_used_at = ? WHERE conversation_id = ? AND clone_profile_id = ?')
+          .run(now(), context.id, runtime.row.clone_profile_id);
+        this.audit(runtime.row.project_id, runtime.auditProfileId, 'command.executed', userId, context.id, {
+          command: mutates ? 'script' : 'script.read', success: result.ok, steps: result.steps_run,
+          duration_ms: result.duration_ms, output_chars: JSON.stringify(result.results).length,
+        });
+        return result;
+      }, { waitTimeoutMs: request.timeout_ms });
+    } catch {
+      return scriptFailure('browser_unavailable', 'The browser is busy or unavailable. Try again when it is ready.', total);
     }
   }
 

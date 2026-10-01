@@ -22,6 +22,7 @@ describe('Veneer Browser manager', () => {
   let runBrowser: ReturnType<typeof vi.fn>;
   let closeBrowserSession: ReturnType<typeof vi.fn>;
   let readUrl: ReturnType<typeof vi.fn>;
+  let runScript: ReturnType<typeof vi.fn>;
   let reconnectController: ReturnType<typeof vi.fn>;
   let running: Set<string>;
 
@@ -100,6 +101,7 @@ describe('Veneer Browser manager', () => {
     runBrowser = vi.fn(async () => ({ args: ['snapshot', '-i'], stdout: 'page snapshot', stderr: '', exitCode: 0 }));
     closeBrowserSession = vi.fn(async () => undefined);
     readUrl = vi.fn(async () => ({ ok: true, final_url: 'https://example.com/', fetched_at: new Date().toISOString(), title: 'Example', text: 'Ready', tables: [], truncated: false }));
+    runScript = vi.fn(async (request: { steps: unknown[] }) => ({ ok: true, steps_run: request.steps.length, steps_total: request.steps.length, duration_ms: 7, results: [{ step: 2, op: 'text', value: 'Delivered' }], truncated: false, url: 'https://example.com/', title: 'Example', kept_tabs: [], page_opened_tabs: [] }));
     reconnectController = vi.fn(async () => undefined);
     manager = new VeneerBrowserManager({
       db,
@@ -109,6 +111,7 @@ describe('Veneer Browser manager', () => {
       closeBrowserSession: closeBrowserSession as never,
       reconnectController: reconnectController as never,
       readUrl: readUrl as never,
+      runScript: runScript as never,
     });
   });
 
@@ -333,6 +336,58 @@ describe('Veneer Browser manager', () => {
     const invalid = await manager.fetchUrl(1, 'conv-1', { url: 'file:///etc/passwd' });
     expect(invalid.error?.code).toBe('invalid_request');
     expect(readUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs a script on its own ticket and audits one row without the step contents', async () => {
+    const profile = await manager.createProfile(1, 'project-1', 'Personal');
+    manager.selectForConversation(1, 'conv-1', profile.id);
+    const steps = [{ op: 'open', url: 'https://example.com/track?id=PRIVATE-123' }, { op: 'text', selector: 'main' }];
+    const result = await manager.runScript(1, 'conv-1', { steps });
+    expect(result.ok).toBe(true);
+    expect(runBrowser).not.toHaveBeenCalled();
+    expect(runScript.mock.calls[0]?.[1]).toMatchObject({ cdpUrl: 'wss://browser.example.test/cdp/short-lived-ticket/ws' });
+    expect(runScript.mock.calls[0]?.[0]).toMatchObject({ timeout_ms: 60000, max_chars: 20000 });
+    const rows = db.prepare("SELECT action, metadata_json FROM veneer_browser_audit WHERE action IN ('command.executed', 'clone.interaction')").all() as { action: string; metadata_json: string }[];
+    expect(rows).toEqual([{ action: 'command.executed', metadata_json: JSON.stringify({ command: 'script.read', success: true, steps: 2, duration_ms: 7, output_chars: JSON.stringify(result.results).length }) }]);
+    expect(JSON.stringify(rows)).not.toContain('PRIVATE-123');
+    expect((await manager.conversationSession(1, 'conv-1')).pendingReview).toBe(false);
+    await expect(manager.runScript(2, 'conv-1', { steps })).rejects.toThrow('one of your chats');
+  });
+
+  it('marks a failed mutating script for review and never replays it', async () => {
+    const profile = await manager.createProfile(1, 'project-1', 'Personal');
+    manager.selectForConversation(1, 'conv-1', profile.id);
+    runScript.mockImplementationOnce(async () => ({ ok: false, steps_run: 1, steps_total: 2, duration_ms: 9, results: [], truncated: false, url: null, title: '', kept_tabs: [], page_opened_tabs: [],
+      error: { step: 2, op: 'click', code: 'browser_error', message: 'The click could not be confirmed.', outcome_unknown: true } }));
+    const result = await manager.runScript(1, 'conv-1', { steps: [{ op: 'open', url: 'https://example.com/' }, { op: 'click', text: 'Place order' }] });
+    expect(result.error?.outcome_unknown).toBe(true);
+    expect(runScript).toHaveBeenCalledTimes(1);
+    const actions = (db.prepare("SELECT action, metadata_json FROM veneer_browser_audit WHERE action IN ('command.executed', 'clone.interaction') ORDER BY id").all() as { action: string; metadata_json: string }[]);
+    expect(actions.map(row => row.action)).toEqual(['clone.interaction', 'command.executed']);
+    expect(JSON.parse(actions[1]!.metadata_json)).toMatchObject({ command: 'script', success: false });
+    expect((await manager.conversationSession(1, 'conv-1')).pendingReview).toBe(true);
+  });
+
+  it('refuses invalid scripts, code, loopback addresses and page reads while a secret is live', async () => {
+    const profile = await manager.createProfile(1, 'project-1', 'Personal');
+    manager.selectForConversation(1, 'conv-1', profile.id);
+    for (const steps of [
+      [{ op: 'open', url: 'file:///etc/passwd' }],
+      [{ op: 'open', url: 'http://127.0.0.1:3100/' }],
+      [{ op: 'eval', code: 'document.cookie' }],
+      [{ op: 'text', selector: 'main', script: 'document.cookie' }],
+      [{ op: 'attr', selector: 'input', name: 'value' }],
+      [{ op: 'click' }],
+      [],
+    ]) {
+      const refused = await manager.runScript(1, 'conv-1', { steps });
+      expect(refused.error?.code).toBe('invalid_request');
+      expect(refused.error?.message).not.toContain('cookie');
+    }
+    const steps = [{ op: 'tab', url_contains: 'example.com' }, { op: 'text' }];
+    expect((await manager.runScript(1, 'conv-1', { steps }, { secretLive: true })).error?.code).toBe('secret_live');
+    expect((await manager.runScript(1, 'conv-1', { steps: [{ op: 'tab', url_contains: 'example.com' }, { op: 'click', text: 'Sign in' }] }, { secretLive: true })).ok).toBe(true);
+    expect(runScript).toHaveBeenCalledTimes(1);
   });
 
   it('derives client and project scope and denies a cross-project profile id', async () => {
