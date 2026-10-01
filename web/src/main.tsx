@@ -1,3 +1,4 @@
+import { QuestionDesk } from './components/QuestionDesk';
 import { MessageAudioProvider } from './components/MessageAudioPlayer';
 import { BotWorkflowDialogs, WorkspaceSearch } from './components/BotWorkflows';
 import { StrictMode } from 'react';
@@ -20,7 +21,7 @@ applyColorMode(getColorMode());
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <FloatingDesktopProvider>
-      <VoiceProvider><MessageAudioProvider><App /><BotWorkflowDialogs /><WorkspaceSearch /></MessageAudioProvider></VoiceProvider>
+      <VoiceProvider><MessageAudioProvider><QuestionDesk><App /></QuestionDesk><BotWorkflowDialogs /><WorkspaceSearch /></MessageAudioProvider></VoiceProvider>
     </FloatingDesktopProvider>
     <PwaUpdatePrompt />
   </StrictMode>,

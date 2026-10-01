@@ -35,6 +35,7 @@ async function stop() {
   process.exit(0);
 }
 const NOTICES: Record<string, string> = {
+  hotline: 'The question line or selected question changed. Use this fresh reference data to identify its owning bot and current question. Do not impersonate that bot. Do not repeat a question the caller already answered, interrupt their current speech, or infer approval. If there is a new discussion reply relevant to the current question, summarize it briefly with attribution. Native answer records are distinct from completed work.',
   update: 'Conversation activity changed. The currentConversation below is freshly read from the actual agent thread. Also inspect focusedDecision.discussion for new replies: these can arrive without a chat reply. Report new results or questions from this evidence, rather than reusing older tool results or guessing what the agent probably did. Working means running; idle alone does not prove success. Be brief and continue the conversation.',
   question: 'A new pending question arrived. Briefly let the user know and ask if they want to review it. Do not interrupt their current topic with details.',
   decision: 'A new decision needing the user’s input was raised. Briefly mention it and offer to go through it. Do not interrupt their current topic with details.',
@@ -70,7 +71,7 @@ process.on('message', (raw: unknown) => {
   void (async () => {
     const config = z.object({ url: z.string(), token: z.string(), apiKey: z.string(),
       preferences: voicePreferencesSchema.default({}), instructions: z.string(), participantIdentity: z.string(),
-      mode: z.enum(['coordinator', 'bot']).default('coordinator'), agentName: z.string().default('Henry') }).parse(message);
+      mode: z.enum(['coordinator', 'bot', 'hotline']).default('coordinator'), agentName: z.string().default('Henry') }).parse(message);
     const model = new realtime.RealtimeModel({ apiKey: config.apiKey, model: 'gpt-realtime', voice: 'marin',
       // OpenAI owns interruption onset in this pipeline; AgentSession's local
       // minimum-duration/word settings do not gate server speech_started events.
@@ -82,6 +83,7 @@ process.on('message', (raw: unknown) => {
       inputAudioTranscription: { model: 'gpt-4o-mini-transcribe' }, maxSessionDuration: 50 * 60 * 1000 });
     session = new voice.AgentSession({ llm: model });
     const bot = config.mode === 'bot';
+    const hotline = config.mode === 'hotline';
     const name = config.agentName;
     let agent: voice.Agent;
     const tools: Record<string, ReturnType<typeof llm.tool>> = {
@@ -101,7 +103,7 @@ process.on('message', (raw: unknown) => {
         parameters: z.object({ requestId: z.string(), answers: z.array(z.object({ questionId: z.string(), values: z.array(z.string()) })) }),
         execute: async args => call('answer', { requestId: args.requestId, answers: Object.fromEntries(args.answers.map(a => [a.questionId, a.values])) }) }),
     };
-    if (bot) {
+    if (bot || hotline) {
       tools.search_context = llm.tool({ description: 'Fast read-only search of this bot’s existing chat and decision evidence. Use an exact order/tracking number or short phrase before dispatching a fact-gathering task. This does not fetch fresh external data. Results include source, author, date and excerpt coverage.',
         parameters: z.object({ query: z.string().min(2).max(200) }), execute: async args => call('search_context', args) });
       tools.send_message = llm.tool({ description: `The only way any work starts. Post what the caller said, in the caller's words, into your own background chat where you do the actual work. Call it immediately for every explicit instruction, order detail or data item as it is given, one call per item, before acknowledging aloud. The phone channel itself cannot do the work. You will be told when your background reply arrives; report it as your own progress.`,
@@ -118,12 +120,31 @@ process.on('message', (raw: unknown) => {
         parameters: z.object({ decisionId: z.string(), version: z.number().int(), requestId: z.string(), body: z.string() }),
         execute: async args => call('edit_reply', args) });
       tools.answer_decision = llm.tool({ description: 'Required for explicit spoken approval: atomically claim an available shared card and record the caller’s decision, with no further UI click. Do not post an approval as discussion instead. Only after they clearly state approve, reject, defer or withdraw and you repeated it back. Use the exact decisionId and version from read_decision. text is their reasoning in their words; conditional future actions do not widen the current approval.',
-        parameters: z.object({ decisionId: z.string(), version: z.number().int(), action: z.enum(['approve', 'reject', 'defer', 'withdraw']), text: z.string(), scope: z.enum(['this_case', 'standing_rule']).default('this_case') }),
+        parameters: z.object({ decisionId: z.string(), version: z.number().int(), action: z.enum(['approve', 'reject', 'defer', 'withdraw']), text: z.string(), callerQuote:z.string().optional().describe('Hotline: quote the entire latest caller utterance verbatim. It must be a fresh explicit answer to this exact question; never reuse earlier speech.'), scope: z.enum(['this_case', 'standing_rule']).default('this_case') }),
         execute: async args => call('answer_decision', args) });
     } else {
       tools.list_chats = llm.tool({ description: 'List recent chats to find relevant context.', execute: async () => call('chats') });
     }
+    if(hotline) {
+      for(const name of ['list_blockers','read_chat','answer_question','search_context','send_message','list_decisions']) delete tools[name];
+      tools.question_line=llm.tool({description:'Read the caller’s current question line and exact bot names. No mutation.',execute:async()=>call('question_line')});
+      tools.navigate_question=llm.tool({description:'Select or show a question, go to the next waiting question, send current question to the back, or remind at an explicit time. Navigation never records a business answer.',parameters:z.object({action:z.enum(['next','select','skip','remind','show']),decisionId:z.string().nullish(),until:z.number().nullish().describe('Future Unix milliseconds for an explicit absolute time in caller timezone. Prefer delayMinutes for relative reminders.'),delayMinutes:z.number().nullish().describe('Relative reminder in minutes, from 1 to 43200. One hour is 60. Use this for in-an-hour and similar requests.')}),execute:async args=>call('navigate_question',args)});
+      tools.end_hotline=llm.tool({description:'End the call only when the caller asks to stop. Unanswered questions remain pending.',execute:async()=>call('end_hotline')});
+      tools.discuss_decision=llm.tool({description:'Post the caller’s follow-up to the selected question’s original owning bot, never another bot. Does not approve anything.',parameters:z.object({decisionId:z.string(),text:z.string(),factCheck:z.boolean().nullish()}),execute:async args=>call('discuss_decision',args)});
+    }
+    if(bot || hotline) tools.answer_choice=llm.tool({description:'Record an explicitly selected option using the exact choice ID and current version from read_decision, after repeating it back. No inference from silence or questions. Existing authorization checks apply.',parameters:z.object({decisionId:z.string(),version:z.number().int(),choiceId:z.string(),text:z.string(),callerQuote:z.string().optional().describe('Hotline: entire latest caller utterance verbatim, including their explicit selection. Must be fresh for this exact question.')}),execute:async args=>call('answer_choice',args)});
     agent = new voice.Agent({ instructions: config.instructions + voiceStyleInstructions(config.preferences), tools });
+    let callerTurn=0;
+    const pendingCallerTurns:number[]=[];
+    const transcribedItems=new Set<string>();
+    session.on(voice.AgentSessionEventTypes.UserStateChanged,event=>{if(event.newState==='speaking'){callerTurn++;pendingCallerTurns.push(callerTurn);send({type:'caller_turn',turn:callerTurn});}});
+    session.on(voice.AgentSessionEventTypes.UserInputTranscribed,event=>{
+      if(!event.isFinal || (event.itemId && transcribedItems.has(event.itemId)))return;
+      if(event.itemId)transcribedItems.add(event.itemId);
+      // A late transcript must never be assigned to a newer utterance/question.
+      const turn=pendingCallerTurns.shift();
+      if(turn!==undefined)send({type:'caller_final',turn,text:event.transcript});
+    });
     session.on(voice.AgentSessionEventTypes.ConversationItemAdded, ({ item }) => {
       if (item.type === 'message' && (item.role === 'user' || item.role === 'assistant') && item.textContent) {
         send({ type: 'transcript', role: item.role, text: item.textContent });

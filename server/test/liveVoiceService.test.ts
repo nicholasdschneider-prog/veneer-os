@@ -314,3 +314,28 @@ describe('live voice lifecycle', () => {
     await expect(service.start(1)).resolves.toHaveProperty('id');
   });
 });
+
+it('routes the hotline through selected owners and keeps its transcript out of unrelated bots',async()=>{
+  for(const id of ['atlas','robin']) {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES(?,1,1,?,'codex',?)").run(id,id,id);
+    db.prepare('INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,?,1)').run(id,id);
+    const proposal={question:'Use draft?',recommendation:'Use draft.',consequence:'Fixture only.',assignee_id:1,team:'',deadline:null,evidence:[],blocks_scope:'task',blocked_action:'Internal fixture',choices:[{id:'use',label:'Use draft',action:'approve',answer:'use'},{id:'hold',label:'Hold',action:'defer'}]};
+    db.prepare('INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,?,?,?,?,1)').run(id,id,id,id,JSON.stringify(proposal));
+  }
+  const call=await service.start(1,{hotline:true});
+  const start=child.send.mock.calls.find(c=>c[0].type==='start')![0];expect(start.mode).toBe('hotline');expect(start.instructions).toContain('not any of the individual bots');
+  const tool=async(id:string,name:string,args:Record<string,unknown>)=>{child.emit('message',{type:'tool',id,name,args});await vi.advanceTimersByTimeAsync(1);return child.send.mock.calls.find(c=>c[0].type==='result'&&c[0].id===id)![0].result;};
+  expect(await tool('wrong','answer_choice',{decisionId:'robin',version:1,choiceId:'use',text:'Use draft'})).toMatchObject({error:expect.stringContaining('Select')});
+  child.emit('message',{type:'caller_turn',turn:1});child.emit('message',{type:'caller_final',turn:1,text:'Use draft'});
+  expect(await tool('right','answer_choice',{decisionId:'atlas',version:1,choiceId:'use',text:'Use draft',callerQuote:'Use draft'})).toMatchObject({ok:true});
+  expect(await tool('read-receipt','read_decision',{decisionId:'atlas'})).toMatchObject({state:'decided'});
+  expect(await tool('next','navigate_question',{action:'next'})).toMatchObject({decisionId:'robin'});
+  expect(await tool('recycled','answer_choice',{decisionId:'robin',version:1,choiceId:'use',text:'Use draft',callerQuote:'Use draft'})).toMatchObject({error:expect.stringContaining('fresh')});
+  expect(await tool('show','navigate_question',{action:'show'})).toMatchObject({decisionId:'robin'});
+  expect(db.prepare('SELECT show_evidence FROM question_line_state WHERE user_id=1').get()).toEqual({show_evidence:1});
+  expect(await tool('blocked','send_message',{text:'Do unrelated work',instructionId:'unrelated'})).toMatchObject({error:expect.any(String)});
+  child.emit('message',{type:'transcript',role:'user',text:'Unconfirmed discussion from multiple bots.'});
+  service.end(1,call.id);await vi.advanceTimersByTimeAsync(1);
+  expect(manager.steerMessage).not.toHaveBeenCalled();
+  expect(db.prepare("SELECT state FROM bot_decisions WHERE id='robin'").get()).toEqual({state:'needs_input'});
+});

@@ -17,6 +17,7 @@ export async function runReplySmoke({ source, service, db, directory, callId, de
     }
   };
   let silence;
+  let stage='connect';
   const speak = async text => {
     clearInterval(silence);
     const wav = path.join(directory, 'reply.wav');
@@ -39,6 +40,7 @@ export async function runReplySmoke({ source, service, db, directory, callId, de
   };
   try {
     await waitFor(()=>getSamples()>0 && state()==='listening');
+    stage='edit';
     await speak('Change the proposed customer reply to exactly: Please send a clear photo of the product label. Thank you. Save that wording and read it back. Do not approve or send yet.');
     await waitFor(()=>decision().version===2 && state()==='listening');
     const revised=decision();
@@ -46,15 +48,17 @@ export async function runReplySmoke({ source, service, db, directory, callId, de
     assert.equal(revised.answer_json,null);
     assert.equal(JSON.parse(revised.proposal_json).message_delivery.payload.body,'Please send a clear photo of the product label. Thank you.');
     assert.equal(db.prepare('SELECT count(*) AS n FROM conversation_wakeups').get().n,0);
+    stage='approve';
     await speak('Yes, I approve sending that revised reply, for this case only. Record my approval now.');
     await waitFor(()=>decision().state==='decided' && state()==='listening');
+    stage='receipt';
     service.end(1,callId);
     assert.equal(JSON.parse(decision().answer_json).action,'approve');
     assert.equal(decision().version,2);
     assert.equal(db.prepare("SELECT count(*) AS n FROM bot_decision_events WHERE kind='answered'").get().n,1);
     assert.equal(db.prepare('SELECT count(*) AS n FROM conversation_wakeups').get().n,1);
-    assert.equal(db.prepare('SELECT count(*) AS n FROM voice_dispatches').get().n,0);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM voice_dispatches WHERE instruction_id NOT LIKE 'transcript-%'").get().n,0);
     console.log(JSON.stringify({passed:true,mode:'reply-edit',spokenEdit:true,separateSpokenApproval:true,approvedVersion:2,oneDurableWakeAfterHangup:true,customerSends:0}));
     return true;
-  } finally { clearInterval(silence); }
+  } catch { console.log(JSON.stringify({passed:false,mode:'reply-edit',stage,version:decision()?.version,state:decision()?.state,transcript:db.prepare('SELECT role,text FROM voice_entries ORDER BY id').all()}));return false; } finally { clearInterval(silence); }
 }

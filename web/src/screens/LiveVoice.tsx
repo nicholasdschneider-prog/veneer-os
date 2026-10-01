@@ -15,8 +15,8 @@ type State = 'ready' | 'connecting' | 'connected' | 'reconnecting' | 'standby' |
  * (its chat, decisions and questions); without it, the Henry coordinator
  * across every pending question.
  */
-export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, compact = false }: {
-  compact?: boolean; botConversationId?: string; decisionId?: string | null; onBack: () => void; onNavigate?: (hash: string) => void;
+export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, compact = false, hotline = false }: {
+  hotline?: boolean; compact?: boolean; botConversationId?: string; decisionId?: string | null; onBack: () => void; onNavigate?: (hash: string) => void;
 }) {
   const [snapshot, setSnapshot] = useState<VoiceSnapshot | null>(null);
   const [state, setState] = useState<State>('ready');
@@ -40,7 +40,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const mounted = useRef(true);
   const audioHost = useRef<HTMLDivElement>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
-  const query = botConversationId ? `?bot=${encodeURIComponent(botConversationId)}${decisionId ? `&decision=${encodeURIComponent(decisionId)}` : ''}` : '';
+  const query = botConversationId ? `?bot=${encodeURIComponent(botConversationId)}${decisionId ? `&decision=${encodeURIComponent(decisionId)}` : ''}` : hotline ? '?hotline=1' : '';
   const refresh = useCallback(async () => {
     const next = await voiceRequest<VoiceSnapshot>(query);
     if (mounted.current) setSnapshot(next);
@@ -59,7 +59,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
     if (id) void voiceRequest(`/calls/${id}/end`, {}, true).then(() => window.dispatchEvent(new Event('voice-session-ended'))).catch(() => {});
     if (mounted.current) { setState(next); setMuted(false); setAudioBlocked(false); }
   }, []);
-  const name = snapshot?.bot?.name ?? (botConversationId ? 'this bot' : 'Henry');
+  const name = snapshot?.bot?.name ?? (hotline ? 'Question hotline' : botConversationId ? 'this bot' : 'Henry');
   useEffect(() => {
     mounted.current = true;
     void refresh().catch(e => setError(e.message));
@@ -130,7 +130,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
       await audioReady;
       const body = botConversationId
         ? { botConversationId, ...(decisionId ? { decisionId } : {}) }
-        : contextId ? { contextConversationId: contextId } : {};
+        : hotline ? { hotline: true, timezone:Intl.DateTimeFormat().resolvedOptions().timeZone } : contextId ? { contextConversationId: contextId } : {};
       const result = await voiceRequest<{ id: string; url: string; token: string }>('/calls', body);
       if (generation.current !== epoch) { void voiceRequest(`/calls/${result.id}/end`, {}); return; }
       callId.current = result.id;
@@ -172,7 +172,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const focused = snapshot?.decision ?? null;
   const open = (snapshot?.decisions ?? []).filter(d => d.state === 'needs_input' && d.decisionId !== focused?.decisionId);
   const missingBot = !!botConversationId && !!snapshot && !bot;
-  if (compact) return <VoiceCallPanel callerName={snapshot?.callerName} name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && !!bot?.canMessage} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby')}>
+  if (compact) return <VoiceCallPanel callerName={snapshot?.callerName} name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && (hotline || !!bot?.canMessage)} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby')}>
     {focused && <div className="mt-3 space-y-1 px-2 text-base sm:text-sm">
       <p className="break-words font-medium">{focused.actionTitle || focused.question}</p>
       {focused.customerRequest && <p className="break-words text-muted-foreground">{focused.customerRequest}</p>}

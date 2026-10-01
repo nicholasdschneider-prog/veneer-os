@@ -1,0 +1,90 @@
+// Isolated fixture; all fetch calls are intercepted in the harness, never sent to live APIs.
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { createServer } from 'vite';
+const {chromium}=await import(pathToFileURL(process.argv[2]).href);
+const out=new URL('../docs/reports/question-desk/build527/',import.meta.url).pathname;
+await mkdir(out,{recursive:true});
+const vite=await createServer({root:new URL('../web',import.meta.url).pathname,server:{host:'127.0.0.1',port:3297,strictPort:true}});await vite.listen();
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+const results=[];
+try {
+ for(const width of [320,390,768,1280,1600]) {
+  const page=await browser.newPage({viewport:{width,height:960}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/api/**',route=>route.request().url().includes('/evidence/') ? route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="240" height="160" fill="#e5e7eb"/><text x="20" y="80" font-size="20">Internal QA sheet</text></svg>'}) : route.abort());
+  await page.goto('http://127.0.0.1:3297/test/question-desk.html');
+  await page.getByRole('button',{name:'Atlas has a question'}).click();
+  await page.getByRole('heading',{name:'Can I use the first draft?',exact:true}).waitFor();
+  const bounds=await page.evaluate(()=>({work:document.querySelector('[data-testid=work]').getBoundingClientRect().width,dock:document.querySelector('[aria-label="Question desk"]').getBoundingClientRect().width,overflow:document.documentElement.scrollWidth>innerWidth}));
+  assert.equal(bounds.overflow,false);if(width>=1024){assert(bounds.work<width);assert(bounds.work>width*.5);}
+  assert.equal(await page.getByRole('button',{name:/A Use the draft/}).isVisible(),true);
+  assert.equal(await page.getByRole('region',{name:'Evidence for this decision'}).isVisible(),true);
+  await page.getByRole('button',{name:'Enlarge Internal QA sheet'}).click();
+  await page.getByRole('dialog').waitFor();
+  await page.waitForFunction(()=>[...document.querySelectorAll('[role=dialog] img')].some(i=>i.naturalWidth>0));
+  await page.getByRole('button',{name:'Close',exact:true}).click();
+  await page.getByRole('textbox',{name:'Message Atlas'}).fill('Did you check the other draft?');
+  await page.getByRole('button',{name:'Collapse question desk'}).click();
+  await page.getByRole('button',{name:'Investigate an order'}).click();
+  await page.getByRole('textbox',{name:'Workspace notes'}).fill('Keep my investigation here');
+  await page.getByRole('button',{name:'Atlas has a question'}).click();
+  assert.equal(await page.getByRole('textbox',{name:'Message Atlas'}).inputValue(),'Did you check the other draft?');
+  assert.equal(await page.getByRole('textbox',{name:'Workspace notes'}).inputValue(),'Keep my investigation here');
+  // Question discussion is a discussion, never a business answer.
+  await page.getByRole('button',{name:'Send to Atlas',exact:true}).click();
+  await page.getByText('Did you check the other draft?',{exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('[aria-label="Message Atlas"]')?.value==='');
+  await page.getByRole('button',{name:'3 waiting',exact:true}).click();
+  await page.getByRole('button',{name:/Robin.*Can I proceed/}).click();
+  await page.getByRole('textbox',{name:'Message Robin'}).fill('Keep this unsent');
+  await page.getByRole('button',{name:'Later',exact:true}).click();
+  await page.getByRole('button',{name:'Send to back',exact:true}).click();
+  await page.getByRole('button',{name:'Choose from 3 waiting questions'}).click();
+  await page.getByRole('button',{name:/Robin.*Can I proceed/}).click();
+  assert.equal(await page.getByRole('textbox',{name:'Message Robin'}).inputValue(),'Keep this unsent');
+  await page.getByRole('button',{name:'Later',exact:true}).click();
+  const tomorrow=new Date(Date.now()+86400000);tomorrow.setMinutes(tomorrow.getMinutes()-tomorrow.getTimezoneOffset());
+  await page.locator('[name=question-reminder]').fill(tomorrow.toISOString().slice(0,16));
+  await page.getByRole('button',{name:'Save reminder'}).click();
+  await page.getByRole('button',{name:'Choose from 2 waiting questions'}).click();
+  await page.getByRole('button',{name:/Atlas.*Can I use the first/}).click();
+  await page.getByRole('button',{name:/A Use the draft/}).click();
+  await page.getByRole('button',{name:'1 waiting',exact:true}).waitFor();
+  assert.equal(await page.getByRole('textbox',{name:'Message Atlas'}).count(),0); // next never auto-opens
+  await page.getByRole('button',{name:/Atlas.*Which draft/}).click();
+  await page.getByRole('button',{name:'Collapse question desk'}).click();
+  await page.getByRole('button',{name:'Open side chat',exact:true}).click();
+  await page.getByText('Ask on the side',{exact:true}).waitFor();
+  const sideText=page.locator('[aria-label="Question desk"] textarea:visible');await sideText.fill('Preserve the side conversation');
+  await page.getByRole('button',{name:'Questions',exact:true}).click();
+  await page.getByRole('heading',{name:'Which draft should I keep?',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Side chat',exact:true}).click();
+  assert.equal(await sideText.inputValue(),'Preserve the side conversation');
+  await page.getByRole('button',{name:'Questions',exact:true}).click();
+  await page.getByRole('button',{name:'Hotline',exact:true}).click();
+  await page.getByRole('region',{name:'Live voice · Question hotline',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Hang up',exact:true}).click();
+  assert.equal(await page.getByRole('heading',{name:'Which draft should I keep?',exact:true}).isVisible(),true);
+  await page.evaluate(()=>{window.fixture.fail(true);window.dispatchEvent(new Event('chat-decisions-changed'));});
+  await page.getByRole('alert').filter({hasText:'Questions could not refresh'}).waitFor();
+  await page.evaluate(()=>{window.fixture.fail(false);window.dispatchEvent(new Event('chat-decisions-changed'));});
+  await page.getByRole('alert').filter({hasText:'Questions could not refresh'}).waitFor({state:'hidden'});
+  await page.screenshot({path:out+`desk-${width}.png`});
+  await page.getByText('Add a note or change scope',{exact:true}).last().click();
+  await page.getByLabel('Note',{exact:true}).last().fill('My review is unfinished');
+  await page.evaluate(()=>window.fixture.revise());
+  await page.getByRole('alert').filter({hasText:'This proposal has changed'}).waitFor({timeout:12000});
+  assert.equal(await page.getByRole('button',{name:/A Use the draft/}).last().isDisabled(),true);
+  await page.getByRole('button',{name:'Review the new version'}).click();
+  await page.getByRole('heading',{name:'Revised question',exact:true}).waitFor();
+  await page.evaluate(()=>window.fixture.answerElsewhere());
+  await page.getByText('No questions waiting right now.',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('textbox',{name:'Message Atlas'}).count(),0);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  assert.deepEqual(errors,[]);
+  results.push({width,passed:true,checks:['dock geometry','navigation and workspace draft','discussion without answer','out-of-order choice','send to back','reminder','draft preservation','answer removes question','next stays quiet','side chat switch preserves draft','hotline entry/hangup','offline recovery','answered elsewhere','no horizontal overflow','photo opens with real image bytes','stale version disables answers','no page errors']});
+  await page.close();
+ }
+ await writeFile(out+'browser-results.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results));
+}finally{await browser.close();await vite.close();}

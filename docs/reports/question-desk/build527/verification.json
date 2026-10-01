@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-01",
+  "buildQueue": 527,
+  "deployed": false,
+  "typecheck": "passed",
+  "tests": {
+    "passed": 4328,
+    "skipped": 15,
+    "installer": 29,
+    "server": 3282,
+    "web": 968,
+    "browserManager": 49
+  },
+  "productionBuild": {
+    "passed": true,
+    "isolatedDirectory": "/Users/archerclawdington/veneer-os/.veneer/build527-staging",
+    "sourceParity": true,
+    "warning": "Large bundles exceed 500 kB"
+  },
+  "liveAssetsUnchanged": {
+    "web/dist/index.html": "f1db1cb68767415efdbdc06c6438d40900fdcf0f8be177d2f5bb674c2d9435ce",
+    "server/dist/voice/service.js": "8210296d260521c8be745725644a6900c42c2c91b807e27c879fe6239abd4f94",
+    "server/dist/routes/api.js": "c57c5dc417f6d39beaf41ba471e08ad7e6b8d9f3e9350d8550857edd9d31a39a"
+  },
+  "singleCardAudio": {
+    "passed": true,
+    "mode": "reply-edit",
+    "spokenEdit": true,
+    "separateSpokenApproval": true,
+    "approvedVersion": 2,
+    "oneDurableWakeAfterHangup": true,
+    "customerSends": 0
+  },
+  "hotlineAudio": {
+    "passed": true,
+    "mode": "hotline-real-audio",
+    "checks": [
+      "received audio",
+      "transcribed instructions",
+      "selected exact bot",
+      "show evidence",
+      "spoken choice recorded",
+      "next bot",
+      "follow-up without approval",
+      "skip without defer",
+      "pick bot",
+      "timed reminder",
+      "spoken hangup preserves unanswered"
+    ]
+  },
+  "previousHotlineRepeat": {
+    "passed": true,
+    "mode": "hotline-real-audio",
+    "checks": [
+      "received audio",
+      "transcribed instructions",
+      "selected exact bot",
+      "spoken choice recorded",
+      "next bot",
+      "follow-up without approval",
+      "skip without defer",
+      "pick bot",
+      "timed reminder",
+      "spoken hangup preserves unanswered"
+    ]
+  },
+  "browserResults": "browser-results.json",
+  "customerEffects": 0
+}

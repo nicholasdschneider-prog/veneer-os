@@ -261,3 +261,12 @@ Paired contact decisions show both exact public templates, accounts/from/recipie
 BUILD505 adds original-owner `inspect_controller` and `reconnect_controller` guidance to the catalog. This change is staged: the active slot expressly forbids the coordinated restart required to load the server migration and manager process-generation marker. It does not announce a successful live recovery.
 
 After separately authorized deployment, the owning bot obtains the exact tuple from inspection, reconnects with one stable request key, and performs its own tabs/read. A detached result never resolves a prior UNKNOWN operation or permits replay. Missing pinned bridge proof, changed process generation, or uncertain controller shutdown remains blocked; no Chrome-close fallback exists. Employee and full/restricted resumed-agent catalog delivery is covered by the shared guide tests. [Implementation and deployment limit](/Users/archerclawdington/veneer-os/docs/reports/browser-controller-reconnect/build505/report.md).
+
+## Global question desk and hotline — October 1, 2026 (staged)
+
+The `question-desk` catalog entry documents the global question line, persistent desktop dock,
+mobile sheet, personal reminders and explicit hotline coordinator. The original native decision
+remains the authorization record. Queue preferences never approve, defer or execute it. The
+employee API boundary allows only human-scoped question-line GET/POST; decision and source ACLs
+remain enforced. The hotline pins each operation to the currently selected question and uses the
+existing VoiceWorkspace checks. Live restart is held pending launch approval.

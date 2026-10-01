@@ -28,6 +28,7 @@ export function SideChatPanel({
   onNavigate,
   onToast,
   onClose,
+  onSelect,
 }: {
   parentId: string;
   agentName: string;
@@ -35,7 +36,9 @@ export function SideChatPanel({
   onNavigate: (hash: string) => void;
   onToast: (message: string, action?: ToastAction) => void;
   onClose: () => void;
+  onSelect?: (value: string) => void;
 }) {
+  const selectSide = onSelect ?? replaceSide;
   const [list, setList] = useState<SideChatSummary[] | null>(null);
   const [draft, setDraft] = useState('');
   const [creating, setCreating] = useState(false);
@@ -58,7 +61,7 @@ export function SideChatPanel({
         });
     void load().then((chats) => {
       if (!active || sideParam !== 'open') return;
-      replaceSide(chats[0]?.id ?? 'new');
+      selectSide(chats[0]?.id ?? 'new');
     });
     const timer = window.setInterval(() => void load(), 10_000);
     return () => {
@@ -83,7 +86,7 @@ export function SideChatPanel({
         { id: conversation.id, title: conversation.title, lastActiveAt: conversation.lastActiveAt, status: 'working', unread: false },
         ...(prev ?? []),
       ]);
-      replaceSide(conversation.id);
+      selectSide(conversation.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start the side chat');
     } finally {
@@ -104,7 +107,7 @@ export function SideChatPanel({
             <select
               aria-label="Which side chat"
               value={sideId ?? 'new'}
-              onChange={(e) => replaceSide(e.target.value)}
+              onChange={(e) => selectSide(e.target.value)}
               className="w-full appearance-none truncate rounded-full border bg-background py-1 pr-7 pl-3 text-xs"
             >
               {list.map((c) => (
@@ -126,7 +129,7 @@ export function SideChatPanel({
             size="icon"
             aria-label="New side chat"
             title="New side chat"
-            onPointerUp={() => replaceSide('new')}
+            onPointerUp={() => selectSide('new')}
             className="rounded-full text-muted-foreground"
           >
             <Plus className="size-4" />

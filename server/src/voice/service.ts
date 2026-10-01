@@ -1,3 +1,5 @@
+import { HotlineConsent } from './hotlineConsent.js';
+import { QuestionHotline, HOTLINE_INSTRUCTIONS } from './hotline.js';
 import { manageVoicePreferences, readVoicePreferences, VOICE_PREFERENCE_RULES } from './preferences.js';
 import { finishVoiceSession } from './sessions.js';
 import { fork, type ChildProcess } from 'node:child_process';
@@ -10,12 +12,13 @@ import { VoiceWorkspace } from './workspace.js';
 import { voiceFailureMessage } from './failure.js';
 
 interface Call {
+  hotline: boolean; consent:HotlineConsent; timezone?: string; hotlineContext?: string;
   id: string; userId: number; room: string; child: ChildProcess; client: RoomServiceClient;
   state: string; error: string | null; lastSeen: number; expiresAt: number;
   createdAt: number; ready: boolean; seenKeys: Set<string>; replies: number; workStatus: string | null;
   bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number; faults: number;
 }
-export interface CallOptions { contextConversationId?: string; botConversationId?: string; decisionId?: string }
+export interface CallOptions { hotline?: boolean; timezone?: string; contextConversationId?: string; botConversationId?: string; decisionId?: string }
 const FAULT_LIMIT = 10;
 const SECRET_NAMES = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'OPENAI_API_KEY'] as const;
 const SHARED_RULES = VOICE_PREFERENCE_RULES + `Speak conversationally, briefly, and discuss one item at a time. Let the user interrupt.
@@ -80,6 +83,13 @@ export class LiveVoiceService {
     if (call.checking) return;
     call.checking = true;
     try {
+      if(call.hotline) {
+        const hotline=new QuestionHotline(this.ctx,call.userId,call.timezone); const line=hotline.list();
+        const focus=line.selectedId ? hotline.focus(line.selectedId) : null;
+        const key=JSON.stringify({id:line.selectedId,revision:line.revision,focus});
+        if(call.hotlineContext !== key && call.child.connected) { call.hotlineContext=key;call.child.send({type:'notice',kind:'hotline',context:{line,focusedDecision:focus}}); }
+        call.faults=0; return;
+      }
       const workspace = new VoiceWorkspace(this.ctx, call.userId, call.bot?.conversationId ?? null);
       const blockers = workspace.blockers();
       const decisions = call.bot ? workspace.decisions() : [];
@@ -118,7 +128,7 @@ export class LiveVoiceService {
   status(userId: number) {
     const call = this.calls.get(userId);
     return call ? { id: call.id, state: call.state, error: call.error, expiresAt: call.expiresAt,
-      botConversationId: call.bot?.conversationId ?? null, botName: call.bot?.name ?? null, decisionId: call.decisionId } : null;
+      botConversationId: call.bot?.conversationId ?? null, botName: call.bot?.name ?? null, decisionId: call.hotline ? new QuestionHotline(this.ctx,userId).list().selectedId : call.decisionId, hotline:call.hotline } : null;
   }
   heartbeat(userId: number, id: string) {
     const call = this.calls.get(userId);
@@ -145,8 +155,12 @@ export class LiveVoiceService {
       const get = (name: typeof SECRET_NAMES[number]) => this.ctx.doppler.get(name)!;
       const url = get('LIVEKIT_URL');
       const workspace = new VoiceWorkspace(this.ctx, userId, options.botConversationId ?? null);
+      const hotline = options.hotline ? new QuestionHotline(this.ctx,userId,options.timezone) : null;
+      if(hotline && options.botConversationId) throw new Error('Hotline cannot be pinned to a bot.');
+      if(options.timezone) new Intl.DateTimeFormat('en-US',{timeZone:options.timezone});
+      hotline?.list();
       let bot: ReturnType<VoiceWorkspace['bot']> | null = null;
-      let focus: unknown = null;
+      let focus: unknown = hotline ? hotline.navigate('next') : null;
       if (options.botConversationId) {
         try { bot = workspace.bot(); }
         catch { setupError = 'That bot is not available to call.'; throw new Error(setupError); }
@@ -176,7 +190,7 @@ export class LiveVoiceService {
       if (import.meta.url.endsWith('.ts')) workerUrl.pathname = workerUrl.pathname.replace(/\.js$/, '.ts');
       const child = fork(fileURLToPath(workerUrl), [], { stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
         env: { PATH: process.env.PATH, NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS } });
-      const call: Call = { id: randomUUID(), userId, room, child, client, state: 'connecting', error: null,
+      const call: Call = { hotline: !!options.hotline, consent:new HotlineConsent(), timezone:options.timezone, id: randomUUID(), userId, room, child, client, state: 'connecting', error: null,
         lastSeen: Date.now(), expiresAt: Date.now() + 55 * 60_000, createdAt: Date.now(), ready: false,
         seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, checking: false, faults: 0,
         bot: bot ? { conversationId: bot.conversationId, name: bot.name } : null, decisionId: options.decisionId ?? null };
@@ -190,6 +204,12 @@ export class LiveVoiceService {
       child.on('message', (raw: unknown) => {
         if (this.calls.get(userId) !== call) return;
         const message = raw as Record<string, unknown>;
+        if(call.hotline && message.type==='caller_turn' && typeof message.turn==='number') {
+          try { const line=new QuestionHotline(this.ctx,userId).list(); const focus=line.questions.find(q=>q.decisionId===line.selectedId);
+            call.consent.begin(message.turn,focus?.decisionId??null,focus?.version??null);
+          } catch { this.end(userId,call.id,'interrupted'); return; }
+        }
+        if(call.hotline && message.type==='caller_final' && typeof message.turn==='number' && typeof message.text==='string') call.consent.finish(message.turn,message.text);
         if (message.type === 'ready') { call.state = 'listening'; call.ready = true; }
         if (message.type === 'state' && typeof message.state === 'string') call.state = message.state;
         if (message.type === 'failure') { call.state = 'failed'; call.error = voiceFailureMessage(message.code); }
@@ -200,6 +220,22 @@ export class LiveVoiceService {
           const id = message.id;
           void (async () => {
             const args = (message.args ?? {}) as Record<string, unknown>;
+            if (hotline && message.name === 'question_line') return hotline.list();
+            if (hotline && message.name === 'navigate_question') {
+              if(!['next','select','skip','remind','show'].includes(String(args.action))) throw new Error('Invalid navigation.');
+              return hotline.navigate(args.action as 'next'|'select'|'skip'|'remind'|'show',typeof args.decisionId==='string'?args.decisionId:undefined,typeof args.until==='number'?args.until:undefined,typeof args.delayMinutes==='number'?args.delayMinutes:undefined);
+            }
+            if(hotline && message.name==='end_hotline') { setTimeout(()=>this.end(userId,call.id),500); return {ok:true}; }
+            const focusedTools=['read_decision','discuss_decision','answer_decision','answer_choice','edit_reply'];
+            const target=hotline && focusedTools.includes(String(message.name)) ? hotline.workspace(String(args.decisionId??''),message.name==='read_decision') : workspace;
+            if(hotline && ['send_message','answer','read_chat','search_context','decisions','chats','blockers'].includes(String(message.name))) throw new Error('Use the selected question and its decision thread on the hotline.');
+            if(hotline && ['answer_decision','answer_choice'].includes(String(message.name))) {
+              const deadline=Date.now()+3000;
+              while(call.consent.pending && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,50));
+              if(this.calls.get(userId)!==call) throw new Error('Call ended before answer was recorded.');
+              hotline.workspace(String(args.decisionId??'')); // Recheck focus after waiting for transcription.
+              call.consent.consume(String(args.decisionId??''),Number(args.version),args.callerQuote);
+            }
             switch (message.name) {
               case 'voice_preferences': return manageVoicePreferences(this.ctx.db, userId, args);
               case 'blockers': return workspace.blockers();
@@ -209,10 +245,11 @@ export class LiveVoiceService {
               case 'send_message': return workspace.sendMessage(String(args.text ?? ''), String(args.instructionId ?? ''), call.id);
               case 'decisions': return workspace.decisionCatalog(typeof args.offset === 'number' ? args.offset : 0);
               case 'search_context': return workspace.searchContext(String(args.query ?? ''));
-              case 'read_decision': return workspace.voiceDecision(String(args.decisionId ?? ''), typeof args.offset === 'number' ? args.offset : 0);
-              case 'discuss_decision': return workspace.discuss(call.id, String(args.decisionId ?? ''), String(args.text ?? ''), args.factCheck === true);
-              case 'answer_decision': return workspace.answerDecision(call.id, args);
-              case 'edit_reply': return workspace.editReply(call.id, args);
+              case 'read_decision': return target.voiceDecision(String(args.decisionId ?? ''), typeof args.offset === 'number' ? args.offset : 0);
+              case 'discuss_decision': return target.discuss(call.id, String(args.decisionId ?? ''), String(args.text ?? ''), args.factCheck === true);
+              case 'answer_decision': { const result=target.answerDecision(call.id,args); return hotline ? {...result,nextQuestion:hotline.navigate('next')} : result; }
+              case 'answer_choice': { const result=target.answerChoice(call.id,args); return hotline ? {...result,nextQuestion:hotline.navigate('next')} : result; }
+              case 'edit_reply': return target.editReply(call.id, args);
               default: return { error: 'Unknown tool.' };
             }
           })().catch((error: unknown) => ({ error: error instanceof Error && error.message ? error.message : 'Unable to complete that request. Refresh and check the chat before retrying.' }))
@@ -225,9 +262,9 @@ export class LiveVoiceService {
       const history = workspace.history(6).map(item => ({ ...item, text: item.text.slice(0,600) }));
       child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), participantIdentity,
         preferences: readVoicePreferences(this.ctx.db, userId),
-        mode: bot ? 'bot' : 'coordinator', agentName: bot?.name ?? 'Henry',
-        instructions: (bot ? botInstructions(bot, options.decisionId ?? null) : HENRY_INSTRUCTIONS)
-          + JSON.stringify({ history, currentConversation: context, historyCoverage: { recentEntries: 6, charactersPerEntry: 600, olderEntriesRetained: true }, blockers: workspace.blockers(), decisions: catalog.items, decisionCoverage: { total: catalog.total, nextOffset: catalog.nextOffset }, focusedDecision: focus }) });
+        mode: hotline ? 'hotline' : bot ? 'bot' : 'coordinator', agentName: hotline ? 'Question hotline' : bot?.name ?? 'Henry',
+        instructions: (hotline ? HOTLINE_INSTRUCTIONS + SHARED_RULES : bot ? botInstructions(bot, options.decisionId ?? null) : HENRY_INSTRUCTIONS)
+          + JSON.stringify({ ...(hotline ? {questionLine:hotline.list()} : {}), history, currentConversation: context, historyCoverage: { recentEntries: 6, charactersPerEntry: 600, olderEntriesRetained: true }, blockers: workspace.blockers(), decisions: catalog.items, decisionCoverage: { total: catalog.total, nextOffset: catalog.nextOffset }, focusedDecision: focus }) });
       return { id: call.id, url, token: browserToken, expiresAt: call.expiresAt };
     } catch (error) {
       this.end(userId);

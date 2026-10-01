@@ -16,9 +16,9 @@ export function createLiveVoiceRouter(ctx: AppContext): Router {
     next();
   });
   router.get('/', (req, res) => {
-    const query = z.object({ bot: id.optional(), decision: id.optional() }).safeParse(req.query);
+    const query = z.object({ bot: id.optional(), decision: id.optional(), hotline:z.enum(['1']).optional() }).safeParse(req.query);
     if (!query.success) { res.status(400).json({ ok: false, error: 'Invalid bot.' }); return; }
-    if (req.user?.role === 'member' && !query.data.bot) { res.status(403).json({ error: 'Open voice from an accessible conversation.' }); return; }
+    if (req.user?.role === 'member' && !query.data.bot && !query.data.hotline) { res.status(403).json({ error: 'Open voice from an accessible conversation.' }); return; }
     const workspace = new VoiceWorkspace(ctx, req.user!.id, query.data.bot ?? null);
     let bot: ReturnType<VoiceWorkspace['bot']> | null = null;
     let decision: ReturnType<VoiceWorkspace['readDecision']> | null = null;
@@ -55,9 +55,9 @@ export function createLiveVoiceRouter(ctx: AppContext): Router {
     res.json({ok:true});
   });
   router.post('/calls', (req, res) => {
-    const body = z.object({ contextConversationId: id.optional(), botConversationId: id.optional(), decisionId: id.optional() }).safeParse(req.body);
+    const body = z.object({ hotline: z.boolean().optional(), timezone:z.string().max(100).optional(), contextConversationId: id.optional(), botConversationId: id.optional(), decisionId: id.optional() }).safeParse(req.body);
     if (!body.success) { res.status(400).json({ ok: false, error: 'Invalid call request.' }); return; }
-    if (req.user?.role === 'member' && !body.data.botConversationId) { res.status(403).json({ error: 'Open voice from an accessible conversation.' }); return; }
+    if (req.user?.role === 'member' && !body.data.botConversationId && !body.data.hotline) { res.status(403).json({ error: 'Open voice from an accessible conversation.' }); return; }
     if (!ctx.liveVoice) { res.status(503).json({ ok: false, error: 'Live voice is not available.' }); return; }
     void ctx.liveVoice.start(req.user!.id, body.data)
       .then(call => res.json({ ok: true, ...call }))

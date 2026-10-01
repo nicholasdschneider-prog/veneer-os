@@ -49,18 +49,22 @@ export function BotComposer({
   botName,
   decisionId,
   busy = false,
+  suspended = false,
   onSend,
 }: {
   conversationId: string;
   botName: string;
   decisionId?: string;
   busy?: boolean;
+  suspended?: boolean;
   onSend: (text: string, targetId?: string) => Promise<void>;
 }) {
   const liveVoice = useLiveVoice();
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const ownsDictation=useRef(false);
+  useEffect(()=>{if(suspended && ownsDictation.current && micDictation.isActive)micDictation.stop();},[suspended]);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -151,7 +155,7 @@ export function BotComposer({
   useEffect(
     () => () => {
       for (const a of attachmentsRef.current) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
-      if (micDictation.isActive) micDictation.stop('cancel');
+      if (ownsDictation.current && micDictation.isActive) micDictation.stop('cancel');
     },
     [],
   );
@@ -162,6 +166,7 @@ export function BotComposer({
       micDictation.stop();
       return;
     }
+    ownsDictation.current=true;
     dictationBaseRef.current = draft;
     setError(null);
     void micDictation
@@ -174,12 +179,14 @@ export function BotComposer({
         onFinalizing: () => setTranscribing(true),
         onError: (message) => setError(message),
         onEnd: () => {
+          ownsDictation.current=false;
           setRecording(false);
           setTranscribing(false);
         },
       })
       .then(() => setRecording(true))
       .catch((e: unknown) => {
+        ownsDictation.current=false;
         setRecording(false);
         setError(e instanceof Error ? e.message : 'Microphone unavailable');
       });

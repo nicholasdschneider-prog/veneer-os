@@ -325,6 +325,20 @@ ${body}`;
     })();
   }
 
+  answerChoice(sessionId: string, input: unknown) {
+    const {decisionId,version,choiceId,text} = z.object({decisionId:z.string(),version:z.number().int().positive(),choiceId:z.string(),text:z.string().max(12000)}).parse(input);
+    return this.ctx.db.transaction(() => {
+      this.readDecision(decisionId);
+      let d=this.bots.view(this.actor,this.bots.read(this.actor,decisionId));
+      const key=`voice:${sessionId}:choice:${version}`;
+      const prior=this.ctx.db.prepare('SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(decisionId,key);
+      if (d.shared_queue && !d.handler_id && d.can_handle) d=this.bots.handle(this.actor,decisionId,version,key+':claim','claim',d.handling_revision);
+      const result=this.bots.choose(this.actor,decisionId,version,key,choiceId,text,'this_case',d.handling_revision);
+      if(!prior) this.record(sessionId,'decision',`${result.bot_name}: ${result.answer?.choice_label ?? choiceId} — ${text}`);
+      return {ok:true,decisionId,state:result.state,delivery:'Answer recorded. This is not a completion receipt.'};
+    })();
+  }
+
   answerDecision(sessionId: string, input: unknown) {
     const { decisionId, version, action, text, scope } = DecisionAnswerSchema.parse(input);
     return this.ctx.db.transaction(() => {

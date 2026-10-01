@@ -1,0 +1,36 @@
+import Database from 'better-sqlite3';
+import express from 'express';
+import type {Server} from 'node:http';
+import type {AddressInfo} from 'node:net';
+import {fileURLToPath} from 'node:url';
+import {beforeEach,afterEach,it,expect} from 'vitest';
+import {migrate} from '../src/db/migrate.js';
+import {createQuestionLineRouter} from '../src/routes/questionLine.js';
+import {createBotService,proposalSchema} from '../src/bots/service.js';
+import {employeeApiBoundary} from '../src/bots/employeeAccess.js';
+import type {AppContext} from '../src/context.js';
+import type {UserRow} from '../src/db/db.js';
+let db:Database.Database,server:Server,base:string,decisionId:string;let actor=1,agent=false;
+beforeEach(async()=>{
+ db=new Database(':memory:');migrate(db,fileURLToPath(new URL('../src/db/migrations',import.meta.url)));
+ db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'one@example.test','One','owner'),(2,'two@example.test','Two','member')").run();
+ db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('fixture',1,1,'fixture','codex','fixture')").run();
+ const user=db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
+ const bots=createBotService(db);bots.register({user},'fixture','Fixture',true);
+ decisionId=bots.raise({user,conversationId:'fixture'},{source_key:'one',proposal_key:'one',proposal:proposalSchema.parse({question:'Review internal draft?',recommendation:'Use draft.',consequence:'Fixture only.',assignee_id:1,blocked_action:'Internal review'})}).id;
+ const app=express();app.use(express.json());app.use((req,_res,next)=>{req.user=db.prepare('SELECT * FROM users WHERE id=?').get(actor) as UserRow;if(agent)req.agentConversationId='fixture';next();});
+ app.use(employeeApiBoundary(db));app.use('/question-line',createQuestionLineRouter({db} as AppContext));
+ server=await new Promise<Server>(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+ actor=1;agent=false;
+});
+afterEach(async()=>{await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();});
+it('keeps queue controls human-only, scoped and non-authorizing over HTTP',async()=>{
+ const get=await fetch(base+'/question-line');expect(get.headers.get('cache-control')).toBe('no-store');expect((await get.json()).decisions).toHaveLength(1);
+ const post=(body:unknown)=>fetch(base+'/question-line',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ expect((await post({action:'select',decisionId,revision:0})).status).toBe(200);
+ expect((await post({action:'back',decisionId,revision:0})).status).toBe(409);
+ expect(db.prepare('SELECT state FROM bot_decisions WHERE id=?').get(decisionId)).toEqual({state:'needs_input'});
+ actor=2;expect((await (await fetch(base+'/question-line')).json()).decisions).toEqual([]);
+ expect((await post({action:'select',decisionId,revision:0})).status).toBe(409);
+ actor=1;agent=true;expect((await fetch(base+'/question-line')).status).toBe(403);expect((await post({action:'clear',revision:1})).status).toBe(403);
+});

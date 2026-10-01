@@ -8,6 +8,7 @@ export function isEmployee(db: Database.Database, userId: number): boolean {
 // Restricted employees have a small operational surface. New platform routes are
 // denied by default; project files, credentials, tools and admin APIs are not inherited.
 export function employeeRouteAllowed(method: string, path: string): boolean {
+  if ((method === 'GET' || method === 'POST') && /^\/question-line\/?$/.test(path)) return true;
   if (method === 'GET') return [
     /^\/conversations\/[^/]+\/coordination\/?$/,
     /^\/coordination\/[^/]+\/?$/,

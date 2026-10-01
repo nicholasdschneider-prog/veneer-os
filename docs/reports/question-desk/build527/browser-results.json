@@ -1,0 +1,117 @@
+[
+  {
+    "width": 320,
+    "passed": true,
+    "checks": [
+      "dock geometry",
+      "navigation and workspace draft",
+      "discussion without answer",
+      "out-of-order choice",
+      "send to back",
+      "reminder",
+      "draft preservation",
+      "answer removes question",
+      "next stays quiet",
+      "side chat switch preserves draft",
+      "hotline entry/hangup",
+      "offline recovery",
+      "answered elsewhere",
+      "no horizontal overflow",
+      "photo opens with real image bytes",
+      "stale version disables answers",
+      "no page errors"
+    ]
+  },
+  {
+    "width": 390,
+    "passed": true,
+    "checks": [
+      "dock geometry",
+      "navigation and workspace draft",
+      "discussion without answer",
+      "out-of-order choice",
+      "send to back",
+      "reminder",
+      "draft preservation",
+      "answer removes question",
+      "next stays quiet",
+      "side chat switch preserves draft",
+      "hotline entry/hangup",
+      "offline recovery",
+      "answered elsewhere",
+      "no horizontal overflow",
+      "photo opens with real image bytes",
+      "stale version disables answers",
+      "no page errors"
+    ]
+  },
+  {
+    "width": 768,
+    "passed": true,
+    "checks": [
+      "dock geometry",
+      "navigation and workspace draft",
+      "discussion without answer",
+      "out-of-order choice",
+      "send to back",
+      "reminder",
+      "draft preservation",
+      "answer removes question",
+      "next stays quiet",
+      "side chat switch preserves draft",
+      "hotline entry/hangup",
+      "offline recovery",
+      "answered elsewhere",
+      "no horizontal overflow",
+      "photo opens with real image bytes",
+      "stale version disables answers",
+      "no page errors"
+    ]
+  },
+  {
+    "width": 1280,
+    "passed": true,
+    "checks": [
+      "dock geometry",
+      "navigation and workspace draft",
+      "discussion without answer",
+      "out-of-order choice",
+      "send to back",
+      "reminder",
+      "draft preservation",
+      "answer removes question",
+      "next stays quiet",
+      "side chat switch preserves draft",
+      "hotline entry/hangup",
+      "offline recovery",
+      "answered elsewhere",
+      "no horizontal overflow",
+      "photo opens with real image bytes",
+      "stale version disables answers",
+      "no page errors"
+    ]
+  },
+  {
+    "width": 1600,
+    "passed": true,
+    "checks": [
+      "dock geometry",
+      "navigation and workspace draft",
+      "discussion without answer",
+      "out-of-order choice",
+      "send to back",
+      "reminder",
+      "draft preservation",
+      "answer removes question",
+      "next stays quiet",
+      "side chat switch preserves draft",
+      "hotline entry/hangup",
+      "offline recovery",
+      "answered elsewhere",
+      "no horizontal overflow",
+      "photo opens with real image bytes",
+      "stale version disables answers",
+      "no page errors"
+    ]
+  }
+]

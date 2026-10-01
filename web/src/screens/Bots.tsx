@@ -127,6 +127,8 @@ function State({ state, label }: { state: string; label?: string }) {
 export function Bots({
   decisionId,
   embedded = false,
+  desk = false,
+  active = true,
   registrationRequested = false,
   canCall = false,
   restricted = false,
@@ -135,6 +137,8 @@ export function Bots({
   decisionId?: string;
   /** Render the existing guarded decision thread inside a chat panel. */
   embedded?: boolean;
+  desk?: boolean;
+  active?: boolean;
   registrationRequested?: boolean;
   /** Direct human sessions can call bots within their normal conversation access. */
   canCall?: boolean;
@@ -177,6 +181,7 @@ export function Bots({
       ...body,
       request_key: key,
     });
+    window.dispatchEvent(new Event('chat-decisions-changed'));
     pendingRequests.current.delete(fingerprint);
     return result;
   };
@@ -249,15 +254,16 @@ export function Bots({
     setLoading(false);
   }, [filter, decisionId, business]);
   useEffect(() => {
-    let active = true;
+    if (!active) return;
+    let alive = true;
     const preferencesChanged = () => {
       void botsApi.list(filter, business)
-        .then((list) => { if (active) setBots(list.bots); })
-        .catch((e) => { if (active) setError(e.message); });
+        .then((list) => { if (alive) setBots(list.bots); })
+        .catch((e) => { if (alive) setError(e.message); });
     };
     window.addEventListener(BOT_PREFERENCES_CHANGED, preferencesChanged);
     void refresh().catch((e) => {
-      if (active) {
+      if (alive) {
         setActivityUnavailable(true);
         setError(e.message);
         setLoading(false);
@@ -269,7 +275,7 @@ export function Bots({
         decisionId ? botsApi.detail(decisionId) : Promise.resolve(null),
       ])
         .then(([list, thread]) => {
-          if (active && currentRoute.current === decisionId) {
+          if (alive && currentRoute.current === decisionId) {
             setActivityUnavailable(false);
             setBots(list.bots);
     setTeams(list.teams ?? []);
@@ -281,7 +287,7 @@ export function Bots({
           }
         })
         .catch((e) => {
-          if (active) {
+          if (alive) {
             setActivityUnavailable(true);
             setError(e.message);
             if (e.status === 403 || e.status === 404) setDetail(null);
@@ -289,11 +295,11 @@ export function Bots({
         });
     }, 5000);
     return () => {
-      active = false;
+      alive = false;
       clearInterval(timer);
       window.removeEventListener(BOT_PREFERENCES_CHANGED, preferencesChanged);
     };
-  }, [refresh, filter]);
+  }, [active, refresh, filter]);
   useEffect(() => {
     reviewedVersion.current = null;
     setStale(false);
@@ -672,13 +678,13 @@ export function Bots({
               className="conversation-surface h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain border-l bg-card p-4 [overflow-wrap:anywhere] sm:p-5"
               aria-label="Decision thread"
             >
-              <button
+{!desk && <button
                 className="mb-5 flex min-h-10 items-center gap-2 text-sm text-muted-foreground"
                 onClick={() => onNavigate('#/bots')}
               >
                 <ArrowLeft className="size-4" />
                 All questions
-              </button>
+              </button>}
               {!d ? (
                 <div>{error ? <p role="alert">{error}</p> : <p>Loading decision…</p>}</div>
               ) : (
@@ -704,19 +710,19 @@ export function Bots({
                       Side chat
                     </Button>
                   </div>}
-                  {embedded && <p className="mt-4 text-base font-medium">{d.proposal.question}</p>}
-                  <details open={!embedded} className={embedded ? "mt-3 rounded-xl border p-3" : undefined}>
-                  <summary className={embedded ? "cursor-pointer text-sm font-medium" : "hidden"}>Review proposal and decision options · v{d.version}</summary>
-                  <h2 className="mt-4 text-xl font-semibold leading-snug">
+                  {embedded && !desk && <p className="mt-4 text-base font-medium">{d.proposal.question}</p>}
+                  <details open={!embedded || desk} className={embedded && !desk ? "mt-3 rounded-xl border p-3" : undefined}>
+                  <summary className={embedded && !desk ? "cursor-pointer text-sm font-medium" : "hidden"}>Review proposal and decision options · v{d.version}</summary>
+                  <h2 className={desk ? "mt-3 text-lg font-semibold" : "mt-4 text-xl font-semibold leading-snug"}>
                     {decisionTitle(d.proposal)}
                   </h2>
                   <BotOrderLink order={d.order_reference} />
-                  <p role="status" className="mt-2 text-sm text-muted-foreground">
+                  <p role="status" className={desk ? "sr-only" : "mt-2 text-sm text-muted-foreground"}>
                     {d.state === 'needs_input' ? 'Approval still needed' :
                       d.answer?.action === 'approve' ? `${decisionStatusLabel(d)}${['decided', 'action_pending', 'running'].includes(d.state) ? ' · No further approval click needed.' : ''}` : decisionStatusLabel(d)}
                   </p>
-                  <div className="mt-5"><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} hideDetails editingReply={replyEditing} /></div>
-                  <p className="mt-2 text-xs text-muted-foreground">Current recommendation · v{d.version}. Discussion updates appear here when the bot saves a revised proposal.</p>
+                  <div className={desk ? "mt-3" : "mt-5"}><BotProposalSummary key={`${d.id}:${d.version}`} decision={d} desk={desk} hideDetails editingReply={replyEditing} /></div>
+                  {!desk && <p className="mt-2 text-xs text-muted-foreground">Current recommendation · v{d.version}. Discussion updates appear here when the bot saves a revised proposal.</p>}
                   <DecisionReplyEditor key={d.id} className="mt-3" decision={d} onEditing={setReplyEditing} onSave={async(body,version,handlingRevision)=>{await send(d.id,'reply',{body,expected_version:version,...(d.shared_queue?{expected_handling_revision:handlingRevision}:{})});await refresh();}} />
                   {d.state === 'needs_input' && d.shared_queue && (
                     <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border p-3">
@@ -728,9 +734,9 @@ export function Bots({
                   {d.state === 'needs_input' && d.stale && <p role="status" className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"><span className="font-medium">{staleSummary(d.stale)}.</span> {d.stale.resolved ? 'This looks handled already, so it has left your open questions. The bot is confirming and will withdraw it.' : 'The bot is re-reading the case and will refresh or withdraw this question. It cannot be answered as asked.'}</p>}
                   {d.state === 'needs_input' && !d.stale &&
                     (d.can_answer ? (
-                      <div className="mt-6 border-t pt-5">
+                      <div className={desk ? "mt-3 border-t pt-3" : "mt-6 border-t pt-5"}>
                         <h3 className="font-medium">
-                          Review and approve · v{d.version}
+                          {desk ? 'Choose an answer' : 'Review and approve'} · v{d.version}
                         </h3>
                         <p className="mt-1 text-sm text-muted-foreground">Applies to: {scope === 'this_case' ? 'This case only' : 'Standing rule intent — existing approvals still apply'}</p>
                         <DecisionChoices choices={d.proposal.choices} disabled={busy || stale || replyEditing || editing} onChoose={choice_id => void act(async () => {
@@ -862,13 +868,14 @@ export function Bots({
                         {d.shared_queue ? (d.handler_name ? 'The current handler can submit the answer. You can both join the discussion.' : 'Choose Handle this before submitting an answer.') : `Only ${d.assignee_name} can answer this proposal.`}
                       </p>
                     ))}
+                  {desk && <div className="mt-5 space-y-3" data-question-evidence><DecisionEvidence key={`desk-evidence-${d.id}-${d.version}`} decision={d} defaultOpen /><DecisionImages key={`desk-images-${d.id}-${d.version}`} decision={d} /></div>}
                   <details key={`technical-${d.id}`} className="mt-5 rounded-2xl border px-4">
                     <summary className="min-h-11 cursor-pointer py-3 font-medium">Details, evidence &amp; history</summary>
                     <BotProposalDetails decision={d} showIdentifiers />
                   <BotCommunication mode="briefing" key={`${d.id}:${d.version}`} conversationId={d.conversation_id} decisionId={d.id} version={d.version} />
                   <p className="mt-3 text-sm text-muted-foreground">Approval scope: {d.proposal.blocks_scope === 'task' ? 'This task only. Other work can continue.' : 'This decision gates the bot’s whole workload.'}</p>
-                  <DecisionEvidence key={`evidence-${d.id}-${d.version}`} decision={d} defaultOpen />
-                  <DecisionImages key={`${d.id}-${d.version}`} decision={d} />
+                  {!desk && <DecisionEvidence key={`evidence-${d.id}-${d.version}`} decision={d} defaultOpen />}
+                  {!desk && <DecisionImages key={`${d.id}-${d.version}`} decision={d} />}
                   {d.answer && (
                     <div className="mt-4 rounded-xl border p-3 text-sm">
                       <p className="font-medium">
@@ -1001,12 +1008,13 @@ export function Bots({
                     </div>
                     <DecisionHandoffStatus className="my-3" key={d.id} decisionId={d.id} />
                     <div className="mb-3"><BotWorkingIndicator name={d.bot_name} replyStatus={d.reply_status} unavailable={activityUnavailable || stale} /></div>
-                    <div className="flex justify-end"><button type="button" aria-label="Jump to latest discussion" className="mb-2 flex size-11 items-center justify-center rounded-full border bg-background" onClick={() => document.getElementById('decision-composer')?.scrollIntoView({block:'end',behavior:'instant'})}>↓</button></div>
+                    <div className="flex justify-end"><button type="button" aria-label="Jump to latest discussion" className="mb-2 flex size-11 items-center justify-center rounded-full border bg-background" onClick={() => detailPane.current?.querySelector('[id=decision-composer]')?.scrollIntoView({block:'end',behavior:'instant'})}>↓</button></div>
                     <div id="decision-composer"><BotComposer
                       key={d.id}
                       conversationId={d.conversation_id}
                       botName={d.bot_name}
                       decisionId={d.id}
+                      suspended={!active}
                       busy={busy || stale}
                       onSend={async (text, targetId) => {
                         setBusy(true);

@@ -1,6 +1,8 @@
 // Opt-in, metered media check. Run: NODE_ENV=production node --import tsx scripts/smoke-live-voice.mjs --live
 // Uses the configured vault, an in-memory database, and a deterministic provider
 // fixture behind the real conversation manager. Never touches customer tickets.
+import { proposalSchema } from '../server/src/bots/service.ts';
+import { QuestionHotline } from '../server/src/voice/hotline.ts';
 import { randomInt } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,6 +30,7 @@ const briefGreeting = process.argv.includes('--brief-greeting');
 if (briefGreeting) db.prepare("INSERT INTO voice_preferences(user_id,preferences_json) VALUES(1,?)").run(JSON.stringify({length:'concise',greeting:'brief'}));
 const interruptions = process.argv.includes('--interruptions');
 const decisions = process.argv.includes('--decisions');
+const hotline = process.argv.includes('--hotline');
 const replyEdit = process.argv.includes('--reply-edit');
 const recap = process.argv.includes('--recap');
 const events = [];
@@ -39,7 +42,7 @@ if (replyEdit) {
   db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('voice-smoke','Fixture owner',1)").run();
   const proposal = {question:'Send the product-label photo request?',recommendation:'Ask for a label photo to identify the correct part.',consequence:'One customer reply; no refund or replacement.',blocked_action:'Send the exact proposed message after explicit approval.',blocks_scope:'task',deadline:null,evidence:[],
     message_delivery:{canonical_case:'synthetic-case',executor_conversation_id:'voice-smoke',payload:{channel:'email',account:'help@example.invalid',recipients:['customer@example.invalid'],subject:'Part identification',body:'Please send a photo of the label.',attachments:[],customer:'Synthetic Customer',ticket:'synthetic-case',context:''}}};
-  db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,'voice-smoke',?,?,?,1)").run(focusId,focusId,focusId,JSON.stringify(proposal));
+  db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,'voice-smoke',?,?,?,1)").run(focusId,focusId,focusId,JSON.stringify(proposalSchema.parse({...proposal,assignee_id:1})));
 }
 if (decisions) {
   db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('voice-smoke','Fixture Grant',1)").run();
@@ -52,6 +55,16 @@ if (decisions) {
     db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id,created_at,updated_at) VALUES(?,'voice-smoke',?,?,?,1,?,?)")
       .run(id,id,id,JSON.stringify(proposal),new Date(1700000000000+i*1000).toISOString(),new Date(1700000000000+i*1000).toISOString());
   }
+}
+if(hotline) {
+ for(const [id,name] of [['voice-smoke','Atlas'],['hotline-robin','Robin']]) {
+  if(id!=='voice-smoke') db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES(?,1,1,?,'codex',?)").run(id,name,id);
+  db.prepare('INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,?,1)').run(id,name);
+ }
+ for(const [id,bot] of [['hotline-a1','voice-smoke'],['hotline-b1','hotline-robin'],['hotline-a2','voice-smoke']]) {
+  const proposal={question:'May I use the internal draft '+id+'?',recommendation:'Use the internal draft.',consequence:'Internal fixture only; no external action.',blocked_action:'Internal review',blocks_scope:'task',deadline:null,evidence:[],choices:[{id:'use',label:'Use draft',action:'approve',answer:'use the internal draft',recommended:true},{id:'hold',label:'Keep waiting',action:'defer'}]};
+  db.prepare('INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,?,?,?,?,1)').run(id,bot,id,id,JSON.stringify(proposalSchema.parse({...proposal,assignee_id:1})));
+ }
 }
 let dispatches = 0;
 const manager = createConversationManager({ db, adapters: { codex: {
@@ -71,6 +84,12 @@ const ctx = { db, doppler, manager: {
   snapshot: async () => manager.snapshot(conversation), statusOf: async () => manager.statusOf(conversation.id),
   steerMessage: async (id, text, actor) => ({ ok: true, ...await manager.steerMessage(conversation, text, undefined, actor) }),
 } };
+if(hotline) {
+ const initial=new QuestionHotline(ctx,1).list();
+ console.log(JSON.stringify({fixtureQuestions:initial.questions.length}));
+ const original=QuestionHotline.prototype.navigate;
+ QuestionHotline.prototype.navigate=function(...args){try{const r=original.apply(this,args);console.log(JSON.stringify({hotlineAction:args[0],decisionId:args[1],selected:this.list().selectedId}));return r;}catch(e){console.log(JSON.stringify({hotlineAction:args[0],decisionId:args[1],error:e.message}));throw e;}};
+}
 const service = new LiveVoiceService(ctx);
 const room = new Room();
 const source = new AudioSource(24000, 1);
@@ -98,13 +117,16 @@ try {
     offset += 8 + size + (size % 2);
   }
   if (!pcm) throw new Error('Audio fixture unavailable');
-  const call = await service.start(1, { botConversationId: conversation.id, decisionId: focusId });
+  const call = await service.start(1, hotline ? {hotline:true} : { botConversationId: conversation.id, decisionId: focusId });
   heartbeat = setInterval(() => service.heartbeat(1, call.id), 10000);
   await room.connect(call.url, call.token);
   const track = LocalAudioTrack.createAudioTrack('smoke-microphone', source);
   const options = new TrackPublishOptions(); options.source = TrackSource.SOURCE_MICROPHONE;
   await room.localParticipant.publishTrack(track, options);
-  if (replyEdit) {
+  if (hotline) {
+    const {runHotlineSmoke}=await import('./voice-hotline-fixture.mjs');
+    success=await runHotlineSmoke({source,service,db,directory,getSamples:()=>samples});
+  } else if (replyEdit) {
     const { runReplySmoke } = await import('./voice-reply-fixture.mjs');
     success = await runReplySmoke({source,service,db,directory,callId:call.id,decisionId:focusId,getSamples:()=>samples});
   } else if (interruptions) {

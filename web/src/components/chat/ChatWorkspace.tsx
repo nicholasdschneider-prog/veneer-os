@@ -1,3 +1,4 @@
+import { useQuestionDesk } from '../QuestionDesk';
 import { OpenQuestionsPanel } from './OpenQuestionsPanel';
 import { CoordinationPanel } from './Coordination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -116,7 +117,15 @@ export function ChatWorkspace({
   const artifactMemoryCheckedRef = useRef(false);
   const previousArtifactParamRef = useRef<string | null>(artifactParam);
   const browserDismissedRef = useRef(rememberedConversationBrowserDismissal(conversationId));
-  const sideChatOpen = Boolean(sideParam && !isNew);
+  const desk = useQuestionDesk();
+  const globalSide = Boolean(desk.available && sideParam && !isNew && sideParam !== 'questions' && !sideParam.startsWith('decision:') && !sideParam.startsWith('coordination:'));
+  const globalQuestion=Boolean(desk.available && sideParam && (sideParam==='questions'||sideParam.startsWith('decision:')));
+  const sideChatOpen = Boolean(sideParam && !isNew && !globalSide && !globalQuestion);
+  useEffect(()=>{if(globalQuestion)desk.adoptQuestion(sideParam?.startsWith('decision:') ? sideParam.slice('decision:'.length) : undefined);},[globalQuestion,sideParam,desk.adoptQuestion]);
+  useEffect(() => {
+    if (!globalSide || !sideParam) return;
+    desk.adoptSide({parentId:conversationId,agentName:'the agent',sideParam});
+  }, [globalSide,sideParam,conversationId,desk.adoptSide]);
   const alternativePanelSelected = Boolean(artifactParam || projectFilesId || citations || sideChatOpen);
 
   useEffect(() => {
