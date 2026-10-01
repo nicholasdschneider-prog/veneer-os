@@ -24,7 +24,7 @@ const BrowserSettingsSchema = z.object({
 
 function safeError(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
-  if (/not found|not configured|active browser|browser limit|browser slots|browser capacity|requires a chat|in use|another profile|already has|temporary browser|browser cop|saved profile|working copy|signed-out|advanced capture/i.test(message)) return message;
+  if (/not found|keep open cannot be renewed|not configured|active browser|browser limit|browser slots|browser capacity|requires a chat|in use|another profile|already has|temporary browser|browser cop|saved profile|working copy|signed-out|advanced capture/i.test(message)) return message;
   return 'Veneer Browser is temporarily unavailable.';
 }
 

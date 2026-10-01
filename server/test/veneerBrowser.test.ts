@@ -807,6 +807,121 @@ describe('Veneer Browser manager', () => {
     expect(remote.suspend).toHaveBeenCalledTimes(3);
   });
 
+  describe('Keep open cannot park a browser', () => {
+    const HOUR = 60 * 60_000;
+    const age = (ms: number) => db.prepare('UPDATE veneer_browser_clone_sessions SET created_at = ?').run(new Date(Date.now() - ms).toISOString());
+    const ageAudit = (ms: number) => db.prepare("UPDATE veneer_browser_audit SET created_at = ? WHERE conversation_id = 'conv-1'")
+      .run(new Date(Date.now() - ms).toISOString().slice(0, 19).replace('T', ' '));
+    const actions = (name: string) => (db.prepare('SELECT COUNT(*) AS n FROM veneer_browser_audit WHERE action = ?').get(name) as { n: number }).n;
+    const near = (iso: string | null | undefined, target: number, slackMs = 5_000) => {
+      expect(Math.abs(Date.parse(String(iso)) - target)).toBeLessThan(slackMs);
+    };
+
+    it('gives a fresh copy a full hold and reports how long it can be renewed', async () => {
+      await idleReadOnlyCopy();
+      const hold = await manager.setKeepOpen(1, 'conv-1', true, { reason: 'wizard open' });
+      near(hold.expiresAt, Date.now() + 2 * HOUR);
+      near(hold.renewableUntil, Date.now() + 4 * HOUR);
+      const view = await manager.conversationSession(1, 'conv-1');
+      near(view.keepOpenRenewableUntil, Date.now() + 4 * HOUR);
+    });
+
+    it('cuts a renewal off at four hours after the last real action', async () => {
+      await idleReadOnlyCopy();
+      age(3 * HOUR); ageAudit(3 * HOUR);
+      const hold = await manager.setKeepOpen(1, 'conv-1', true, { reason: 'still waiting' });
+      near(hold.expiresAt, Date.now() + HOUR);
+      expect(hold.expiresAt).toBe(hold.renewableUntil);
+      // A shorter request inside the bound is honored as asked.
+      near((await manager.setKeepOpen(1, 'conv-1', true, { reason: 'short', minutes: 10 })).expiresAt, Date.now() + 10 * 60_000);
+    });
+
+    it('refuses to renew an idle copy, records it, and says what to do instead', async () => {
+      await idleReadOnlyCopy();
+      age(5 * HOUR); ageAudit(5 * HOUR);
+      const refusal = await manager.setKeepOpen(1, 'conv-1', true, { reason: 'preservation-only deadline renewal' }).catch((error: Error) => error.message);
+      expect(refusal).toContain('Keep open cannot be renewed');
+      expect(refusal).toContain('import downloads');
+      expect(refusal).toContain('update_profile only after an intentional new sign-in');
+      expect(refusal).toContain('sign-in, downloads and files are kept');
+      expect(actions('clone.hold_enabled')).toBe(0);
+      expect(actions('clone.hold_refused')).toBe(1);
+      expect((await manager.conversationSession(1, 'conv-1')).keepOpen).toBe(false);
+      // With no hold the idle copy pauses as usual and keeps its files.
+      await manager.reconcile();
+      expect(remote.suspend).toHaveBeenCalledTimes(1);
+      expect(remote.delete).not.toHaveBeenCalled();
+    });
+
+    it('treats the bound as exclusive: seconds before it is already too late', async () => {
+      await idleReadOnlyCopy();
+      age(4 * HOUR - 30_000); ageAudit(4 * HOUR - 30_000);
+      await expect(manager.setKeepOpen(1, 'conv-1', true, { reason: 'last second' })).rejects.toThrow('Keep open cannot be renewed');
+      age(4 * HOUR - 5 * 60_000);
+      near((await manager.setKeepOpen(1, 'conv-1', true, { reason: 'five minutes left' })).expiresAt, Date.now() + 5 * 60_000);
+    });
+
+    it('does not count reads, snapshots, waits, renewals or being watched as use', async () => {
+      await idleReadOnlyCopy();
+      age(3.5 * HOUR); ageAudit(3.5 * HOUR);
+      const first = await manager.setKeepOpen(1, 'conv-1', true, { reason: 'waiting' });
+      for (const command of [['snapshot', '-i'], ['get', 'title'], ['wait', '500'], ['screenshot'], ['tab'], ['scroll', 'down']]) {
+        await manager.runCommand(1, 'conv-1', command);
+      }
+      await manager.runScript(1, 'conv-1', { steps: [{ op: 'tab', url_contains: 'example.com' }, { op: 'text' }] });
+      await manager.fetchUrl(1, 'conv-1', { url: 'https://example.com/' });
+      db.prepare("INSERT INTO veneer_browser_audit(client_scope, project_id, profile_id, conversation_id, action) VALUES(?,'project-1',?,'conv-1','clone.human_viewed')")
+        .run(manager.clientScope(), cloneId('conv-1'));
+      const second = await manager.setKeepOpen(1, 'conv-1', true, { reason: 'waiting' });
+      expect(second.renewableUntil).toBe(first.renewableUntil);
+      near(second.expiresAt, Date.now() + 0.5 * HOUR);
+    });
+
+    it.each([
+      ['a click', async () => { await manager.runCommand(1, 'conv-1', ['click', '@e1']); }],
+      ['typing', async () => { await manager.runCommand(1, 'conv-1', ['fill', '@e2', 'value']); }],
+      ['a script that acts', async () => { await manager.runScript(1, 'conv-1', { steps: [{ op: 'tab', url_contains: 'example.com' }, { op: 'click', text: 'Next' }] }); }],
+    ])('lets %s in the page make an old copy holdable again', async (_name, act) => {
+      await idleReadOnlyCopy();
+      age(9 * HOUR); ageAudit(9 * HOUR);
+      await expect(manager.setKeepOpen(1, 'conv-1', true, { reason: 'idle' })).rejects.toThrow('Keep open cannot be renewed');
+      await act();
+      const hold = await manager.setKeepOpen(1, 'conv-1', true, { reason: 'working again' });
+      near(hold.expiresAt, Date.now() + 2 * HOUR);
+      near(hold.renewableUntil, Date.now() + 4 * HOUR);
+    });
+
+    it('lets a hold recorded before the bound finish its time, then stops it renewing', async () => {
+      const id = await idleReadOnlyCopy();
+      age(26 * HOUR); ageAudit(26 * HOUR);
+      const expiresAt = new Date(Date.now() + 90 * 60_000).toISOString();
+      db.prepare("INSERT INTO veneer_browser_audit(client_scope, project_id, profile_id, conversation_id, action, metadata_json) VALUES(?,'project-1',?,'conv-1','clone.hold_enabled',?)")
+        .run(manager.clientScope(), id, JSON.stringify({ expiresAt, reason: 'preservation-only deadline renewal' }));
+      const view = await manager.conversationSession(1, 'conv-1');
+      expect(view.keepOpen).toBe(true);
+      expect(view.keepOpenUntil).toBe(expiresAt);
+      await manager.reconcile();
+      expect(remote.suspend).not.toHaveBeenCalled();
+      await expect(manager.setKeepOpen(1, 'conv-1', true, { reason: 'renew' })).rejects.toThrow('Keep open cannot be renewed');
+      // The refusal did not cut the running hold short.
+      expect((await manager.conversationSession(1, 'conv-1')).keepOpenUntil).toBe(expiresAt);
+      // Once that hold lapses the copy pauses and keeps its files.
+      db.prepare("UPDATE veneer_browser_audit SET metadata_json = ? WHERE action = 'clone.hold_enabled'")
+        .run(JSON.stringify({ expiresAt: new Date(Date.now() - 1000).toISOString() }));
+      await manager.reconcile();
+      expect(remote.suspend).toHaveBeenCalledTimes(1);
+      expect(remote.delete).not.toHaveBeenCalled();
+    });
+
+    it('still lets anyone turn a hold off, and never checks the bound to do it', async () => {
+      await idleReadOnlyCopy();
+      await manager.setKeepOpen(1, 'conv-1', true, { reason: 'wizard open' });
+      age(30 * HOUR); ageAudit(30 * HOUR);
+      await expect(manager.setKeepOpen(1, 'conv-1', false)).resolves.toEqual({ expiresAt: null });
+      await expect(manager.setKeepOpen(2, 'conv-1', false)).rejects.toThrow();
+    });
+  });
+
   it('does not hide a failed daemon close or let it permanently prevent safe remote suspension', async () => {
     await idleReadOnlyCopy();
     closeBrowserSession.mockRejectedValue(new Error('daemon unreachable'));

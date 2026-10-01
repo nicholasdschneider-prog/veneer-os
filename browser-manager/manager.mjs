@@ -49,11 +49,13 @@ const CHROME_BIN = process.env.VENEER_BROWSER_CHROME_BIN || '';
 const HEADLESS = process.env.VENEER_BROWSER_HEADLESS !== '0';
 const IMAGE = process.env.VENEER_BROWSER_IMAGE || 'veneer-browser-runtime:1';
 const SECCOMP = path.resolve(process.env.VENEER_BROWSER_SECCOMP || '/etc/veneer-browser/seccomp_profile.json');
-const MAX_ACTIVE = integer(process.env.VENEER_BROWSER_MAX_ACTIVE, 5, 1, 20);
+// Seven fits this 16 GB Mac with margin: a working copy is roughly 285 MB,
+// 420 MB when heavy (docs/browser-capacity-2026-10-01.md).
+const MAX_ACTIVE = integer(process.env.VENEER_BROWSER_MAX_ACTIVE, 7, 1, 20);
 // Slots one project may hold at once, so a busy project queues behind itself
 // instead of taking every slot from the others. An unfiled chat's scope is its
 // owner's private "project", so unfiled chats share a cap per person.
-const MAX_PER_PROJECT = integer(process.env.VENEER_BROWSER_MAX_PER_PROJECT, 2, 1, 20);
+const MAX_PER_PROJECT = integer(process.env.VENEER_BROWSER_MAX_PER_PROJECT, 4, 1, 20);
 // A person who just closed the live view may be reloading it; longer than this
 // and the browser is simply unwatched.
 const VIEWER_GRACE_MS = integer(process.env.VENEER_BROWSER_VIEWER_GRACE_SECONDS, 120, 10, 3600) * 1000;

@@ -135,10 +135,14 @@ describe('living bot guide release contract', () => {
     expect(feature.agent).toContain('inspect_conversational_decision');
   });
   it('explains shared browser capacity to employees and resumed agents', () => {
-    const feature = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'browser')!;
+    const feature = botFeatureCatalog(Date.parse('2026-10-01')).features.find(f => f.id === 'browser')!;
     expect(feature.isNew).toBe(true);
-    expect(feature.limits).toContain('Five browsers run at once');
-    expect(feature.limits).toContain('each project may hold two');
+    expect(feature.limits).toContain('Seven browsers run at once');
+    expect(feature.limits).toContain('each project may hold four');
+    expect(feature.limits).toContain('four hours after the last click or keystroke');
+    expect(feature.announcement).toContain('seven on this Mac and four per project');
+    expect(feature.agent).toContain('Seven browsers run at once and each project may hold four');
+    expect(feature.agent).toContain('never park a browser');
     expect(feature.limits).toContain('two hours');
     expect(feature.steps.join(' ')).toContain('pauses automatically');
     expect(feature.agent).toContain('keep_open');

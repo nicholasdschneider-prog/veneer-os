@@ -178,6 +178,24 @@ describe('Veneer Browser runner tool scope', () => {
     expect(setKeepOpen).toHaveBeenLastCalledWith(1, 'token-chat', false, {});
   });
 
+  it('tells the bot how long a hold can be renewed and passes a refusal through as an error', async () => {
+    setKeepOpen.mockResolvedValueOnce({ expiresAt: '2026-10-01T21:00:00Z', renewableUntil: '2026-10-01T23:00:00Z' } as never);
+    const held = await (await call('keep_open', { active: true, reason: 'wizard open' })).json();
+    expect(held.result.content[0].text).toContain('until 2026-10-01T21:00:00Z');
+    expect(held.result.content[0].text).toContain('renewed until 2026-10-01T23:00:00Z');
+    setKeepOpen.mockRejectedValueOnce(new Error('Keep open cannot be renewed: nothing has been clicked or typed in this browser for four hours'));
+    const refused = await (await call('keep_open', { active: true, reason: 'preserve' })).json();
+    expect(refused.result.isError).toBe(true);
+    expect(refused.result.content[0].text).toContain('Keep open cannot be renewed');
+    const renewable = { ...(await conversationSession()), active: true, temporaryClone: true, status: 'active', keepOpen: false, keepOpenRenewableUntil: '2026-10-01T23:00:00Z' };
+    conversationSession.mockResolvedValueOnce(renewable as never).mockResolvedValueOnce(renewable as never);
+    const status = await (await call('status')).json();
+    expect(status.result.content[0].text).toContain('A hold can be renewed until 2026-10-01T23:00:00Z');
+    const listed = await (await fetch(base, { method: 'POST', headers: { 'content-type': 'application/json', 'x-vp-agent-token': token },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) })).json() as { result: { tools: { name: string; description: string }[] } };
+    expect(listed.result.tools.find(tool => tool.name === 'keep_open')?.description).toContain('four hours after the last click or keystroke');
+  });
+
   it('uses the signed agent token chat and its derived unfiled scope for list', async () => {
     const response = await call('list', { conversation_id: 'caller-chat', project_id: 'project-2' });
     expect(response.status).toBe(200);

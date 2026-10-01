@@ -1300,6 +1300,70 @@ test('caps one project inside the shared admission path while another project st
 });
 
 
+test('runs seven browsers and four per project by default, and refuses the next of each', async () => {
+  // No limit overrides: this pins the shipped defaults.
+  const instance = await startManager('default-caps', { VENEER_BROWSER_WARM: '0', VENEER_BROWSER_CAPACITY_WAIT_MS: '1500', VENEER_BROWSER_MAX_PER_PROJECT: undefined, VENEER_BROWSER_MAX_ACTIVE: undefined });
+  const create = (project, profile) => instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId: project, profileId: profile, name: profile, temporary: true }) });
+  const start = (project, profile) => instance.call(`/v1/profiles/${profile}/start`, { method: 'POST', body: JSON.stringify({ projectId: project }) });
+  const capacity = async (project) => (await instance.call(`/v1/capacity${project ? `?projectId=${project}` : ''}`)).json();
+  const release = async (project, profile) => {
+    const status = await (await instance.call(`/v1/profiles/${profile}?projectId=${project}`)).json();
+    return (await (await instance.call(`/v1/profiles/${profile}/suspend`, { method: 'POST', body: JSON.stringify({ projectId: project, expectedLastUsedAt: status.profile.lastUsedAt }) })).json()).suspended;
+  };
+  const one = ['a1', 'a2', 'a3', 'a4', 'a5'];
+  const two = ['b1', 'b2', 'b3', 'b4'];
+  for (const profile of one) assert.equal((await create('one', profile)).status, 201);
+  for (const profile of two) assert.equal((await create('two', profile)).status, 201);
+
+  assert.deepEqual({ limit: (await capacity()).limit, projectLimit: (await capacity('one')).projectLimit }, { limit: 7, projectLimit: 4 });
+  for (const profile of one.slice(0, 4)) assert.equal((await start('one', profile)).status, 200);
+  // The project's fifth waits out its bounded admission and is refused by the project cap, not the machine.
+  const fifth = await start('one', 'a5');
+  assert.equal(fifth.status, 429);
+  assert.match((await fifth.json()).error, /4 of its 4 browser slots|Browser capacity is busy/);
+  assert.deepEqual(await capacity('one').then(c => [c.active, c.limit, c.projectActive, c.projectLimit]), [4, 7, 4, 4]);
+
+  // Another project still starts while the first is full: three more fill the machine.
+  for (const profile of two.slice(0, 3)) assert.equal((await start('two', profile)).status, 200);
+  assert.deepEqual(await capacity('two').then(c => [c.active, c.limit, c.projectActive, c.projectLimit]), [7, 7, 3, 4]);
+  // The machine's eighth is refused even though its project has room.
+  const eighth = await start('two', 'b4');
+  assert.equal(eighth.status, 429);
+  assert.match((await eighth.json()).error, /All 7 browser slots are occupied|Browser capacity is busy/);
+
+  // Pausing one frees a slot for exactly one more, without deleting the copy's data.
+  assert.equal(await release('one', 'a1'), true);
+  assert.equal((await instance.call('/v1/profiles/a1?projectId=one')).status, 200);
+  assert.deepEqual(await capacity('one').then(c => [c.active, c.projectActive]), [6, 3]);
+  assert.equal((await start('two', 'b4')).status, 200);
+  assert.equal((await start('one', 'a5')).status, 429);
+  assert.deepEqual(await capacity('one').then(c => [c.active, c.projectActive]), [7, 3]);
+});
+
+test('a waiter refused only by its project cap is admitted as soon as that project frees a slot', async () => {
+  // The fake runtime takes about 15 seconds to stop a container, so the waiter needs the full admission wait.
+  const instance = await startManager('project-waiter', { VENEER_BROWSER_WARM: '0', VENEER_BROWSER_CAPACITY_WAIT_MS: '20000', VENEER_BROWSER_MAX_PER_PROJECT: undefined });
+  const create = (project, profile) => instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId: project, profileId: profile, name: profile, temporary: true }) });
+  const start = (project, profile) => instance.call(`/v1/profiles/${profile}/start`, { method: 'POST', body: JSON.stringify({ projectId: project }) });
+  for (const profile of ['w1', 'w2', 'w3', 'w4', 'w5']) assert.equal((await create('one', profile)).status, 201);
+  assert.equal((await create('two', 'x1')).status, 201);
+  for (const profile of ['w1', 'w2', 'w3', 'w4']) assert.equal((await start('one', profile)).status, 200);
+  const waiting = start('one', 'w5');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.equal((await (await instance.call('/v1/capacity?projectId=one')).json()).waiting, 1);
+  // The other project is not held behind the capped waiter.
+  const began = Date.now();
+  assert.equal((await start('two', 'x1')).status, 200);
+  assert.ok(Date.now() - began < 5000, 'the other project started without waiting out the capped one');
+  const status = await (await instance.call('/v1/profiles/w2?projectId=one')).json();
+  const paused = await (await instance.call('/v1/profiles/w2/suspend', { method: 'POST', body: JSON.stringify({ projectId: 'one', expectedLastUsedAt: status.profile.lastUsedAt }) })).json();
+  assert.equal(paused.suspended, true);
+  const admitted = await waiting;
+  assert.equal(admitted.status, 200, 'the waiting chat takes the freed slot');
+  const capacity = await (await instance.call('/v1/capacity?projectId=one')).json();
+  assert.deepEqual([capacity.active, capacity.projectActive, capacity.waiting], [5, 4, 0]);
+});
+
 test('old human-view protection expires while connected viewers still block suspension', async () => {
   const instance = await startManager('viewer-lifecycle', { VENEER_BROWSER_WARM: '0' });
   await instance.call('/v1/temporary-profiles', { method: 'POST', body: JSON.stringify({ projectId, profileId: 'old-view', name: 'old' }) });

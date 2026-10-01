@@ -270,6 +270,20 @@ describe('Veneer Browser routes', () => {
     expect(await off.json()).toEqual({ ok: true, capture: { active: false } });
   });
 
+  it('shows the panel why a parked browser cannot be held again', async () => {
+    const put = (body: unknown) => fetch(`${base}/api/veneer-browser/conversations/chat-1/keep-open`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+    veneerBrowserConversationKeepOpen.mockResolvedValueOnce({ expiresAt: '2026-10-01T21:00:00Z', renewableUntil: '2026-10-01T23:00:00Z' } as never);
+    const held = await put({ active: true, reason: 'wizard open' });
+    expect(held.status).toBe(200);
+    expect(await held.json()).toEqual({ ok: true, expiresAt: '2026-10-01T21:00:00Z', renewableUntil: '2026-10-01T23:00:00Z' });
+    veneerBrowserConversationKeepOpen.mockRejectedValueOnce(new Error('Keep open cannot be renewed: nothing has been clicked or typed in this browser for four hours, and a parked browser keeps other chats from working.'));
+    const refused = await put({ active: true, reason: 'preserve' });
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).error).toContain('Keep open cannot be renewed');
+  });
+
   it('rejects a malformed Advanced capture body and surfaces a refused grant', async () => {
     for (const body of [{}, { active: 'yes' }, { active: 1 }]) {
       const response = await fetch(`${base}/api/veneer-browser/conversations/chat-1/capture`, {

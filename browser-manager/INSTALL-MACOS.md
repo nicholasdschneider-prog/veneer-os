@@ -114,7 +114,8 @@ FileVault).
 | `VENEER_BROWSER_TLS_PORT` / `_CERT` / `_KEY` | unset | TLS listener; all three or none. |
 | `VENEER_BROWSER_PUBLIC_ORIGIN` | unset | Forces the origin minted into tickets (`https://localhost:7301`). |
 | `VENEER_BROWSER_WARM` / `_WARM_MAX` | `1` / `2` | Pre-booted copy per saved profile, and the pool cap. |
-| `VENEER_BROWSER_MAX_ACTIVE` | `5` | Running sessions across all projects; saved profiles do not add capacity. |
+| `VENEER_BROWSER_MAX_ACTIVE` | `7` | Running sessions across all projects; saved profiles do not add capacity. |
+| `VENEER_BROWSER_MAX_PER_PROJECT` | `4` | Running sessions one project may hold at once. |
 
 ## Native backend notes
 
@@ -146,9 +147,9 @@ FileVault).
 ## Capacity and project growth
 
 Runtime admission is serialized across projects, including adoption of prewarmed
-copies. The default is five active sessions on this 16 GB Mac
-(`VENEER_BROWSER_MAX_ACTIVE`), of which one project may hold at most two
-(`VENEER_BROWSER_MAX_PER_PROJECT`, default 2), plus up to two unclaimed warm copies.
+copies. The default is seven active sessions on this 16 GB Mac
+(`VENEER_BROWSER_MAX_ACTIVE`), of which one project may hold at most four
+(`VENEER_BROWSER_MAX_PER_PROJECT`, default 4), plus up to two unclaimed warm copies.
 An unfiled chat's scope is its owner's private project, so unfiled chats share a
 per-person cap. Warm copies consume memory even though they are not active sessions
 and are built subject to the machine cap only; the project cap applies when one is

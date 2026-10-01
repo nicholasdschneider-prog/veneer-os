@@ -42,6 +42,13 @@ const MAX_DOWNLOAD_TOTAL = 100 * 1024 * 1024;
 const IDLE_BACKSTOP_MS = 5 * 60_000;
 // The longest an explicit Keep open may last before it has to be asked for again.
 const HOLD_MAX_MS = 2 * 60 * 60_000;
+// A hold can be renewed, but only while the browser is being used: no hold may
+// run past this long after the last real action in the copy. Without it a chat
+// that renews every two hours parks a slot for days.
+const HOLD_RENEW_MS = 4 * 60 * 60_000;
+const HOLD_BOUND_REFUSAL = 'Keep open cannot be renewed: nothing has been clicked or typed in this browser for four hours, and a parked browser keeps other chats from working. '
+  + 'Save what you need now: import downloads with the download tool, record the facts or a screenshot in the case file, and call update_profile only after an intentional new sign-in. '
+  + 'Then let the browser pause when your turn ends. Its sign-in, downloads and files are kept and the next browser call reopens it; only the page that was on screen is reloaded.';
 // Commands that cannot leave an external action with an unknown outcome. Used
 // only to tell the bot, on reopen, that an earlier action needs verifying; it
 // no longer keeps a browser running.
@@ -109,6 +116,8 @@ export interface VeneerBrowserSessionView {
   keepOpen?: boolean;
   /** When the current Keep open lapses; null when Keep open is off. */
   keepOpenUntil?: string | null;
+  /** The latest time a hold on this copy may run to; a real page action moves it out. */
+  keepOpenRenewableUntil?: string | null;
   keepOpenReason?: string | null;
   retentionReason?: string | null;
   /** An earlier action in this copy has an unknown outcome; verify before repeating it. */
@@ -1690,6 +1699,7 @@ export class VeneerBrowserManager {
         capacity, capacityWait,
         keepOpen: hold.active,
         keepOpenUntil: hold.expiresAt,
+        keepOpenRenewableUntil: new Date(this.holdBound(copy)).toISOString(),
         keepOpenReason: hold.reason,
         retentionReason: this.retentionReason(copy),
         pendingReview: this.pendingReview(copy),
@@ -1988,10 +1998,38 @@ export class VeneerBrowserManager {
   }
 
   /**
-   * An explicit, bounded hold. `minutes` is clamped to HOLD_MAX_MS; renewing
-   * means calling again, so nothing stays held because someone forgot it.
+   * When this copy was last really used: created, clicked, typed in, signed in
+   * to, or driven by a script that acts. Reads, snapshots, waits, hold renewals
+   * and a connected viewer do not count.
    */
-  async setKeepOpen(userId: number, conversationId: string, active: boolean, options: { reason?: string; minutes?: number } = {}): Promise<{ expiresAt: string | null }> {
+  private lastInteractionAt(row: VeneerBrowserCloneSessionRow): number {
+    const stamp = (value: string): number => Date.parse(/[TZ]/.test(value) ? value : `${value.replace(' ', 'T')}Z`);
+    let last = stamp(row.created_at);
+    if (!Number.isFinite(last)) last = 0;
+    for (const event of this.copyEvents(row)) {
+      let counts = event.action === 'clone.interaction' || event.action === 'clone.login_started';
+      if (!counts && event.action === 'command.executed') {
+        try { counts = !IDLE_SAFE_COMMANDS.has(String(JSON.parse(event.metadata_json).command)); } catch { counts = false; }
+      }
+      if (!counts) continue;
+      const at = stamp(event.created_at);
+      if (Number.isFinite(at) && at > last) last = at;
+    }
+    return last;
+  }
+
+  /** The moment past which no hold on this copy may run. */
+  private holdBound(row: VeneerBrowserCloneSessionRow): number {
+    return this.lastInteractionAt(row) + HOLD_RENEW_MS;
+  }
+
+  /**
+   * An explicit, bounded hold. `minutes` is clamped to HOLD_MAX_MS; renewing
+   * means calling again, so nothing stays held because someone forgot it. A
+   * renewal is also cut off at the copy's hold bound, and refused past it. A
+   * hold recorded before the bound existed keeps its own expiry and then lapses.
+   */
+  async setKeepOpen(userId: number, conversationId: string, active: boolean, options: { reason?: string; minutes?: number } = {}): Promise<{ expiresAt: string | null; renewableUntil?: string }> {
     this.conversation(conversationId, userId, true);
     return this.queue(`conversation:${conversationId}`).run(async () => {
       const context = this.conversation(conversationId, userId, true);
@@ -2002,10 +2040,16 @@ export class VeneerBrowserManager {
         return { expiresAt: null };
       }
       const minutes = Math.min(HOLD_MAX_MS / 60_000, Math.max(1, Math.floor(Number(options.minutes) || HOLD_MAX_MS / 60_000)));
-      const expiresAt = new Date(Date.now() + minutes * 60_000).toISOString();
+      const bound = this.holdBound(row);
+      // Under a minute of hold is not a hold; say so rather than record one.
+      if (bound - Date.now() < 60_000) {
+        this.audit(row.project_id, this.auditProfileId(row), 'clone.hold_refused', userId, context.id, { reason: 'idle_bound' });
+        throw new Error(HOLD_BOUND_REFUSAL);
+      }
+      const expiresAt = new Date(Math.min(Date.now() + minutes * 60_000, bound)).toISOString();
       const reason = String(options.reason ?? '').trim().slice(0, 200);
       this.audit(row.project_id, this.auditProfileId(row), 'clone.hold_enabled', userId, context.id, { expiresAt, ...(reason ? { reason } : {}) });
-      return { expiresAt };
+      return { expiresAt, renewableUntil: new Date(bound).toISOString() };
     });
   }
 
