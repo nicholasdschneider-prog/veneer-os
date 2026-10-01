@@ -96,4 +96,17 @@ returns only what the reading steps produced.
 
 ## Acceptance on the live relay
 
-See the section appended after deployment.
+Deployed 2026-10-01 12:37Z (commit 0a78ce8). The same task as the baseline, run
+from a Platform Dev chat through the production MCP endpoint, relay and a normal
+working copy: USPS 9434650106151139738015 and UPS 1Z4434570341274300, six steps
+(open, wait, text for each carrier).
+
+| | Model turns | Wall time | Characters returned |
+|---|---|---|---|
+| Existing tools, 2026-09-30 | 8 | 50 s | about 8,000 |
+| `script`, 2026-10-01 | 1 | 9.6 s | 700 |
+
+Both carriers returned the correct current status. The audit trail recorded one
+`command.executed` row with command `script.read`, `success: true`, `steps: 6`
+and `duration_ms: 9616`. No tab was left open. The four node services were
+restarted; the browser manager was not, because none of its code changed.
