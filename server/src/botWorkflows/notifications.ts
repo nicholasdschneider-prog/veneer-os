@@ -264,3 +264,46 @@ export async function tickNotifications(
     }
   }
 }
+
+/**
+ * A bot is ringing someone who is not using Veneer right now. Sent straight to that person's
+ * devices, not through the outbox: a call notification is worthless a minute later. One shared
+ * tag means a retry replaces the earlier notification instead of stacking.
+ */
+export async function sendCallPush(
+  ctx: AppContext,
+  userId: number,
+  call: { decisionId: string; botName: string },
+  send = webpush.sendNotification,
+) {
+  const devices = ctx.db
+    .prepare('SELECT id FROM bot_push_devices WHERE user_id=?')
+    .all(userId) as { id: string }[];
+  for (const d of devices) {
+    const raw = ctx.secrets.getApiKeyOverride(`bot-push-device-${d.id}`);
+    if (!raw) continue;
+    try {
+      await send(
+        Subscription.parse(JSON.parse(raw)),
+        JSON.stringify({
+          kind: 'call',
+          caller: call.botName.slice(0, 60),
+          href: `#/answer-call/${encodeURIComponent(call.decisionId)}`,
+          tag: 'veneer-bot-call',
+        }),
+        {
+          vapidDetails: { subject: 'https://veneer.app', ...pushKeys(ctx) },
+          TTL: 60,
+          urgency: 'high',
+          timeout: 10000,
+        },
+      );
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode;
+      if (status === 404 || status === 410) {
+        ctx.db.prepare('DELETE FROM bot_push_devices WHERE id=?').run(d.id);
+        ctx.secrets.clearApiKeyOverride(`bot-push-device-${d.id}`);
+      }
+    }
+  }
+}

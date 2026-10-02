@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Hand, List, ChevronDown, Phone, Clock, MessageSquare } from 'lucide-react';
+import { Hand, List, ChevronDown, Phone, PhoneIncoming, Clock, MessageSquare } from 'lucide-react';
 import { ApiError, requestJson } from '@/lib/api';
 import type { BotDecision } from '@/lib/bots';
 import { BotAvatar } from './BotIdentity';
@@ -9,6 +9,7 @@ import { useLiveVoice } from './VoiceProvider';
 import { SideChatPanel } from './chat/SideChatPanel';
 import { Chat } from '@/screens/Chat';
 import { DeskPill } from './DeskPill';
+import { BotCallRing, BotCallSettings } from './BotCalls';
 
 type Side = { parentId: string; agentName: string; sideParam: string };
 type Chief = { conversation_id: string; name: string | null; active: boolean };
@@ -30,6 +31,7 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   const [side, setSide] = useState<Side | null>(null);
   const [list, setList] = useState(false);
   const [later, setLater] = useState(false);
+  const [calls, setCalls] = useState(false);
   const [until, setUntil] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -120,8 +122,10 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
           <div className="flex flex-wrap items-center gap-2 border-b p-2">
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setList(!list)}><List className="size-4" /> {total} waiting</Button>
             <Button type="button" variant="outline" disabled={!!voice.pinnedId || !total} onClick={() => {setList(false);voice.hotline();}}><Phone className="size-4" /> Hotline</Button>
+            <Button type="button" variant="ghost" aria-expanded={calls} onClick={() => setCalls(!calls)}><PhoneIncoming className="size-4" /> Calls</Button>
             {selected && <><Button type="button" variant="ghost" onClick={()=>document.querySelector(`[data-question-id="${CSS.escape(selected.id)}"] [id=decision-composer]`)?.scrollIntoView({block:'end'})}>Chat</Button><Button type="button" variant="ghost" disabled={busy || !!voice.pinnedId} onClick={() => voice.open(selected.conversation_id,selected.id)}>Call {selected.bot_name}</Button><Button type="button" variant="ghost" disabled={busy} onClick={() => setLater(!later)}><Clock className="size-4" /> Later</Button></>}
           </div>
+          {calls && <BotCallSettings />}
           {error && <p role="alert" className="p-3 text-sm text-destructive">{error}</p>}
           {notice && <p role="status" className="p-3 text-sm text-muted-foreground">{notice}</p>}
           {later && selected && <div className="space-y-3 border-b p-3">
@@ -143,6 +147,7 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
         {side && <div className={mode === 'side' ? 'min-h-0 flex-1' : 'hidden'}><SideChatPanel key={`${side.parentId}:${side.sideParam}`} {...side} onSelect={value=>setSide(current=>current ? {...current,sideParam:value} : null)} onNavigate={navigate} onToast={setNotice} onClose={()=>setMode(null)} /></div>}
       </aside>
     </div>
+    <BotCallRing enabled={userId !== null} />
     {!mode && (chief || (loaded && (total > 0 || line.sleeping.length > 0 || side || (userId && error)))) && <DeskPill
       front={front ? { id: front.conversation_id, name: front.bot_name } : null}
       total={total}

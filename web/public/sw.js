@@ -1,7 +1,7 @@
 // Minimal network-first service worker. Never serves a stale app shell when
 // the network is up (Veneer's stale-bundle lesson); cache is a fallback for
 // offline only. Bump CACHE_VERSION to invalidate.
-const CACHE_VERSION = 'vp-v3';
+const CACHE_VERSION = 'vp-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -45,8 +45,17 @@ self.addEventListener('push', event => {
   event.waitUntil((async () => {
     let payload;
     try { payload = event.data.json(); } catch { return; }
-    const href = typeof payload.href === 'string' && /^#\/(chat|bots)\//.test(payload.href) ? payload.href : '#/bots';
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // A bot is calling: name the caller, and let the tap open the call in the app.
+    if (payload.kind === 'call' && typeof payload.href === 'string' && /^#\/answer-call\/[\w%.-]{1,200}$/.test(payload.href)) {
+      const caller = typeof payload.caller === 'string' ? payload.caller.replace(/[^\p{L}\p{N} .'’&-]/gu, '').slice(0, 60).trim() : '';
+      await self.registration.showNotification(caller ? `${caller} is calling` : 'A bot is calling', {
+        body: 'Tap to answer the question.', tag: 'veneer-bot-call', renotify: true,
+        data: { href: payload.href }, icon: '/icons/icon-192.png',
+      });
+      return;
+    }
+    const href = typeof payload.href === 'string' && /^#\/(chat|bots)\//.test(payload.href) ? payload.href : '#/bots';
     if (windows.some(client => client.focused && client.url.endsWith(href))) return;
     await self.registration.showNotification('Veneer', {
       body: ['A bot needs your input.', 'A bot needs help to continue.', 'A bot has finished work.'].includes(payload.body) ? payload.body : 'A bot has an update.',

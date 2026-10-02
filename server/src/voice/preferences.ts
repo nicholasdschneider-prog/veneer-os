@@ -51,7 +51,8 @@ export function voiceGreetingInstructions(raw: unknown): string {
   // Preserve the established opening for people who have not changed it.
   return 'At the start of a new or resumed call, briefly greet the caller and give a short orientation from the supplied fresh conversation context. If a focused decision is supplied, lead with it. Empty blockers do not mean no work was completed. Use read_chat for missing context or list_blockers for coordinator questions when needed; never invent a recap.';
 }
-export function voiceStyleInstructions(raw: unknown): string {
+/** `opening` replaces the saved greeting policy on a call the bot itself placed. */
+export function voiceStyleInstructions(raw: unknown, opening?: string): string {
   const p = voicePreferencesSchema.parse(raw);
   const length = {
     concise: 'Default to one or two short sentences with the main point. Expand when asked.',
@@ -62,15 +63,15 @@ export function voiceStyleInstructions(raw: unknown): string {
   const structure = { answer_first: 'Lead with the answer, then supporting detail if needed.', step_by_step: 'Explain one step at a time.', conversational: 'Use natural conversational explanations.' };
   return '\nCurrent caller voice style (replaces prior saved style; unspecified settings use the normal brief conversational default):\n'
     + [p.length && length[p.length], p.tone && tone[p.tone], p.structure && structure[p.structure]].filter(Boolean).join(' ')
-    + '\n' + voiceGreetingInstructions(p)
+    + '\n' + (opening ?? voiceGreetingInstructions(p))
     + '\nStyle never removes material constraints or approval requirements.\n';
 }
 
 /** Refresh the live agent only from a successful, validated storage result. */
-export async function applyVoicePreferenceResult(result: unknown, baseInstructions: string, update: (instructions: string) => Promise<void>) {
+export async function applyVoicePreferenceResult(result: unknown, baseInstructions: string, update: (instructions: string) => Promise<void>, opening?: string) {
   const saved = z.object({ ok: z.literal(true), preferences: voicePreferencesSchema }).safeParse(result);
   if (saved.success) {
-    try { await update(baseInstructions + voiceStyleInstructions(saved.data.preferences)); }
+    try { await update(baseInstructions + voiceStyleInstructions(saved.data.preferences, opening)); }
     catch { return { ...saved.data, currentCallApplied: false, message: 'Preferences are saved for future calls, but the current call could not refresh its instructions.' }; }
   }
   return result;

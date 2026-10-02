@@ -4,10 +4,11 @@ export function finishVoiceSession(
   id: string,
   now: number,
   outcome = 'ended',
+  reason: string | null = null,
 ) {
   db.prepare(
-    'UPDATE voice_sessions SET ended_ms=?,outcome=? WHERE id=? AND ended_ms IS NULL',
-  ).run(now, outcome, id);
+    'UPDATE voice_sessions SET ended_ms=?,outcome=?,end_reason=? WHERE id=? AND ended_ms IS NULL',
+  ).run(now, outcome, reason, id);
 }
 export function listVoiceSessions(
   db: Database.Database,

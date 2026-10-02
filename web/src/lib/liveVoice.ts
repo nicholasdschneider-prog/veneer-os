@@ -8,7 +8,7 @@ export interface VoiceDecisionSummary {
 export interface VoiceSnapshot {
   callerName?: string;
   configuration: { ready: boolean; missing: string[]; invalidUrl: boolean };
-  call: { id: string; state: string; error: string | null; expiresAt: number; botConversationId: string | null; botName: string | null; decisionId: string | null } | null;
+  call: { id: string; state: string; error: string | null; expiresAt: number; botConversationId: string | null; botName: string | null; decisionId: string | null; incoming?: boolean } | null;
   bot: { conversationId: string; name: string; title: string | null; archived: boolean; role: string | null; subteam: string | null; team: string | null; canMessage: boolean } | null;
   decision: (VoiceDecisionSummary & { discussion: { from: string; text: string; at: string }[] }) | null;
   decisions: VoiceDecisionSummary[];

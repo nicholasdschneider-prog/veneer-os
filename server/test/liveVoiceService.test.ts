@@ -70,6 +70,32 @@ describe('live voice lifecycle', () => {
     expect(start.instructions).not.toContain('voice line for');
     expect(start.instructions).not.toContain("Sage's voice line");
   });
+  it('asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();
+    db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES('q','sage','q','q',?,1)").run(JSON.stringify({question:'Ship the order today?',recommendation:'Yes',consequence:'One shipment',blocked_action:'Shipment',blocks_scope:'task',deadline:null,evidence:[]}));
+    // An ordinary call on the same question keeps the saved greeting and has no hangup tools.
+    const plain = await service.start(1,{botConversationId:'sage',decisionId:'q'});
+    const ordinary = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
+    expect(ordinary.opening).toBeUndefined(); expect(ordinary.instructions).not.toContain('YOU PLACED THIS CALL');
+    expect(service.status(1)).toMatchObject({incoming:false});
+    service.end(1,plain.id); child.send.mockClear();
+    const call = await service.start(1,{botConversationId:'sage',decisionId:'q',incoming:true});
+    const start = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
+    expect(start.opening).toContain('It\'s Sage.'); expect(start.opening).toContain('no recap');
+    expect(start.instructions).toContain('YOU PLACED THIS CALL'); expect(start.instructions).toContain('decision q');
+    expect(service.status(1)).toMatchObject({incoming:true,decisionId:'q'});
+    child.emit('message',{type:'tool',id:'stop',name:'stop_calling',args:{}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.id==='stop').result).toEqual({ok:true,stopped:true});
+    expect(db.prepare("SELECT state FROM bot_call_rings WHERE user_id=1 AND decision_id='q'").get()).toEqual({state:'stopped'});
+    expect(db.prepare("SELECT state,answer_json FROM bot_decisions WHERE id='q'").get()).toEqual({state:'needs_input',answer_json:null});
+    child.emit('message',{type:'closed',reason:'user_initiated'});
+    child.emit('message',{type:'tool',id:'bye',name:'end_call',args:{}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(service.status(1)).toBeNull();
+    expect(db.prepare('SELECT outcome,end_reason FROM voice_sessions WHERE id=?').get(call.id)).toEqual({outcome:'ended',end_reason:'agent_ended/worker_user_initiated'});
+  });
   it('hands the saved transcript to the bot once after every bot call, marking relayed items', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();

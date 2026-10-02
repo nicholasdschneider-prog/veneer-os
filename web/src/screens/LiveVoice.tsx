@@ -10,13 +10,18 @@ import { decisionLabel } from '@/lib/bots';
 import { voiceRequest, type VoiceSnapshot } from '../lib/liveVoice';
 
 type State = 'ready' | 'connecting' | 'connected' | 'reconnecting' | 'standby' | 'ended';
+/** Recorded with the call so an unexpected hangup can be explained afterwards. */
+type EndReason = 'hangup' | 'standby' | 'mic_lost' | 'room_disconnected' | 'call_missing' | 'call_failed' | 'refresh_failed' | 'heartbeat_failed' | 'pagehide' | 'unmount' | 'start_failed' | 'agent_ended';
+const FAILURE_LIMIT = 3;
 /**
  * A live voice call. With `botConversationId` it is a call to one VeneerBot
  * (its chat, decisions and questions); without it, the Henry coordinator
  * across every pending question.
  */
-export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, compact = false, hotline = false }: {
+export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, compact = false, hotline = false, incoming = false }: {
   hotline?: boolean; compact?: boolean; botConversationId?: string; decisionId?: string | null; onBack: () => void; onNavigate?: (hash: string) => void;
+  /** The bot rang about `decisionId` and the person answered: connect at once and close when the bot hangs up. */
+  incoming?: boolean;
 }) {
   const [snapshot, setSnapshot] = useState<VoiceSnapshot | null>(null);
   const [state, setState] = useState<State>('ready');
@@ -40,13 +45,21 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const mounted = useRef(true);
   const audioHost = useRef<HTMLDivElement>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
+  // One failed status check must not hang up a call; a few in a row means the connection is gone.
+  const refreshFailures = useRef(0);
+  const heartbeatFailures = useRef(0);
+  const micRecoveries = useRef(0);
+  const autoStarted = useRef(false);
+  // Read through refs: the polling effect must not restart (and hang up) when a parent re-renders.
+  const incomingRef = useRef(incoming); incomingRef.current = incoming;
+  const onBackRef = useRef(onBack); onBackRef.current = onBack;
   const query = botConversationId ? `?bot=${encodeURIComponent(botConversationId)}${decisionId ? `&decision=${encodeURIComponent(decisionId)}` : ''}` : hotline ? '?hotline=1' : '';
   const refresh = useCallback(async () => {
     const next = await voiceRequest<VoiceSnapshot>(query);
     if (mounted.current) setSnapshot(next);
     return next;
   }, [query]);
-  const end = useCallback((next: State = 'ended') => {
+  const end = useCallback((next: State = 'ended', reason: EndReason = 'hangup') => {
     generation.current++;
     if (roomRef.current) micDictation.liveVoiceActive = false;
     const id = callId.current; callId.current = null;
@@ -56,7 +69,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
     void room?.disconnect().catch(() => {});
     audioHost.current?.replaceChildren();
     void wakeLock.current?.release(); wakeLock.current = null;
-    if (id) void voiceRequest(`/calls/${id}/end`, {}, true).then(() => window.dispatchEvent(new Event('voice-session-ended'))).catch(() => {});
+    if (id) void voiceRequest(`/calls/${id}/end`, { reason }, true).then(() => window.dispatchEvent(new Event('voice-session-ended'))).catch(() => {});
     if (mounted.current) { setState(next); setMuted(false); setAudioBlocked(false); }
   }, []);
   const name = snapshot?.bot?.name ?? (hotline ? 'Question hotline' : botConversationId ? 'this bot' : 'Henry');
@@ -69,16 +82,24 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
       if (!callId.current && ticks % 5 !== 0) return;
       const epoch = generation.current;
       void refresh().then(next => {
+        refreshFailures.current = 0;
         if (epoch === generation.current && callId.current && (!next.call || next.call.id !== callId.current || next.call.state === 'failed')) {
-          setError(next.call?.error ?? 'The call ended. Tap Call to continue.'); end();
+          const failed = next.call?.id === callId.current && next.call.state === 'failed';
+          // The bot hung up after getting its answer: nothing is left to do on this call.
+          if (incomingRef.current && !failed) { end('ended', 'agent_ended'); onBackRef.current(); return; }
+          setError(next.call?.error ?? 'The call ended. Tap Call to continue.'); end('ended', failed ? 'call_failed' : 'call_missing');
         }
-      }).catch(e => { if (epoch === generation.current) { setError(e.message); end(); } });
-      if (callId.current && ticks % 5 === 0) void voiceRequest(`/calls/${callId.current}/heartbeat`, {}).catch(() => {
+      }).catch(e => {
         if (epoch !== generation.current) return;
-        setError('Connection lost. Your saved conversation is still here.'); end();
+        if (callId.current && ++refreshFailures.current < FAILURE_LIMIT) return;
+        setError(e.message); end('ended', 'refresh_failed');
+      });
+      if (callId.current && ticks % 5 === 0) void voiceRequest(`/calls/${callId.current}/heartbeat`, {}).then(() => { heartbeatFailures.current = 0; }).catch(() => {
+        if (epoch !== generation.current || ++heartbeatFailures.current < FAILURE_LIMIT) return;
+        setError('Connection lost. Your saved conversation is still here.'); end('ended', 'heartbeat_failed');
       });
     }, 2_000);
-    const pagehide = () => end();
+    const pagehide = () => end('ended', 'pagehide');
     const visibility = () => {
       if (document.visibilityState === 'visible' && roomRef.current) {
         void roomRef.current.startAudio().catch(() => setAudioBlocked(true));
@@ -93,7 +114,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
     window.addEventListener('pagehide', pagehide);
     document.addEventListener('visibilitychange', visibility);
     return () => {
-      mounted.current = false; window.clearInterval(timer); end();
+      mounted.current = false; window.clearInterval(timer); end('ended', 'unmount');
       window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility);
     };
   }, [refresh, end]);
@@ -103,6 +124,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
     if (micDictation.isActive || micDictation.isFinalizing || micDictation.liveVoiceActive) { setError('Finish dictation or the other voice call first.'); return; }
     micDictation.liveVoiceActive = true;
     const epoch = ++generation.current;
+    refreshFailures.current = 0; heartbeatFailures.current = 0; micRecoveries.current = 0;
     setError(null); setState('connecting');
     const room = new Room({ adaptiveStream: true, dynacast: true });
     roomRef.current = room;
@@ -119,17 +141,31 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
     room.on(RoomEvent.AudioPlaybackStatusChanged, () => setAudioBlocked(!room.canPlaybackAudio));
     room.on(RoomEvent.Reconnecting, () => setState('reconnecting'));
     room.on(RoomEvent.Reconnected, () => setState('connected'));
-    room.on(RoomEvent.Disconnected, () => { if (roomRef.current === room) end(); });
+    room.on(RoomEvent.Disconnected, () => { if (roomRef.current === room) end('ended', 'room_disconnected'); });
     try {
       const mic = await micReady;
       if (generation.current !== epoch) { mic.stop(); return; }
       micRef.current = mic;
-      mic.mediaStreamTrack.addEventListener('ended', () => {
-        if (micRef.current === mic) { setError('The microphone was disconnected. Check your AirPods or audio route, then reconnect.'); end(); }
+      // AirPods switching devices or an audio route change ends the capture track.
+      // Take the microphone again instead of dropping the call; give up after a few tries.
+      const watch = (track: LocalAudioTrack) => track.mediaStreamTrack.addEventListener('ended', () => {
+        if (micRef.current !== track || generation.current !== epoch) return;
+        const lost = () => { setError('The microphone was disconnected. Check your AirPods or audio route, then reconnect.'); end('ended', 'mic_lost'); };
+        if (++micRecoveries.current > 3) { lost(); return; }
+        void (async () => {
+          try {
+            const next = await createLocalAudioTrack({ echoCancellation: true, noiseSuppression: true, autoGainControl: true });
+            if (micRef.current !== track || generation.current !== epoch || roomRef.current !== room) { next.stop(); return; }
+            await room.localParticipant.unpublishTrack(track).catch(() => {});
+            await room.localParticipant.publishTrack(next);
+            micRef.current = next; setMuted(false); watch(next);
+          } catch { if (micRef.current === track && generation.current === epoch) lost(); }
+        })();
       });
+      watch(mic);
       await audioReady;
       const body = botConversationId
-        ? { botConversationId, ...(decisionId ? { decisionId } : {}) }
+        ? { botConversationId, ...(decisionId ? { decisionId } : {}), ...(incoming && decisionId ? { incoming: true } : {}) }
         : hotline ? { hotline: true, timezone:Intl.DateTimeFormat().resolvedOptions().timeZone } : contextId ? { contextConversationId: contextId } : {};
       const result = await voiceRequest<{ id: string; url: string; token: string }>('/calls', body);
       if (generation.current !== epoch) { void voiceRequest(`/calls/${result.id}/end`, {}); return; }
@@ -155,7 +191,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
           : e instanceof Error && e.name === 'NotFoundError' ? 'No microphone was found. Connect your AirPods or another microphone, then try again.'
           : e instanceof Error && e.name === 'NotReadableError' ? 'The microphone is unavailable. Close other audio apps, then reconnect.'
           : e instanceof Error ? e.message : 'Unable to connect. Please try again.');
-        end();
+        end('ended', 'start_failed');
       }
     }
   }
@@ -165,6 +201,13 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
     try { if (muted) await mic.unmute(); else await mic.mute(); setMuted(!muted); }
     catch { setError('Could not change the microphone. Reconnect the call.'); }
   }
+  // An answered call connects without another press; a failed start leaves the normal Start voice button.
+  const canAutoStart = incoming && !!snapshot?.configuration.ready && !!snapshot.bot?.canMessage && !snapshot.call;
+  useEffect(() => {
+    if (!canAutoStart || autoStarted.current) return;
+    autoStarted.current = true;
+    void start();
+  }, [canAutoStart]);
   const active = state === 'connected' || state === 'connecting' || state === 'reconnecting';
   const status = state === 'connected' ? muted ? 'Microphone muted' : snapshot?.call?.state === 'speaking' ? `${name} is speaking` : snapshot?.call?.state === 'thinking' ? `${name} is checking` : 'Listening' :
     state === 'ended' ? 'Call ended · microphone off' : state === 'standby' ? 'On standby · microphone off' : state === 'connecting' ? 'Connecting…' : state === 'reconnecting' ? 'Reconnecting…' : 'Ready when you are';
@@ -172,7 +215,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
   const focused = snapshot?.decision ?? null;
   const open = (snapshot?.decisions ?? []).filter(d => d.state === 'needs_input' && d.decisionId !== focused?.decisionId);
   const missingBot = !!botConversationId && !!snapshot && !bot;
-  if (compact) return <VoiceCallPanel callerName={snapshot?.callerName} name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && (hotline || !!bot?.canMessage)} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby')}>
+  if (compact) return <VoiceCallPanel callerName={snapshot?.callerName} name={name} botId={botConversationId ?? ''} status={status} active={active} connected={state === 'connected'} muted={muted} level={level} history={snapshot?.history ?? []} ready={!!snapshot?.configuration.ready && (hotline || !!bot?.canMessage)} onStart={() => void start()} onMute={() => void toggleMute()} onEnd={() => { end(); onBack(); }} onStandby={() => end('standby', 'standby')}>
     {focused && <div className="mt-3 space-y-1 px-2 text-base sm:text-sm">
       <p className="break-words font-medium">{focused.actionTitle || focused.question}</p>
       {focused.customerRequest && <p className="break-words text-muted-foreground">{focused.customerRequest}</p>}
@@ -221,7 +264,7 @@ export function LiveVoice({ botConversationId, decisionId, onBack, onNavigate, c
         <div className="flex flex-wrap gap-3">
           {!active ? <CallButton className="min-h-12 flex-1" disabled={!snapshot?.configuration.ready || missingBot} onClick={() => void start()}>{state === 'standby' ? 'Resume conversation' : `Call ${bot?.name ?? (botConversationId ? 'bot' : 'Henry')}`}</CallButton> : <>
             <Button variant="outline" className="min-h-12 flex-1" disabled={state !== 'connected'} aria-pressed={muted} onClick={() => void toggleMute()}>{muted ? <MicOff className="size-4" /> : <Mic className="size-4" />}{muted ? 'Unmute' : 'Mute'}</Button>
-            <Button variant="outline" className="min-h-12 flex-1" onClick={() => end('standby')}><Pause className="size-4" />Standby</Button>
+            <Button variant="outline" className="min-h-12 flex-1" onClick={() => end('standby', 'standby')}><Pause className="size-4" />Standby</Button>
             <Button variant="destructive" className="min-h-12 flex-1" onClick={() => end()}><PhoneOff className="size-4" />End call</Button>
           </>}
         </div>

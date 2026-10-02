@@ -35,6 +35,10 @@ At this release, the OrderOps event transport is deployed and verified, but live
 
 Build #534 adds two catalog entries. `chief-of-staff` covers the owner's single cross-business bot: `designate_chief_of_staff` (owner or the owner's Platform Dev, audited in `chief_of_staff_audit`) and `list_open_questions`, a read-only view of other bots' unanswered questions the owner can answer. The designation does not change message reach: a registered bot outside every business could already list, read and message bots in any business its owner can see, and that rule in `server/src/conversations/access.ts` is unchanged. `google-calendar-connector` covers the Composio `googlecalendar` toolkit pinned at 20261001_00 with 19 read-only and 47 full tools; no account is connected by the release.
 
+## Bot calls (October 2, 2026)
+
+Build #539 adds the `bot-calls` catalog entry. A bot's waiting question can ring the person in Veneer before it waits as a card; rules and limits are in `docs/bot-calls.md`. Bots take no new action: `raise_decision` is unchanged, and the entry tells them to phrase `proposal.question` as one plain spoken sentence and never to re-raise a question to trigger another call. Every bot starts with calls off for every person.
+
 ## Verification and changed files
 
 Root typecheck, the full test suite, and the production build passed: 2,166 server tests (5 skipped), 850 web tests, 40 browser-manager tests, and 21 installer tests. Isolated browser checks covered desktop and mobile, full and restricted employees, keyboard navigation, new-feature discovery, search, copying examples and links, feature permalinks, overflow, refresh after a catalog update, announcement aging, and failure/retry. Browser fixtures never accessed production business data.

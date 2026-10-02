@@ -24,15 +24,35 @@ first; the question card in the desk line stays the durable record and the fallb
 Tune-down levers if calls become too frequent: cap retries, lengthen the retry gap, or switch to one
 call that walks through every waiting bot.
 
-## Phase one — browser calls
+## Phase one — browser calls (built 2026-10-02, build #539)
 
-- Desk bubble rings (bot name, one-line question, Answer / Decline) on desktop and on the iPhone
-  while Veneer is open. One tap on Answer opens the existing live call focused on that question.
-- When Veneer is not open on the phone, a push notification is sent; tapping it opens the call.
-- Ring state is tracked on the server so two tabs or devices do not both ring, and so retries,
-  "can't do that now" and the calling window are enforced in one place.
-- Known browser limits: a ringtone cannot play in a tab that has not been touched since it loaded,
-  and a locked iPhone shows a notification rather than ringing.
+How it works:
+
+- **Settings** live in the raised-hand desk under **Calls**: do not disturb, calling hours, and one
+  switch per bot. Every bot starts off for every person. `bot_call_settings`, `bot_call_bots`.
+- **Who is called.** A bot rings each person who turned it on *and* can already answer the question.
+  There is no separate routing table: customer service bots ring Ali because Ali has them on and Nick
+  does not. Turning a bot on grants no access.
+- **Ring engine** (`server/src/bots/botCalls.ts`, table `bot_call_rings`). One ring per person at a
+  time, taken from the question line's fair order. 25 seconds, then missed; retried every 15 minutes
+  with no cap; a 60 second pause after any ring or call; never during a live call. Reminded
+  ("Later") and stale questions do not ring. It runs on every open tab's check-in and on the
+  5 second background pass.
+- **Calling window.** 08:00–18:00 America/New_York by default (editable per person), or within
+  5 minutes of real input in an open Veneer tab.
+- **Ring card** (`web/src/components/BotCalls.tsx`): bot name, the question, a ringtone, Answer and
+  Decline. Answer opens the existing live call on that question and connects without another press.
+- **Phone.** If the person has not touched Veneer in the last minute, their registered devices get a
+  push naming the bot. Tapping it opens Veneer and rings again there; Answer is one more tap.
+- **The call.** The bot says its name and the question in one sentence and waits. On an answer it
+  repeats it back, records it through the existing answer tools and hangs up (`end_call`). On
+  "I can't do that now" it calls `stop_calling`: no answer is recorded, the card stays, and that
+  question never rings again. A call that ends any other way is retried after 15 minutes.
+- **Voice training.** Saved voice preferences (length, tone, structure) apply to these calls. Only
+  the saved greeting is replaced, by the plain-question opening.
+
+Known browser limits: a ringtone cannot play in a tab that has not been touched since it loaded, and
+a locked iPhone shows a notification rather than ringing.
 
 ## Phase two — real phone call (only if phase one proves useful)
 
@@ -41,9 +61,16 @@ so the phone rings on the lock screen and AirPods can answer. The bot waits to h
 before reading anything, so a question is never read into voicemail. Needs a calling account and
 number; OrderOps already uses Twilio.
 
-## Voice problems seen during the interview (to fix with phase one)
+## Voice problems seen during the interview
 
-- A call ended on its own after 41 seconds (2026-10-02 17:26:46Z–17:27:27Z); the service logs show
-  no error. The voice worker closes the session as soon as the participant disconnects, so a brief
-  network blip is a likely but unverified cause.
-- The voice line repeated the same sentence twice and talked over the caller several times.
+- **A call ended on its own after 41 seconds** (2026-10-02 17:26:46Z–17:27:27Z). The session record
+  shows the browser ended it (`outcome=ended`, last heartbeat 6 seconds earlier), not the server or
+  the voice worker; which browser event did it was not recorded, so the cause is still unknown.
+  Changes: every call now records why it ended (`voice_sessions.end_reason` and a `[voice] call …`
+  log line); one failed status check or heartbeat no longer hangs up (three in a row do); and a
+  microphone that drops out, as when AirPods switch devices, is re-acquired instead of ending the
+  call.
+- **The voice line repeated itself and talked over the caller.** Turn detection moved from a fixed
+  silence timer to semantic detection, which waits for a finished thought; background-reply notices
+  now wait for a 2.5 second lull; and the voice rules forbid repeating a sentence or restarting
+  after a filler sound. Not yet confirmed on a real call.

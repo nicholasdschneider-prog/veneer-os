@@ -3,6 +3,7 @@ import express, { type Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { VoiceWorkspace } from '../voice/workspace.js';
+import { CLIENT_END_REASONS } from '../voice/service.js';
 
 const id = z.string().min(1).max(100);
 export function createLiveVoiceRouter(ctx: AppContext): Router {
@@ -55,7 +56,7 @@ export function createLiveVoiceRouter(ctx: AppContext): Router {
     res.json({ok:true});
   });
   router.post('/calls', (req, res) => {
-    const body = z.object({ hotline: z.boolean().optional(), timezone:z.string().max(100).optional(), contextConversationId: id.optional(), botConversationId: id.optional(), decisionId: id.optional() }).safeParse(req.body);
+    const body = z.object({ hotline: z.boolean().optional(), timezone:z.string().max(100).optional(), contextConversationId: id.optional(), botConversationId: id.optional(), decisionId: id.optional(), incoming: z.boolean().optional() }).safeParse(req.body);
     if (!body.success) { res.status(400).json({ ok: false, error: 'Invalid call request.' }); return; }
     if (req.user?.role === 'member' && !body.data.botConversationId && !body.data.hotline) { res.status(403).json({ error: 'Open voice from an accessible conversation.' }); return; }
     if (!ctx.liveVoice) { res.status(503).json({ ok: false, error: 'Live voice is not available.' }); return; }
@@ -69,7 +70,8 @@ export function createLiveVoiceRouter(ctx: AppContext): Router {
     res.json({ ok: true, call });
   });
   router.post('/calls/:id/end', (req, res) => {
-    ctx.liveVoice?.end(req.user!.id, String(req.params.id));
+    const reason = z.object({ reason: z.enum(CLIENT_END_REASONS) }).safeParse(req.body);
+    ctx.liveVoice?.end(req.user!.id, String(req.params.id), 'ended', Date.now(), reason.success ? `client_${reason.data.reason}` : 'client');
     res.json({ ok: true });
   });
   return router;
