@@ -37,6 +37,8 @@ export function createChiefOfStaffService(db: Database.Database) {
       .get(ownerId) as { conversation_id: string; name: string | null; created_at: string } | undefined;
   return {
     status(actor: Actor) {
+      // Every signed-in human may ask; only an owner can have one.
+      if (!actor.conversationId && actor.user.role !== 'owner') return { chief_of_staff: null };
       admin(actor);
       const row = current(actor.user.id);
       if (!row) return { chief_of_staff: null };

@@ -7,8 +7,11 @@ import { Button } from './ui/button';
 import { Bots } from '@/screens/Bots';
 import { useLiveVoice } from './VoiceProvider';
 import { SideChatPanel } from './chat/SideChatPanel';
+import { Chat } from '@/screens/Chat';
+import { DeskPill } from './DeskPill';
 
 type Side = { parentId: string; agentName: string; sideParam: string };
+type Chief = { conversation_id: string; name: string | null; active: boolean };
 type Line = { decisions: BotDecision[]; sleeping: (BotDecision & { until: number })[]; selectedId: string | null; revision: number; showEvidence?: boolean };
 const DeskContext = createContext<{ adoptQuestion: (id?: string) => void; adoptSide: (side: Side) => void; available: boolean }>({ adoptQuestion: () => {}, adoptSide: () => {}, available: false });
 export const useQuestionDesk = () => useContext(DeskContext);
@@ -19,7 +22,11 @@ const navigate = (hash: string) => { window.location.hash = hash; };
 export function QuestionDesk({ children }: { children: ReactNode }) {
   const [line, setLine] = useState<Line>(empty);
   const [visited,setVisited]=useState<string[]>([]);
-  const [mode, setMode] = useState<'question'|'side'|null>(null);
+  const [mode, setMode] = useState<'question'|'side'|'chief'|null>(null);
+  // The owner's chief of staff bot: always reachable from the pill, and its
+  // chat stays mounted once opened so a half-written message survives.
+  const [chief, setChief] = useState<{ id: string; name: string } | null>(null);
+  const [chiefOpened, setChiefOpened] = useState(false);
   const [side, setSide] = useState<Side | null>(null);
   const [list, setList] = useState(false);
   const [later, setLater] = useState(false);
@@ -58,7 +65,7 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
       setLine(next); setLoaded(true); setError('');
     } catch(e) {
       if(alive.current && seq===serial.current) {
-        if(e instanceof ApiError && [401,403].includes(e.status)) { setLine(empty);setSide(null);setMode(null);setUserId(null); }
+        if(e instanceof ApiError && [401,403].includes(e.status)) { setLine(empty);setSide(null);setMode(null);setUserId(null);setChief(null); }
         setError('Questions could not refresh. Reconnect before answering.');setLoaded(true);
       }
     } finally {refreshing.current=false;clearTimeout(timeout);}
@@ -66,9 +73,13 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   useEffect(() => {
     alive.current = true;
     void requestJson<{user:{id:number}|null}>('/api/me').then(r => { if (alive.current) setUserId(r.user?.id ?? null); }).catch(() => {});
+    const loadChief = () => void requestJson<{chief_of_staff:Chief|null}>('/api/bots/chief-of-staff')
+      .then(r => { if (alive.current) setChief(r.chief_of_staff?.active ? { id: r.chief_of_staff.conversation_id, name: r.chief_of_staff.name ?? 'Chief of staff' } : null); })
+      .catch(() => { if (alive.current) setChief(null); });
+    loadChief();
     void refresh();
     const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 5000);
-    const wake = () => void refresh();
+    const wake = () => { void refresh(); loadChief(); };
     window.addEventListener('focus',wake); window.addEventListener('chat-decisions-changed',wake);
     return () => { alive.current = false; ++serial.current; clearInterval(timer); window.removeEventListener('focus',wake); window.removeEventListener('chat-decisions-changed',wake); };
   }, []);
@@ -93,12 +104,14 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   const adoptQuestion=useRef((id?:string)=>{setMode('question');setList(!id);if(id)void actionRef.current('select',id);}).current;
   const adoptSide = useRef((next: Side) => { setSide(next); setMode('side'); }).current;
   const total = line.decisions.length;
+  const openChief = () => { setChiefOpened(true); setMode('chief'); };
   return <DeskContext.Provider value={{adoptSide,adoptQuestion,available:true}}>
     <div className="question-desktop-shell flex h-dvh min-w-0 isolate overflow-hidden">
       <div className="min-w-0 flex-1 overflow-hidden">{children}</div>
       <aside aria-label="Question desk" className={mode ? 'question-desk flex min-h-0 flex-col border-l bg-background fixed inset-x-0 bottom-0 z-40 h-[82dvh] rounded-t-2xl border-t lg:static lg:h-dvh lg:w-[min(30rem,42vw)] lg:shrink-0 lg:rounded-none lg:border-t-0' : 'hidden'}>
         <header className="flex shrink-0 items-center gap-2 border-b p-2">
           <Button type="button" variant="ghost" aria-pressed={mode === 'question'} onClick={() => setMode('question')}><Hand className="size-4 shrink-0" /> Questions</Button>
+          {chief && <Button type="button" variant="ghost" aria-pressed={mode === 'chief'} onClick={openChief}><MessageSquare className="size-4 shrink-0" /> {chief.name}</Button>}
           {side && <Button type="button" variant="ghost" aria-pressed={mode === 'side'} onClick={() => setMode('side')}><MessageSquare className="size-4 shrink-0" /> Side chat</Button>}
           <div className="flex-1" />
           <Button type="button" variant="ghost" size="icon" aria-label="Collapse question desk" onClick={() => setMode(null)}><ChevronDown className="size-4" /></Button>
@@ -124,12 +137,20 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
           </div>}
           {visited.map(id=><div key={`${userId}:${id}`} data-question-id={id} className={!list && selected?.id===id ? 'min-h-0 flex-1' : 'hidden'}><Bots embedded desk active={mode==='question' && selected?.id===id && !list} decisionId={id} onNavigate={hash => { if (hash === '#/bots') setList(true); else navigate(hash); }} /></div>)}
         </div>
+        {chief && chiefOpened && <div className={mode === 'chief' ? 'min-h-0 flex-1' : 'hidden'}>
+          <Chat key={chief.id} conversationId={chief.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={navigate} onToast={setNotice} sideChatButton={false} openQuestionsButton={false} />
+        </div>}
         {side && <div className={mode === 'side' ? 'min-h-0 flex-1' : 'hidden'}><SideChatPanel key={`${side.parentId}:${side.sideParam}`} {...side} onSelect={value=>setSide(current=>current ? {...current,sideParam:value} : null)} onNavigate={navigate} onToast={setNotice} onClose={()=>setMode(null)} /></div>}
       </aside>
     </div>
-    {!mode && loaded && (total > 0 || line.sleeping.length > 0 || side || (userId && error)) && <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-3 z-40 flex items-center gap-1 rounded-full border bg-background p-1 lg:bottom-4">
-      <button type="button" className="flex min-h-12 items-center gap-2 rounded-full px-3 text-sm hover:bg-muted" onClick={() => { setMode('question'); if (front && !selected) void act('select',front.id); }} aria-label={front ? `${front.bot_name} has a question` : 'Open question desk'}>{front ? <BotAvatar id={front.conversation_id} name={front.bot_name}/> : <Hand className="size-4" />}<Hand className="size-4" /><span>{front?.bot_name ?? 'Questions'}</span>{error && <span>!</span>}</button>
-      <button type="button" className="min-h-12 min-w-12 rounded-full px-3 text-sm tabular-nums hover:bg-muted" aria-label={`Choose from ${total} waiting questions`} onClick={()=>{setMode('question');setList(true);}}>{total}</button>
-    </div>}
+    {!mode && (chief || (loaded && (total > 0 || line.sleeping.length > 0 || side || (userId && error)))) && <DeskPill
+      front={front ? { id: front.conversation_id, name: front.bot_name } : null}
+      total={total}
+      error={Boolean(error)}
+      chief={chief}
+      onOpenQuestions={() => { setMode('question'); if (front && !selected) void act('select',front.id); }}
+      onOpenList={() => { setMode('question'); setList(true); }}
+      onOpenChief={openChief}
+    />}
   </DeskContext.Provider>;
 }

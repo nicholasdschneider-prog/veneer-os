@@ -12,7 +12,7 @@ describe('living bot guide release contract', () => {
     for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(f.agent);
   });
   it('delivers the staged question desk and hotline boundaries to employees and resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-10-01')).features.find(f=>f.id==='question-desk')!;
+    const f=botFeatureCatalog(Date.parse('2026-10-02')).features.find(f=>f.id==='question-desk')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('transient ordinary chat prompts');expect(f.agent).toContain('original owners/executors');
     for(const method of ['GET','POST'])expect(employeeRouteAllowed(method,'/question-line')).toBe(true);
     expect(employeeRouteAllowed('DELETE','/question-line')).toBe(false);

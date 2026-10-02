@@ -66,6 +66,9 @@ describe('chief of staff designation', () => {
     expect(db.prepare('SELECT name,active FROM bot_registrations WHERE conversation_id=?').get('archer')).toEqual({ name: 'Archer', active: 1 });
     expect(db.prepare('SELECT actor_id,actor_chat,action FROM chief_of_staff_audit').all()).toEqual([{ actor_id: 1, actor_chat: 'dev', action: 'granted' }]);
     expect(chief.status(owner).chief_of_staff).toMatchObject({ conversation_id: 'archer', name: 'Archer', active: true });
+    expect(chief.status({ user: user(2) })).toEqual({ chief_of_staff: null });
+    expect(chief.status({ user: user(3) })).toEqual({ chief_of_staff: null });
+    expect(status(() => chief.status(as('archer')))).toBe(403);
   });
 
   it('refuses enrolled, Platform Dev, archived, unnamed and second chats', () => {
