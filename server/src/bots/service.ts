@@ -282,6 +282,15 @@ export class BotError extends Error {
     super(message);
   }
 }
+/** True while the chat is its owner's designated chief of staff: still owned,
+ * unarchived, outside every business and an active registered bot. */
+export function chiefOfStaffActive(db: Database.Database, c: ConversationRow, ownerId: number): boolean {
+  return Boolean(
+    c.user_id === ownerId && !c.archived && !c.business_team_id &&
+    db.prepare(`SELECT 1 FROM chief_of_staff_bots s JOIN bot_registrations r ON r.conversation_id=s.conversation_id
+      WHERE s.conversation_id=? AND s.owner_id=? AND r.active=1`).get(c.id, ownerId),
+  );
+}
 export function createBotService(db: Database.Database) {
   const conversation = (id: string) =>
     db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as
@@ -726,6 +735,59 @@ export function createBotService(db: Database.Database) {
           throw e;
         }
       });
+    },
+    /** Read-only overview for the owner's chief of staff bot: other bots'
+     * unanswered questions that its owner could answer. It reveals nothing the
+     * owner's own queue would not, and no decision can be changed through it. */
+    openQuestions(actor: Actor) {
+      const self = actor.conversationId ? conversation(actor.conversationId) : undefined;
+      if (!self || !chiefOfStaffActive(db, self, actor.user.id))
+        throw new BotError(403, 'Only the designated chief of staff bot can list other bots’ open questions');
+      const now = Date.now();
+      const accessible = (id: string) => { try { chat(actor, id); return true; } catch { return false; } };
+      const questions = (
+        db.prepare("SELECT * FROM bot_decisions WHERE state='needs_input' AND conversation_id<>? ORDER BY created_at,id").all(self.id) as Decision[]
+      ).flatMap((d) => {
+        try {
+          const c = chat(actor, d.conversation_id);
+          if (!eligible({ user: actor.user }, d)) return [];
+          const p = JSON.parse(d.proposal_json) as Proposal;
+          evidenceAllowed(actor, p, d.conversation_id);
+          const bot = db.prepare('SELECT name FROM bot_registrations WHERE conversation_id=?').get(c.id) as { name: string } | undefined;
+          const business = c.business_team_id
+            ? (db.prepare('SELECT id,name FROM business_teams WHERE id=?').get(c.business_team_id) as { id: string; name: string } | undefined) ?? null
+            : null;
+          const project = c.project_id
+            ? (db.prepare('SELECT id,name FROM projects WHERE id=?').get(c.project_id) as { id: string; name: string } | undefined) ?? null
+            : null;
+          const created = Date.parse(d.created_at.replace(' ', 'T') + (/Z$|[+-]\d\d:\d\d$/.test(d.created_at) ? '' : 'Z'));
+          return [{
+            decision_id: d.id,
+            version: d.version,
+            bot: { conversation_id: c.id, name: bot?.name ?? c.title },
+            business,
+            project,
+            created_at: d.created_at,
+            updated_at: d.updated_at,
+            age_minutes: Number.isFinite(created) ? Math.max(0, Math.round((now - created) / 60000)) : null,
+            stale: Boolean(d.stale_json),
+            question: p.question,
+            recommendation: p.recommendation,
+            consequence: p.consequence,
+            blocked_action: p.blocked_action,
+            deadline: p.deadline ?? null,
+            review_summary: p.review_summary ?? null,
+            choices: (p.choices ?? []).map((choice) => ({ label: choice.label, description: choice.description ?? null, recommended: Boolean(choice.recommended) })),
+            evidence: p.evidence.map((e) => ({ label: e.label, conversation_id: e.conversation_id, source_access: accessible(e.conversation_id) })),
+            images: (p.images ?? []).map((e) => ({ label: e.label, source: e.source, source_access: accessible(e.conversation_id) })),
+            evidence_item_count: p.evidence_items?.length ?? 0,
+          }];
+        } catch (e) {
+          if (e instanceof BotError) return [];
+          throw e;
+        }
+      });
+      return { read_only: true, questions };
     },
     raise(
       actor: Actor,

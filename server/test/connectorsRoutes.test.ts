@@ -228,6 +228,7 @@ describe('Composio connector catalog', () => {
       'googledrive',
       'googledocs',
       'googlesheets',
+      'googlecalendar',
       'googleads',
       'google_analytics',
       'outlook',

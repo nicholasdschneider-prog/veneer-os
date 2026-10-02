@@ -17,6 +17,7 @@ import { bindDecisionImages, readDecisionImage } from './decisionImages.js';
 import { bindDecisionEvidence, bindHumanEvidence, composioGmailFetchers, readDecisionEvidence, type EvidenceFetchers } from './decisionEvidence.js';
 import {createOrganizationService,latestBotPreview} from './organization.js';
 import { createTeamService } from './teams.js';
+import { createChiefOfStaffService } from './chiefOfStaff.js';
 import express from 'express';
 import { isUnread, markSeen } from '../conversations/unread.js';
 import { canViewConversation } from '../conversations/access.js';
@@ -34,6 +35,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   const router = express.Router();
   const s = createBotService(ctx.db);
   const teams = createTeamService(ctx.db);
+  const chiefOfStaff = createChiefOfStaffService(ctx.db);
   const organization=createOrganizationService(ctx.db);
   router.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -84,6 +86,13 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
     if (req.body.action === 'remove_bot') ctx.manager.bus?.emit('access', req.body.conversation_id);
     res.json({ team: result });
   }));
+  router.get('/chief-of-staff', run((req, res) => res.json(chiefOfStaff.status(actor(req)))));
+  router.post('/chief-of-staff', run((req, res) => {
+    const result = chiefOfStaff.designate(actor(req), req.body);
+    ctx.manager.bus?.emit('access', result.conversation_id);
+    res.json(result);
+  }));
+  router.get('/open-questions', run((req, res) => res.json(s.openQuestions(actor(req)))));
   router.post('/teams/enroll', run((req, res) => {
     const result = teams.bulk(actor(req), req.body);
     if (req.body.mode === 'apply') changed(req.body.team_id);

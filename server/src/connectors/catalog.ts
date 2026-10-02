@@ -8,6 +8,7 @@ import {
   HUBSPOT_ACCESS_MODES,
   GOOGLE_ADS_ACCESS_MODES,
   GOOGLE_ANALYTICS_ACCESS_MODES,
+  GOOGLE_CALENDAR_ACCESS_MODES,
   GOOGLE_DOCS_ACCESS_MODES,
   GOOGLE_DRIVE_ACCESS_MODES,
   GOOGLE_SHEETS_ACCESS_MODES,
@@ -219,6 +220,14 @@ export const CONNECTOR_DEFS: ConnectorDef[] = [
     kind: 'composio',
     composio: { toolkit: 'googlesheets' },
     accessModes: GOOGLE_SHEETS_ACCESS_MODES,
+  },
+  {
+    slug: 'googlecalendar',
+    name: 'Google Calendar',
+    description: 'Read calendars and availability, and create or change events in Google Calendar.',
+    kind: 'composio',
+    composio: { toolkit: 'googlecalendar' },
+    accessModes: GOOGLE_CALENDAR_ACCESS_MODES,
   },
   {
     slug: 'googleads',

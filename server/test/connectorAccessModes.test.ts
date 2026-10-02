@@ -27,6 +27,10 @@ import {
   GOOGLE_DRIVE_FULL_V1_TOOLS,
   GOOGLE_DRIVE_MANAGED_DEFAULT_V1_SCOPES,
   GOOGLE_DRIVE_READ_ONLY_V1_TOOLS,
+  GOOGLE_CALENDAR_ACCESS_MODES,
+  GOOGLE_CALENDAR_FULL_V1_TOOLS,
+  GOOGLE_CALENDAR_MANAGED_DEFAULT_V1_SCOPES,
+  GOOGLE_CALENDAR_READ_ONLY_V1_TOOLS,
   GOOGLE_SHEETS_ACCESS_MODES,
   GOOGLE_SHEETS_FULL_V1_TOOLS,
   GOOGLE_SHEETS_MANAGED_DEFAULT_V1_SCOPES,
@@ -178,6 +182,33 @@ describe('connector access-mode snapshots', () => {
     ]) expect(GOOGLE_SHEETS_FULL_V1_TOOLS).not.toContain(deprecated);
     expect(GOOGLE_SHEETS_READ_ONLY_V1_TOOLS.every((tool) =>
       /^GOOGLESHEETS_(AGGREGATE|BATCH_GET|GET|LIST|LOOKUP|SEARCH|SPREADSHEETS_VALUES_BATCH_GET|VALUES_GET)/.test(tool),
+    )).toBe(true);
+  });
+
+  it('pins Google Calendar managed scopes and its reviewed 19 and 47 tool sets', () => {
+    expect(GOOGLE_CALENDAR_ACCESS_MODES.map((profile) => ({
+      mode: profile.mode,
+      version: profile.version,
+      strategy: profile.composio.oauthScopeStrategy,
+      toolkitVersion: profile.composio.toolkitVersion,
+    }))).toEqual([
+      { mode: 'read_only', version: 1, strategy: 'managed_default', toolkitVersion: '20261001_00' },
+      { mode: 'full', version: 1, strategy: 'managed_default', toolkitVersion: '20261001_00' },
+    ]);
+    expect(GOOGLE_CALENDAR_MANAGED_DEFAULT_V1_SCOPES).toEqual([
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
+    ]);
+    expect(new Set(GOOGLE_CALENDAR_READ_ONLY_V1_TOOLS).size).toBe(19);
+    expect(new Set(GOOGLE_CALENDAR_FULL_V1_TOOLS).size).toBe(47);
+    for (const tool of GOOGLE_CALENDAR_READ_ONLY_V1_TOOLS) expect(GOOGLE_CALENDAR_FULL_V1_TOOLS).toContain(tool);
+    for (const deprecated of [
+      'GOOGLECALENDAR_GET_CALENDAR_PROFILE',
+      'GOOGLECALENDAR_LIST_SETTINGS',
+      'GOOGLECALENDAR_SYNC_EVENTS',
+    ]) expect(GOOGLE_CALENDAR_FULL_V1_TOOLS).not.toContain(deprecated);
+    expect(GOOGLE_CALENDAR_READ_ONLY_V1_TOOLS.every((tool) =>
+      !/_(CREATE|DELETE|INSERT|PATCH|UPDATE|MOVE|IMPORT|WATCH|STOP|CLEAR|QUICK_ADD|BATCH|REMOVE|DUPLICATE)/.test(tool),
     )).toBe(true);
   });
 

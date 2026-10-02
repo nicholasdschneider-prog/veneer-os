@@ -4,6 +4,7 @@ const CONNECTOR_NAMES: Record<string, string> = {
   gmail: 'Gmail',
   google_analytics: 'Google Analytics',
   googleads: 'Google Ads',
+  googlecalendar: 'Google Calendar',
   googledocs: 'Google Docs',
   googledrive: 'Google Drive',
   googlesheets: 'Google Sheets',

@@ -1340,6 +1340,127 @@ export const GOOGLE_SHEETS_ACCESS_MODES = [
   },
 ] as const satisfies readonly ConnectorAccessModeProfile[];
 
+/** Composio-managed Google Calendar OAuth snapshot verified against toolkit
+ * 20261001_00. Both agent modes use this provider grant. */
+export const GOOGLE_CALENDAR_MANAGED_DEFAULT_V1_SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
+] as const;
+
+export const GOOGLE_CALENDAR_READ_ONLY_V1_TOOLS = [
+  'GOOGLECALENDAR_ACL_GET',
+  'GOOGLECALENDAR_ACL_LIST',
+  'GOOGLECALENDAR_CALENDAR_LIST_GET',
+  'GOOGLECALENDAR_COLORS_GET',
+  'GOOGLECALENDAR_EVENTS_GET',
+  'GOOGLECALENDAR_EVENTS_INSTANCES',
+  'GOOGLECALENDAR_EVENTS_LIST',
+  'GOOGLECALENDAR_EVENTS_LIST_ALL_CALENDARS',
+  'GOOGLECALENDAR_FIND_EVENT',
+  'GOOGLECALENDAR_FIND_FREE_SLOTS',
+  'GOOGLECALENDAR_FREE_BUSY_QUERY',
+  'GOOGLECALENDAR_GET_CALENDAR',
+  'GOOGLECALENDAR_GET_CURRENT_DATE_TIME',
+  'GOOGLECALENDAR_GET_CURRENT_USER',
+  'GOOGLECALENDAR_LIST_BUILDINGS',
+  'GOOGLECALENDAR_LIST_CALENDARS',
+  'GOOGLECALENDAR_LIST_CALENDAR_RESOURCES',
+  'GOOGLECALENDAR_SETTINGS_GET',
+  'GOOGLECALENDAR_SETTINGS_LIST',
+] as const;
+
+/** Reviewed active Google Calendar tools. Deprecated toolkit entries are
+ * intentionally absent. */
+export const GOOGLE_CALENDAR_FULL_V1_TOOLS = [
+  'GOOGLECALENDAR_ACL_DELETE',
+  'GOOGLECALENDAR_ACL_GET',
+  'GOOGLECALENDAR_ACL_INSERT',
+  'GOOGLECALENDAR_ACL_LIST',
+  'GOOGLECALENDAR_ACL_PATCH',
+  'GOOGLECALENDAR_ACL_UPDATE',
+  'GOOGLECALENDAR_ACL_WATCH',
+  'GOOGLECALENDAR_BATCH_EVENTS',
+  'GOOGLECALENDAR_CALENDARS_DELETE',
+  'GOOGLECALENDAR_CALENDARS_UPDATE',
+  'GOOGLECALENDAR_CALENDAR_LIST_DELETE',
+  'GOOGLECALENDAR_CALENDAR_LIST_GET',
+  'GOOGLECALENDAR_CALENDAR_LIST_INSERT',
+  'GOOGLECALENDAR_CALENDAR_LIST_PATCH',
+  'GOOGLECALENDAR_CALENDAR_LIST_UPDATE',
+  'GOOGLECALENDAR_CALENDAR_LIST_WATCH',
+  'GOOGLECALENDAR_CHANNELS_STOP',
+  'GOOGLECALENDAR_CLEAR_CALENDAR',
+  'GOOGLECALENDAR_COLORS_GET',
+  'GOOGLECALENDAR_CREATE_CALENDAR',
+  'GOOGLECALENDAR_CREATE_EVENT',
+  'GOOGLECALENDAR_DELETE_EVENT',
+  'GOOGLECALENDAR_DUPLICATE_CALENDAR',
+  'GOOGLECALENDAR_EVENTS_GET',
+  'GOOGLECALENDAR_EVENTS_IMPORT',
+  'GOOGLECALENDAR_EVENTS_INSTANCES',
+  'GOOGLECALENDAR_EVENTS_LIST',
+  'GOOGLECALENDAR_EVENTS_LIST_ALL_CALENDARS',
+  'GOOGLECALENDAR_EVENTS_MOVE',
+  'GOOGLECALENDAR_EVENTS_WATCH',
+  'GOOGLECALENDAR_FIND_EVENT',
+  'GOOGLECALENDAR_FIND_FREE_SLOTS',
+  'GOOGLECALENDAR_FREE_BUSY_QUERY',
+  'GOOGLECALENDAR_GET_CALENDAR',
+  'GOOGLECALENDAR_GET_CURRENT_DATE_TIME',
+  'GOOGLECALENDAR_GET_CURRENT_USER',
+  'GOOGLECALENDAR_LIST_BUILDINGS',
+  'GOOGLECALENDAR_LIST_CALENDARS',
+  'GOOGLECALENDAR_LIST_CALENDAR_RESOURCES',
+  'GOOGLECALENDAR_PATCH_CALENDAR',
+  'GOOGLECALENDAR_PATCH_EVENT',
+  'GOOGLECALENDAR_QUICK_ADD',
+  'GOOGLECALENDAR_REMOVE_ATTENDEE',
+  'GOOGLECALENDAR_SETTINGS_GET',
+  'GOOGLECALENDAR_SETTINGS_LIST',
+  'GOOGLECALENDAR_SETTINGS_WATCH',
+  'GOOGLECALENDAR_UPDATE_EVENT',
+] as const;
+
+export const GOOGLE_CALENDAR_ACCESS_MODES = [
+  {
+    mode: 'read_only',
+    version: 1,
+    label: 'Limited',
+    description: 'The agent can read calendars, events, and availability, but it cannot use tools that change them.',
+    capabilities: [
+      'List calendars and read events, recurring instances, and settings',
+      'Check free and busy time and find open slots',
+      'No tools that create, move, update, or delete events, calendars, or sharing',
+    ],
+    providerPermissionNote: GOOGLE_MANAGED_PERMISSION_NOTE,
+    recommended: true,
+    composio: {
+      toolkitVersion: '20261001_00',
+      oauthScopeStrategy: 'managed_default',
+      oauthScopes: GOOGLE_CALENDAR_MANAGED_DEFAULT_V1_SCOPES,
+      toolSlugs: GOOGLE_CALENDAR_READ_ONLY_V1_TOOLS,
+    },
+  },
+  {
+    mode: 'full',
+    version: 1,
+    label: 'Full',
+    description: 'The agent can use all 47 reviewed active Google Calendar actions.',
+    capabilities: [
+      'Everything in Limited',
+      'Create, update, move, and delete events, including attendees and invitations',
+      'Create, change, clear, and delete calendars and their sharing rules',
+    ],
+    recommended: false,
+    composio: {
+      toolkitVersion: '20261001_00',
+      oauthScopeStrategy: 'managed_default',
+      oauthScopes: GOOGLE_CALENDAR_MANAGED_DEFAULT_V1_SCOPES,
+      toolSlugs: GOOGLE_CALENDAR_FULL_V1_TOOLS,
+    },
+  },
+] as const satisfies readonly ConnectorAccessModeProfile[];
+
 export const GOOGLE_ADS_ACCESS_MODES = [
   {
     mode: 'read_only',

@@ -6,6 +6,7 @@ describe('ConnectorGlyph', () => {
   it.each([
     ['outlook', 'Outlook'],
     ['googleads', 'Google Ads'],
+    ['googlecalendar', 'Google Calendar'],
     ['google_analytics', 'Google Analytics'],
     ['googledocs', 'Google Docs'],
     ['googledrive', 'Google Drive'],

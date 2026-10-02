@@ -11,6 +11,7 @@ const LOGO_SLUGS = new Set([
   'gmail',
   'google_analytics',
   'googleads',
+  'googlecalendar',
   'googledocs',
   'googledrive',
   'googlesheets',
