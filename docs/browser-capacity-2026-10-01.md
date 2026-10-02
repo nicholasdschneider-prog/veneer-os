@@ -150,3 +150,51 @@ Read-only, from the audit trail since 19:46Z.
   this Mac.
 - Services were restarted again at 19:55Z by an unrelated build; limits and the
   hold bound were unaffected.
+
+### 2026-10-02 20:00Z, next business day (about 24 hours after deployment)
+
+Read-only, from the audit trail. Limits confirmed still 7 machine / 4 per project
+in the running source; services were restarted by other builds at 17:59Z to
+18:08Z on October 2 with no effect on them.
+
+| Measure | Before (Sept 29 to Oct 1) | Since deployment (24 h) |
+|---|---|---|
+| Capacity waits | 37, of which 1 got a browser | 0 |
+| Peak chats driving a browser in a ten-minute window, ERVP | 2 | 5 on Oct 1, 4 on Oct 2 |
+| Same, whole machine | 3 | 5 |
+| Hold renewals refused | n/a | 0 |
+| Copies held past 4 h without a real action | 1 (25 h) | 0 |
+| Chats using a browser | 19 a day | 21 since deploy, 16 on Oct 2 |
+
+- **Waits:** none in 24 hours across 3,115 browser calls from 21 chats. Demand
+  reached 4 to 5 ERVP chats at once, which the old cap of 2 would have refused.
+- **Holds:** one chat renewed a hold 11 times on October 2. It was working in the
+  page throughout (94 real interactions between 13:27Z and 19:57Z), which is what
+  a hold is for; the bound never came into play. No browser is running now.
+- **Script tool, since deployment:** 729 scripts carried 3,464 steps; 639
+  succeeded (88%). All browser calls: 3,115, so the same work as single steps
+  would have been about 5,850 calls. On October 2 alone: 353 scripts, 290
+  succeeded (82%), 1,567 steps.
+- **Success by kind on October 2:** see the table below. Scripts that click or
+  type fail more often than read-only ones. The audit row records success, not
+  the failing step's code, so the cause is not visible from here.
+| Script kind, October 2 | Run | Succeeded | Average steps |
+|---|---|---|---|
+| acts (clicks or types) | 196 | 156 (80%) | 5.0 |
+| read-only | 157 | 134 (85%) | 3.7 |
+
+- **Lippert on the fixed script tool:** the October 2 dropship sweep made 100
+  browser calls, 24 of them scripts (19 succeeded) carrying 228 steps. The
+  morning of October 1, before the tool existed, one Sage run took 293 calls.
+- **Sage** has made 5 browser calls since deployment and no scripts; there is no
+  Sage Lippert order on the fixed tool to measure yet.
+- **Memory:** 34% free with no managed browser running; swap 7.8 of 8.2 GB used.
+  Chrome totals 1.3 GB. The pressure is 282 leftover `mcp-remote` helper
+  processes holding 6.9 GB, unchanged in kind from yesterday. Browser capacity at
+  seven is not what is using the memory; no real seven-browser peak has occurred
+  yet (observed peak 5), so the 20% floor has not been tested in production.
+
+**Verdict.** The wait problem is gone at the observed load. Memory attributable to
+browsers is fine at the observed peak of five. The script tool is cutting browser
+calls by roughly 45% overall. Open items: script failure rate for acting scripts,
+and the leftover helper processes.
