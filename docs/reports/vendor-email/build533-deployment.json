@@ -1,0 +1,56 @@
+{
+  "observed_at": "2026-10-02T12:58:11.586153+00:00",
+  "implementation_commit": "488b08a",
+  "migration": {
+    "name": "0146_vendor_email.sql",
+    "applied_at": "2026-10-02 12:57:03",
+    "content_hash": "e5a59b1d7a01137c9611626ede0cf5c7cf13f735554a5d249612ee4a9352dc74"
+  },
+  "source_migration_hash": "e5a59b1d7a01137c9611626ede0cf5c7cf13f735554a5d249612ee4a9352dc74",
+  "built_migration_hash": "e5a59b1d7a01137c9611626ede0cf5c7cf13f735554a5d249612ee4a9352dc74",
+  "services": {
+    "veneer-pro": {
+      "before_pid": 35351,
+      "current_pid": 73115,
+      "changed": true,
+      "running": true
+    },
+    "veneer-pro-runner": {
+      "before_pid": 35382,
+      "current_pid": 73143,
+      "changed": true,
+      "running": true
+    },
+    "veneer-pro-app-runner": {
+      "before_pid": 35300,
+      "current_pid": 73751,
+      "changed": true,
+      "running": true
+    },
+    "veneer-pro-term": {
+      "before_pid": 35316,
+      "current_pid": 73767,
+      "changed": true,
+      "running": true
+    }
+  },
+  "native_vendor_authority_count": 0,
+  "native_vendor_attempt_count": 0,
+  "browser_manager": "healthy after authorized root restart",
+  "local_web_and_runner": "healthy",
+  "public_front_door": "HTTP 302 reachable; authenticated end-to-end chat not verified",
+  "deployed_tool_definitions": [
+    "read_vendor_email_context",
+    "inspect_vendor_email",
+    "bind_vendor_email",
+    "read_vendor_email",
+    "claim_vendor_email",
+    "record_vendor_email_delivery",
+    "revoke_vendor_email"
+  ],
+  "employee_guide_feature": {
+    "id": "vendor-email-direction",
+    "updated": "2026-10-02",
+    "isNew": true
+  }
+}

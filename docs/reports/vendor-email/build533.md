@@ -33,7 +33,11 @@ No production authority, claim, draft edit, business send, purchase-order action
 
 Root typecheck passed. The final full `npm test` passed: 3,335 server tests (15 existing skips), 968 web tests, 51 browser-manager tests and 29 installer tests: **4,383 passed**. All 40 new vendor-email tests passed. The guide browser fixture passed for full/restricted roles, the new callout and mobile/desktop rendering; normal/elevated instruction delivery passed.
 
-Two default-concurrency runs timed out in different unchanged browser-viewer tests; the affected file passed alone. The complete final suite passed with `VITEST_MAX_FORKS=2 VITEST_MIN_FORKS=1 VITEST_MAX_THREADS=2 VITEST_MIN_THREADS=1`. No assertions or timeouts were weakened and no tests were newly skipped. The final root production build passed (only the existing Vite chunk-size advisory). Restart and independent deployment verification are pending.
+Two default-concurrency runs timed out in different unchanged browser-viewer tests; the affected file passed alone. The complete final suite passed with `VITEST_MAX_FORKS=2 VITEST_MIN_FORKS=1 VITEST_MAX_THREADS=2 VITEST_MIN_THREADS=1`. No assertions or timeouts were weakened and no tests were newly skipped. The final root production build passed (only the existing Vite chunk-size advisory). Implementation commit `488b08a` was pushed to `origin main` before restart. The authorized root restart interrupted this agent after web/runner replacement; fresh inspection confirmed the restart process had stopped, web and runner were healthy, and build #533 still owned the slot. The remaining app-runner, terminal and browser-manager services were then restarted through `npm run restart -- veneer-pro-app-runner veneer-pro-term veneer-browser-manager`, without repeating the web/runner restart.
+
+Independent readback at **2026-10-02 12:58:11 UTC** confirms all four application PIDs changed and are running, the browser manager is healthy, and the live migration `0146_vendor_email.sql` hash exactly matches both source and built SQL. The compiled MCP catalog contains all seven vendor-email tools and the guide release is marked new. Native production vendor authority/claim counts were both zero. See [the deployment receipt](./build533-deployment.json).
+
+`npm run health` reports healthy local web/runner and four tunnel edge connections. The public front door responds HTTP 302; authenticated end-to-end chat delivery and an actual Clara email were **not** tested. Service health and migration readback are deployment evidence, not business acceptance.
 
 Synthetic coverage includes preserved pending business holds, rejection of already-consumed decision sources, source/actor attribution, wrong or revoked owners/authors, later corrections and voice holds, exact scope drift, changed/unregistered attachment bytes, body coverage, immutable history, old-draft preservation, cross-path duplicates, concurrent binding/claim, permanent UNKNOWN/failure fencing, exact receipt scope and duplicate receipt rejection. Tests never contact Gmail or run business actions.
 
@@ -53,3 +57,16 @@ The isolated guide browser fixture verifies full/restricted employee access, the
 - [Employee/resumed-agent contract tests](/Users/archerclawdington/veneer-os/server/test/botFeatureGuide.test.ts)
 - [Isolated guide browser verification](/Users/archerclawdington/veneer-os/scripts/bot-guide-browser-check.mjs)
 - [This report](/Users/archerclawdington/veneer-os/docs/reports/vendor-email/build533.md)
+
+
+## Retained verification artifacts
+
+- [Typecheck log](/Users/archerclawdington/veneer-os/out/build533-typecheck.log)
+- [Final full test log](/Users/archerclawdington/veneer-os/out/build533-tests.log)
+- [First viewer timeout](/Users/archerclawdington/veneer-os/out/build533-tests-timeout.log) and [second viewer timeout](/Users/archerclawdington/veneer-os/out/build533-tests-timeout-2.log)
+- [Production build log](/Users/archerclawdington/veneer-os/out/build533-build.log)
+- [Initial restart log](/Users/archerclawdington/veneer-os/out/build533-restart.log) and [remaining-service restart log](/Users/archerclawdington/veneer-os/out/build533-restart-remaining.log)
+- [Post-deployment health log](/Users/archerclawdington/veneer-os/out/build533-health.log)
+- [Before-deployment process/migration snapshot](/Users/archerclawdington/veneer-os/out/build533-before.json)
+- [Independent deployment receipt](/Users/archerclawdington/veneer-os/docs/reports/vendor-email/build533-deployment.json)
+- [Isolated guide verification log](/Users/archerclawdington/veneer-os/out/build533-guide.log), [vendor feature desktop capture](/Users/archerclawdington/veneer-os/out/build533-guide/vendor-email-desktop.png), and [restricted employee mobile capture](/Users/archerclawdington/veneer-os/out/build533-guide/vendor-email-employee-mobile.png)
