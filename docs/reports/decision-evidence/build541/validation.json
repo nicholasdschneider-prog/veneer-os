@@ -1,0 +1,42 @@
+{
+  "build": 541,
+  "verifiedAt": "2026-10-02T21:11:55.737850+00:00",
+  "baseCommit": "a5ec2a5cb99589492b64ce5d48538db2bc5d82bb",
+  "typecheck": "passed",
+  "scoped": {
+    "passed": 76
+  },
+  "full": {
+    "passed": 4419,
+    "skipped": 15,
+    "installer": 29,
+    "server": 3359,
+    "web": 980,
+    "browserManager": 51
+  },
+  "buildResult": "passed; Vite chunk-size advisory only",
+  "initialFullFailure": "materialize.test.ts prohibited Shopify anywhere in instructions; replaced with before/after connector configuration equality test",
+  "deployment": {
+    "status": "staged",
+    "restartPerformed": false,
+    "blocker": "BUILD505 preservation restriction unresolved; Boris coordination confirmation 2026-10-02T21:03:43.671Z"
+  },
+  "businessEffects": false,
+  "sourceHashes": {
+    "server/src/mcp/botTools.ts": "71b7c16234ba99162811998c1d37effcaf5ff5d09076105d41b4846ef2851458",
+    "server/src/bots/proposalDiagnostics.ts": "4464fb411e070bd774b997b90d21e847ef23116f203dd8e82e75e714ea5dc984",
+    "server/src/bots/routes.ts": "1a5e7cefa556a28fd768d185503012e62ba199957f333d6c8f35a10d222f1d2a",
+    "server/src/featureGuide/catalog.ts": "b8e320777f1cede6c801027c63b8e212aec64a69ac766886ccbade4cf93ad6cf",
+    "server/test/decisionEvidenceSchema.test.ts": "20595e68e97fc5118dd6b5156679bc190a44013fd8ec601a674e114742d3ad90",
+    "server/test/decisionEvidence.test.ts": "9b4d47bf2c9a25b4e7043c10ea2ef0213fa2a91b4a52dc849e35ed7732834856",
+    "server/test/botFeatureGuide.test.ts": "482a9281dce24494afdd7a118c450083a97e82035a2c14d77bc5aaf15cc390d4",
+    "server/test/materialize.test.ts": "54f983c3ee2cc2a041af427ef288ea0cf2354a15c82462fec1d888fc36cc1301",
+    "docs/bot-feature-guide.md": "a1119de27645b80802ad25d5d0add0eca729fb60838bb5afe98fe238fbc17f8a"
+  },
+  "validationLogHashes": {
+    "/tmp/build541-typecheck.txt": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "/tmp/build541-scoped.txt": "89a5540332c8dec2df38b631e2155a7a32bfca7b0bd8fd259beff24f1417a0cc",
+    "/tmp/build541-full-final.txt": "cc63d0ce97ec0d9f8146dce5f060c0a1d015d5365a2eae2130f0d9fa62ce253d",
+    "/tmp/build541-build.txt": "edb2259b51933d36f49fc2f3f8512a26fdcda9b2e55a3ea4d0527e2522fe1d00"
+  }
+}

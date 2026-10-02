@@ -289,3 +289,16 @@ The `vendor-email-direction` catalog entry reaches full/restricted employees and
 Bindings and events are immutable. An explicit unclaimed correction creates a successor; a permanent business/account/thread fence prevents a second attempt after claim, UNKNOWN, failure or revocation. Ordinary native email claims to the same account/recipient are conservatively blocked. This release is deliberately limited to one recipient, PDF/image attachments, one thread per native human instruction and one attempted reply per thread. Existing source ownership, tool permissions and financial gates remain intact. Provider receipt evidence is the original executor’s accountable readback, not a server Gmail fetch or proof of recipient delivery. No automatic sender or new source grant is installed, and no business email is sent by validation.
 
 See [the implementation and acceptance report](./reports/vendor-email/build533.md).
+
+## Evidence source validation — October 2, 2026
+
+BUILD541 stages strict per-source callable schemas for raise/update and bounded nested
+proposal diagnostics. The `decision-evidence-validation` catalog entry reaches full
+and restricted employees and fresh/resumed agent instructions. Original owners must
+reconcile existing cards and exact current versions before separately authorized
+submission. Valid evidence stays intact; missing IDs are verified, never invented.
+Null account/refund fields do not establish complete refund proof.
+
+No source access, attachment verification or business approval guard is relaxed.
+Deployment remains subject to the BUILD505 browser-preservation restriction; this
+guide entry explicitly labels the repair staged.

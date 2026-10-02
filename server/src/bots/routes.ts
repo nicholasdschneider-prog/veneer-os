@@ -1,3 +1,4 @@
+import { proposalDiagnostics } from './proposalDiagnostics.js';
 import {contactVerificationRoutes} from './contactVerificationRoutes.js';
 import {caseCustodyRoutes} from './caseCustodyRoutes.js';
 import { mergeAuthorizationRoutes, mergeIO } from './mergeAuthorizationRoutes.js';
@@ -58,12 +59,15 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
         .catch((e) => {
           if (e instanceof BotError)
             res.status(e.status).json({ error: e.message });
-          else if (e instanceof z.ZodError)
+          else if (e instanceof z.ZodError) {
+            const proposalError = e.issues.some(x => x.path[0] === 'proposal')
+              ? proposalDiagnostics(req.body?.proposal) : null;
             res.status(400).json({
-              error: e.issues
-                .map((x) => `${x.path.join('.')}: ${x.message}`)
-                .join('; '),
+              error: [...(proposalError ? [proposalError] : []), ...e.issues
+                .filter(x => x.path[0] !== 'proposal')
+                .map(x => `${x.path.join('.')}: ${x.message}`)].join('; '),
             });
+          }
           else next(e);
         });
     };

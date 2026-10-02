@@ -236,6 +236,8 @@ describe('materializer', () => {
   });
 
   it('uses actual MCP configuration as connector truth without connector prose', () => {
+    addConversation('connector-chat');
+    const before = materializer().prepare(target(), 'token', 'connector-chat', 1).developerInstructions;
     db.prepare(
       `INSERT INTO connections (name, slug, config_json, policy_json, enabled)
        VALUES ('Shopify', 'shopify', ?, ?, 1)`,
@@ -243,14 +245,14 @@ describe('materializer', () => {
       JSON.stringify({ transport: 'stdio', command: 'shopify-mcp', args: [], env: {} }),
       JSON.stringify({ default: 'approve', rules: [{ match: 'mcp__shopify__get_*', action: 'allow' }] }),
     );
-    addConversation('connector-chat');
     const result = materializer().prepare(target(), 'token', 'connector-chat', 1);
     const mcp = JSON.parse(fs.readFileSync(result.mcpConfigPath!, 'utf8'));
     const permissions = JSON.parse(fs.readFileSync(result.settingsPath!, 'utf8')).permissions;
 
     expect(mcp.mcpServers.shopify).toEqual({ command: 'shopify-mcp', args: [], env: {} });
     expect(permissions.allow).toContain('mcp__shopify__get_*');
-    expect(result.developerInstructions.toLowerCase()).not.toContain('shopify');
+    // Shared evidence guidance may name Shopify; connecting it must add no prose.
+    expect(result.developerInstructions).toBe(before);
   });
 
   it('materializes personal connectors for the turn actor and shared connectors for collaborators', () => {

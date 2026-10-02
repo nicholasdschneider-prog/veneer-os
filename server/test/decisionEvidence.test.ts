@@ -162,6 +162,32 @@ describe('decision evidence and staleness', () => {
     expect(s.withdrawStaleQuestions(60 * 60 * 1000, Date.parse('2026-09-30T16:00:00Z'))).toEqual([]);
   });
 
+  it('returns nested source errors before fetch or mutation on both raise and update routes', async () => {
+    const fetchGmailAttachment = vi.fn();
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.user = bot.user; req.agentConversationId = bot.conversationId; next(); });
+    app.use('/api/bots', createBotsRouter(ctx, { evidenceFetchers: { fetchGmailAttachment } }));
+    const server = app.listen(0, '127.0.0.1'); servers.push(server);
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/bots`;
+    const before = db.prepare('SELECT count(*) n FROM bot_decisions').get();
+    const p = {...proposal(), evidence_items:[{kind:'record',label:'Record',source:{system:'orderops',order_id:'SECRET_VALUE',SECRET_KEY:'SECRET_VALUE'}}]};
+    for (const [path, body] of [
+      ['/decisions',{source_key:'s',proposal_key:'p',proposal:p}],
+      ['/decisions/nonexistent/proposal',{expected_version:1,request_key:'r',proposal:p}],
+    ] as const) {
+      const response = await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      expect(response.status).toBe(400);
+      const {error} = await response.json();
+      expect(error).toContain('proposal.evidence_items.0.source.ticket_id');
+      expect(error).toContain('Unexpected fields');
+      expect(error).not.toContain('SECRET');expect(error).not.toContain('binding_hash');
+    }
+    expect(fetchGmailAttachment).not.toHaveBeenCalled();
+    expect(ctx.manager.listSessionFiles).not.toHaveBeenCalled();
+    expect(db.prepare('SELECT count(*) n FROM bot_decisions').get()).toEqual(before);
+  });
+
   it('enforces evidence at the API, attaches files with a typed answer, and serves evidence through the route', async () => {
     let requestActor: Actor = bot;
     const app = express(); app.use(express.json());
