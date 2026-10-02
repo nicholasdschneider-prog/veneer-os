@@ -1,3 +1,4 @@
+import {guardVendorEmailDraft} from './vendorEmail.js';
 import {canonicalSha256} from './canonical.js';
 import { z } from 'zod';
 import { csDraftState } from './csDraftState.js';
@@ -324,6 +325,7 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
         .transaction(() => {
           const d = readDraft(a, id);
           access(a, d.conversation_id, true);
+          guardVendorEmailDraft(db,d.conversation_id,JSON.parse(d.payload_json));
           if(JSON.parse(d.payload_json).channel==='sms' && db.prepare("SELECT 1 FROM bot_composed_sms_authorities WHERE draft_id=? OR (executor_id=? AND json_extract(snapshot_json,'$.binding.payload_hash')=?) LIMIT 1").get(d.id,d.conversation_id,canonicalSha256(JSON.parse(d.payload_json))))throw new BotError(409,'This SMS has a separate derived authority; reconcile its exact action, never use an ordinary claim');
           if (routineExecutionService(db).authorization(d.id)) throw new BotError(409, 'Use claim_routine_message with a fresh trusted source proof; ordinary send checks cannot authorize a routine draft');
           const bridge = d.delegation_id ? delegated.bound(a, d, true) : null;

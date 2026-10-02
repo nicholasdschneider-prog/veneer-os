@@ -1,3 +1,4 @@
+import {VENDOR_EMAIL_TOOLS} from './vendorEmailTools.js';
 import type { ConversationDiscoveryToolDefinition } from './conversationDiscoveryTools.js';
 const str = { type: 'string' };
 const evidence = {
@@ -111,6 +112,7 @@ const custodyInspect={registrationId:str,caseId:str,instructionKind:{type:'strin
 const custodyCitation={type:'object',properties:{kind:{type:'string',enum:['direct_message','result_reply']},id:str,text:str},required:['kind','id','text'],additionalProperties:false};
 const custodyReview={type:'object',properties:{reviewedFullContext:{type:'boolean',enum:[true]},instruction:custodyCitation,interpretation:{type:'string',enum:['unconditional_prospective_custody','status_only','quoted','conditional','ambiguous']},explanation:str,context:{type:'array',items:{type:'object',properties:{citation:custodyCitation,classification:{type:'string',enum:['supports','status_only','resolved_prior_constraint','supersedes','ambiguous','quoted']},explanation:str},required:['citation','classification','explanation'],additionalProperties:false}},effects:{type:'array',items:{type:'object',properties:{id:str,revision:str,disposition:{type:'string',enum:['reconciled_no_parallel_effect']},explanation:str},required:['id','revision','disposition','explanation'],additionalProperties:false}},scope:{type:'string',enum:['prospective_completed_case_custody_only']},noUnresolvedConditions:{type:'boolean',enum:[true]}},required:['reviewedFullContext','instruction','interpretation','explanation','context','effects','scope','noUnresolvedConditions'],additionalProperties:false};
 export const BOT_TOOL_DEFINITIONS = [
+  ...VENDOR_EMAIL_TOOLS,
   definition('prepare_contact_verification','Original owner only: read exact authenticated public paired manifest after dedicated accepted integration/enrollment. No approval or effect; no actual secret. Use unchanged manifest only after executable setup before proposing outreach.',{registrationId:str},['registrationId']),
   definition('inspect_contact_verification','Original owner: inspect current exact human-approved proposal.contact_verification public paired manifest against dedicated authenticated source evidence. No secret links, ordinary draft retrofit or sending. Requires accepted dedicated setup; do not request outreach approval before executable manifest.',{registrationId:str,decisionId:str,expectedVersion:{type:'integer'}},['registrationId','decisionId','expectedVersion']),
   definition('issue_contact_verification','Original owner: bind exact current paired email+SMS approval to one immutable authority, unchanged inspectionHash and requestKey. No actual secret or provider call. One generation only; UNKNOWN/rollback never frees target. Builder must not issue.',{registrationId:str,decisionId:str,expectedVersion:{type:'integer'},inspectionHash:str,requestKey:str,expiresAt:str},['registrationId','decisionId','expectedVersion','inspectionHash','requestKey','expiresAt']),
@@ -283,6 +285,7 @@ export async function callBotTool({
     const result=await callApi(route,name==='read_case_custody'?undefined:{method:'POST',body:JSON.stringify(payload)});return {content:[{type:'text' as const,text:JSON.stringify(result)}]};
   }
   const communicationRoutes: Record<string,string> = {
+    read_vendor_email_context:'/vendor-email/context', inspect_vendor_email:'/vendor-email/inspect', bind_vendor_email:'/vendor-email/bind', read_vendor_email:'/vendor-email/read', claim_vendor_email:'/vendor-email/claim', record_vendor_email_delivery:'/vendor-email/receipt', revoke_vendor_email:'/vendor-email/revoke',
     inspect_routine_proof: '/routine-messages/proof', accept_routine_message: '/routine-messages/accept', claim_routine_message: '/routine-messages/claim',
     read_cs_readiness: '/cs-readiness',
     list_routine_policies: '/routine-policies/list', inspect_routine_message: '/routine-policies/inspect',

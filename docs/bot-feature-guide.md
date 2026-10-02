@@ -272,3 +272,12 @@ remain enforced. The hotline pins each operation to the currently selected quest
 existing VoiceWorkspace checks. Launched with owner approval in build #529; live authenticated
 question-line, dock, guide and voice-configuration checks passed. See
 [the launch receipt](./reports/question-desk/build529.md) for verification and limits.
+
+
+## Direct-human vendor email — October 2, 2026
+
+The `vendor-email-direction` catalog entry reaches full/restricted employees and fresh/resumed bots. The original registered executor can inspect the exact authenticated own-chat human instruction, bind a prospective composed vendor reply, and claim one attempt using existing Gmail access. The complete native context, later corrections, current drafts/decisions, exact account/recipient/thread/replied-to message/body and retained attachment hashes are reviewed together. No ordinary draft, human approval or delegation is retrofitted.
+
+Bindings and events are immutable. An explicit unclaimed correction creates a successor; a permanent business/account/thread fence prevents a second attempt after claim, UNKNOWN, failure or revocation. Ordinary native email claims to the same account/recipient are conservatively blocked. This release is deliberately limited to one recipient, PDF/image attachments, one thread per native human instruction and one attempted reply per thread. Existing source ownership, tool permissions and financial gates remain intact. Provider receipt evidence is the original executor’s accountable readback, not a server Gmail fetch or proof of recipient delivery. No automatic sender or new source grant is installed, and no business email is sent by validation.
+
+See [the implementation and acceptance report](./reports/vendor-email/build533.md).

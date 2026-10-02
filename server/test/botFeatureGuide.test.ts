@@ -4,6 +4,13 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers exact vendor-email steps and limits to employees and resumed agents',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-10-02')).features.find(f=>f.id==='vendor-email-direction')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('UNKNOWN');expect(f.limits).toContain('not server-authenticated Gmail');
+    expect(f.agent).toContain('Never bind or claim as the builder');expect(f.agent).toContain('FIRST execute:true');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(f.agent);
+  });
   it('delivers the staged question desk and hotline boundaries to employees and resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-10-01')).features.find(f=>f.id==='question-desk')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('transient ordinary chat prompts');expect(f.agent).toContain('original owners/executors');
