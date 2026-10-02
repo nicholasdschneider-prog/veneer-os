@@ -26,7 +26,11 @@ Configured `VP_SERVICE_HOME` was verified as `/Users/archerclawdington/veneer-pr
 - Focused runtime provisioner, Claude approval adapter, Codex app-server and model tests: 89 passed.
 - Full `npm test` passed: 3,294 server tests (15 skipped), 968 web tests, 51 browser-manager tests and 29 installer tests.
 - Root `npm run build` passed with the existing nonfatal large-chunk warning.
-- Restart and post-restart verification are pending at this checkpoint; the validated change is ready for deployment.
+- Committed and pushed runtime pins, existing test expectations and this report as `8aa8c1c` (`Update Claude Code and Codex to verified October releases`).
+- Supported `npm run restart` restarted app-runner, terminal, browser-manager and web, then signaled the runner. Runner shutdown interrupted the restart command and this chat before its final receipt; the build queue resumed the chat. Fresh runner PID 35382 replaced 85000. All five service probes subsequently returned HTTP 200 (app-runner uses POST JSON-RPC `statuses`; an initial GET probe returned the expected method-not-allowed response).
+- Fresh supported `npm run restart -- --health-check` passed: local web/runner healthy, public front door HTTP 302, tunnel four active edge connections. This does not certify authenticated end-to-end public chat.
+- Post-restart runtime verification again matched Claude 2.1.287, Codex 0.160.0 and unchanged Grok 1.0.5. Live Veneer model discovery retained all prior choices and defaults (Opus 5.5 and GPT-6.1 Sol).
+- Build #532 work is complete. No owner blocker remains; unrelated untracked files were preserved.
 
 ## Rollback
 
