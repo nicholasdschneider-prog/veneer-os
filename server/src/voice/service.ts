@@ -1,4 +1,4 @@
-import { HotlineConsent } from './hotlineConsent.js';
+import { HotlineConsent, unofferedNumbers } from './hotlineConsent.js';
 import { QuestionHotline, HOTLINE_INSTRUCTIONS } from './hotline.js';
 import { manageVoicePreferences, readVoicePreferences, VOICE_PREFERENCE_RULES } from './preferences.js';
 import { finishVoiceSession } from './sessions.js';
@@ -19,7 +19,7 @@ interface Call {
   state: string; error: string | null; lastSeen: number; expiresAt: number;
   createdAt: number; ready: boolean; seenKeys: Set<string>; replies: number; workStatus: string | null;
   bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number; faults: number;
-  incoming: boolean; closeReason: string | null;
+  incoming: boolean; closeReason: string | null; callerWords: string[];
 }
 export interface CallOptions { hotline?: boolean; timezone?: string; contextConversationId?: string; botConversationId?: string; decisionId?: string;
   /** The bot rang the person about `decisionId` and they picked up. */
@@ -45,7 +45,7 @@ Use exact option values; use free text only when allowOther is true. Clarify amb
 You can read chats and answer structured pending questions, but cannot independently send emails or start arbitrary work.
 ` + SHARED_RULES;
 /** The first words on a call the bot placed: the question itself, with no lead-in. */
-const incomingOpening = (name: string) => `You placed this call and the caller just picked up. Say only "It's ${name}." followed by the focused decision's question as one plain sentence, then stop and wait. No other greeting, no recap, no background, no recommendation and no list of options. Do not call tools for this opening.`;
+const incomingOpening = (name: string) => `You placed this call and the caller just picked up. Say only "It's ${name}." followed by the focused decision's question as one plain sentence, then stop and wait. If the question offers options, name them as the question already does. No other greeting, no recap, no background and no recommendation. Do not call tools for this opening.`;
 function botInstructions(bot: { name: string; role: string | null; subteam: string | null; team: string | null }, decisionId: string | null, incoming = false) {
   const title = [bot.role, bot.subteam, bot.team].filter(Boolean).join(', ');
   return `You ARE ${bot.name}${title ? ` (${title})` : ''}, on the phone with the caller. Always speak in the first person as ${bot.name}; identify yourself as ${bot.name} when asked. Never refer to ${bot.name} in the third person: never say "I'll let ${bot.name} know", "I'll tell ${bot.name}", "I'll pass this to ${bot.name}" or "when ${bot.name} answers". Follow the caller's saved greeting policy at call startup.
@@ -58,7 +58,8 @@ Your own structured pending questions are in list_blockers; deliver those with a
 You cannot start unrelated work, send email, or act as any other bot. Keep to your own work.
 ${decisionId ? `The user opened this call from decision ${decisionId}. Its first proposal page is supplied as focusedDecision; retain it as the call focus and retrieve remaining pages as needed. Mention it in the opening only if the caller's greeting policy requests a recap.\n` : ''}${incoming && decisionId ? `YOU PLACED THIS CALL. You rang the caller to ask one question, decision ${decisionId}, and they picked up. For this call these rules replace the saved greeting policy and any opening recap.
 Open with your name and the question in one plain sentence, then wait. Give background, your recommendation, the options or exact wording only when the caller asks, and keep it short.
-When the caller clearly answers: repeat the answer back in a few words, record it with answer_choice or answer_decision using the exact current version (silently read any remaining proposal pages first), say it is recorded, then call end_call. Do not raise your other questions on this call.
+Recording an answer takes two caller turns. First the caller states their answer. Then you read back the exact value you are about to record, with every number and unit, and ask "is that right?". Only after they clearly confirm do you record it, passing callerQuote as their entire latest utterance verbatim (silently read any remaining proposal pages first). Then say the exact recorded value from the tool result and call end_call. Do not raise your other questions on this call.
+Use answer_choice only when everything the caller said matches every amount, weight, dimension, quantity and recipient in that option. If any value they gave differs from the options (they say 8 ounces and the options say 24 or 32), never pick the nearest option: say the difference back, and record their own words with answer_custom. A mumble, a fragment, "mhm", "it's something" or an unfinished sentence is not an answer and not a confirmation: ask the question again briefly. Never state the caller's choice for them.
 If the caller says they cannot answer now, need to look at it, or will do it at their computer: call stop_calling, tell them it stays on their desk and you will not call about it again, then call end_call. That records no answer.
 If the caller asks you for something else, handle it as on any call, and call end_call once they are done. Never record an answer from silence, a question, or thinking aloud.\n` : ''}` + SHARED_RULES;
 }
@@ -209,7 +210,7 @@ export class LiveVoiceService {
         lastSeen: Date.now(), expiresAt: Date.now() + 55 * 60_000, createdAt: Date.now(), ready: false,
         seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, checking: false, faults: 0,
         bot: bot ? { conversationId: bot.conversationId, name: bot.name } : null, decisionId: options.decisionId ?? null,
-        incoming: incoming && !!bot, closeReason: null };
+        incoming: incoming && !!bot, closeReason: null, callerWords: [] };
       if (bot) {
         workspace.decisions().filter(d => d.state === 'needs_input').forEach(d => call.seenKeys.add(`d:${d.decisionId}:${d.version}`));
         call.replies = await workspace.replyCount().catch(() => 0);
@@ -226,6 +227,12 @@ export class LiveVoiceService {
           } catch { this.end(userId,call.id,'interrupted',Date.now(),'question_line_unavailable'); return; }
         }
         if(call.hotline && message.type==='caller_final' && typeof message.turn==='number' && typeof message.text==='string') call.consent.finish(message.turn,message.text);
+        // A call the bot placed is about one question: bind each caller utterance to its current version.
+        if(call.incoming && message.type==='caller_turn' && typeof message.turn==='number') {
+          const row=this.ctx.db.prepare('SELECT version FROM bot_decisions WHERE id=?').get(call.decisionId) as {version:number}|undefined;
+          call.consent.begin(message.turn,call.decisionId,row?.version??null);
+        }
+        if(call.incoming && message.type==='caller_final' && typeof message.turn==='number' && typeof message.text==='string') { call.consent.finish(message.turn,message.text); call.callerWords.push(message.text.slice(0,2000)); }
         if (message.type === 'ready') { call.state = 'listening'; call.ready = true; }
         if (message.type === 'closed' && typeof message.reason === 'string') call.closeReason = message.reason.replace(/[^\w-]/g, '').slice(0, 60);
         if (message.type === 'state' && typeof message.state === 'string') call.state = message.state;
@@ -259,6 +266,20 @@ export class LiveVoiceService {
               hotline.workspace(String(args.decisionId??'')); // Recheck focus after waiting for transcription.
               call.consent.consume(String(args.decisionId??''),Number(args.version),args.callerQuote);
             }
+            if(call.incoming && ['answer_decision','answer_choice','answer_custom'].includes(String(message.name))) {
+              const deadline=Date.now()+3000;
+              while(call.consent.pending && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,50));
+              if(this.calls.get(userId)!==call) throw new Error('Call ended before answer was recorded.');
+              if(String(args.decisionId??'')!==call.decisionId) throw new Error('This call is only about the question you called to ask.');
+              call.consent.consume(call.decisionId!,Number(args.version),args.callerQuote);
+              if(message.name!=='answer_custom') {
+                const row=this.ctx.db.prepare('SELECT proposal_json FROM bot_decisions WHERE id=?').get(call.decisionId) as {proposal_json:string};
+                const extra=unofferedNumbers(call.callerWords,row.proposal_json);
+                if(extra.length) throw new Error(`The caller said ${extra.join(', ')}, which is not in any offered option. Do not pick the nearest option. Tell the caller their value differs from the options and record their own words with answer_custom, or ask them to clarify.`);
+              }
+              // The record carries what the caller actually said, not only the agent's summary.
+              args.text=`${String(args.text??'').slice(0,3000)}\n[Caller's words on this call: ${call.callerWords.slice(-6).map(w=>JSON.stringify(w)).join(' ')}]`;
+            }
             switch (message.name) {
               case 'voice_preferences': return manageVoicePreferences(this.ctx.db, userId, args);
               case 'blockers': return workspace.blockers();
@@ -273,6 +294,7 @@ export class LiveVoiceService {
               case 'answer_decision': { const result=target.answerDecision(call.id,args); return hotline ? {...result,nextQuestion:hotline.navigate('next')} : result; }
               case 'answer_choice': { const result=target.answerChoice(call.id,args); return hotline ? {...result,nextQuestion:hotline.navigate('next')} : result; }
               case 'edit_reply': return target.editReply(call.id, args);
+              case 'answer_custom': if(!call.incoming) return { error: 'Unknown tool.' }; return workspace.answerCustom(call.id, args);
               default: return { error: 'Unknown tool.' };
             }
           })().catch((error: unknown) => ({ error: error instanceof Error && error.message ? error.message : 'Unable to complete that request. Refresh and check the chat before retrying.' }))

@@ -96,6 +96,46 @@ describe('live voice lifecycle', () => {
     expect(service.status(1)).toBeNull();
     expect(db.prepare('SELECT outcome,end_reason FROM voice_sessions WHERE id=?').get(call.id)).toEqual({outcome:'ended',end_reason:'agent_ended/worker_user_initiated'});
   });
+  it('never records an offered option the caller did not state on a call the bot placed', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('ship',1,1,'Ship','codex','ship')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('ship','Shipper',1)").run();
+    db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES('w','ship','w','w',?,1)").run(JSON.stringify({question:'Do both knobs pack in 10 by 4 by 4 inches at 24 oz, or 12 by 6 by 4 at 32 oz?',recommendation:'24 oz',consequence:'One label',blocked_action:'Label',blocks_scope:'task',deadline:null,evidence:[],assignee_id:1,
+      choices:[{id:'a',label:'10×4×4 in, 24 oz',action:'approve',answer:'One package 10x4x4in24oz',recommended:true},{id:'b',label:'12×6×4 in, 32 oz',action:'approve',answer:'One package 12x6x4in32oz'}]}));
+    await service.start(1,{botConversationId:'ship',decisionId:'w',incoming:true});
+    const tool = async (id:string,name:string,args:Record<string,unknown>) => { child.emit('message',{type:'tool',id,name,args}); await vi.advanceTimersByTimeAsync(1); return child.send.mock.calls.map(a=>a[0]).find(m=>m.id===id).result; };
+    const say = (turn:number,text:string) => { child.emit('message',{type:'caller_turn',turn}); child.emit('message',{type:'caller_final',turn,text}); };
+    // Nothing said yet: no answer can be recorded.
+    expect((await tool('t0','answer_choice',{decisionId:'w',version:1,choiceId:'a',text:'24 oz',callerQuote:'yes'})).error).toMatch(/No fresh matching caller answer/);
+    say(1,'10 by 4 by 4, a polymailer, only like 8 ounces all in.');
+    say(2,'Yes.');
+    // The caller said 8, which no option offers: the nearest option is refused.
+    expect((await tool('t1','answer_choice',{decisionId:'w',version:1,choiceId:'a',text:'24 oz',callerQuote:'Yes.'})).error).toMatch(/caller said 8, which is not in any offered option/);
+    expect(db.prepare("SELECT state FROM bot_decisions WHERE id='w'").get()).toEqual({state:'needs_input'});
+    say(3,'Yes, 8 ounces.');
+    const custom = await tool('t2','answer_custom',{decisionId:'w',version:1,text:'10 by 4 by 4 polymailer, about 8 oz total',callerQuote:'Yes, 8 ounces.'});
+    expect(custom).toMatchObject({ok:true,recorded:expect.stringContaining('about 8 oz total')});
+    const answer = JSON.parse((db.prepare("SELECT answer_json FROM bot_decisions WHERE id='w'").get() as {answer_json:string}).answer_json);
+    expect(answer).toMatchObject({action:'custom',choice_id:'custom'});
+    expect(answer.answer).toContain('8 oz'); expect(answer.answer).toContain('only like 8 ounces all in'); expect(answer.answer).not.toContain('24oz');
+  });
+  it('records an offered option on a placed call when the caller states and confirms it', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('ship',1,1,'Ship','codex','ship')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('ship','Shipper',1)").run();
+    db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES('g','ship','g','g',?,1)").run(JSON.stringify({question:'Is the glass 18 pounds or 28 pounds packed?',recommendation:'18',consequence:'One label',blocked_action:'Label',blocks_scope:'task',deadline:null,evidence:[],assignee_id:1,
+      choices:[{id:'18',label:'18 lb',action:'approve',answer:'18lb total',recommended:true},{id:'28',label:'28 lb',action:'approve',answer:'28lb total'}]}));
+    await service.start(1,{botConversationId:'ship',decisionId:'g',incoming:true});
+    child.emit('message',{type:'caller_turn',turn:1}); child.emit('message',{type:'caller_final',turn:1,text:'It is 28 pounds.'});
+    child.emit('message',{type:'caller_turn',turn:2}); child.emit('message',{type:'caller_final',turn:2,text:"Yes, that's right."});
+    child.emit('message',{type:'tool',id:'ok',name:'answer_choice',args:{decisionId:'g',version:1,choiceId:'28',text:'28 lb confirmed',callerQuote:"Yes, that's right."}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.id==='ok').result).toMatchObject({ok:true,recorded:'28lb total'});
+    const answer = JSON.parse((db.prepare("SELECT answer_json FROM bot_decisions WHERE id='g'").get() as {answer_json:string}).answer_json);
+    expect(answer).toMatchObject({action:'approve',choice_id:'28'}); expect(answer.text).toContain('It is 28 pounds.');
+    // A replayed quote cannot record a second answer.
+    child.emit('message',{type:'tool',id:'again',name:'answer_choice',args:{decisionId:'g',version:1,choiceId:'18',text:'18',callerQuote:"Yes, that's right."}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.id==='again').result.error).toBeTruthy();
+  });
   it('hands the saved transcript to the bot once after every bot call, marking relayed items', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();

@@ -335,7 +335,23 @@ ${body}`;
       if (d.shared_queue && !d.handler_id && d.can_handle) d=this.bots.handle(this.actor,decisionId,version,key+':claim','claim',d.handling_revision);
       const result=this.bots.choose(this.actor,decisionId,version,key,choiceId,text,'this_case',d.handling_revision);
       if(!prior) this.record(sessionId,'decision',`${result.bot_name}: ${result.answer?.choice_label ?? choiceId} — ${text}`);
-      return {ok:true,decisionId,state:result.state,delivery:'Answer recorded. This is not a completion receipt.'};
+      return {ok:true,decisionId,state:result.state,recorded:result.answer?.answer ?? result.answer?.choice_label ?? choiceId,delivery:'Answer recorded. This is not a completion receipt.'};
+    })();
+  }
+
+  /** The caller's own words as the answer: resolves the question without making any offered option executable. */
+  answerCustom(sessionId: string, input: unknown) {
+    const {decisionId,version,text} = z.object({decisionId:z.string(),version:z.number().int().positive(),text:z.string().trim().min(1).max(4000)}).parse(input);
+    return this.ctx.db.transaction(() => {
+      this.readDecision(decisionId);
+      let d=this.bots.view(this.actor,this.bots.read(this.actor,decisionId));
+      const key=`voice:${sessionId}:custom:${version}`;
+      const prior=this.ctx.db.prepare('SELECT 1 FROM bot_decision_events WHERE decision_id=? AND request_key=?').get(decisionId,key);
+      if (!prior && d.state !== 'needs_input') throw new Error('This decision already has an answer.');
+      if (d.shared_queue && !d.handler_id && d.can_handle) d=this.bots.handle(this.actor,decisionId,version,key+':claim','claim',d.handling_revision);
+      const result=this.bots.answerCustom(this.actor,decisionId,version,key,text,d.handling_revision);
+      if(!prior) this.record(sessionId,'decision',`${result.bot_name}: caller's own answer — ${text}`);
+      return {ok:true,decisionId,state:result.state,recorded:text,delivery:'The caller\'s own words were recorded as their answer. No offered option was approved; the bot reads them and continues under its normal checks.'};
     })();
   }
 

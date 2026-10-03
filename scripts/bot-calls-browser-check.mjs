@@ -48,6 +48,13 @@ try {
       if (path === '/api/live-voice/calls') return route.fulfill({ status: 503, json: { ok: false, error: 'Fixture has no voice service.' } });
       return route.fulfill({ status: 404, json: { error: 'Not available in fixture' } });
     });
+    // Track audio elements the page creates so the check can tell whether the ringtone is sounding.
+    await page.addInitScript(() => {
+      const made = [];
+      const Native = window.Audio;
+      window.Audio = function (src) { const a = new Native(src); made.push(a); return a; };
+      window.__ringing = () => made.some(a => a.src.endsWith('/sounds/bot-call.mp3') && !a.paused && !a.muted);
+    });
     await page.goto('http://127.0.0.1:3298/#/bots?view=work');
     await page.locator('[data-desk-pill]').waitFor();
     assert.equal(await page.getByRole('alertdialog').count(), 0, 'nothing rings until a bot calls');
@@ -77,7 +84,10 @@ try {
     const view = page.viewportSize();
     assert.ok(box.x >= 0 && box.x + box.width <= view.width && box.y >= 0 && box.y + box.height <= view.height, 'ring card stays on screen');
     await page.screenshot({ path: `${output}/${mobile ? 'mobile' : 'desktop'}-ringing.png` });
+    // The page has been touched, so the ring is audible: the bundled tone is playing, unmuted.
+    await page.waitForFunction(() => window.__ringing?.() === true, null, { timeout: 5000 });
     await card.getByRole('button', { name: 'Decline' }).click();
+    await page.waitForFunction(() => window.__ringing?.() === false, null, { timeout: 5000 });
     await card.waitFor({ state: 'detached' });
     assert.deepEqual(posts.find(p => p.path === '/api/bot-calls/decline')?.body, { decisionId: 'q1' });
 

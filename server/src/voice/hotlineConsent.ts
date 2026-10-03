@@ -17,3 +17,10 @@ export class HotlineConsent {
     c.consumed=true;
   }
 }
+
+const numbers = (text: string) => new Set((text.match(/\d+(?:\.\d+)?/g) ?? []).map(n => String(Number(n))));
+/** Numbers the caller said that appear nowhere in the proposal: the caller stated a value no offered option contains. */
+export function unofferedNumbers(callerWords: string[], proposalJson: string): string[] {
+  const offered = numbers(proposalJson);
+  return [...numbers(callerWords.join(' '))].filter(n => !offered.has(n));
+}

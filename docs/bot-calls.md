@@ -51,6 +51,15 @@ How it works:
 - **Voice training.** Saved voice preferences (length, tone, structure) apply to these calls. Only
   the saved greeting is replaced, by the plain-question opening.
 
+- **Ringtone.** `web/public/sounds/bot-call.mp3`, a soft three-note chime we synthesized, played
+  through an audio element so the iPhone silent switch does not mute it. The element is unlocked on
+  the first tap or key press in the tab.
+- **Answer guards on a placed call** (added 2026-10-03, build #544). The bot reads back the exact
+  value and records only after the caller confirms. The server refuses an answer with no fresh
+  caller utterance, and refuses an offered option when the caller said a number that appears in no
+  option; the caller's own words are then recorded as a custom answer (`answer_custom`), which
+  approves no option. The caller's actual words are saved with every recorded answer.
+
 Known browser limits: a ringtone cannot play in a tab that has not been touched since it loaded, and
 a locked iPhone shows a notification rather than ringing.
 
@@ -74,3 +83,13 @@ number; OrderOps already uses Twilio.
   silence timer to semantic detection, which waits for a finished thought; background-reply notices
   now wait for a 2.5 second lull; and the voice rules forbid repeating a sentence or restarting
   after a filler sound. Not yet confirmed on a real call.
+
+## First real calls (2026-10-03)
+
+Two AutoShip Worker calls rang, connected in about two seconds and hung up by themselves. Both
+recorded an answer the caller had not given: order 100122332 was recorded as the 24 oz option after
+the caller said "8 ounces", and order 100122334 was recorded as 18 lb after the caller said only
+"Mhm", "It's something" and "I'll have a". AutoShip Worker was told both recordings are unreliable
+(coordination thread a26fed07). Build #544 added the answer guards above, forced English
+transcription, made the one-sentence opening uninterruptible so pickup noise cannot restart it, and
+replaced the silent Web Audio ring. Which device the calls were taken on is not recorded.

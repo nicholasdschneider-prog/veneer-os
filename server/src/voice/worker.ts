@@ -87,7 +87,7 @@ process.on('message', (raw: unknown) => {
       // Semantic turn detection waits for a finished thought, so a pause mid-sentence
       // or a filler sound no longer makes the agent answer over the caller.
       turnDetection: { type: 'semantic_vad', eagerness: 'low', create_response: true, interrupt_response: true },
-      inputAudioTranscription: { model: 'gpt-4o-mini-transcribe' }, maxSessionDuration: 50 * 60 * 1000 });
+      inputAudioTranscription: { model: 'gpt-4o-mini-transcribe', language: 'en' }, maxSessionDuration: 50 * 60 * 1000 });
     session = new voice.AgentSession({ llm: model });
     const bot = config.mode === 'bot';
     const hotline = config.mode === 'hotline';
@@ -146,6 +146,9 @@ process.on('message', (raw: unknown) => {
     if (config.opening) {
       tools.stop_calling = llm.tool({ description: 'The caller cannot answer this question now, needs to look at it, or will handle it at their computer. Keeps the question card on their desk, records no answer, and stops any further calls about this question.',
         execute: async () => call('stop_calling') });
+      tools.answer_custom = llm.tool({ description: 'Record the caller\'s own answer in their words when it does not match an offered option exactly, for example a different weight, size or amount. Approves no option; the bot reads the words and continues under its normal checks. Only after you read the value back and the caller confirmed.',
+        parameters: z.object({ decisionId: z.string(), version: z.number().int(), text: z.string().describe('The caller\'s answer with every value they gave, in their words.'), callerQuote: z.string().describe('The entire latest caller utterance verbatim.') }),
+        execute: async args => call('answer_custom', args) });
       tools.end_call = llm.tool({ description: 'Hang up. Call this last, once the answer is recorded or the caller is done. Say your brief closing words first.',
         execute: async () => { endRequested = true; setTimeout(hangUp, 12_000).unref(); return { ok: true, note: 'The call ends when you stop speaking. Say nothing more than a brief goodbye.' }; } });
     }
@@ -177,7 +180,8 @@ process.on('message', (raw: unknown) => {
     await room.connect(config.url, config.token);
     await session.start({ agent, room, inputOptions: { participantIdentity: config.participantIdentity,
       textEnabled: false, videoEnabled: false, closeOnDisconnect: true }, record: false });
-    const greet = () => session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences) });
+    // The one-sentence opening of a call the bot placed is not restarted by pickup noise.
+    const greet = () => session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences), ...(config.opening ? { allowInterruptions: false } : {}) });
     if (room.remoteParticipants.has(config.participantIdentity)) greet();
     else room.once(RoomEvent.ParticipantConnected, greet);
     send({ type: 'ready' });

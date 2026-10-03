@@ -18,31 +18,35 @@ export function answerCallTarget(hash: string): string | null {
   try { return decodeURIComponent(match[1]!); } catch { return null; }
 }
 
-/** A soft two-tone ring. Browsers keep it silent until the page has been touched once. */
-function startRingtone(): () => void {
-  let context: AudioContext | null = null;
-  let timer = 0;
+const RINGTONE = '/sounds/bot-call.mp3';
+let ringtone: HTMLAudioElement | null = null;
+let primed = false;
+/**
+ * Browsers only let a page start sound after the person has touched it. On the first tap or key
+ * press the ringtone element is played muted once, which lets a later ring play by itself. A real
+ * audio element is used, not Web Audio, so the iPhone silent switch does not mute the ring.
+ */
+export function primeRingtone(): void {
+  if (primed || typeof Audio === 'undefined') return;
+  primed = true;
   try {
-    context = new AudioContext();
-    const chime = () => {
-      if (!context || context.state !== 'running') return;
-      for (const [offset, frequency] of [[0, 587], [0.22, 784]] as const) {
-        const tone = context.createOscillator();
-        const gain = context.createGain();
-        const at = context.currentTime + offset;
-        tone.frequency.value = frequency;
-        gain.gain.setValueAtTime(0.0001, at);
-        gain.gain.exponentialRampToValueAtTime(0.12, at + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.4);
-        tone.connect(gain).connect(context.destination);
-        tone.start(at);
-        tone.stop(at + 0.45);
-      }
-    };
-    void context.resume().then(chime).catch(() => {});
-    timer = window.setInterval(chime, 2000);
-  } catch { /* no audio: the card still shows */ }
-  return () => { window.clearInterval(timer); void context?.close().catch(() => {}); };
+    ringtone = new Audio(RINGTONE);
+    ringtone.preload = 'auto';
+    ringtone.loop = true;
+    ringtone.muted = true;
+    const unlocked = ringtone;
+    void unlocked.play().then(() => { if (unlocked.muted) { unlocked.pause(); unlocked.currentTime = 0; } }).catch(() => { primed = false; ringtone = null; });
+  } catch { primed = false; ringtone = null; }
+}
+/** Rings until stopped. Stays silent, without error, when the page has never been touched. */
+function startRingtone(): () => void {
+  const audio = ringtone;
+  if (!audio) return () => {};
+  try {
+    audio.muted = false; audio.volume = 0.7; audio.currentTime = 0;
+    void audio.play().catch(() => {});
+  } catch { /* the card still shows */ }
+  return () => { try { audio.pause(); audio.currentTime = 0; audio.muted = true; } catch { /* nothing to stop */ } };
 }
 
 /**
@@ -58,7 +62,7 @@ export function BotCallRing({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (!enabled) { setRing(null); return; }
     let alive = true;
-    const touched = () => { active.current = true; };
+    const touched = () => { active.current = true; primeRingtone(); };
     const poll = async () => {
       if (document.visibilityState === 'hidden') return;
       const seq = ++serial.current;
