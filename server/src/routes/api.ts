@@ -530,6 +530,15 @@ const FileLockSchema = z.object({
   ttlSeconds: z.number().int().min(5).max(3600),
 });
 
+/** Record which screen a human's typed message came from, never its text.
+ * `match=false` means the app posted to a chat other than the one displayed. */
+function logHumanSend(req: express.Request, conversationId: string): void {
+  const header = req.headers['x-veneer-view'];
+  if (typeof header !== 'string') return;
+  const view = header.replace(/[^\x21-\x7e]/g, '').slice(0, 200);
+  console.log(`[human-send] conversation=${conversationId} view=${view} match=${view.includes(conversationId)}`);
+}
+
 function titleFrom(text: string): string {
   const firstLine = text.split('\n', 1)[0]?.trim() ?? '';
   return firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine || 'New conversation';
@@ -2711,6 +2720,20 @@ export function createApiRouter(ctx: AppContext): Router {
       }
     }
     const slug = assistant.slug;
+    // A bot handing new work to Platform Dev rarely knows where those chats
+    // live. Without a project the new chat would join a different build queue
+    // than the existing Platform Dev chats and could edit the same source at
+    // the same time, so place it with the most recently active one.
+    if (req.agentConversationId && slug === 'platform-dev' && !projectId) {
+      const sibling = db
+        .prepare(
+          `SELECT project_id FROM conversations
+            WHERE assistant_id = ? AND user_id = ? AND side_chat_of IS NULL AND archived = 0
+            ORDER BY last_active_at DESC LIMIT 1`,
+        )
+        .get(assistant.id, req.user!.id) as { project_id: string | null } | undefined;
+      projectId = sibling?.project_id ?? null;
+    }
     if (assistant.slug === 'platform-dev' && body.data.approval_mode !== undefined) {
       res.status(400).json({ ok: false, error: 'Platform Dev approval mode cannot be changed' });
       return;
@@ -3148,7 +3171,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     void (async () => {
       const origin = agentMessageOrigin(req, row.id);
-      if (!req.agentConversationId && !req.agentExecutionConversationId) captureHumanMessage(db, row.id, req.user!.id, body.data.text);
+      if (!req.agentConversationId && !req.agentExecutionConversationId) { logHumanSend(req, row.id); captureHumanMessage(db, row.id, req.user!.id, body.data.text); }
       const posted = body.data.queueOnly
         ? origin
           ? await manager.queueMessage(row.id, body.data.text, req.user!.id, origin)
@@ -3332,7 +3355,7 @@ export function createApiRouter(ctx: AppContext): Router {
     }
     reactivateConversation(row.id);
     const origin = agentMessageOrigin(req, row.id);
-    if (!req.agentConversationId && !req.agentExecutionConversationId) captureHumanMessage(db, row.id, req.user!.id, body.data.text);
+    if (!req.agentConversationId && !req.agentExecutionConversationId) { logHumanSend(req, row.id); captureHumanMessage(db, row.id, req.user!.id, body.data.text); }
     const posted = origin
       ? manager.steerMessage(row.id, body.data.text, req.user!.id, undefined, origin)
       : manager.steerMessage(row.id, body.data.text, req.user!.id);

@@ -140,6 +140,17 @@ export class ApiError extends Error {
   }
 }
 
+/** Sent with every typed message so the server can record which screen it
+ * came from. If a message ever reaches a chat other than the one on screen,
+ * the server log shows it. */
+function viewHeader(): Record<string, string> {
+  try {
+    return { 'Content-Type': 'application/json', 'X-Veneer-View': location.hash.replace(/[^\x21-\x7e]/g, '').slice(0, 200) };
+  } catch {
+    return { 'Content-Type': 'application/json' };
+  }
+}
+
 export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
@@ -395,6 +406,7 @@ export const api = {
       queue: ConversationQueueSnapshot;
     }>(`/api/conversations/${id}/messages`, {
       method: 'POST',
+      headers: viewHeader(),
       body: JSON.stringify({ text }),
     }),
   // Mid-turn sends join the working reply at its next step. The server keeps a
@@ -407,6 +419,7 @@ export const api = {
       queue: ConversationQueueSnapshot;
     }>(`/api/conversations/${id}/steer`, {
       method: 'POST',
+      headers: viewHeader(),
       body: JSON.stringify({ text }),
     }),
   queueMessage: (id: string, text: string) =>
@@ -417,6 +430,7 @@ export const api = {
       queue: ConversationQueueSnapshot;
     }>(`/api/conversations/${id}/messages`, {
       method: 'POST',
+      headers: viewHeader(),
       body: JSON.stringify({ text, queueOnly: true }),
     }),
   updateQueuedMessage: (id: string, messageId: number, text: string) =>

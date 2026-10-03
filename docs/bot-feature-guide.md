@@ -320,3 +320,13 @@ Verified on an isolated instance with a throwaway data directory and real Claude
 ![After: the repeat is one small row](./reports/answer-once/after-history-1-mobile.png)
 
 ![The reported chat after the change](./reports/answer-once/reported-case-mobile.png)
+
+## New work gets its own chat (October 3, 2026)
+
+Build #550 revises the `handoffs` catalog entry. A bot with new work for another kind of agent used `send_message` on whichever existing chat ran that agent, and the receiving chat queued the build in its own human thread: build #549 (Runway connector) ran inside an unrelated "Bot avatar voice calls" chat.
+
+Three changes. `enqueue_build` called from a coordination lane now creates a new chat for the build, linked to the chat that asked, unless the receiving agent sets `continues_this_chat`; a registered bot keeps its one standing chat. `handoff` now sends the requested agent type (the `assistant` argument was documented but never passed), and an agent-created Platform Dev chat without a project joins the project of the most recent Platform Dev chat, so it shares their build queue. The `send_message`, `handoff` and `list_conversations` descriptions tell bots to start a new chat for new work.
+
+Typed messages now carry the on-screen chat in an `X-Veneer-View` header, and the web service logs `[human-send] conversation=… view=… match=…` without the text, so a report that a message reached the wrong chat can be checked. A read-only audit found no path that sends a composer message to a chat other than the one displayed.
+
+Verified on an isolated instance with real turns: Claude and Codex assistant chats each opened a new Platform Dev chat for a new request; a build forced through `send_message` into an existing Platform Dev chat ran in a new chat and left that chat's thread untouched; a same-topic follow-up build stayed in the owning chat. The forced-message and follow-up cases used a Claude Platform Dev chat only; the Codex sender declined to message an unrelated chat, so the Codex receiving side was not exercised.

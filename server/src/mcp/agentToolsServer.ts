@@ -203,7 +203,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'send_message',
     description:
-      "Message another bot in a separate coordination thread. Its human conversation is not interrupted. Responses and progress stay in that thread. The result returns the thread id; read_coordination retrieves the exchange. This does not wait for a response.",
+      "Message another bot in a separate coordination thread. Its human conversation is not interrupted. Responses and progress stay in that thread. The result returns the thread id; read_coordination retrieves the exchange. This does not wait for a response. Send only to a chat that already owns the matter: a registered bot's standing chat, a chat already working on this same topic or build, a chat you handed off, or a chat you are already coordinating with. For new work that no existing chat is about, including a new request for Platform Dev, use handoff to start a new chat instead; never pick an unrelated chat just because it runs the right kind of agent.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -273,6 +273,11 @@ const TOOLS: ToolDef[] = [
           type: 'string',
           description: 'Self-contained implementation brief, including requirements and relevant decisions from this chat.',
         },
+        continues_this_chat: {
+          type: 'boolean',
+          description:
+            "Only matters when another bot's message, not the human in this chat, asked for the build. By default such a build gets a new chat of its own, so unrelated work stays out of this chat's human thread. Set true only when the build continues work the human already asked for in this chat.",
+        },
       },
       required: ['title', 'brief'],
     },
@@ -303,7 +308,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'handoff',
     description:
-      "Hand a task off to a NEW agent: this starts a fresh chat, fires the new agent off to work on its own, and returns the new chat's id. A chat's project folder is fixed, so this is also how to work in a different project: call list_projects, create_project natively if needed, then pass the exact project id to handoff. Never use browser automation to create or select a project. The new agent is told it was handed off from you and given the task as its first message, so the two chats stay traceable. It runs independently and does NOT reply here — afterwards use read_conversation(newChatId) to check its progress or result, or send_message(newChatId, …) to steer it. Leave provider/model/effort/assistant/project unset to use the default agent at its default thinking level. If the user asked for a SPECIFIC engine, model, or agent type, call list_agent_options first to resolve exactly what they meant.",
+      "Hand a task off to a NEW agent: this starts a fresh chat, fires the new agent off to work on its own, and returns the new chat's id. This is the way to give another kind of agent new work that no existing chat is about: for a Veneer software change, pass assistant 'platform-dev' and leave project unset, and the new chat is placed with the other Platform Dev chats. A chat's project folder is fixed, so this is also how to work in a different project: call list_projects, create_project natively if needed, then pass the exact project id to handoff. Never use browser automation to create or select a project. The new agent is told it was handed off from you and given the task as its first message, so the two chats stay traceable. It runs independently and does NOT reply here — afterwards use read_conversation(newChatId) to check its progress or result, or send_message(newChatId, …) to steer it. Leave provider/model/effort/assistant/project unset to use the default agent at its default thinking level. If the user asked for a SPECIFIC engine, model, or agent type, call list_agent_options first to resolve exactly what they meant.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -1109,14 +1114,30 @@ async function callTool(
       if (!spawnConversationId) {
         return { content: [{ type: 'text', text: 'enqueue_build is unavailable here (no active conversation).' }], isError: true };
       }
-      const { job, position, disposition } = (await callApi('/api/build-queue', {
+      const { job, position, disposition, buildConversation } = (await callApi('/api/build-queue', {
         method: 'POST',
         body: JSON.stringify({
           sourceConversationId: spawnConversationId,
           title: String(args.title ?? ''),
           brief: String(args.brief ?? ''),
+          ...(args.continues_this_chat === true ? { continuesThisChat: true } : {}),
         }),
-      })) as { job: Record<string, unknown>; position: number; disposition: 'enqueued' | 'merged' | 'existing' | 'requeued' };
+      })) as {
+        job: Record<string, unknown>;
+        position: number;
+        disposition: 'enqueued' | 'merged' | 'existing' | 'requeued';
+        buildConversation?: { id: string; title: string | null };
+      };
+      if (buildConversation) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Queued build #${String(job.id)} “${String(job.title)}” at position ${position} in a new chat of its own (${buildConversation.id}), because another bot asked for it and it is not this chat's own work. That chat builds it when its slot is up: do not change or validate source for it here, and do not schedule a wake-up. Give the new chat id in your reply to the requesting bot, so it follows up in that chat.`,
+            },
+          ],
+        };
+      }
       // Agents otherwise read "wait for your slot" as a follow-up they must
       // arrange themselves, and stack a redundant wake-up on top of the queue.
       const wakeGuarantee =
@@ -1208,8 +1229,7 @@ async function callTool(
       if (args.provider !== undefined) body.provider = String(args.provider);
       if (args.model !== undefined) body.model = String(args.model);
       if (args.effort !== undefined) body.effort = String(args.effort);
-      if (args.provider !== undefined) body.provider = String(args.provider);
-      if (args.model !== undefined) body.model = String(args.model);
+      if (args.assistant !== undefined && String(args.assistant).trim()) body.assistantSlug = String(args.assistant).trim();
       if (projectId) body.projectId = projectId;
       const { conversation } = (await callApi('/api/conversations', { method: 'POST', body: JSON.stringify(body) })) as {
         conversation: Record<string, unknown>;
