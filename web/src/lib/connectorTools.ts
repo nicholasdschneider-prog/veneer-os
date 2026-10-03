@@ -5,6 +5,7 @@ const CONNECTOR_NAMES: Record<string, string> = {
   google_analytics: 'Google Analytics',
   googleads: 'Google Ads',
   googlecalendar: 'Google Calendar',
+  runway: 'Runway',
   googledocs: 'Google Docs',
   googledrive: 'Google Drive',
   googlesheets: 'Google Sheets',

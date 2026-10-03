@@ -20,6 +20,7 @@ import type { SupermemoryProvisioner } from './memory/provision.js';
 /** One AppContext threads all server state (spec §3 convention) — no module-level singletons. */
 export interface AppContext {
   liveVoice?: import('./voice/service.js').LiveVoiceService;
+  remoteMcp?: import('./connectors/remoteMcp.js').RemoteMcp;
   config: Config;
   db: Database.Database;
   /**

@@ -1294,7 +1294,7 @@ export interface ConnectorInfo {
   slug: string;
   name: string;
   description: string;
-  kind: 'composio' | 'custom';
+  kind: 'composio' | 'custom' | 'remote_mcp';
   fields: ConnectorFieldDef[];
   accessModes: ConnectorAccessModeProfile[];
   // One entry per connected account; the same connector can be installed

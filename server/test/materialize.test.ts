@@ -302,6 +302,29 @@ describe('materializer', () => {
     expect(servers['paper-studio']).toMatchObject({ type: 'http', url: 'http://100.78.101.60:29979/mcp' });
   });
 
+  it('points a signed-in remote MCP connector at the loopback relay with its key, never a provider token', () => {
+    addConversation('runway-chat');
+    const key = 'p'.repeat(43);
+    const id = Number(db.prepare(
+      `INSERT INTO user_connectors (user_id, connector_slug, status, sharing, config_json)
+       VALUES (1, 'runway', 'connected', 'personal', ?)`,
+    ).run(JSON.stringify({ remoteMcp: { proxyKey: key } })).lastInsertRowid);
+    db.prepare(
+      `INSERT INTO user_connectors (user_id, connector_slug, label, status, sharing, config_json)
+       VALUES (1, 'runway', 'Pending', 'pending', 'personal', ?)`,
+    ).run(JSON.stringify({ remoteMcp: { proxyKey: 'q'.repeat(43) } }));
+
+    const result = materializer().prepare(target(), 'token', 'runway-chat', 1);
+    const servers = JSON.parse(fs.readFileSync(result.mcpConfigPath!, 'utf8')).mcpServers;
+    const permissions = JSON.parse(fs.readFileSync(result.settingsPath!, 'utf8')).permissions;
+
+    expect(servers.runway.type).toBe('http');
+    expect(servers.runway.url).toMatch(new RegExp(`^http://127\\.0\\.0\\.1:\\d+/remote-mcp/${id}/mcp$`));
+    expect(servers.runway.headers).toEqual({ Authorization: `Bearer ${key}` });
+    expect(servers['runway-pending']).toBeUndefined();
+    expect(permissions.allow).toContain('mcp__runway__*');
+  });
+
   it('writes conversation-scoped built-in tool and browser settings', () => {
     addConversation('tools-chat', 'openrouter');
     const result = materializer({ desktopCdpPort: 9333, publicOrigin: 'https://pro.example.com' }).prepare(

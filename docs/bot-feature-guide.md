@@ -39,6 +39,10 @@ Build #534 adds two catalog entries. `chief-of-staff` covers the owner's single 
 
 Build #539 adds the `bot-calls` catalog entry. A bot's waiting question can ring the person in Veneer before it waits as a card; rules and limits are in `docs/bot-calls.md`. Bots take no new action: `raise_decision` is unchanged, and the entry tells them to phrase `proposal.question` as one plain spoken sentence and never to re-raise a question to trigger another call. Every bot starts with calls off for every person.
 
+## Runway and sign-in based MCP connectors (October 3, 2026)
+
+Build #549 adds the `runway-connector` entry and a `remote_mcp` connector kind (`server/src/connectors/remoteMcp.ts`): OAuth 2.1 with PKCE and dynamic client registration against a hosted MCP server. Provider tokens are kept in the install's secret store and never written to a chat's MCP config; chats call a loopback relay (`/remote-mcp/<install>/mcp`) with a per-install key, and the relay adds the current token, refreshing it once at a time. Adding another provider is one catalog entry with its MCP address and scope. Nothing is connected by the release: each person signs in themselves.
+
 ## Verification and changed files
 
 Root typecheck, the full test suite, and the production build passed: 2,166 server tests (5 skipped), 850 web tests, 40 browser-manager tests, and 21 installer tests. Isolated browser checks covered desktop and mobile, full and restricted employees, keyboard navigation, new-feature discovery, search, copying examples and links, feature permalinks, overflow, refresh after a catalog update, announcement aging, and failure/retry. Browser fixtures never accessed production business data.

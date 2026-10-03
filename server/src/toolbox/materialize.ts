@@ -12,6 +12,7 @@ import {
   type ConnectorDef,
 } from '../connectors/catalog.js';
 import { connectedConnectorRowsForConversation } from '../connectors/access.js';
+import { remoteMcpChatConfig } from '../connectors/remoteMcp.js';
 import { writeCurrentAgentToken } from '../runtime/agentTokenFile.js';
 import { readDopplerMetadata } from '../secrets/doppler.js';
 import type { ProjectDopplerCli } from '../secrets/projectDopplerCli.js';
@@ -214,7 +215,9 @@ export function createMaterializer({
         );
         if (mcpServers[name]) continue;
         try {
-          const config = connectorMcpConfig(def, install.config_json);
+          const config = def.kind === 'remote_mcp'
+            ? remoteMcpChatConfig(install, internalBaseUrl)
+            : connectorMcpConfig(def, install.config_json);
           if (!config) continue;
           mcpServers[name] = mcpServerEntry(config);
           allow.push(`mcp__${name}__*`);

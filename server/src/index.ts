@@ -7,6 +7,8 @@ import { autoshipCandidateRoutes } from './botWorkflows/autoshipCandidateRoutes.
 import { routineVerifierRoutes } from './bots/routineVerifierRoutes.js';
 import { returnExceptionRoutes } from './bots/returnExceptionRoutes.js';
 import { createBotEventsWebhook } from './botWorkflows/routes.js';
+import { createRemoteMcp, createRemoteMcpProxyRouter, REMOTE_MCP_PROXY_PATH } from './connectors/remoteMcp.js';
+import { connectorDef } from './connectors/catalog.js';
 import { startBotWorkflows } from './botWorkflows/background.js';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -171,6 +173,7 @@ const ctx: AppContext = {
 const pageExpiry = startPageExpiry(ctx);
 ctx.pageExpiry = pageExpiry;
 ctx.liveVoice = new LiveVoiceService(ctx);
+ctx.remoteMcp = createRemoteMcp(ctx);
 
 // Keeps the Files page fresh without polling: when a turn finishes, re-scan that
 // chat's transcript and mirror any new deliverables into the durable registry
@@ -216,6 +219,9 @@ app.use('/api/routine-message/verifier', routineVerifierRoutes(ctx));
 app.use('/api/purchase-timing/verifier', purchaseTimingVerifierRoutes(ctx));
 app.use('/api/return-exception/verifier', returnExceptionRoutes(ctx));
 app.use('/api/autoship/verifier', createAutoshipVerifierRouter({ db, config }));
+// Loopback relay for chats calling a signed-in remote MCP connector. Authenticated by the
+// install's own proxy key and refused for anything that arrived through the tunnel.
+app.use(REMOTE_MCP_PROXY_PATH, createRemoteMcpProxyRouter(ctx, ctx.remoteMcp, (slug) => connectorDef(slug)?.remoteMcp?.url ?? null));
 app.use('/api', createApiRouter(ctx));
 // Cloudflare-runtime apps are intercepted at the edge. Local-runtime apps have
 // no Worker route, fall through the tunnel, and are authenticated + proxied here.

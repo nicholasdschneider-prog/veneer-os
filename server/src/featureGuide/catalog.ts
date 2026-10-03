@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'runway-connector', title: 'Connect Runway for video and image generation', category: 'Getting started', updated: '2026-10-03',
+    audience: 'Anyone who can add connectors in Settings. Each person signs in to their own Runway account.',
+    summary: 'Bots can generate video and images with Runway and fetch the finished output, using the credits on the Runway plan you sign in with rather than a separately billed developer key.',
+    steps: ['Open Settings, then Connectors, and choose Runway.', 'Pick who can use it and in which projects, then select Connect. You are sent to Runway to sign in and approve access, and brought back when it is done.', 'Ask a bot in a chat that has the connector for what you want, for example a short clip from a product photo. Generation takes a while; the bot fetches the result when it is ready.', 'If the row shows "Sign-in expired", select Retry and sign in again. Use Remove to disconnect; Veneer then forgets the sign-in.'],
+    example: 'Use Runway to turn this product photo into a five second clip with a slow push-in, then give me the video link.',
+    limits: 'Every generation spends credits from the signed-in Runway plan, so a shared connection lets other people’s chats spend them too. Bots get every tool Runway offers that account; there is no read-only mode. Sign-in tokens stay on this install and are never shown to bots or people. Removing the connector forgets the sign-in here; Runway publishes no way for an app to revoke it, so also remove Veneer in your Runway account if you want it cut off there. Other sign-in based MCP services can be added by Platform Dev; they are not self-serve.',
+    announcement: 'Runway is now available under Settings, Connectors. Sign in once and your bots can generate video and images on your Runway plan.',
+    agent: 'When a Runway connector is attached, its tools appear as mcp__runway__* (a labeled or shared install has a longer name). Generating video or images spends the signed-in person’s Runway plan credits: generate only what the user asked for, state what you are about to generate when the request is open-ended, never loop or batch retries, and reuse a finished output instead of regenerating. Generation is asynchronous: start the task, then poll or fetch the output with the provided tools rather than starting it again; after an uncertain result, check the task before retrying. Pass reference images by URL as the tools require. A "not connected" or sign-in error means the person must sign in again under Settings, Connectors: report that once and continue other work; you cannot sign in for them. The connector grants no business approval: customer-facing use of generated media keeps its normal review.',
+  },
+  {
     id: 'bot-calls', title: 'Let a bot call you with its question', category: 'Daily work', updated: '2026-10-03',
     audience: 'Signed-in humans, for bots whose questions they can already answer. Needs live voice set up (LiveKit and OpenAI) and microphone permission.',
     summary: 'A bot with a question can ring you in Veneer before the question waits as a card. Pick up, hear the question, answer out loud, and the bot hangs up and gets back to work.',

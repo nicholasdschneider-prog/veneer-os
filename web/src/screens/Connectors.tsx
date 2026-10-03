@@ -72,6 +72,17 @@ export function ConnectorsScreen({ role, onToast }: { role: string; onToast: (me
       .catch((err: Error) => setError(err.message));
   }, []);
   useEffect(load, [load]);
+  // Returning from a provider sign-in that failed: say why once, then drop it from the address.
+  useEffect(() => {
+    const [path, query] = window.location.hash.split('?');
+    const params = new URLSearchParams(query ?? '');
+    const failure = params.get('connectError');
+    if (!failure) return;
+    onToast(failure.slice(0, 200));
+    params.delete('connectError');
+    const rest = params.toString();
+    window.history.replaceState(null, '', `${path}${rest ? `?${rest}` : ''}`);
+  }, [onToast]);
 
   useEffect(() => {
     const pending = connectors?.flatMap((c) => c.installs.filter((i) => i.status === 'pending' && i.ownedByMe)) ?? [];
@@ -461,6 +472,10 @@ function InstalledRow({
           </p>
         ) : connector.kind === 'composio' ? (
           <p className="mt-1 flex items-center gap-1 truncate text-foreground/80" title="Includes the full connector surface offered by Composio.">
+            <LockKeyhole className="size-3" /> Full access
+          </p>
+        ) : connector.kind === 'remote_mcp' ? (
+          <p className="mt-1 flex items-center gap-1 truncate text-foreground/80" title={`Bots can use every tool ${connector.name} offers to the account you signed in with.`}>
             <LockKeyhole className="size-3" /> Full access
           </p>
         ) : (
@@ -919,6 +934,16 @@ function SetupCard({
             <legend className="mb-2 text-sm font-medium">Choose access mode</legend>
             <AccessModeChoices profiles={connector.accessModes} value={accessMode} onChange={setAccessMode} />
           </fieldset>
+        ) : connector.kind === 'remote_mcp' ? (
+          <div className="flex items-start gap-2 rounded-xl border bg-muted/30 px-3 py-3">
+            <LockKeyhole className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Sign in with {connector.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Connect takes you to {connector.name} to sign in and approve access. Bots then act as that account, including spending its plan credits.
+              </p>
+            </div>
+          </div>
         ) : connector.kind === 'composio' ? (
           <div className="flex items-start gap-2 rounded-xl border bg-muted/30 px-3 py-3">
             <LockKeyhole className="mt-0.5 size-4 shrink-0" />

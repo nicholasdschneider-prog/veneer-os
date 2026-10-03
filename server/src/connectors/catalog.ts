@@ -3,6 +3,7 @@ import type { McpConfig } from '../toolbox/connections.js';
 import { normalizeNetSuiteAccountId } from './netsuite/config.js';
 import { PAPER_DEFAULT_MCP_URL, resolvePaperMcpUrl, validatePaperSettings } from './paper/config.js';
 import { validateRingCentralSettings } from './ringcentral/config.js';
+import type { RemoteMcpDef } from './remoteMcp.js';
 import {
   GMAIL_ACCESS_MODES,
   HUBSPOT_ACCESS_MODES,
@@ -42,8 +43,10 @@ export interface ConnectorDef {
   slug: string;
   name: string;
   description: string;
-  kind: 'composio' | 'custom';
+  kind: 'composio' | 'custom' | 'remote_mcp';
   composio?: { toolkit: string };
+  /** remote_mcp kind: a hosted MCP server the person signs in to with OAuth. */
+  remoteMcp?: RemoteMcpDef;
   /** Optional versioned access choices. Connector-specific settings stay separate. */
   accessModes?: readonly ConnectorAccessModeProfile[];
   /** Settings a custom connector asks for at install time. */
@@ -188,6 +191,13 @@ export const CONNECTOR_DEFS: ConnectorDef[] = [
       if (validatePaperSettings(settings)) return null;
       return { transport: 'http', url: resolvePaperMcpUrl(settings), headers: {} };
     },
+  },
+  {
+    slug: 'runway',
+    name: 'Runway',
+    description: 'Generate video and images with Runway from a prompt or reference images, and fetch the finished output. Uses the credits on the Runway plan you sign in with.',
+    kind: 'remote_mcp',
+    remoteMcp: { url: 'https://mcp.runwayml.com/mcp', scope: 'api:read_write' },
   },
   {
     slug: 'gmail',
@@ -347,6 +357,8 @@ export function connectorMcpConfig(
     if (!mcp?.url) return null;
     return { transport: mcp.type === 'sse' ? 'sse' : 'http', url: mcp.url, headers: mcp.headers ?? {} };
   }
+  // Remote MCP installs are reached through the loopback proxy; see remoteMcpChatConfig.
+  if (def.kind === 'remote_mcp') return null;
   const settings = (parsed as CustomInstallConfig).settings ?? {};
   return def.buildMcp?.(settings) ?? null;
 }

@@ -53,6 +53,8 @@ import { testPaperConnection, type PaperHealthResult } from '../connectors/paper
  * its own MCP server with a stable per-install name.
  */
 
+import { createRemoteMcp, newRemoteMcpInstallConfig, type RemoteMcp } from '../connectors/remoteMcp.js';
+
 const InstallSchema = z.object({
   label: z.string().max(40).optional(),
   settings: z.record(z.string().max(200), z.string().max(4000)).optional(),
@@ -112,6 +114,7 @@ export interface ConnectorsRouterDependencies {
   testRingCentralConnection?: (credentials: RingCentralCredentials) => Promise<RingCentralHealthResult>;
   testPaperConnection?: (url: string) => Promise<PaperHealthResult>;
   now?: () => number;
+  remoteMcp?: RemoteMcp;
 }
 
 /** Public origin for OAuth callbacks, from the (Cloudflare-proxied) request. */
@@ -219,6 +222,7 @@ export function createConnectorsRouter(ctx: AppContext, deps: ConnectorsRouterDe
   const checkRingCentral = deps.testRingCentralConnection ?? testRingCentralConnection;
   const checkPaper = deps.testPaperConnection ?? ((url: string) => testPaperConnection(url));
   const now = deps.now ?? Date.now;
+  const remoteMcp = deps.remoteMcp ?? ctx.remoteMcp ?? (ctx.remoteMcp = createRemoteMcp(ctx));
 
   const composioKey = (): string | null =>
     effectiveApiKey('composio', ctx.secrets, ctx.config, ctx.doppler).value;
@@ -886,6 +890,7 @@ export function createConnectorsRouter(ctx: AppContext, deps: ConnectorsRouterDe
     }
     const finish = (): void => {
       detailsCache.delete(row.id);
+      remoteMcp.forget(row.id);
       db.prepare('DELETE FROM user_connectors WHERE id = ?').run(row.id);
       res.json({ ok: true });
     };
@@ -914,6 +919,24 @@ export function createConnectorsRouter(ctx: AppContext, deps: ConnectorsRouterDe
       }
     }
     finish();
+  });
+
+  // The provider sends the person back here after sign-in. It sits behind the normal
+  // human sign-in, and the single-use state is bound to the person who started it.
+  router.get('/oauth/callback', (req, res) => {
+    const state = typeof req.query.state === 'string' ? req.query.state : '';
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    const back = (params: Record<string, string>): void => res.redirect(`/#/settings/connectors?${new URLSearchParams(params).toString()}`);
+    if (req.agentConversationId || !state || !code) {
+      back({ connectError: typeof req.query.error === 'string' ? 'Sign-in was cancelled or refused. Try again.' : 'That sign-in link is not valid. Start again from Connectors.' });
+      return;
+    }
+    void remoteMcp.complete(state, code, req.user!.id)
+      .then((installId) => {
+        const row = rowById(installId);
+        back({ connected: row?.connector_slug ?? '' });
+      })
+      .catch((err: Error) => back({ connectError: err.message }));
   });
 
   router.post('/:slug/install', (req, res) => {
@@ -998,6 +1021,26 @@ export function createConnectorsRouter(ctx: AppContext, deps: ConnectorsRouterDe
 
     // The install's label: its own on retry, the (trimmed) new label otherwise.
     const effectiveLabel: string | null = retryRow ? retryRow.label : label ?? null;
+
+    if (def.kind === 'remote_mcp') {
+      // Sign-in happens at the provider; the row stays pending until the callback stores tokens.
+      const configJson = JSON.stringify(newRemoteMcpInstallConfig());
+      const installId = retryRow
+        ? retryRow.id
+        : insertRow(user.id, def.slug, effectiveLabel, 'pending', null, configJson, access, null);
+      if (retryRow) {
+        remoteMcp.forget(installId);
+        updateRow(installId, 'pending', null, configJson, null);
+        applyAccess(installId, access);
+      }
+      void remoteMcp.begin(def.remoteMcp!, { id: installId, userId: user.id }, requestOrigin(req), 'Veneer')
+        .then((redirectUrl) => res.json({ ok: true, status: 'pending', redirectUrl }))
+        .catch((err: Error) => {
+          setStatus(installId, 'error', `${def.name} sign-in could not start. Try again.`);
+          res.status(502).json({ ok: false, error: `${def.name}: ${err.message}`, installId });
+        });
+      return;
+    }
 
     if (def.kind === 'custom') {
       // Custom retries may reuse the safely stored write-only settings, or

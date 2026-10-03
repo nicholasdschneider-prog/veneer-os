@@ -224,6 +224,7 @@ describe('Composio connector catalog', () => {
       'netsuite',
       'ringcentral',
       'paper',
+      'runway',
       'gmail',
       'googledrive',
       'googledocs',
