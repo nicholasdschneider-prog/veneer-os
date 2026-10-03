@@ -1,6 +1,7 @@
 import { ChatDecisionCard } from '../components/chat/ChatDecisionCard';
 import { OpenQuestionsButton, useChatDecisions } from '../components/chat/OpenQuestionsPanel';
 import { isResultReplyDelivery } from '../lib/threadReplies';
+import { markProgressNotes, markRepeatedReplies, notePreview } from '../lib/assistantNotes';
 import { CoordinationActivity } from '../components/chat/Coordination';
 import {useChatHistory} from '../lib/useChatHistory';
 import {ChatHistoryControls} from '../components/ChatHistoryControls';
@@ -272,6 +273,7 @@ function ScrollToLinkedMessage({ messageId, ready }: { messageId: string | null;
         );
         if (!item) return;
         item.dataset.linkedFocus = 'true';
+        item.querySelector<HTMLDetailsElement>('details[data-assistant-note]')?.setAttribute('open', '');
         item.scrollIntoView({ block: 'center', behavior: 'auto' });
       });
     });
@@ -2024,8 +2026,10 @@ export function Chat({
   const frozenLenRef = useRef(0);
 
   const items = useMemo(
-    () => transcriptItemsForDisplay(transcript.items),
-    [transcript.items],
+    // Marked before result-reply deliveries are hidden: those human messages
+    // still separate what the bot said before them from what it said after.
+    () => transcriptItemsForDisplay(markProgressNotes(markRepeatedReplies(transcript.items, threadReplies.replies))),
+    [transcript.items, threadReplies.replies],
   );
   const focusedMessageKey = workspaceSearchFocusKey(focusMessageId, items) ?? agentMessageFocusKey(focusMessageId);
   const focusedMessageReady = Boolean(
@@ -3957,7 +3961,7 @@ const ChatRow = memo(function ChatRow({
   if (item.kind === 'assistant') {
     const citations = extractCitations(item.markdown);
     const hasMermaid = containsMermaidFence(item.markdown);
-    return (
+    const message = (
       <Message data-vp-mermaid-row={hasMermaid ? '' : undefined}>
         <MessageContent>
           <Bubble variant="muted" className="w-fit max-w-[94%]">
@@ -3980,6 +3984,24 @@ const ChatRow = memo(function ChatRow({
           <AssistantResponseMetadata at={item.at} usage={item.usage} />
         </MessageContent>
       </Message>
+    );
+    if (!item.collapsed) return message;
+    // The whole message stays in the page, one tap away, with its own Listen,
+    // Reply and reactions; only the answer reads as a full bubble.
+    return (
+      <details data-assistant-note={item.collapsed} className="group/note">
+        <summary className={cn(SUMMARY_ROW, 'group/marker text-sm text-muted-foreground')}>
+          <MarkerIcon>
+            <MessageSquare className="h-3.5 w-3.5" />
+          </MarkerIcon>
+          <span className="min-w-0 flex-1 truncate">
+            {item.collapsed === 'repeat' ? <span className="text-foreground/80">Same answer as the reply above · </span> : null}
+            {notePreview(item.markdown) || 'Progress note'}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open/note:rotate-180" />
+        </summary>
+        <div className="mt-1.5">{message}</div>
+      </details>
     );
   }
   if (item.kind === 'tool-group') {

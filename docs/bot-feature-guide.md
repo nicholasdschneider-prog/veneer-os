@@ -302,3 +302,17 @@ Null account/refund fields do not establish complete refund proof.
 No source access, attachment verification or business approval guard is relaxed.
 Deployment remains subject to the BUILD505 browser-preservation restriction; this
 guide entry explicitly labels the repair staged.
+
+## Answer once (October 3, 2026)
+
+Build #545 adds the `progress-notes` catalog entry and revises `result-threads`. Bots appeared to answer twice in two ways: a bot answered a human result reply with `reply_message_thread` and then restated it as its final response (157 of the 170 bot thread replies on record were followed by one), and text a bot wrote before a tool call rendered as a full answer bubble beside the real answer.
+
+The reply prompt and the tool description now tell the bot to answer once, in its final response. The timeline (`web/src/lib/assistantNotes.ts`) shows every message of a turn except the last as a compact expandable row, and collapses an older closing message that restates the bot's own thread reply. Nothing is removed: rows expand in place with Listen, Reply and reactions, and search and history are unchanged.
+
+Verified on an isolated instance with a throwaway data directory and real Claude and Codex turns: the pre-fix build reproduced both duplicates on Codex; on the fixed build four result replies per provider (one sent mid-turn) each produced a single answer and no bot thread reply. Browser checks at 390 and 1440 pixels covered the reported chat's own history, expand and collapse, keyboard toggling, a 3,300-event real history, a live multi-step turn and a stopped turn. Grok and OpenRouter were covered by event-shape unit tests only, not live turns.
+
+![Before: the answer shown twice](./reports/answer-once/before-1-mobile.png)
+
+![After: the repeat is one small row](./reports/answer-once/after-history-1-mobile.png)
+
+![The reported chat after the change](./reports/answer-once/reported-case-mobile.png)

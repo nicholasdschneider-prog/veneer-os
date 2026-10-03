@@ -37,6 +37,9 @@ export type ChatItem =
       turnId?: string;
       at?: string;
       usage?: ResponseTokenUsage;
+      /** Display only: a progress note before the turn's answer, or a closing
+       * message that repeats the bot's own thread reply. See assistantNotes. */
+      collapsed?: 'note' | 'repeat';
     }
   | {
       kind: 'tool';

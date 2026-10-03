@@ -596,6 +596,10 @@ describe('VeneerBots', () => {
       expect(text).toContain('Original result evidence');
       expect(text).toContain('does not record an approval');
       expect(text).not.toContain('Hey, can you pick');
+      // One answer: the final response, never the thread tool as well.
+      expect(text).toContain('Answer it once, in your normal final response');
+      expect(text).toContain('Do not also post the answer with reply_message_thread');
+      expect(text).not.toContain('reply_message_thread to respond');
     }
     expect(manager.queueSnapshot(conv.id).messages).toHaveLength(3);
     expect(manager.queueSnapshot(conv.id).messages.every(row=>row.origin?.kind==='result_reply' && row.delivered)).toBe(true);
