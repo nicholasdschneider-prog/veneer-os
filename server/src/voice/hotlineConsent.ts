@@ -19,8 +19,13 @@ export class HotlineConsent {
 }
 
 const numbers = (text: string) => new Set((text.match(/\d+(?:\.\d+)?/g) ?? []).map(n => String(Number(n))));
-/** Numbers the caller said that appear nowhere in the proposal: the caller stated a value no offered option contains. */
+// A number counts as a stated value only when it comes with a measure, a price or a dimension.
+// A bare or unrelated number ("after 30 seconds") is usually a mishearing and must not block an answer.
+const MEASURED = /(\$\s*)?(\d+(?:\.\d+)?)\s*(ounces?|oz|pounds?|lbs?|inch(?:es)?|in\b|feet|foot|ft|dollars?|bucks|cents?|percent|%|units?|pieces?|pcs|boxes|box|each|by\b|x\b)?/gi;
+/** Values the caller stated with a unit that appear nowhere in the proposal: no offered option contains them. */
 export function unofferedNumbers(callerWords: string[], proposalJson: string): string[] {
   const offered = numbers(proposalJson);
-  return [...numbers(callerWords.join(' '))].filter(n => !offered.has(n));
+  const stated = new Set<string>();
+  for (const match of callerWords.join(' . ').matchAll(MEASURED)) if (match[1] || match[3]) stated.add(String(Number(match[2])));
+  return [...stated].filter(n => !offered.has(n));
 }

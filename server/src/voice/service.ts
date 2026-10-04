@@ -12,6 +12,7 @@ import { botCalls } from '../bots/botCalls.js';
 import type { UserRow } from '../db/db.js';
 
 import { voiceFailureMessage } from './failure.js';
+import { ensureSip, phoneConfigured, phoneRoomToken, twilioProvider, PHONE_ENDED, PHONE_MAX_SECONDS, PHONE_ROOM_PREFIX, type PhoneProvider } from './phone.js';
 
 interface Call {
   hotline: boolean; consent:HotlineConsent; timezone?: string; hotlineContext?: string;
@@ -20,10 +21,14 @@ interface Call {
   createdAt: number; ready: boolean; seenKeys: Set<string>; replies: number; workStatus: string | null;
   bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number; faults: number;
   incoming: boolean; closeReason: string | null; callerWords: string[];
+  /** Set when the person is on their phone instead of in the browser. */
+  phone: { logId: string; sid: string | null; polling: boolean; lastPoll: number } | null;
 }
 export interface CallOptions { hotline?: boolean; timezone?: string; contextConversationId?: string; botConversationId?: string; decisionId?: string;
   /** The bot rang the person about `decisionId` and they picked up. */
-  incoming?: boolean }
+  incoming?: boolean;
+  /** Reach the person on this phone number instead of in the browser. `logId` is the bot_phone_calls row. */
+  phone?: { to: string; logId: string } }
 /** Why the browser ended a call. Anything else is recorded as "client". */
 export const CLIENT_END_REASONS = ['hangup', 'standby', 'mic_lost', 'room_disconnected', 'call_missing', 'call_failed', 'refresh_failed', 'heartbeat_failed', 'pagehide', 'unmount', 'start_failed', 'agent_ended'] as const;
 const FAULT_LIMIT = 10;
@@ -46,6 +51,8 @@ You can read chats and answer structured pending questions, but cannot independe
 ` + SHARED_RULES;
 /** The first words on a call the bot placed: the question itself, with no lead-in. */
 const incomingOpening = (name: string) => `You placed this call and the caller just picked up. Say only "It's ${name}." followed by the focused decision's question as one plain sentence, then stop and wait. If the question offers options, name them as the question already does. No other greeting, no recap, no background and no recommendation. Do not call tools for this opening.`;
+/** Added for a call placed to someone's phone, where a machine may answer instead of a person. */
+const PHONE_RULES = `THIS IS A PHONE CALL YOU PLACED TO THE CALLER'S PHONE. Say nothing until you hear a live person greet you (for example "hello"); then give your opening. If what you hear is a voicemail greeting, a recorded or automated message, hold music or a beep, call the voicemail tool immediately and say nothing at all: never leave a message and never speak a question, name or detail to a recording. If you cannot tell, say only "Hello, is this a good time?" and wait. The caller cannot see a screen: read exact values aloud and never refer to cards or buttons. Keep it short; the call ends by itself after ${Math.round(PHONE_MAX_SECONDS / 60)} minutes.\n`;
 function botInstructions(bot: { name: string; role: string | null; subteam: string | null; team: string | null }, decisionId: string | null, incoming = false) {
   const title = [bot.role, bot.subteam, bot.team].filter(Boolean).join(', ');
   return `You ARE ${bot.name}${title ? ` (${title})` : ''}, on the phone with the caller. Always speak in the first person as ${bot.name}; identify yourself as ${bot.name} when asked. Never refer to ${bot.name} in the third person: never say "I'll let ${bot.name} know", "I'll tell ${bot.name}", "I'll pass this to ${bot.name}" or "when ${bot.name} answers". Follow the caller's saved greeting policy at call startup.
@@ -68,13 +75,14 @@ export class LiveVoiceService {
   private calls = new Map<number, Call>();
   private starting = new Set<number>();
   private timer: NodeJS.Timeout;
-  constructor(private ctx: AppContext) {
+  constructor(private ctx: AppContext, private phoneProvider: PhoneProvider = twilioProvider(ctx.doppler)) {
     // A service restart cannot recover an in-memory call. Bound its duration by
     // the last browser heartbeat instead of counting server downtime.
     ctx.db.prepare("UPDATE voice_sessions SET ended_ms=last_seen_ms,outcome='interrupted' WHERE ended_ms IS NULL").run();
     this.timer = setInterval(() => {
       for (const call of this.calls.values()) {
-        if (Date.now() - call.lastSeen > 90_000) { this.end(call.userId, call.id, 'interrupted', call.lastSeen, 'heartbeat_timeout'); continue; }
+        if (call.phone) { this.pollPhone(call); }
+        else if (Date.now() - call.lastSeen > 90_000) { this.end(call.userId, call.id, 'interrupted', call.lastSeen, 'heartbeat_timeout'); continue; }
         if (Date.now() > call.expiresAt || (!call.ready && Date.now() - call.createdAt > 45_000)) { this.end(call.userId, call.id, 'interrupted', Date.now(), call.ready ? 'expired' : 'not_ready'); continue; }
         try { if (call.bot) new VoiceWorkspace(this.ctx, call.userId, call.bot.conversationId).bot(); }
         catch { if (this.fault(call, 'bot access check')) continue; }
@@ -92,6 +100,19 @@ export class LiveVoiceService {
     call.error ??= 'The call lost contact with the bot conversation. Reconnect to continue; your saved transcript is retained.';
     this.end(call.userId, call.id, 'interrupted', Date.now(), 'lost_bot_conversation');
     return true;
+  }
+  /** A phone call has no browser heartbeat: its progress is read from the phone provider. */
+  private pollPhone(call: Call) {
+    const phone = call.phone!;
+    if (!phone.sid || phone.polling || Date.now() - phone.lastPoll < 2000) return;
+    phone.polling = true; phone.lastPoll = Date.now();
+    void this.phoneProvider.status(phone.sid).then(({ status, answeredBy }) => {
+      if (this.calls.get(call.userId) !== call) return;
+      this.ctx.db.prepare('UPDATE bot_phone_calls SET status=?,answered_by=coalesce(?,answered_by) WHERE id=?').run(status, answeredBy, phone.logId);
+      // A machine picked up: hang up before anything is said to it.
+      if (answeredBy && /^(machine|fax)/.test(answeredBy)) { this.end(call.userId, call.id, 'ended', Date.now(), 'phone_voicemail'); return; }
+      if (PHONE_ENDED.includes(status)) this.end(call.userId, call.id, 'ended', Date.now(), `phone_${status.replace(/[^a-z-]/g, '')}`);
+    }).catch(() => { this.fault(call, 'phone status'); }).finally(() => { phone.polling = false; });
   }
   /** Tell a listening worker about new questions, decisions, or bot replies since the call started. */
   private async notice(call: Call) {
@@ -143,7 +164,7 @@ export class LiveVoiceService {
   status(userId: number) {
     const call = this.calls.get(userId);
     return call ? { id: call.id, state: call.state, error: call.error, expiresAt: call.expiresAt,
-      botConversationId: call.bot?.conversationId ?? null, botName: call.bot?.name ?? null, decisionId: call.hotline ? new QuestionHotline(this.ctx,userId).list().selectedId : call.decisionId, hotline:call.hotline, incoming: call.incoming } : null;
+      botConversationId: call.bot?.conversationId ?? null, botName: call.bot?.name ?? null, decisionId: call.hotline ? new QuestionHotline(this.ctx,userId).list().selectedId : call.decisionId, hotline:call.hotline, incoming: call.incoming, phone: !!call.phone } : null;
   }
   heartbeat(userId: number, id: string) {
     const call = this.calls.get(userId);
@@ -162,11 +183,14 @@ export class LiveVoiceService {
     if (this.starting.has(userId) || this.calls.has(userId)) throw new Error('A voice call is already active. End it before starting another.');
     this.starting.add(userId);
     let client: RoomServiceClient | undefined;
-    const room = `veneer-voice-${randomUUID()}`;
+    const phoneToken = options.phone ? phoneRoomToken() : null;
+    const room = phoneToken ? `${PHONE_ROOM_PREFIX}${phoneToken}` : `veneer-voice-${randomUUID()}`;
     let setupError: string | null = null;
     try {
       await this.ctx.doppler.refresh();
       if (!this.configuration().ready) throw new Error('Finish LiveKit and OpenAI setup before calling.');
+      if (options.phone && (!phoneConfigured(this.ctx.doppler) || !options.botConversationId || options.hotline)) { setupError = 'Phone calling is not set up.'; throw new Error(setupError); }
+      const sip = options.phone ? await ensureSip(this.ctx) : null;
       const get = (name: typeof SECRET_NAMES[number]) => this.ctx.doppler.get(name)!;
       const url = get('LIVEKIT_URL');
       const workspace = new VoiceWorkspace(this.ctx, userId, options.botConversationId ?? null);
@@ -210,7 +234,10 @@ export class LiveVoiceService {
         lastSeen: Date.now(), expiresAt: Date.now() + 55 * 60_000, createdAt: Date.now(), ready: false,
         seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, checking: false, faults: 0,
         bot: bot ? { conversationId: bot.conversationId, name: bot.name } : null, decisionId: options.decisionId ?? null,
-        incoming: incoming && !!bot, closeReason: null, callerWords: [] };
+        incoming: incoming && !!bot, closeReason: null, callerWords: [],
+        phone: options.phone ? { logId: options.phone.logId, sid: null, polling: false, lastPoll: 0 } : null };
+      // A phone call is capped well below the browser limit.
+      if (call.phone) call.expiresAt = Date.now() + (PHONE_MAX_SECONDS + 60) * 1000;
       if (bot) {
         workspace.decisions().filter(d => d.state === 'needs_input').forEach(d => call.seenKeys.add(`d:${d.decisionId}:${d.version}`));
         call.replies = await workspace.replyCount().catch(() => 0);
@@ -235,6 +262,9 @@ export class LiveVoiceService {
         if(call.incoming && message.type==='caller_final' && typeof message.turn==='number' && typeof message.text==='string') { call.consent.finish(message.turn,message.text); call.callerWords.push(message.text.slice(0,2000)); }
         if (message.type === 'ready') { call.state = 'listening'; call.ready = true; }
         if (message.type === 'closed' && typeof message.reason === 'string') call.closeReason = message.reason.replace(/[^\w-]/g, '').slice(0, 60);
+        if (call.phone && message.type === 'joined') this.connected(userId, call.id);
+        // The person hung up their phone: that is a normal end, not a failure.
+        if (call.phone && message.type === 'closed') { this.end(userId, call.id, 'ended', Date.now(), 'phone_hangup'); return; }
         if (message.type === 'state' && typeof message.state === 'string') call.state = message.state;
         if (message.type === 'failure') { call.state = 'failed'; call.error = voiceFailureMessage(message.code); }
         if (message.type === 'transcript' && typeof message.text === 'string' && (message.role === 'user' || message.role === 'assistant')) {
@@ -250,7 +280,8 @@ export class LiveVoiceService {
               return hotline.navigate(args.action as 'next'|'select'|'skip'|'remind'|'show',typeof args.decisionId==='string'?args.decisionId:undefined,typeof args.until==='number'?args.until:undefined,typeof args.delayMinutes==='number'?args.delayMinutes:undefined);
             }
             if(hotline && message.name==='end_hotline') { setTimeout(()=>this.end(userId,call.id,'ended',Date.now(),'agent_ended'),500); return {ok:true}; }
-            if(call.incoming && message.name==='end_call') { this.end(userId,call.id,'ended',Date.now(),'agent_ended'); return {ok:true}; }
+            if((call.incoming || call.phone) && message.name==='end_call') { this.end(userId,call.id,'ended',Date.now(),'agent_ended'); return {ok:true}; }
+            if(call.phone && message.name==='voicemail') { this.end(userId,call.id,'ended',Date.now(),'phone_voicemail'); return {ok:true}; }
             if(call.incoming && message.name==='stop_calling') {
               const user=this.ctx.db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(userId) as UserRow | undefined;
               if(!user) throw new Error('Caller is no longer available.');
@@ -305,12 +336,27 @@ export class LiveVoiceService {
       child.on('error', failed); child.on('exit', failed);
       const catalog = workspace.decisionCatalog();
       const history = workspace.history(6).map(item => ({ ...item, text: item.text.slice(0,600) }));
-      child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), participantIdentity,
+      child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), ...(call.phone ? { phone: true } : { participantIdentity }),
         preferences: readVoicePreferences(this.ctx.db, userId),
         mode: hotline ? 'hotline' : bot ? 'bot' : 'coordinator', agentName: hotline ? 'Question hotline' : bot?.name ?? 'Henry',
         ...(call.incoming ? { opening: incomingOpening(bot!.name) } : {}),
-        instructions: (hotline ? HOTLINE_INSTRUCTIONS + SHARED_RULES : bot ? botInstructions(bot, options.decisionId ?? null, call.incoming) : HENRY_INSTRUCTIONS)
+        instructions: (call.phone ? PHONE_RULES : '') + (hotline ? HOTLINE_INSTRUCTIONS + SHARED_RULES : bot ? botInstructions(bot, options.decisionId ?? null, call.incoming) : HENRY_INSTRUCTIONS)
           + JSON.stringify({ ...(hotline ? {questionLine:hotline.list()} : {}), history, currentConversation: context, historyCoverage: { recentEntries: 6, charactersPerEntry: 600, olderEntriesRetained: true }, blockers: workspace.blockers(), decisions: catalog.items, decisionCoverage: { total: catalog.total, nextOffset: catalog.nextOffset }, focusedDecision: focus }) });
+      if (call.phone && sip) {
+        const phone = call.phone;
+        this.ctx.db.prepare('UPDATE bot_phone_calls SET voice_session_id=? WHERE id=?').run(call.id, phone.logId);
+        // The room and the worker are up before the phone rings, so the person never waits on pickup.
+        void this.phoneProvider.place(options.phone!.to, `sip:${phoneToken}@${sip.host}`, sip.user, sip.password).then((sid) => {
+          this.ctx.db.prepare("UPDATE bot_phone_calls SET provider_sid=?,status='queued' WHERE id=?").run(sid, phone.logId);
+          if (this.calls.get(userId) !== call) { void this.phoneProvider.hangUp(sid); return; }
+          phone.sid = sid;
+        }).catch((error: Error) => {
+          console.warn(`[voice] phone call ${call.id} could not be placed: ${error.message}`);
+          this.ctx.db.prepare("UPDATE bot_phone_calls SET status='not_placed',ended_ms=? WHERE id=?").run(Date.now(), phone.logId);
+          if (this.calls.get(userId) === call) this.end(userId, call.id, 'failed', Date.now(), 'phone_not_placed');
+        });
+        return { id: call.id, url, token: '', expiresAt: call.expiresAt };
+      }
       return { id: call.id, url, token: browserToken, expiresAt: call.expiresAt };
     } catch (error) {
       this.end(userId, undefined, 'ended', Date.now(), 'start_failed');
@@ -327,6 +373,10 @@ export class LiveVoiceService {
     // Categories only: never call content, tokens or transcripts.
     console.info(`[voice] call ${call.id} ${finalOutcome} (${why}) after ${Math.round((endedAt - call.createdAt) / 1000)}s`);
     this.calls.delete(userId);
+    if (call.phone) {
+      if (call.phone.sid) void this.phoneProvider.hangUp(call.phone.sid);
+      this.ctx.db.prepare('UPDATE bot_phone_calls SET ended_ms=? WHERE id=? AND ended_ms IS NULL').run(endedAt, call.phone.logId);
+    }
     if (call.bot) this.handoff(call, finalOutcome);
     call.child.kill('SIGTERM');
     const timer = setTimeout(() => { if (call.child.exitCode === null) call.child.kill('SIGKILL'); }, 5000);

@@ -63,12 +63,36 @@ How it works:
 Known browser limits: a ringtone cannot play in a tab that has not been touched since it loaded, and
 a locked iPhone shows a notification rather than ringing.
 
-## Phase two — real phone call (only if phase one proves useful)
+## Phase two — real phone call (built 2026-10-04, build #552)
 
-Bots dial the person's cell through Twilio or similar, bridged into the same LiveKit voice session,
-so the phone rings on the lock screen and AirPods can answer. The bot waits to hear the person
-before reading anything, so a question is never read into voicemail. Needs a calling account and
-number; OrderOps already uses Twilio.
+A bot phones the person's cell when they are away from Veneer.
+
+- **Choice of channel.** Someone using Veneer in the last minute gets the in-app ring. Someone away
+  gets a phone call if **Call my phone** is on, a number is saved, and it is inside their calling
+  hours; otherwise a push as before. Recent activity never widens the hours for a phone call. Never
+  both at once.
+- **Settings.** Phone number and the **Call my phone** switch sit with the other Calls settings, with
+  **Call my phone now** to try it. `bot_call_settings.phone`, `phone_enabled`.
+- **How the call is placed** (`server/src/voice/phone.ts`). The room and voice worker start first.
+  Twilio then dials the cell from the saved line with inline instructions (no public webhook) that
+  bridge the answered call over SIP into that LiveKit room. One password-protected LiveKit inbound
+  trunk and one dispatch rule named `veneer-bot-calls` are created on first use; the rule names the
+  room after the digits dialed, so each call lands in its own room.
+- **Credentials.** Doppler main/prd `TWILIO_VOICE_ACCOUNT_SID`, `TWILIO_VOICE_API_KEY_SID`,
+  `TWILIO_VOICE_API_KEY_SECRET`, `TWILIO_VOICE_FROM_NUMBER`. The key is restricted to Voice calls.
+  The same Twilio account runs the live OrderOps customer service line: no number's settings are
+  read or changed by Veneer.
+- **Voicemail.** The bot says nothing until it hears a person, and hangs up silently on a recording
+  (`voicemail` tool). Twilio's answering-machine detection runs alongside; a machine result ends the
+  call. No message is ever left.
+- **Limits.** 25 second ring, 5 minute call cap, 6 phone calls per person per hour, one call at a
+  time. Misses and unanswered calls retry every 15 minutes like phase one. `bot_phone_calls` records
+  each call's provider id and outcome category, never audio.
+- **Number guard.** A number the caller says only blocks an offered option when it comes with a
+  unit, price or dimension, so a misheard phrase like "after 30 seconds" no longer forces a second
+  ask.
+
+Not fixed: the bot's first sentence can still restart if the voice provider hears noise at pickup.
 
 ## Voice problems seen during the interview
 

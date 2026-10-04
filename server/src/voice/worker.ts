@@ -74,7 +74,9 @@ process.on('message', (raw: unknown) => {
   started = true;
   void (async () => {
     const config = z.object({ url: z.string(), token: z.string(), apiKey: z.string(),
-      preferences: voicePreferencesSchema.default({}), instructions: z.string(), participantIdentity: z.string(),
+      preferences: voicePreferencesSchema.default({}), instructions: z.string(),
+      // Absent on a phone call: the callee joins over the phone bridge under an identity we do not choose.
+      participantIdentity: z.string().optional(), phone: z.boolean().default(false),
       mode: z.enum(['coordinator', 'bot', 'hotline']).default('coordinator'), agentName: z.string().default('Henry'),
       // Set only on a call the bot placed to ask one question.
       opening: z.string().optional() }).parse(message);
@@ -143,6 +145,12 @@ process.on('message', (raw: unknown) => {
     // The agent hangs up only after it has finished speaking, so its last words are not cut off.
     let endRequested = false;
     const hangUp = () => send({ type: 'tool', id: randomUUID(), name: 'end_call', args: {} });
+    if (config.phone) {
+      tools.voicemail = llm.tool({ description: 'You reached voicemail, a recording, an automated system or a beep instead of a live person. Hangs up at once. Say nothing before or after calling this.',
+        execute: async () => call('voicemail') });
+      if (!config.opening) tools.end_call = llm.tool({ description: 'Hang up the phone call once the caller is done. Say a brief goodbye first.',
+        execute: async () => { endRequested = true; setTimeout(hangUp, 12_000).unref(); return { ok: true, note: 'The call ends when you stop speaking.' }; } });
+    }
     if (config.opening) {
       tools.stop_calling = llm.tool({ description: 'The caller cannot answer this question now, needs to look at it, or will handle it at their computer. Keeps the question card on their desk, records no answer, and stops any further calls about this question.',
         execute: async () => call('stop_calling') });
@@ -178,11 +186,20 @@ process.on('message', (raw: unknown) => {
     // The reason is a short SDK category (for example participant_disconnected), never call content.
     session.on(voice.AgentSessionEventTypes.Close, event => { send({ type: 'closed', reason: String(event.reason).slice(0, 60) }); void stop(); });
     await room.connect(config.url, config.token);
-    await session.start({ agent, room, inputOptions: { participantIdentity: config.participantIdentity,
+    await session.start({ agent, room, inputOptions: { ...(config.participantIdentity ? { participantIdentity: config.participantIdentity } : {}),
       textEnabled: false, videoEnabled: false, closeOnDisconnect: true }, record: false });
     // The one-sentence opening of a call the bot placed is not restarted by pickup noise.
     const greet = () => session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences), ...(config.opening ? { allowInterruptions: false } : {}) });
-    if (room.remoteParticipants.has(config.participantIdentity)) greet();
+    if (config.phone) {
+      // On the phone the callee speaks first ("hello") and the agent answers with its opening.
+      // If they pick up and say nothing, open after a short wait instead of leaving dead air.
+      const joined = () => {
+        send({ type: 'joined' });
+        const quiet = lastSpeechAt;
+        setTimeout(() => { if (lastSpeechAt === quiet && !stopping) greet(); }, 7000).unref();
+      };
+      if (room.remoteParticipants.size) joined(); else room.once(RoomEvent.ParticipantConnected, joined);
+    } else if (room.remoteParticipants.has(config.participantIdentity!)) greet();
     else room.once(RoomEvent.ParticipantConnected, greet);
     send({ type: 'ready' });
   })().catch(fail);

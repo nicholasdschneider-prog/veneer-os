@@ -3,7 +3,7 @@ import { tickRoutines } from './routines.js';
 import { createBotService } from '../bots/service.js';
 import { tickSearch } from './search.js';
 import { tickNotifications, queueNotification, sendCallPush } from './notifications.js';
-import { tickBotCalls } from '../bots/botCalls.js';
+import { startPhoneCall, tickBotCalls } from '../bots/botCalls.js';
 export function startBotWorkflows(ctx: AppContext) {
   let busy = false,
     searchBusy = false;
@@ -15,7 +15,9 @@ export function startBotWorkflows(ctx: AppContext) {
       const bots = createBotService(ctx.db);
       bots.withdrawStaleQuestions(ctx.config.staleQuestionWithdrawMs, Date.now(), ctx.config.resolvedQuestionWithdrawMs);
       bots.queueQuestionRechecks(ctx.config.questionRecheckMs);
-      for (const { userId, ring } of tickBotCalls(ctx)) void sendCallPush(ctx, userId, ring).catch(() => {});
+      const calls = tickBotCalls(ctx);
+      for (const { userId, ring } of calls.pushes) void sendCallPush(ctx, userId, ring).catch(() => {});
+      for (const phone of calls.phones) void startPhoneCall(ctx, phone);
       await tickNotifications(ctx);
     } catch {
       console.warn('[bot-workflows] Background pass failed; retrying.');

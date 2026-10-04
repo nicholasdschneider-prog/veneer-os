@@ -3,6 +3,8 @@ import type { AppContext } from '../context.js';
 import type { UserRow } from '../db/db.js';
 import { createBotService } from './service.js';
 import { questionLine } from './questionLine.js';
+import { randomUUID } from 'node:crypto';
+import { E164, phoneConfigured } from '../voice/phone.js';
 
 /** How long one call rings before it counts as missed. */
 export const RING_MS = 25_000;
@@ -14,6 +16,8 @@ export const PAUSE_MS = 60_000;
 export const ACTIVE_MS = 5 * 60_000;
 /** A person who touched Veneer this recently sees the ring in the app, so no push is sent. */
 export const PRESENT_MS = 60_000;
+/** At most this many phone calls to one person in any hour, whatever the retries ask for. */
+export const PHONE_CALLS_PER_HOUR = 6;
 
 const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 export const callSettingsSchema = z.object({
@@ -21,9 +25,20 @@ export const callSettingsSchema = z.object({
   windowStart: time.optional(),
   windowEnd: time.optional(),
   bot: z.object({ conversationId: z.string().min(1).max(100), enabled: z.boolean() }).strict().optional(),
+  /** Empty string forgets the number. */
+  phone: z.string().trim().max(20).optional(),
+  phoneEnabled: z.boolean().optional(),
 }).strict();
+/** "(574) 555-0100" and "574-555-0100" are read as US numbers; anything else must already be +country form. */
+export function normalizePhone(input: string): string | null {
+  const digits = input.replace(/[^\d+]/g, '');
+  const value = digits.startsWith('+') ? digits : digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith('1') ? `+${digits}` : digits;
+  return E164.test(value) ? value : null;
+}
 
-interface SettingsRow { dnd: number; window_start: string; window_end: string; timezone: string; active_ms: number; idle_ms: number }
+interface SettingsRow { dnd: number; window_start: string; window_end: string; timezone: string; active_ms: number; idle_ms: number; phone: string | null; phone_enabled: number }
+type Ctx = Pick<AppContext, 'db' | 'liveVoice'> & { doppler?: Pick<AppContext['doppler'], 'get'> };
+export interface PhoneCall { userId: number; logId: string; to: string; conversationId: string; decisionId: string | null }
 interface RingRow { decision_id: string; state: 'ringing' | 'missed' | 'answered' | 'stopped'; attempts: number; ring_started_ms: number; next_attempt_ms: number; pushed: number }
 export interface Ring { decisionId: string; conversationId: string; botName: string; question: string; remainingMs: number }
 
@@ -38,7 +53,7 @@ export function inCallWindow(s: Pick<SettingsRow, 'window_start' | 'window_end' 
  * The question card is always the record; a ring only offers a faster way to answer it,
  * and nothing here answers, approves or changes a decision.
  */
-export function botCalls(ctx: Pick<AppContext, 'db' | 'liveVoice'>, user: UserRow) {
+export function botCalls(ctx: Ctx, user: UserRow) {
   const db = ctx.db;
   const row = () => {
     db.prepare('INSERT OR IGNORE INTO bot_call_settings(user_id) VALUES(?)').run(user.id);
@@ -95,7 +110,11 @@ export function botCalls(ctx: Pick<AppContext, 'db' | 'liveVoice'>, user: UserRo
       .filter(b => { try { service.chat({ user }, b.conversation_id); return true; } catch { return false; } })
       .map(b => ({ conversationId: b.conversation_id, name: b.name, enabled: enabled.has(b.conversation_id) }));
   };
-  const settings = () => { const s = row(); return { dnd: !!s.dnd, windowStart: s.window_start, windowEnd: s.window_end, timezone: s.timezone, bots: bots() }; };
+  const phoneAvailable = () => !!ctx.doppler && phoneConfigured(ctx.doppler);
+  const settings = () => { const s = row(); return { dnd: !!s.dnd, windowStart: s.window_start, windowEnd: s.window_end, timezone: s.timezone, bots: bots(),
+    phone: s.phone, phoneEnabled: !!s.phone_enabled && !!s.phone, phoneAvailable: phoneAvailable() }; };
+  const phoneCallsLastHour = (now: number) => (db.prepare('SELECT count(*) AS n FROM bot_phone_calls WHERE user_id=? AND started_ms>?').get(user.id, now - 3600_000) as { n: number }).n;
+  const logPhoneCall = (decisionId: string | null, now: number) => { const id = randomUUID(); db.prepare('INSERT INTO bot_phone_calls(id,user_id,decision_id,started_ms) VALUES(?,?,?,?)').run(id, user.id, decisionId, now); return id; };
   return {
     advance,
     settings,
@@ -106,6 +125,15 @@ export function botCalls(ctx: Pick<AppContext, 'db' | 'liveVoice'>, user: UserRo
         if (a.dnd !== undefined) db.prepare('UPDATE bot_call_settings SET dnd=? WHERE user_id=?').run(Number(a.dnd), user.id);
         if (a.windowStart) db.prepare('UPDATE bot_call_settings SET window_start=? WHERE user_id=?').run(a.windowStart, user.id);
         if (a.windowEnd) db.prepare('UPDATE bot_call_settings SET window_end=? WHERE user_id=?').run(a.windowEnd, user.id);
+        if (a.phone !== undefined) {
+          const phone = a.phone ? normalizePhone(a.phone) : null;
+          if (a.phone && !phone) throw new Error('Enter the phone number with its area code, for example (574) 555-0100.');
+          db.prepare('UPDATE bot_call_settings SET phone=?,phone_enabled=CASE WHEN ? IS NULL THEN 0 ELSE phone_enabled END WHERE user_id=?').run(phone, phone, user.id);
+        }
+        if (a.phoneEnabled !== undefined) {
+          if (a.phoneEnabled && !row().phone) throw new Error('Add your phone number first.');
+          db.prepare('UPDATE bot_call_settings SET phone_enabled=? WHERE user_id=?').run(Number(a.phoneEnabled), user.id);
+        }
         if (a.bot) {
           // Only a bot whose chat this person can reach may be turned on.
           createBotService(db).chat({ user }, a.bot.conversationId);
@@ -145,6 +173,36 @@ export function botCalls(ctx: Pick<AppContext, 'db' | 'liveVoice'>, user: UserRo
         return view(startRing(decisionId, now, false), d, now);
       })();
     },
+    /**
+     * Turn this person's current ring into a phone call when they are away from Veneer, have their
+     * phone turned on, and it is inside their calling hours. Recent activity never widens the hours
+     * for a phone call. The ring is reserved exactly like an answered one, so a call that ends
+     * without an answer is tried again after the usual gap.
+     */
+    phoneFor(ring: Ring, now = Date.now()): PhoneCall | null {
+      return db.transaction(() => {
+        const s = row();
+        if (!s.phone_enabled || !s.phone || !phoneAvailable() || onCall()) return null;
+        if (now - s.active_ms <= PRESENT_MS || !inCallWindow(s, now) || phoneCallsLastHour(now) >= PHONE_CALLS_PER_HOUR) return null;
+        const reserved = db.prepare("UPDATE bot_call_rings SET state='answered',next_attempt_ms=?,pushed=1 WHERE user_id=? AND decision_id=? AND state='ringing'").run(now + RETRY_MS, user.id, ring.decisionId);
+        if (!reserved.changes) return null;
+        db.prepare('UPDATE bot_call_settings SET idle_ms=? WHERE user_id=?').run(now, user.id);
+        return { userId: user.id, logId: logPhoneCall(ring.decisionId, now), to: s.phone, conversationId: ring.conversationId, decisionId: ring.decisionId };
+      })();
+    },
+    /** A call the person asks for from settings, to hear how it works. Uses the first bot they turned on. */
+    testPhone(now = Date.now()): PhoneCall {
+      return db.transaction(() => {
+        const s = row();
+        if (!s.phone) throw new Error('Add your phone number first.');
+        if (!phoneAvailable()) throw new Error('Phone calling is not set up on this install.');
+        if (onCall()) throw new Error('You are already on a call.');
+        if (phoneCallsLastHour(now) >= PHONE_CALLS_PER_HOUR) throw new Error('That is enough calls for this hour. Try again later.');
+        const bot = bots().find(b => b.enabled);
+        if (!bot) throw new Error('Turn on at least one bot that can call you first.');
+        return { userId: user.id, logId: logPhoneCall(null, now), to: s.phone, conversationId: bot.conversationId, decisionId: null };
+      })();
+    },
     /** "I can't do that now": the card stays on the desk and this question never rings again. */
     stop(decisionId: string) {
       db.prepare(`INSERT INTO bot_call_rings(user_id,decision_id,state) VALUES(?,?,'stopped')
@@ -154,20 +212,34 @@ export function botCalls(ctx: Pick<AppContext, 'db' | 'liveVoice'>, user: UserRo
   };
 }
 
-/** Rings that started while the person was not using Veneer and have not been pushed to their devices yet. */
-export function tickBotCalls(ctx: Pick<AppContext, 'db' | 'liveVoice'>, now = Date.now()) {
+/**
+ * Rings that started while the person was not using Veneer: each becomes a phone call when their
+ * phone is turned on and it is inside their hours, and otherwise one push to their devices.
+ */
+export function tickBotCalls(ctx: Ctx, now = Date.now()) {
   const users = ctx.db.prepare(`SELECT u.* FROM users u WHERE u.status='active'
     AND EXISTS (SELECT 1 FROM bot_call_bots b WHERE b.user_id=u.id AND b.enabled=1)`).all() as UserRow[];
   const pushes: { userId: number; ring: Ring }[] = [];
+  const phones: PhoneCall[] = [];
   for (const user of users) {
     try {
       const ring = botCalls(ctx, user).advance(now);
       if (!ring) continue;
       const s = ctx.db.prepare('SELECT active_ms FROM bot_call_settings WHERE user_id=?').get(user.id) as { active_ms: number };
       if (now - s.active_ms <= PRESENT_MS) continue;
+      const phone = botCalls(ctx, user).phoneFor(ring, now);
+      if (phone) { phones.push(phone); continue; }
       const claimed = ctx.db.prepare("UPDATE bot_call_rings SET pushed=1 WHERE user_id=? AND decision_id=? AND state='ringing' AND pushed=0").run(user.id, ring.decisionId);
       if (claimed.changes) pushes.push({ userId: user.id, ring });
     } catch { /* one person's unreadable line must not stop the others */ }
   }
-  return pushes;
+  return { pushes, phones };
+}
+
+/** Place one reserved phone call. A call that cannot start is recorded and retried after the usual gap. */
+export function startPhoneCall(ctx: Pick<AppContext, 'db' | 'liveVoice'>, call: PhoneCall): Promise<boolean> {
+  const failed = () => { ctx.db.prepare("UPDATE bot_phone_calls SET status='not_started',ended_ms=? WHERE id=? AND ended_ms IS NULL").run(Date.now(), call.logId); return false; };
+  if (!ctx.liveVoice) return Promise.resolve(failed());
+  return ctx.liveVoice.start(call.userId, { botConversationId: call.conversationId, ...(call.decisionId ? { decisionId: call.decisionId, incoming: true } : {}), phone: { to: call.to, logId: call.logId } })
+    .then(() => true).catch(() => failed());
 }

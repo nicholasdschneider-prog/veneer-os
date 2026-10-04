@@ -7,7 +7,8 @@ import { Switch } from './ui/switch';
 import { useLiveVoice } from './VoiceProvider';
 
 export type BotCallRing = { decisionId: string; conversationId: string; botName: string; question: string; remainingMs: number };
-type Settings = { dnd: boolean; windowStart: string; windowEnd: string; timezone: string; bots: { conversationId: string; name: string; enabled: boolean }[] };
+type Settings = { dnd: boolean; windowStart: string; windowEnd: string; timezone: string; bots: { conversationId: string; name: string; enabled: boolean }[];
+  phone: string | null; phoneEnabled: boolean; phoneAvailable: boolean };
 const POLL_MS = 4000;
 const post = <T,>(path: string, body: unknown) => requestJson<T>(`/api/bot-calls/${path}`, { method: 'POST', body: JSON.stringify(body) });
 
@@ -151,14 +152,16 @@ export function BotCallSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [notice, setNotice] = useState('');
   useEffect(() => {
     let alive = true;
-    void requestJson<Settings>('/api/bot-calls/settings').then(s => { if (alive) setSettings(s); }).catch(e => { if (alive) setError((e as Error).message); });
+    void requestJson<Settings>('/api/bot-calls/settings').then(s => { if (alive) { setSettings(s); setPhone(s.phone ?? ''); } }).catch(e => { if (alive) setError((e as Error).message); });
     return () => { alive = false; };
   }, []);
   const save = async (change: Record<string, unknown>) => {
     setBusy(true); setError('');
-    try { setSettings(await post<Settings>('settings', change)); }
+    try { const next = await post<Settings>('settings', change); setSettings(next); setPhone(next.phone ?? ''); setNotice(''); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -175,6 +178,19 @@ export function BotCallSettings() {
       <label className="flex items-center gap-2">to<input type="time" name="call-window-end" className={time} value={settings.windowEnd} disabled={busy} onChange={e => { if (e.target.value) void save({ windowEnd: e.target.value }); }} /></label>
     </div>
     <p className="text-muted-foreground">Eastern time. Outside these hours a bot can still ring while you are using Veneer. A missed call is tried again every 15 minutes.</p>
+    {settings.phoneAvailable && <div className="space-y-2 rounded-xl border p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div><p className="font-medium">Call my phone</p><p className="text-muted-foreground">When you are away from Veneer, bots phone you instead of ringing here. Only inside your calling hours.</p></div>
+        <Switch checked={settings.phoneEnabled} disabled={busy || !settings.phone} aria-label="Call my phone" onCheckedChange={() => void save({ phoneEnabled: !settings.phoneEnabled })} />
+      </div>
+      <label className="flex flex-wrap items-center gap-2">Phone number
+        <input type="tel" name="call-phone" autoComplete="tel" inputMode="tel" placeholder="(574) 555-0100" className={`${time} min-w-0 flex-1`} value={phone} disabled={busy} onChange={e => setPhone(e.target.value)} />
+        <Button type="button" variant="outline" disabled={busy || phone.trim() === (settings.phone ?? '')} onClick={() => void save({ phone: phone.trim() })}>Save</Button>
+      </label>
+      {settings.phone && <Button type="button" variant="outline" disabled={busy} onClick={() => { setBusy(true); setError(''); setNotice('');
+        void post('test-phone', {}).then(() => setNotice('Calling your phone now. It can take a few seconds to ring.')).catch(e => setError((e as Error).message)).finally(() => setBusy(false)); }}><Phone className="size-4" /> Call my phone now</Button>}
+      {notice && <p role="status" className="text-muted-foreground">{notice}</p>}
+    </div>}
     <p className="font-medium">Bots that can call me</p>
     {!settings.bots.length && <p className="text-muted-foreground">No bots yet.</p>}
     <ul className="space-y-1">

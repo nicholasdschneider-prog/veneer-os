@@ -10,6 +10,7 @@ vi.mock('node:child_process', () => ({ fork: fakes.fork }));
 vi.mock('livekit-server-sdk', () => ({
   RoomServiceClient: class { createRoom = fakes.createRoom; deleteRoom = fakes.deleteRoom; },
   AccessToken: class { addGrant() {} async toJwt() { return 'test-scoped-token'; } },
+  SipClient: class { async listSipInboundTrunk() { return []; } async createSipInboundTrunk() { return { sipTrunkId: 'trunk-1' }; } async createSipDispatchRule() { return { sipDispatchRuleId: 'rule-1' }; } },
 }));
 import { LiveVoiceService } from '../src/voice/service.js';
 import { VoiceWorkspace } from '../src/voice/workspace.js';
@@ -135,6 +136,52 @@ describe('live voice lifecycle', () => {
     child.emit('message',{type:'tool',id:'again',name:'answer_choice',args:{decisionId:'g',version:1,choiceId:'18',text:'18',callerQuote:"Yes, that's right."}});
     await vi.advanceTimersByTimeAsync(1);
     expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.id==='again').result.error).toBeTruthy();
+  });
+  it('phones the person, bridges them into the room, and hangs up on voicemail without speaking', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();
+    Object.assign(secrets, { TWILIO_VOICE_ACCOUNT_SID:'ACtest', TWILIO_VOICE_API_KEY_SID:'SKtest', TWILIO_VOICE_API_KEY_SECRET:'s', TWILIO_VOICE_FROM_NUMBER:'+15550001111' });
+    const store = new Map<string,string>();
+    const phone = { place: vi.fn().mockResolvedValue('CA1'), status: vi.fn().mockResolvedValue({ status:'ringing', answeredBy:null }), hangUp: vi.fn().mockResolvedValue(undefined) };
+    service.close();
+    service = new LiveVoiceService({db,manager,doppler:{get:(name:string)=>secrets[name]??null,refresh:async()=>({})},
+      secrets:{getApiKeyOverride:(k:string)=>store.get(k)??null,setApiKeyOverride:(k:string,v:string)=>void store.set(k,v)}} as unknown as AppContext, phone);
+    const log = (id:string) => { db.prepare("INSERT INTO bot_phone_calls(id,user_id,started_ms) VALUES(?,1,?)").run(id,Date.now()); return id; };
+    const call = await service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p1')}});
+    await vi.advanceTimersByTimeAsync(1);
+    const start = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
+    child.emit('message',{type:'ready'});
+    expect(start.phone).toBe(true); expect(start.participantIdentity).toBeUndefined();
+    expect(start.instructions).toContain('THIS IS A PHONE CALL'); expect(start.instructions).toContain('never leave a message');
+    expect(call.token).toBe('');
+    const [to, uri, sipUser, sipPassword] = phone.place.mock.calls[0]!;
+    expect(to).toBe('+15745550100'); expect(uri).toMatch(/^sip:\d{18}@test\.sip\.livekit\.cloud$/); expect(sipUser).toBe('veneer'); expect(String(sipPassword).length).toBeGreaterThan(20);
+    expect(fakes.createRoom.mock.calls.at(-1)![0].name).toBe(`veneer-voice-phone-${String(uri).slice(4,22)}`);
+    expect(store.get('bot-call-sip')).toContain('trunk-1');
+    expect(db.prepare("SELECT provider_sid,status,voice_session_id FROM bot_phone_calls WHERE id='p1'").get()).toEqual({provider_sid:'CA1',status:'queued',voice_session_id:call.id});
+    // No browser heartbeat is expected on a phone call.
+    await vi.advanceTimersByTimeAsync(95_000); expect(service.status(1)).toMatchObject({phone:true});
+    phone.status.mockResolvedValue({ status:'in-progress', answeredBy:'machine_end_beep' });
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(service.status(1)).toBeNull(); expect(phone.hangUp).toHaveBeenCalledWith('CA1');
+    expect(db.prepare('SELECT end_reason FROM voice_sessions WHERE id=?').get(call.id)).toEqual({end_reason:'phone_voicemail'});
+    expect(db.prepare("SELECT status,answered_by,ended_ms IS NOT NULL AS ended FROM bot_phone_calls WHERE id='p1'").get()).toEqual({status:'in-progress',answered_by:'machine_end_beep',ended:1});
+    // A person hanging up is a normal end, and the model's voicemail tool ends the call too.
+    phone.status.mockResolvedValue({ status:'in-progress', answeredBy:'human' });
+    const second = await service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p2')}});
+    await vi.advanceTimersByTimeAsync(1);
+    child.emit('message',{type:'joined'}); child.emit('message',{type:'closed',reason:'participant_disconnected'});
+    expect(db.prepare('SELECT outcome,end_reason,connected_ms IS NOT NULL AS connected FROM voice_sessions WHERE id=?').get(second.id)).toEqual({outcome:'ended',end_reason:'phone_hangup/worker_participant_disconnected',connected:1});
+    const third = await service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p3')}});
+    child.emit('message',{type:'tool',id:'vm',name:'voicemail',args:{}}); await vi.advanceTimersByTimeAsync(1);
+    expect(db.prepare('SELECT end_reason FROM voice_sessions WHERE id=?').get(third.id)).toEqual({end_reason:'phone_voicemail'});
+    // A call that cannot be placed ends cleanly.
+    phone.place.mockRejectedValueOnce(new Error('refused'));
+    const fourth = await service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p4')}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(service.status(1)).toBeNull();
+    expect(db.prepare('SELECT outcome,end_reason FROM voice_sessions WHERE id=?').get(fourth.id)).toEqual({outcome:'failed',end_reason:'phone_not_placed'});
+    expect(db.prepare("SELECT status FROM bot_phone_calls WHERE id='p4'").get()).toEqual({status:'not_placed'});
   });
   it('hands the saved transcript to the bot once after every bot call, marking relayed items', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
