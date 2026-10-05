@@ -1,0 +1,196 @@
+{
+  "at": "2026-10-05T20:52:42.185Z",
+  "fixture_id": "a190dd4c-a68d-489d-aba2-748a133d08fb",
+  "fixture_directory": "/Users/archerclawdington/veneer-os/out/build585/a190dd4c-a68d-489d-aba2-748a133d08fb",
+  "identity": {
+    "source": "c56af41a-0199-4633-8f94-ed62d7e7bc77",
+    "task": "61ffada4-b4f1-4779-b92b-3c3ed33fca85",
+    "project": "a272e174-bb8c-4942-ad99-1028ee6e2c9a",
+    "team": "55fba25e-791f-46de-bfa2-7e1420afa9f6",
+    "owner": 1
+  },
+  "installed_modules": [
+    {
+      "file": "server/dist/db/db.js",
+      "sha256": "3a5eca387b065d39930a00e94a7465a81655111765fa867891b33aa678123d38"
+    },
+    {
+      "file": "server/dist/botWorkflows/routes.js",
+      "sha256": "eb402e405f54f8da2765003347ea0d107498274adad1d8248d1c3c390dedea8e"
+    },
+    {
+      "file": "server/dist/botWorkflows/purchaseEvents.js",
+      "sha256": "b904f68cdaf5975a4371f5fed5cb540e418a1cd93a82b769bb11bcf9615af9c4"
+    },
+    {
+      "file": "server/dist/scheduled/scheduler.js",
+      "sha256": "f2f7f37c83b3a7091f05673d0e88046b28f9ae3cd504285f4417565433544aa7"
+    },
+    {
+      "file": "server/dist/runtime/conversationManager.js",
+      "sha256": "04632016123962f2f6d6564284ea23933eeccc6aaff7a7f992f0e012b5bb51c0"
+    }
+  ],
+  "post_status": 200,
+  "invalid_signature_status": 401,
+  "intake": {
+    "ok": true,
+    "accepted": {
+      "schema_version": "lippert.purchase_candidate_receipt/v1",
+      "receipt_id": "9c8d9795-ee3d-4207-9059-49a3990290eb",
+      "source_id": "c56af41a-0199-4633-8f94-ed62d7e7bc77",
+      "event_id": "5ccb632b-a23a-46b6-ab50-9de68295dc4c",
+      "task_id": "61ffada4-b4f1-4779-b92b-3c3ed33fca85",
+      "order_id": "c6ca3c57-3875-4500-9bc5-63eaf5e7c6c9",
+      "order_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload_hash": "b88657b34cc8b1d268bd437ec16060a8aadf7245d51f24bcd8d96320eed52d40",
+      "accepted_at": "2026-10-05T20:52:42.165Z",
+      "status": "accepted",
+      "purchase_authority": false
+    }
+  },
+  "pending": {
+    "receipt": {
+      "schema_version": "lippert.purchase_candidate_receipt/v1",
+      "receipt_id": "9c8d9795-ee3d-4207-9059-49a3990290eb",
+      "source_id": "c56af41a-0199-4633-8f94-ed62d7e7bc77",
+      "event_id": "5ccb632b-a23a-46b6-ab50-9de68295dc4c",
+      "task_id": "61ffada4-b4f1-4779-b92b-3c3ed33fca85",
+      "order_id": "c6ca3c57-3875-4500-9bc5-63eaf5e7c6c9",
+      "order_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload_hash": "b88657b34cc8b1d268bd437ec16060a8aadf7245d51f24bcd8d96320eed52d40",
+      "accepted_at": "2026-10-05T20:52:42.165Z",
+      "status": "accepted",
+      "purchase_authority": false
+    },
+    "delivery": {
+      "status": "pending",
+      "batch_id": "0842f1b4-a8d1-43d0-8e2a-ae3c1fa78e96",
+      "run_id": null,
+      "conversation_id": null,
+      "run_status": null,
+      "worker_started": false,
+      "worker_started_at": null,
+      "turn_id": null,
+      "blocked_reason": null,
+      "purchase_authority": false
+    }
+  },
+  "started": {
+    "receipt": {
+      "schema_version": "lippert.purchase_candidate_receipt/v1",
+      "receipt_id": "9c8d9795-ee3d-4207-9059-49a3990290eb",
+      "source_id": "c56af41a-0199-4633-8f94-ed62d7e7bc77",
+      "event_id": "5ccb632b-a23a-46b6-ab50-9de68295dc4c",
+      "task_id": "61ffada4-b4f1-4779-b92b-3c3ed33fca85",
+      "order_id": "c6ca3c57-3875-4500-9bc5-63eaf5e7c6c9",
+      "order_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload_hash": "b88657b34cc8b1d268bd437ec16060a8aadf7245d51f24bcd8d96320eed52d40",
+      "accepted_at": "2026-10-05T20:52:42.165Z",
+      "status": "accepted",
+      "purchase_authority": false
+    },
+    "delivery": {
+      "status": "linked",
+      "batch_id": "0842f1b4-a8d1-43d0-8e2a-ae3c1fa78e96",
+      "run_id": "92b1116a-3ba1-4fdb-9d4d-a5a7f69d3222",
+      "conversation_id": "3026f9e8-18c9-476b-836b-fec6af524704",
+      "run_status": "running",
+      "worker_started": true,
+      "worker_started_at": "2026-10-05T20:52:42.179Z",
+      "turn_id": "ea1f408d-19d8-498c-be8d-298596b9741b",
+      "blocked_reason": null,
+      "purchase_authority": false
+    }
+  },
+  "completed": {
+    "receipt": {
+      "schema_version": "lippert.purchase_candidate_receipt/v1",
+      "receipt_id": "9c8d9795-ee3d-4207-9059-49a3990290eb",
+      "source_id": "c56af41a-0199-4633-8f94-ed62d7e7bc77",
+      "event_id": "5ccb632b-a23a-46b6-ab50-9de68295dc4c",
+      "task_id": "61ffada4-b4f1-4779-b92b-3c3ed33fca85",
+      "order_id": "c6ca3c57-3875-4500-9bc5-63eaf5e7c6c9",
+      "order_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload_hash": "b88657b34cc8b1d268bd437ec16060a8aadf7245d51f24bcd8d96320eed52d40",
+      "accepted_at": "2026-10-05T20:52:42.165Z",
+      "status": "accepted",
+      "purchase_authority": false
+    },
+    "delivery": {
+      "status": "linked",
+      "batch_id": "0842f1b4-a8d1-43d0-8e2a-ae3c1fa78e96",
+      "run_id": "92b1116a-3ba1-4fdb-9d4d-a5a7f69d3222",
+      "conversation_id": "3026f9e8-18c9-476b-836b-fec6af524704",
+      "run_status": "completed",
+      "worker_started": true,
+      "worker_started_at": "2026-10-05T20:52:42.179Z",
+      "turn_id": "ea1f408d-19d8-498c-be8d-298596b9741b",
+      "blocked_reason": null,
+      "purchase_authority": false
+    }
+  },
+  "run_before_completion": {
+    "id": "92b1116a-3ba1-4fdb-9d4d-a5a7f69d3222",
+    "scheduled_task_id": "61ffada4-b4f1-4779-b92b-3c3ed33fca85",
+    "conversation_id": "3026f9e8-18c9-476b-836b-fec6af524704",
+    "scheduled_for": "2026-10-05T20:52:42.170Z",
+    "trigger": "manual",
+    "status": "running",
+    "important": 0,
+    "event_id": null,
+    "error": null,
+    "started_at": "2026-10-05 20:52:42",
+    "finished_at": null
+  },
+  "batch": {
+    "id": "0842f1b4-a8d1-43d0-8e2a-ae3c1fa78e96",
+    "source_id": "c56af41a-0199-4633-8f94-ed62d7e7bc77",
+    "task_id": "61ffada4-b4f1-4779-b92b-3c3ed33fca85",
+    "status": "linked",
+    "run_id": "92b1116a-3ba1-4fdb-9d4d-a5a7f69d3222",
+    "blocked_reason": null,
+    "created_at": "2026-10-05T20:52:42.165Z"
+  },
+  "persisted_start": {
+    "run_id": "92b1116a-3ba1-4fdb-9d4d-a5a7f69d3222",
+    "conversation_id": "3026f9e8-18c9-476b-836b-fec6af524704",
+    "turn_id": "ea1f408d-19d8-498c-be8d-298596b9741b",
+    "started_at": "2026-10-05T20:52:42.179Z"
+  },
+  "pending_turn_association": {
+    "conversation_id": "3026f9e8-18c9-476b-836b-fec6af524704",
+    "actor_user_id": 1,
+    "status": "pending"
+  },
+  "invocation": {
+    "conversation_id": "3026f9e8-18c9-476b-836b-fec6af524704",
+    "turn_id": "ea1f408d-19d8-498c-be8d-298596b9741b",
+    "native_session_id": "afe168f5-57e6-43e4-8c8f-6544c5cfe877",
+    "cwd": "/Users/archerclawdington/veneer-os/out/build585/a190dd4c-a68d-489d-aba2-748a133d08fb",
+    "model": "synthetic-fixture",
+    "prompt": "This is the scheduled run of “Synthetic fixture”, due Monday, October 5, 2026 at 8:52 PM (UTC).\n\nSynthetic finite read-only queue pass; no business effects\n\nComplete the task now. Give the user a concise, useful final result in this chat. Use the normal tool policies: never bypass an approval, and clearly explain anything that needs the user.\n\nThis automation's task id is 61ffada4-b4f1-4779-b92b-3c3ed33fca85. If your instructions say the work is complete or further runs are unnecessary, pause this automation by calling update_scheduled_task with task_id=\"61ffada4-b4f1-4779-b92b-3c3ed33fca85\" and enabled=false, then say so in your final message.\n\nNative continuation guard: As your LAST task action, call record_purchase_candidate_pass with outcome=\"clear\" after a successful fresh finite queue pass: grounded per-order cost/address/decision exceptions may be safely skipped while unrelated eligible orders remain processable. Clear does not approve skipped orders or clear their source fences. Use outcome=\"blocked\" for a task/global block, and \"unknown\" for task/global UNKNOWN or uncertain portal/launch; never use clear to bypass failed/unacknowledged-run fences or replay an unchanged blocked-only hint. Input is outcome clear|blocked|unknown and optional cursor: null or a nonsecret string of at most 500 characters; retain your safe pass cursor, never credentials or customer bodies. The acknowledgment is bound to this authenticated worker/start/run, immutable and idempotent for identical input. This is a scheduling acknowledgment, not purchase approval. A missing acknowledgment stops all automatic successors and retries.\n\nPurchase candidate reference data (not approval):\n[{\"id\":\"5ccb632b-a23a-46b6-ab50-9de68295dc4c\",\"occurred_at\":\"2026-10-05T20:52:42.155Z\",\"order_id\":\"c6ca3c57-3875-4500-9bc5-63eaf5e7c6c9\",\"order_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"schema_version\":\"lippert.purchase_candidate/v1\",\"task_id\":\"61ffada4-b4f1-4779-b92b-3c3ed33fca85\",\"type\":\"order.purchase_candidate\"}]\nRead fresh source eligibility for every hinted order. Retain original event IDs and the pass cursor. Maximum eight placements; pending native hints have a bounded successor. Any remaining source queue beyond these hints stays for the existing daily backup; do not create a retry worker. Task/global UNKNOWN or uncertain portal/launch requires read-only reconciliation, never another attempt. Safely skip grounded per-order cost/address/decision exceptions under the existing rules; they do not starve unrelated eligible hints. Never retry an unchanged blocked-only hint or hot-loop blocked work."
+  },
+  "provider_invocations": 1,
+  "acknowledgment": {
+    "recorded": true,
+    "run_id": "92b1116a-3ba1-4fdb-9d4d-a5a7f69d3222",
+    "outcome": "clear",
+    "purchase_authority": false
+  },
+  "persisted_pass": {
+    "run_id": "92b1116a-3ba1-4fdb-9d4d-a5a7f69d3222",
+    "conversation_id": "3026f9e8-18c9-476b-836b-fec6af524704",
+    "outcome": "clear",
+    "cursor": null,
+    "recorded_at": "2026-10-05T20:52:42.184Z"
+  },
+  "manually_emitted_start": false,
+  "preinserted_start": false,
+  "live_database_opened": false,
+  "live_task_run": false,
+  "real_provider_invoked": false,
+  "public_auth_verified": false,
+  "original_worker_adoption_verified": false,
+  "source_activation_performed": false
+}
