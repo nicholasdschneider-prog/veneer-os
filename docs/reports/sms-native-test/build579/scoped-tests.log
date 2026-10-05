@@ -1,0 +1,17 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run test/fixtureHostBootstrap.test.ts test/fixturePreparation.test.ts test/botFeatureGuide.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/botFeatureGuide.test.ts (31 tests) 19ms
+ ✓ test/fixturePreparation.test.ts (21 tests) 84ms
+ ✓ test/fixtureHostBootstrap.test.ts (1 test) 989ms
+   ✓ harmless native fixture host acceptance package > boots real C/Node probes and validates denial controls plus fail-closed cases 989ms
+
+ Test Files  3 passed (3)
+      Tests  53 passed (53)
+   Start at  14:48:38
+   Duration  1.21s (transform 133ms, setup 0ms, collect 283ms, tests 1.09s, environment 0ms, prepare 132ms)
+

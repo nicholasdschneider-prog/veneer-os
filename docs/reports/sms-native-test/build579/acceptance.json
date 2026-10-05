@@ -1,0 +1,87 @@
+{
+  "schema": "veneer-harmless-host-acceptance/v1",
+  "accepted": true,
+  "startedAt": "2026-10-05T18:45:47.215087+00:00",
+  "finishedAt": "2026-10-05T18:45:48.016970+00:00",
+  "host": {
+    "system": "Darwin",
+    "release": "27.0.0",
+    "arch": "arm64"
+  },
+  "runtime": "compiled harmless C and Node 24 probes; no provider or model",
+  "nativeFixtureAdmission": false,
+  "sha256": {
+    "probeSource": "5e28bebe11d7e58d71ef3db99167d978768f586641ac89550d6e9b9648effad0",
+    "launcher": "cb1e6f41e28b006a103850db6fa852ec6d222008b2a048ccc586a9e36d9b9936",
+    "executable": "e8137cb0e5dffa58a7f5ed1ad7437294925dbca5d53900719b8af6c357c3a33a"
+  },
+  "nodeInventory": {
+    "/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlicommon.1.2.0.dylib": "41ea919f6b53d772067477235cbe8fdf97aaad403c30a90512c6c4b17cd529ef",
+    "/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlidec.1.2.0.dylib": "23f7347022952e956a8fd9a045e32069c0d9adda23100af9d061502008976330",
+    "/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlienc.1.2.0.dylib": "6f07b64b1247ef2963b69813326a2ad363391e07b90e2dca6cf244f17176f884",
+    "/opt/homebrew/Cellar/c-ares/1.34.8/lib/libcares.2.19.7.dylib": "5f268b4b7cbfd8221b516f8dbe05aaacc89ab8c764604f35269e302b904b1163",
+    "/opt/homebrew/Cellar/hdrhistogram_c/0.11.10/lib/libhdr_histogram.6.3.3.dylib": "11db880a22aff139d2c66dc2c1aee26cee12fbc98734bf7cbbce06e7f40f77b0",
+    "/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicudata.78.3.dylib": "5cedc441f4317ce12a1a3c69b5d1e881ab39431feace497f7ad0f21be839779a",
+    "/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicui18n.78.3.dylib": "b29beb6db94b7d92222aca40e2fef72fcd78e6861d2565ecd7333121e923770f",
+    "/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicuuc.78.3.dylib": "6fa74bc0a546cd34cdf733bf9ad8089e1088dba42e3eb8fe0c1c5a53c326af3e",
+    "/opt/homebrew/Cellar/libnghttp2/1.70.0/lib/libnghttp2.14.dylib": "5df5de1c71a96b5f2b02e10dc95082de0fd0774cc4f7a05b084fbda8bcf3addb",
+    "/opt/homebrew/Cellar/libnghttp3/1.18.0/lib/libnghttp3.9.9.0.dylib": "1d4cb92df671d316dc29b6654aeb7cd3a647dd2d3eed4782600f72301f0c4d8b",
+    "/opt/homebrew/Cellar/libngtcp2/1.25.0/lib/libngtcp2.16.dylib": "9a5cc6ab5144dd521bda8295304d5979cde90d8f00ce676110ff3c4467b82d7a",
+    "/opt/homebrew/Cellar/libuv/1.52.1/lib/libuv.1.0.0.dylib": "79897d8691289c284587a512e3a42d1725d7072b1304c96efa770e4fad97f7bb",
+    "/opt/homebrew/Cellar/node@24/24.21.0/bin/node": "ee2a4493dc9e1bd0cf10f6a1aa773d0452054e2cb179b461f4d60cef66bd01ba",
+    "/opt/homebrew/Cellar/node@24/24.21.0/lib/libnode.137.dylib": "385ee74f5b8fd371bcb372de3916e641f53f673a2dcca77f73cc4d533885e8c7",
+    "/opt/homebrew/Cellar/openssl@3/3.6.4/lib/libcrypto.3.dylib": "48c160c3aaa46cb69e5874370d820c2bc8be0712f6ee690fa10581ad966474a7",
+    "/opt/homebrew/Cellar/openssl@3/3.6.4/lib/libssl.3.dylib": "a53b324db78c1146ff9ce68700f952e3997f4a1965ee6c6a802f6d3bdcd625ad",
+    "/opt/homebrew/Cellar/simdjson/4.6.11/lib/libsimdjson.33.0.0.dylib": "2a8957e7374abf80a57671c124aa08e3b4f7465bceb6fa1b4ed1330e8923189f",
+    "/opt/homebrew/Cellar/sqlite/3.53.4/lib/libsqlite3.3.53.4.dylib": "c8d5d0225a3cf6462b0de9c38ea90c23c84a7234076032876783a92c01949629",
+    "/opt/homebrew/Cellar/uvwasi/0.0.23/lib/libuvwasi.dylib": "a1a5b563eea037bbb2dedcab958a4a78bc8dd011a3eb69315f187d4c48843712",
+    "/opt/homebrew/Cellar/zstd/1.5.7_1/lib/libzstd.1.5.7.dylib": "69d8dee81bccdee425d167300d11431f3c5ecc34a3011400e536aa89f7756189"
+  },
+  "nodeProbeSha256": "184c2812578b0a9baf47e04036650de110c4283be9060f81158edb8e14b1f7cd",
+  "profiles": {
+    "active": "(version 1)\n(deny default)\n(allow sysctl-read)\n(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/\") (literal \"/private/tmp/veneer-fixture-11y_lucm/private/probe\") (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow file-write* (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow process-exec* (literal \"/private/tmp/veneer-fixture-11y_lucm/private/probe\"))\n",
+    "withoutRoot": "(version 1)\n(deny default)\n(allow sysctl-read)\n(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/private/tmp/veneer-fixture-11y_lucm/private/probe\") (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow file-write* (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow process-exec* (literal \"/private/tmp/veneer-fixture-11y_lucm/private/probe\"))\n",
+    "descendantDiagnostic": "(version 1)\n(deny default)\n(allow sysctl-read)\n(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/\") (literal \"/private/tmp/veneer-fixture-11y_lucm/private/probe\") (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow file-write* (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow process-exec* (literal \"/private/tmp/veneer-fixture-11y_lucm/private/probe\"))\n(allow process-fork)\n",
+    "node": "(version 1)\n(deny default)\n(allow sysctl-read)\n(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/\") (literal \"/opt/homebrew/Cellar/node@24/24.21.0/bin/node\") (literal \"/\") (literal \"/opt\") (literal \"/opt/homebrew\") (literal \"/opt/homebrew/Cellar\") (literal \"/opt/homebrew/Cellar/brotli\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0/lib\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlicommon.1.2.0.dylib\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlicommon.1.dylib\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlidec.1.2.0.dylib\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlidec.1.dylib\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlienc.1.2.0.dylib\") (literal \"/opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlienc.1.dylib\") (literal \"/opt/homebrew/Cellar/c-ares\") (literal \"/opt/homebrew/Cellar/c-ares/1.34.8\") (literal \"/opt/homebrew/Cellar/c-ares/1.34.8/lib\") (literal \"/opt/homebrew/Cellar/c-ares/1.34.8/lib/libcares.2.19.7.dylib\") (literal \"/opt/homebrew/Cellar/c-ares/1.34.8/lib/libcares.2.dylib\") (literal \"/opt/homebrew/Cellar/hdrhistogram_c\") (literal \"/opt/homebrew/Cellar/hdrhistogram_c/0.11.10\") (literal \"/opt/homebrew/Cellar/hdrhistogram_c/0.11.10/lib\") (literal \"/opt/homebrew/Cellar/hdrhistogram_c/0.11.10/lib/libhdr_histogram.6.3.3.dylib\") (literal \"/opt/homebrew/Cellar/hdrhistogram_c/0.11.10/lib/libhdr_histogram.6.dylib\") (literal \"/opt/homebrew/Cellar/icu4c@78\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3/lib\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicudata.78.3.dylib\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicudata.78.dylib\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicui18n.78.3.dylib\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicui18n.78.dylib\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicuuc.78.3.dylib\") (literal \"/opt/homebrew/Cellar/icu4c@78/78.3/lib/libicuuc.78.dylib\") (literal \"/opt/homebrew/Cellar/libnghttp2\") (literal \"/opt/homebrew/Cellar/libnghttp2/1.70.0\") (literal \"/opt/homebrew/Cellar/libnghttp2/1.70.0/lib\") (literal \"/opt/homebrew/Cellar/libnghttp2/1.70.0/lib/libnghttp2.14.dylib\") (literal \"/opt/homebrew/Cellar/libnghttp3\") (literal \"/opt/homebrew/Cellar/libnghttp3/1.18.0\") (literal \"/opt/homebrew/Cellar/libnghttp3/1.18.0/lib\") (literal \"/opt/homebrew/Cellar/libnghttp3/1.18.0/lib/libnghttp3.9.9.0.dylib\") (literal \"/opt/homebrew/Cellar/libnghttp3/1.18.0/lib/libnghttp3.9.dylib\") (literal \"/opt/homebrew/Cellar/libngtcp2\") (literal \"/opt/homebrew/Cellar/libngtcp2/1.25.0\") (literal \"/opt/homebrew/Cellar/libngtcp2/1.25.0/lib\") (literal \"/opt/homebrew/Cellar/libngtcp2/1.25.0/lib/libngtcp2.16.dylib\") (literal \"/opt/homebrew/Cellar/libuv\") (literal \"/opt/homebrew/Cellar/libuv/1.52.1\") (literal \"/opt/homebrew/Cellar/libuv/1.52.1/lib\") (literal \"/opt/homebrew/Cellar/libuv/1.52.1/lib/libuv.1.0.0.dylib\") (literal \"/opt/homebrew/Cellar/libuv/1.52.1/lib/libuv.1.dylib\") (literal \"/opt/homebrew/Cellar/node@24\") (literal \"/opt/homebrew/Cellar/node@24/24.21.0\") (literal \"/opt/homebrew/Cellar/node@24/24.21.0/lib\") (literal \"/opt/homebrew/Cellar/node@24/24.21.0/lib/libnode.137.dylib\") (literal \"/opt/homebrew/Cellar/openssl@3\") (literal \"/opt/homebrew/Cellar/openssl@3/3.6.4\") (literal \"/opt/homebrew/Cellar/openssl@3/3.6.4/lib\") (literal \"/opt/homebrew/Cellar/openssl@3/3.6.4/lib/libcrypto.3.dylib\") (literal \"/opt/homebrew/Cellar/openssl@3/3.6.4/lib/libssl.3.dylib\") (literal \"/opt/homebrew/Cellar/simdjson\") (literal \"/opt/homebrew/Cellar/simdjson/4.6.11\") (literal \"/opt/homebrew/Cellar/simdjson/4.6.11/lib\") (literal \"/opt/homebrew/Cellar/simdjson/4.6.11/lib/libsimdjson.33.0.0.dylib\") (literal \"/opt/homebrew/Cellar/simdjson/4.6.11/lib/libsimdjson.33.dylib\") (literal \"/opt/homebrew/Cellar/sqlite\") (literal \"/opt/homebrew/Cellar/sqlite/3.53.4\") (literal \"/opt/homebrew/Cellar/sqlite/3.53.4/lib\") (literal \"/opt/homebrew/Cellar/sqlite/3.53.4/lib/libsqlite3.3.53.4.dylib\") (literal \"/opt/homebrew/Cellar/sqlite/3.53.4/lib/libsqlite3.dylib\") (literal \"/opt/homebrew/Cellar/uvwasi\") (literal \"/opt/homebrew/Cellar/uvwasi/0.0.23\") (literal \"/opt/homebrew/Cellar/uvwasi/0.0.23/lib\") (literal \"/opt/homebrew/Cellar/uvwasi/0.0.23/lib/libuvwasi.dylib\") (literal \"/opt/homebrew/Cellar/zstd\") (literal \"/opt/homebrew/Cellar/zstd/1.5.7_1\") (literal \"/opt/homebrew/Cellar/zstd/1.5.7_1/lib\") (literal \"/opt/homebrew/Cellar/zstd/1.5.7_1/lib/libzstd.1.5.7.dylib\") (literal \"/opt/homebrew/Cellar/zstd/1.5.7_1/lib/libzstd.1.dylib\") (literal \"/opt/homebrew/opt\") (literal \"/opt/homebrew/opt/brotli\") (literal \"/opt/homebrew/opt/brotli/lib\") (literal \"/opt/homebrew/opt/brotli/lib/libbrotlicommon.1.dylib\") (literal \"/opt/homebrew/opt/brotli/lib/libbrotlidec.1.dylib\") (literal \"/opt/homebrew/opt/brotli/lib/libbrotlienc.1.dylib\") (literal \"/opt/homebrew/opt/c-ares\") (literal \"/opt/homebrew/opt/c-ares/lib\") (literal \"/opt/homebrew/opt/c-ares/lib/libcares.2.dylib\") (literal \"/opt/homebrew/opt/hdrhistogram_c\") (literal \"/opt/homebrew/opt/hdrhistogram_c/lib\") (literal \"/opt/homebrew/opt/hdrhistogram_c/lib/libhdr_histogram.6.dylib\") (literal \"/opt/homebrew/opt/icu4c@78\") (literal \"/opt/homebrew/opt/icu4c@78/lib\") (literal \"/opt/homebrew/opt/icu4c@78/lib/libicudata.78.dylib\") (literal \"/opt/homebrew/opt/icu4c@78/lib/libicui18n.78.dylib\") (literal \"/opt/homebrew/opt/icu4c@78/lib/libicuuc.78.dylib\") (literal \"/opt/homebrew/opt/libnghttp2\") (literal \"/opt/homebrew/opt/libnghttp2/lib\") (literal \"/opt/homebrew/opt/libnghttp2/lib/libnghttp2.14.dylib\") (literal \"/opt/homebrew/opt/libnghttp3\") (literal \"/opt/homebrew/opt/libnghttp3/lib\") (literal \"/opt/homebrew/opt/libnghttp3/lib/libnghttp3.9.dylib\") (literal \"/opt/homebrew/opt/libngtcp2\") (literal \"/opt/homebrew/opt/libngtcp2/lib\") (literal \"/opt/homebrew/opt/libngtcp2/lib/libngtcp2.16.dylib\") (literal \"/opt/homebrew/opt/libuv\") (literal \"/opt/homebrew/opt/libuv/lib\") (literal \"/opt/homebrew/opt/libuv/lib/libuv.1.dylib\") (literal \"/opt/homebrew/opt/node@24\") (literal \"/opt/homebrew/opt/node@24/lib\") (literal \"/opt/homebrew/opt/node@24/lib/libnode.137.dylib\") (literal \"/opt/homebrew/opt/openssl@3\") (literal \"/opt/homebrew/opt/openssl@3/lib\") (literal \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\") (literal \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\") (literal \"/opt/homebrew/opt/simdjson\") (literal \"/opt/homebrew/opt/simdjson/lib\") (literal \"/opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib\") (literal \"/opt/homebrew/opt/sqlite\") (literal \"/opt/homebrew/opt/sqlite/lib\") (literal \"/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib\") (literal \"/opt/homebrew/opt/uvwasi\") (literal \"/opt/homebrew/opt/uvwasi/lib\") (literal \"/opt/homebrew/opt/uvwasi/lib/libuvwasi.dylib\") (literal \"/opt/homebrew/opt/zstd\") (literal \"/opt/homebrew/opt/zstd/lib\") (literal \"/opt/homebrew/opt/zstd/lib/libzstd.1.dylib\") (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow file-write* (subpath \"/private/tmp/veneer-fixture-11y_lucm/private\"))\n(allow process-exec* (literal \"/opt/homebrew/Cellar/node@24/24.21.0/bin/node\"))\n(allow file-read-metadata (literal \"/private/tmp/veneer-fixture-11y_lucm\")(literal \"/private/tmp\")(literal \"/private\")(literal \"/\"))\n"
+  },
+  "profileSha256": {
+    "active": "4d9db1bf2a281a38e10fd4bf3d68214657d7e06ed3f4fe18307e5701d509bdf0",
+    "withoutRoot": "965403ca6daa03da8995afedd57caf0c48e7d9040b9679072133a1ec04a26101",
+    "descendantDiagnostic": "b80b935c57887c186faca9e646aa938d0427d436341e78ac9bc637a6c5404ec4",
+    "node": "655aa81489aca93809c6eb04cb5df80ad11bca6ad1350506d9f98c5f5597269b"
+  },
+  "results": {
+    "control": {
+      "exitCode": 0,
+      "elapsedNs": 165021250,
+      "stdout": "{\"booted\":true,\"allowedReadErrno\":0,\"deniedReadErrno\":0,\"deniedWriteErrno\":0,\"deniedTcpErrno\":0,\"deniedUnixErrno\":0,\"ownSpawnErrno\":0,\"otherSpawnErrno\":0,\"forkResult\":-2,\"allowedWriteErrno\":0,\"symlinkReadErrno\":0,\"fd3Closed\":false,\"parentMarkerAbsent\":false}\n",
+      "stderr": ""
+    },
+    "active": {
+      "exitCode": 0,
+      "elapsedNs": 25400459,
+      "stdout": "{\"booted\":true,\"allowedReadErrno\":0,\"deniedReadErrno\":1,\"deniedWriteErrno\":1,\"deniedTcpErrno\":1,\"deniedUnixErrno\":1,\"ownSpawnErrno\":1,\"otherSpawnErrno\":1,\"forkResult\":1,\"allowedWriteErrno\":0,\"symlinkReadErrno\":1,\"fd3Closed\":true,\"parentMarkerAbsent\":true}\n",
+      "stderr": ""
+    },
+    "withoutRoot": {
+      "exitCode": -6,
+      "elapsedNs": 27073500,
+      "stdout": "",
+      "stderr": ""
+    },
+    "descendantDiagnostic": {
+      "exitCode": 0,
+      "elapsedNs": 10957458,
+      "stdout": "{\"booted\":true,\"allowedReadErrno\":0,\"deniedReadErrno\":1,\"deniedWriteErrno\":1,\"deniedTcpErrno\":1,\"deniedUnixErrno\":1,\"ownSpawnErrno\":0,\"otherSpawnErrno\":1,\"forkResult\":-1,\"allowedWriteErrno\":0,\"symlinkReadErrno\":1,\"fd3Closed\":true,\"parentMarkerAbsent\":true}\n",
+      "stderr": ""
+    },
+    "node": {
+      "exitCode": 0,
+      "elapsedNs": 76532750,
+      "stdout": "{\"booted\":true,\"node\":\"24.21.0\",\"allowedRead\":null,\"allowedWrite\":null,\"deniedRead\":\"EPERM\",\"deniedWrite\":\"EPERM\",\"deniedSymlink\":\"EPERM\",\"deniedSelfSpawn\":\"EPERM\",\"deniedShellSpawn\":\"EPERM\",\"parentMarkerAbsent\":true,\"deniedTcp\":\"EPERM\",\"deniedUnix\":\"EPERM\"}\n",
+      "stderr": ""
+    }
+  },
+  "scope": "Local synthetic resources only; descendant profile is diagnostic, never admission",
+  "auth": "No credentials read or sign-in performed"
+}

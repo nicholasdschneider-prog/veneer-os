@@ -191,3 +191,23 @@ bindings are absent; it does not expand the current build into a new training UI
 enroll a human, select a business executor or authorize live customer actions.
 Technical setup belongs to implementation; ordinary subsequent teaching belongs
 in the permanent bot's conversation.
+
+## Harmless host bootstrap accepted in build 579
+
+The staged [host package](../scripts/fixture-host/README.md) now boots real C and
+Node 24 processes under default-deny Seatbelt policies. The
+[raw acceptance receipt](./reports/sms-native-test/build579/acceptance.json)
+records successful bootstrap, actual EPERM denials, unsandboxed positive controls,
+a symlink escape denial, closed inherited descriptor/environment checks, and
+inherited restrictions in a diagnostic child. Literal root-directory read fixes
+the restrictive bootstrap failure; the otherwise identical profile without it
+still aborts and is recorded only as launch failure.
+
+This is a fixed harmless process acceptance milestone, not a coupled provider
+host, model run, authenticated fixture manifest, or customer experience.
+The API admission gate remains unconditional. Dedicated provider-specific auth,
+fixture-only transport, approved role-training/profile materialization, session
+isolation and native trace/monitoring coupling remain pending. No deployment,
+restart, enrollment or sign-in was performed. See the
+[build 579 report](./reports/sms-native-test/build579/report.md) for tested scope,
+raw validation and the next coupling boundary.

@@ -1,0 +1,11 @@
+test_abort_missing_output_and_ack_never_certify (__main__.HostAcceptance) ... ok
+test_actual_bootstrap_controls_denials_and_descendant (__main__.HostAcceptance) ... ok
+test_no_parent_environment_or_descriptor_leak (__main__.HostAcceptance) ... ok
+test_profile_has_no_network_fork_or_general_execution_grant (__main__.HostAcceptance) ... ok
+test_receipt_cannot_overwrite_prior_evidence (__main__.HostAcceptance) ... ok
+test_unsupported_host_fails_before_any_process (__main__.HostAcceptance) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.119s
+
+OK
