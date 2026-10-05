@@ -137,3 +137,57 @@ The current CS training/autonomy boundaries remain authoritative. Cancellation
 and refund require their existing human approvals. The proposed hour window is
 inactive. AutoShip SMS remains paused. Nothing changes ERVP source, customer
 messaging, vendor submissions, postage, finance or production orders.
+
+## Permanent CS training conversation — desired design
+
+October 5, 2026 human steering: the eventual CS role is trained naturally in its
+permanent ordinary bot conversation under Chats. This is a design requirement,
+not an existing live capability or a completed fixture-runtime feature. Temporary
+execution workers provide capacity; they are not separately trained personas.
+Routine teaching must not require returning to a development chat, editing code,
+or using an administration screen.
+
+The permanent role conversation owns instruction capture and readback. Its
+authorized training skill maintains one scoped role playbook and approved
+training versions. A natural correction becomes reusable guidance only within
+its intended applicability, with inputs, exceptions, validation and synthetic
+regression examples. The readback states what was retained, its scope and its
+version. Use the existing authorized skill workflow and preserve provenance;
+do not create parallel active copies of the same guidance. Customer-specific
+facts stay with their ticket rather than becoming general rules. Knowledge
+additions never grant new sending, refund, cancellation or other business rights.
+
+Independent customer sessions share the same approved role training version,
+not each other's transcript or private memory. Each session keeps its own
+customer, ticket, order, history and effect fences. Worker reuse cannot carry
+customer context into another session. Human training transcripts containing
+private ticket material are not distributed wholesale to workers; the approved
+playbook contains only the reusable guidance appropriate to its role.
+
+For the native fixture host, materialization must bind an immutable training
+snapshot to its role, approved version, content hash and provenance. Existing
+manifest v1 carries only a requested `trainingHash`; it does not provide or
+verify any of those additional bindings. All sessions in a comparison run must
+use the same verified snapshot. Queued and resumed turns retain that binding;
+a later correction must not silently change an in-flight run. A new comparison
+uses the newly approved snapshot with explicit provenance. Fixture training
+and regression examples contain synthetic customer data only.
+
+Before native acceptance, test that every admitted worker receives the pinned
+snapshot, absent or mismatched materialization blocks admission, worker reuse
+does not leak history, and a correction produces reproducible regression results
+without changing permission gates. Compare behavior before and after the
+training revision using separate pinned runs. Preparation hash checks alone
+cannot establish these properties; these tests remain pending with the native
+host and transport.
+
+Follow-on setup must designate the actual permanent CS role conversation and
+its authorized training skill/editor, define the scoped playbook and version
+approval/readback lifecycle, and implement authenticated snapshot publication
+and worker materialization with ticket-history separation. Wire the accepted
+version into the isolated native host and then verify the regression and privacy
+checks above. This requires a separately scoped implementation if those product
+bindings are absent; it does not expand the current build into a new training UI,
+enroll a human, select a business executor or authorize live customer actions.
+Technical setup belongs to implementation; ordinary subsequent teaching belongs
+in the permanent bot's conversation.
