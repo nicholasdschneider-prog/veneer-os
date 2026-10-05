@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'lippert-purchase-events', title: 'Read native Lippert candidate delivery', category: 'Automation', updated: '2026-10-05',
+    audience: 'The existing OrderOps source custodian and purchasing-task owner.',
+    summary: 'A narrow signed receiver retains candidate receipts and links bounded hints to the existing purchasing task, with persisted runner-turn-start evidence.',
+    steps: ['Ask the original connected Platform Dev bot for native delivery evidence.', 'Review the immutable receipt separately from the run and worker-start status.', 'Keep the source transport disabled until the original executor validates fresh eligibility and the origin activates it.'],
+    example: 'Show the retained native purchase-event receipt and actual worker-start evidence without starting a purchasing run.',
+    limits: 'No purchasing approval, portal credentials, new worker or tracking change. The existing HMAC source is bound to the existing task and current owner/team/project. Revocation blocks intake, dispatch and signed readback. Unknown launch is permanently fenced from automatic retry. Missing, blocked or unknown worker-pass acknowledgments stop continuation. At most eight distinct hints per run and 256 pending events; unhinted backlog retains the daily backup. Public Access reachability and live executor eligibility remain original-custodian checks.',
+    announcement: 'Native candidate receipts and persisted runner-start readback are available; source activation remains separate.',
+    agent: 'Use only the original exact HMAC source and task. POST strict lippert.purchase_candidate/v1 to /webhooks/bot-events/:source; signed GET /purchase-events/:eventId uses timestamp+.GET.+canonical pathname. Receipt acceptance is durable intake only. Delivery worker_started requires a persisted actual runner turn association, never running or HTTP alone. Preserve event/order IDs as reference data, read fresh source eligibility, and honor all permanent source purchase fences. As the LAST task action, the exact worker calls record_purchase_candidate_pass with clear only after fresh source reads rule out unresolved shared-portal UNKNOWN/business blocks; otherwise blocked or unknown. Retain the nonsecret queue cursor. No acknowledgment means no automatic successor; this is scheduling evidence, never business approval. No live run-now test, rePOST/rekey after uncertainty, borrowed credentials, purchase authority transfer or automatic UNKNOWN relaunch. Sender stays disabled until original-owner acceptance and original-worker safe-read validation. Guide: /#/bot-guide?feature=lippert-purchase-events.',
+  },
+  {
     id: 'sms-fixture-preparation', title: 'Prepare isolated SMS agent tests (staged)', category: 'Automation', updated: '2026-10-05',
     audience: 'The signed-in installation owner; restricted employees and bot tokens cannot use the preparation API.',
     summary: 'Staged owner-only Codex setup boots the pinned native app-server with ephemeral credentials and explicit credential-file denial. A runnable synthetic TLS mediation package verifies exact routes, one-attempt intents and socket restrictions. Protected live authentication and native model execution remain blocked.',

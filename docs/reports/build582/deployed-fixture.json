@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-05T20:34:14.992Z",
+  "deployed_modules": [
+    {
+      "file": "server/dist/botWorkflows/routes.js",
+      "sha256": "eb402e405f54f8da2765003347ea0d107498274adad1d8248d1c3c390dedea8e"
+    },
+    {
+      "file": "server/dist/botWorkflows/purchaseEvents.js",
+      "sha256": "b904f68cdaf5975a4371f5fed5cb540e418a1cd93a82b769bb11bcf9615af9c4"
+    }
+  ],
+  "fixture_directory": "/Users/archerclawdington/veneer-os/out/build582/8774a23a-f313-4643-9a1d-9cf428143d74",
+  "post_status": 200,
+  "read_status": 200,
+  "invalid_signature_status": 401,
+  "intake": {
+    "ok": true,
+    "accepted": {
+      "schema_version": "lippert.purchase_candidate_receipt/v1",
+      "receipt_id": "a4448c55-d83e-41fe-8388-682e759bfd35",
+      "source_id": "656646c0-06fb-4466-a522-da4662d22132",
+      "event_id": "b4b2743d-fd0d-4eef-a6dd-720b681b8697",
+      "task_id": "bfcfa32b-eaf4-41a0-a73f-d19c9d393708",
+      "order_id": "1ee471f8-b411-4a23-a0af-a184eaeb4b51",
+      "order_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload_hash": "5f6c4069aa6ef6e2abe3e6840de821c1b154e089096eb5105550b1007fc60625",
+      "accepted_at": "2026-10-05T20:34:14.987Z",
+      "status": "accepted",
+      "purchase_authority": false
+    }
+  },
+  "retained": {
+    "receipt": {
+      "schema_version": "lippert.purchase_candidate_receipt/v1",
+      "receipt_id": "a4448c55-d83e-41fe-8388-682e759bfd35",
+      "source_id": "656646c0-06fb-4466-a522-da4662d22132",
+      "event_id": "b4b2743d-fd0d-4eef-a6dd-720b681b8697",
+      "task_id": "bfcfa32b-eaf4-41a0-a73f-d19c9d393708",
+      "order_id": "1ee471f8-b411-4a23-a0af-a184eaeb4b51",
+      "order_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload_hash": "5f6c4069aa6ef6e2abe3e6840de821c1b154e089096eb5105550b1007fc60625",
+      "accepted_at": "2026-10-05T20:34:14.987Z",
+      "status": "accepted",
+      "purchase_authority": false
+    },
+    "delivery": {
+      "status": "pending",
+      "batch_id": "6941c7e6-869a-4a11-b5db-9223a5152ebf",
+      "run_id": null,
+      "conversation_id": null,
+      "run_status": null,
+      "worker_started": false,
+      "worker_started_at": null,
+      "turn_id": null,
+      "blocked_reason": null,
+      "purchase_authority": false
+    }
+  },
+  "actual_worker_started": false,
+  "live_task_run": false,
+  "public_access_verified": false
+}

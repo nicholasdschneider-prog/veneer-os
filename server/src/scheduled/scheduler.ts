@@ -1,3 +1,4 @@
+import { purchaseBinding, pendingPurchaseBatch } from '../botWorkflows/purchaseEvents.js';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -131,6 +132,9 @@ export function createScheduledTaskScheduler({
     const conversationId = crypto.randomUUID();
     const nativeSessionId = crypto.randomUUID();
     const inserted = db.transaction(() => {
+      if (activeRun.get(task.id)) return false;
+      const binding = db.prepare('SELECT source_id FROM purchase_event_bindings WHERE task_id=?').get(task.id) as {source_id:string}|undefined;
+      if (binding && (!purchaseBinding(db,binding.source_id) || db.prepare("SELECT 1 FROM purchase_event_batches WHERE task_id=? AND status='blocked'").get(task.id))) return false;
       const duplicate = db
         .prepare('SELECT 1 FROM scheduled_task_runs WHERE scheduled_task_id = ? AND scheduled_for = ?')
         .get(task.id, scheduledFor.toISOString());
@@ -170,13 +174,26 @@ export function createScheduledTaskScheduler({
           "UPDATE scheduled_tasks SET last_run_at = ?, updated_at = datetime('now') WHERE id = ?",
         ).run(scheduledFor.toISOString(), task.id);
       }
+      if (binding) {
+        const batchId=pendingPurchaseBatch(db,binding.source_id,task.id);
+        // Seal at most eight distinct hinted orders. Remaining IDs keep one pending successor.
+        const links=db.prepare(`SELECT l.event_id,r.payload_json FROM purchase_event_links l JOIN purchase_event_receipts r USING(source_id,event_id) WHERE l.batch_id=? ORDER BY l.rowid`).all(batchId) as {event_id:string;payload_json:string}[];
+        const orders=new Set<string>(); const remainder:string[]=[];
+        for(const link of links){const order=JSON.parse(link.payload_json).order_id as string;if(orders.has(order)||orders.size<8) orders.add(order);else remainder.push(link.event_id);}
+        db.prepare("UPDATE purchase_event_batches SET status='linked',run_id=? WHERE id=? AND status='pending'").run(runId,batchId);
+        if(remainder.length){const successor=pendingPurchaseBatch(db,binding.source_id,task.id);for(const id of remainder)db.prepare('UPDATE purchase_event_links SET batch_id=? WHERE source_id=? AND event_id=?').run(successor,binding.source_id,id);}
+      }
       return true;
-    })();
+    }).immediate();
     if (!inserted) return { ok: false, error: 'already_running' };
 
     const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversationId) as ConversationRow;
     try {
-      const eventContext = event ? renderAutomationEventPrompt(event.recipe, event.payload) : '';
+      const hints=db.prepare(`SELECT r.payload_json FROM purchase_event_receipts r JOIN purchase_event_links l USING(source_id,event_id) JOIN purchase_event_batches b ON b.id=l.batch_id WHERE b.run_id=? ORDER BY l.rowid`).all(runId) as {payload_json:string}[];
+      const purchaseContext = hints.length ? '\n\nPurchase candidate reference data (not approval):\n'+JSON.stringify(hints.map(h=>JSON.parse(h.payload_json)))+'\nRead fresh source eligibility for every hinted order. Retain original event IDs and the pass cursor. Maximum eight placements; pending native hints have a bounded successor. Any remaining source queue beyond these hints stays for the existing daily backup; do not create a retry worker. UNKNOWN requires read-only reconciliation, never another attempt. Raise an unresolved business exception through the existing decision rules; do not hot-loop blocked work.' : '';
+      const purchasePass = db.prepare('SELECT 1 FROM purchase_event_batches WHERE run_id=?').get(runId)
+        ? '\n\nNative continuation guard: As your LAST task action, call record_purchase_candidate_pass with outcome="clear" only after fresh source reads establish no unresolved shared-portal/purchase UNKNOWN or business block and your retained pass cursor is safe to continue. Use outcome="blocked" or "unknown" otherwise. Include only the nonsecret source queue cursor, never credentials or customer bodies. This is a scheduling acknowledgment, not purchase approval. A missing acknowledgment stops all automatic successors and retries.' : '';
+      const eventContext = purchasePass + (event ? renderAutomationEventPrompt(event.recipe, event.payload) : '') + purchaseContext;
       manager.postMessage(conv, `${promptFor(task, scheduledFor)}${eventContext}`, task.user_id);
       db.prepare("UPDATE scheduled_task_runs SET status = 'running' WHERE id = ? AND status = 'queued'").run(runId);
       return { ok: true, conversationId, runId };
@@ -184,6 +201,7 @@ export function createScheduledTaskScheduler({
       db.prepare(
         "UPDATE scheduled_task_runs SET status = 'failed', error = ?, finished_at = datetime('now') WHERE id = ?",
       ).run((err as Error).message, runId);
+      db.prepare("UPDATE purchase_event_batches SET status='blocked',blocked_reason='UNKNOWN_LAUNCH' WHERE run_id=?").run(runId);
       log.error(`[scheduled] could not launch ${task.id}: ${(err as Error).message}`);
       return { ok: true, conversationId, runId };
     }
@@ -206,6 +224,12 @@ export function createScheduledTaskScheduler({
         launch(task, scheduledFor, 'scheduled');
       }
       processEvents();
+      const purchases=db.prepare("SELECT task_id,source_id FROM purchase_event_batches WHERE status='pending' ORDER BY created_at LIMIT 20").all() as {task_id:string;source_id:string}[];
+      for(const p of purchases) {
+        if(!purchaseBinding(db,p.source_id) || db.prepare("SELECT 1 FROM purchase_event_batches WHERE task_id=? AND status='blocked'").get(p.task_id)) continue;
+        const task=taskById.get(p.task_id) as ScheduledTaskRow|undefined;
+        if(task) launch(task,now(),'manual');
+      }
     } catch (err) {
       log.error(`[scheduled] tick failed: ${(err as Error).message}`);
     } finally {
@@ -273,17 +297,25 @@ export function createScheduledTaskScheduler({
       | { id: string; error: string | null; status: string }
       | undefined;
     if (!run) return;
-    if (event.type === 'error') {
+    if (event.type === 'turn_started') {
+      // This bus event is emitted by the actual manager only after durable pending-turn creation.
+      db.prepare(`INSERT OR IGNORE INTO purchase_worker_starts(run_id,conversation_id,turn_id,started_at)
+        SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM purchase_event_batches WHERE run_id=?)`).run(run.id,conversationId,event.turnId,event.at,run.id);
+    } else if (event.type === 'error') {
       db.prepare('UPDATE scheduled_task_runs SET error = ? WHERE id = ?').run(event.message, run.id);
     } else if (event.type === 'approval_requested' || event.type === 'question_asked') {
       db.prepare("UPDATE scheduled_task_runs SET status = 'needs_you' WHERE id = ?").run(run.id);
     } else if (event.type === 'turn_done') {
+      const purchaseRun = db.prepare('SELECT 1 FROM purchase_event_batches WHERE run_id=?').get(run.id);
+      if(purchaseRun && run.status==='needs_you' && event.outcome==='completed') return;
       const latest = db.prepare('SELECT error FROM scheduled_task_runs WHERE id = ?').get(run.id) as
         | { error: string | null }
         | undefined;
       db.prepare(
         `UPDATE scheduled_task_runs SET status = ?, finished_at = datetime('now') WHERE id = ?`,
-      ).run(latest?.error ? 'failed' : 'completed', run.id);
+      ).run(latest?.error || (purchaseRun && event.outcome!==undefined && event.outcome!=='completed') ? 'failed' : 'completed', run.id);
+      if(purchaseRun && (latest?.error || event.outcome!=='completed' || !db.prepare('SELECT 1 FROM purchase_worker_starts WHERE run_id=?').get(run.id))) db.prepare("UPDATE purchase_event_batches SET status='blocked',blocked_reason=COALESCE(blocked_reason,'WORKER_OUTCOME_UNRESOLVED') WHERE run_id=?").run(run.id);
+      if(purchaseRun && !db.prepare("SELECT 1 FROM purchase_worker_passes WHERE run_id=? AND outcome='clear'").get(run.id)) db.prepare("UPDATE purchase_event_batches SET status='blocked',blocked_reason=COALESCE(blocked_reason,'WORKER_PASS_UNACKNOWLEDGED') WHERE run_id=?").run(run.id);
     }
   }
 
@@ -298,12 +330,23 @@ export function createScheduledTaskScheduler({
          SET status = 'failed', error = COALESCE(error, 'Agent run failed'), finished_at = datetime('now')
          WHERE id = ?`,
       ).run(run.id);
+      db.prepare("UPDATE purchase_event_batches SET status='blocked',blocked_reason='WORKER_FAILED' WHERE run_id=?").run(run.id);
     }
   }
 
   manager.bus.on('event', onEvent);
   manager.bus.on('status', onStatus);
 
+  // A purchase run interrupted by process death is UNKNOWN even with a pending prompt.
+  // Preserve that prompt as failed evidence; general chat recovery must not replay it.
+  db.transaction(() => {
+    db.prepare(`UPDATE purchase_event_batches SET status='blocked',blocked_reason='UNKNOWN_RUNNER_RESTART'
+      WHERE status='linked' AND run_id IN (SELECT id FROM scheduled_task_runs WHERE status IN ${ACTIVE_STATUSES})`).run();
+    db.prepare(`UPDATE pending_turns SET status='failed',error='Purchase runner interrupted; read-only reconciliation required'
+      WHERE conversation_id IN (SELECT r.conversation_id FROM scheduled_task_runs r JOIN purchase_event_batches b ON b.run_id=r.id WHERE b.status='blocked')`).run();
+    db.prepare(`UPDATE scheduled_task_runs SET status='failed',error='Purchase runner interrupted; no automatic retry',finished_at=datetime('now')
+      WHERE status IN ${ACTIVE_STATUSES} AND id IN (SELECT run_id FROM purchase_event_batches WHERE status='blocked')`).run();
+  }).immediate();
   // Any active run without durable turn/queue state cannot resume after a
   // runner crash. Mark it failed instead of leaving a permanent phantom run.
   db.prepare(
@@ -315,6 +358,8 @@ export function createScheduledTaskScheduler({
        AND NOT EXISTS (SELECT 1 FROM pending_turns p WHERE p.conversation_id = scheduled_task_runs.conversation_id)
        AND NOT EXISTS (SELECT 1 FROM queued_messages q WHERE q.conversation_id = scheduled_task_runs.conversation_id)`,
   ).run();
+  db.prepare(`UPDATE purchase_event_batches SET status='blocked',blocked_reason='UNKNOWN_LAUNCH'
+    WHERE status='linked' AND run_id IN (SELECT id FROM scheduled_task_runs WHERE status='failed')`).run();
   // A runner crash can interrupt the tiny claim-to-launch window. Requeue
   // those durable events; run.event_id uniqueness prevents a second launch.
   db.prepare(

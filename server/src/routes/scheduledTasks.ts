@@ -1,3 +1,4 @@
+import { recordPurchasePass } from '../botWorkflows/purchaseEvents.js';
 import crypto from 'node:crypto';
 import express, { type Request, type Response, type Router } from 'express';
 import { z } from 'zod';
@@ -797,6 +798,12 @@ export function createScheduledTasksRouter(
       }
     })();
     res.json({ ok: true, archivedConversationId: run.conversation_id });
+  });
+
+  router.post('/purchase-candidate-pass', (req,res) => {
+    if(!req.agentConversationId) return void res.status(403).json({error:'Exact worker required'});
+    try { res.json(recordPurchasePass(db,req.agentConversationId,req.user!.id,req.body)); }
+    catch(e) { const error=e as Error & {status?:number};res.status(error.status??400).json({error:error.message}); }
   });
 
   router.post('/:id/run-now', (req, res) => {

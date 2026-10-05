@@ -520,6 +520,11 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'record_purchase_candidate_pass',
+    description: 'Only the exact existing purchase task worker may record its current pass. Call as the last task action after fresh source checks: clear permits a bounded pending native successor after successful turn completion; blocked or unknown permanently stops automatic continuation. Missing acknowledgment also stops continuation. This records scheduling evidence only, never purchase approval. Retain the nonsecret source queue cursor; never include credentials or customer data.',
+    inputSchema: { type: 'object', properties: { outcome: { type: 'string', enum: ['clear','blocked','unknown'] }, cursor: { type: ['string','null'], maxLength: 500 } }, required: ['outcome'], additionalProperties: false },
+  },
+  {
     name: 'update_scheduled_task_run',
     description:
       "Mark one past run important or not important by exact task id and run id. Important runs also surface in Chats. Use list_scheduled_task_runs first if the run id is unknown.",
@@ -1523,6 +1528,10 @@ async function callTool(
             '\n\nUse the exact task id and run id with update_scheduled_task_run or delete_scheduled_task_run. Never guess a run id.',
         }],
       };
+    }
+    if (name === 'record_purchase_candidate_pass') {
+      const result=await callApi('/api/scheduled-tasks/purchase-candidate-pass',{method:'POST',body:JSON.stringify(args)});
+      return {content:[{type:'text',text:JSON.stringify(result)}]};
     }
     if (name === 'update_scheduled_task_run') {
       const taskId = String(args.task_id ?? '').trim();

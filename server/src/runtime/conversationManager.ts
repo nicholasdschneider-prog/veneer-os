@@ -1,3 +1,4 @@
+import { purchaseBinding } from '../botWorkflows/purchaseEvents.js';
 import { coalescePeriodicChecks } from '../botWorkflows/periodicChecks.js';
 import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js';
 import { coordinationLane, coordinationFamily } from '../coordination/store.js';
@@ -1410,6 +1411,11 @@ export function createConversationManager({
     // Callers may have queued work before a provider switch. Always spawn from the current row.
     conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow;
     if (!conv) return;
+    const purchase = db.prepare(`SELECT b.source_id,b.status FROM purchase_event_batches b JOIN scheduled_task_runs r ON r.id=b.run_id WHERE r.conversation_id=?`).get(conv.id) as {source_id:string;status:string}|undefined;
+    if(purchase && (purchase.status==='blocked' || !purchaseBinding(db,purchase.source_id))) {
+      db.prepare("UPDATE purchase_event_batches SET status='blocked',blocked_reason=COALESCE(blocked_reason,'PURCHASE_BINDING_REVOKED') WHERE run_id IN (SELECT id FROM scheduled_task_runs WHERE conversation_id=?)").run(conv.id);
+      return;
+    }
     const lane = coordinationLane(db, conv.id);
     const family = coordinationFamily(db, conv.id);
     if (family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;

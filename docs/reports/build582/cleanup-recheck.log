@@ -1,0 +1,14 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run --run test/bots.test.ts -t delivers an ordinary rapid follow-up to a result reply through delayed native Codex startup
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/bots.test.ts (74 tests | 73 skipped) 167ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 73 skipped (74)
+   Start at  16:23:54
+   Duration  822ms (transform 352ms, setup 0ms, collect 511ms, tests 167ms, environment 0ms, prepare 23ms)
+

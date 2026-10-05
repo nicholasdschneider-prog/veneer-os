@@ -1,3 +1,4 @@
+import { acceptPurchaseEvent, readPurchaseEvent } from './purchaseEvents.js';
 import { teachingAudioRouter } from './teachingAudio.js';
 import { botFeatureCatalog } from '../featureGuide/catalog.js';
 import crypto from 'node:crypto';
@@ -430,6 +431,16 @@ export function createBotWorkflowsRouter(ctx: AppContext) {
 }
 export function createBotEventsWebhook(ctx: AppContext) {
   const router = express.Router();
+  router.get('/:source/purchase-events/:event', (req,res) => {
+    res.set('Cache-Control','no-store');
+    const stamp=String(req.headers['x-veneer-timestamp']??''),signature=String(req.headers['x-veneer-signature']??'');
+    const pathname=`/webhooks/bot-events/${req.params.source}/purchase-events/${req.params.event}`;
+    if (!/^\d{10}$/.test(stamp) || Math.abs(Date.now()/1000-Number(stamp))>300 || !/^[a-f0-9]{64}$/.test(signature) || req.originalUrl!==pathname) return void res.sendStatus(401);
+    const key=ctx.secrets.getApiKeyOverride(`bot-event-source-${req.params.source}`);
+    if (!key || !crypto.timingSafeEqual(crypto.createHmac('sha256',key).update(stamp+'.GET.'+pathname).digest(),Buffer.from(signature,'hex'))) return void res.sendStatus(401);
+    try { res.json(readPurchaseEvent(ctx.db,req.params.source!,req.params.event!)); }
+    catch(e) { res.status(e instanceof BotError?e.status:400).json({error:e instanceof BotError?e.message:'Event rejected'}); }
+  });
   router.post(
     '/:source',
     express.raw({ type: 'application/json', limit: '16kb' }),
@@ -463,6 +474,12 @@ export function createBotEventsWebhook(ctx: AppContext) {
         return;
       }
       try {
+        const payload = JSON.parse(raw.toString('utf8'));
+        if (payload?.type === 'order.purchase_candidate' || payload?.schema_version === 'lippert.purchase_candidate/v1') {
+          const accepted = acceptPurchaseEvent(ctx.db,req.params.source!,payload);
+          res.set('Cache-Control','no-store').json({ok:true,accepted});
+          return;
+        }
         const result = acceptEventDetailed(
           ctx.db,
           req.params.source!,

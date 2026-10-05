@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-05T20:35:29.092Z",
+  "migration": {
+    "name": "0150_purchase_candidate_events.sql",
+    "applied_at": "2026-10-05 20:33:22",
+    "content_hash": "8f4aa4df441ce513dc6581406c6ba34ed13ecddcd826ee5f879a0c220db726d2"
+  },
+  "services": [
+    {
+      "service": "veneer-pro",
+      "process": "27385 Mon Oct  5 16:33:22 2026     /opt/homebrew/opt/node@24/bin/node"
+    },
+    {
+      "service": "veneer-pro-runner",
+      "process": "27422 Mon Oct  5 16:33:25 2026     /opt/homebrew/opt/node@24/bin/node"
+    },
+    {
+      "service": "veneer-pro-app-runner",
+      "process": "28631 Mon Oct  5 16:34:13 2026     /opt/homebrew/opt/node@24/bin/node"
+    },
+    {
+      "service": "veneer-pro-term",
+      "process": "28647 Mon Oct  5 16:34:14 2026     /opt/homebrew/opt/node@24/bin/node"
+    }
+  ],
+  "live_readonly_fixture_probe": {
+    "method": "GET",
+    "path": "/webhooks/bot-events/1441a7bc-7697-43ee-9dd8-cb540758fad5/purchase-events/9c7a0671-d62c-4cfe-b39d-0359ec55b474",
+    "status": 401,
+    "valid_credentials_used": false,
+    "live_mutation": false
+  },
+  "source_files": [
+    {
+      "file": "server/src/botWorkflows/purchaseEvents.ts",
+      "sha256": "1ca25121c483b4dd9fd77d4083a88f62f27924a327e8593c99b40646b3431866"
+    },
+    {
+      "file": "server/src/botWorkflows/routes.ts",
+      "sha256": "4b2eb67e7fdd7cdfdd120b56f1b1c7b81d7431c359d8cfda97d06ef644404736"
+    },
+    {
+      "file": "server/src/runtime/conversationManager.ts",
+      "sha256": "84aeeac7817b7dc08b2fbd62378aadc84f0d578ac82af7613316dc929d331287"
+    },
+    {
+      "file": "server/src/scheduled/scheduler.ts",
+      "sha256": "947d6d1cad312e563b575cd66b3d3ba6e59c06451ef152c86e14302293569815"
+    },
+    {
+      "file": "server/src/mcp/agentToolsServer.ts",
+      "sha256": "a7a0f9c7e56c37aeec2d9063c4e7ff2ce867f14a3e7cca1fa877ca382c01aa1a"
+    }
+  ]
+}

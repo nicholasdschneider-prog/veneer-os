@@ -41,7 +41,9 @@ describe('scheduled-agent MCP tools', () => {
         const requestPath = req.url ?? '';
         requests.push({ method: req.method ?? 'GET', path: requestPath, body });
         res.setHeader('content-type', 'application/json');
-        if (req.method === 'POST' && requestPath === '/api/scheduled-tasks') {
+        if (req.method === 'POST' && requestPath === '/api/scheduled-tasks/purchase-candidate-pass') {
+          res.end(JSON.stringify({recorded:true,outcome:body.outcome,purchase_authority:false}));
+        } else if (req.method === 'POST' && requestPath === '/api/scheduled-tasks') {
           res.end(JSON.stringify({ ok: true, scheduledTask: taskView(body) }));
         } else if (req.method === 'PATCH' && requestPath === '/api/scheduled-tasks/task-1') {
           res.end(JSON.stringify({ ok: true, scheduledTask: taskView(body) }));
@@ -176,6 +178,7 @@ describe('scheduled-agent MCP tools', () => {
       'update_scheduled_task',
       'list_scheduled_task_runs',
       'update_scheduled_task_run',
+      'record_purchase_candidate_pass',
       'run_scheduled_task_now',
       'delete_scheduled_task_run',
       'delete_scheduled_task',
@@ -275,6 +278,12 @@ describe('scheduled-agent MCP tools', () => {
         schedule: { type: 'weekly', time: '14:30', weekday: 5 },
       },
     });
+  }, SPAWN_HEAVY_TIMEOUT_MS);
+
+  it('maps the worker scheduling acknowledgment without accepting a caller-chosen executor', async () => {
+    const response=await callTool('record_purchase_candidate_pass',{outcome:'unknown',cursor:'synthetic-cursor'});
+    expect(requests).toEqual([{method:'POST',path:'/api/scheduled-tasks/purchase-candidate-pass',body:{outcome:'unknown',cursor:'synthetic-cursor'}}]);
+    expect(response.result.content?.[0]?.text).toContain('"purchase_authority":false');
   }, SPAWN_HEAVY_TIMEOUT_MS);
 
   it('maps run history, run updates, run-now, and both delete actions to the owner-scoped API', async () => {

@@ -1,0 +1,79 @@
+{
+  "at": "2026-10-05T20:34:33.040Z",
+  "binding": [
+    {
+      "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+      "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+      "team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+      "owner_id": 1,
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c"
+    }
+  ],
+  "schema": [
+    {
+      "name": "purchase_event_batches"
+    },
+    {
+      "name": "purchase_event_bindings"
+    },
+    {
+      "name": "purchase_event_links"
+    },
+    {
+      "name": "purchase_event_receipts"
+    },
+    {
+      "name": "purchase_timing_captures"
+    },
+    {
+      "name": "purchase_timing_claims"
+    },
+    {
+      "name": "purchase_timing_revocations"
+    },
+    {
+      "name": "purchase_timing_trust"
+    },
+    {
+      "name": "purchase_worker_passes"
+    },
+    {
+      "name": "purchase_worker_starts"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+      "user_id": 1,
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "assistant_id": 1,
+      "provider": "claude",
+      "model": "claude-fable-5-1",
+      "effort": "medium",
+      "enabled": 1,
+      "trigger_kind": "schedule",
+      "schedule_json": "{\"type\":\"cron\",\"expression\":\"0 9 * * *\"}",
+      "timezone": "America/New_York",
+      "prompt_sha256": "f4cd66ffdb0e9ade309125ac9492fb9c22689ffd5ad0ef199ba3a5a3004156d4"
+    },
+    {
+      "id": "7eeb9d29-7f20-4470-8078-d91e4411b55f",
+      "user_id": 1,
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "assistant_id": 1,
+      "provider": "codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "enabled": 1,
+      "trigger_kind": "schedule",
+      "schedule_json": "{\"type\":\"cron\",\"expression\":\"0 7,11,15,19 * * *\"}",
+      "timezone": "America/New_York",
+      "prompt_sha256": "e238ccb57f1c4cedaf3b2763974d3dfd96b27a495eca22946307d392b8307ad5"
+    }
+  ],
+  "task_settings_unchanged": true,
+  "liveEvents": {
+    "n": 0
+  },
+  "purchasingRunsSinceRestart": []
+}

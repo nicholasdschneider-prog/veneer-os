@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-05T20:22:35.239Z",
+  "tasks": [
+    {
+      "id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+      "user_id": 1,
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "assistant_id": 1,
+      "provider": "claude",
+      "model": "claude-fable-5-1",
+      "effort": "medium",
+      "enabled": 1,
+      "trigger_kind": "schedule",
+      "schedule_json": "{\"type\":\"cron\",\"expression\":\"0 9 * * *\"}",
+      "timezone": "America/New_York",
+      "prompt_sha256": "f4cd66ffdb0e9ade309125ac9492fb9c22689ffd5ad0ef199ba3a5a3004156d4"
+    },
+    {
+      "id": "7eeb9d29-7f20-4470-8078-d91e4411b55f",
+      "user_id": 1,
+      "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "assistant_id": 1,
+      "provider": "codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "enabled": 1,
+      "trigger_kind": "schedule",
+      "schedule_json": "{\"type\":\"cron\",\"expression\":\"0 7,11,15,19 * * *\"}",
+      "timezone": "America/New_York",
+      "prompt_sha256": "e238ccb57f1c4cedaf3b2763974d3dfd96b27a495eca22946307d392b8307ad5"
+    }
+  ],
+  "source": {
+    "id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+    "team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+    "created_by": 1,
+    "enabled": 1
+  },
+  "team": {
+    "id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+    "owner_id": 1
+  },
+  "user": {
+    "id": 1,
+    "status": "active",
+    "role": "owner"
+  },
+  "projects": [
+    {
+      "id": "dc6e8855-584a-4945-8bc0-718780ae767f",
+      "slug": "veneer",
+      "name": "Veneer"
+    },
+    {
+      "id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+      "slug": "ervp",
+      "name": "ERVP"
+    }
+  ]
+}

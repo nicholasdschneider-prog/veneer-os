@@ -1,0 +1,17 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run --run test/purchaseEvents.test.ts test/agentScheduledTaskTools.test.ts test/botFeatureGuide.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/botFeatureGuide.test.ts (31 tests) 18ms
+ ✓ test/agentScheduledTaskTools.test.ts (6 tests) 1505ms
+   ✓ scheduled-agent MCP tools > maps run history, run updates, run-now, and both delete actions to the owner-scoped API 492ms
+ ✓ test/purchaseEvents.test.ts (13 tests) 1063ms
+
+ Test Files  3 passed (3)
+      Tests  50 passed (50)
+   Start at  16:27:57
+   Duration  2.24s (transform 530ms, setup 0ms, collect 990ms, tests 2.59s, environment 0ms, prepare 629ms)
+
