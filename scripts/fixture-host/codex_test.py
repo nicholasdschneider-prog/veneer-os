@@ -22,7 +22,7 @@ class CodexBoundary(unittest.TestCase):
             self.observations.append({'kind': 'real_native_preauth', 'receipt': receipt})
             self.assertFalse(receipt['nativeAdmission'])
             self.assertEqual(receipt['hosts']['worker']['credentialStore'], 'ephemeral')
-            self.assertEqual(receipt['hosts']['dedicated-auth']['credentialStore'], 'file')
+            self.assertEqual(receipt['hosts']['dedicated-auth']['credentialStore'], 'ephemeral')
             worker = root / 'worker'
             secret = root / 'dedicated-auth' / 'codex' / 'auth.json'
             secret.write_text('SYNTHETIC-NOT-A-CREDENTIAL')
@@ -56,8 +56,17 @@ class CodexBoundary(unittest.TestCase):
                 cross = boundary.observation(boundary.run(['/usr/bin/sandbox-exec','-p',policy,*cross_args],
                                                            worker,codex.environment(worker)))
                 self.assertEqual(cross['deniedReadErrno'],1)
+                own_cache = worker / 'codex' / 'auth.json'
+                own_cache.write_text('SYNTHETIC-NOT-A-CREDENTIAL')
+                own_args = [*args]; own_args[2] = str(own_cache); own_args[3] = str(own_cache)
+                own = boundary.observation(boundary.run(['/usr/bin/sandbox-exec','-p',policy,*own_args],
+                                                         worker,codex.environment(worker)))
+                self.assertEqual(own['deniedReadErrno'],1)
+                self.assertEqual(own['deniedWriteErrno'],1)
+                own_cache.unlink()
                 self.observations.append({'kind':'same_policy_synthetic_denials',
-                    'control':control,'active':observed,'descendantDiagnostic':descendant,'crossSession':cross})
+                    'control':control,'active':observed,'descendantDiagnostic':descendant,'crossSession':cross,
+                    'ownCredentialFileDenied':own})
             client = codex.PreauthClient(worker,root / 'worker.sb')
             try:
                 for method in ['thread/start','turn/start','account/login/start','command/exec',

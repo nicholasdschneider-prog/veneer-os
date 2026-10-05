@@ -1,0 +1,66 @@
+{
+  "schema": "fixture-build581/v1",
+  "at": "2026-10-05T20:08:16.816878+00:00",
+  "baseCommit": "ce792c02b3b4d78d03f4596325fc1e547ce9e21a",
+  "queue": {
+    "workspace": "Veneer",
+    "number": 581,
+    "verifiedActiveBeforeEdits": true
+  },
+  "checks": {
+    "typecheck": {
+      "exitCode": 0,
+      "log": "typecheck-final.log"
+    },
+    "scoped": {
+      "exitCode": 0,
+      "passed": 57,
+      "log": "scoped-tests.log"
+    },
+    "full": {
+      "exitCode": 0,
+      "installer": 29,
+      "server": 3424,
+      "serverSkipped": 15,
+      "web": 1008,
+      "browser": 51,
+      "log": "full-tests.log"
+    },
+    "build": {
+      "exitCode": 0,
+      "log": "build.log"
+    }
+  },
+  "syntheticOnly": true,
+  "nativeAuthAccepted": false,
+  "nativeInferenceAccepted": false,
+  "signInStarted": false,
+  "modelsStarted": false,
+  "installed": false,
+  "restarted": false,
+  "fixtureAdmission": false,
+  "sourceSha256": {
+    "scripts/fixture-host/codex.py": "a3f0329ad5e1828b89ccc20cd39843cfbb6c3114f0d9a8a4a5f8d7190a9ad607",
+    "scripts/fixture-host/codex_test.py": "30f481d63dad2d5f9d1dcc25c6b9dfb7a3d36162a738a14102115134bc6391fe",
+    "scripts/fixture-host/egress.py": "9b20fa09a03a675a92d68800fb9d97dcc57d93d42c68f2956d8417566b67683a",
+    "scripts/fixture-host/egress_test.py": "793077f82e075f5f79db17e0cbe3c83c8434f1d12dee2703668a81b34d5184d8",
+    "scripts/fixture-host/egress-socket-probe.c": "f7a7572e53b0a5dd87ecbc0a7697ddcfa2253e706fa2590455094848d06bea5f",
+    "server/src/fixtureTests/codexSetup.ts": "db7be5a8aa8a85679bf253f60e5fce3b677e84b053d76252712bf7828d514c75",
+    "server/test/fixtureCodexSetup.test.ts": "4c66bec72ae757b95974218e41a1573a6b75ced679f8ab93ec1c8a100b2b1af5",
+    "server/test/fixtureEgress.test.ts": "59e3d74fd9c41ff3d669ed9830e8de9b871b3f75f5c9cf26bdeaab14f1639f49",
+    "server/src/featureGuide/catalog.ts": "212a2f22823d5b78b56f3a29cc0fbdaf734f0377a62ba40e086d8b1f9d00e265"
+  },
+  "evidenceSha256": {
+    "typecheck-final.log": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "typecheck.log": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "scoped-tests.log": "058d3ec70c7b2f460e38ccc77fe246fd6700b76f67c10c72edf887bdd8108d7b",
+    "full-tests.log": "ee51e4be1be6978681cacfd4e52946b09754f198e83a7c52e58fcb02f278fd2b",
+    "full-tests-initial.log": "ecefa00719d1832e9b2a8dd6abae9b7d6dda7a54481086ee95d42b8beaa11c99",
+    "egress-acceptance-final.json": "5dd39c0d14c6a318544aff63e8331c5a997e309d00ae14616d797b0af92434e8",
+    "native-acceptance.json": "ec4cb8d9db68afe857c4a364b614f744fbf7c7cbdc7d18df17ae445623100bbe",
+    "egress-acceptance-verified.json": "21523ae1a2b59689f35bc299f713ef40f6a89e8a8b3ae0a0f6c56afe272ea34b",
+    "acceptance-final.json": "7e3bee8243f88e1b8cccf1423c44f59ffeceee398bfe738b2de14ee4c6680a81",
+    "egress-acceptance.json": "3369ba9ac23a29993410c5d2c53126fea4e4e099f842cbec2b24800251c820a3",
+    "build.log": "d3bea40e0486b7d765f7a3c1b6a771f927c80b5a789c6ee9835f5da1f89b5219"
+  }
+}

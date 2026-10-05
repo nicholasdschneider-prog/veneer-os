@@ -1,0 +1,206 @@
+{
+  "schema": "fixture-synthetic-egress/v1",
+  "createdAt": "2026-10-05T19:57:12.137853+00:00",
+  "passed": true,
+  "tests": 4,
+  "syntheticOnly": true,
+  "nativeAuthAccepted": false,
+  "nativeInferenceAccepted": false,
+  "realSignInStarted": false,
+  "productionInstalled": false,
+  "observations": [
+    {
+      "kind": "synthetic_tls_route",
+      "host": "auth.openai.com",
+      "path": "/api/accounts/deviceauth/usercode",
+      "receipt": {
+        "id": "a5a738e6-15a5-4f8c-96ed-ecfaf201983f",
+        "phase": "device-start",
+        "status": 200,
+        "outcome": "SYNTHETIC_ACCEPTED",
+        "replayAllowed": false,
+        "nativeAcceptance": false
+      }
+    },
+    {
+      "kind": "synthetic_tls_route",
+      "host": "auth.openai.com",
+      "path": "/api/accounts/deviceauth/token",
+      "receipt": {
+        "id": "4ffd5263-b399-48cf-8b88-995165fc5117",
+        "phase": "device-poll",
+        "status": 200,
+        "outcome": "SYNTHETIC_ACCEPTED",
+        "replayAllowed": false,
+        "nativeAcceptance": false
+      }
+    },
+    {
+      "kind": "synthetic_tls_route",
+      "host": "auth.openai.com",
+      "path": "/oauth/token",
+      "receipt": {
+        "id": "2696bcaa-9188-4867-a24c-24f019e5042b",
+        "phase": "token",
+        "status": 200,
+        "outcome": "SYNTHETIC_ACCEPTED",
+        "replayAllowed": false,
+        "nativeAcceptance": false
+      }
+    },
+    {
+      "kind": "synthetic_tls_route",
+      "host": "chatgpt.com",
+      "path": "/backend-api/codex/responses",
+      "receipt": {
+        "id": "2d22d201-3155-4f25-a178-aae21b357dd3",
+        "phase": "inference",
+        "status": 200,
+        "outcome": "SYNTHETIC_ACCEPTED",
+        "replayAllowed": false,
+        "nativeAcceptance": false
+      }
+    },
+    {
+      "kind": "kernel_exact_socket",
+      "control": {
+        "allowedTcp": 0,
+        "alternateTcp": 0,
+        "alternateUdp": 0
+      },
+      "active": {
+        "allowedTcp": 0,
+        "alternateTcp": 1,
+        "alternateUdp": 1
+      },
+      "profileSha256": "839007ae2e5b5e09ae45e887996fcd4426b454d0325eaf307e1183ec7131dbb3"
+    },
+    {
+      "kind": "proxy_profile_credential_and_effect_denials",
+      "active": {
+        "booted": true,
+        "allowedReadErrno": 0,
+        "deniedReadErrno": 1,
+        "deniedWriteErrno": 1,
+        "deniedTcpErrno": 1,
+        "deniedUnixErrno": 1,
+        "ownSpawnErrno": 1,
+        "otherSpawnErrno": 1,
+        "forkResult": 1,
+        "allowedWriteErrno": 0,
+        "symlinkReadErrno": 1,
+        "fd3Closed": true,
+        "parentMarkerAbsent": true
+      }
+    },
+    {
+      "kind": "native_proxy_environment_preauth",
+      "initialized": {
+        "userAgent": "veneer_fixture_preauth/0.145.0 (Mac OS 27.0.1; arm64) unknown (veneer_fixture_preauth; 1.0.0)",
+        "privateCodexHomeVerified": true
+      },
+      "events": [
+        {
+          "kind": "process_spawned",
+          "monotonicNs": 4289668041
+        },
+        {
+          "kind": "rpc_sent",
+          "monotonicNs": 4289716916,
+          "method": "initialize",
+          "requestId": 1
+        },
+        {
+          "kind": "rpc_returned",
+          "monotonicNs": 4356874583,
+          "method": "initialize",
+          "requestId": 1
+        },
+        {
+          "kind": "rpc_sent",
+          "monotonicNs": 4356943166,
+          "method": "account/read",
+          "requestId": 2
+        },
+        {
+          "kind": "rpc_returned",
+          "monotonicNs": 4358039166,
+          "method": "account/read",
+          "requestId": 2
+        },
+        {
+          "kind": "rpc_sent",
+          "monotonicNs": 4358059125,
+          "method": "config/read",
+          "requestId": 3
+        },
+        {
+          "kind": "rpc_returned",
+          "monotonicNs": 4359282583,
+          "method": "config/read",
+          "requestId": 3
+        },
+        {
+          "kind": "process_exited",
+          "monotonicNs": 4380204541,
+          "exitCode": 0
+        }
+      ],
+      "inferenceCompatible": null,
+      "authCompatible": null,
+      "publicCaSha256": "12f44bbc5f1580d69da66a049d87abf069a34556edac4d48e48442ddbda3b9f6"
+    },
+    {
+      "kind": "synthetic_failure",
+      "failure": "redirect",
+      "receipt": {
+        "id": "f7c42721-02b1-4e93-b50e-8aaa5dc06f09",
+        "phase": "device-start",
+        "status": null,
+        "outcome": "UNKNOWN",
+        "replayAllowed": false,
+        "nativeAcceptance": false
+      }
+    },
+    {
+      "kind": "synthetic_failure",
+      "failure": "429",
+      "receipt": {
+        "id": "5a20cc8a-a17a-44e0-835e-348bd32bdc95",
+        "phase": "device-start",
+        "status": 429,
+        "outcome": "REJECTED",
+        "replayAllowed": false,
+        "nativeAcceptance": false
+      }
+    },
+    {
+      "kind": "synthetic_failure",
+      "failure": "cutoff",
+      "receipt": {
+        "id": "7f54ec0d-3a04-4356-a6ec-2e022e665eef",
+        "phase": "device-start",
+        "status": null,
+        "outcome": "UNKNOWN",
+        "replayAllowed": false,
+        "nativeAcceptance": false
+      }
+    },
+    {
+      "kind": "tls_identity_scope_admission",
+      "alternateCaRejected": true,
+      "unexpectedSniRejected": true,
+      "proxyAuthorizationRejected": true,
+      "forgedHeaderRejected": true,
+      "pendingCap": 5,
+      "bodyOrSecretsLogged": false
+    }
+  ],
+  "assets": {
+    "egress.py": "22fb4fbf12ce3d39837b4e9edfe52966e8832d8e1891723d31a9146c07420ad7",
+    "egress_test.py": "725c58007ff6a075a37e3eccdc5f30c86bd2671f7d4b61ebdc8d6fb46e425242",
+    "egress-socket-probe.c": "f7a7572e53b0a5dd87ecbc0a7697ddcfa2253e706fa2590455094848d06bea5f",
+    "codex.py": "a3f0329ad5e1828b89ccc20cd39843cfbb6c3114f0d9a8a4a5f8d7190a9ad607",
+    "bootstrap.py": "677dd4504a3f87b2b9d0612c1a478555aee67650f1176df56dd7b8885253769e"
+  }
+}

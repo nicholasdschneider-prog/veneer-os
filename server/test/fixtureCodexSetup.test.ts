@@ -23,7 +23,7 @@ describe('isolated native Codex pre-auth coupling', () => {
       const evidence = setup.payload.evidence as any;
       expect(evidence.hosts.worker.accountAbsent).toBe(true);
       expect(evidence.hosts.worker.credentialStore).toBe('ephemeral');
-      expect(evidence.hosts['dedicated-auth'].credentialStore).toBe('file');
+      expect(evidence.hosts['dedicated-auth'].credentialStore).toBe('ephemeral');
       const device = s.deviceSetup(1,setup.payload.id as string);
       expect(device.ready).toBe(false); expect(device.execute).toBe(false);
       expect(device.nativeParams).toEqual({type:'chatgptDeviceCode'});

@@ -50,7 +50,8 @@ def host_profile(work, executable=BINARY):
     # Reuse the verified boundary. Metadata resolves absent global requirements;
     # existing unreadable requirements are NOT opened or ignored as acceptance.
     return boundary.profile(executable, work) + '(allow file-read-metadata ' + ''.join(
-        '(literal ' + boundary.quote(p) + ')' for p in [*work.parents, *REQUIREMENTS_METADATA]) + ')\n'
+        '(literal ' + boundary.quote(p) + ')' for p in [*work.parents, *REQUIREMENTS_METADATA]) + ')\n' + \
+        '(deny file-read-data file-write* (literal ' + boundary.quote(work / 'codex' / 'auth.json') + '))\n'
 
 
 def environment(work):
@@ -91,7 +92,7 @@ class PreauthClient:
         self.bytes = 0
         self.child = subprocess.Popen(
             ['/usr/bin/sandbox-exec', '-f', str(profile_path), str(BINARY), *BASE_ARGS,
-             '-c', 'cli_auth_credentials_store="' + ('file' if auth else 'ephemeral') + '"'],
+             '-c', 'cli_auth_credentials_store="ephemeral"'],
             cwd=work, env=environment(work), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, close_fds=True, start_new_session=True, preexec_fn=codex_limits)
         self.selector = selectors.DefaultSelector()
@@ -211,7 +212,7 @@ def preflight(root):
                 raise RuntimeError('CODEX_NONEMPTY_AUTH_HOME')
             config = client.send('config/read', {'includeLayers': False})
             effective = config['config']
-            store = 'file' if name == 'dedicated-auth' else 'ephemeral'
+            store = 'ephemeral'
             if effective.get('cli_auth_credentials_store') != store:
                 raise RuntimeError('CODEX_CREDENTIAL_STORE_UNACCEPTED')
             result['hosts'][name] = {**initialized, 'accountAbsent': True,

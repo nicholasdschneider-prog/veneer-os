@@ -12,8 +12,9 @@ invoked directly to avoid granting wrapper subprocesses. Inventory permits only
 the observed System/usr-lib linked resources. Root-directory reads and exact
 ancestor metadata resolve native bootstrap. Existing unreadable global
 requirements cause rejection; metadata permission only handles absence.
-Worker storage is ephemeral; dedicated auth storage is file-based in a separate
-private home. No keyring, shared config, shared auth, env token or credential
+Both worker and dedicated auth storage are ephemeral in separate private homes.
+The native profile explicitly denies reading/writing its own auth.json, even
+inside the otherwise writable private home. No keyring, shared config, shared auth, env token or credential
 copy is used. Effective configuration and account absence are verified over real
 app-server RPC. Its 32 MiB file limit accommodates private SQLite startup;
 the earlier 1 MiB limit produced SIGXFSZ and was a bootstrap failure.
@@ -89,7 +90,7 @@ setup if either observation is missing. This does not inspect any existing
 credential process. An initially considered OS-principal fallback was withdrawn
 after the narrow policy repair succeeded; no accounts or installer were run.
 
-Worker ephemeral state, separate dedicated-auth file storage, outside-file and
+Ephemeral native state, explicit credential-file denial, outside-file and
 process-environment denials establish pre-auth boundaries, not a completed native
 credential bridge. protectedCredentialBoundaryReady remains false, with
 PROTECTED_NATIVE_AUTH_BRIDGE_UNACCEPTED and AUTH_INFERENCE_EGRESS_UNACCEPTED.
@@ -97,8 +98,16 @@ Codex 0.145.0's locally generated external-token schema is explicitly marked
 internal/unsupported, so it is not used as an auth bridge. No credential values
 were read/copied or passed into an unaccepted native session.
 
-Next engineering must implement an approved protected native auth/refresh bridge
-and exact inference egress mediation, connect the fixture peer to actual dynamic
+Build 581 stages a runnable synthetic TLS mediation component and native proxy/CA
+pre-auth compatibility checks. Read [AUTH_EGRESS.md](./AUTH_EGRESS.md) for the
+exact enforced boundaries and remaining native wire acceptance. No separate
+token injection or auth-file bridge is planned: supported native-managed device
+auth and refresh will remain in a single trusted ephemeral process. Real
+compatibility, private owner device-flow transport and approved request
+authorization remain unaccepted; this is not an active sign-in capability.
+
+Next engineering must accept native auth/refresh and inference wire mediation,
+connect the fixture peer to actual dynamic
 native tool requests, and bind the genuine permanent role-chat capture receipt.
 Only after those concrete boundaries are accepted does the actual owner perform
 supported device sign-in in the dedicated setup. Do not sign in yet or ask Nick

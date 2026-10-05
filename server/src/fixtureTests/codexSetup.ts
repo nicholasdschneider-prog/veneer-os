@@ -157,7 +157,7 @@ export class CodexFixtureSetup {
       const evidence = nativeSchema.parse(JSON.parse(await this.python('codex.py', ['--state',state])));
       return this.record(owner,'setup',requestKey,{}, {
         id: setupId, evidence, state, admission: false, deviceSignInReady: false,
-        assets: Object.fromEntries(['codex.py','bootstrap.py','peer.py','peer.cjs','process-env-probe.c'].map(f =>
+        assets: Object.fromEntries(['codex.py','bootstrap.py','peer.py','peer.cjs','process-env-probe.c','egress.py'].map(f =>
           [f,hash(fs.readFileSync(path.join(this.sourceDir,'scripts/fixture-host',f)))])),
       });
     } finally { this.busy = false; }
@@ -287,6 +287,8 @@ export class CodexFixtureSetup {
     const setup = this.row(owner,setupId,'setup'); this.checkAssets(setup);
     return { setupId, nativeMethod:'account/login/start', nativeParams:{type:'chatgptDeviceCode'},
       credentialHome:path.join(setup.state as string,'dedicated-auth','codex'),
+      credentialStore:'ephemeral', credentialFilePermitted:false, refreshOwner:'native-managed-process',
+      restartRequiresNewOwnerSignIn:true,
       sharedCredentialsPermitted:false, execute:false, ready:false,
       blockers:['PROTECTED_NATIVE_AUTH_BRIDGE_UNACCEPTED','AUTH_INFERENCE_EGRESS_UNACCEPTED'] };
   }
