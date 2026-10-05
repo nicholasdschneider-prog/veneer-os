@@ -1,0 +1,15 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run --run test/fixturePreparation.test.ts test/botFeatureGuide.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/botFeatureGuide.test.ts (31 tests) 15ms
+ ✓ test/fixturePreparation.test.ts (21 tests) 84ms
+
+ Test Files  2 passed (2)
+      Tests  52 passed (52)
+   Start at  14:23:23
+   Duration  382ms (transform 93ms, setup 0ms, collect 197ms, tests 100ms, environment 0ms, prepare 77ms)
+

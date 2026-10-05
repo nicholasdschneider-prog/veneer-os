@@ -1,0 +1,153 @@
+{
+  "schema": "veneer-fixture-host-substrate-probe/v1",
+  "build": 578,
+  "at": "2026-10-05T18:17:56.206178+00:00",
+  "platform": "Darwin",
+  "architecture": "arm64",
+  "probes": [
+    {
+      "probe": "unsandboxed-empty-env",
+      "exit_code": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 2148000,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "unsandboxed-scrubbed-env",
+      "exit_code": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 1676542,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "sandbox-allow-default-empty-env",
+      "exit_code": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 7241417,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "sandbox-allow-default-scrubbed-env",
+      "exit_code": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 7085042,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "sandbox-deny-default-scrubbed-env",
+      "exit_code": -6,
+      "signal": "SIGABRT",
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 6548083,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    }
+  ],
+  "available_on_path": {
+    "sandbox-exec": true,
+    "vfkit": false,
+    "limactl": false,
+    "qemu-system-aarch64": false,
+    "podman": false,
+    "docker": false
+  },
+  "isolation_enforcement_verified": false,
+  "native_model_measurements": null,
+  "credential_access_attempted": false,
+  "business_effects_attempted": false,
+  "shared_provider_started": false,
+  "followup_controls": [
+    {
+      "probe": "deny-default-runtime-basics",
+      "profile": "(version 1)(deny default)(allow process-exec (literal \"/usr/bin/true\"))(allow sysctl-read)(allow file-read-metadata)(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/usr/bin/true\"))(allow file-write-data)",
+      "at": "2026-10-05T18:23:22.920583+00:00",
+      "exit_code": -6,
+      "signal": "SIGABRT",
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 8807250,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "deny-default-runtime-mach-control",
+      "profile": "(version 1)(deny default)(allow process-exec (literal \"/usr/bin/true\"))(allow sysctl-read)(allow file-read-metadata)(allow mach-lookup)(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/usr/bin/true\"))(allow file-write-data)",
+      "at": "2026-10-05T18:23:22.927963+00:00",
+      "exit_code": -6,
+      "signal": "SIGABRT",
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 7253459,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "deny-default-broad-runtime-control",
+      "profile": "(version 1)(deny default)(allow file-read* file-write* process* sysctl-read mach-lookup)",
+      "at": "2026-10-05T18:23:22.935506+00:00",
+      "exit_code": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 7539250,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "deny-default-system-runtime-control",
+      "profile": "(version 1)(deny default)(allow process* sysctl-read mach-lookup)(allow file-read* (subpath \"/System\") (subpath \"/usr\"))(allow file-write*)",
+      "at": "2026-10-05T18:23:22.942157+00:00",
+      "exit_code": -6,
+      "signal": "SIGABRT",
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 6649041,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    },
+    {
+      "probe": "deny-default-exec-star-control",
+      "profile": "(version 1)(deny default)(allow process-exec* (subpath \"/usr\"))(allow sysctl-read)(allow file-read* (subpath \"/System\") (subpath \"/usr\"))(allow file-write*)",
+      "at": "2026-10-05T18:23:22.949085+00:00",
+      "exit_code": -6,
+      "signal": "SIGABRT",
+      "stdout": "",
+      "stderr": "",
+      "elapsed_ns": 6924250,
+      "provider_started": false,
+      "credentials_read": false,
+      "inherited_environment": false
+    }
+  ],
+  "interpretation": {
+    "sandbox_executable_works": true,
+    "tested_restrictive_bootstrap_usable": false,
+    "kernel_or_os_root_cause_established": false,
+    "provider_compatible_profile_tested": false,
+    "file_network_process_credential_denials_proven": false,
+    "broad_profile_is_accepted_isolation": false,
+    "native_auth_started": false
+  }
+}
