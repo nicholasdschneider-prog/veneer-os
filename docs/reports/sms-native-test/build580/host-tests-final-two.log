@@ -1,0 +1,10 @@
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+test_same_uid_kernel_environment_control_and_hardened_denial (__main__.CodexBoundary) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 10.292s
+
+OK

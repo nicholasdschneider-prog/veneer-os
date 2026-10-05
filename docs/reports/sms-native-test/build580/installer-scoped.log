@@ -1,0 +1,44 @@
+
+> veneer-os@0.1.0 test:installer
+> node --test installer/*.test.mjs
+
+✔ writes the identity 0600 and the server wiring into the env file (2.231958ms)
+✔ rotates the token without disturbing operator overrides (1.527333ms)
+✔ fails loudly when the client script prints no identity (0.447875ms)
+✔ replaces an existing key in place and appends a new one (1.7595ms)
+✔ leaves unrelated lines, comments and ordering untouched (0.354125ms)
+✔ collapses duplicate definitions of a rewritten key (0.280416ms)
+✔ onlyIfMissing keeps an operator value but still adds absent keys (0.377667ms)
+✔ creates a missing file and enforces the mode on every write (0.526833ms)
+✔ quotes values containing spaces and quotes (0.371541ms)
+✔ validateInstallEnv fails when cloudflare identity has no team domain (0.481542ms)
+✔ validateInstallEnv fails when cloudflare identity has no AUD (0.152542ms)
+✔ validateInstallEnv treats an unset identity as cloudflare (0.24225ms)
+✔ validateInstallEnv passes a complete cloudflare config (1.20725ms)
+✔ validateInstallEnv skips the Access check for a non-cloudflare identity (0.985583ms)
+✔ validateInstallEnv treats a blank Access value as missing (0.052333ms)
+✔ validateInstallEnv warns but does not fail on missing DATA_DIR and VP_SOURCE_DIR (0.052583ms)
+✔ validateInstallEnv warns for each unset path independently (0.036042ms)
+✔ pins distinct non-login service principals and public native CLI without admission (0.434042ms)
+✔ refuses login/shared/invalid principals rather than accepting a caller toggle (0.124875ms)
+✔ never installs through the ordinary owner process or silently overwrites prior setup (0.326125ms)
+✔ reloads the runner after persistent services and before the boot probe (0.830625ms)
+✔ continues reloading later services after one bootstrap fails (1.165ms)
+✔ reports a failed post-install health assertion (0.407417ms)
+✔ renders a one-shot helper plist with escaped paths and no KeepAlive (0.251875ms)
+✔ attributes readiness to the log-owning tunnel rather than another default-port tunnel (14.633584ms)
+✔ refuses ambiguous, unrelated, non-loopback, or missing listeners (0.166625ms)
+✔ rejects disconnected or malformed readiness 503 {"status":503,"readyConnections":0} (0.290042ms)
+✔ rejects disconnected or malformed readiness 200 {"status":200,"readyConnections":0} (0.132209ms)
+✔ rejects disconnected or malformed readiness 200 {"status":200,"readyConnections":"4"} (0.138375ms)
+✔ rejects disconnected or malformed readiness 200 {} (0.118416ms)
+✔ a healthy Access redirect cannot substitute for a disconnected tunnel (0.307125ms)
+✔ public errors do not echo credentials, URLs, or response bodies (0.223667ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.297542

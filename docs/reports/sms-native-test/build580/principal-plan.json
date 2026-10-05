@@ -1,0 +1,44 @@
+{
+  "schema": "veneer-fixture-principals/v1",
+  "root": "/Library/Application Support/VeneerFixture",
+  "workerUid": 5101,
+  "authUid": 5102,
+  "workerGid": 5101,
+  "authGid": 5102,
+  "cliSha256": "1da3f4e0e96028b8a771814293c3033dafd1971f943f6c7e79b0897fe705f590",
+  "nativeAdmission": false,
+  "installationGrantsNoAuthOrBusinessAuthority": true,
+  "directories": [
+    {
+      "path": "/Library/Application Support/VeneerFixture",
+      "uid": 0,
+      "gid": 0,
+      "mode": 493
+    },
+    {
+      "path": "/Library/Application Support/VeneerFixture/code",
+      "uid": 0,
+      "gid": 0,
+      "mode": 493
+    },
+    {
+      "path": "/Library/Application Support/VeneerFixture/runtime",
+      "uid": 0,
+      "gid": 0,
+      "mode": 493
+    },
+    {
+      "path": "/Library/Application Support/VeneerFixture/worker",
+      "uid": 5101,
+      "gid": 5101,
+      "mode": 448
+    },
+    {
+      "path": "/Library/Application Support/VeneerFixture/auth",
+      "uid": 5102,
+      "gid": 5102,
+      "mode": 448
+    }
+  ],
+  "requiredNextCheck": "Run installed principal-check.py as the actual administrator; only synthetic processes and pre-auth native bootstrap are permitted."
+}

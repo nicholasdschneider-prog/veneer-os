@@ -196,8 +196,10 @@ describe('authenticated preparation API', () => {
   it('delivers staged limits to fresh/resumed agents and guides without widening employee routes', () => {
     const feature = BOT_FEATURES.find(f => f.id === 'sms-fixture-preparation')!;
     expect(feature.announcement).toBeNull(); expect(feature.limits).toContain('Not deployed');
+    expect(feature.agent).toContain('PROTECTED_NATIVE_AUTH_BRIDGE_UNACCEPTED');
     expect(botFeatureInstructions()).toContain(feature.agent);
     expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'platform-dev', elevated: false })).toContain(feature.agent);
+    expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'platform-dev', elevated: true })).toContain(feature.agent);
     expect(employeeRouteAllowed('GET', '/fixture-tests/readiness')).toBe(false);
     expect(employeeRouteAllowed('POST', '/fixture-tests/runs')).toBe(false);
   });

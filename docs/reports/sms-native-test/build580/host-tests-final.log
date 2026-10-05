@@ -1,0 +1,24 @@
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary) ... FAIL
+
+======================================================================
+FAIL: test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/archerclawdington/veneer-os/scripts/fixture-host/codex_test.py", line 139, in test_same_uid_kernel_environment_gap_is_not_certified
+    self.assertEqual(observed,{'errno':0,'syntheticMarkerObserved':True})
+AssertionError: {'errno': 1, 'syntheticMarkerObserved': False} != {'errno': 0, 'syntheticMarkerObserved': True}
+- {'errno': 1, 'syntheticMarkerObserved': False}
+?           ^                             ^^^^
+
++ {'errno': 0, 'syntheticMarkerObserved': True}
+?           ^                             ^^^
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 9.846s
+
+FAILED (failures=1)

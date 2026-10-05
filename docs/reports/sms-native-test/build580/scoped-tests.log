@@ -1,0 +1,117 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run test/fixtureCodexSetup.test.ts test/fixturePreparation.test.ts test/fixtureHostBootstrap.test.ts test/botFeatureGuide.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/botFeatureGuide.test.ts (31 tests) 23ms
+ ✓ test/fixturePreparation.test.ts (21 tests) 107ms
+ ✓ test/fixtureHostBootstrap.test.ts (1 test) 1957ms
+   ✓ harmless native fixture host acceptance package > boots real C/Node probes and validates denial controls plus fail-closed cases 1957ms
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary) ... FAIL
+
+======================================================================
+FAIL: test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/archerclawdington/veneer-os/scripts/fixture-host/codex_test.py", line 139, in test_same_uid_kernel_environment_gap_is_not_certified
+    self.assertEqual(observed,{'errno':0,'syntheticMarkerObserved':True})
+AssertionError: {'errno': 1, 'syntheticMarkerObserved': False} != {'errno': 0, 'syntheticMarkerObserved': True}
+- {'errno': 1, 'syntheticMarkerObserved': False}
+?           ^                             ^^^^
+
++ {'errno': 0, 'syntheticMarkerObserved': True}
+?           ^                             ^^^
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 9.149s
+
+FAILED (failures=1)
+ ❯ test/fixtureCodexSetup.test.ts (3 tests | 1 failed) 20679ms
+   ✓ isolated native Codex pre-auth coupling > uses real isolated native bootstrap, scoped peer, authenticated lineage and durable no-replay effects 10708ms
+   ✓ isolated native Codex pre-auth coupling > denies bots/employees and native RPC/profile/token overrides before setup 632ms
+   × isolated native Codex pre-auth coupling > proves real same-policy credential/socket/process/session denials and closed peer capability registry 9338ms
+     → Command failed: /usr/bin/python3 /Users/archerclawdington/veneer-os/scripts/fixture-host/codex_test.py -v
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary) ... FAIL
+
+======================================================================
+FAIL: test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/archerclawdington/veneer-os/scripts/fixture-host/codex_test.py", line 139, in test_same_uid_kernel_environment_gap_is_not_certified
+    self.assertEqual(observed,{'errno':0,'syntheticMarkerObserved':True})
+AssertionError: {'errno': 1, 'syntheticMarkerObserved': False} != {'errno': 0, 'syntheticMarkerObserved': True}
+- {'errno': 1, 'syntheticMarkerObserved': False}
+?           ^                             ^^^^
+
++ {'errno': 0, 'syntheticMarkerObserved': True}
+?           ^                             ^^^
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 9.149s
+
+FAILED (failures=1)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/fixtureCodexSetup.test.ts > isolated native Codex pre-auth coupling > proves real same-policy credential/socket/process/session denials and closed peer capability registry
+Error: Command failed: /usr/bin/python3 /Users/archerclawdington/veneer-os/scripts/fixture-host/codex_test.py -v
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary) ... FAIL
+
+======================================================================
+FAIL: test_same_uid_kernel_environment_gap_is_not_certified (__main__.CodexBoundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/archerclawdington/veneer-os/scripts/fixture-host/codex_test.py", line 139, in test_same_uid_kernel_environment_gap_is_not_certified
+    self.assertEqual(observed,{'errno':0,'syntheticMarkerObserved':True})
+AssertionError: {'errno': 1, 'syntheticMarkerObserved': False} != {'errno': 0, 'syntheticMarkerObserved': True}
+- {'errno': 1, 'syntheticMarkerObserved': False}
+?           ^                             ^^^^
+
++ {'errno': 0, 'syntheticMarkerObserved': True}
+?           ^                             ^^^
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 9.149s
+
+FAILED (failures=1)
+
+ ❯ test/fixtureCodexSetup.test.ts:119:12
+    117|   it('proves real same-policy credential/socket/process/session denial…
+    118|     const filename=fileURLToPath(new URL('../../scripts/fixture-host/c…
+    119|     expect(execFileSync('/usr/bin/python3',[filename,'-v'],{encoding:'…
+       |            ^
+    120|   },35_000);
+    121| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 55 passed (56)
+   Start at  15:22:39
+   Duration  21.06s (transform 182ms, setup 0ms, collect 434ms, tests 22.77s, environment 0ms, prepare 172ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/archerclawdington/veneer-os/server
+npm error workspace @veneer-pro/server@0.1.0
+npm error location /Users/archerclawdington/veneer-os/server
+npm error command failed
+npm error command sh -c vitest run test/fixtureCodexSetup.test.ts test/fixturePreparation.test.ts test/fixtureHostBootstrap.test.ts test/botFeatureGuide.test.ts

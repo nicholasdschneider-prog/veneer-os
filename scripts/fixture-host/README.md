@@ -69,3 +69,10 @@ those boundaries and actual denied-effect tests pass. Only then can the actual
 owner perform the provider's supported sign-in in the dedicated setup; no shared
 credential copy or human impersonation is an alternative. This milestone needs
 no owner action or architecture choice and authorizes no deployment.
+
+Build 580 adds [callable Codex pre-auth and synthetic transport setup](./CODEX.md).
+It also identifies and repairs a broad-sysctl process-environment inspection gap.
+The build 579 file/socket/fork/FD tests remain valid within their tested scope,
+but they do not establish protected credential isolation against that interface.
+The narrowed profile adds mandatory synthetic process-environment denial checks.
+Native authentication/model acceptance still requires the separate protected bridge and egress boundary.

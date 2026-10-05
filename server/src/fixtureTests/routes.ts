@@ -5,14 +5,18 @@ import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { FixturePreparationStore, ManifestSchema } from './store.js';
 import { fixtureReadiness } from './readiness.js';
+import { CodexFixtureSetup } from './codexSetup.js';
 
 /** Mounted AFTER native identity/user/employee boundaries. Preparation is human
  * owner only; agent bearer tokens cannot enroll profiles or submit inputs here.
- * No executable host/profile upload endpoint and no dependency on ctx.manager.
+ * Only the fixed pre-auth executable can be bootstrapped: no command/profile
+ * upload endpoint, native thread/login/inference path or ctx.manager dependency.
  */
-export function createFixtureTestsRouter(ctx: Pick<AppContext, 'config'>, suppliedStore?: FixturePreparationStore) {
+export function createFixtureTestsRouter(ctx: Pick<AppContext, 'config'>, suppliedStore?: FixturePreparationStore,
+  suppliedSetup?: CodexFixtureSetup) {
   const router = express.Router();
   let store = suppliedStore;
+  let setup = suppliedSetup;
   router.use((req, res, next) => {
     if (!req.user || req.user.role !== 'owner' || req.agentConversationId || req.user.botSession) {
       res.status(403).json({ error: 'FIXTURE_HUMAN_OWNER_REQUIRED', execute: false }); return;
@@ -46,6 +50,36 @@ export function createFixtureTestsRouter(ctx: Pick<AppContext, 'config'>, suppli
     }
   };
   router.get('/readiness', (_req, res) => { res.json(fixtureReadiness()); });
+  function supervisor() {
+    if (!setup) setup = new CodexFixtureSetup(path.join(ctx.config.dataDir, 'fixture-codex-host'), ctx.config.sourceDir);
+    return setup;
+  }
+  const asyncWrap = (action: (req: express.Request) => Promise<unknown> | unknown): express.RequestHandler => (req, res) => {
+    Promise.resolve().then(() => action(req)).then(result => res.json(result)).catch(error => {
+      const code = error instanceof z.ZodError ? 'FIXTURE_INVALID_INPUT' : error instanceof Error ? error.message : '';
+      res.status(code === 'FIXTURE_INVALID_INPUT' ? 400 : 409).json({
+        error: /^FIXTURE_[A-Z_]+$/.test(code) ? code : 'FIXTURE_HOST_UNAVAILABLE', execute: false,
+      });
+    });
+  };
+  router.post('/codex-host/setup', asyncWrap(req => {
+    const { requestKey } = z.object({ requestKey: z.string() }).strict().parse(req.body);
+    return supervisor().setup(req.user!.id, requestKey);
+  }));
+  router.post('/codex-host/training', asyncWrap(req => {
+    const input = z.object({ requestKey: z.string(), snapshot: z.unknown() }).strict().parse(req.body);
+    return supervisor().publishTraining(req.user!.id, input.requestKey, input.snapshot);
+  }));
+  router.post('/codex-host/runs', asyncWrap(req => {
+    const input = z.object({ requestKey: z.string(), coupling: z.unknown() }).strict().parse(req.body);
+    return supervisor().materialize(req.user!.id, input.requestKey, input.coupling);
+  }));
+  router.get('/codex-host/runs/:id', asyncWrap(req => supervisor().read(req.user!.id, req.params.id!)));
+  router.post('/codex-host/runs/:id/fixture-tools', asyncWrap(req => supervisor().call(req.user!.id, req.params.id!, req.body)));
+  router.post('/codex-host/:id/device-sign-in/setup', asyncWrap(req => {
+    z.object({}).strict().parse(req.body);
+    return supervisor().deviceSetup(req.user!.id, req.params.id!);
+  }));
   router.post('/runs', wrap((req, res) => {
     const input = z.object({ requestKey: z.string(), manifest: ManifestSchema }).strict().parse(req.body);
     res.status(201).json(ledger().create(req.user!.id, input.requestKey, input.manifest));

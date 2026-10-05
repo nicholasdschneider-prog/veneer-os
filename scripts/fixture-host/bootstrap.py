@@ -33,7 +33,12 @@ def profile(binary, workspace, resources=(), root=True, descendants=False):
     reads = [binary, *resources]
     rules = [
         '(version 1)', '(deny default)',
-        '(allow sysctl-read)',
+        '(allow sysctl-read (sysctl-name-prefix "hw.") (sysctl-name "kern.osrelease")'
+        ' (sysctl-name "kern.ostype") (sysctl-name "kern.osversion")'
+        ' (sysctl-name "kern.version") (sysctl-name "kern.hostname")'
+        ' (sysctl-name "kern.osproductversion"))',
+        '(allow process-info* (target self))',
+        '(deny process-info* (target others))',
         '(allow file-read* (subpath "/System") (subpath "/usr/lib")'
         + (' (literal "/")' if root else '')
         + ''.join(' (literal ' + quote(p) + ')' for p in reads)

@@ -1,0 +1,286 @@
+{
+  "schema": "veneer-codex-preauth-acceptance/v1",
+  "acceptedPreauthOnly": true,
+  "protectedCredentialBoundaryReady": false,
+  "observedAt": "2026-10-05T19:29:53.951022+00:00",
+  "nativeAdmission": false,
+  "actualSignIn": false,
+  "modelStart": false,
+  "nativeReplyMs": null,
+  "carrierDeliveryMs": null,
+  "sourceSha256": {
+    "codex.py": "9a6f755533f09b51137a53467f86032bb1b0c74b0fa9f9ed5617a52478e1760d",
+    "peer.py": "7fd36060498f3367763721de7b2471328d84a8cf420f8a7eacc238d6bad96198",
+    "peer.cjs": "fc9a5ab681ec1fdc50b0b4fa2f273821d00c377a9ce5f565556894fee2c550a6",
+    "codex_test.py": "8173f4e1cf466537cc2f8c79796dce3987bfc12a38923f4435c6631d43dda71e"
+  },
+  "observations": [
+    {
+      "kind": "real_native_preauth",
+      "receipt": {
+        "schema": "veneer-codex-preauth/v1",
+        "nativeAdmission": false,
+        "startedAt": "2026-10-05T19:29:43.858696+00:00",
+        "cliVersion": "codex-cli 0.145.0",
+        "cliSha256": "1da3f4e0e96028b8a771814293c3033dafd1971f943f6c7e79b0897fe705f590",
+        "resources": [
+          "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+          "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+          "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+          "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+          "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+          "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration",
+          "/usr/lib/liblzma.5.dylib",
+          "/usr/lib/libbz2.1.0.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libobjc.A.dylib",
+          "/System/Library/Frameworks/CFNetwork.framework/Versions/A/CFNetwork",
+          "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+          "/usr/lib/libiconv.2.dylib"
+        ],
+        "launcherSha256": "9a6f755533f09b51137a53467f86032bb1b0c74b0fa9f9ed5617a52478e1760d",
+        "profiles": {
+          "worker": {
+            "sha256": "caea2f33a91a803ddf4e33478f985f60bc1c9751e6d68071aea6b57059889642",
+            "policy": "(version 1)\n(deny default)\n(allow sysctl-read (sysctl-name-prefix \"hw.\") (sysctl-name \"kern.osrelease\") (sysctl-name \"kern.ostype\") (sysctl-name \"kern.osversion\") (sysctl-name \"kern.version\") (sysctl-name \"kern.hostname\") (sysctl-name \"kern.osproductversion\"))\n(allow process-info* (target self))\n(deny process-info* (target others))\n(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/\") (literal \"/Users/archerclawdington/.local/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex\") (subpath \"/private/tmp/tmpunllnfvk/native/worker\"))\n(allow file-write* (subpath \"/private/tmp/tmpunllnfvk/native/worker\"))\n(allow process-exec* (literal \"/Users/archerclawdington/.local/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex\"))\n(allow file-read-metadata (literal \"/private/tmp/tmpunllnfvk/native\")(literal \"/private/tmp/tmpunllnfvk\")(literal \"/private/tmp\")(literal \"/private\")(literal \"/\")(literal \"/etc\")(literal \"/private/etc\")(literal \"/etc/codex\")(literal \"/private/etc/codex\")(literal \"/etc/codex/requirements.toml\")(literal \"/private/etc/codex/requirements.toml\"))\n"
+          },
+          "dedicated-auth": {
+            "sha256": "40feaf33a62caba666ce6fcf0f77a90f95350616478d4ad9dbf421c1f3626086",
+            "policy": "(version 1)\n(deny default)\n(allow sysctl-read (sysctl-name-prefix \"hw.\") (sysctl-name \"kern.osrelease\") (sysctl-name \"kern.ostype\") (sysctl-name \"kern.osversion\") (sysctl-name \"kern.version\") (sysctl-name \"kern.hostname\") (sysctl-name \"kern.osproductversion\"))\n(allow process-info* (target self))\n(deny process-info* (target others))\n(allow file-read* (subpath \"/System\") (subpath \"/usr/lib\") (literal \"/\") (literal \"/Users/archerclawdington/.local/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex\") (subpath \"/private/tmp/tmpunllnfvk/native/dedicated-auth\"))\n(allow file-write* (subpath \"/private/tmp/tmpunllnfvk/native/dedicated-auth\"))\n(allow process-exec* (literal \"/Users/archerclawdington/.local/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex\"))\n(allow file-read-metadata (literal \"/private/tmp/tmpunllnfvk/native\")(literal \"/private/tmp/tmpunllnfvk\")(literal \"/private/tmp\")(literal \"/private\")(literal \"/\")(literal \"/etc\")(literal \"/private/etc\")(literal \"/etc/codex\")(literal \"/private/etc/codex\")(literal \"/etc/codex/requirements.toml\")(literal \"/private/etc/codex/requirements.toml\"))\n"
+          }
+        },
+        "hosts": {
+          "worker": {
+            "userAgent": "veneer_fixture_preauth/0.145.0 (Mac OS 27.0.1; arm64) unknown (veneer_fixture_preauth; 1.0.0)",
+            "privateCodexHomeVerified": true,
+            "accountAbsent": true,
+            "credentialStore": "ephemeral",
+            "events": [
+              {
+                "kind": "process_spawned",
+                "monotonicNs": 732348375
+              },
+              {
+                "kind": "rpc_sent",
+                "monotonicNs": 732475833,
+                "method": "initialize",
+                "requestId": 1
+              },
+              {
+                "kind": "rpc_returned",
+                "monotonicNs": 821888875,
+                "method": "initialize",
+                "requestId": 1
+              },
+              {
+                "kind": "rpc_sent",
+                "monotonicNs": 822004833,
+                "method": "account/read",
+                "requestId": 2
+              },
+              {
+                "kind": "rpc_returned",
+                "monotonicNs": 823613541,
+                "method": "account/read",
+                "requestId": 2
+              },
+              {
+                "kind": "rpc_sent",
+                "monotonicNs": 823632083,
+                "method": "config/read",
+                "requestId": 3
+              },
+              {
+                "kind": "rpc_returned",
+                "monotonicNs": 825492375,
+                "method": "config/read",
+                "requestId": 3
+              },
+              {
+                "kind": "process_exited",
+                "monotonicNs": 831734958,
+                "exitCode": 0
+              }
+            ]
+          },
+          "dedicated-auth": {
+            "userAgent": "veneer_fixture_preauth/0.145.0 (Mac OS 27.0.1; arm64) unknown (veneer_fixture_preauth; 1.0.0)",
+            "privateCodexHomeVerified": true,
+            "accountAbsent": true,
+            "credentialStore": "file",
+            "events": [
+              {
+                "kind": "process_spawned",
+                "monotonicNs": 880488083
+              },
+              {
+                "kind": "rpc_sent",
+                "monotonicNs": 880544333,
+                "method": "initialize",
+                "requestId": 1
+              },
+              {
+                "kind": "rpc_returned",
+                "monotonicNs": 961769833,
+                "method": "initialize",
+                "requestId": 1
+              },
+              {
+                "kind": "rpc_sent",
+                "monotonicNs": 961895083,
+                "method": "account/read",
+                "requestId": 2
+              },
+              {
+                "kind": "rpc_returned",
+                "monotonicNs": 964441958,
+                "method": "account/read",
+                "requestId": 2
+              },
+              {
+                "kind": "rpc_sent",
+                "monotonicNs": 964486250,
+                "method": "config/read",
+                "requestId": 3
+              },
+              {
+                "kind": "rpc_returned",
+                "monotonicNs": 967032166,
+                "method": "config/read",
+                "requestId": 3
+              },
+              {
+                "kind": "process_exited",
+                "monotonicNs": 975842916,
+                "exitCode": 0
+              }
+            ]
+          }
+        },
+        "protectedCredentialBoundaryReady": false,
+        "credentialBoundaryBlocker": "PROTECTED_NATIVE_AUTH_BRIDGE_UNACCEPTED",
+        "processEnvironmentBoundary": {
+          "sourceSha256": "130cc74ca96c8898afb3c64ff8a6de2994d52ba972a1b9b4ff331d3fdbad7ddf",
+          "control": {
+            "exitCode": 0,
+            "elapsedNs": 262585416,
+            "stdout": "{\"errno\":0,\"syntheticMarkerObserved\":true}\n",
+            "stderr": ""
+          },
+          "active": {
+            "exitCode": 0,
+            "elapsedNs": 25004250,
+            "stdout": "{\"errno\":1,\"syntheticMarkerObserved\":false}\n",
+            "stderr": ""
+          },
+          "syntheticOnly": true,
+          "observedDenial": true
+        },
+        "finishedAt": "2026-10-05T19:29:44.581535+00:00",
+        "deviceSignIn": {
+          "method": "account/login/start",
+          "params": {
+            "type": "chatgptDeviceCode"
+          },
+          "execute": false,
+          "actualSignInStarted": false,
+          "blockers": [
+            "PROTECTED_NATIVE_AUTH_BRIDGE_UNACCEPTED",
+            "AUTH_INFERENCE_EGRESS_UNACCEPTED"
+          ]
+        }
+      }
+    },
+    {
+      "kind": "same_policy_synthetic_denials",
+      "control": {
+        "booted": true,
+        "allowedReadErrno": 0,
+        "deniedReadErrno": 0,
+        "deniedWriteErrno": 0,
+        "deniedTcpErrno": 0,
+        "deniedUnixErrno": 0,
+        "ownSpawnErrno": 0,
+        "otherSpawnErrno": 0,
+        "forkResult": -2,
+        "allowedWriteErrno": 0,
+        "symlinkReadErrno": 0,
+        "fd3Closed": true,
+        "parentMarkerAbsent": true
+      },
+      "active": {
+        "booted": true,
+        "allowedReadErrno": 0,
+        "deniedReadErrno": 1,
+        "deniedWriteErrno": 1,
+        "deniedTcpErrno": 1,
+        "deniedUnixErrno": 1,
+        "ownSpawnErrno": 1,
+        "otherSpawnErrno": 1,
+        "forkResult": 1,
+        "allowedWriteErrno": 0,
+        "symlinkReadErrno": 1,
+        "fd3Closed": true,
+        "parentMarkerAbsent": true
+      },
+      "descendantDiagnostic": {
+        "booted": true,
+        "allowedReadErrno": 0,
+        "deniedReadErrno": 1,
+        "deniedWriteErrno": 1,
+        "deniedTcpErrno": 1,
+        "deniedUnixErrno": 1,
+        "ownSpawnErrno": 0,
+        "otherSpawnErrno": 1,
+        "forkResult": -1,
+        "allowedWriteErrno": 0,
+        "symlinkReadErrno": 1,
+        "fd3Closed": true,
+        "parentMarkerAbsent": true
+      },
+      "crossSession": {
+        "booted": true,
+        "allowedReadErrno": 0,
+        "deniedReadErrno": 1,
+        "deniedWriteErrno": 1,
+        "deniedTcpErrno": 1,
+        "deniedUnixErrno": 1,
+        "ownSpawnErrno": 1,
+        "otherSpawnErrno": 1,
+        "forkResult": 1,
+        "allowedWriteErrno": 0,
+        "symlinkReadErrno": 1,
+        "fd3Closed": true,
+        "parentMarkerAbsent": true
+      }
+    },
+    {
+      "kind": "synthetic_peer_roundtrip",
+      "profileSha256": "a97658700bc7678371edd23873bb3982b4fc82759b36848f041634e32281bfa7",
+      "positivePreference": "morning",
+      "capabilityLogged": false,
+      "nativeModelToolRoundtrip": false
+    },
+    {
+      "kind": "same_uid_kernel_environment_control_and_hardened_denial",
+      "observedEnvironmentDenial": true,
+      "syntheticOnly": true,
+      "observations": [
+        {
+          "errno": 0,
+          "syntheticMarkerObserved": true
+        },
+        {
+          "errno": 0,
+          "syntheticMarkerObserved": true
+        },
+        {
+          "errno": 1,
+          "syntheticMarkerObserved": false
+        }
+      ],
+      "fullProtectedNativeAuthBridgeAccepted": false
+    }
+  ]
+}

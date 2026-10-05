@@ -1,0 +1,31 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run test/fixtureCodexSetup.test.ts test/fixturePreparation.test.ts test/fixtureHostBootstrap.test.ts test/botFeatureGuide.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/botFeatureGuide.test.ts (31 tests) 21ms
+ ✓ test/fixturePreparation.test.ts (21 tests) 95ms
+ ✓ test/fixtureHostBootstrap.test.ts (1 test) 1823ms
+   ✓ harmless native fixture host acceptance package > boots real C/Node probes and validates denial controls plus fail-closed cases 1821ms
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+test_same_uid_kernel_environment_control_and_hardened_denial (__main__.CodexBoundary) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 9.353s
+
+OK
+ ✓ test/fixtureCodexSetup.test.ts (3 tests) 21646ms
+   ✓ isolated native Codex pre-auth coupling > uses real isolated native bootstrap, scoped peer, authenticated lineage and durable no-replay effects 11304ms
+   ✓ isolated native Codex pre-auth coupling > denies bots/employees and native RPC/profile/token overrides before setup 768ms
+   ✓ isolated native Codex pre-auth coupling > proves real same-policy credential/socket/process/session denials and closed peer capability registry 9574ms
+
+ Test Files  4 passed (4)
+      Tests  56 passed (56)
+   Start at  15:28:47
+   Duration  21.95s (transform 154ms, setup 0ms, collect 365ms, tests 23.59s, environment 0ms, prepare 143ms)
+

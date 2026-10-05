@@ -1,0 +1,29 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run test/fixtureCodexSetup.test.ts test/fixturePreparation.test.ts test/fixtureHostBootstrap.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/fixturePreparation.test.ts (21 tests) 90ms
+ ✓ test/fixtureHostBootstrap.test.ts (1 test) 1855ms
+   ✓ harmless native fixture host acceptance package > boots real C/Node probes and validates denial controls plus fail-closed cases 1854ms
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 10.746s
+
+OK
+ ✓ test/fixtureCodexSetup.test.ts (3 tests) 21583ms
+   ✓ isolated native Codex pre-auth coupling > uses real isolated native bootstrap, scoped peer, authenticated lineage and durable no-replay effects 9923ms
+   ✓ isolated native Codex pre-auth coupling > denies bots/employees and native RPC/profile/token overrides before setup 706ms
+   ✓ isolated native Codex pre-auth coupling > proves real same-policy credential/socket/process/session denials and closed peer capability registry 10953ms
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  15:09:26
+   Duration  21.93s (transform 124ms, setup 0ms, collect 326ms, tests 23.53s, environment 0ms, prepare 124ms)
+

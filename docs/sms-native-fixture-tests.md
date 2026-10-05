@@ -211,3 +211,27 @@ isolation and native trace/monitoring coupling remain pending. No deployment,
 restart, enrollment or sign-in was performed. See the
 [build 579 report](./reports/sms-native-test/build579/report.md) for tested scope,
 raw validation and the next coupling boundary.
+
+## Codex pre-auth coupling in build 580
+
+The [Codex package](../scripts/fixture-host/CODEX.md) implements a fixed pinned
+native app-server setup before sign-in and an independent authenticated synthetic
+stdio peer. Owner-only publication/materialization binds exact synthetic training
+bytes/version/provenance, actual host/CLI/profile/resource hashes and independent
+private session histories. Durable intent fences prevent UNKNOWN replay; fixture
+preference readback, sink acceptance and human-gate behavior are tested.
+
+The host profile now allows only public runtime sysctls and self process-info,
+with explicit others-process-info denial. Mandatory controlled PID-environment
+canaries cover a gap omitted from the build 579 inherited-env tests. Broad-policy
+and unsandboxed controls can observe a synthetic sibling marker; the narrowed
+profile returns EPERM while native initialize/account/config RPC still succeed.
+
+Device sign-in setup is callable but returns execute:false. Protected native
+auth/refresh bridge and inference egress remain unaccepted; 0.145.0's
+internal/unsupported external-token path is not used. The permanent ordinary CS
+role-chat capture/readback remains pending; synthetic owner publication does not
+import historical chat approval. No threads, inference turns, login, models,
+production effects, installation or restart occurred. The fixture /start gate is
+unchanged. See [build 580 report](./reports/sms-native-test/build580/report.md)
+for raw results, scope and exact next coupling.
