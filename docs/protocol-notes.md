@@ -314,3 +314,52 @@ boundary; the existing native interrupt and unknown-effect rules still apply.
 
 - LONG_LIVED strategy (multiple user messages over one process's stdin).
 - AskUserQuestion behavior headless.
+
+## Codex idle runtime subscriptions (0.160.0, verified 2026-10-05)
+
+A Mac incident reached 864 processes in one Veneer runner tree, roughly 65
+copies of several MCP connector helpers, and about 20 GiB swap on a 16 GiB
+host. Resetting that tree reduced swap to about 3.3 GiB. Local handler
+unsubscribe at turn completion had never released the native subscription.
+
+- The installed 0.160.0 generated schema and isolated live probe reject
+  `thread/close`. The earlier writer-transfer test double incorrectly accepted
+  that method and instantly released the lock. It now models the real protocol.
+- `thread/unsubscribe {threadId}` returns `unsubscribed`, `notSubscribed`, or
+  `notLoaded`. It does **not** archive/delete history, and acknowledgement is
+  **not** immediate unload or writer-lock release. Cross-process transfers
+  retain the existing writer-lock/fork fallback while native grace expires.
+- An isolated home with a stub MCP connector and a completed inference turn
+  reused one connector process through five resumes. After unsubscribe, the
+  thread disappeared from `thread/loaded/list` and its helper process exited
+  by the two-minute poll. Resume after native unload retained the same thread
+  ID. A separate complete app-server exit/resume also preserved its ID and
+  rollout. This is observed installed-binary behavior, not a promise that all
+  Codex versions use a two-minute timeout; current public documentation says
+  30 minutes of no-subscriber inactivity.
+- A second completed turn after unload recreated the connector helper and
+  completed successfully. A separate isolated parent/child probe unsubscribed
+  both, observed native unload after about 60 seconds, and resumed the same
+  parent. Messaging the existing child automatically reloaded it; child events
+  and the parent wait completed without spawning a replacement child. Approval
+  requests after child reload were not exercised by that probe.
+- Veneer now reserves a thread before startup and releases its native
+  subscription after confirmed native turn/compaction completion. Active
+  turns, approvals and known running children stay protected. Terminal-only
+  child watchers survive a completed parent and release a late-finishing child
+  and the idle parent. A new turn takes over those watchers after resume.
+- A local interrupt timeout is not native completion and remains pinned.
+  Pre-turn startup failure does not create a pin. Native unsubscribe errors
+  are logged without failing later wakes. A response delayed beyond five
+  seconds warns but remains pending; a new turn waits up to fifteen seconds
+  per attempt rather than racing a late unsubscribe. Its eventual real reply
+  automatically recovers the thread; no shared-server restart is required.
+- Runner resource samples contain numeric process metadata only. They count
+  descendants, not only children (the installed CLI has a Node wrapper), every
+  minute. Warnings trigger at 100 descendants under one provider process or
+  300 in aggregate, on crossing and at most every ten minutes thereafter;
+  normal summaries log every five samples. These are diagnostic warnings,
+  never an automatic kill/restart policy. `/healthz` still means IPC liveness,
+  not memory health. Unknown native outcomes remain a manual diagnostic case.
+
+Reference: https://learn.chatgpt.com/docs/app-server#unsubscribe-from-a-loaded-thread

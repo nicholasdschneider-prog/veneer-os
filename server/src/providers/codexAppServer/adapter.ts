@@ -54,15 +54,19 @@ const WRITER_LOCKED_RE = /already has an active writer/i;
 // projection first; a rollout with a duplicated ordinal freezes that projection
 // ("expected ordinal N, got N-1") even though `thread/resume` keeps working.
 const PAGINATED_FORK_PREPARATION_RE = /failed to prepare paginated fork/i;
-const THREAD_CLOSE_TIMEOUT_MS = 5_000;
 
-/** Ask `holders` to unload `threadId`; failures are expected (not loaded there) and ignored. */
+/** Release only idle subscriptions; the native grace period may retain the writer lock. */
 async function closeThreadOn(holders: Iterable<AppServerClient>, threadId: string): Promise<void> {
-  const requests = [...holders].map((holder) => Promise.race([
-    holder.request('thread/close', { threadId }),
-    new Promise((resolve) => setTimeout(resolve, THREAD_CLOSE_TIMEOUT_MS).unref?.()),
-  ]).catch(() => undefined));
-  await Promise.all(requests);
+  await Promise.all([...holders].map(async (holder) => {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        holder.releaseIdleThread(threadId),
+        new Promise<void>((resolve) => { timer = setTimeout(resolve, 5_000); timer.unref(); }),
+      ]);
+    } catch { /* failure is logged by the client; resume retains its writer-lock fallback */ }
+    finally { if (timer) clearTimeout(timer); }
+  }));
 }
 
 /** Release the thread from the process that last loaded it, if that is not `client`. */
@@ -253,6 +257,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
    * an interrupted parent used to report children stopped that Codex had never
    * said anything about.
    */
+  const detachedChildWatches = new Map<string, Map<string, () => void>>();
   const subagentsByThread = new Map<string, Map<string, CodexSubagentRecord>>();
   // Keyed by account and access level: a Codex account is a CODEX_HOME, and
   // the app-server reads its credential from there at spawn, so switching
@@ -307,6 +312,13 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     const spawnAccountId = opts.getAccountId?.() ?? null;
     const client = clientFor(spec.dangerous ?? false, spawnAccountId);
     let settled = false;
+    let nativeWorkFinished = false;
+    let nativeTurnRequested = false;
+    const threadHolds = new Map<string, (outcome: 'finished' | 'not-started' | 'unknown' | 'children-running') => void>();
+    const holdThread = (id: string) => {
+      if (!threadHolds.has(id)) threadHolds.set(id, client.holdThread(id));
+    };
+    if (!spec.firstTurn) holdThread(spec.nativeSessionId);
     let killed = false;
     let killReason: 'user' | 'timeout' | null = null;
     let unsubscribe: (() => void) | null = null;
@@ -608,7 +620,34 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     }
 
     function handleChildMessage(nativeId: string, msg: JsonRpcMessage): void {
-      if (settled || msg.method === DISCONNECTED_METHOD) return;
+      if (msg.method === DISCONNECTED_METHOD) {
+        if (settled) {
+          const parentId = resolvedThreadId ?? spec.nativeSessionId;
+          for (const stop of detachedChildWatches.get(parentId)?.values() ?? []) stop();
+          detachedChildWatches.delete(parentId);
+          subagentsByThread.delete(parentId);
+        }
+        return;
+      }
+      if (settled) {
+        // A confirmed-finished parent may leave children working. Continue
+        // observing only their terminal notifications, without reviving its turn.
+        if (msg.id !== undefined) client.respondError(msg.id, -32000, 'Child agent interaction is not supported');
+        if (!nativeWorkFinished || msg.method !== 'turn/completed') return;
+        const parentId = resolvedThreadId ?? spec.nativeSessionId;
+        const store = subagentsByThread.get(parentId);
+        store?.delete(nativeId);
+        const watches = detachedChildWatches.get(parentId);
+        watches?.get(nativeId)?.();
+        watches?.delete(nativeId);
+        void client.releaseIdleThread(nativeId).catch(() => undefined);
+        if (!store?.size) {
+          subagentsByThread.delete(parentId);
+          detachedChildWatches.delete(parentId);
+          client.childrenFinished(parentId);
+        }
+        return;
+      }
       const params = (msg.params ?? {}) as Record<string, unknown>;
       if (msg.method === 'item/started' || msg.method === 'item/completed') {
         handleChildItem(nativeId, (params.item ?? {}) as Record<string, unknown>, msg.method === 'item/completed');
@@ -761,17 +800,30 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       settled = true;
       watchdog.stop();
       heldToolIds.clear();
+      const parentId = resolvedThreadId ?? spec.nativeSessionId;
+      const finishedChildren = [...(subagentsByThread.get(parentId) ?? [])]
+        .filter(([, record]) => record.status === 'completed').map(([id]) => id);
       pruneFinishedSubagents();
       if (interruptFallbackTimer) {
         clearTimeout(interruptFallbackTimer);
         interruptFallbackTimer = null;
       }
       unsubscribe?.();
-      for (const stop of childUnsubscribes.values()) stop();
+      const detached = new Map<string, () => void>();
+      for (const [id, stop] of childUnsubscribes) {
+        if (nativeWorkFinished && subagentsByThread.get(parentId)?.has(id)) detached.set(id, stop);
+        else stop();
+      }
+      if (detached.size) detachedChildWatches.set(parentId, detached);
       childUnsubscribes.clear();
+      for (const id of finishedChildren) void client.releaseIdleThread(id).catch(() => undefined);
       pendingApprovalIds.clear();
       pendingQuestionIds.clear();
       flushShadowState();
+      for (const [id, release] of threadHolds) {
+        release(nativeWorkFinished ? subagentsByThread.get(id)?.size ? 'children-running' : 'finished' : nativeTurnRequested ? 'unknown' : 'not-started');
+      }
+      threadHolds.clear();
       resolveDone();
     }
 
@@ -1339,6 +1391,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           break;
         }
         case 'turn/completed': {
+          nativeWorkFinished = true;
           const turn = (params.turn ?? {}) as {
             id?: string;
             status?: 'completed' | 'interrupted' | 'failed';
@@ -1440,7 +1493,10 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             developerInstructions: spec.developerInstructions ?? undefined,
             dynamicTools: [CODEX_BROWSER_TOOL],
           })) as { thread: { id: string } };
-          if (killed || settled) return res.thread.id;
+          if (killed || settled) {
+            void client.releaseIdleThread(res.thread.id).catch(() => undefined);
+            return res.thread.id;
+          }
           await recordCodexFork(opts, res.thread.id, spec.nativeSessionId);
           if (killed || settled) return res.thread.id;
           onSessionId?.(res.thread.id);
@@ -1474,7 +1530,10 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             developerInstructions: spec.developerInstructions ?? undefined,
             dynamicTools: [CODEX_BROWSER_TOOL],
           })) as { thread: { id: string } };
-          if (killed || settled) return;
+          if (killed || settled) {
+            void client.releaseIdleThread(res.thread.id).catch(() => undefined);
+            return;
+          }
           threadId = res.thread.id;
           onSessionId?.(threadId);
         } else if (spec.refreshDeveloperInstructions) {
@@ -1537,7 +1596,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
               if (killed || settled) return;
               if (!isWriterLocked(retryErr)) throw retryErr;
               // Nothing we can reach will release it (another service, or a
-              // process that ignores thread/close): continue on a fork rather
+              // process still retaining its writer lock): continue on a fork rather
               // than leaving the chat stuck behind the lock.
               threadId = await fork();
               if (killed || settled) return;
@@ -1549,18 +1608,26 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           }
         }
         if (killed || settled) return;
+        holdThread(threadId);
         threadOwners.set(threadId, client);
         resolvedThreadId = threadId;
         quarantineUnscopedNativeEvents = fallbackInterruptedThreads.delete(threadId);
         historyReady = true;
         flushShadowState();
+        // Keep the old child observers through startup failures. Once resume
+        // succeeds, this turn takes over observing every still-running child.
+        for (const stop of detachedChildWatches.get(threadId)?.values() ?? []) stop();
+        detachedChildWatches.delete(threadId);
         unsubscribe = client.subscribe(threadId, handleServerMessage);
+        for (const [id, record] of subagentsByThread.get(threadId) ?? []) {
+          if (!isTerminalSubagentStatus(record.status)) subscribeToSubagent(id);
+        }
         startupStage = 'starting the reply';
         const started = (await client.request('turn/start', {
           threadId,
           input: [{ type: 'text', text: spec.prompt }],
           effort: spec.effort ?? undefined,
-        })) as { turn?: { id?: string } };
+        }, () => { nativeTurnRequested = true; })) as { turn?: { id?: string } };
         resolvedTurnId = started.turn?.id ?? null;
         if (!resolvedTurnId) throw new Error('turn/start did not return a native turn id');
         markTurnReady();
@@ -1677,6 +1744,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
   function compactSession(spec: CompactSessionSpec): CompactSessionHandle {
     const client = clientFor(spec.dangerous ?? false, opts.getAccountId?.() ?? null);
     const threadId = spec.nativeSessionId;
+    const releaseThread = client.holdThread(threadId);
     let settled = false;
     let requested = false;
     let killed = false;
@@ -1704,6 +1772,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       if (interruptFallback) clearTimeout(interruptFallback);
       unsubscribe?.();
       unsubscribe = null;
+      releaseThread(sawCompletedTurn ? subagentsByThread.get(threadId)?.size ? 'children-running' : 'finished' : requested ? 'unknown' : 'not-started');
       if (err) rejectDone(err);
       else {
         try {
@@ -1866,6 +1935,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
 
   return {
     id: 'codex',
+    runtimeResources: () => [...clients.values()].map((client) => client.resourceUsage()),
     // Placeholder until thread/start resolves the real thread id (see onSessionId) — same
     // pattern as the exec adapter; conversationManager overwrites it once the real id lands.
     mintSessionId: () => crypto.randomUUID(),

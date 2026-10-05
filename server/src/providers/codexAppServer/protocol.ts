@@ -154,6 +154,82 @@ export class AppServerClient {
   private readonly pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
   private readonly threadHandlers = new Map<string, Set<ServerMessageHandler>>();
   private starting: Promise<void> | null = null;
+  private generation = 0;
+  private readonly threadHolds = new Map<string, number>();
+  private readonly pinnedThreads = new Map<string, Map<symbol, 'unknown' | 'children'>>();
+  private readonly threadReleases = new Map<string, Promise<void>>();
+
+  /** Counts only; no prompts, connector arguments, or credentials. */
+  resourceUsage(): { pid: number | null; heldThreads: number; pinnedThreads: number } {
+    return { pid: this.child?.pid ?? null, heldThreads: this.threadHolds.size, pinnedThreads: this.pinnedThreads.size };
+  }
+
+  /** Reserve before resume, including startup/approval/compaction time. */
+  holdThread(threadId: string): (outcome: 'finished' | 'not-started' | 'unknown' | 'children-running') => void {
+    this.threadHolds.set(threadId, (this.threadHolds.get(threadId) ?? 0) + 1);
+    let released = false;
+    const pin = Symbol();
+    const previousPins = [...(this.pinnedThreads.get(threadId)?.keys() ?? [])];
+    const generation = this.generation;
+    return (outcome) => {
+      if (released) return;
+      released = true;
+      if (generation !== this.generation) return; // old process already died
+      const count = (this.threadHolds.get(threadId) ?? 1) - 1;
+      if (count > 0) this.threadHolds.set(threadId, count);
+      else this.threadHolds.delete(threadId);
+      // A local timeout is not evidence that the native turn or its children
+      // stopped. Keep it pinned until a later confirmed completion.
+      const pins = this.pinnedThreads.get(threadId) ?? new Map<symbol, 'unknown' | 'children'>();
+      if (outcome === 'finished' || outcome === 'children-running') {
+        for (const oldPin of previousPins) pins.delete(oldPin);
+      }
+      if (outcome === 'unknown') pins.set(pin, 'unknown');
+      if (outcome === 'children-running') pins.set(pin, 'children');
+      if (pins.size) this.pinnedThreads.set(threadId, pins);
+      else this.pinnedThreads.delete(threadId);
+      if (outcome !== 'unknown') void this.releaseIdleThread(threadId).catch(() => undefined);
+    };
+  }
+
+  /** A late child completion cannot clear an unrelated unknown native turn. */
+  childrenFinished(threadId: string): void {
+    const pins = this.pinnedThreads.get(threadId);
+    if (pins) {
+      for (const [pin, reason] of pins) if (reason === 'children') pins.delete(pin);
+      if (!pins.size) this.pinnedThreads.delete(threadId);
+    }
+    void this.releaseIdleThread(threadId).catch(() => undefined);
+  }
+
+  /** Unsubscribe, never archive/delete. Codex owns the inactivity grace period. */
+  releaseIdleThread(threadId: string): Promise<void> {
+    const pending = this.threadReleases.get(threadId);
+    if (pending) return pending;
+    if (!this.child || this.threadHolds.has(threadId) || this.pinnedThreads.has(threadId)
+      || this.threadHandlers.get(threadId)?.size) return Promise.resolve();
+    // Keep the real response pending even after a slow-response warning. A
+    // late acknowledgement must recover the chat without restarting its peers.
+    const warning = setTimeout(() => {
+      (this.opts.log ?? console).warn('[codex-lifecycle] unsubscribe still pending after 5s; waiting for native acknowledgement');
+    }, 5_000);
+    warning.unref();
+    const release = this.rawRequest('thread/unsubscribe', { threadId }).then((result) => {
+      const status = (result as { status?: string } | null)?.status;
+      if (!['unsubscribed', 'notSubscribed', 'notLoaded'].includes(status ?? '')) {
+        throw new Error('Unexpected thread/unsubscribe response');
+      }
+    }).catch((err: Error) => {
+      // An explicit RPC rejection is a known outcome; keep the existing
+      // subscription and allow future work. A slow response stays pending.
+      (this.opts.log ?? console).warn(`[codex-lifecycle] unsubscribe failed: ${err.message}`);
+    }).finally(() => {
+      clearTimeout(warning);
+      if (this.threadReleases.get(threadId) === release) this.threadReleases.delete(threadId);
+    });
+    this.threadReleases.set(threadId, release);
+    return release;
+  }
   /** Cached `codexBin --version` output; undefined = not probed yet, null = probe failed. */
   private codexVersion: string | null | undefined;
 
@@ -246,6 +322,10 @@ export class AppServerClient {
     if (this.child !== child) return; // already cleaned up for this process (or a newer one is live)
     this.child = null;
     this.starting = null;
+    this.generation += 1;
+    this.threadHolds.clear();
+    this.pinnedThreads.clear();
+    this.threadReleases.clear();
     for (const [, p] of this.pending) p.reject(new Error(reason));
     this.pending.clear();
     for (const handlers of this.threadHandlers.values()) {
@@ -293,9 +373,30 @@ export class AppServerClient {
     return p;
   }
 
+  private async waitForThreadRelease(threadId: string): Promise<void> {
+    const release = this.threadReleases.get(threadId);
+    if (!release) return;
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        release,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Codex session cleanup is still pending; retry after its native acknowledgement')), 15_000);
+          timer.unref();
+        }),
+      ]);
+    } finally { if (timer) clearTimeout(timer); }
+  }
+
   /** Send a request; resolves with `result`, rejects on a JSON-RPC error or process death. */
-  async request(method: string, params: unknown): Promise<unknown> {
+  async request(method: string, params: unknown, onSend?: () => void): Promise<unknown> {
+    // A new resume must not race an unsubscribe from the previous turn.
+    const threadId = (params as { threadId?: string } | null)?.threadId;
+    if (threadId && ['thread/resume', 'thread/fork', 'turn/start', 'thread/compact/start'].includes(method)) {
+      await this.waitForThreadRelease(threadId);
+    }
     await this.ensureStarted();
+    onSend?.();
     return this.rawRequest(method, params);
   }
 

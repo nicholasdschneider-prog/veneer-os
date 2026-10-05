@@ -137,6 +137,8 @@ export interface CompactSessionHandle {
 
 export interface ProviderAdapter {
   id: ProviderId;
+  /** Operational counters for long-lived providers; never conversation content. */
+  runtimeResources?(): Array<{ pid: number | null; heldThreads: number; pinnedThreads: number }>;
   mintSessionId(): string;
   /**
    * Run one user turn; events fan out through onEvent as they stream.

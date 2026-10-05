@@ -20,6 +20,7 @@ import { createHuddleReconciler, createHuddleService } from '../huddles/service.
 import { createBuildQueueCoordinator } from '../buildQueue/coordinator.js';
 import { createShutdown } from '../shutdown.js';
 import { writePidFile } from '../servicePid.js';
+import { startResourceMonitor } from './resourceMonitor.js';
 import { createDopplerTokenStore, DopplerRuntime } from '../secrets/doppler.js';
 import { installPlatformSkills } from '../skills/platform.js';
 import { createVeneerBrowserRemote } from '../veneerBrowser/remoteClient.js';
@@ -84,6 +85,7 @@ const codexAccounts = createCodexAccountStore(config.dataDir);
 adoptCodexLogins(codexAccounts);
 const runtime = buildAgentRuntime({ config, db, secrets, doppler, usage, claudeProbe, codexAccounts });
 const { manager, adapters, transcriptArchive, projectDopplerCli } = runtime;
+const stopResourceMonitor = startResourceMonitor(adapters);
 const claudeLimitReset = createClaudeLimitResetManager({
   // The requested account is explicit. This never reads or changes the active
   // account, so a reset cannot silently switch which login the next turn uses.
@@ -183,6 +185,7 @@ const shutdown = createShutdown({
   name: 'veneer-pro-runner',
   server,
   release: () => {
+    stopResourceMonitor();
     scheduled.stop();
     wakeups.stop();
     buildQueue.stop();

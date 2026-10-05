@@ -109,9 +109,26 @@ rl.on('line', (line) => {
       break;
     }
     case 'thread/close':
-      if (process.env.WRITER_LOCK_FILE) fs.rmSync(process.env.WRITER_LOCK_FILE, { force: true });
-      send({ id: m.id, result: {} });
+      send({ id: m.id, error: { code: -32600, message: 'unknown variant thread/close' } });
       break;
+    case 'thread/unsubscribe': {
+      if (process.env.UNSUBSCRIBE_ERROR === '1') {
+        send({ id: m.id, error: { code: -32601, message: 'unsubscribe unavailable' } });
+        break;
+      }
+      const reply = () => {
+        // Native unsubscribe acknowledges release of the connection, not the
+        // writer lock: the thread stays loaded during its inactivity grace.
+        send({ id: m.id, result: { status: 'unsubscribed' } });
+      };
+      if (process.env.UNSUBSCRIBE_RELEASE_FILE) {
+        const timer = setInterval(() => {
+          if (!fs.existsSync(process.env.UNSUBSCRIBE_RELEASE_FILE)) return;
+          clearInterval(timer); reply();
+        }, 5);
+      } else reply();
+      break;
+    }
     case 'thread/fork':
       if (process.env.REQUIRE_METADATA_ONLY === '1' && m.params?.excludeTurns !== true) break;
       // FORK_ERROR_MESSAGE models a fork the app-server cannot prepare (for
@@ -295,6 +312,13 @@ rl.on('line', (line) => {
       }
       if (process.env.EMIT_COLLAB_RUNNING === '1') {
         respondStarted();
+        if (process.env.LATE_CHILD_RELEASE_FILE) {
+          const timer = setInterval(() => {
+            if (!fs.existsSync(process.env.LATE_CHILD_RELEASE_FILE)) return;
+            clearInterval(timer);
+            completeTurn('running-child-secret', 'child-turn-1', 'completed');
+          }, 5);
+        }
         send({
           method: 'item/started',
           params: {

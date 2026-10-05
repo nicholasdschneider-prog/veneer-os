@@ -1244,7 +1244,7 @@ describe('Codex thread writer locks across app-server processes', () => {
     for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
   });
 
-  it('closes the thread on the process that loaded it before resuming on another', async () => {
+  it('unsubscribes idle owners and forks safely while the native grace retains the writer lock', async () => {
     const dir = tmpDir();
     dirs.push(dir);
     const lockFile = path.join(dir, 'writer.lock');
@@ -1264,10 +1264,11 @@ describe('Codex thread writer locks across app-server processes', () => {
 
     const requests = fs.readFileSync(requestLog, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
     const methods = requests.map((request) => request.method);
-    expect(methods.indexOf('thread/close')).toBeGreaterThan(methods.indexOf('thread/start'));
-    expect(methods.indexOf('thread/resume')).toBeGreaterThan(methods.indexOf('thread/close'));
-    expect(requests.find((request) => request.method === 'thread/close')?.params).toEqual({ threadId: 't1' });
-    expect(methods).not.toContain('thread/fork');
+    expect(methods.indexOf('thread/unsubscribe')).toBeGreaterThan(methods.indexOf('thread/start'));
+    expect(methods.indexOf('thread/resume')).toBeGreaterThan(methods.indexOf('thread/unsubscribe'));
+    expect(requests.find((request) => request.method === 'thread/unsubscribe')?.params).toEqual({ threadId: 't1' });
+    expect(methods).toContain('thread/fork');
+    expect(methods).not.toContain('thread/close');
     expect(events.at(-1)).toMatchObject({ type: 'turn_done', turnId: 'turn-2', outcome: 'completed' });
     expect(events.some((e) => e.type === 'error')).toBe(false);
   });
