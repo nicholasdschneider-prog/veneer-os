@@ -5,7 +5,7 @@ import { migrate } from '../src/db/migrate.js';
 import { createBotService, proposalSchema } from '../src/bots/service.js';
 import { botCalls, inCallWindow, normalizePhone, startPhoneCall, tickBotCalls, PAUSE_MS, PHONE_CALLS_PER_HOUR, RETRY_MS, RING_MS } from '../src/bots/botCalls.js';
 import { unofferedNumbers } from '../src/voice/hotlineConsent.js';
-import { bridgeTwiml, sipHost, twilioProvider } from '../src/voice/phone.js';
+import { bridgeTwiml, ensureSip, phoneRoomName, sipHost, sipUriFor, twilioProvider } from '../src/voice/phone.js';
 import { sendCallPush } from '../src/botWorkflows/notifications.js';
 import type { UserRow } from '../src/db/db.js';
 import type { AppContext } from '../src/context.js';
@@ -23,7 +23,7 @@ describe('bot calls',()=>{
   user=db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
   service=createBotService(db);
   for(const bot of ['a','b']) {db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility) VALUES(?,1,1,?,'claude',?,'private')").run(bot,bot,bot);service.register({user},bot,`Bot ${bot}`,true);}
-  started=[];const secrets:Record<string,string>={TWILIO_VOICE_ACCOUNT_SID:'ACtest',TWILIO_VOICE_API_KEY_SID:'SKtest',TWILIO_VOICE_API_KEY_SECRET:'secret',TWILIO_VOICE_FROM_NUMBER:'+15550001111'};
+  started=[];const secrets:Record<string,string>={TWILIO_VOICE_ACCOUNT_SID:'ACtest',TWILIO_VOICE_API_KEY_SID:'SKtest',TWILIO_VOICE_API_KEY_SECRET:'secret',TWILIO_VOICE_FROM_NUMBER:'+15550001111',LIVEKIT_SIP_URI:'sip:Abc123.sip.livekit.cloud',LIVEKIT_URL:'wss://x-y.livekit.cloud',LIVEKIT_API_KEY:'k',LIVEKIT_API_SECRET:'s'};
   ctx={db,doppler:{get:(n:string)=>secrets[n]??null},liveVoice:{status:()=>onCall?{id:'call'}:null,start:async(userId:number,options:unknown)=>{started.push({userId,options});if(startFails)throw new Error('x');return {};}}} as unknown as AppContext;startFails=false;
  });
  afterEach(()=>{vi.useRealTimers();db.close();});
@@ -150,7 +150,11 @@ describe('bot calls',()=>{
   expect(unofferedNumbers(['it is 40 by 20 by 7'],proposal)).toEqual(['40']);
  });
  it('bridges through the phone provider with the calls-only key and never leaves a webhook',async()=>{
-  expect(sipHost('wss://veneer-abc123.livekit.cloud')).toBe('abc123.sip.livekit.cloud');
+  expect(sipHost(ctx.doppler)).toBe('abc123.sip.livekit.cloud');
+  expect(sipHost({get:()=>'sip:bad host'})).toBeNull();expect(sipHost({get:()=>null})).toBeNull();
+  expect(sipUriFor('123456789012345678','abc123.sip.livekit.cloud')).toBe('sip:123456789012345678@abc123.sip.livekit.cloud;transport=tcp');
+  // LiveKit's callee rule names the room <prefix>_<digits>; the worker must wait in exactly that room.
+  expect(phoneRoomName('123456789012345678')).toBe('veneer-voice-phone_123456789012345678');
   const twiml=bridgeTwiml('sip:123@abc.sip.livekit.cloud','veneer','p&w','+15550001111');
   expect(twiml).toContain('<Sip username="veneer" password="p&amp;w">sip:123@abc.sip.livekit.cloud</Sip>');expect(twiml).toContain('timeLimit="300"');
   const calls:{url:string;method:string;body:string;auth:string}[]=[];
@@ -164,5 +168,19 @@ describe('bot calls',()=>{
   expect(form.has('Url')).toBe(false);expect(form.has('StatusCallback')).toBe(false);
   expect(await provider.status('CA1')).toEqual({status:'in-progress',answeredBy:'human'});
   await provider.hangUp('CA1');expect(calls[2]).toMatchObject({method:'POST',body:'Status=completed'});
+ });
+ it('reuses an open bridge trunk but replaces one pinned to specific numbers',async()=>{
+  const store=new Map<string,string>();const secretsApi={getApiKeyOverride:(k:string)=>store.get(k)??null,setApiKeyOverride:(k:string,v:string)=>void store.set(k,v)};
+  const trunks:{sipTrunkId:string;numbers:string[]}[]=[];let n=0;const deleted:string[]=[];
+  const client={listSipInboundTrunk:async()=>trunks,createSipInboundTrunk:async(_name:string,numbers:string[])=>{const t={sipTrunkId:`trunk-${++n}`,numbers};trunks.push(t);return t;},
+   createSipDispatchRule:async()=>({sipDispatchRuleId:`rule-${n}`}),deleteSipTrunk:async(id:string)=>{deleted.push(id);trunks.splice(trunks.findIndex(t=>t.sipTrunkId===id),1);return {};},deleteSipDispatchRule:async(id:string)=>{deleted.push(id);return {};}};
+  const first=await ensureSip({secrets:secretsApi,doppler:ctx.doppler},client as never);
+  expect(first).toMatchObject({trunkId:'trunk-1',ruleId:'rule-1',user:'veneer',host:'abc123.sip.livekit.cloud'});expect(first.password.length).toBeGreaterThan(20);
+  expect(await ensureSip({secrets:secretsApi,doppler:ctx.doppler},client as never)).toMatchObject({trunkId:'trunk-1'});
+  trunks[0]!.numbers=['+15550001111'];
+  const replaced=await ensureSip({secrets:secretsApi,doppler:ctx.doppler},client as never);
+  expect(replaced.trunkId).toBe('trunk-2');expect(deleted).toEqual(['rule-1','trunk-1']);expect(replaced.password).not.toBe(first.password);
+  expect(JSON.parse(store.get('bot-call-sip')!)).toMatchObject({trunkId:'trunk-2',ruleId:'rule-2'});
+  expect(trunks).toHaveLength(1);expect(trunks[0]!.numbers).toEqual([]);
  });
 });

@@ -10,7 +10,7 @@ vi.mock('node:child_process', () => ({ fork: fakes.fork }));
 vi.mock('livekit-server-sdk', () => ({
   RoomServiceClient: class { createRoom = fakes.createRoom; deleteRoom = fakes.deleteRoom; },
   AccessToken: class { addGrant() {} async toJwt() { return 'test-scoped-token'; } },
-  SipClient: class { async listSipInboundTrunk() { return []; } async createSipInboundTrunk() { return { sipTrunkId: 'trunk-1' }; } async createSipDispatchRule() { return { sipDispatchRuleId: 'rule-1' }; } },
+  SipClient: class { async listSipInboundTrunk() { return []; } async createSipInboundTrunk() { return { sipTrunkId: 'trunk-1', numbers: [] }; } async createSipDispatchRule() { return { sipDispatchRuleId: 'rule-1' }; } async deleteSipTrunk() { return {}; } async deleteSipDispatchRule() { return {}; } },
 }));
 import { LiveVoiceService } from '../src/voice/service.js';
 import { VoiceWorkspace } from '../src/voice/workspace.js';
@@ -140,7 +140,7 @@ describe('live voice lifecycle', () => {
   it('phones the person, bridges them into the room, and hangs up on voicemail without speaking', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('sage','Sage',1)").run();
-    Object.assign(secrets, { TWILIO_VOICE_ACCOUNT_SID:'ACtest', TWILIO_VOICE_API_KEY_SID:'SKtest', TWILIO_VOICE_API_KEY_SECRET:'s', TWILIO_VOICE_FROM_NUMBER:'+15550001111' });
+    Object.assign(secrets, { TWILIO_VOICE_ACCOUNT_SID:'ACtest', TWILIO_VOICE_API_KEY_SID:'SKtest', TWILIO_VOICE_API_KEY_SECRET:'s', TWILIO_VOICE_FROM_NUMBER:'+15550001111', LIVEKIT_SIP_URI:'sip:test1.sip.livekit.cloud' });
     const store = new Map<string,string>();
     const phone = { place: vi.fn().mockResolvedValue('CA1'), status: vi.fn().mockResolvedValue({ status:'ringing', answeredBy:null }), hangUp: vi.fn().mockResolvedValue(undefined) };
     service.close();
@@ -155,8 +155,8 @@ describe('live voice lifecycle', () => {
     expect(start.instructions).toContain('THIS IS A PHONE CALL'); expect(start.instructions).toContain('never leave a message');
     expect(call.token).toBe('');
     const [to, uri, sipUser, sipPassword] = phone.place.mock.calls[0]!;
-    expect(to).toBe('+15745550100'); expect(uri).toMatch(/^sip:\d{18}@test\.sip\.livekit\.cloud$/); expect(sipUser).toBe('veneer'); expect(String(sipPassword).length).toBeGreaterThan(20);
-    expect(fakes.createRoom.mock.calls.at(-1)![0].name).toBe(`veneer-voice-phone-${String(uri).slice(4,22)}`);
+    expect(to).toBe('+15745550100'); expect(uri).toMatch(/^sip:\d{18}@test1\.sip\.livekit\.cloud;transport=tcp$/); expect(sipUser).toBe('veneer'); expect(String(sipPassword).length).toBeGreaterThan(20);
+    expect(fakes.createRoom.mock.calls.at(-1)![0].name).toBe(`veneer-voice-phone_${String(uri).slice(4,22)}`);
     expect(store.get('bot-call-sip')).toContain('trunk-1');
     expect(db.prepare("SELECT provider_sid,status,voice_session_id FROM bot_phone_calls WHERE id='p1'").get()).toEqual({provider_sid:'CA1',status:'queued',voice_session_id:call.id});
     // No browser heartbeat is expected on a phone call.

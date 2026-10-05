@@ -75,9 +75,16 @@ A bot phones the person's cell when they are away from Veneer.
   **Call my phone now** to try it. `bot_call_settings.phone`, `phone_enabled`.
 - **How the call is placed** (`server/src/voice/phone.ts`). The room and voice worker start first.
   Twilio then dials the cell from the saved line with inline instructions (no public webhook) that
-  bridge the answered call over SIP into that LiveKit room. One password-protected LiveKit inbound
-  trunk and one dispatch rule named `veneer-bot-calls` are created on first use; the rule names the
-  room after the digits dialed, so each call lands in its own room.
+  bridge the answered call over SIP (`sip:<digits>@<host>;transport=tcp`) into that LiveKit room.
+  The host is the project's SIP URI from LiveKit's project settings, stored as `LIVEKIT_SIP_URI`; it
+  cannot be derived from the project URL. One password-protected LiveKit inbound trunk and one
+  callee dispatch rule named `veneer-bot-calls` are created on first use. LiveKit names the room
+  `veneer-voice-phone_<digits>`, so the worker waits in exactly that room and each call has its own.
+  A trunk found pinned to specific numbers is replaced, since LiveKit cannot clear that list.
+- **First live call, 2026-10-04 (build #552):** the phone rang and was answered, but the bot was
+  never heard. Two causes, both fixed in build #586: the SIP host was guessed from the project URL
+  (wrong), and the worker's room name lacked the `_` LiveKit inserts, so the caller landed in an
+  empty room and LiveKit never answered the bridge.
 - **Credentials.** Doppler main/prd `TWILIO_VOICE_ACCOUNT_SID`, `TWILIO_VOICE_API_KEY_SID`,
   `TWILIO_VOICE_API_KEY_SECRET`, `TWILIO_VOICE_FROM_NUMBER`. The key is restricted to Voice calls.
   The same Twilio account runs the live OrderOps customer service line: no number's settings are

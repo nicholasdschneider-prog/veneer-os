@@ -12,7 +12,7 @@ import { botCalls } from '../bots/botCalls.js';
 import type { UserRow } from '../db/db.js';
 
 import { voiceFailureMessage } from './failure.js';
-import { ensureSip, phoneConfigured, phoneRoomToken, twilioProvider, PHONE_ENDED, PHONE_MAX_SECONDS, PHONE_ROOM_PREFIX, type PhoneProvider } from './phone.js';
+import { ensureSip, phoneConfigured, phoneRoomName, phoneRoomToken, sipUriFor, twilioProvider, PHONE_ENDED, PHONE_MAX_SECONDS, type PhoneProvider } from './phone.js';
 
 interface Call {
   hotline: boolean; consent:HotlineConsent; timezone?: string; hotlineContext?: string;
@@ -184,7 +184,7 @@ export class LiveVoiceService {
     this.starting.add(userId);
     let client: RoomServiceClient | undefined;
     const phoneToken = options.phone ? phoneRoomToken() : null;
-    const room = phoneToken ? `${PHONE_ROOM_PREFIX}${phoneToken}` : `veneer-voice-${randomUUID()}`;
+    const room = phoneToken ? phoneRoomName(phoneToken) : `veneer-voice-${randomUUID()}`;
     let setupError: string | null = null;
     try {
       await this.ctx.doppler.refresh();
@@ -346,7 +346,7 @@ export class LiveVoiceService {
         const phone = call.phone;
         this.ctx.db.prepare('UPDATE bot_phone_calls SET voice_session_id=? WHERE id=?').run(call.id, phone.logId);
         // The room and the worker are up before the phone rings, so the person never waits on pickup.
-        void this.phoneProvider.place(options.phone!.to, `sip:${phoneToken}@${sip.host}`, sip.user, sip.password).then((sid) => {
+        void this.phoneProvider.place(options.phone!.to, sipUriFor(phoneToken!, sip.host), sip.user, sip.password).then((sid) => {
           this.ctx.db.prepare("UPDATE bot_phone_calls SET provider_sid=?,status='queued' WHERE id=?").run(sid, phone.logId);
           if (this.calls.get(userId) !== call) { void this.phoneProvider.hangUp(sid); return; }
           phone.sid = sid;

@@ -8,11 +8,13 @@ import type { AppContext } from '../context.js';
  * public webhook: the call's instructions are sent inline and its progress is read back by polling.
  */
 
-export const PHONE_SECRET_NAMES = ['TWILIO_VOICE_ACCOUNT_SID', 'TWILIO_VOICE_API_KEY_SID', 'TWILIO_VOICE_API_KEY_SECRET', 'TWILIO_VOICE_FROM_NUMBER'] as const;
+export const PHONE_SECRET_NAMES = ['TWILIO_VOICE_ACCOUNT_SID', 'TWILIO_VOICE_API_KEY_SID', 'TWILIO_VOICE_API_KEY_SECRET', 'TWILIO_VOICE_FROM_NUMBER', 'LIVEKIT_SIP_URI'] as const;
 const SIP_SECRET = 'bot-call-sip';
 const SIP_TRUNK_NAME = 'veneer-bot-calls';
-/** Rooms for phone calls are this prefix plus the digits Twilio dials, so each call lands in its own room. */
-export const PHONE_ROOM_PREFIX = 'veneer-voice-phone-';
+/** LiveKit names the room for a bridged call `<prefix>_<dialed digits>`; see phoneRoomName. */
+export const PHONE_ROOM_PREFIX = 'veneer-voice-phone';
+/** The room LiveKit's callee dispatch rule puts a call to these digits into. The worker must wait in exactly this room. */
+export const phoneRoomName = (digits: string) => `${PHONE_ROOM_PREFIX}_${digits}`;
 /** How long the phone rings before the call counts as missed. */
 export const PHONE_RING_SECONDS = 25;
 /** Hard cap on one phone call. */
@@ -35,7 +37,12 @@ export function bridgeTwiml(sipUri: string, sipUser: string, sipPassword: string
 }
 
 export function phoneConfigured(doppler: Doppler): boolean {
-  return PHONE_SECRET_NAMES.every((name) => !!doppler.get(name)) && E164.test(doppler.get('TWILIO_VOICE_FROM_NUMBER') ?? '');
+  return PHONE_SECRET_NAMES.every((name) => !!doppler.get(name)) && E164.test(doppler.get('TWILIO_VOICE_FROM_NUMBER') ?? '') && sipHost(doppler) !== null;
+}
+/** The project's SIP address from its LiveKit settings (`sip:<id>.sip.livekit.cloud`). It cannot be derived from the project URL. */
+export function sipHost(doppler: Doppler): string | null {
+  const value = (doppler.get('LIVEKIT_SIP_URI') ?? '').trim().toLowerCase().replace(/^sip:/, '').replace(/[;?].*$/, '');
+  return /^[a-z0-9][a-z0-9.-]{3,100}$/.test(value) ? value : null;
 }
 
 /** Twilio's REST API with the restricted calls-only key. Credentials are read at use time. */
@@ -69,28 +76,29 @@ export function twilioProvider(doppler: Doppler, fetcher: typeof fetch = fetch):
   };
 }
 
-/** `wss://name-abc123.livekit.cloud` signs SIP in at `abc123.sip.livekit.cloud`. */
-export function sipHost(livekitUrl: string): string {
-  const sub = new URL(livekitUrl).hostname.split('.')[0]!;
-  return `${sub.slice(sub.lastIndexOf('-') + 1)}.sip.livekit.cloud`;
-}
-
 interface SipSetup { trunkId: string; ruleId: string; user: string; password: string }
 /**
  * One password-protected inbound trunk and one dispatch rule that names the room after the
  * dialed digits. Created once and remembered; the password never leaves the secret store
  * except inside the call instructions sent to the phone provider.
  */
-export async function ensureSip(ctx: { secrets: Secrets; doppler: Doppler }, client?: Pick<SipClient, 'createSipInboundTrunk' | 'createSipDispatchRule' | 'listSipInboundTrunk'>): Promise<SipSetup & { host: string }> {
+export async function ensureSip(ctx: { secrets: Secrets; doppler: Doppler }, client?: Pick<SipClient, 'createSipInboundTrunk' | 'createSipDispatchRule' | 'listSipInboundTrunk' | 'deleteSipTrunk' | 'deleteSipDispatchRule'>): Promise<SipSetup & { host: string }> {
   const url = ctx.doppler.get('LIVEKIT_URL'); const key = ctx.doppler.get('LIVEKIT_API_KEY'); const secret = ctx.doppler.get('LIVEKIT_API_SECRET');
-  if (!url || !key || !secret) throw new Error('Live voice is not set up.');
-  const host = sipHost(url);
+  const host = sipHost(ctx.doppler);
+  if (!url || !key || !secret || !host) throw new Error('Live voice or its SIP address is not set up.');
   const sip = client ?? new SipClient(url.replace(/^wss:/, 'https:'), key, secret);
   const saved = ctx.secrets.getApiKeyOverride(SIP_SECRET);
   if (saved) {
     try {
       const setup = JSON.parse(saved) as SipSetup;
-      if ((await sip.listSipInboundTrunk()).some((trunk) => trunk.sipTrunkId === setup.trunkId)) return { ...setup, host };
+      const trunk = (await sip.listSipInboundTrunk()).find((t) => t.sipTrunkId === setup.trunkId);
+      // The trunk must accept any dialed digits. A trunk pinned to specific numbers (LiveKit cannot
+      // clear that list) is replaced; the old rule goes with it.
+      if (trunk && trunk.numbers.length === 0) return { ...setup, host };
+      if (trunk) {
+        await sip.deleteSipDispatchRule(setup.ruleId).catch(() => {});
+        await sip.deleteSipTrunk(setup.trunkId).catch(() => {});
+      }
     } catch { /* unreadable or unreachable: fall through and set up again */ }
   }
   const user = 'veneer';
@@ -104,5 +112,7 @@ export async function ensureSip(ctx: { secrets: Secrets; doppler: Doppler }, cli
 
 /** Digits only: the phone provider and the SIP bridge both pass them through unchanged. */
 export const phoneRoomToken = () => String(crypto.randomInt(10 ** 11, 10 ** 12 - 1)) + String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+/** The address Twilio bridges to: the digits pick the room, TCP is what LiveKit documents for Twilio. */
+export const sipUriFor = (digits: string, host: string) => `sip:${digits}@${host};transport=tcp`;
 /** Final provider states: the call is over and the phone is no longer ringing or connected. */
 export const PHONE_ENDED = ['completed', 'busy', 'no-answer', 'failed', 'canceled'];
