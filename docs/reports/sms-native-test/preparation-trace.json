@@ -1,0 +1,189 @@
+{
+  "schema": "preparation-only-evidence/v1",
+  "nativeRun": false,
+  "trainingAndProfileMaterialized": false,
+  "receipt": {
+    "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+    "messageId": "fixture-example-message",
+    "capturedMs": 1791223956387,
+    "payloadHash": "67c0566227f5926a8f3eb45cf6500b7bd988d45281e820216abd81edc7d7ac65",
+    "duplicate": false,
+    "state": "BLOCKED",
+    "execute": false,
+    "queueStatus": "NOT_QUEUED",
+    "nativeSessionId": null
+  },
+  "duplicate": {
+    "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+    "messageId": "fixture-example-message",
+    "capturedMs": 1791223956387,
+    "payloadHash": "67c0566227f5926a8f3eb45cf6500b7bd988d45281e820216abd81edc7d7ac65",
+    "duplicate": true,
+    "state": "BLOCKED",
+    "execute": false,
+    "queueStatus": "NOT_QUEUED",
+    "nativeSessionId": null
+  },
+  "admissionError": "ISOLATED_NATIVE_PROCESS_HOST_UNAVAILABLE",
+  "trace": {
+    "events": [
+      {
+        "sequence": 1,
+        "execute": false,
+        "kind": "preparation_registered",
+        "manifestHash": "0cc4b0e51c66e025c05fcbd72f51f79202fd2226c3d0059a3c7d244967df6742",
+        "monotonicNs": "259988845949750",
+        "ownerId": 1,
+        "processClockId": "8dfeea42-c3f3-4510-8d49-9efb4083e03f",
+        "profileHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+        "trainingHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "utc": "2026-10-05T18:12:36.386Z",
+        "previousHash": "",
+        "eventHash": "a137ef7bceaa4928405787043fe8151da2e63e6c33b637410fe8703fa0feaf8a"
+      },
+      {
+        "sequence": 2,
+        "customerId": "fixture-example-customer",
+        "kind": "inbound_captured",
+        "manifestHash": "0cc4b0e51c66e025c05fcbd72f51f79202fd2226c3d0059a3c7d244967df6742",
+        "messageId": "fixture-example-message",
+        "monotonicNs": "259988846738291",
+        "orderId": "fixture-example-order",
+        "processClockId": "8dfeea42-c3f3-4510-8d49-9efb4083e03f",
+        "profileHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+        "sessionId": "fixture-example-session",
+        "trainingHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "turnId": "fixture-example-message",
+        "utc": "2026-10-05T18:12:36.387Z",
+        "previousHash": "a137ef7bceaa4928405787043fe8151da2e63e6c33b637410fe8703fa0feaf8a",
+        "eventHash": "95f008ba9f4583c0592a70ecd5a2c645d41272de7559565031b4ddb5c706da46"
+      },
+      {
+        "sequence": 3,
+        "blockers": [
+          "ISOLATED_NATIVE_PROCESS_HOST_UNAVAILABLE",
+          "NONSHARED_PROVIDER_AUTH_UNAVAILABLE",
+          "FIXTURE_ONLY_NATIVE_TOOL_TRANSPORT_UNAVAILABLE",
+          "PINNED_TRAINING_PROFILE_NOT_MATERIALIZED"
+        ],
+        "customerId": "fixture-example-customer",
+        "kind": "admission_blocked",
+        "manifestHash": "0cc4b0e51c66e025c05fcbd72f51f79202fd2226c3d0059a3c7d244967df6742",
+        "messageId": "fixture-example-message",
+        "monotonicNs": "259988846778416",
+        "orderId": "fixture-example-order",
+        "processClockId": "8dfeea42-c3f3-4510-8d49-9efb4083e03f",
+        "profileHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+        "sessionId": "fixture-example-session",
+        "trainingHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "turnId": "fixture-example-message",
+        "utc": "2026-10-05T18:12:36.387Z",
+        "previousHash": "95f008ba9f4583c0592a70ecd5a2c645d41272de7559565031b4ddb5c706da46",
+        "eventHash": "8b5c738a479fcf192f3ea1d44b32a678aa7b7054d7309b05298504d5491cdad9"
+      },
+      {
+        "sequence": 4,
+        "execute": false,
+        "kind": "preparation_stopped",
+        "manifestHash": "0cc4b0e51c66e025c05fcbd72f51f79202fd2226c3d0059a3c7d244967df6742",
+        "monotonicNs": "259988846957250",
+        "processClockId": "8dfeea42-c3f3-4510-8d49-9efb4083e03f",
+        "profileHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+        "trainingHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "utc": "2026-10-05T18:12:36.387Z",
+        "previousHash": "8b5c738a479fcf192f3ea1d44b32a678aa7b7054d7309b05298504d5491cdad9",
+        "eventHash": "259d79bf1f11c30e4f320a6fdd935fb6554c25bb34df3887c965f2d36e82109c"
+      }
+    ],
+    "hasMore": false,
+    "next": 4
+  },
+  "monitor": {
+    "run": {
+      "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+      "ownerId": 1,
+      "manifest": {
+        "admissions": 1,
+        "fixtureHash": "0d549e180f9d34e3d9c55642a5f1f3ffac9f04a33b9107b493b882383e9adcd7",
+        "maxTurns": 3,
+        "model": "fixture-model-not-started",
+        "profileHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "provider": "codex",
+        "schema": "veneer-fixture-manifest/v1",
+        "sessions": [
+          {
+            "customerId": "fixture-example-customer",
+            "orderIds": [
+              "fixture-example-order"
+            ],
+            "sessionId": "fixture-example-session"
+          }
+        ],
+        "syntheticOnly": true,
+        "trainingHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "wallTimeMs": 60000
+      },
+      "manifestHash": "0cc4b0e51c66e025c05fcbd72f51f79202fd2226c3d0059a3c7d244967df6742",
+      "createdMs": 1791223956386,
+      "state": "STOPPED",
+      "schema": "veneer-fixture-readiness/v1",
+      "status": "STAGED_PREPARATION_ONLY",
+      "ready": false,
+      "execute": false,
+      "nativeRuntimeAvailable": false,
+      "blockers": [
+        "ISOLATED_NATIVE_PROCESS_HOST_UNAVAILABLE",
+        "NONSHARED_PROVIDER_AUTH_UNAVAILABLE",
+        "FIXTURE_ONLY_NATIVE_TOOL_TRANSPORT_UNAVAILABLE",
+        "PINNED_TRAINING_PROFILE_NOT_MATERIALIZED"
+      ],
+      "providerAcceptanceMs": null,
+      "carrierDeliveryMs": null
+    },
+    "nativeMeasurements": false,
+    "totalInputs": 1,
+    "blockedInputs": 1,
+    "completed": 0,
+    "failed": 0,
+    "timedOut": 0,
+    "unknown": 0,
+    "unanswered": 1,
+    "substantiveReplyMs": {
+      "observed": 0,
+      "p50": null,
+      "p95": null,
+      "max": null
+    },
+    "duplicateEffects": null,
+    "wrongOrderEffects": null,
+    "unresolvedHandoffs": null,
+    "providerAcceptance": null,
+    "carrierDelivery": null,
+    "timeline": [
+      {
+        "customerId": "fixture-example-customer",
+        "messageId": "fixture-example-message",
+        "orderId": "fixture-example-order",
+        "sessionId": "fixture-example-session",
+        "syntheticOnly": true,
+        "text": "Synthetic example: please check the fixture order.",
+        "runId": "fixture-run-38f7771f-d4eb-486d-bf1a-ad01239cc7e2",
+        "capturedMs": 1791223956387,
+        "payloadHash": "67c0566227f5926a8f3eb45cf6500b7bd988d45281e820216abd81edc7d7ac65",
+        "duplicate": false,
+        "state": "BLOCKED",
+        "execute": false,
+        "queueStatus": "NOT_QUEUED",
+        "nativeSessionId": null,
+        "unansweredAgeMs": 0,
+        "reply": null,
+        "verifiedMutation": null,
+        "sinkAcceptance": null
+      }
+    ]
+  }
+}

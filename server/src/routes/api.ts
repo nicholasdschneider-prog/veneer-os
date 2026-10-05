@@ -5,6 +5,7 @@ import { createCoordinationRouter, sendCoordination } from '../coordination/rout
 import { focusedApiBoundary, focusedAutomations, isFocusedMember } from '../bots/focusedWorkspace.js';
 import { createRoomsRouter } from '../rooms/routes.js';
 import { createBotWorkflowsRouter } from '../botWorkflows/routes.js';
+import { createFixtureTestsRouter } from '../fixtureTests/routes.js';
 import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
 import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
 import { createCommunicationRouter } from '../bots/communicationRoutes.js';
@@ -886,6 +887,7 @@ export function createApiRouter(ctx: AppContext): Router {
   router.use('/bot-calls', createBotCallsRouter(ctx));
   router.use('/live-voice', createLiveVoiceRouter(ctx));
   router.use('/bot-workflows', createBotWorkflowsRouter(ctx));
+  router.use('/fixture-tests', createFixtureTestsRouter(ctx));
   router.use('/purchase-timing/setup', purchaseTimingSetupRoutes(ctx));
   router.use('/bots', createBotsRouter(ctx));
   router.use('/bot-communication', createCommunicationRouter(ctx));

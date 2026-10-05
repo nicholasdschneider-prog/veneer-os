@@ -14,6 +14,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'sms-fixture-preparation', title: 'Prepare isolated SMS agent tests (staged)', category: 'Automation', updated: '2026-10-05',
+    audience: 'The signed-in installation owner; restricted employees and bot tokens cannot use the preparation API.',
+    summary: 'Staged source records immutable synthetic test manifests and inputs with a read-only preparation timeline. Native model execution remains blocked.',
+    steps: ['Ask Platform Dev to report the SMS fixture readiness blockers and staged test evidence.', 'Keep all orders, customers and inputs synthetic; preserve current cancellation/refund approvals and the AutoShip SMS pause.', 'Complete and verify the dedicated native process host, separate provider authentication and fixture-only tool transport before any model run. Installation requires a separately authorized deployment; no customer walkthrough is ready yet.'],
+    example: 'Report the isolated SMS test prerequisites and which measurements are still missing.',
+    limits: 'Not deployed by this commission. Preparation does not start native models or measure reply latency. Ordinary chats, shared credential homes, provider discovery and caller-supplied profile hashes do not establish isolation. No live sends, financial effects, source enrollment or rollout is authorized. There is no executable fixture host or human test UI yet.',
+    announcement: null,
+    agent: 'SMS fixture preparation is staged only. After separately authorized installation, the human-owner-only /api/fixture-tests/readiness and run monitoring API report immutable preparation receipts; /start fails closed. No MCP fixture execution tools exist. Do not use normal chat materialization, a shared provider or a direct model client as a substitute. Report ISOLATED_NATIVE_PROCESS_HOST_UNAVAILABLE, NONSHARED_PROVIDER_AUTH_UNAVAILABLE, FIXTURE_ONLY_NATIVE_TOOL_TRANSPORT_UNAVAILABLE and PINNED_TRAINING_PROFILE_NOT_MATERIALIZED. Missing native latency/effect/delivery observations remain null. Preserve current human approval gates, AutoShip pause and UNKNOWN history. Guide: /#/bot-guide?feature=sms-fixture-preparation.',
+  },
+  {
     id: 'runway-connector', title: 'Connect Runway for video and image generation', category: 'Getting started', updated: '2026-10-03',
     audience: 'Anyone who can add connectors in Settings. Each person signs in to their own Runway account.',
     summary: 'Bots can generate video and images with Runway and fetch the finished output, using the credits on the Runway plan you sign in with rather than a separately billed developer key.',

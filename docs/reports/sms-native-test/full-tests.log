@@ -1,0 +1,1999 @@
+
+> veneer-os@0.1.0 test
+> npm run test:installer && npm run test -w @veneer-pro/server && npm run test -w @veneer-pro/web && npm test -w veneer-browser-manager
+
+
+> veneer-os@0.1.0 test:installer
+> node --test installer/*.test.mjs
+
+✔ writes the identity 0600 and the server wiring into the env file (4.558917ms)
+✔ rotates the token without disturbing operator overrides (1.21075ms)
+✔ fails loudly when the client script prints no identity (0.469833ms)
+✔ replaces an existing key in place and appends a new one (3.312917ms)
+✔ leaves unrelated lines, comments and ordering untouched (0.944209ms)
+✔ collapses duplicate definitions of a rewritten key (1.412542ms)
+✔ onlyIfMissing keeps an operator value but still adds absent keys (0.937666ms)
+✔ creates a missing file and enforces the mode on every write (1.201ms)
+✔ quotes values containing spaces and quotes (0.802375ms)
+✔ validateInstallEnv fails when cloudflare identity has no team domain (0.317292ms)
+✔ validateInstallEnv fails when cloudflare identity has no AUD (0.140792ms)
+✔ validateInstallEnv treats an unset identity as cloudflare (0.12325ms)
+✔ validateInstallEnv passes a complete cloudflare config (1.541167ms)
+✔ validateInstallEnv skips the Access check for a non-cloudflare identity (0.148542ms)
+✔ validateInstallEnv treats a blank Access value as missing (0.127125ms)
+✔ validateInstallEnv warns but does not fail on missing DATA_DIR and VP_SOURCE_DIR (0.094208ms)
+✔ validateInstallEnv warns for each unset path independently (0.043709ms)
+✔ reloads the runner after persistent services and before the boot probe (4.303083ms)
+✔ continues reloading later services after one bootstrap fails (1.617708ms)
+✔ reports a failed post-install health assertion (0.414292ms)
+✔ renders a one-shot helper plist with escaped paths and no KeepAlive (0.282166ms)
+✔ attributes readiness to the log-owning tunnel rather than another default-port tunnel (13.107792ms)
+✔ refuses ambiguous, unrelated, non-loopback, or missing listeners (0.166959ms)
+✔ rejects disconnected or malformed readiness 503 {"status":503,"readyConnections":0} (0.284666ms)
+✔ rejects disconnected or malformed readiness 200 {"status":200,"readyConnections":0} (0.129541ms)
+✔ rejects disconnected or malformed readiness 200 {"status":200,"readyConnections":"4"} (0.351125ms)
+✔ rejects disconnected or malformed readiness 200 {} (0.370959ms)
+✔ a healthy Access redirect cannot substitute for a disconnected tunnel (0.765833ms)
+✔ public errors do not echo credentials, URLs, or response bodies (0.573334ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 109.667083
+
+> @veneer-pro/server@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/migrate.test.ts (25 tests) 2026ms
+   ✓ migrate > consolidates App Server and exec conversations under canonical Codex without losing compatibility data 401ms
+ ✓ test/connectorsRoutes.test.ts (55 tests) 1212ms
+ ✓ test/veneerBrowserSecretTools.test.ts (47 tests) 1979ms
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > keeps approved work queued after hangup and never approves an unanswered discussion on end
+[voice] call 712ce257-ac23-4b9f-95b4-87e46c1d8348 ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > keeps approved work queued after hangup and never approves an unanswered discussion on end
+[voice] transcript handoff skipped for call 712ce257-ac23-4b9f-95b4-87e46c1d8348: no_caller_turns
+
+ ✓ test/veneerBrowserMcp.test.ts (50 tests) 1116ms
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > finishes an accepted instruction dispatch after its caller hangs up without replaying it
+[voice] call fe637586-0488-45f6-a861-2e7cfbba0680 ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > finishes an accepted instruction dispatch after its caller hangs up without replaying it
+[voice] transcript handoff skipped for call fe637586-0488-45f6-a861-2e7cfbba0680: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > speaks as the bot in first person and never as a third-party voice line
+[voice] call 885bc2fc-ce2f-4eb3-b739-b3fa0d8632c9 ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > speaks as the bot in first person and never as a third-party voice line
+[voice] transcript handoff skipped for call 885bc2fc-ce2f-4eb3-b739-b3fa0d8632c9: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] call 045387fe-d2aa-40e4-bda3-5345f84b48ed ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] transcript handoff skipped for call 045387fe-d2aa-40e4-bda3-5345f84b48ed: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] call 9452f3e2-066c-4d97-917d-e1915aa17d90 ended (agent_ended/worker_user_initiated) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] transcript handoff skipped for call 9452f3e2-066c-4d97-917d-e1915aa17d90: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > never records an offered option the caller did not state on a call the bot placed
+[voice] call 9d958443-e2db-4a77-9639-da3ce2984d11 ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > never records an offered option the caller did not state on a call the bot placed
+[voice] transcript handoff skipped for call 9d958443-e2db-4a77-9639-da3ce2984d11: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > records an offered option on a placed call when the caller states and confirms it
+[voice] call a1b528cb-1578-42c3-960b-dc7a000bcfb5 ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > records an offered option on a placed call when the caller states and confirms it
+[voice] transcript handoff skipped for call a1b528cb-1578-42c3-960b-dc7a000bcfb5: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] call 6f9f4f02-778b-4a55-90d4-5ecd47a2ebfc ended (phone_voicemail) after 97s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] transcript handoff skipped for call 6f9f4f02-778b-4a55-90d4-5ecd47a2ebfc: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] call 8e1bfd09-c996-48a2-8ad2-4def26429eb1 ended (phone_hangup/worker_participant_disconnected) after 0s
+[voice] call 50a2fc27-618c-4601-9be9-f79cced31065 ended (phone_voicemail) after 0s
+[voice] call 21dcf812-988c-4b4d-b404-b0a5f8addd47 failed (phone_not_placed) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] transcript handoff skipped for call 8e1bfd09-c996-48a2-8ad2-4def26429eb1: no_caller_turns
+[voice] transcript handoff skipped for call 50a2fc27-618c-4601-9be9-f79cced31065: no_caller_turns
+[voice] phone call 21dcf812-988c-4b4d-b404-b0a5f8addd47 could not be placed: refused
+[voice] transcript handoff skipped for call 21dcf812-988c-4b4d-b404-b0a5f8addd47: no_caller_turns
+
+ ✓ test/skills.test.ts (34 tests) 1879ms
+   ✓ skills routes > allows audited project training by business members, without global or linked-skill writes 354ms
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > hands the saved transcript to the bot once after every bot call, marking relayed items
+[voice] call d0b1a343-f983-446a-a740-107ace6db79c ended (unspecified) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > hands off after an interrupted call but not for coordinator calls or calls without caller turns
+[voice] call 92488992-2131-42ca-bcb3-387f165ffe4b ended (unspecified) after 0s
+[voice] call 319ea7b3-592e-4cc0-8524-d9a334f459d9 ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > hands off after an interrupted call but not for coordinator calls or calls without caller turns
+[voice] transcript handoff skipped for call 92488992-2131-42ca-bcb3-387f165ffe4b: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > hands off after an interrupted call but not for coordinator calls or calls without caller turns
+[voice] call caf12074-2d6b-4e72-8e08-be099d469362 interrupted (not_ready) after 46s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > survives transient conversation check failures and only interrupts after sustained failure
+[voice] call 94de8901-5d79-4d86-b873-f8135c1e628f interrupted (lost_bot_conversation) after 17s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > saves style for the authenticated caller and reloads it across calls without dispatching bot work
+[voice] call 970f99f5-0ca1-4dca-bef5-610001d30b5e ended (unspecified) after 0s
+[voice] call 0399c4ca-c3e6-4f9c-be5c-1f6873ca8fe0 ended (unspecified) after 0s
+[voice] call 2ae7309a-6d42-4fdc-bf81-2c5633470fe2 ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > saves style for the authenticated caller and reloads it across calls without dispatching bot work
+[voice] transcript handoff skipped for call 0399c4ca-c3e6-4f9c-be5c-1f6873ca8fe0: no_caller_turns
+[voice] transcript handoff skipped for call 2ae7309a-6d42-4fdc-bf81-2c5633470fe2: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > saves style for the authenticated caller and reloads it across calls without dispatching bot work
+[voice] call 995688ac-b46a-43aa-8968-c3601edc4284 ended (service_shutdown) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > persists real connected duration, bounds restart interruption, and ignores foreign end attempts
+[voice] call 677a5c0c-a6f5-42cb-9c52-227906fd741e ended (unspecified) after 15s
+
+ ✓ test/mergeAuthorization.test.ts (15 tests) 7530ms
+   ✓ merge authorization contract (build 498) > registers tuples idempotently and refuses conflicting mappings 358ms
+   ✓ merge authorization contract (build 498) > allocates one pair per unordered case pair with immutable revisions and request-key idempotency 426ms
+   ✓ merge authorization contract (build 498) > binds one merge question per pair whose approve answer is the intentHash 498ms
+   ✓ merge authorization contract (build 498) > issues, redeems once, replays without a grant, and refuses redemption after edits, staleness, expiry or revocation 443ms
+   ✓ merge authorization contract (build 498) > redeem re-checks approval, expiry, revocation and staleness and revocation only prevents unredeemed work 436ms
+   ✓ merge authorization contract (build 498) > rejects overlapping pairs in both orders and merged-away cases at issue and redeem 531ms
+   ✓ merge authorization contract (build 498) > accepts ticket.merged only against its redeemed reservation, idempotently by envelope, and stales bound questions across aliases 583ms
+   ✓ merge authorization contract (build 498) > records duplicate candidates only against a registered intent revision, wakes the assigned bot once, and never reopens on identical evidence 367ms
+   ✓ merge authorization contract (build 498) > resolves nonexecution only with a matching native readback that proves a fenced terminal rollback 935ms
+   ✓ merge authorization contract (build 498) > inherits fences across registration rotation and requires owner enrollment 670ms
+   ✓ merge authorization contract (build 498) > lets the owner switch the standing rule on and off, with history, and never a bot 525ms
+   ✓ merge authorization contract (build 498) > approves a clear duplicate automatically under the standing rule and merges it end to end with no question raised 386ms
+   ✓ merge authorization contract (build 498) > refuses automatic approval when a question is open or the pair is fenced, and turning the rule off blocks only unredeemed automatic merges 424ms
+   ✓ merge authorization contract (build 498) > shows the owner a plain on/off status and never to bots or non-owners 337ms
+   ✓ merge authorization contract (build 498) > serves the contract only to the dedicated bearer and rejects bots at the human surface 609ms
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > bounds large bot context and preserves an older selected decision in startup and notices
+[voice] call 14af945a-6ee4-4527-b74a-4030871c8dca ended (service_shutdown) after 5s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > bounds large bot context and preserves an older selected decision in startup and notices
+[voice] transcript handoff skipped for call 14af945a-6ee4-4527-b74a-4030871c8dca: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > reports only approved error categories, never worker diagnostics
+[voice] call 8451fbf4-9bbe-4059-a403-9e305e11cfbf failed (service_shutdown) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > scopes calls to one user, refuses overlap and keeps credentials out of status
+[voice] call 077bf97c-3699-4eac-9c10-4ebb092dfd76 ended (unspecified) after 0s
+
+ ✓ test/grokAcp.test.ts (34 tests) 1831ms
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > loads existing work before starting audio, even without blockers or decisions
+[voice] call e1258bce-2714-4847-99bc-1706d80366df ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > loads existing work before starting audio, even without blockers or decisions
+[voice] transcript handoff skipped for call e1258bce-2714-4847-99bc-1706d80366df: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > keeps a normal thread call alive through task dispatch and reports real replies
+[voice] call d2ffa75d-d160-4f27-aeab-19276198002b interrupted (lost_bot_conversation) after 10s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > keeps a normal thread call alive through task dispatch and reports real replies
+[voice] call d2ffa75d-d160-4f27-aeab-19276198002b interrupted after 10 consecutive conversation check failures
+[voice] transcript handoff failed for call d2ffa75d-d160-4f27-aeab-19276198002b: User not available.
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > notifies a call about a decision discussion reply even when chat and run status do not change
+[voice] call 1b499087-025e-4151-88ed-77ed76adb73f ended (service_shutdown) after 2s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > notifies a call about a decision discussion reply even when chat and run status do not change
+[voice] transcript handoff skipped for call 1b499087-025e-4151-88ed-77ed76adb73f: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > reaps an abandoned phone connection even if its worker stays alive
+[voice] call f72e38eb-62d9-4706-bf5d-3d5579ec95e2 interrupted (heartbeat_timeout) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > times out a stuck startup and reports worker failures without raw diagnostics
+[voice] call d19059b4-4fb0-4876-ab4b-6bfba90ecbc6 interrupted (not_ready) after 46s
+[voice] call 5e5cf021-7905-4a46-bc73-6988529f80fd failed (service_shutdown) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > cleans up remote rooms when worker startup fails and permits retry
+[voice] call e4858412-757e-49e5-b03a-0c3f4c926ca4 ended (service_shutdown) after 0s
+
+stdout | test/liveVoiceService.test.ts > routes the hotline through selected owners and keeps its transcript out of unrelated bots
+[voice] call 94ed2a1c-a481-48dd-a6d4-f45f043c8855 ended (unspecified) after 0s
+
+ ✓ test/liveVoiceService.test.ts (24 tests) 11816ms
+   ✓ live voice lifecycle > keeps approved work queued after hangup and never approves an unanswered discussion on end 431ms
+   ✓ live voice lifecycle > finishes an accepted instruction dispatch after its caller hangs up without replaying it 363ms
+   ✓ live voice lifecycle > speaks as the bot in first person and never as a third-party voice line 351ms
+   ✓ live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself 406ms
+   ✓ live voice lifecycle > never records an offered option the caller did not state on a call the bot placed 415ms
+   ✓ live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking 543ms
+   ✓ live voice lifecycle > hands the saved transcript to the bot once after every bot call, marking relayed items 380ms
+   ✓ live voice lifecycle > hands off after an interrupted call but not for coordinator calls or calls without caller turns 999ms
+   ✓ live voice lifecycle > survives transient conversation check failures and only interrupts after sustained failure 624ms
+   ✓ live voice lifecycle > saves style for the authenticated caller and reloads it across calls without dispatching bot work 451ms
+   ✓ live voice lifecycle > persists real connected duration, bounds restart interruption, and ignores foreign end attempts 476ms
+   ✓ live voice lifecycle > bounds large bot context and preserves an older selected decision in startup and notices 1781ms
+   ✓ live voice lifecycle > reports only approved error categories, never worker diagnostics 361ms
+   ✓ live voice lifecycle > fails closed on missing credentials or unsafe room endpoints 354ms
+   ✓ live voice lifecycle > scopes calls to one user, refuses overlap and keeps credentials out of status 412ms
+   ✓ live voice lifecycle > loads existing work before starting audio, even without blockers or decisions 411ms
+   ✓ live voice lifecycle > does not open a contextless call when the thread cannot be loaded 359ms
+   ✓ live voice lifecycle > keeps a normal thread call alive through task dispatch and reports real replies 411ms
+   ✓ live voice lifecycle > notifies a call about a decision discussion reply even when chat and run status do not change 470ms
+   ✓ live voice lifecycle > reaps an abandoned phone connection even if its worker stays alive 351ms
+   ✓ live voice lifecycle > times out a stuck startup and reports worker failures without raw diagnostics 377ms
+   ✓ routes the hotline through selected owners and keeps its transcript out of unrelated bots 525ms
+ ✓ test/restart.test.ts (32 tests) 1381ms
+   ✓ conversationManager.shutdown > kills every live turn 369ms
+ ✓ test/turnResume.test.ts (41 tests) 16518ms
+   ✓ turn auto-resume > records a pending turn on start and clears it when the turn completes 319ms
+   ✓ turn auto-resume > binds toolbox materialization and agent callbacks to the initiating user 345ms
+   ✓ turn auto-resume > passes the selected agent Full Access setting to the provider 537ms
+   ✓ turn auto-resume > supplies required developer context and refreshes a resumed codex thread once 428ms
+   ✓ turn auto-resume > supplies required developer context and refreshes a resumed grok thread once 394ms
+   ✓ turn auto-resume > captures successful turns asynchronously but skips failed turns 419ms
+   ✓ turn auto-resume > clears live failure status when a turn recovers and explicitly completes 562ms
+   ✓ turn auto-resume > keeps live failure status for an explicit timed_out outcome 343ms
+   ✓ turn auto-resume > continues the chat when automatic memory capture fails 841ms
+   ✓ turn auto-resume > re-runs an interrupted turn at boot (simulated restart) 718ms
+   ✓ turn auto-resume > pauses an exhausted turn without losing it, then lets the user retry 561ms
+   ✓ turn auto-resume > keeps creating (not resuming) the session when a turn dies before the round trip 571ms
+   ✓ turn auto-resume > resumes with --resume after a restart that killed a turn post-round-trip 489ms
+   ✓ turn auto-resume > persists a queued message and replays it in order after resume on restart 350ms
+   ✓ turn auto-resume > drops a durable queue row when its message is shifted into a turn 363ms
+   ✓ turn auto-resume > does not inherit the chat creator’s connectors when a queued actor was deleted 463ms
+   ✓ turn auto-resume > exposes, edits, removes, and durably reorders waiting messages 420ms
+   ✓ turn auto-resume > steers a chosen queued message into the live turn without interrupting it 370ms
+   ✓ turn auto-resume > leaves a queued message untouched when the provider cannot steer 333ms
+   ✓ turn auto-resume > an explicit Stop reaches the provider as a user interrupt 454ms
+   ✓ turn auto-resume > durably persists agent guidance until the active provider acknowledges steering 342ms
+   ✓ turn auto-resume > rehydrates agent authorship without mislabeling an older identical human prompt 402ms
+   ✓ turn auto-resume > holds rapid follow-ups through asynchronous startup and steers each once in order 313ms
+   ✓ turn auto-resume > queues another user’s guidance instead of steering it into the current actor’s connectors 316ms
+   ✓ turn auto-resume > runs a delivered-but-unread message as a fresh turn exactly once when the turn ends first 424ms
+   ✓ turn auto-resume > keeps a delivered message when the turn it was steered into is stopped, even if a late echo arrives 313ms
+   ✓ turn auto-resume > refuses to edit or remove a queued row the live agent is already holding 357ms
+   ✓ turn auto-resume > reports why a message could not be steered 446ms
+   ✓ turn auto-resume > reports maintenance as the reason while the chat is compacting 434ms
+   ✓ turn auto-resume > stores a delivered receipt: the schema CHECK accepts every real disposition 490ms
+   ✓ turn auto-resume > starts agent guidance normally when the target chat is idle 416ms
+   ✓ turn auto-resume > keeps later messages queued until an exhausted turn is retried or skipped 424ms
+   ✓ turn auto-resume > does not dismiss an ask_user question when the user explicitly queues 332ms
+ ✓ test/transcript.test.ts (27 tests) 24ms
+stderr | test/usage.test.ts > claude probe — oauth-first with header fallback > records oauth windows + plan and skips the header probe when oauth works
+[usage] claude oauth profile failed: oauth profile failed: HTTP 401
+
+stderr | test/usage.test.ts > claude probe — oauth-first with header fallback > falls back to the header probe when the token lacks the scope (null)
+[usage] claude oauth profile failed: oauth profile failed: HTTP 401
+
+ ✓ test/usage.test.ts (42 tests) 413ms
+stderr | test/buildQueue.test.ts > Platform Dev build queue > keeps dispatching other workspaces when a chat cannot be reached at all
+[build-queue] could not dispatch #1: conversation is unreachable
+[build-queue] could not notify #1 of its failure: conversation is unreachable
+
+ ✓ test/buildQueue.test.ts (23 tests) 8148ms
+   ✓ Platform Dev build queue > preserves the requester at dispatch and refuses revoked access or cross-actor merges 444ms
+   ✓ Platform Dev build queue > waits for the enqueueing planning turn, then dispatches FIFO one at a time 394ms
+   ✓ Platform Dev build queue > records a plain user Stop as stopped instead of Blocked and keeps later work paused 356ms
+   ✓ Platform Dev build queue > does not revive stopped builds for unrelated follow-ups; explicit retry is required 359ms
+   ✓ Platform Dev build queue > requeues a failed turn once with the provider error, then pauses on a second failure 310ms
+   ✓ Platform Dev build queue > keeps one active slot per conversation and merges distinct waiting work 371ms
+   ✓ Platform Dev build queue > serializes one project while dispatching a different project concurrently 315ms
+   ✓ Platform Dev build queue > keeps a failed project from blocking another workspace 366ms
+   ✓ Platform Dev build queue > can retry a failed build in its original chat with a fresh retry allowance 311ms
+   ✓ Platform Dev build queue > revives a failed build when its conversation enqueues again 435ms
+   ✓ Platform Dev build queue > revives a stopped build and merges new details into its brief 302ms
+   ✓ Platform Dev build queue > accepts project agents and rejects an unfiled non-Platform-Dev conversation 400ms
+   ✓ Platform Dev build queue > uses the project queue for a project-filed Platform Dev chat 352ms
+   ✓ Platform Dev build queue > marks a phantom running job failed at startup but preserves a resumable one 442ms
+   ✓ Platform Dev build queue > tells the owning chat when its build is left blocked after a spent retry 351ms
+   ✓ Platform Dev build queue > notifies a phantom job at startup so its chat is not stranded 401ms
+   ✓ Platform Dev build queue > keeps dispatching other workspaces when a chat cannot be reached at all 406ms
+   ✓ Platform Dev build queue > does not post a failure notice when the chat is gone 383ms
+   ✓ Platform Dev build queue > stays silent on a user Stop so the chat the user just stopped is not restarted 353ms
+   ✓ Platform Dev build queue > records nothing when a chat with a running build enqueues more work 358ms
+ ✓ test/agentBrowser.test.ts (31 tests) 2662ms
+   ✓ scoped Agent Browser commands > serializes one working copy through its stable daemon and closes that daemon explicitly 1309ms
+   ✓ scoped Agent Browser commands > refreshes failed lookups, rejects duplicate recovery, and never retries a mutation 434ms
+   ✓ scoped Agent Browser commands > refreshes failed lookups, rejects closed recovery, and never retries a mutation 375ms
+stdout | test/huddles.test.ts > huddles > REST routes > exposes create, read, post, actions, close and reopen with the request identity as the actor
+[huddle] wake 60a66b47-89db-4cad-b67e-a18af403e320 huddle=71cbdcfb-8410-4511-9d67-1c148e062b15 bot=bot-robin through=#1 at=2026-10-05T18:02:33.106Z
+[huddle] wake b024e2a3-660c-48c9-8335-c2d94d4472fe huddle=71cbdcfb-8410-4511-9d67-1c148e062b15 bot=bot-sage through=#1 at=2026-10-05T18:02:33.106Z
+[huddle] opened 71cbdcfb-8410-4511-9d67-1c148e062b15 lead=bot-lead members=3
+
+stdout | test/huddles.test.ts > huddles > REST routes > exposes create, read, post, actions, close and reopen with the request identity as the actor
+[huddle] wake de91de86-886c-41cf-8f4f-e4a2145dd6da huddle=71cbdcfb-8410-4511-9d67-1c148e062b15 bot=bot-lead through=#2 at=2026-10-05T18:02:33.132Z
+
+stdout | test/huddles.test.ts > huddles > REST routes > exposes create, read, post, actions, close and reopen with the request identity as the actor
+[huddle] wake 983c8f8f-2320-43b2-9876-9f625d2f8227 huddle=71cbdcfb-8410-4511-9d67-1c148e062b15 bot=bot-lead through=#6 at=2026-10-05T18:03:03.132Z
+
+ ✓ test/huddles.test.ts (13 tests) 5037ms
+   ✓ huddles > opens a huddle with the caller as lead, wakes the other members once with the goal, never the author 441ms
+   ✓ huddles > keeps two-bot requests as direct messages: a bot cannot open a huddle with fewer than three bots 370ms
+   ✓ huddles > caps a huddle at six bots and refuses unregistered or foreign chats 385ms
+   ✓ huddles > reuses the open huddle for the same goal instead of creating a duplicate, and is idempotent by request key 389ms
+   ✓ huddles > routes untargeted posts to the owner or lead, targeted posts only to mentions, and handoffs move ownership 316ms
+   ✓ huddles > stops reply storms with per-bot posting limits and idempotent request keys 365ms
+   ✓ huddles > isolates identity and permissions: non-members cannot read or post, joining grants nothing, humans need bot access 385ms
+   ✓ huddles > recovers lost deliveries after a restart: reconcile folds delivered wakes and re-wakes members with undelivered messages 410ms
+   ✓ huddles > delivers a huddle wake through the real scheduler and manager as the recipient bot turn, and read_huddle acknowledges it 369ms
+   ✓ huddles > REST routes > exposes create, read, post, actions, close and reopen with the request identity as the actor 753ms
+ ✓ test/codexAppServer.test.ts (59 tests) 29906ms
+   ✓ canonical Codex App Server adapter > retires the app-server of an account that was disconnected since it was spawned 15033ms
+   ✓ canonical Codex App Server adapter > rejects native compaction failures and app-server disconnects 380ms
+   ✓ Codex paginated fork preparation failure (resume in place, option A) > starts no turn and reports no session when the fallback resume never answers 6003ms
+   ✓ Codex startup recovery history > retains startup timeout stage and never adopts a late fork or starts its turn 2232ms
+ ✓ test/contactVerification.test.ts (60 tests) 26699ms
+   ✓ paired contact verification > requires actual human setup and exact approval; never imports an ordinary draft 582ms
+   ✓ paired contact verification > issues exact immutable public pair with no actual token, draft mutation or execution 571ms
+   ✓ paired contact verification > associates each exact channel once and requires first authenticated receipt before sibling 616ms
+   ✓ paired contact verification > serializes identical competing associations and competing channels 548ms
+   ✓ paired contact verification > reconciles lost response UNKNOWN with null IDs; no replacement generation, key or sibling 595ms
+   ✓ paired contact verification > terminal rollback remains permanent; receipt-only reconciliation never sends or frees sibling 455ms
+   ✓ paired contact verification > serializes revoke before association and retains association before revoke 455ms
+   ✓ paired contact verification > rejects registrationId substitution between TWO registered targets under the same executor 342ms
+   ✓ paired contact verification > rejects authorityId substitution between TWO registered targets under the same executor 533ms
+   ✓ paired contact verification > rejects authorityHash substitution between TWO registered targets under the same executor 457ms
+   ✓ paired contact verification > rejects generationId substitution between TWO registered targets under the same executor 430ms
+   ✓ paired contact verification > rejects intentId substitution between TWO registered targets under the same executor 372ms
+   ✓ paired contact verification > rejects channel substitution between TWO registered targets under the same executor 464ms
+   ✓ paired contact verification > rejects templateHash substitution between TWO registered targets under the same executor 361ms
+   ✓ paired contact verification > rejects slotCommitment substitution between TWO registered targets under the same executor 387ms
+   ✓ paired contact verification > rejects wirePayloadHash substitution between TWO registered targets under the same executor 337ms
+   ✓ paired contact verification > rejects sourceRevision substitution between TWO registered targets under the same executor 462ms
+   ✓ paired contact verification > rejects materialRevision substitution between TWO registered targets under the same executor 405ms
+   ✓ paired contact verification > rejects providerIdempotencyKey substitution between TWO registered targets under the same executor 401ms
+   ✓ paired contact verification > rejects requestKey substitution between TWO registered targets under the same executor 652ms
+   ✓ paired contact verification > rejects cross-target source envelope/receipt swaps even with same service and executor 509ms
+   ✓ paired contact verification > rejects approved/source accountId drift 491ms
+   ✓ paired contact verification > rejects approved/source from drift 431ms
+   ✓ paired contact verification > rejects approved/source statement drift 513ms
+   ✓ paired contact verification > rejects approved/source executor drift 398ms
+   ✓ paired contact verification > rejects approved/source material drift 327ms
+   ✓ paired contact verification > denies author revocation or drift 373ms
+   ✓ paired contact verification > denies owner revocation or drift 419ms
+   ✓ paired contact verification > denies executor revocation or drift 344ms
+   ✓ paired contact verification > denies registration revocation or drift 428ms
+   ✓ paired contact verification > denies credentialExpiry revocation or drift 462ms
+   ✓ paired contact verification > denies authorityExpiry revocation or drift 438ms
+   ✓ paired contact verification > denies decisionVersion revocation or drift 428ms
+   ✓ paired contact verification > denies context revocation or drift 517ms
+   ✓ paired contact verification > fails closed for unknown target fields and incomplete source coverage 361ms
+   ✓ paired contact verification > requires both intent hashes and independent secret commitments, durable prepare ordering and original expiry 381ms
+   ✓ paired contact verification > rechecks approval after evidence fetch and before commit 350ms
+   ✓ paired contact verification > same-key concurrent issuance reconciles once; new decision or registration cannot escape target fence 416ms
+   ✓ paired contact verification > rejects an unbound bot-written wire hash even if request shape is valid 310ms
+   ✓ paired contact verification > denies expired first evidence after slow intent fetch without reserving 315ms
+   ✓ paired contact verification > blocks real source material drift even when all source hashes are recomputed 463ms
+   ✓ paired contact verification > requires persisted SENDING before acceptance and preserves its evidence on reconciliation 407ms
+   ✓ paired contact verification > UNKNOWN can reconcile to one accepted receipt, but never renews entitlement 513ms
+   ✓ paired contact verification > permanent provider/intent keys cannot be copied into another registered target 529ms
+   ✓ paired contact verification > replacement registration and new decision preserve the original target fence 307ms
+   ✓ paired contact verification > source preparation is original-owner-only, complete, nonauthorizing and secret-free 316ms
+   ✓ paired contact verification > rejects source expiry extension, foreign service and non-REDEEMING preparation 681ms
+   ✓ paired contact verification > exposes supported proposal/tool schema without a bot association or enrollment tool 446ms
+   ✓ paired contact verification > blocks post-approval human decision discussion before issuance without interpreting its words 323ms
+   ✓ paired contact verification > denies SMS-first even when neither channel has a native association 393ms
+   ✓ paired contact verification > recovers a lost association ID only by the full original immutable request; absence never grants retry 609ms
+   ✓ paired contact verification > retains source pair block even if native first observes an already reconciled acceptance 351ms
+   ✓ paired contact verification > rejects removal of an authenticated immutable pair block during receipt reconciliation 567ms
+   ✓ paired contact verification > persists a pair block observed before any native reservation and never releases the authority 533ms
+   ✓ paired contact verification > serializes first association across two actual SQLite connections 419ms
+   ✓ paired contact verification > protects registry file and rejects malformed secret-bearing DTOs 424ms
+   ✓ paired contact verification > serves strict authenticated export/association/lost-ID lookup and rejects bot-supplied receipts over HTTP 641ms
+   ✓ paired contact verification > HTTP service never accepts a bot/human bearer and absent setup never fetches evidence 547ms
+ ✓ test/bots.test.ts (74 tests) 31799ms
+   ✓ VeneerBots > edits exact customer reply into a new unapproved version while preserving immutable prior answer and source scope 510ms
+   ✓ VeneerBots > keeps legacy-only reply as legacy and rejects ambiguous or absent drafts 424ms
+   ✓ VeneerBots > allows only already-eligible nonexclusive CS reviewers to edit reply text with handling CAS 359ms
+   ✓ VeneerBots > offers more than six decision choices while retaining exact version and duplicate guards 436ms
+   ✓ VeneerBots > refuses bot-raised questions without researched, self-explaining options 422ms
+   ✓ VeneerBots > hands the chosen concrete value back to the bot and records the human’s own typed answer as custom 430ms
+   ✓ VeneerBots > derives a contextual choice on the server and records a single versioned answer without typing 589ms
+   ✓ VeneerBots > keeps opted-in CS questions visible and answerable to existing eligible teammates after claim and comment 366ms
+   ✓ VeneerBots > shares only attached decision context across eleven CS cards and five restricted sources 1054ms
+   ✓ VeneerBots > requires the current shared-queue claim for button answers 633ms
+   ✓ VeneerBots > rejects stale choices after a proposal revision and preserves optional notes 532ms
+   ✓ VeneerBots > records a version-bound direction as its human author and emits one receipt and answer wakeup 567ms
+   ✓ VeneerBots > keeps defer intact until a fresh exact instruction creates one audited successor answer 372ms
+   ✓ VeneerBots > never resumes a defer on ambiguous discussion alone and denies changed, stale or revoked follow-ups 474ms
+   ✓ VeneerBots > lets the owning bot revise scoped CS context without granting the assignee whole-source access 401ms
+   ✓ VeneerBots > records reject without granting execution or claiming completion 593ms
+   ✓ VeneerBots > records defer without granting execution or claiming completion 425ms
+   ✓ VeneerBots > never grants decision authority to legacy, bot-authored, foreign-card or unversioned messages 498ms
+   ✓ VeneerBots > rejects superseded directions and changed proposal versions 439ms
+   ✓ VeneerBots > does not keyword-approve questions, quotations, conditions or negations on posting 392ms
+   ✓ VeneerBots > atomically claims an available shared card, but rejects changes of handler or revoked author access 382ms
+   ✓ VeneerBots > reconciles only complete same-author handling cycles and preserves the immutable instruction 418ms
+   ✓ VeneerBots > rejects reconciliation with foreign_history without any partial mutations 416ms
+   ✓ VeneerBots > rejects reconciliation with superseded without any partial mutations 383ms
+   ✓ VeneerBots > rejects reconciliation with revoked_grant without any partial mutations 399ms
+   ✓ VeneerBots > rejects reconciliation with disabled without any partial mutations 366ms
+   ✓ VeneerBots > rejects reconciliation with answered without any partial mutations 349ms
+   ✓ VeneerBots > rejects reconciliation with missing_history without any partial mutations 433ms
+   ✓ VeneerBots > requires audit proof that a leading release relinquished the instruction author’s own claim 549ms
+   ✓ VeneerBots > rejects a release by the owner when the original claim belonged to someone else 466ms
+   ✓ VeneerBots > never carries a v3 instruction or its handling reconciliation onto v4 504ms
+   ✓ VeneerBots > rolls back reconciliation, claim, answer and wakeup together if the receipt fails 427ms
+   ✓ VeneerBots > excludes a competing connection throughout reconciliation and rejects its stale claim afterward 394ms
+   ✓ VeneerBots > delivers an ordinary rapid follow-up to a result reply through delayed native Codex startup 640ms
+   ✓ VeneerBots > steers consecutive human result replies exactly once with actual text and original context 384ms
+   ✓ VeneerBots > preserves result reply fallback and sender for other_actor 367ms
+   ✓ VeneerBots > preserves result reply fallback and sender for write_failed 394ms
+   ✓ VeneerBots > rechecks result reply access before starting the queued fallback 327ms
+   ✓ VeneerBots > recovers a queued result reply after restart without a second message 395ms
+   ✓ VeneerBots > starts an idle bot with the result reply 391ms
+   ✓ VeneerBots > steers a human discussion once to the active owner, retiring only the acknowledged row 472ms
+   ✓ VeneerBots > keeps the same durable discussion fallback for unsupported 326ms
+   ✓ VeneerBots > keeps the same durable discussion fallback for other_actor 413ms
+   ✓ VeneerBots > keeps the same durable discussion fallback for write_failed 523ms
+   ✓ VeneerBots > rechecks version before a queued discussion starts 349ms
+   ✓ VeneerBots > rechecks access before a queued discussion starts 302ms
+   ✓ VeneerBots > retries a crash-after-enqueue discussion receipt without a second steer or message 360ms
+   ✓ VeneerBots > recovers a queued discussion after runtime restart without creating another message 336ms
+   ✓ VeneerBots > keeps six questions across two permanent bots for five hours; reversible registration and auto-archive exemption 391ms
+   ✓ VeneerBots > deduplicates raises, rejects stale/conflicting answers, preserves audit and requires execution verification 346ms
+   ✓ VeneerBots > keeps unrelated work running, queues discussion and answer once, replies in dedicated thread 427ms
+   ✓ VeneerBots > replays a pending event after simulated crash without duplicating the durable owner message 322ms
+   ✓ VeneerBots > supersedes changed evidence, cancels stale resume, and keeps failed execution visible after dismissal 519ms
+   ✓ VeneerBots > enforces current evidence and chat ACL and cancels delivery after access is revoked 354ms
+   ✓ VeneerBots > reports pending discussion delivery until the bot replies to that decision 310ms
+   ✓ VeneerBots > tracks a dedicated ticket response from queue to completion without lighting up another ticket 414ms
+   ✓ VeneerBots > drops the ticket activity claim on steer 506ms
+   ✓ VeneerBots > drops the ticket activity claim on other_ticket 425ms
+   ✓ VeneerBots > drops the ticket activity claim on interrupt 364ms
+   ✓ VeneerBots > drops the ticket activity claim on shutdown 423ms
+   ✓ VeneerBots > rejects bot-raised decisions without choices at the API while humans still answer legacy ones 787ms
+   ✓ VeneerBots > orders bots by activity with personal pins and preserves personal unread state 457ms
+   ✓ VeneerBots > rejects bot spoofing and HTTP stale answers; human visibility alone is insufficient 544ms
+   ✓ VeneerBots > checks current evidence ACL on every read and execution, including approval revoked after dispatch 428ms
+   ✓ VeneerBots > does not execute rejection, deferral or withdrawal and rejects altered retries 424ms
+   ✓ VeneerBots > filters by assigned human and existing team visibility and preserves blocked delivery 410ms
+   ✓ AutoShip answer bridge readback (v1, fixtures only) > reports no answer and no delivered version before the human answers 384ms
+   ✓ AutoShip answer bridge readback (v1, fixtures only) > exposes the raw answer with actor attribution and request key, and delivered_version only after native delivery 364ms
+   ✓ AutoShip answer bridge readback (v1, fixtures only) > drops the answer and keeps delivered_version behind current_version after a revision 477ms
+ ✓ test/connectorToolDetails.test.ts (20 tests) 71ms
+ ✓ test/desktop.test.ts (50 tests) 50ms
+ ✓ test/routineExecution.test.ts (81 tests) 32031ms
+   ✓ accepts exact native template without inventing human approval and delivers once only with trusted readback 549ms
+   ✓ preserves hold 558ms
+   ✓ preserves reject 339ms
+   ✓ preserves defer 413ms
+   ✓ preserves withdraw 316ms
+   ✓ denies prior sent effects 927ms
+   ✓ denies prior pending effects 638ms
+   ✓ denies prior unknown effects 445ms
+   ✓ does not invent extra email for resolved 410ms
+   ✓ does not invent extra email for acknowledgment_only 369ms
+   ✓ does not invent extra email for no_contact 368ms
+   ✓ rejects unsafe source principal 352ms
+   ✓ rejects unsafe source owner 374ms
+   ✓ rejects unsafe source account 439ms
+   ✓ rejects unsafe source origin 441ms
+   ✓ rejects unsafe source adapter 380ms
+   ✓ rejects unsafe source lease 342ms
+   ✓ rejects unsafe source stale 355ms
+   ✓ rejects unsafe source present 393ms
+   ✓ rejects unsafe source irrelevant 363ms
+   ✓ rejects unsafe source extra 313ms
+   ✓ requires genuine owner, separate configured transport and exact named bot 366ms
+   ✓ does not authorize changed body 306ms
+   ✓ does not authorize changed recipient 337ms
+   ✓ does not authorize changed attachments 426ms
+   ✓ does not authorize changed version 306ms
+   ✓ revoked policy denies fresh claim 443ms
+   ✓ revoked trust denies fresh claim 329ms
+   ✓ revoked bot denies fresh claim 504ms
+   ✓ revoked user denies fresh claim 393ms
+   ✓ revoked business denies fresh claim 381ms
+   ✓ requires separate fresh claim capture of unchanged material and rejects duplicate intent 400ms
+   ✓ serializes retirement against claim and never allows stale wake/send after retirement 410ms
+   ✓ claim wins retirement race; unknown result stays non-reusable after trust revocation 469ms
+   ✓ two independent SQLite connections serialize competing claims under a write lock 395ms
+   ✓ native unresolved decisions cannot be concealed by a source none assertion 368ms
+   ✓ native hold arriving after bot reservation blocks service dispatch without consuming permission 367ms
+   ✓ source dispatch is authenticated once; lost response never grants permission from replay/reconcile 333ms
+   ✓ excludes only verified unrelated closure with genuine owner supplemental scope; original approval stays intact 385ms
+   ✓ overlapping customer prevents unrelated-case clearance 444ms
+   ✓ overlapping alias prevents unrelated-case clearance 379ms
+   ✓ overlapping order prevents unrelated-case clearance 464ms
+   ✓ overlapping case prevents unrelated-case clearance 417ms
+   ✓ fails closed for missing scope coverage 329ms
+   ✓ fails closed for stale scope coverage 312ms
+   ✓ fails closed for new scope coverage 453ms
+   ✓ fails closed for version scope coverage 338ms
+   ✓ fails closed for proposal scope coverage 330ms
+   ✓ fails closed for revoke scope coverage 432ms
+   ✓ fails closed for target-drift scope coverage 357ms
+   ✓ fails closed for moved scope coverage 385ms
+   ✓ explicit business_wide classification never clears a case 485ms
+   ✓ identity-only projection works without native clearance and rejects forged scope inputs 439ms
+   ✓ fresh identity refresh preserves owner classification but pins new exact observation revision 323ms
+   ✓ rechecks scoped coverage transactionally at accept 333ms
+   ✓ rechecks scoped coverage transactionally at reservation 374ms
+   ✓ rechecks scoped coverage transactionally at dispatch 495ms
+   ✓ pins coverage observations: refreshing source invalidates existing capture even without identity drift 430ms
+   ✓ supports explicit unknown scope without fabricated source evidence and lists complete owner coverage 378ms
+   ✓ serializes scope revocation versus dispatch on independent SQLite connections 333ms
+   ✓ enforces the owner photo-only restriction even when the source claims a different field is missing 384ms
+   ✓ hands exact owner locators to the dedicated source without private inventory or scope approval 424ms
+   ✓ rejects wrong tuple, duplicate roots, off-origin or mismatched record links 417ms
+   ✓ requires the initial owner request key and all selected roots, then permits explicit matching refresh 499ms
+   ✓ invalidates source retrieval and coverage after handoff revoked 441ms
+   ✓ invalidates source retrieval and coverage after handoff superseded 475ms
+   ✓ invalidates source retrieval and coverage after handoff event 534ms
+   ✓ invalidates source retrieval and coverage after handoff version 357ms
+   ✓ invalidates source retrieval and coverage after handoff owner 416ms
+   ✓ invalidates source retrieval and coverage after handoff trust 460ms
+   ✓ supersession requires new source observation and new owner scope binding even with identical roots 461ms
+   ✓ rechecks handoff revocation at first service dispatch without granting another claim 401ms
+   ✓ allows current owner to revoke a handoff after trust revocation without reactivation 342ms
+ ✓ test/composedSms.test.ts (77 tests) 36544ms
+   ✓ consumes real typed evidence and original owner review, preserves email and ordinary draft, then claims once 772ms
+   ✓ refuses unsupported substantive additions even if owner asks to derive 445ms
+   ✓ refuses ambiguous substantive additions even if owner asks to derive 302ms
+   ✓ rejects forged citations, partial body review and bot notes as customer evidence 418ms
+   ✓ denies wrong owner, executor and receipt impersonation 396ms
+   ✓ rejects phone source mismatches 470ms
+   ✓ rejects business source mismatches 509ms
+   ✓ rejects canonical source mismatches 424ms
+   ✓ dedupes copied drafts and changed request keys by source action, not draft id 498ms
+   ✓ serializes two preflighted claims and keeps lost responses UNKNOWN without repeat 1071ms
+   ✓ denies context drift before claim 644ms
+   ✓ denies body drift before claim 607ms
+   ✓ denies version drift before claim 448ms
+   ✓ denies source drift before claim 485ms
+   ✓ denies transport drift before claim 452ms
+   ✓ denies custody drift before claim 545ms
+   ✓ denies expiry drift before claim 531ms
+   ✓ denies revocation drift before claim 520ms
+   ✓ can derive while dispatch remains explicitly unsupported, without consuming the attempt 466ms
+   ✓ rejects bot-submitted provider IDs and proof assertions 379ms
+   ✓ exposes sender proof gap during inspection and blocks derivation 381ms
+   ✓ never equates email executor with separately reviewed SMS executor 405ms
+   ✓ rejects expired or revoked original participants before deriving 375ms
+   ✓ serializes against ordinary drafts and copied-payload claims without authorizing them 334ms
+   ✓ models PREPARED->REDEEMING, one native association and a sole source SENDING winner 474ms
+   ✓ lost first response permanently consumes the native action, without a second entitlement 354ms
+   ✓ refuses binding mismatch before association 503ms
+   ✓ refuses claim mismatch before association 360ms
+   ✓ refuses prepare mismatch before association 410ms
+   ✓ refuses expiry mismatch before association 447ms
+   ✓ refuses key mismatch before association 560ms
+   ✓ refuses context mismatch before association 447ms
+   ✓ refuses revoke mismatch before association 436ms
+   ✓ refuses registration mismatch before association 467ms
+   ✓ refuses principal mismatch before association 389ms
+   ✓ refuses sender mismatch before association 527ms
+   ✓ refuses body mismatch before association 492ms
+   ✓ rechecks native revocation after asynchronous source observation 442ms
+   ✓ consumes only authenticated exact provider acceptance; UNKNOWN never retries 539ms
+   ✓ does not upgrade legacy synthetic transport flags to service dispatch authority 379ms
+   ✓ keeps immutable authority and association audit after revocation and expires no entitlement 433ms
+   ✓ bounds source observations, absent prepare expiry and wrong receipt scopes without mutation 552ms
+   ✓ authority GET exports exact tuple without exposing human context or creating a reservation 517ms
+   ✓ does not reserve with changed accepted issuer evidence 400ms
+   ✓ does not reserve with changed accepted guard evidence 405ms
+   ✓ does not reserve with changed accepted sender-expiry evidence 474ms
+   ✓ rechecks a short prepare expiry inside the association transaction 404ms
+   ✓ exports the exact authenticated payload and source hashes without changing original records 414ms
+   ✓ never renews a consumed entitlement after original prepare expiry or a refreshed readback 428ms
+   ✓ recomputes binding from protected registration and immutable tuple rather than matching two forged readbacks 345ms
+   ✓ exposes exact-action context without bodies and classifies only exact current/completed records 452ms
+   ✓ unfinished/unproven needs_input decisions are not silently excluded by different case UUID 551ms
+   ✓ unfinished/unproven verified_completed decisions are not silently excluded by different case UUID 560ms
+   ✓ tracks unbound instruction obligations and revocations without treating revocation as completion 533ms
+   ✓ retains prior business membership and deleted draft coverage 358ms
+   ✓ atomic first association denies acl after source read 587ms
+   ✓ atomic first association denies new-draft after source read 588ms
+   ✓ atomic first association denies new-decision after source read 449ms
+   ✓ atomic first association denies same-value-write after source read 378ms
+   ✓ rejects new v1 associations and unaccepted or mismatched manifest, without granting entitlement 639ms
+   ✓ bounds context without accepting a partial inventory 479ms
+   ✓ rejects registration exceeding verified serviceTokenExpiresAt before entitlement 503ms
+   ✓ rejects registration exceeding verified custodyExpiresAt before entitlement 571ms
+   ✓ rejects registration exceeding verified bearerExpiresAt before entitlement 614ms
+   ✓ rejects registration exceeding verified readbackExpiresAt before entitlement 498ms
+   ✓ denies exact expiry and earlier revocation without renewing an issued entitlement 441ms
+   ✓ rejects missing or future verified expiry evidence and binds it in registration hash 484ms
+   ✓ caps authority observations at fifteen seconds without renewing durable authority or entitlement 553ms
+   ✓ preserves short durable authority bounds and denies their exact expiry 404ms
+   ✓ preserves a short sender evidence expiry 380ms
+   ✓ caps observations at registration expiry and denies expiry during validation 373ms
+   ✓ records original-owner exact scope review, refreshes proof, and invalidates changed native inventory 473ms
+   ✓ cannot classify absent canonical roots, overlapping source evidence or changed native revisions 414ms
+   ✓ uses separately granted authenticated sender evidence without changing correspondence v1 391ms
+   ✓ v3 scope-aware association clears exact reviewed roots once and denies a revocation race=false 565ms
+   ✓ v3 scope-aware association clears exact reviewed roots once and denies a revocation race=true 548ms
+ ✓ test/liveVoice.test.ts (22 tests) 8894ms
+   ✓ Henry voice workspace > reads real blockers and only user-visible messages from owned chats 352ms
+   ✓ Henry voice workspace > pages older visible context and reports clipping without leaking hidden events 380ms
+   ✓ Henry voice workspace > searches recorded facts directly without waking a bot or leaking hidden tool data 495ms
+   ✓ Henry voice workspace > validates answers in the real runner, saves the decision and releases the waiting question 378ms
+   ✓ Henry voice workspace > blocks cross-user decisions, secret cards, and malformed requests 530ms
+   ✓ Henry voice workspace > preserves history across calls and redacts recognizable credentials 448ms
+   ✓ ordinary thread voice and staff permissions > persists a dispatch receipt across reconnects and never repeats uncertain work 386ms
+   ✓ ordinary thread voice and staff permissions > lets staff use shared threads but isolates transcripts by both user and thread 386ms
+   ✓ ordinary thread voice and staff permissions > respects business membership and viewer permissions without granting staff question approval 428ms
+   ✓ bot voice calls > scopes a bot call to that bot’s chat, questions and decisions 428ms
+   ✓ bot voice calls > queues a live fact check without changing the proposal or approving an action 552ms
+   ✓ bot voice calls > relays messages, discussion and explicit decisions to the bot 435ms
+   ✓ bot voice calls > refuses relays for bots the caller cannot message 413ms
+   ✓ bot voice calls > pages the exact reply and structured constraints without mutating the proposal 372ms
+   ✓ bot voice calls > saves a spoken reply edit once and requires approval of its new version 325ms
+   ✓ bot voice calls > retains accepted instructions even when a later status lookup would fail 312ms
+   ✓ bot voice calls > does not take over another teammate’s phone approval or turn discussion into approval 321ms
+   ✓ live voice HTTP boundary > keeps session transcripts caller-private and checks current chat access on every page 560ms
+   ✓ live voice HTTP boundary > reports setup without exposing secrets and refuses unavailable calls 310ms
+   ✓ live voice HTTP boundary > describes a bot call and hides bots the caller cannot see 355ms
+   ✓ live voice HTTP boundary > refuses agent tokens and unscoped member calls but permits accessible staff threads 434ms
+ ✓ test/veneerBrowserRoutes.test.ts (22 tests) 484ms
+ ✓ test/messageDelegation.test.ts (48 tests) 19583ms
+   ✓ exact approved message delegation > does not retire delegated messages through ordinary draft retirement 383ms
+   ✓ exact approved message delegation > returns concrete legacy missing proof without draft/delegation/decision mutation 385ms
+   ✓ exact approved message delegation > preserves the original approval and exact text through one owner delegation, acceptance and claim 515ms
+   ✓ exact approved message delegation > rejects changed body and conflicting acceptance keys 537ms
+   ✓ exact approved message delegation > rejects changed recipients and conflicting acceptance keys 474ms
+   ✓ exact approved message delegation > rejects changed account and conflicting acceptance keys 417ms
+   ✓ exact approved message delegation > rejects changed ticket and conflicting acceptance keys 368ms
+   ✓ exact approved message delegation > rejects changed attachments and conflicting acceptance keys 399ms
+   ✓ exact approved message delegation > rejects changed subject and conflicting acceptance keys 429ms
+   ✓ exact approved message delegation > rejects changed canonical case, executor, other owner, foreign bots and request-key conflicts 343ms
+   ✓ exact approved message delegation > revocation of approver blocks a queued claim 372ms
+   ✓ exact approved message delegation > revocation of owner blocks a queued claim 346ms
+   ✓ exact approved message delegation > revocation of executor blocks a queued claim 303ms
+   ✓ exact approved message delegation > revocation of executor-owner blocks a queued claim 345ms
+   ✓ exact approved message delegation > revocation of delegation blocks a queued claim 344ms
+   ✓ exact approved message delegation > rejects revised or tampered approval snapshots and preserves immutable audits 460ms
+   ✓ exact approved message delegation > invalidates old version bindings after a genuine proposal revision 365ms
+   ✓ exact approved message delegation > requires exact current send checks and prevents foreign/unknown delivery claims 461ms
+   ✓ exact approved message delegation > serializes racing HTTP claims for nora and accepts one execution only 530ms
+   ✓ exact approved message delegation > serializes racing HTTP claims for grant and accepts one execution only 350ms
+   ✓ exact approved message delegation > serializes racing delegation and acceptance for nora without duplicate rows 610ms
+   ✓ exact approved message delegation > serializes racing delegation and acceptance for grant without duplicate rows 502ms
+   ✓ exact approved message delegation > owner is the approved named executor > inspects ready and preserves exact approval through one self-bound draft, claim and receipt 488ms
+   ✓ exact approved message delegation > owner is the approved named executor > rejects other actors, altered payloads and stale versions without importing scope 346ms
+   ✓ exact approved message delegation > owner is the approved named executor > rechecks delegation revocation for same-owner delivery 508ms
+   ✓ exact approved message delegation > owner is the approved named executor > rechecks registration revocation for same-owner delivery 407ms
+   ✓ exact approved message delegation > owner is the approved named executor > rechecks approver revocation for same-owner delivery 525ms
+   ✓ exact approved message delegation > owner is the approved named executor > rechecks owner revocation for same-owner delivery 424ms
+   ✓ exact approved message delegation > owner is the approved named executor > retains the canonical-case equality requirement for the same owner 372ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > records one exact sent receipt for grant without reopening any pre-send path 480ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > records one exact sent receipt for nora without reopening any pre-send path 515ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects missing durable claim and rolls back receipt writes 399ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects wrong-key durable claim and rolls back receipt writes 446ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects wrong-actor durable claim and rolls back receipt writes 466ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects wrong-hash durable claim and rolls back receipt writes 416ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects wrong-draft durable claim and rolls back receipt writes 350ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects ambiguous durable claim and rolls back receipt writes 331ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects completed receipt with invalid key 359ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects completed receipt with invalid proof 354ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects completed receipt with invalid version 339ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects completed receipt with invalid revoked 319ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects completed receipt with invalid access 426ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > rejects completed receipt with invalid scope 339ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > allows identical receipt retry after completion when originally recorded while running 369ms
+   ✓ exact approved message delegation > receipt-only reconciliation after decision completion > serializes conflicting completed receipts and persists exactly one proof 469ms
+   ✓ exact approved message delegation > keeps ordinary drafts unapproved and reports ownership mismatch separately from version mismatch 332ms
+ ✓ test/employeeWorkspace.test.ts (16 tests) 6349ms
+   ✓ restricted employee workspace > approves atomically, preserves bot identity, and denies legacy Team chats and other departments 474ms
+   ✓ restricted employee workspace > retains restriction after revocation, with no fallback to legacy or broad business membership 403ms
+   ✓ restricted employee workspace > explicitly promotes a verified employee without granting platform administration 756ms
+   ✓ restricted employee workspace > does not lift account-wide restrictions across a different business owner 341ms
+   ✓ restricted employee workspace > shares owner questions in both notification queries and serializes claim, release, and answers 385ms
+   ✓ restricted employee workspace > allows pinned employee voice while keeping unrelated APIs closed 322ms
+   ✓ restricted employee workspace > keeps viewer, revoked, foreign evidence, and owner-development authority separate 303ms
+   ✓ restricted employee workspace > denies platform APIs by default, filters HTTP discovery, and refuses employee-origin tools 416ms
+   ✓ restricted employee workspace > checks generated-file direct IDs against the same bot grants 403ms
+   ✓ restricted employee workspace > revokes an open websocket before subsequent events without relying on a broadcast notification 369ms
+   ✓ focused business members > scopes chats and routines without changing membership, training or native identity 372ms
+   ✓ focused business members > keeps the member's own side chats of an assigned bot in scope, and nothing else beside it 315ms
+   ✓ focused business members > requires verified owner configuration and keeps revoked bot scope closed 348ms
+   ✓ focused business members > narrows only the human view: assigned bots still reach and coordinate with every team bot 467ms
+   ✓ focused business members > enforces direct HTTP routes and keeps the full-member flag for accounting tools 377ms
+ ✓ test/botFeatureGuide.test.ts (31 tests) 101ms
+ ✓ test/composedSmsCorrectionV2.test.ts (37 tests) 19320ms
+   ✓ integrates full status-context review, prospective derivation, hashes-only export and correction-aware context without old consumption validation 844ms
+   ✓ does not convert wording_edit_only assessment to authority 449ms
+   ✓ does not convert status_only assessment to authority 405ms
+   ✓ does not convert quoted_or_reported assessment to authority 391ms
+   ✓ does not convert conditional assessment to authority 460ms
+   ✓ does not convert ambiguous assessment to authority 424ms
+   ✓ denies omitted/forged later citations, supersession and status cited as consent 487ms
+   ✓ denies corrected body drift 318ms
+   ✓ denies corrected recipients drift 359ms
+   ✓ denies corrected account drift 371ms
+   ✓ denies corrected channel drift 399ms
+   ✓ denies corrected customer drift 439ms
+   ✓ denies corrected ticket drift 306ms
+   ✓ denies corrected version drift 354ms
+   ✓ denies owner revocation/drift 393ms
+   ✓ denies executor revocation/drift 432ms
+   ✓ denies human revocation/drift 527ms
+   ✓ denies source revocation/drift 400ms
+   ✓ denies sender revocation/drift 467ms
+   ✓ denies material revocation/drift 385ms
+   ✓ revalidates after awaited source read and in immediate transaction 406ms
+   ✓ fences copied drafts, new keys, UNKNOWN, expired and revoked authorities on the same original action 659ms
+   ✓ keeps new routes unavailable with old protected trust and no amendment 453ms
+   ✓ rejects wrong owner, executor or original lineage and does not fetch on native failure 427ms
+   ✓ permanently serializes simultaneous copied requests into one native UUID 508ms
+   ✓ grants first service association once under accepted synthetic scope, then consumes exact source receipt without provider calls 894ms
+   ✓ denies hash source readback and never consumes association 908ms
+   ✓ denies state source readback and never consumes association 793ms
+   ✓ denies prepare source readback and never consumes association 716ms
+   ✓ denies context source readback and never consumes association 439ms
+   ✓ denies expiry source readback and never consumes association 529ms
+   ✓ denies privateField source readback and never consumes association 533ms
+   ✓ denies oldVersion source readback and never consumes association 630ms
+   ✓ revalidates native after awaited service readback before association 724ms
+   ✓ revalidates revoked after awaited service readback before association 650ms
+   ✓ revalidates custody after awaited service readback before association 724ms
+   ✓ lost first response, expiry, source UNKNOWN and changed draft keys never renew entitlement 714ms
+ ✓ test/veneerBrowser.test.ts (159 tests) 41406ms
+   ✓ Veneer Browser manager > detaches only exact original-owner scope, preserves copy and immutable UNKNOWN audit, and reconciles without replay 502ms
+   ✓ Veneer Browser manager > preserves uncertain shutdown with no fallback, replay, new recovery or subsequent command 454ms
+   ✓ Veneer Browser manager > serializes an inflight command and rechecks revocation/runtime before detaching 497ms
+   ✓ Veneer Browser manager > refuses unavailable or replaced runtime without closing or starting anything 433ms
+   ✓ Veneer Browser manager > denies Chrome process replacement even when the working-copy runtime ID is unchanged 463ms
+   ✓ Veneer Browser manager > never auto-starts or adopts a replacement when the recovered copy disappears before the owner read 470ms
+   ✓ Veneer Browser manager > lets business teammates navigate and capture the bot-assigned browser without managing saved logins 577ms
+   ✓ Veneer Browser manager > uses exact granted credentials and saves only the assigned profile, with revocation enforced 469ms
+   ✓ Veneer Browser manager > rechecks credential grants after waiting for the browser lane 356ms
+   ✓ Veneer Browser manager > does not inherit the chat creator default login when no profile was assigned 558ms
+   ✓ Veneer Browser manager > rejects revoked, viewer, restricted, disabled, private and non-business browser access 761ms
+   ✓ Veneer Browser manager > rechecks membership after a shared browser command waits for the chat lane 645ms
+   ✓ Veneer Browser manager > reads URLs in the selected working copy and serializes with interactive commands 569ms
+   ✓ Veneer Browser manager > runs a script on its own ticket and audits one row without the step contents 402ms
+   ✓ Veneer Browser manager > marks a failed mutating script for review and never replays it 327ms
+   ✓ Veneer Browser manager > derives client and project scope and denies a cross-project profile id 433ms
+   ✓ Veneer Browser manager > does not expose another authenticated client scope from the same database 340ms
+   ✓ Veneer Browser manager > uses the project default automatically and always runs isolated working copies 473ms
+   ✓ Veneer Browser manager > reuses one per-user default across unfiled chats and isolates their working copies 473ms
+   ✓ Veneer Browser manager > still removes saved browser records when a real project is deleted 402ms
+   ✓ Veneer Browser manager > opens a signed-out copy only when it is explicitly selected 414ms
+   ✓ Veneer Browser manager > does not discard an existing working copy when fresh is requested 365ms
+   ✓ Veneer Browser manager > deletes the working copy on normal stop and keeps the saved base 408ms
+   ✓ Veneer Browser manager > does not let a viewer reconnect recreate a discarded working copy 386ms
+   ✓ Veneer Browser manager > updates a saved profile only through the explicit generation-checked action 344ms
+   ✓ Veneer Browser manager > keeps an old working copy when a newer profile generation wins 303ms
+   ✓ Veneer Browser manager > keeps the default valid after its saved profile is deleted 348ms
+   ✓ Veneer Browser manager > keeps each user’s saved profiles private inside a shared project 354ms
+   ✓ Veneer Browser manager > gives each user their own default in the same project 346ms
+   ✓ Veneer Browser manager > gives every parallel chat its own working copy of one saved base 372ms
+   ✓ Veneer Browser manager > keeps temporary data when stop fails 473ms
+   ✓ Veneer Browser manager > suspends completed read-only work, retains files and resumes the same copy 371ms
+   ✓ Veneer Browser manager > protects pending sessions from automatic suspension 406ms
+   ✓ Veneer Browser manager > protects capture sessions from automatic suspension 301ms
+   ✓ Veneer Browser manager > protects fresh sessions from automatic suspension 367ms
+   ✓ Veneer Browser manager > protects recent sessions from automatic suspension 420ms
+   ✓ Veneer Browser manager > protects secret sessions from automatic suspension 400ms
+   ✓ Veneer Browser manager > releases the browser the moment its turn ends, keeping the copy for the next turn 420ms
+   ✓ Veneer Browser manager > turn-end release still defers to a current pending 341ms
+   ✓ Veneer Browser manager > turn-end release still defers to a current secret 330ms
+   ✓ Veneer Browser manager > turn-end release still defers to a current capture 320ms
+   ✓ Veneer Browser manager > turn-end release still defers to a current hold 438ms
+   ✓ Veneer Browser manager > releases copies with old uncertain actions or missing history and flags them for review instead of pinning them 348ms
+   ✓ Veneer Browser manager > does not pin successful interaction and past viewing history forever 340ms
+   ✓ Veneer Browser manager > persists explicit Keep open with a bounded expiry, enforces access, and releases it for inspection 365ms
+   ✓ Veneer Browser manager > lets every hold expire: a lapsed Keep open, a legacy hold and an old sign-in start no longer pin the copy 445ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > gives a fresh copy a full hold and reports how long it can be renewed 433ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > cuts a renewal off at four hours after the last real action 387ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > refuses to renew an idle copy, records it, and says what to do instead 330ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > treats the bound as exclusive: seconds before it is already too late 411ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > does not count reads, snapshots, waits, renewals or being watched as use 346ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > lets typing in the page make an old copy holdable again 324ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > lets a script that acts in the page make an old copy holdable again 320ms
+   ✓ Veneer Browser manager > Keep open cannot park a browser > still lets anyone turn a hold off, and never checks the bound to do it 333ms
+   ✓ Veneer Browser manager > does not hide a failed daemon close or let it permanently prevent safe remote suspension 341ms
+   ✓ Veneer Browser manager > keeps an uncertain mutation flagged for review after subsequent read-only work, without pinning the copy 476ms
+   ✓ Veneer Browser manager > releases read-only public browsing when the project has no saved profile 383ms
+   ✓ Veneer Browser manager > keeps the copy active when another connection prevents suspension 361ms
+   ✓ Veneer Browser manager > rechecks pending work after the daemon closes 303ms
+   ✓ Veneer Browser manager > removes a local copy record after the remote stale cleaner deletes it 363ms
+   ✓ Veneer Browser manager > retains the saved profile when its chat is deleted 412ms
+   ✓ Veneer Browser manager > denies another user and keeps the derived client, project, and chat scope 393ms
+   ✓ Veneer Browser manager > records a safe error after a working-copy start failure and lets the same chat retry 362ms
+   ✓ Veneer Browser manager > uses a short-lived ticket without storing it or browser output 333ms
+   ✓ Veneer Browser manager > grants Advanced capture only for an open working copy and only to the chat owner 416ms
+   ✓ Veneer Browser manager > refuses Advanced capture while a secret is still sitting in the page 482ms
+   ✓ Veneer Browser manager > never lets a capture grant reach a different working copy 356ms
+   ✓ Veneer Browser manager > revokes a capture grant on request, with or without a live copy 444ms
+   ✓ Veneer Browser manager > drops a capture grant when the working copy is discarded and never revives it 358ms
+   ✓ Veneer Browser manager > drops a capture grant when the copy is promoted, saved, or vanishes remotely 457ms
+   ✓ Veneer Browser manager > records the working copy the manager adopted, not the one it was offered 393ms
+   ✓ Veneer Browser manager > drops the address from an open that came over the LAN and mints a usable one 393ms
+   ✓ Veneer Browser manager > falls back to the older clone-then-start sequence when the manager has no open route 410ms
+   ✓ Veneer Browser manager > keeps a hot chat off the remote for repeat commands and reuses its agent ticket 394ms
+   ✓ Veneer Browser manager > retries a lost connection once through a cold start and audits only the final attempt 356ms
+   ✓ Veneer Browser manager > never replays a page-level failure while the working copy is still alive 519ms
+   ✓ Veneer Browser manager > retains the control ticket after a missing element and explicit tab selection 439ms
+   ✓ Veneer Browser manager > retries a page-level failure when the runtime behind it actually died 351ms
+   ✓ Veneer Browser manager > keeps one control address for the daemon instead of rotating tickets 333ms
+   ✓ Veneer Browser manager > replaces a held ticket that expired before it ever carried a command 320ms
+   ✓ Veneer Browser manager > forgets the cached runtime of a chat that went quiet 344ms
+   ✓ Veneer Browser manager > never replays a thrown command while the working copy is still alive 300ms
+   ✓ Veneer Browser manager > retries a thrown command when the runtime behind it is gone, then reports a second failure 312ms
+   ✓ Veneer Browser manager > reads transport evidence from stderr only, never from what the page said 318ms
+   ✓ Veneer Browser manager > hands agent-browser the pinned certificate only for a LAN control address 313ms
+   ✓ Veneer Browser manager > runs a pointer sequence inside one queue slot, ahead of the next chat command 355ms
+   ✓ Veneer Browser manager > aborts a pointer sequence at its first failure and never replays a later member 335ms
+   ✓ Veneer Browser manager > retries only the first member of a sequence when the copy behind it was gone 315ms
+   ✓ Veneer Browser manager > reports a second failure of the first member as the real answer and still runs no down or up 425ms
+   ✓ Veneer Browser manager > releases a pressed button when a later member of the sequence fails 356ms
+   ✓ Veneer Browser manager > releases a pressed button when the click's own mouse up is what fails 376ms
+   ✓ Veneer Browser manager > never attempts a release for hover_at or scroll_at, which never press a button 355ms
+   ✓ Veneer Browser manager > can still probe after the timeout that dropped this chat's cached runtime 370ms
+   ✓ Veneer Browser manager > never starts or reopens a working copy just to probe, and swallows probe failures 380ms
+   ✓ Veneer Browser manager > never asks the address of a working copy this chat has since replaced 371ms
+   ✓ Veneer Browser manager > ages a probe address out on the same idle cutoff as the runtime cache 606ms
+   ✓ Veneer Browser manager > moves bounded downloads into the current project workspace 382ms
+ ✓ test/materialize.test.ts (26 tests) 8974ms
+   ✓ materializer > delivers core rules and one fixed snapshot through the codex instruction channel 434ms
+   ✓ materializer > delivers core rules and one fixed snapshot through the claude instruction channel 322ms
+   ✓ materializer > keeps an existing chat snapshot fixed and gives a new chat the latest settings 316ms
+   ✓ materializer > supplies Jev discovery to an existing grok chat without editing its snapshot 304ms
+   ✓ materializer > keeps memory as labeled user reference data instead of policy 404ms
+   ✓ materializer > discovers user-owned parent and child provider files without changing them 332ms
+   ✓ materializer > keeps parallel chats in one workspace isolated 340ms
+   ✓ materializer > preserves user-authored files in a custom project root byte-for-byte 355ms
+   ✓ materializer > uses actual MCP configuration as connector truth without connector prose 327ms
+   ✓ materializer > materializes personal connectors for the turn actor and shared connectors for collaborators 311ms
+   ✓ materializer > materializes the Paper connector at its default and configured endpoints 321ms
+   ✓ materializer > points a signed-in remote MCP connector at the loopback relay with its key, never a provider token 475ms
+   ✓ materializer > writes conversation-scoped built-in tool and browser settings 311ms
+   ✓ materializer > forwards the configured pages public base to the agents server, and omits it when unset 324ms
+   ✓ materializer > scopes output style to Claude and keeps Full Access free of permission settings 303ms
+   ✓ materializer > Doppler tool visibility by owner role > keeps Doppler visible for an owner-owned conversation 392ms
+   ✓ materializer > Doppler tool visibility by owner role > disables request_secret / reveal_secret for a member turn, and keeps them for an admin 329ms
+   ✓ materializer > Doppler tool visibility by owner role > disables request_secret / reveal_secret when no authenticated Doppler CLI exists 351ms
+   ✓ materializer > Doppler tool visibility by owner role > hides Doppler when a member initiates a turn in an owner Team chat 404ms
+   ✓ materializer > Doppler tool visibility by owner role > keeps Doppler visible for a consultant-owned conversation 374ms
+   ✓ materializer > Doppler tool visibility by owner role > keeps Doppler for a boot/system materialization with no conversation 524ms
+   ✓ materializer > mounts Veneer Browser for an unfiled chat when the client has it configured 301ms
+   ✓ materializer > omits the Veneer Browser steering rule when the client has no browser 355ms
+ ✓ test/scheduledTasksRoutes.test.ts (13 tests) 2943ms
+   ✓ scheduled tasks routes > inspects and partially updates an owned task without resetting unspecified fields 655ms
+   ✓ scheduled tasks routes > pauses, resumes, runs now, and deletes an owned task 656ms
+   ✓ scheduled tasks routes > returns workspace status, project placement, pinning, and complete run history 340ms
+ ✓ test/decisionEvidence.test.ts (16 tests) 6614ms
+   ✓ decision evidence and staleness > preserves a 401-character opaque Gmail ID through raise, revise and real transport argument construction 446ms
+   ✓ decision evidence and staleness > preserves a 450-character opaque Gmail ID through raise, revise and real transport argument construction 408ms
+   ✓ decision evidence and staleness > preserves a 4096-character opaque Gmail ID through raise, revise and real transport argument construction 465ms
+   ✓ decision evidence and staleness > rejects invalid or oversized Gmail IDs without transport: "" 409ms
+   ✓ decision evidence and staleness > rejects invalid or oversized Gmail IDs without transport: null 457ms
+   ✓ decision evidence and staleness > rejects invalid or oversized Gmail IDs without transport: 123 456ms
+   ✓ decision evidence and staleness > rejects invalid or oversized Gmail IDs without transport: {} 329ms
+   ✓ decision evidence and staleness > rejects invalid or oversized Gmail IDs without transport: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 407ms
+   ✓ decision evidence and staleness > keeps unrelated source limits and strict fields unchanged 337ms
+   ✓ decision evidence and staleness > refuses a question that mentions photos without attaching them or a money question with unverified refund facts 386ms
+   ✓ decision evidence and staleness > retains cited files by hash, keeps excerpts, fills as_of, and serves bytes only for the current version 327ms
+   ✓ decision evidence and staleness > records a human upload as evidence on the question and refuses paths outside uploads 402ms
+   ✓ decision evidence and staleness > marks open questions stale when the case moves on, refuses answers until revised, wakes the bot, and withdraws forgotten ones 439ms
+   ✓ decision evidence and staleness > returns nested source errors before fetch or mutation on both raise and update routes 590ms
+   ✓ decision evidence and staleness > enforces evidence at the API, attaches files with a typed answer, and serves evidence through the route 521ms
+ ✓ test/miniApps.test.ts (12 tests) 145ms
+ ✓ test/veneerBrowserScript.test.ts (14 tests | 10 skipped) 16ms
+ ✓ test/codexAccounts.test.ts (14 tests) 351ms
+ ✓ test/teamRooms.test.ts (25 tests) 9095ms
+   ✓ private team rooms > shows only room worker activity and never exposes private worker details 397ms
+   ✓ private team rooms > rolls back invitations when any participant lacks bot access 379ms
+   ✓ private team rooms > keeps read positions personal and specific to each conversation 323ms
+   ✓ private team rooms > uses active business IDs and distinguishes humans/bots 373ms
+   ✓ private team rooms > returns actual bounded previews only to current authorized members 443ms
+   ✓ private team rooms > rejects cross-business members and bots in human DMs 429ms
+   ✓ private team rooms > keeps human-only messages quiet and sends idempotently 483ms
+   ✓ private team rooms > routes mentions once with human attribution in an isolated provider session 365ms
+   ✓ private team rooms > cannot use a worker to read or reply in another group 342ms
+   ✓ private team rooms > checks removed humans, stale membership versions and bot rejoin epochs 346ms
+   ✓ private team rooms > keeps restricted employee bot scope and cancels revocations 423ms
+   ✓ private team rooms > supports unread and seen state without clearing other users 322ms
+   ✓ private team rooms > guards attachment ownership, room boundary and removed members 463ms
+   ✓ private team rooms > persists messages and wake validation across service reconstruction 404ms
+   ✓ private team rooms > allows only narrow employee room routes 481ms
+   ✓ private team rooms > maps bot room tools to the same authorized REST path 394ms
+   ✓ private team rooms > delivers pending mentions once after scheduler reconstruction and rejects queued stale work 302ms
+   ✓ private team rooms > runs a durable room wake with the real manager without recalling or capturing private memory 364ms
+   ✓ private team rooms > caps explicit bot requests and rolls back a rate-limited message 381ms
+ ✓ test/connectorAccessModes.test.ts (13 tests) 33ms
+ ✓ test/botCommunication.test.ts (12 tests) 5150ms
+   ✓ reviewable bot communication > limits central CS presentation and rejection to explicitly opted-in lane; never mutates drafts 445ms
+   ✓ reviewable bot communication > saves edits then queues one exact message, keeping business approval separate 374ms
+   ✓ reviewable bot communication > rejects stale proposal drafts and audio, including changes after send authorization 361ms
+   ✓ reviewable bot communication > enforces owning bot, human send authority and revoked access 426ms
+   ✓ reviewable bot communication > discards without waking and returns for revision without send permission 507ms
+   ✓ reviewable bot communication > reads only real authorized messages, caches sections and rechecks access on playback 724ms
+   ✓ reviewable bot communication > anchors threads to real messages, persists replies/reactions and tracks unread without granting approval 498ms
+   ✓ reviewable bot communication > pages inline replies without gaps, preserves authors/context/unread and enforces chat access 393ms
+   ✓ reviewable bot communication > serves saved audio only while authorized and on the current version 334ms
+   ✓ reviewable bot communication > coalesces speech generation, retains the transcript and caches audio across requests 309ms
+   ✓ reviewable bot communication > does not cache audio when the proposal changes during generation 388ms
+   ✓ reviewable bot communication > dispatches employee-authorized messages through the permanent bot and cancels revoked authorization 392ms
+ ✓ test/composedSmsCorrection.test.ts (40 tests) 15322ms
+   ✓ derives real prospective correction authority without rewriting old consumed approval or either draft 420ms
+   ✓ denies original-owner interpretation wording_edit rather than treating it as send consent 328ms
+   ✓ denies original-owner interpretation quoted_or_reported rather than treating it as send consent 341ms
+   ✓ denies original-owner interpretation conditional rather than treating it as send consent 399ms
+   ✓ denies original-owner interpretation ambiguous rather than treating it as send consent 386ms
+   ✓ does not reuse old email/channel approval for correction sending or accept invented quotations 424ms
+   ✓ rejects changed corrected body after inspection 390ms
+   ✓ rejects changed corrected recipients after inspection 358ms
+   ✓ rejects changed corrected account after inspection 432ms
+   ✓ rejects changed corrected channel after inspection 323ms
+   ✓ rejects changed corrected customer after inspection 343ms
+   ✓ rejects changed corrected ticket after inspection 371ms
+   ✓ rejects changed corrected version after inspection 325ms
+   ✓ fails closed after human revocation/drift 318ms
+   ✓ fails closed after owner revocation/drift 400ms
+   ✓ fails closed after executor revocation/drift 437ms
+   ✓ fails closed after source revocation/drift 404ms
+   ✓ fails closed after sender revocation/drift 397ms
+   ✓ fails closed after phone revocation/drift 559ms
+   ✓ fails closed after business revocation/drift 439ms
+   ✓ rejects newer human context and a same-version context edit 353ms
+   ✓ dedupes concurrent derive, copied drafts and different keys with durable shared action fence 470ms
+   ✓ blocks prior effect/UNKNOWN across different payloads and copied draft IDs 352ms
+   ✓ refreshes native context inside the immediate recording transaction after source await 401ms
+   ✓ rejects reviewed human message Please change the wording to ask only for a photo. without keyword approval 399ms
+   ✓ rejects reviewed human message So you sent that? without keyword approval 373ms
+   ✓ rejects reviewed human message The earlier bot said "send it". without keyword approval 480ms
+   ✓ rejects reviewed human message Send this if the customer confirms the phone number. without keyword approval 469ms
+   ✓ rejects reviewed human message Maybe use that reply. without keyword approval 407ms
+   ✓ uses native result-reply authorship and anchor, bot actor=null 307ms
+   ✓ uses native result-reply authorship and anchor, bot actor=10000000-0000-4000-8000-000000000002 317ms
+   ✓ blocks expired sender and credentials instead of granting a fresh authority window 420ms
+   ✓ preserves cross-proof durable dedupe even for revoked or UNKNOWN historical authority 318ms
+   ✓ ordinary claim cannot bypass prospective correction authority 475ms
+   ✓ reconciles a lost response read-only with original key despite expired sender or later context 407ms
+   ✓ pins a strict synthetic correction vector and rejects tampered authority/source/payload commitments 368ms
+   ✓ returns complete native correction context but no derivation hash when source evidence is unavailable 409ms
+ ✓ test/memoryCurator.test.ts (15 tests) 53ms
+stdout | test/claudeAccountFailover.test.ts > claude failover — detect, switch, continue > constructs a runtime with recovery wired and attributes late usage to the spawn account
+[veneer-pro] froze instruction context for 1 existing chat(s)
+
+ ✓ test/claudeAccountFailover.test.ts (16 tests) 689ms
+   ✓ claude failover — detect, switch, continue > constructs a runtime with recovery wired and attributes late usage to the spawn account 439ms
+ ✓ test/machineAccess.test.ts (21 tests) 560ms
+   ✓ provider auth and session state stay in the Pro service directories > runs one Codex app-server per access level, since Codex owns the shell env 378ms
+stdout | test/secretRequests.test.ts > agent secret reveals > returns the value to the chat owner, answers "shown", and keeps it out of events
+[reveal-secret] user=1 secret=STRIPE_API_KEY target=veneer/prd conversation=conv-1
+
+stdout | test/secretRequests.test.ts > agent secret reveals > lets an already-shown request be revealed again after a reload
+[reveal-secret] user=1 secret=STRIPE_API_KEY target=veneer/prd conversation=conv-1
+
+stdout | test/secretRequests.test.ts > agent secret reveals > lets an already-shown request be revealed again after a reload
+[reveal-secret] user=1 secret=STRIPE_API_KEY target=veneer/prd conversation=conv-1
+
+ ✓ test/secretRequests.test.ts (16 tests) 862ms
+ ✓ test/wakeups.test.ts (13 tests) 5148ms
+   ✓ conversation wake-up scheduler > keeps one periodic backup behind a busy chat, then permits one behind its running check 642ms
+   ✓ conversation wake-up scheduler > coalesces proven legacy backlog at startup without replaying it or losing receipts 363ms
+   ✓ conversation wake-up scheduler > preserves events, one-shots, edited messages, unrelated messages and uncertain dispatches 337ms
+   ✓ conversation wake-up scheduler > keeps distinct routines and ambiguous legacy provenance separate 336ms
+   ✓ conversation wake-up scheduler > coalesces pending wakeups before dispatch even when the scheduler already read the due batch 393ms
+   ✓ conversation wake-up scheduler > replaces a pending wake with the same key and supports list and cancel 328ms
+   ✓ conversation wake-up scheduler > queues a due wake behind active work, then runs it in the same conversation 435ms
+   ✓ conversation wake-up scheduler > delivers an overdue persisted wake after the scheduler is recreated 448ms
+   ✓ conversation wake-up scheduler > retries a crash after enqueue without creating a duplicate continuation 438ms
+   ✓ conversation wake-up scheduler > cascades pending wakes when their conversation is deleted 340ms
+   ✓ conversation wake-up scheduler > reschedules a pending wake and refuses times outside the allowed window 417ms
+   ✓ conversation wake-up scheduler > fires a pending wake immediately through the ordinary delivery path 322ms
+   ✓ conversation wake-up scheduler > publishes the pending set on the bus after every mutation 348ms
+ ✓ test/smsCode.test.ts (35 tests | 1 skipped) 1152ms
+   ✓ findSmsCode > kills a catastrophically backtracking caller pattern instead of wedging the runner 1014ms
+stdout | test/cdpDesktopMessages.test.ts > viewer newtab message > creates a blank tab, activates it and attaches the screencast to it
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer newtab message > publishes the new tab to the viewer as the active one
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer insert message > inserts the whole clipboard string into the attached page
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer insert message > ignores a non-string, an oversized and an unknown message
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer insert message > accepts a paste right at the size limit
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > keeps the shared desktop at its legacy JPEG quality when no override is supplied
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > uses the requested JPEG quality for live frames and keyframes
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > uses a high-density bitmap while keeping the emulated viewport in CSS pixels
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > downscales thumbnail screencasts and keyframes without changing CSS coordinates
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > follows the agent to another tab and publishes it as active
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > relays cursor activity only for the target the viewer is watching
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > New Tab page handling > sends a fresh browser from the New Tab page to about:blank on attach
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > New Tab page handling > leaves an ordinary page where it is
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > frame metrics > republishes the viewport when a frame reports a different CSS size, once per change
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > idle-page keyframe > captures a keyframe on attach and retries once when nothing streams
+[veneer-pro] desktop viewer attached (cdp)
+
+ ✓ test/emailCode.test.ts (28 tests) 1451ms
+   ✓ Composio-backed source > binds to exactly the shared Gmail install labeled with the mailbox 358ms
+   ✓ Composio-backed source > executes GMAIL_FETCH_EMAILS with the stored session and the runtime key, and parses the messages 385ms
+   ✓ Composio-backed source > refuses without a session, without a Composio key, and on an execution error, quoting nothing 381ms
+stdout | test/cdpDesktopMessages.test.ts > frame delivery pacing > acks Chrome at once and streams consecutive frames without waiting for the viewer
+[veneer-pro] desktop viewer attached (cdp)
+
+ ✓ test/caseCustody.test.ts (50 tests) 18191ms
+   ✓ prospective completed case custody > requires genuine owner enrollment, never reviewer impersonation 417ms
+   ✓ prospective completed case custody > does not turn status_only review into authority 375ms
+   ✓ prospective completed case custody > does not turn quoted review into authority 362ms
+   ✓ prospective completed case custody > does not turn conditional review into authority 313ms
+   ✓ prospective completed case custody > does not turn ambiguous review into authority 355ms
+   ✓ prospective completed case custody > rejects nonhuman result reply and foreign human source 433ms
+   ✓ prospective completed case custody > denies fromRevoked source evidence 349ms
+   ✓ prospective completed case custody > denies destinationRetired source evidence 371ms
+   ✓ prospective completed case custody > denies foreignAccount source evidence 406ms
+   ✓ prospective completed case custody > denies changedIdentity source evidence 378ms
+   ✓ prospective completed case custody > blocks unknownEffect eligibility without hiding source evidence 318ms
+   ✓ prospective completed case custody > blocks foreignLease eligibility without hiding source evidence 367ms
+   ✓ prospective completed case custody > blocks humanAssignment eligibility without hiding source evidence 406ms
+   ✓ prospective completed case custody > rejects native context drift after fetch and issue inspection 403ms
+   ✓ prospective completed case custody > denies owner revocation/expiry 459ms
+   ✓ prospective completed case custody > denies reviewer revocation/expiry 355ms
+   ✓ prospective completed case custody > denies executor revocation/expiry 387ms
+   ✓ prospective completed case custody > denies registration revocation/expiry 305ms
+   ✓ prospective completed case custody > permanently dedupes issuance across keys and lost response 390ms
+   ✓ prospective completed case custody > atomic claim race grants once; replay never grants and revocation cannot free it 383ms
+   ✓ prospective completed case custody > revocation before claim prevents reservation 398ms
+   ✓ prospective completed case custody > revocation during authenticated intent read denies first claim 440ms
+   ✓ prospective completed case custody > rejects incompatible source intent key 405ms
+   ✓ prospective completed case custody > rejects incompatible source intent transition 416ms
+   ✓ prospective completed case custody > rejects incompatible source intent prepared 431ms
+   ✓ prospective completed case custody > rejects incompatible source intent scope 455ms
+   ✓ prospective completed case custody > unknown receipt and source local rollback never regrant; terminal proof required 451ms
+   ✓ prospective completed case custody > authenticates exact applied audit, preserving case version; conflicting receipt denied 356ms
+   ✓ prospective completed case custody > rejects stale material and source context before claim 417ms
+   ✓ prospective completed case custody > bounded complete context refuses excerpts 395ms
+   ✓ prospective completed case custody > dedicated service HTTP boundary no-cf never borrows a human identity 485ms
+   ✓ prospective completed case custody > dedicated service HTTP boundary no-bearer never borrows a human identity 349ms
+   ✓ prospective completed case custody > dedicated service HTTP boundary shared-audience never borrows a human identity 342ms
+   ✓ prospective completed case custody > dedicated service HTTP boundary valid never borrows a human identity 320ms
+   ✓ prospective completed case custody > native route returns strict inspection and rejects bot enrollment and unknown query fields 368ms
+   ✓ prospective completed case custody > protected registry never accepts absent config, symlink or public file 338ms
+   ✓ prospective completed case custody > concurrent identical issuance reconciles to one permanent authority 302ms
+   ✓ prospective completed case custody > new registration cannot escape historical case/event uniqueness 384ms
+   ✓ prospective completed case custody > later status requires explicit complete review; substantive supersession denies 361ms
+   ✓ prospective completed case custody > substantive and ambiguous context classifications cannot be ignored 434ms
+ ✓ test/cdpDesktopMessages.test.ts (17 tests) 1671ms
+   ✓ idle-page keyframe > captures a keyframe on attach and retries once when nothing streams 726ms
+ ✓ test/vendorEmail.test.ts (40 tests) 14670ms
+   ✓ prospective vendor email from a native human direction > preserves ordinary drafts, creates no human approval and executes once with exact proof 326ms
+   ✓ prospective vendor email from a native human direction > rejects changed recipient after inspection 351ms
+   ✓ prospective vendor email from a native human direction > rejects changed thread_id after inspection 389ms
+   ✓ prospective vendor email from a native human direction > rejects changed in_reply_to after inspection 367ms
+   ✓ prospective vendor email from a native human direction > rejects changed subject after inspection 466ms
+   ✓ prospective vendor email from a native human direction > rejects changed body after inspection 395ms
+   ✓ prospective vendor email from a native human direction > rejects changed attachments after inspection 454ms
+   ✓ prospective vendor email from a native human direction > rejects changed executor_conversation_id after inspection 338ms
+   ✓ prospective vendor email from a native human direction > requires full exact instruction and every later human citation, with no inferred status consent 313ms
+   ✓ prospective vendor email from a native human direction > rejects wording_edit interpretation at schema boundary 413ms
+   ✓ prospective vendor email from a native human direction > rejects conditional interpretation at schema boundary 363ms
+   ✓ prospective vendor email from a native human direction > blocks claim on new context until the same scope gets a fresh complete review 398ms
+   ✓ prospective vendor email from a native human direction > records an unclaimed correction prospectively and never replaces an attempted thread 469ms
+   ✓ prospective vendor email from a native human direction > preserves source fencing across thread changes, replacement keys, failure and revocation 464ms
+   ✓ prospective vendor email from a native human direction > revokes an unclaimed authority without freeing its fence 490ms
+   ✓ prospective vendor email from a native human direction > fresh author revocation blocks claim 421ms
+   ✓ prospective vendor email from a native human direction > fresh registration revocation blocks claim 356ms
+   ✓ prospective vendor email from a native human direction > fresh membership revocation blocks claim 348ms
+   ✓ prospective vendor email from a native human direction > fresh archived revocation blocks claim 377ms
+   ✓ prospective vendor email from a native human direction > refuses builders, humans, alternate bots and invented/forwarded sources 464ms
+   ✓ prospective vendor email from a native human direction > retains human result reply attribution and its complete original anchor 333ms
+   ✓ prospective vendor email from a native human direction > fresh checks cover drift, stale observations and changed attachment bytes 462ms
+   ✓ prospective vendor email from a native human direction > blocks old native claims and prior/unknown native sends to the same account/recipient 325ms
+   ✓ prospective vendor email from a native human direction > guards immutable authority and event history, receipt scope and replay 320ms
+   ✓ prospective vendor email from a native human direction > does not reuse an accepted provider receipt for another thread 353ms
+   ✓ prospective vendor email from a native human direction > preserves a real pending business hold and requires its explicit review 302ms
+   ✓ prospective vendor email from a native human direction > does not reuse a human source already consumed by an existing native approval 343ms
+   ✓ prospective vendor email from a native human direction > serializes simultaneous claims; at most one response authorizes execution 358ms
+   ✓ prospective vendor email from a native human direction > routes every supported tool and retains all fields without a transport call 345ms
+   ✓ prospective vendor email from a native human direction > discovers native source IDs while keeping bot and voice reports out of authority candidates 307ms
+   ✓ prospective vendor email from a native human direction > serializes identical binding retries and rejects altered review under the same key 347ms
+   ✓ prospective vendor email from a native human direction > does not leak broader authority through extra properties, other channels or missing body coverage 428ms
+   ✓ prospective vendor email from a native human direction > HTTP attachment verifier checks actual retained bytes and denies unregistered paths 492ms
+ ✓ test/veneerBrowserRemote.test.ts (18 tests) 120ms
+ ✓ test/approvedCaseResolver.test.ts (44 tests) 16421ms
+   ✓ authenticated approved UUID/ticket mapping > preserves approval and creates one mapped claim (same owner false) 460ms
+   ✓ authenticated approved UUID/ticket mapping > preserves approval and creates one mapped claim (same owner true) 431ms
+   ✓ authenticated approved UUID/ticket mapping > does not obtain credentials for equal IDs or an unauthorized actor 393ms
+   ✓ authenticated approved UUID/ticket mapping > denies missing registration before secret access 317ms
+   ✓ authenticated approved UUID/ticket mapping > denies expired registration before secret access 394ms
+   ✓ authenticated approved UUID/ticket mapping > denies revoked registration before secret access 436ms
+   ✓ authenticated approved UUID/ticket mapping > denies business registration before secret access 444ms
+   ✓ authenticated approved UUID/ticket mapping > denies owner registration before secret access 400ms
+   ✓ authenticated approved UUID/ticket mapping > denies caller registration before secret access 338ms
+   ✓ authenticated approved UUID/ticket mapping > denies credential-binding registration before secret access 347ms
+   ✓ authenticated approved UUID/ticket mapping > denies capability principal drift 433ms
+   ✓ authenticated approved UUID/ticket mapping > denies capability account drift 311ms
+   ✓ authenticated approved UUID/ticket mapping > denies capability business drift 363ms
+   ✓ authenticated approved UUID/ticket mapping > denies capability origin drift 389ms
+   ✓ authenticated approved UUID/ticket mapping > denies capability absent drift 304ms
+   ✓ authenticated approved UUID/ticket mapping > denies capability revoked-between-reads drift 384ms
+   ✓ authenticated approved UUID/ticket mapping > denies missing/conflicting source id 322ms
+   ✓ authenticated approved UUID/ticket mapping > denies missing/conflicting source ticketNumber 325ms
+   ✓ authenticated approved UUID/ticket mapping > denies missing/conflicting source customerId 567ms
+   ✓ authenticated approved UUID/ticket mapping > denies missing/conflicting source updatedAt 476ms
+   ✓ authenticated approved UUID/ticket mapping > rejects registration change between network observation and transaction 409ms
+   ✓ authenticated approved UUID/ticket mapping > rejects caller change between network observation and transaction 501ms
+   ✓ authenticated approved UUID/ticket mapping > rejects proposal change between network observation and transaction 313ms
+   ✓ authenticated approved UUID/ticket mapping > rejects version change between network observation and transaction 417ms
+   ✓ authenticated approved UUID/ticket mapping > rejects native-revoke change between network observation and transaction 348ms
+   ✓ authenticated approved UUID/ticket mapping > blocks revision drift at inspect/accept/claim after delegation 405ms
+   ✓ authenticated approved UUID/ticket mapping > blocks customer drift at inspect/accept/claim after delegation 468ms
+   ✓ authenticated approved UUID/ticket mapping > blocks order drift at inspect/accept/claim after delegation 484ms
+   ✓ authenticated approved UUID/ticket mapping > blocks binding drift at inspect/accept/claim after delegation 422ms
+   ✓ authenticated approved UUID/ticket mapping > denies altered body without changing the approved mapping 364ms
+   ✓ authenticated approved UUID/ticket mapping > denies altered recipient without changing the approved mapping 358ms
+   ✓ authenticated approved UUID/ticket mapping > denies altered hash without changing the approved mapping 376ms
+   ✓ authenticated approved UUID/ticket mapping > denies altered executor without changing the approved mapping 303ms
+   ✓ authenticated approved UUID/ticket mapping > serializes concurrently prepared claims, unknown reconciliation and completed receipt without new execution 453ms
+   ✓ authenticated approved UUID/ticket mapping > uses the authenticated resolver through HTTP inspect/delegate/accept/claim/receipt with one racing claim 610ms
+   ✓ authenticated approved UUID/ticket mapping > never falls back to legacy endpoints after dedicated capability failure 419ms
+   ✓ authenticated approved UUID/ticket mapping > never falls back to legacy endpoints after dedicated case failure 422ms
+   ✓ authenticated approved UUID/ticket mapping > accepts the deployed bounded projection with nullable order and absent optional binding fields 440ms
+   ✓ authenticated approved UUID/ticket mapping > sanitizes source failures and rejects permission changes during fetch 311ms
+ ✓ test/approvalAdapter.test.ts (20 tests) 6399ms
+   ✓ claude adapter approval round trip (fake CLI) > pauses the inactivity watchdog while an approval is pending 5065ms
+   ✓ claude adapter approval round trip (fake CLI) > reports delivery immediately and acknowledges only once the delayed replay lands 367ms
+ ✓ test/files.test.ts (20 tests) 372ms
+ ✓ test/codexConnectorTranscript.test.ts (5 tests) 63ms
+ ✓ test/generatedFiles.test.ts (13 tests) 921ms
+ ✓ test/sonioxSpeechToText.test.ts (16 tests) 158ms
+ ✓ test/purchaseTiming.test.ts (42 tests) 16350ms
+   ✓ preserves proof namespaces but refuses new grants without an enforced browser boundary 504ms
+   ✓ rejects native approver drift 491ms
+   ✓ rejects native trust drift 372ms
+   ✓ rejects native proposal drift 381ms
+   ✓ rejects native answer drift 416ms
+   ✓ rejects native pending drift 466ms
+   ✓ rejects native blocked drift 350ms
+   ✓ rejects native bot-answer drift 371ms
+   ✓ rejects native human-context drift 314ms
+   ✓ rejects native delivery drift 439ms
+   ✓ rejects native running-evidence drift 375ms
+   ✓ rejects authoritative source amount changes and supersedes old capture 379ms
+   ✓ rejects authoritative source currency changes and supersedes old capture 426ms
+   ✓ rejects authoritative source dates changes and supersedes old capture 415ms
+   ✓ rejects authoritative source timezone changes and supersedes old capture 516ms
+   ✓ rejects authoritative source order changes and supersedes old capture 363ms
+   ✓ rejects authoritative source shopify changes and supersedes old capture 327ms
+   ✓ rejects authoritative source line changes and supersedes old capture 318ms
+   ✓ rejects authoritative source quantity changes and supersedes old capture 475ms
+   ✓ rejects authoritative source sku changes and supersedes old capture 338ms
+   ✓ rejects authoritative source material changes and supersedes old capture 412ms
+   ✓ rejects authoritative source cart changes and supersedes old capture 335ms
+   ✓ rejects authoritative source action changes and supersedes old capture 409ms
+   ✓ rejects authoritative source proposal-version changes and supersedes old capture 383ms
+   ✓ refuses legacy prose and pending decisions, with no approval import 416ms
+   ✓ expires fresh evidence and never renews a claimed execution window 412ms
+   ✓ reconciles UNKNOWN after revoked trust/version/expiry without allowing an effect 375ms
+   ✓ enrolls only the actual owner with exact review; reconciles stable key without another registration 407ms
+   ✓ rejects foreign identities, account/principal/origin and unsafe or extra schema fields 391ms
+   ✓ dedicates authentication and rejects human JWTs, wrong clients, wrong audiences and all credential reuse 353ms
+   ✓ keeps durable one-time claims across two connections and a restart 392ms
+   ✓ blocks subsequent human result/discussion instructions but ignores bot follow-up 420ms
+   ✓ requires a retained source capture before a native timing question can be raised 430ms
+   ✓ prevents another enrolled executor from claiming the same source account/order 477ms
+   ✓ rejects expired authorization, unsupported delay, future evidence and overlong validity 406ms
+   ✓ recognizes an original-style conversational answer without altering it or inventing a capture 419ms
+   ✓ never permits recovery or a replacement intent from a retained UNKNOWN receipt 501ms
+ ✓ test/netsuite.test.ts (24 tests) 222ms
+ ✓ test/autoshipVerifier.test.ts (9 tests) 2207ms
+   ✓ AutoShip verifier endpoint (fixtures only) > returns the exact assigned AutoShip decision with binding, hashes, human actor and delivery state 584ms
+   ✓ AutoShip verifier endpoint (fixtures only) > reflects running and terminal result states and a concurrent version change 468ms
+   ✓ AutoShip verifier endpoint (fixtures only) > exposes template scope only as the scope field and never widens authority 345ms
+   ✓ AutoShip verifier endpoint (fixtures only) > denies wrong identity, other bots, other decisions, enumeration and every write with redacted bodies 446ms
+   ✓ AutoShip verifier endpoint (fixtures only) > reports a non-human or inactive answering actor as no authority 314ms
+ ✓ test/instructionContext.test.ts (11 tests) 1133ms
+   ✓ instruction context migration > refreshes capability guidance for existing chats without changing their fixed snapshot 407ms
+   ✓ instruction context migration > freezes active chats once during rollout 310ms
+   ✓ instruction context migration > removes obsolete Git excludes from custom project repositories during cleanup 386ms
+ ✓ test/businessTeams.test.ts (10 tests) 4309ms
+   ✓ business fleet enrollment and permissions > enforces direct native API, list, discovery, tools and viewer write boundaries 738ms
+   ✓ business fleet enrollment and permissions > previews then enrolls exactly once across service restart, preserving native identity and ownership 380ms
+   ✓ business fleet enrollment and permissions > rejects duplicate, foreign, unapproved and changed enrollment without partial writes 458ms
+   ✓ business fleet enrollment and permissions > revokes native delegation, binds previews to actor and rejects existing memberships 385ms
+   ✓ business fleet enrollment and permissions > enforces business membership even for workspace-shared chats and keeps viewer role read-only 337ms
+   ✓ business fleet enrollment and permissions > blocks cross-business evidence and agent reads, but visibility never grants answering authority 412ms
+   ✓ business fleet enrollment and permissions > reverses membership safely and restores prior registration metadata 372ms
+   ✓ enrolling a chat that inherited the business id before membership > enrolls an owned same-team unenrolled chat and keeps its business id and prior registration 332ms
+   ✓ enrolling a chat that inherited the business id before membership > still rejects other-business, already-enrolled, non-allowlisted, foreign and platform chats 305ms
+   ✓ enrolling a chat that inherited the business id before membership > invalidates a same-team preview when the chat becomes a member before apply 589ms
+ ✓ test/botWorkflows.test.ts (14 tests) 5482ms
+   ✓ Bot workflows > deduplicates retries into one durable wake in the existing bot chat 438ms
+   ✓ Bot workflows > keeps distinct events queued while a bot is busy 462ms
+   ✓ Bot workflows > requires exact assigned-bot reply routing and keeps distinct reply events 331ms
+   ✓ Bot workflows > cannot prepare even a paused routine for an inactive bot registration 333ms
+   ✓ Bot workflows > cancels undelivered events on pause and refuses delivery after access revocation 386ms
+   ✓ Bot workflows > uses the existing dispatcher and preserves a queued receipt while a bot is busy 414ms
+   ✓ Bot workflows > runs a one-shot routine once without losing its pending delivery authority 410ms
+   ✓ Bot workflows > searches only currently authorized business evidence, with exact source links 460ms
+   ✓ Bot workflows > templates create a fresh identity with paused routines and no inherited browser or action grants 450ms
+   ✓ Bot workflows > quiet hours handle overnight windows and local timezones 422ms
+   ✓ Bot workflows > does not notify historical work or send after access is revoked 314ms
+   ✓ Bot workflows > retires expired push subscriptions and retries transient failures 336ms
+   ✓ Bot workflows > teaching excludes typed values, sensitive steps and expired capture 438ms
+ ✓ test/remoteMcp.test.ts (6 tests) 2733ms
+   ✓ remote MCP connectors (OAuth) > discovers, registers and builds a PKCE sign-in address, then stores tokens outside the install row 528ms
+   ✓ remote MCP connectors (OAuth) > gives a chat the loopback proxy and its key, never a provider token 381ms
+   ✓ remote MCP connectors (OAuth) > refreshes before expiry with one serialized refresh, and keeps the rotated refresh token 395ms
+   ✓ remote MCP connectors (OAuth) > refreshes once on a 401 and resends, and asks for a new sign-in when the refresh is refused 400ms
+   ✓ remote MCP connectors (OAuth) > over HTTP > installs as pending with a sign-in address, connects on the callback, reconnects after an error and forgets on uninstall 596ms
+   ✓ remote MCP connectors (OAuth) > over HTTP > relays a chat request with the provider token only for the right key, and never through the tunnel 432ms
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Assistant and persists a safe replacement default
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Assistant and persists a safe replacement default
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Assistant and persists a safe replacement default
+[auto-title] skipped: no OpenRouter key configured
+
+ ✓ test/coordinatedBuildChat.test.ts (9 tests) 1545ms
+   ✓ instructions and tools that keep new work out of unrelated chats > tells the receiving agent its coordinated build went to a new chat 554ms
+ ✓ test/botCalls.test.ts (13 tests) 5148ms
+   ✓ bot calls > rings nobody until the person turns a bot on, then rings only that bot 370ms
+   ✓ bot calls > keeps one ring at a time, marks it missed after 25 seconds and retries every 15 minutes without a cap 468ms
+   ✓ bot calls > respects do not disturb, calling hours and recent activity 343ms
+   ✓ bot calls > never rings during a live call and waits a pause after it 366ms
+   ✓ bot calls > answering reserves the ring, and an unanswered question is tried again later 404ms
+   ✓ bot calls > "I can’t do that now" keeps the card and never rings about it again 423ms
+   ✓ bot calls > stops ringing once the question is answered elsewhere 323ms
+   ✓ bot calls > does not let a person turn on or be rung by a bot they cannot reach 331ms
+   ✓ bot calls > pushes a ring once to someone who is not using Veneer, and a tapped notification rings again without another attempt 473ms
+   ✓ bot calls > phones a person who is away, only inside their hours, and rings in the app when they are using Veneer 461ms
+   ✓ bot calls > caps phone calls per hour, records a call that cannot start, and offers a test call 370ms
+   ✓ bot calls > only treats a number said with a unit as a stated value 417ms
+   ✓ bot calls > bridges through the phone provider with the calls-only key and never leaves a webhook 397ms
+ ✓ test/approvalManager.test.ts (16 tests) 6436ms
+   ✓ conversation manager approvals > routes MCP approvals through fresh ask mode without Full Access 434ms
+   ✓ conversation manager approvals > routes MCP approvals through fresh auto mode without Full Access 404ms
+   ✓ conversation manager approvals > records the approval, augments the event with approvalId, and derives needs_you 382ms
+   ✓ conversation manager approvals > auto-approves with an audit row and no live or rehydrated client event 332ms
+   ✓ conversation manager approvals > rehydrates genuine pending approvals with a working approval id 476ms
+   ✓ conversation manager approvals > rehydrates a manually resolved approval with its final status 392ms
+   ✓ conversation manager approvals > reads the effective mode fresh and lets a chat override an autonomous agent 303ms
+   ✓ conversation manager approvals > lets Full Access override stored agent and chat Ask modes 383ms
+   ✓ conversation manager approvals > approve: responds allow to the live turn, updates the row, emits approval_resolved 381ms
+   ✓ conversation manager approvals > deny: responds deny with a message and records the denial 397ms
+   ✓ conversation manager approvals > resolving twice fails with not_pending 457ms
+   ✓ conversation manager approvals > expires the approval when the process is already gone 530ms
+   ✓ conversation manager approvals > auto-denies after the approval timeout with an expired marker 607ms
+   ✓ conversation manager approvals > expires pending approvals when the turn ends (process death) 321ms
+   ✓ conversation manager approvals > expires stale pending approvals at boot 350ms
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Platform Dev and moves defaults to a regular agent
+[auto-title] skipped: no OpenRouter key configured
+
+ ✓ test/ringcentral.test.ts (29 tests) 174ms
+ ✓ test/grokDeviceAuth.test.ts (26 tests) 1451ms
+   ✓ createGrokConnectManager > hard-expires the attempt and kills the child 343ms
+ ✓ test/buildDispatchIdentity.test.ts (9 tests) 3826ms
+   ✓ ignores unrelated terminal ordering 16:04:27 before actual activation 400ms
+   ✓ ignores unrelated terminal ordering 16:13:51 before actual activation 362ms
+   ✓ retains dispatch across restart/new actual turn and rejects a delayed old completion or start 385ms
+   ✓ requires exact idle legacy recovery and preserves original job, audit and idempotency 448ms
+   ✓ denies legacy recovery with queued/pending work, stale finish timestamp or wrong origin 495ms
+   ✓ adopts only the explicitly selected current legacy build turn for this caller 366ms
+   ✓ serializes exact recovery against a real competing writer 472ms
+   ✓ binds the real manager queued build only after an unrelated in-flight turn finishes 445ms
+   ✓ reserves the WAL writer before reading inbound receipts and delivers only once 452ms
+ ✓ test/assistantDeletion.test.ts (8 tests) 3699ms
+   ✓ deletable built-in agents > returns the actual agent name for an existing conversation 427ms
+   ✓ deletable built-in agents > retires an unused Assistant and persists a safe replacement default 496ms
+   ✓ deletable built-in agents > retires an unused Skill Builder and rejects stale explicit launches 517ms
+   ✓ deletable built-in agents > keeps historical chats and safely reassigns live references 437ms
+   ✓ deletable built-in agents > never silently substitutes an explicitly missing ordinary agent 490ms
+   ✓ deletable built-in agents > blocks deletion while an agent is working or waiting for the user 399ms
+   ✓ deletable built-in agents > retires an unused Platform Dev and moves defaults to a regular agent 467ms
+   ✓ deletable built-in agents > protects the last agent available to regular chats 465ms
+ ✓ test/csStandingPolicy.test.ts (17 tests) 6801ms
+   ✓ standing authority for the product-label photo request > lets only the signed-in owner enroll, and replays a lost response without a second policy 505ms
+   ✓ standing authority for the product-label photo request > queues the exact request for a named bot and sends it once with no fabricated approver 352ms
+   ✓ standing authority for the product-label photo request > leaves one changed character as an ordinary draft that needs a person 355ms
+   ✓ standing authority for the product-label photo request > leaves an added promise as an ordinary draft that needs a person 352ms
+   ✓ standing authority for the product-label photo request > leaves a subject line as an ordinary draft that needs a person 407ms
+   ✓ standing authority for the product-label photo request > leaves two recipients as an ordinary draft that needs a person 428ms
+   ✓ standing authority for the product-label photo request > leaves a recipient that is not an email as an ordinary draft that needs a person 380ms
+   ✓ standing authority for the product-label photo request > does nothing before enrollment and nothing for a bot that is not named 373ms
+   ✓ standing authority for the product-label photo request > sends nothing when a person recorded reject on the ticket 455ms
+   ✓ standing authority for the product-label photo request > sends nothing when a person recorded defer on the ticket 527ms
+   ✓ standing authority for the product-label photo request > sends nothing when a person recorded withdraw on the ticket 401ms
+   ✓ standing authority for the product-label photo request > allows one request per ticket, enforced by the database 435ms
+   ✓ standing authority for the product-label photo request > stops at the daily limit and resumes the next day 401ms
+   ✓ standing authority for the product-label photo request > revocation stops every unclaimed request at once and leaves a claimed one to reconcile 490ms
+   ✓ standing authority for the product-label photo request > stops when the issuer no longer owns the business or the bot is removed 394ms
+ ✓ test/agentScheduledTaskTools.test.ts (5 tests) 3182ms
+   ✓ scheduled-agent MCP tools > omits and refuses the secret tools when secrets tooling is unavailable 698ms
+   ✓ scheduled-agent MCP tools > creates and edits with the complete scheduled-agent field set 518ms
+   ✓ scheduled-agent MCP tools > maps run history, run updates, run-now, and both delete actions to the owner-scoped API 1216ms
+   ✓ scheduled-agent MCP tools > makes an omitted memory project explicitly global 492ms
+ ✓ test/fixturePreparation.test.ts (20 tests) 396ms
+stdout | test/lanViewer.test.ts > LAN viewer listener > serves nothing but the ticketed upgrade
+[veneer-pro] LAN viewer listening on https://localhost:0 (viewer socket only)
+
+ ✓ test/lanViewer.test.ts (7 tests) 196ms
+ ✓ test/pageThumbnails.test.ts (6 tests) 603ms
+ ✓ test/settledQuestions.test.ts (6 tests) 2267ms
+   ✓ questions settled elsewhere > retires open questions for an order the source reports fulfilled, once per event, within the source business only 545ms
+   ✓ questions settled elsewhere > withdraws a settled question after the short window with an audit note, and keeps ordinary stale questions on the long one 330ms
+   ✓ questions settled elsewhere > honors moot_when, treats a closed ticket as settled, and lets the bot revive a question that is still needed 408ms
+   ✓ questions settled elsewhere > rejects malformed settled events and unknown sources without retiring anything 332ms
+   ✓ questions settled elsewhere > lets only the owning bot withdraw its own waiting question, idempotently, without authorizing anything 330ms
+   ✓ questions settled elsewhere > asks each bot once per interval to re-check its order-bound questions, and only those old enough 320ms
+ ✓ test/supermemory.test.ts (10 tests) 2231ms
+   ✓ Supermemory client > allows a contended memory search to finish within the four-second read budget 2203ms
+ ✓ test/coordination.test.ts (6 tests) 2526ms
+   ✓ coordination identity and history > reuses one thread in both directions with separate native sessions and no copied grants 435ms
+   ✓ coordination identity and history > requires current access to both parents, never permits ordinary sends into internal sessions, and stays quiet 385ms
+   ✓ deletes internal sessions when either participant is deleted, without orphaning their private history 396ms
+   ✓ coordination scheduler > never steers a human turn, prioritizes queued human work, retains canonical authority and isolates session output 431ms
+   ✓ coordination scheduler > drops queued coordination if source access is revoked before execution 372ms
+   ✓ routes authenticated bot messages and replies to workers while human steering remains unchanged 506ms
+ ✓ test/claudeAccounts.test.ts (12 tests) 80ms
+ ✓ test/buildQueueRoutes.test.ts (6 tests) 631ms
+ ✓ test/csReadiness.test.ts (9 tests) 3438ms
+   ✓ shows the owner authorization as the single remaining step before enrollment 368ms
+   ✓ stays tested after enrollment, becomes a pilot only with a receipt, blocks on an unknown outcome and pauses on revocation 463ms
+   ✓ does not count a sent state without a receipt as delivered 332ms
+   ✓ lists unbuilt case types as draft with a named dependency and changes no record 435ms
+   ✓ refuses another business, a non-owner, an inactive bot and an unknown business 382ms
+   ✓ routes the bot tool to the read-only endpoint 350ms
+   ✓ summarizes delays by nearest rank without inventing values 402ms
+   ✓ measures approval follow-through and drafts by model group inside the window only 407ms
+ ✓ test/setupToken.test.ts (15 tests) 3423ms
+   ✓ ClaudeConnectManager > complete() with a good code stores the token (0600) and runs the probe 517ms
+   ✓ ClaudeConnectManager > complete() with a bad code errors and stores nothing 954ms
+   ✓ ClaudeConnectManager > submits the code then Enter as SEPARATE writes (not one code\r chunk) 444ms
+   ✓ ClaudeConnectManager > fails fast (bad_code) on an explicit OAuth error, without waiting the full timeout 384ms
+   ✓ ClaudeConnectManager > redacts the token if the verify probe throws it back 451ms
+   ✓ ClaudeConnectManager > hard-expires an attempt and kills the child 334ms
+ ✓ test/instructionObligations.test.ts (20 tests) 8623ms
+   ✓ retains consumed email and truthful later exact SMS snapshot, without granting authority or waking anybody 483ms
+   ✓ requires exact original owner and executor, current registration and source author access 421ms
+   ✓ rejects stale review after body changes and retains old immutable snapshot 457ms
+   ✓ rejects stale review after account changes and retains old immutable snapshot 436ms
+   ✓ rejects stale review after recipients changes and retains old immutable snapshot 366ms
+   ✓ rejects stale review after ticket changes and retains old immutable snapshot 373ms
+   ✓ rejects stale review after customer changes and retains old immutable snapshot 575ms
+   ✓ rejects pre-record stale hashes and draft version mismatch 483ms
+   ✓ retains an outstanding intent while exposing newer human context and later proposal drift, never making it ready 457ms
+   ✓ requires original consumption and captured immutable proposal; cannot import legacy transcript or false aliases 445ms
+   ✓ does not classify human words or grant approval from a reviewed summary 334ms
+   ✓ serializes conflicting records and keys, and appends immutable idempotent revocation 320ms
+   ✓ cannot create a new obligation against sending or unknown effects 451ms
+   ✓ cannot create a new obligation against sent or unknown effects 341ms
+   ✓ cannot create a new obligation against queued or unknown effects 420ms
+   ✓ prevents private and foreign executor exposure 454ms
+   ✓ fails rather than returning a truncated context 430ms
+   ✓ handles competing service instances with one immutable record and lost-response reconciliation 437ms
+   ✓ enforces native route ownership and strict schema; inspection performs no writes 687ms
+ ✓ test/questionManager.test.ts (6 tests) 4103ms
+   ✓ durable structured questions > round-trips all 32 choices through API validation and durable multi-answer storage 1870ms
+   ✓ durable structured questions > persists an MCP question and replaces its raw tool row in history 590ms
+   ✓ durable structured questions > round-trips a secret prompt and records only the saved marker 479ms
+   ✓ durable structured questions > delivers native multi-question answers through the live provider handle 394ms
+   ✓ durable structured questions > rejects missing or unrecognized answers without releasing the provider 493ms
+ ✓ test/teamRoomRoutes.test.ts (6 tests) 2636ms
+   ✓ lets restricted employees read/send only rooms they belong to and rejects forged authors 741ms
+   ✓ stores opaque attachments and gates downloads after removal 521ms
+   ✓ allows employee-triggered worker replies only in room and denies outside API access 507ms
+   ✓ previews images for authorized humans before and after an attachment-only send 495ms
+ ✓ test/pagesRoutes.test.ts (6 tests) 234ms
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > uses a valid client id for optimistic sidebar reconciliation
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > stores an explicit origin that matches the authenticated agent chat
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > keeps an agent-created chat top-level when no handoff origin is explicit
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > starts a fresh empty chat with the latest fixed settings snapshot
+[auto-title] skipped: no OpenRouter key configured
+
+ ✓ test/handoffOrigins.test.ts (8 tests) 312ms
+ ✓ test/chatAutoArchive.test.ts (7 tests) 375ms
+ ✓ test/transcriptArchive.test.ts (10 tests) 566ms
+ ✓ test/conversationCompaction.test.ts (4 tests) 2534ms
+   ✓ conversation context compaction > publishes durable activity for claude while preserving the transcript and usage 603ms
+   ✓ conversation context compaction > rejects active turns, unsupported providers, and sessions with no completed turn 543ms
+   ✓ conversation context compaction > interrupts maintenance cleanly and retains usage after provider failure 1093ms
+ ✓ test/teachingAudio.test.ts (9 tests) 3119ms
+   ✓ persists audio, aligns narration with actions, and includes actual transcript in review 565ms
+   ✓ deduplicates identical concurrent uploads and rejects changed or overlapping clips 548ms
+   ✓ rechecks permission after asynchronous transcription and does not retain revoked results 443ms
+   ✓ preserves manual corrections if an in-flight transcription returns later 320ms
+   ✓ keeps saved evidence immutable and silent demonstrations compatible 374ms
+ ✓ test/providerSwitch.test.ts (6 tests) 2035ms
+   ✓ provider switching in a permanent chat > keeps the selected model and transfer pending after a provider limit failure 397ms
+   ✓ provider switching in a permanent chat > leaves the original session intact when the target is unavailable 409ms
+   ✓ provider switching in a permanent chat > does not duplicate history when a snapshot overlaps a switch 343ms
+   ✓ provider switching in a permanent chat > bounds transferred context and provides a complete redacted record 437ms
+ ✓ test/chiefOfStaff.test.ts (7 tests) 2451ms
+   ✓ chief of staff designation > lets only the owner or the owner’s Platform Dev designate, and audits it 420ms
+   ✓ open questions overview > is closed to every other bot and to a human session 388ms
+   ✓ open questions overview > stops when the designation lapses 384ms
+   ✓ open questions overview > omits a question whose evidence the owner cannot reach, and flags evidence access 541ms
+   ✓ open questions overview > gives no way to answer or withdraw another bot’s question 328ms
+ ✓ test/recentConversations.test.ts (7 tests) 726ms
+ ✓ test/sessionFiles.test.ts (17 tests) 27ms
+ ✓ test/supermemoryProvision.test.ts (7 tests) 43ms
+ ✓ test/returnException.test.ts (24 tests) 8833ms
+   ✓ preserves original approval and later source mapping; one item regardless of purchased quantity 448ms
+   ✓ revocation before claim denies; claim before revocation stays reconcilable without reusable authority 615ms
+   ✓ rejects invalid source principal 356ms
+   ✓ rejects invalid source case 380ms
+   ✓ rejects invalid source draft 438ms
+   ✓ rejects invalid source ambiguous 433ms
+   ✓ rejects invalid source quantity 374ms
+   ✓ rejects invalid source stale 419ms
+   ✓ rejects invalid source lease 437ms
+   ✓ rejects invalid source extra 434ms
+   ✓ denies changed native executor before claim 330ms
+   ✓ retains raw nullable and whitespace SKUs; never normalizes target identity 406ms
+   ✓ allows fresh unclaimed remap at submit, then permanently rejects a second mapping claim 400ms
+   ✓ does not allow an empty reservation mapping to become a submission claim 462ms
+   ✓ persists a unique claim across connections and restart with competing same/different keys 438ms
+   ✓ rejects absent dedicated HTTP identity and isolates authenticated service bindings 599ms
+ ✓ test/autoshipCandidates.test.ts (8 tests) 3362ms
+   ✓ durably accepts exactly one candidate/wake and returns original receipt on replay or lost-response GET 533ms
+   ✓ rejects foreign identity/business/account/recipient/order and missing stock confirmation 451ms
+   ✓ requires real current owner and dedicated identity; prevents registration retry drift 322ms
+   ✓ serializes revoke-before-delivery and queued-start, but retains readonly receipt after revocation 388ms
+   ✓ records start-before-revoke without treating notification as an external shipping result 386ms
+   ✓ rechecks owner and worker access at dispatch 344ms
+   ✓ serializes real competing connections during acceptance and queued-start revocation 464ms
+   ✓ uses the real manager durable wake receipt and suppresses revoked queued work without interrupting unrelated work 472ms
+ ✓ test/turnWatchdog.test.ts (14 tests) 18356ms
+   ✓ turn watchdog > reaps a turn that goes quiet, and never reaps one that keeps working 1051ms
+   ✓ turn watchdog > suspends the window while a hold is open and resumes when it clears 1604ms
+   ✓ turn watchdog > fires the ceiling however alive the turn looks 801ms
+   ✓ turn watchdog > stop() disarms both timers 803ms
+   ✓ claude turns measure liveness, not elapsed time > kills a turn that only polls, and spares one blocked on a real tool 9067ms
+   ✓ claude turns measure liveness, not elapsed time > the ceiling still reaps a turn that never stops emitting 307ms
+   ✓ grok cancellation distinguishes stopping from replacing > keeps children running for "Send now" but abandons them on an explicit Stop 369ms
+   ✓ grok cancellation distinguishes stopping from replacing > keeps children running when Veneer's own timeout fires 4112ms
+ ✓ test/conversationalConsent.test.ts (14 tests) 5753ms
+   ✓ refuses human callers, other bots, nonhuman sources and unauthorized humans 384ms
+   ✓ rejects newer same-thread human messages even if their words say approve 521ms
+   ✓ cannot apply an instruction to a proposal that did not exist when it was written 511ms
+   ✓ binds direct submissions to a server-captured proposal and refuses legacy text IDs 383ms
+   ✓ does not classify quotations, questions or conditional text automatically 516ms
+   ✓ refuses hash tampering, reuse for another decision and revoked replay 527ms
+   ✓ rejects a same-second correction in another result thread 370ms
+   ✓ rejects executor changes after inspection without recording an answer 405ms
+   ✓ reconciles direct consent after its own shared-queue claim and rejects earlier handling changes 544ms
+   ✓ rejects a changed handling revision before recording direct consent 442ms
+   ✓ refuses same-second historical proposal timing when event precision cannot establish order 352ms
+ ✓ test/connectorAccess.test.ts (4 tests) 663ms
+stdout | test/veneerOffice.test.ts > veneer office provisioning > installs both commands, their pinned library, and an idempotent PATH entry
+[veneer-office] added /var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-IYY7uW/.local/bin to the runner PATH (/var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-IYY7uW/.config/veneer-pro/env)
+[veneer-office] installed veneer-docx and veneer-xlsx -> /var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-IYY7uW/.local/bin
+[veneer-office] ready
+[veneer-office] installed veneer-docx and veneer-xlsx -> /var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-IYY7uW/.local/bin
+[veneer-office] ready
+
+ ✓ test/veneerOffice.test.ts (7 tests) 4893ms
+   ✓ veneer-xlsx > creates a styled CSV workbook without converting formula-like text into formulas 425ms
+   ✓ veneer-xlsx > supports typed multi-sheet JSON, explicit formulas, formats, and charts 398ms
+   ✓ veneer-xlsx > handles Unicode and control characters safely 447ms
+   ✓ veneer-xlsx > rejects bad sheet names and Excel column overflow without replacing an existing output 925ms
+   ✓ veneer office provisioning > installs both commands, their pinned library, and an idempotent PATH entry 2380ms
+ ✓ test/todosRoutes.test.ts (7 tests) 881ms
+ ✓ test/pinnedCdpBridge.test.ts (7 tests) 499ms
+ ✓ test/decisionImages.test.ts (8 tests) 3843ms
+   ✓ decision image evidence > binds exact bytes and serves them only for the current decision version 416ms
+   ✓ decision image evidence > rejects unrelated paths, symlinks, remote URLs, nonimages, oversize and vanished files 474ms
+   ✓ decision image evidence > rechecks employee source access and revocation on every retrieval 466ms
+   ✓ decision image evidence > rejects cross-business evidence even when the owner can view both businesses 389ms
+   ✓ decision image evidence > keeps old proposals valid without inventing image evidence 487ms
+   ✓ decision image evidence > binds images at the proposal HTTP boundary and refuses forged hashes 749ms
+   ✓ decision image evidence > serves authenticated raster bytes with private no-store headers and validates indexes 487ms
+   ✓ decision image evidence > never accepts SVG or HTML as passive raster evidence 374ms
+ ✓ test/conversationUnread.test.ts (8 tests) 2858ms
+   ✓ conversation unread > treats a missing row as not unread 419ms
+   ✓ conversation unread > marks every active teammate unread except current viewers 479ms
+   ✓ conversation unread > keeps private-chat unread on the creator only 525ms
+   ✓ conversation unread > can mark unread again after a previous view 397ms
+ ✓ test/codexDeviceAuth.test.ts (15 tests) 1100ms
+   ✓ createCodexConnectManager > hard-expires the attempt and kills the child 344ms
+ ✓ test/codexLifecycle.test.ts (12 tests) 7213ms
+   ✓ persistent Codex bots release idle runtime subscriptions > waits for an in-flight unsubscribe before resuming, so a late release cannot detach the new turn 5290ms
+ ✓ test/runnerIpcAuth.test.ts (13 tests) 650ms
+ ✓ test/customFonts.test.ts (16 tests) 6946ms
+   ✓ font file validation > accepts only web font extensions 453ms
+   ✓ font file validation > sanitizes the stored file name and keeps the extension 346ms
+   ✓ font file validation > rejects bytes whose magic number does not match the extension 324ms
+   ✓ font library storage > stores fonts outside the expiring p/ prefix 451ms
+   ✓ font library storage > round-trips through the database and deletes cleanly 387ms
+   ✓ font library storage > matches a family case-insensitively and ignores others 468ms
+   ✓ font library storage > builds a usable @font-face block 429ms
+   ✓ brand backward compatibility > keeps reading a brand saved before heading fonts existed 402ms
+   ✓ brand backward compatibility > accepts and preserves a heading font 401ms
+   ✓ typography guidance for agents > is silent when no family is set 456ms
+   ✓ typography guidance for agents > emits a Google Fonts link for families that are not uploaded 432ms
+   ✓ typography guidance for agents > emits @font-face for an uploaded family and a link for the Google one 464ms
+   ✓ typography guidance for agents > escapes a multi-word Google family in the stylesheet URL 451ms
+   ✓ typography guidance for agents > lists one @font-face per weight and never repeats a file 512ms
+   ✓ r2 putObject > sends the font bytes with an immutable cache header 471ms
+   ✓ r2 putObject > surfaces the Cloudflare message without leaking the token 498ms
+ ✓ test/gmailDrafts.test.ts (4 tests) 678ms
+ ✓ test/wakeupRoutes.test.ts (6 tests) 940ms
+ ✓ test/scheduler.test.ts (5 tests) 2451ms
+   ✓ scheduled task runner > launches a due one-time task as a normal automation chat and records completion 574ms
+   ✓ scheduled task runner > advances a recurring schedule and skips an overlapping occurrence 489ms
+   ✓ scheduled task runner > advances cron schedules in their explicit timezone 495ms
+   ✓ scheduled task runner > supports run-now, blocks overlap, and tracks needs-you and failures 491ms
+   ✓ scheduled task runner > filters durable provider events before launching and never duplicates a run 400ms
+ ✓ test/questionReconcile.test.ts (9 tests) 69ms
+ ✓ test/agentBrowserInstaller.test.ts (6 tests) 19ms
+ ✓ test/fontRoutes.test.ts (9 tests) 500ms
+ ✓ test/tabReuse.test.ts (14 tests) 11ms
+ ✓ test/webSocketUnread.test.ts (3 tests) 1222ms
+   ✓ conversation WebSocket unread > keeps a subscribed viewer seen and marks everyone else unread on turn_done 566ms
+   ✓ conversation WebSocket unread > observes reply activity without transcript content or marking conversations read 343ms
+   ✓ conversation WebSocket unread > restores compaction activity in snapshots and clears it live 312ms
+ ✓ test/grokUsage.test.ts (11 tests) 199ms
+ ✓ test/decisionHandoffs.test.ts (11 tests) 5174ms
+   ✓ decision thread investigations > creates one durable request/result without answering, changing version or importing instructions 575ms
+   ✓ decision thread investigations > rejects stale create but labels returned findings against their original version 495ms
+   ✓ decision thread investigations > rechecks archive access before wake/read/report 573ms
+   ✓ decision thread investigations > rechecks requester access before wake/read/report 414ms
+   ✓ decision thread investigations > rechecks source-bot access before wake/read/report 382ms
+   ✓ decision thread investigations > rechecks target-bot access before wake/read/report 616ms
+   ✓ decision thread investigations > rechecks evidence access before wake/read/report 362ms
+   ✓ decision thread investigations > checks the complete destination audience and historical source references 564ms
+   ✓ decision thread investigations > serves restricted humans through narrow authenticated routes, never target result tools 696ms
+ ✓ test/purchaseTimingRoutes.test.ts (1 test) 876ms
+   ✓ keeps dedicated service auth separate from owner setup and returns strict errors 875ms
+ ✓ test/codexUsage.test.ts (10 tests) 39ms
+ ✓ test/projectSettingsRoutes.test.ts (5 tests) 928ms
+ ✓ test/dopplerRoutes.test.ts (5 tests) 1049ms
+ ✓ test/browserLoginGrants.test.ts (4 tests) 2346ms
+   ✓ scoped browser login grants > requires exact secret and current membership, bot, profile and grant owner 647ms
+   ✓ scoped browser login grants > restricts grant creation and revocation to the profile/chat owner and records an audit 860ms
+   ✓ scoped browser login grants > accepts exact HTTPS origins only 459ms
+   ✓ scoped browser login grants > checks live origin, frame, input and form destination atomically before secret entry 376ms
+ ✓ test/browserCapacityWait.test.ts (14 tests) 6377ms
+   ✓ retains bounded FIFO work across reconstruction and opens more than five chats without commands 560ms
+   ✓ same key is idempotent, conflicting context and duplicate waiting task are refused 396ms
+   ✓ cancels before allocation on new human instructions or owner changes 519ms
+   ✓ expiration delivers one blocker wake without allocation 426ms
+   ✓ cancellation suppresses both pending allocation and undelivered wake 444ms
+   ✓ scope is rechecked at wake dispatch, and active turns cannot be admitted 411ms
+   ✓ capacity errors retain the wait, uncertain errors produce one failure wake 425ms
+   ✓ interrupted allocation requests reconciliation only, never a new blind attempt 318ms
+   ✓ delivers a ready wake once through the existing scheduler, with no browser commands 622ms
+   ✓ cancels a changed selected profile before allocation 666ms
+   ✓ cancellation during the capacity probe prevents allocation 418ms
+   ✓ cancellation during an in-flight allocation suppresses its wake without killing the copy 448ms
+   ✓ a waiter whose project is at its cap steps aside for a later waiter from another project 439ms
+ ✓ test/terminalSessions.test.ts (9 tests) 15ms
+ ✓ test/conversationOrder.test.ts (3 tests) 485ms
+ ✓ test/paperConnector.test.ts (14 tests) 7ms
+ ✓ test/conversationDebugContext.test.ts (3 tests) 946ms
+   ✓ conversation debug context > returns the exact per-chat instructions and never serializes MCP secrets 550ms
+ ✓ test/webSocketAccess.test.ts (3 tests) 962ms
+   ✓ conversation WebSocket access changes > stops a Team subscribe when the creator makes the chat Private 594ms
+ ✓ test/providerRuntimesProvisioner.test.ts (6 tests) 10ms
+ ✓ test/messageOriginPresentation.test.ts (6 tests) 1795ms
+   ✓ message origin presentation > resolves a linked title only when the viewer can access the source chat 389ms
+   ✓ message origin presentation > strips inaccessible and internal source metadata for a Team viewer 519ms
+   ✓ message origin presentation > keeps a remote origin non-linked and strips unexpected raw provenance 330ms
+ ✓ test/miniAppsRoutes.test.ts (5 tests) 303ms
+ ✓ test/localAppStorage.test.ts (4 tests) 105ms
+ ✓ test/projectRootDir.test.ts (14 tests) 576ms
+ ✓ test/wire.test.ts (8 tests) 9ms
+ ✓ test/snapshot-merge.test.ts (10 tests) 5ms
+ ✓ test/routineOwnerSetup.test.ts (8 tests) 1609ms
+ ✓ test/migrateConcurrent.test.ts (3 tests) 692ms
+   ✓ concurrent first boot > lets every service migrate the same fresh database at once 515ms
+ ✓ test/csPilotDelivery.test.ts (7 tests) 1481ms
+   ✓ customer service pilot delivery > wakes the owner once for a duplicate inbound event 391ms
+ ✓ test/turnStops.test.ts (9 tests) 471ms
+ ✓ test/veneerBrowserReadUrl.test.ts (5 tests | 4 skipped) 2ms
+ ✓ test/composedSmsVerifierRoutes.test.ts (10 tests) 1440ms
+ ✓ test/platformSkills.test.ts (6 tests) 1072ms
+   ✓ product-owned platform skills > installs shared skills for every provider and repairs stale copies 366ms
+   ✓ product-owned platform skills > lists the skill as shared and read-only in the Skills store 599ms
+ ✓ test/conversationCompactionRoute.test.ts (6 tests) 520ms
+ ✓ test/draftRetirement.test.ts (17 tests) 4467ms
+   ✓ retires queued work preserving original authority/payload and separate immutable audit 490ms
+   ✓ retires unapproved drafts without adding send authority 479ms
+   ✓ denies human retirement 441ms
+   ✓ denies disabled retirement 314ms
+   ✓ serializes simultaneous HTTP claim and retirement without double transition 383ms
+ ✓ test/connectionsRoutes.test.ts (7 tests) 298ms
+ ✓ test/chatLink.test.ts (23 tests) 255ms
+ ✓ test/composedSmsReader.test.ts (12 tests) 2590ms
+   ✓ rejects hash evidence 313ms
+   ✓ rechecks registration and observation at use time 352ms
+ ✓ test/composedSmsEvidence.test.ts (14 tests) 22ms
+ ✓ test/openrouterAdapter.test.ts (4 tests) 129ms
+ ✓ test/botWorkflowRoutes.test.ts (3 tests) 623ms
+ ✓ test/codexHistory.test.ts (6 tests) 80ms
+ ✓ test/migrateCoreProject.test.ts (7 tests) 3ms
+ ✓ test/platform.test.ts (14 tests) 83ms
+ ✓ test/routinePolicies.test.ts (6 tests) 1207ms
+   ✓ denies foreign/unnamed identities and categories; inactive actors cannot reuse cached identity 355ms
+ ✓ test/frontmatter.test.ts (15 tests) 6ms
+ ✓ test/apiKeys.test.ts (11 tests) 11ms
+ ✓ test/correctionPreflight.test.ts (20 tests) 16757ms
+   ✓ reviews complete native correction with no draft, credential, source or writes 12645ms
+   ✓ semantic interpretation status_only never becomes consent 381ms
+   ✓ cannot forge or excerpt correction/later citations or omit later surfaces 303ms
+   ✓ rejects proposal drift after inspection 352ms
+   ✓ retains full result anchors and bot context but never treats bot replies as human consent 332ms
+ ✓ test/shutdown.test.ts (8 tests) 368ms
+ ✓ test/projectDopplerCli.test.ts (6 tests) 259ms
+ ✓ test/projectOrder.test.ts (3 tests) 375ms
+ ✓ test/conversationMove.test.ts (6 tests) 362ms
+ ✓ test/clientLogoRoutes.test.ts (5 tests) 391ms
+ ✓ test/agentHuddleTools.test.ts (2 tests) 1493ms
+   ✓ huddle MCP tools > routes every tool to the REST surface under the agent token, so authority is decided server-side 1221ms
+ ✓ test/memoryRecallQuality.test.ts (1 test) 5ms
+ ✓ test/claudeLimitReset.test.ts (5 tests) 6ms
+ ✓ test/composedSmsHashes.test.ts (25 tests) 20ms
+ ✓ test/jevSkill.test.ts (5 tests) 56ms
+ ✓ test/composedSmsLineage.test.ts (4 tests) 17ms
+ ✓ test/decisionEvidenceSchema.test.ts (4 tests) 141ms
+ ✓ test/questionLine.test.ts (6 tests) 1472ms
+   ✓ global question line and hotline > pins each hotline action to selected question and rechecks versions, access and answered state 402ms
+   ✓ global question line and hotline > removes answered and withdrawn questions, even when a reminder was pending 333ms
+ ✓ test/composedSmsCorrectionContract.test.ts (11 tests) 11ms
+ ✓ test/projectSettingsTool.test.ts (6 tests) 10ms
+ ✓ test/voicePreferences.test.ts (4 tests) 177ms
+ ✓ test/terminalService.test.ts (4 tests) 46ms
+ ✓ test/navigationRoutes.test.ts (4 tests) 307ms
+ ✓ test/csScenarios.test.ts (7 tests) 9ms
+ ✓ test/claudePreferencesRoutes.test.ts (5 tests) 576ms
+ ✓ test/chatInlineImages.test.ts (4 tests) 416ms
+ ✓ test/conversationDiscoveryTools.test.ts (5 tests) 5ms
+ ✓ test/candidateOwnerSetup.test.ts (4 tests) 945ms
+ ✓ test/contactVerificationContract.test.ts (4 tests) 14ms
+ ✓ test/pageExpiry.test.ts (5 tests) 1129ms
+ ✓ test/brandRoutes.test.ts (6 tests) 521ms
+ ✓ test/rateLimitMessage.test.ts (11 tests) 22ms
+ ✓ test/returnOwnerSetup.test.ts (4 tests) 794ms
+ ✓ test/composioWebhook.test.ts (2 tests) 469ms
+   ✓ Composio webhook ingress > verifies, allowlists, and durably deduplicates trigger deliveries 303ms
+ ✓ test/schedule.test.ts (7 tests) 70ms
+ ✓ test/localMiniApps.test.ts (2 tests) 188ms
+ ✓ test/projectFileLinks.test.ts (8 tests) 50ms
+ ✓ test/veneerBrowserProxy.test.ts (3 tests) 46ms
+ ✓ test/totp.test.ts (17 tests) 6ms
+ ✓ test/connectorEvents.test.ts (6 tests) 2ms
+ ✓ test/fileScan.test.ts (15 tests) 4ms
+ ✓ test/renameConversationTool.test.ts (11 tests) 6ms
+ ✓ test/webTranscript.test.ts (4 tests) 2ms
+ ✓ test/migrateHostPaths.test.ts (5 tests) 4ms
+ ✓ test/composedSmsTools.test.ts (6 tests) 7ms
+ ✓ test/projectTools.test.ts (5 tests) 5ms
+ ✓ test/chatOrganization.test.ts (4 tests) 727ms
+ ✓ test/todoTools.test.ts (4 tests) 4ms
+ ✓ test/historyPages.test.ts (4 tests) 479ms
+   ✓ bounds a huge day and retrieves every exact event with stable cursors despite appended activity 397ms
+ ✓ test/veneerPdf.test.ts (8 tests) 8ms
+ ✓ test/workspaceResolver.test.ts (6 tests) 1013ms
+ ✓ test/openrouterUsage.test.ts (5 tests) 14ms
+ ✓ test/sessionCompactionAdapters.test.ts (8 tests) 466ms
+ ✓ test/loopbackDeliverables.test.ts (18 tests) 6ms
+ ✓ test/pagesConfig.test.ts (4 tests) 5ms
+ ✓ test/automationRecipes.test.ts (3 tests) 9ms
+ ✓ test/conversationReactivation.test.ts (2 tests) 397ms
+ ✓ test/markdownImage.test.ts (12 tests) 139ms
+ ✓ test/veneerBrowserPublicReader.test.ts (25 tests) 54ms
+ ✓ test/policy.test.ts (8 tests) 8ms
+ ✓ test/doppler.test.ts (4 tests) 7ms
+ ✓ test/systemUsage.test.ts (5 tests) 4ms
+ ✓ test/memberProviderAccess.test.ts (18 tests) 342ms
+ ✓ test/serialQueue.test.ts (5 tests) 140ms
+ ✓ test/envFile.test.ts (8 tests) 7ms
+ ✓ test/sharedChromeInstaller.test.ts (4 tests) 7ms
+ ✓ test/questionLineRoutes.test.ts (1 test) 250ms
+ ✓ test/browserHealth.test.ts (3 tests) 12ms
+ ✓ test/routineVerifierRoutes.test.ts (6 tests) 75ms
+ ✓ test/composedSmsContext.test.ts (11 tests) 15ms
+ ✓ test/publicReaderTransport.test.ts (4 tests) 31ms
+ ✓ test/veneerBrowserIdentity.test.ts (4 tests) 10ms
+ ✓ test/localAppIsolation.test.ts (2 tests) 68ms
+ ✓ test/historySocket.test.ts (1 test) 418ms
+   ✓ buffers snapshot races by runner watermark and authorizes each older page after revocation 416ms
+ ✓ test/providerVersions.test.ts (5 tests) 2ms
+ ✓ test/codexModels.test.ts (4 tests) 3ms
+ ✓ test/voiceSettingsRoutes.test.ts (9 tests) 393ms
+ ✓ test/desktopActivity.test.ts (4 tests) 14ms
+ ✓ test/skillInvocation.test.ts (4 tests) 7ms
+ ✓ test/decisionReviewSummary.test.ts (4 tests) 7ms
+ ✓ test/correspondenceCustody.test.ts (2 tests) 5ms
+ ✓ test/caseCustodyContract.test.ts (2 tests) 7ms
+ ✓ test/conversationAutomationView.test.ts (3 tests) 148ms
+ ✓ test/memoryRelevance.test.ts (2 tests) 10ms
+ ✓ test/nodeShellProfile.test.ts (2 tests) 53ms
+ ✓ test/agentSecretBindings.test.ts (3 tests) 2ms
+ ✓ test/autoshipCandidateRoutes.test.ts (3 tests) 38ms
+ ✓ test/csDraftState.test.ts (11 tests) 3ms
+ ✓ test/codexCreatedFiles.test.ts (3 tests) 16ms
+ ✓ test/sessionFileViews.test.ts (2 tests) 3ms
+ ✓ test/veneerBrowserSettings.test.ts (2 tests) 10ms
+ ✓ test/botOrderReference.test.ts (2 tests) 9ms
+ ✓ test/veneerBrowserResolution.test.ts (4 tests) 4ms
+ ✓ test/voiceSettings.test.ts (3 tests) 13ms
+ ✓ test/conversationalConsentRoutes.test.ts (2 tests) 306ms
+   ✓ captures only authenticated human composer submissions, not agent-origin messages 305ms
+ ✓ test/pages.test.ts (2 tests) 229ms
+ ✓ test/conversationAccess.test.ts (4 tests) 3ms
+ ✓ test/replyOnce.test.ts (3 tests) 2ms
+ ✓ test/identityMode.test.ts (3 tests) 4ms
+ ✓ test/agentTokenFile.test.ts (3 tests) 3ms
+ ✓ src/conversations/sideChat.test.ts (3 tests) 1ms
+ ✓ test/voiceFailure.test.ts (1 test) 1ms
+ ✓ test/messageSpeech.test.ts (3 tests) 28ms
+ ✓ test/removeCustomSkillsMigration.test.ts (1 test) 11ms
+ ✓ test/inlineContentType.test.ts (4 tests) 7ms
+ ✓ test/agentMessageToolDetails.test.ts (3 tests) 1ms
+ ✓ test/connectionErrors.test.ts (1 test) 33ms
+ ✓ test/hotlineConsent.test.ts (2 tests) 6ms
+ ✓ test/gmailDraftTools.test.ts (1 test) 2ms
+ ✓ test/caseTimeline.test.ts (2 tests) 7ms
+ ✓ test/modelAccess.test.ts (2 tests) 3ms
+ ✓ test/subagentProgress.test.ts (2 tests) 3ms
+ ✓ test/conversationSummary.test.ts (1 test) 2ms
+ ✓ test/artifactKind.test.ts (9 tests) 1ms
+ ✓ test/routineTools.test.ts (2 tests) 5ms
+ ✓ test/approvalMode.test.ts (2 tests) 1ms
+ ✓ test/clientBrand.test.ts (2 tests) 1ms
+
+ Test Files  272 passed (272)
+      Tests  3417 passed | 15 skipped (3432)
+   Start at  14:02:03
+   Duration  93.49s (transform 10.69s, setup 0ms, collect 94.54s, tests 687.32s, environment 54ms, prepare 17.45s)
+
+
+> @veneer-pro/web@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/web
+
+ ✓ src/lib/connectionTranscript.test.ts (8 tests) 10ms
+ ✓ src/lib/transcript.test.ts (19 tests) 9ms
+ ✓ src/lib/assistantNotes.test.ts (23 tests) 13ms
+ ✓ src/lib/stt.test.ts (7 tests) 30ms
+ ✓ src/screens/settings/UsagePage.test.tsx (30 tests) 53ms
+ ✓ src/components/chat/connections/ConnectionToolRow.test.tsx (25 tests) 110ms
+ ✓ src/components/browser/ConversationBrowserPanel.test.tsx (35 tests) 130ms
+ ✓ src/components/Markdown.test.ts (41 tests) 229ms
+ ✓ src/components/chat/QueuedPeek.test.tsx (16 tests) 78ms
+ ✓ src/lib/artifacts.test.ts (20 tests) 10ms
+ ✓ src/components/ConversationList.test.tsx (26 tests) 262ms
+ ✓ src/components/BotProposalSummary.test.tsx (11 tests) 19ms
+ ✓ src/lib/useUsage.test.ts (12 tests) 30ms
+ ✓ src/lib/skillCommands.test.ts (8 tests) 19ms
+ ✓ src/lib/voiceTimeline.test.ts (12 tests) 21ms
+ ✓ src/components/NavBar.test.tsx (20 tests) 221ms
+ ✓ src/lib/useUsage.lifecycle.test.ts (8 tests) 21ms
+ ✓ src/lib/mentions.test.ts (25 tests) 11ms
+ ✓ src/lib/chatListFilter.test.ts (17 tests) 3ms
+ ✓ src/lib/decisionPresentation.test.ts (18 tests) 17ms
+ ✓ src/components/chat/RevealSecretCard.test.tsx (10 tests) 21ms
+ ✓ src/lib/newChatSelection.test.ts (9 tests) 7ms
+ ✓ src/lib/officePreview.test.ts (5 tests) 417ms
+   ✓ office preview parsing > rejects a compressed package entry before it expands beyond the XML limit 339ms
+ ✓ src/components/DeskPill.test.tsx (9 tests) 14ms
+ ✓ src/lib/fileDownload.test.ts (9 tests) 7ms
+ ✓ src/components/chat/SecretCard.test.tsx (9 tests) 24ms
+ ✓ src/lib/mobileGmailLinks.test.ts (7 tests) 5ms
+ ✓ src/screens/Settings.test.tsx (13 tests) 83ms
+ ✓ src/components/BuildQueue.test.tsx (6 tests) 37ms
+ ✓ src/lib/responseMetadata.test.ts (18 tests) 23ms
+ ✓ src/lib/conversationBrowserMemory.test.ts (9 tests) 2ms
+ ✓ src/lib/transcriptFreeze.test.ts (6 tests) 5ms
+ ✓ src/components/chat/OpenQuestionsPanel.test.tsx (4 tests) 20ms
+ ✓ src/components/DecisionEvidence.test.tsx (3 tests) 35ms
+ ✓ src/components/chat/WakeupChip.test.tsx (10 tests) 41ms
+ ✓ src/components/browser/ProjectBrowserPanel.test.tsx (5 tests) 24ms
+ ✓ src/lib/chatDeletion.test.ts (12 tests) 3ms
+ ✓ src/screens/pageGroups.test.ts (5 tests) 10ms
+ ✓ src/screens/Huddles.test.tsx (4 tests) 114ms
+ ✓ src/components/chat/ChatHeaderMenuItems.test.tsx (4 tests) 38ms
+ ✓ src/lib/composerPaste.test.ts (7 tests) 7ms
+ ✓ src/components/chat/ChatDecisionCard.test.tsx (9 tests) 57ms
+ ✓ src/components/chat/QuestionCard.test.tsx (6 tests) 15ms
+ ✓ src/lib/promptCollapse.test.ts (7 tests) 4ms
+ ✓ src/components/BotIdentity.test.tsx (20 tests) 19ms
+ ✓ src/lib/mermaidPresentation.test.ts (5 tests) 10ms
+ ✓ src/components/chat/ModelThinkingPicker.test.tsx (7 tests) 14ms
+ ✓ src/components/UsageRing.test.tsx (8 tests) 25ms
+ ✓ src/components/chat/AssistantResponseMetadata.test.tsx (5 tests) 30ms
+ ✓ src/components/chat/ArtifactsStrip.test.tsx (6 tests) 26ms
+ ✓ src/lib/agentMessageActivity.test.tsx (6 tests) 14ms
+ ✓ src/lib/teachingRecorder.test.ts (4 tests) 12ms
+ ✓ src/components/chat/MarkdownFilePreview.test.tsx (18 tests) 111ms
+ ✓ src/components/skills/SkillPage.test.tsx (6 tests) 37ms
+ ✓ src/screens/TicketMergeSetup.test.tsx (4 tests) 29ms
+ ✓ src/screens/ChatList.test.ts (11 tests) 6ms
+ ✓ src/screens/settings/DopplerPage.test.tsx (3 tests) 30ms
+ ✓ src/components/chat/AgentMessagePromptDisclosure.test.tsx (6 tests) 12ms
+ ✓ src/components/NewProjectDialog.test.tsx (2 tests) 9ms
+ ✓ src/lib/localFileLinks.test.ts (9 tests) 2ms
+ ✓ src/lib/composerTrailingAction.test.ts (8 tests) 3ms
+ ✓ src/lib/newChatDrafts.test.ts (4 tests) 3ms
+ ✓ src/lib/projectFilesRoute.test.ts (5 tests) 4ms
+ ✓ src/lib/chatArtifactMemory.test.ts (4 tests) 6ms
+ ✓ src/components/chat/ThinkingLevelControl.test.tsx (6 tests) 10ms
+ ✓ src/lib/todoChatPrompt.test.ts (5 tests) 1ms
+ ✓ src/components/chat/ChatMentionOption.test.tsx (3 tests) 21ms
+ ✓ src/screens/CsPhotoRequestSetup.test.tsx (3 tests) 10ms
+ ✓ src/lib/citations.test.ts (5 tests) 53ms
+ ✓ src/screens/EmployeeWorkspace.test.tsx (8 tests) 28ms
+ ✓ src/components/chat/ArtifactPanel.test.tsx (4 tests) 29ms
+ ✓ src/lib/chatViewport.test.ts (8 tests) 2ms
+ ✓ src/lib/projectFileLinks.test.ts (5 tests) 2ms
+ ✓ src/lib/theme.test.ts (3 tests) 4ms
+ ✓ src/components/ContactVerificationProposal.test.tsx (2 tests) 27ms
+ ✓ src/lib/dictationWaveformMeter.test.ts (5 tests) 4ms
+ ✓ src/screens/Bots.queueApproval.test.tsx (2 tests) 71ms
+ ✓ src/screens/settings/MemberProvidersPage.test.tsx (1 test) 13ms
+ ✓ src/lib/threadReplies.test.ts (3 tests) 2ms
+ ✓ src/lib/connectorTools.test.ts (8 tests) 2ms
+ ✓ src/components/chat/Coordination.test.tsx (1 test) 31ms
+ ✓ src/lib/queueSnapshots.test.ts (3 tests) 2ms
+ ✓ src/screens/CsReadiness.test.tsx (2 tests) 93ms
+ ✓ src/components/chat/Citations.test.tsx (3 tests) 34ms
+ ✓ src/lib/brandTheme.test.ts (4 tests) 3ms
+ ✓ src/lib/activityRuns.test.ts (2 tests) 2ms
+ ✓ src/lib/pinnedTerminal.test.ts (4 tests) 4ms
+ ✓ src/components/chat/HtmlFilePreview.test.tsx (7 tests) 32ms
+ ✓ src/components/chat/MessageSelection.test.tsx (4 tests) 33ms
+ ✓ src/hooks/useScrollMemory.test.ts (4 tests) 19ms
+ ✓ src/lib/wakeups.test.ts (3 tests) 10ms
+ ✓ src/components/chat/AgentWorkingStatus.test.tsx (3 tests) 16ms
+ ✓ src/components/ChatListFilterControl.test.tsx (5 tests) 15ms
+ ✓ src/lib/navigation.test.ts (4 tests) 3ms
+ ✓ src/lib/ws.test.ts (2 tests) 4ms
+ ✓ src/components/ui/embedded-preview-frame.test.tsx (2 tests) 10ms
+ ✓ src/lib/botGroups.test.ts (2 tests) 3ms
+ ✓ src/components/desktop/FloatingDesktop.test.tsx (3 tests) 12ms
+ ✓ src/components/BotCaseTimeline.test.tsx (2 tests) 6ms
+ ✓ src/lib/botGuide.test.ts (2 tests) 5ms
+ ✓ src/screens/Files.test.ts (2 tests) 6ms
+ ✓ src/components/chat/ChatArchiveButton.test.tsx (4 tests) 16ms
+ ✓ src/components/chat/SkillCommandPicker.test.tsx (2 tests) 7ms
+ ✓ src/screens/Connectors.test.tsx (1 test) 7ms
+ ✓ src/lib/botComposer.test.ts (6 tests) 3ms
+ ✓ src/lib/workspaceSearch.test.ts (2 tests) 2ms
+ ✓ src/screens/FocusedWorkspace.test.tsx (29 tests) 20ms
+ ✓ src/lib/modelTier.test.ts (3 tests) 2ms
+ ✓ src/components/chat/ChatContextDialog.test.tsx (2 tests) 46ms
+ ✓ src/lib/apiViewHeader.test.ts (3 tests) 11ms
+ ✓ src/components/chat/ComposerSkillChip.test.tsx (2 tests) 7ms
+ ✓ src/lib/pageExpiry.test.ts (4 tests) 18ms
+ ✓ src/lib/todoDictation.test.ts (3 tests) 1ms
+ ✓ src/components/MessageAudioPlayer.test.tsx (2 tests) 2ms
+ ✓ src/hooks/useDocumentScrollLock.test.tsx (2 tests) 6ms
+ ✓ src/lib/connectorIcons.test.tsx (13 tests) 20ms
+ ✓ src/components/chat/AccountSwitcher.test.ts (3 tests) 1ms
+ ✓ src/settingsRoutes.test.ts (18 tests) 6ms
+ ✓ src/components/ChatUnread.test.tsx (2 tests) 7ms
+ ✓ src/lib/decisionHandoffs.test.ts (2 tests) 2ms
+ ✓ src/components/BotCalls.test.tsx (2 tests) 21ms
+ ✓ src/lib/composerKeys.test.ts (3 tests) 5ms
+ ✓ src/components/chat/CodeFilePreview.test.tsx (11 tests) 21ms
+ ✓ src/lib/chatAccess.test.ts (5 tests) 1ms
+ ✓ src/components/ui/file-download-link.test.tsx (2 tests) 31ms
+ ✓ src/components/NewChatPlaceholderRow.test.tsx (2 tests) 25ms
+ ✓ src/lib/clientLogo.test.ts (4 tests) 5ms
+ ✓ src/components/chat/PromptDisclosure.test.tsx (2 tests) 42ms
+ ✓ src/hooks/useDismissTokenCards.test.ts (2 tests) 1ms
+ ✓ src/lib/teamRooms.test.ts (2 tests) 2ms
+ ✓ src/lib/sideChat.test.ts (2 tests) 1ms
+ ✓ src/lib/fileDownloadEntryPoints.test.ts (4 tests) 2ms
+ ✓ src/lib/composerScroll.test.ts (2 tests) 2ms
+ ✓ src/components/chat/CollapsedMessageDisclosure.test.tsx (1 test) 17ms
+ ✓ src/lib/pageTitle.test.ts (3 tests) 1ms
+ ✓ src/hooks/useVisualViewportBounds.test.ts (2 tests) 1ms
+ ✓ src/lib/terminalPaste.test.ts (3 tests) 2ms
+ ✓ src/lib/approvalMode.test.ts (2 tests) 1ms
+ ✓ src/lib/modelLabel.test.ts (2 tests) 1ms
+ ✓ src/hooks/useMediaQuery.test.ts (1 test) 1ms
+ ✓ src/components/chat/AgentWakeupClock.test.tsx (1 test) 5ms
+ ✓ src/screens/settings/BrowserSettingsPage.test.ts (2 tests) 1ms
+ ✓ src/components/PwaUpdatePrompt.test.tsx (1 test) 7ms
+ ✓ src/screens/settings/AgentsPage.test.tsx (1 test) 9ms
+
+ Test Files  144 passed (144)
+      Tests  1008 passed (1008)
+   Start at  14:03:37
+   Duration  6.60s (transform 5.18s, setup 0ms, collect 26.61s, tests 3.72s, environment 15ms, prepare 6.59s)
+
+
+> test
+> node --test *.test.mjs
+
+✔ waits fairly and admits queued projects in arrival order when capacity frees (19.321834ms)
+✔ timed-out allocations are removed and never run later (77.422875ms)
+✔ non-capacity errors are never retried, including uncertain starts (0.216041ms)
+✔ cancels queued requests and bounds queue size (5.71ms)
+✔ a waiter refused only by its project cap does not block a later waiter from another project (19.866ms)
+✔ buffers commands arriving before the Chrome address resolves and forwards them in order (63.5815ms)
+✔ does not connect upstream after the requesting client closes during lookup (54.275417ms)
+✔ refuses local-file and browser-internal navigations without forwarding them (24.7715ms)
+✔ retargets the container download path at the profile downloads directory (12.566041ms)
+✔ ticket purpose defaults safely to viewer (0.364292ms)
+✔ agent cursor events are emitted only after their target is known (0.516083ms)
+✔ tracker accepts auto-attach events and ignores unsafe or unrelated traffic (0.107042ms)
+✔ detaching a target stops cursor events for its old session (0.458166ms)
+✔ a page command on another tab reports the agent moving there, once (0.11425ms)
+✔ a click on a new tab yields the target change before the cursor (0.077125ms)
+✔ frames and workers never count as the agent tab (0.057042ms)
+✔ clones a live profile and retains idle working data until explicitly deleted (2580.2905ms)
+✔ updates a saved profile atomically, keeps a backup, and rejects an old generation (200.172125ms)
+✔ leaves disposable cache data out of a clone and keeps profile data (47.793458ms)
+✔ creates a signed-out temporary profile and saves it only through save-as (55.209375ms)
+✔ opens a saved profile as a running working copy with a ticket (450.243959ms)
+✔ rebuilds a warm copy after an open and keeps it out of the active browser limit (1529.540708ms)
+✔ refuses warm adoption at the limit and adopts it after a slot is released (19139.888917ms)
+✔ leaves passkeys alone for a saved profile and when VP_BROWSER_ALLOW_PASSKEYS=1 (16536.920625ms)
+✔ rejects an open for a profile that does not exist (1.328667ms)
+✔ refuses to adopt a warm copy of a superseded generation (1129.133292ms)
+✔ sweeps stray warm containers but keeps the registered one (1029.686167ms)
+✔ rebuilds the warm registry from container labels after a restart (702.995834ms)
+✔ keeps the warm pool inside VENEER_BROWSER_WARM_MAX by evicting the oldest copy (1297.956875ms)
+✔ expires a ticket once its container is gone instead of reaching a recycled port (418.2775ms)
+✔ leaves the warm pool switched off when VENEER_BROWSER_WARM is 0 (1870.783292ms)
+✔ refuses to boot with a partial TLS listener configuration (66.513208ms)
+✔ refuses a non-loopback bind on macOS unless remote access is explicit (227.948625ms)
+✔ keeps the plain listener on loopback whenever a TLS listener is configured (191.564709ms)
+✔ serves the same API over the TLS listener with https ticket urls (458.048333ms)
+✔ opens a working copy as a native chrome process and stops it again (423.049375ms)
+✔ reaps a native process record whose browser died while the manager was down (241.471041ms)
+✔ forces the ticket origin the Pro server pins with VENEER_BROWSER_PUBLIC_ORIGIN (385.459708ms)
+✔ merges download preferences into an existing profile instead of clobbering it (1.669333ms)
+✔ serializes concurrent admission across projects and releases a slot without deleting copy data (17068.345667ms)
+✔ a pending viewer ticket protects a copy from suspension; the application's own agent ticket does not (16178.688416ms)
+✔ caps one project inside the shared admission path while another project still starts (4689.538125ms)
+✔ runs seven browsers and four per project by default, and refuses the next of each (23369.238625ms)
+✔ a waiter refused only by its project cap is admitted as soon as that project frees a slot (18385.162417ms)
+✔ old human-view protection expires while connected viewers still block suspension (16377.635875ms)
+✔ passkeys are blocked unless the opt-out env is set (2.805542ms)
+✔ the virtual authenticator can never satisfy a passkey prompt (0.055583ms)
+✔ resolves the browser socket from /json/version on the loopback port (9.692959ms)
+✔ auto-attaches to pages and installs an empty virtual authenticator on each, then releases it (38.836125ms)
+✔ a page that refuses the authenticator is still released (14.140375ms)
+✔ reports a socket that closes underneath it (1.82475ms)
+ℹ tests 51
+ℹ suites 0
+ℹ pass 51
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145199.459458

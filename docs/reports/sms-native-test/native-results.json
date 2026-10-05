@@ -1,0 +1,230 @@
+{
+  "schema": "veneer-native-fixture-results/v1",
+  "build": 577,
+  "status": "BLOCKED_NO_NATIVE_HOST",
+  "source_corpus_sha256": "0d549e180f9d34e3d9c55642a5f1f3ffac9f04a33b9107b493b882383e9adcd7",
+  "actual_native_runs": 0,
+  "provider_startups": 0,
+  "provider_model": null,
+  "native_admission_measurements": null,
+  "native_reply_p50_ms": null,
+  "native_reply_p95_ms": null,
+  "native_reply_max_ms": null,
+  "provider_acceptance": null,
+  "carrier_delivery": null,
+  "scenarios": [
+    {
+      "id": "fixture-burst-ten",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-busy-owner",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-two-orders-one-phone",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-damage-during-review",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-shipping-followup",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-cross-origin-duplicate",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-dual-wake",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-sister-ticket-handled",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-commit-cutoff",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-pause-scope",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-stop-unknown",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-review-rewards",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-429-timeout",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-autonomy-boundary",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    },
+    {
+      "id": "fixture-happy-silence",
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null,
+      "native_latency_ms": null
+    }
+  ],
+  "native_matrix": [
+    {
+      "customers": 1,
+      "requested_admissions": 1,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 1,
+      "requested_admissions": 3,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 1,
+      "requested_admissions": 5,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 5,
+      "requested_admissions": 1,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 5,
+      "requested_admissions": 3,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 5,
+      "requested_admissions": 5,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 10,
+      "requested_admissions": 1,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 10,
+      "requested_admissions": 3,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    {
+      "customers": 10,
+      "requested_admissions": 5,
+      "repetitions": 5,
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "actual_admissions": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    }
+  ],
+  "conditions": {
+    "cold": {
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null
+    },
+    "warm": {
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null
+    },
+    "busy_owner": {
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null
+    },
+    "failure": {
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null
+    },
+    "429": {
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null
+    },
+    "cutoff_races": {
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null
+    },
+    "stop_unknown": {
+      "status": "NOT_RUN_ISOLATION_BLOCKED",
+      "native_outcome": null
+    }
+  },
+  "preparation_test_matrix_is_native_evidence": false
+}
