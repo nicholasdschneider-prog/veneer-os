@@ -1,0 +1,14 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run --run test/codexAppServer.test.ts -t accepts rapid follow-ups before the native turn id exists
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/codexAppServer.test.ts (59 tests | 58 skipped) 96ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 58 skipped (59)
+   Start at  16:42:40
+   Duration  386ms (transform 108ms, setup 0ms, collect 134ms, tests 96ms, environment 0ms, prepare 34ms)
+

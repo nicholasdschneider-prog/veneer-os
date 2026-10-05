@@ -121,15 +121,15 @@ it('persists the real native manager turn-start and suppresses a fenced conversa
  }finally{manager.shutdown();await flush();}
 });
 
-it('requires a positive exact-worker pass; missing/blocked/UNKNOWN never launches a successor',()=>{
+it.each(['unknown','blocked'] as const)('requires the exact-worker pass and fences global %s without a successor',(outcome)=>{
  const p=event();acceptPurchaseEvent(db,source,p);scheduler.tick();const id=posts[0]!.id;acceptPurchaseEvent(db,source,event());
  bus.emit('event',id,{type:'turn_started',turnId:crypto.randomUUID(),at:new Date().toISOString()});
  expect(()=>recordPurchasePass(db,id,2,{outcome:'clear'})).toThrow('WORKER');
  expect(()=>recordPurchasePass(db,crypto.randomUUID(),1,{outcome:'clear'})).toThrow('WORKER');
- recordPurchasePass(db,id,1,{outcome:'unknown',cursor:'synthetic-cursor'});
+ recordPurchasePass(db,id,1,{outcome,cursor:'synthetic-cursor'});
  expect(()=>recordPurchasePass(db,id,1,{outcome:'clear'})).toThrow();
  bus.emit('event',id,{type:'turn_done',outcome:'completed'});scheduler.tick();expect(posts).toHaveLength(1);
- expect(readPurchaseEvent(db,source,p.id).delivery.blocked_reason).toBe('SOURCE_UNKNOWN');
+ expect(readPurchaseEvent(db,source,p.id).delivery.blocked_reason).toBe(outcome==='unknown'?'SOURCE_UNKNOWN':'SOURCE_BLOCKED');
 });
 it('missing pass acknowledgment fences a successful turn instead of interpreting its text',()=>{
  const p=event();acceptPurchaseEvent(db,source,p);scheduler.tick();acceptPurchaseEvent(db,source,event());
@@ -147,4 +147,28 @@ it('HTTP pass acknowledgment requires authenticated exact worker context',async(
  const post=()=>fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({outcome:'clear',cursor:null})});
  try{expect((await post()).status).toBe(403);context=crypto.randomUUID();expect((await post()).status).toBe(403);context=id;actor=2;expect((await post()).status).toBe(403);actor=1;expect((await post()).status).toBe(200);expect(await (await post()).json()).toMatchObject({recorded:true,purchase_authority:false});}
  finally{await new Promise<void>(r=>server.close(()=>r()));}
+});
+
+it('skips a grounded ordinary exception in a clear finite pass and dispatches an independent later hint',()=>{
+ const ordinary=event(),eligible=event();
+ const sourceReview=new Map([[ordinary.order_id,{processable:false,reason:'grounded_cost_exception'}],[eligible.order_id,{processable:true,reason:null}]]);
+ const receipt=acceptPurchaseEvent(db,source,ordinary);expect(receipt.purchase_authority).toBe(false);scheduler.tick();
+ const id=posts[0]!.id;expect(sourceReview.get(ordinary.order_id)?.reason).toBe('grounded_cost_exception');
+ expect(posts[0]!.text).toContain('grounded per-order cost/address/decision exceptions');
+ bus.emit('event',id,{type:'turn_started',turnId:crypto.randomUUID(),at:new Date().toISOString()});
+ expect(()=>recordPurchasePass(db,id,1,{outcome:'clear',cursor:'x'.repeat(501)})).toThrow();
+ const ack=recordPurchasePass(db,id,1,{outcome:'clear',cursor:null});expect(ack.purchase_authority).toBe(false);
+ expect(recordPurchasePass(db,id,1,{outcome:'clear',cursor:null})).toEqual(ack);
+ expect(()=>recordPurchasePass(db,id,1,{outcome:'clear',cursor:'changed'})).toThrow('PASS_CONFLICT');
+ expect(acceptPurchaseEvent(db,source,eligible).purchase_authority).toBe(false);
+ bus.emit('event',id,{type:'turn_done',outcome:'completed'});scheduler.tick();expect(posts).toHaveLength(2);
+ expect(posts[1]!.text).toContain(eligible.id);expect(posts[1]!.text).not.toContain(ordinary.id);
+ expect(sourceReview.get(eligible.order_id)?.processable).toBe(true);
+ startDone(posts[1]!.id);
+ for(let i=0;i<10;i++){expect(acceptPurchaseEvent(db,source,ordinary)).toEqual(receipt);scheduler.tick();}
+ expect(posts).toHaveLength(2);expect(readPurchaseEvent(db,source,ordinary.id).receipt.purchase_authority).toBe(false);
+ expect(db.prepare("SELECT count(*) n FROM purchase_event_batches WHERE status='pending'").get()).toEqual({n:0});
+});
+it('does not accept a pass before the actual worker-start association',()=>{
+ acceptPurchaseEvent(db,source,event());scheduler.tick();expect(()=>recordPurchasePass(db,posts[0]!.id,1,{outcome:'clear',cursor:null})).toThrow('WORKER_UNAVAILABLE');
 });

@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-05T20:49:40.298Z",
+  "checks": {
+    "employeeGuide": true,
+    "resumedAgentInstructions": true,
+    "schedulerStartup": true,
+    "mcpDefinition": true
+  },
+  "files": [
+    {
+      "path": "server/dist/featureGuide/catalog.js",
+      "sha256": "0639ea1b6d0f29ad2fed14fdf48c1e217f582b0b73048cf43482f79c553ec97b"
+    },
+    {
+      "path": "server/dist/scheduled/scheduler.js",
+      "sha256": "f2f7f37c83b3a7091f05673d0e88046b28f9ae3cd504285f4417565433544aa7"
+    },
+    {
+      "path": "server/dist/mcp/agentToolsServer.js",
+      "sha256": "3d453bc27d6f2f988d2e9b2e338e96aa624fc40ad3caf378e08bc9724079d567"
+    }
+  ],
+  "services": "46104 Mon Oct  5 16:47:42 2026     /opt/homebrew/opt/node@24/bin/node\n46125 Mon Oct  5 16:47:43 2026     /opt/homebrew/opt/node@24/bin/node\n47345 Mon Oct  5 16:49:18 2026     /opt/homebrew/opt/node@24/bin/node\n47361 Mon Oct  5 16:49:18 2026     /opt/homebrew/opt/node@24/bin/node",
+  "liveFinancialTests": false,
+  "sourceActivationPerformed": false,
+  "authenticatedPublicChatVerified": false
+}

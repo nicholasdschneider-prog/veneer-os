@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-05T20:47:15.328Z",
+  "run": {
+    "id": "6c86f966-ea62-4bb4-937c-87351d19b279",
+    "conversation_id": "d7020a1f-ae60-4eff-8fc1-3d09b9c4a403",
+    "status": "completed",
+    "finished_at": "2026-10-05 20:15:04"
+  },
+  "active": [],
+  "pending": [],
+  "queued": {
+    "n": 0
+  },
+  "original_worker_coordination": "7e331676-28ae-461e-a18b-136c591e2cc1",
+  "source_checked_at": "2026-10-05T20:42:21Z/2026-10-05T20:42:33Z",
+  "worker_final_at": "2026-10-05T20:43:07.196Z",
+  "source_cart_inspected": false,
+  "source_cart_limitation": "original profile signed out; temporary copy stopped without sign-in or profile update"
+}
