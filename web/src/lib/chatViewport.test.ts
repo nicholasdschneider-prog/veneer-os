@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chatViewportStyle, isChatKeyboardActive, shouldDismissChatKeyboard } from './chatViewport';
+import { chatViewportStyle, deskSheetStyle, isChatKeyboardActive, shouldDismissChatKeyboard } from './chatViewport';
 
 describe('chat viewport sizing', () => {
   it('matches the visual viewport while the iPhone keyboard is open', () => {
@@ -37,5 +37,17 @@ describe('chat viewport sizing', () => {
 
   it('keeps a mouse composer focused on a desktop device', () => {
     expect(shouldDismissChatKeyboard('mouse', false)).toBe(false);
+  });
+});
+
+describe('desk sheet bounds', () => {
+  const vv = { height: 420, width: 390, offsetTop: 24, offsetLeft: 0 };
+  it('follows the visual viewport while typing in the sheet', () => {
+    expect(deskSheetStyle(true, true, vv)).toEqual({ inset: 'auto', top: '24px', left: '0px', width: '390px', height: '420px' });
+  });
+  it('leaves the full-screen and docked layouts to CSS otherwise', () => {
+    expect(deskSheetStyle(true, false, vv)).toBeUndefined();
+    expect(deskSheetStyle(false, true, vv)).toBeUndefined();
+    expect(deskSheetStyle(true, true, null)).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 import { ChevronDown, MessagesSquare, Plus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { DeskSheetContext } from '@/lib/chatViewport';
 import { api, type SideChatSummary } from '@/lib/api';
 import { withSideParam } from '@/lib/sideChat';
 import { cn } from '@/lib/utils';
@@ -95,10 +96,11 @@ export function SideChatPanel({
   };
 
   const parentHash = withSideParam(window.location.hash, null);
+  const deskSheet = useContext(DeskSheetContext);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex shrink-0 items-center gap-1.5 border-b px-2 py-1.5 pt-[calc(env(safe-area-inset-top)+0.375rem)] md:pt-1.5">
+      <div className={cn('flex shrink-0 items-center gap-1.5 border-b px-2 py-1.5', !deskSheet && 'pt-[calc(env(safe-area-inset-top)+0.375rem)] md:pt-1.5')}>
         <MessagesSquare className="ml-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="shrink-0 text-sm font-medium">Side chat</span>
         {list && list.length > 0 ? (

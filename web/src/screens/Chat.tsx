@@ -28,7 +28,7 @@ import { artifactForHref, artifactPathKey, isDesktopWatchLink, localPathForHref 
 import { useFloatingDesktop } from '../components/desktop/FloatingDesktop';
 import { canUseChatComposer, canUseChatControls } from '../lib/chatAccess';
 import { resolveEffectiveApprovalMode } from '../lib/approvalMode';
-import { chatViewportStyle, isChatKeyboardActive, shouldDismissChatKeyboard } from '../lib/chatViewport';
+import { chatViewportStyle, DeskSheetContext, isChatKeyboardActive, shouldDismissChatKeyboard } from '../lib/chatViewport';
 import { ConnectorGlyph } from '../lib/connectorIcons';
 import {
   appendChatMentionFooter,
@@ -656,6 +656,7 @@ export function Chat({
   // whose token was edited out of the draft are simply never matched.
   const chatMentionMapRef = useRef(new Map<string, string>());
   const [composerFocused, setComposerFocused] = useState(false);
+  const deskSheet = useContext(DeskSheetContext);
   const restoreChatViewport = useCallback(() => {
     setComposerFocused(false);
     const el = screenRef.current;
@@ -862,8 +863,9 @@ export function Chat({
       if (!el) return;
       // Check the DOM focus too. A delayed visualViewport event must not put
       // the stale keyboard height back after the textarea has blurred.
+      // The desk sheet already follows the visual viewport around this chat.
       const style = chatViewportStyle(
-        isChatKeyboardActive(composerFocused, textareaRef.current, document.activeElement),
+        !deskSheet && isChatKeyboardActive(composerFocused, textareaRef.current, document.activeElement),
         vv,
       );
       el.style.height = style.height;
@@ -876,7 +878,7 @@ export function Chat({
       vv?.removeEventListener('resize', apply);
       vv?.removeEventListener('scroll', apply);
     };
-  }, [composerFocused]);
+  }, [composerFocused, deskSheet]);
 
   // A new chat is always reached through an explicit user action, so start it
   // ready to type. autoFocus on the textarea covers the initial DOM commit;
@@ -2412,7 +2414,7 @@ export function Chat({
   return (
     <div
       ref={screenRef}
-      className="conversation-surface relative mx-auto flex h-full w-full max-w-none flex-col overflow-hidden pt-[calc(env(safe-area-inset-top)+1.25rem)] md:pt-[env(safe-area-inset-top)]"
+      className={cn('conversation-surface relative mx-auto flex h-full w-full max-w-none flex-col overflow-hidden', !deskSheet && 'pt-[calc(env(safe-area-inset-top)+1.25rem)] md:pt-[env(safe-area-inset-top)]')}
     >
       {showComposer && !creatingNewChat ? <MessageSelection rootRef={screenRef} onAdd={(quote) => {
         setMessageQuote(quote);

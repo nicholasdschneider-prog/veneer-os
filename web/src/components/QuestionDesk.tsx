@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Hand, List, ChevronDown, Phone, PhoneIncoming, Clock, MessageSquare } from 'lucide-react';
 import { ApiError, requestJson } from '@/lib/api';
 import type { BotDecision } from '@/lib/bots';
@@ -10,6 +10,9 @@ import { SideChatPanel } from './chat/SideChatPanel';
 import { Chat } from '@/screens/Chat';
 import { DeskPill } from './DeskPill';
 import { BotCallRing, BotCallSettings } from './BotCalls';
+import { DESK_DOCKED_QUERY, DeskSheetContext, deskSheetStyle } from '@/lib/chatViewport';
+import { isTextEntryFocused } from '@/hooks/useDocumentScrollLock';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 type Side = { parentId: string; agentName: string; sideParam: string };
 type Chief = { conversation_id: string; name: string | null; active: boolean };
@@ -18,6 +21,40 @@ const DeskContext = createContext<{ adoptQuestion: (id?: string) => void; adoptS
 export const useQuestionDesk = () => useContext(DeskContext);
 const empty: Line = { decisions: [], sleeping: [], selectedId: null, revision: 0 };
 const navigate = (hash: string) => { window.location.hash = hash; };
+
+/** The desk itself: a full-screen sheet on phones and tablets that shrinks to
+ * the visual viewport while a field inside it has the keyboard, and a docked
+ * column on desktop. Holds its own viewport state so a keyboard resize never
+ * re-renders the chats inside it. */
+function DeskSheet({ open, children }: { open: boolean; children: ReactNode }) {
+  const sheet = !useMediaQuery(DESK_DOCKED_QUERY);
+  const ref = useRef<HTMLElement>(null);
+  const [style, setStyle] = useState<CSSProperties | undefined>();
+  useLayoutEffect(() => {
+    if (!sheet || !open) { setStyle(undefined); return; }
+    const vv = window.visualViewport;
+    const update = () => {
+      const active = document.activeElement;
+      const typing = !!active && !!ref.current?.contains(active) && isTextEntryFocused(active as HTMLElement);
+      const next = deskSheetStyle(sheet, typing, vv);
+      setStyle(prev => prev?.top === next?.top && prev?.left === next?.left && prev?.width === next?.width && prev?.height === next?.height ? prev : next);
+    };
+    update();
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
+    document.addEventListener('focusin', update);
+    document.addEventListener('focusout', update);
+    return () => {
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
+      document.removeEventListener('focusin', update);
+      document.removeEventListener('focusout', update);
+    };
+  }, [sheet, open]);
+  return <DeskSheetContext.Provider value={sheet}>
+    <aside ref={ref} aria-label="Question desk" style={style} className={open ? 'question-desk flex min-h-0 flex-col border-l bg-background fixed inset-0 z-40 h-dvh pt-[env(safe-area-inset-top)] lg:static lg:h-dvh lg:w-[min(30rem,42vw)] lg:shrink-0 lg:pt-0' : 'hidden'}>{children}</aside>
+  </DeskSheetContext.Provider>;
+}
 
 /** Lives above routing: the active question, conversation and composer never follow navigation. */
 export function QuestionDesk({ children }: { children: ReactNode }) {
@@ -110,7 +147,7 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   return <DeskContext.Provider value={{adoptSide,adoptQuestion,available:true}}>
     <div className="question-desktop-shell flex h-dvh min-w-0 isolate overflow-hidden">
       <div className="min-w-0 flex-1 overflow-hidden">{children}</div>
-      <aside aria-label="Question desk" className={mode ? 'question-desk flex min-h-0 flex-col border-l bg-background fixed inset-x-0 bottom-0 z-40 h-[82dvh] rounded-t-2xl border-t lg:static lg:h-dvh lg:w-[min(30rem,42vw)] lg:shrink-0 lg:rounded-none lg:border-t-0' : 'hidden'}>
+      <DeskSheet open={!!mode}>
         <header className="flex shrink-0 items-center gap-2 border-b p-2">
           <Button type="button" variant="ghost" aria-pressed={mode === 'question'} onClick={() => setMode('question')}><Hand className="size-4 shrink-0" /> Questions</Button>
           {chief && <Button type="button" variant="ghost" aria-pressed={mode === 'chief'} onClick={openChief}><MessageSquare className="size-4 shrink-0" /> {chief.name}</Button>}
@@ -145,7 +182,7 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
           <Chat key={chief.id} conversationId={chief.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={navigate} onToast={setNotice} sideChatButton={false} openQuestionsButton={false} />
         </div>}
         {side && <div className={mode === 'side' ? 'min-h-0 flex-1' : 'hidden'}><SideChatPanel key={`${side.parentId}:${side.sideParam}`} {...side} onSelect={value=>setSide(current=>current ? {...current,sideParam:value} : null)} onNavigate={navigate} onToast={setNotice} onClose={()=>setMode(null)} /></div>}
-      </aside>
+      </DeskSheet>
     </div>
     <BotCallRing enabled={userId !== null} />
     {!mode && (chief || (loaded && (total > 0 || line.sleeping.length > 0 || side || (userId && error)))) && <DeskPill
