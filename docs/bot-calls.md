@@ -44,8 +44,12 @@ How it works:
   Decline. Answer opens the existing live call on that question and connects without another press.
 - **Phone.** If the person has not touched Veneer in the last minute, their registered devices get a
   push naming the bot. Tapping it opens Veneer and rings again there; Answer is one more tap.
-- **The call.** The bot says its name and the question in one sentence and waits. On an answer it
-  repeats it back, records it through the existing answer tools and hangs up (`end_call`). On
+- **The call.** The bot opens like a colleague phoning with a quick question: a short hello by first
+  name, who it is, and the question in plain words, leading with the item or customer rather than
+  order numbers. The person can answer in pieces, correct themselves or ask questions back; the bot
+  asks only for what is missing and avoids stock phrases. An answer with numbers or anything easy to
+  mishear is said back once, briefly, and recorded on agreement; a plain yes/no or clear option is
+  just acknowledged and recorded. It does not recite the answer again, and hangs up (`end_call`). On
   "I can't do that now" it calls `stop_calling`: no answer is recorded, the card stays, and that
   question never rings again. A call that ends any other way is retried after 15 minutes.
 - **Voice training.** Saved voice preferences (length, tone, structure) apply to these calls. Only

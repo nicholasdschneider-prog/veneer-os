@@ -157,7 +157,7 @@ process.on('message', (raw: unknown) => {
       tools.answer_custom = llm.tool({ description: 'Record the caller\'s own answer in their words when it does not match an offered option exactly, for example a different weight, size or amount. Approves no option; the bot reads the words and continues under its normal checks. Only after you read the value back and the caller confirmed.',
         parameters: z.object({ decisionId: z.string(), version: z.number().int(), text: z.string().describe('The caller\'s answer with every value they gave, in their words.'), callerQuote: z.string().describe('The entire latest caller utterance verbatim.') }),
         execute: async args => call('answer_custom', args) });
-      tools.end_call = llm.tool({ description: 'Hang up. Call this last, once the answer is recorded or the caller is done. Say your brief closing words first.',
+      tools.end_call = llm.tool({ description: 'Hang up. Call this last, once the answer is recorded and the caller has nothing else. Say a short natural goodbye first; do not recite the answer again.',
         execute: async () => { endRequested = true; setTimeout(hangUp, 12_000).unref(); return { ok: true, note: 'The call ends when you stop speaking. Say nothing more than a brief goodbye.' }; } });
     }
     agent = new voice.Agent({ instructions: config.instructions + voiceStyleInstructions(config.preferences, config.opening), tools });
@@ -188,7 +188,7 @@ process.on('message', (raw: unknown) => {
     await room.connect(config.url, config.token);
     await session.start({ agent, room, inputOptions: { ...(config.participantIdentity ? { participantIdentity: config.participantIdentity } : {}),
       textEnabled: false, videoEnabled: false, closeOnDisconnect: true }, record: false });
-    // The one-sentence opening of a call the bot placed is not restarted by pickup noise.
+    // The short opening of a call the bot placed is not restarted by pickup noise.
     const greet = () => session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences), ...(config.opening ? { allowInterruptions: false } : {}) });
     if (config.phone) {
       // On the phone the callee speaks first ("hello") and the agent answers with its opening.

@@ -83,7 +83,15 @@ describe('live voice lifecycle', () => {
     service.end(1,plain.id); child.send.mockClear();
     const call = await service.start(1,{botConversationId:'sage',decisionId:'q',incoming:true});
     const start = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
-    expect(start.opening).toContain('It\'s Sage.'); expect(start.opening).toContain('no recap');
+    expect(start.opening).toContain("say it's Sage"); expect(start.opening).toContain('No recap'); expect(start.opening).toContain('never a fixed template');
+    expect(start.opening).toContain('a short hello to Test'); expect(start.opening).toContain('leave out order numbers');
+    // Conversational, with a light read-back only where something could be misheard.
+    expect(start.instructions).toContain('Talk like a colleague on a quick call, not a script');
+    expect(start.instructions).toContain('Never re-ask the whole question when only one piece is missing');
+    expect(start.instructions).toContain('say it back once, short and natural');
+    expect(start.instructions).toContain('plain yes or no'); expect(start.instructions).toContain('do not recite the value again');
+    expect(start.instructions).toContain('never pick the nearest option');
+    expect(start.instructions).not.toContain('Recording an answer takes two caller turns');
     expect(start.instructions).toContain('YOU PLACED THIS CALL'); expect(start.instructions).toContain('decision q');
     expect(service.status(1)).toMatchObject({incoming:true,decisionId:'q'});
     child.emit('message',{type:'tool',id:'stop',name:'stop_calling',args:{}});
@@ -153,6 +161,7 @@ describe('live voice lifecycle', () => {
     child.emit('message',{type:'ready'});
     expect(start.phone).toBe(true); expect(start.participantIdentity).toBeUndefined();
     expect(start.instructions).toContain('THIS IS A PHONE CALL'); expect(start.instructions).toContain('never leave a message');
+    expect(start.instructions).toContain('do not start over from the top'); expect(start.instructions).toContain('not a form');
     expect(call.token).toBe('');
     const [to, uri, sipUser, sipPassword] = phone.place.mock.calls[0]!;
     expect(to).toBe('+15745550100'); expect(uri).toMatch(/^sip:\d{18}@test1\.sip\.livekit\.cloud;transport=tcp$/); expect(sipUser).toBe('veneer'); expect(String(sipPassword).length).toBeGreaterThan(20);
@@ -182,6 +191,11 @@ describe('live voice lifecycle', () => {
     expect(service.status(1)).toBeNull();
     expect(db.prepare('SELECT outcome,end_reason FROM voice_sessions WHERE id=?').get(fourth.id)).toEqual({outcome:'failed',end_reason:'phone_not_placed'});
     expect(db.prepare("SELECT status FROM bot_phone_calls WHERE id='p4'").get()).toEqual({status:'not_placed'});
+  });
+  it('greets a person by first name but never by an account label', async () => {
+    const { callerFirstName } = await import('../src/voice/service.js');
+    expect(callerFirstName('Nicholas Schneider')).toBe('Nicholas'); expect(callerFirstName('Ali')).toBe('Ali');
+    expect(callerFirstName('accounting')).toBeNull(); expect(callerFirstName('')).toBeNull(); expect(callerFirstName(null)).toBeNull();
   });
   it('hands the saved transcript to the bot once after every bot call, marking relayed items', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('sage',1,1,'Sage','codex','sage')").run();
