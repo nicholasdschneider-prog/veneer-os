@@ -92,6 +92,54 @@ describe('decision evidence and staleness', () => {
     validateDecisionEvidence(proposalSchema.parse({ question: 'Which pack for 10 brackets?', recommendation: '27 oz', consequence: 'Teaches the pack only.', blocked_action: 'Record', assignee_id: 1, choices }));
   });
 
+  it('raises and revises a no-order processor appeal while preserving refund and credit evidence checks', async () => {
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.user = bot.user; req.agentConversationId = bot.conversationId; next(); });
+    app.use('/api/bots', createBotsRouter(ctx, { evidenceFetchers: {} }));
+    const server = app.listen(0, '127.0.0.1'); servers.push(server);
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/bots`;
+    const post = (path: string, body: object) => fetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const appeal = proposal({
+      question: 'How should Nick supply merchant processor statements for chargeback-rate evidence for the Shopify Payments appeal?',
+      recommendation: 'Have the existing merchant account custodian export the statements.',
+      consequence: 'Clara verifies gross chargebacks and reversals separately before preparing the appeal; Shopify may impose a reserve.',
+      blocked_action: 'Prepare the appeal evidence package.',
+      choices: [{ id: 'export', label: 'Custodian exports statements', action: 'approve', recommended: true }, { id: 'compile', label: 'Compile existing statements', action: 'approve' }],
+      review_summary: { action_title: 'Obtain processor statements', request: 'Choose the evidence source.', background: ['Lifetime and six-month chargeback rates are required.'] },
+      evidence_items: [],
+      as_of: { captured_at: '2026-10-06T19:40:00Z', ticket_id: '4eb82a44-89f4-470a-a0dc-272f8d5490b1', last_inbound: [] },
+    });
+    const raised = await post('/decisions', { source_key: 'appeal', proposal_key: 'evidence', proposal: appeal });
+    expect(raised.status).toBe(200);
+    const { decision } = await raised.json();
+    expect(decision.proposal.review_summary.refund).toBeUndefined();
+    expect(decision.proposal.shopify_order).toBeUndefined();
+    const revised = await post(`/decisions/${decision.id}/proposal`, { expected_version: 1, request_key: 'revise-appeal', proposal: { ...appeal, recommendation: 'Compile the complete April–September statements.' } });
+    expect(revised.status).toBe(200);
+    expect((await revised.json()).decision.version).toBe(2);
+
+    const variants = [
+      { ...appeal, question: 'Refund the order?' },
+      { ...appeal, recommendation: 'Issue store credit to the customer.' },
+      { ...appeal, consequence: 'The customer receives partial credit.' },
+      { ...appeal, review_summary: { ...appeal.review_summary, refund: { status: 'not_verified' } } },
+      { ...appeal, review_summary: { ...appeal.review_summary, refund } },
+      { ...appeal, message_delivery: { canonical_case: 'case', executor_conversation_id: 'bot', payload: { channel: 'email', account: 'support', recipients: ['customer@test.invalid'], subject: '', body: 'We will credit back your payment.', attachments: [], customer: 'Customer', ticket: 'T1' } } },
+    ];
+    for (const [index, variant] of variants.entries()) {
+      for (const revise of [false, true]) {
+        const response = revise
+          ? await post(`/decisions/${decision.id}/proposal`, { expected_version: 2, request_key: `blocked-${index}`, proposal: variant })
+          : await post('/decisions', { source_key: 'appeal', proposal_key: `blocked-${index}`, proposal: variant });
+        expect(response.status).toBe(400);
+        expect((await response.json()).error).toContain(index === 4 ? 'record evidence item' : 'not verified');
+      }
+    }
+    expect(s.read(bot, decision.id).version).toBe(2);
+    expect(db.prepare('SELECT count(*) n FROM bot_decisions').get()).toEqual({ n: 1 });
+  });
+
   it('retains cited files by hash, keeps excerpts, fills as_of, and serves bytes only for the current version', async () => {
     const items = [
       { kind: 'image', label: 'Box damage', source: { system: 'chat_file', conversation_id: 'source', path: file } },

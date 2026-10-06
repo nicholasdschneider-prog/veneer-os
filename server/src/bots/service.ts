@@ -38,10 +38,11 @@ export const CUSTOM_CHOICE_ID = 'custom';
 export const CUSTOM_CHOICE_LABEL = 'Something else';
 const GENERIC_CHOICE_LABELS = new Set(['yes','no','ok','okay','approve','approved','approve recommendation','approve as proposed','approve proposal','approve this','confirm','confirmed','accept','accepted','reject','rejected','reject proposal','decline','declined','proceed','go ahead','do it','sounds good','not now','hold','withdraw','withdraw request','cancel','other','something else']);
 const PHOTO_RE = /\b(photo|photos|picture|pictures|image|images|attachment|attachments|screenshot|screenshots)\b/i;
-const MONEY_RE = /\b(refund|refunded|refunds|reimburse|chargeback|credit back|money back|store credit|partial credit)\b/i;
+// Processor disputes and chargeback-rate evidence are not customer refunds.
+const REFUND_RE = /\b(refund|refunded|refunds|reimburse|credit back|money back|store credit|partial credit)\b/i;
 /**
  * A question must carry what the human needs to answer it. If it talks about
- * photos, the photos are on the card. If it touches money, the refund facts
+ * photos, the photos are on the card. If it mentions refunds or credits, the refund facts
  * are verified and cited, never "not verified" next to a recommended refund.
  */
 export function validateDecisionEvidence(p: { question: string; recommendation: string; consequence: string; review_summary?: { request?: string; customer_request?: string; background?: string[]; refund?: { status: string } } | undefined; message_delivery?: { payload: { body: string } } | undefined; images?: unknown[] | undefined; evidence_items?: EvidenceItem[] | undefined }): void {
@@ -50,8 +51,8 @@ export function validateDecisionEvidence(p: { question: string; recommendation: 
   const files = (p.images?.length ?? 0) + items.filter(i => i.kind === 'image' || i.kind === 'document').length;
   if (PHOTO_RE.test(humanText) && files === 0)
     throw new BotError(400, 'This question refers to photos or attachments but attaches none. Add them as evidence_items (kind image/document from gmail, orderops or a chat file) so the human can see them on the card. If the right photos do not exist yet, ask the customer for them first and raise the question afterwards.');
-  const moneyText = [humanText, p.recommendation, p.consequence, p.message_delivery?.payload.body].filter(Boolean).join('\n');
-  if (MONEY_RE.test(moneyText) || p.review_summary?.refund) {
+  const refundText = [humanText, p.recommendation, p.consequence, p.message_delivery?.payload.body].filter(Boolean).join('\n');
+  if (REFUND_RE.test(refundText) || p.review_summary?.refund) {
     const refund = p.review_summary?.refund;
     if (!refund || refund.status === 'not_verified')
       throw new BotError(400, 'This question involves a refund or credit but review_summary.refund is not verified. Read the order’s refund history (Shopify/OrderOps) first and supply refund with status none, partial or full plus its source, scope and as_of.');

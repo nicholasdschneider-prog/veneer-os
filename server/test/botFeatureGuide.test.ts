@@ -12,6 +12,14 @@ describe('living bot guide release contract', () => {
     expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
     for (const elevated of [false, true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(feature.agent);
   });
+  it('explains processor evidence and refund requirements to employees and resumed bots', () => {
+    const f = botFeatureCatalog(Date.parse('2026-10-06')).features.find(f => f.id === 'decisions')!;
+    expect(f.isNew).toBe(true);
+    expect(f.agent).toContain('Chargeback-rate, processor statement, reversal and reserve topics alone do not require order refund history');
+    expect(f.agent).toContain('Explicit refund summaries still require verification');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    for (const elevated of [false, true]) expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'bot', elevated })).toContain(f.agent);
+  });
   it('delivers staged exact refund limits to employee and resumed-agent instructions',()=>{
     const f=botFeatureCatalog(Date.parse('2026-10-06')).features.find(f=>f.id==='exact-refund')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('Staged');expect(f.agent).toContain('Never issue as builder');
