@@ -1,0 +1,66 @@
+{
+  "observed_at": "2026-10-06T14:17:53.446114+00:00",
+  "read_only": true,
+  "scheduled_run": {
+    "id": "53f08349-dfea-4dc7-a745-ce88064bc9d6",
+    "scheduled_task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "conversation_id": "a12b005a-9470-499c-9a32-ee06efd747cb",
+    "scheduled_for": "2026-10-06T13:00:00.000Z",
+    "trigger": "scheduled",
+    "status": "completed",
+    "important": 0,
+    "event_id": null,
+    "error": null,
+    "started_at": "2026-10-06 13:00:01",
+    "finished_at": "2026-10-06 13:01:15"
+  },
+  "persisted_start": {
+    "run_id": "53f08349-dfea-4dc7-a745-ce88064bc9d6",
+    "conversation_id": "a12b005a-9470-499c-9a32-ee06efd747cb",
+    "turn_id": "fce6be29-3275-462f-8956-2df88b849afa",
+    "started_at": "2026-10-06T13:00:01.630Z"
+  },
+  "persisted_pass": {
+    "run_id": "53f08349-dfea-4dc7-a745-ce88064bc9d6",
+    "conversation_id": "a12b005a-9470-499c-9a32-ee06efd747cb",
+    "outcome": "clear",
+    "cursor": "queue checkedAt 2026-10-06T13:00:41.688Z; next=null; eligible 100122005,100122343,100122404 all skipped on existing Sage-held exceptions; 0 placed",
+    "recorded_at": "2026-10-06T13:01:09.239Z"
+  },
+  "run_batches": [
+    {
+      "id": "2e06d552-5463-460b-bedb-ead99492270a",
+      "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+      "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+      "status": "linked",
+      "run_id": "53f08349-dfea-4dc7-a745-ce88064bc9d6",
+      "blocked_reason": null,
+      "created_at": "2026-10-06T13:00:01.621Z"
+    }
+  ],
+  "binding": {
+    "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+    "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "team_id": "5bcfe66f-1bc1-46fb-bc8d-bdc217fe3d86",
+    "owner_id": 1,
+    "project_id": "e8e0efc6-2f5f-4666-8588-ede17529bc9c",
+    "native_source_enabled": 1,
+    "task_enabled": 1,
+    "trigger_kind": "schedule",
+    "timezone": "America/New_York",
+    "next_run_at": "2026-10-07T13:00:00.000Z",
+    "owner_status": "active"
+  },
+  "active_runs": [],
+  "global_native_fences": [],
+  "pending_batches": [],
+  "native_receipt_count": {
+    "count": 0
+  },
+  "limits": [
+    "Backup run proof is not a natural event receipt or purchase proof.",
+    "Native records do not verify source claims, live cart clearance, supplier writeback or historical source UNKNOWN fences.",
+    "Native source enabled does not independently verify Railway source activation.",
+    "No acknowledgment call, launch, replay, fence change or runtime mutation performed."
+  ]
+}
