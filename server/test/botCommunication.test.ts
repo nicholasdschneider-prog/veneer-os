@@ -20,6 +20,9 @@ import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 import type { AppContext } from '../src/context.js';
 import type { UserRow, ConversationWakeupRow } from '../src/db/db.js';
 
+const speak = vi.hoisted(() => vi.fn<(key: string, text: string, instructions: string) => Promise<Buffer>>());
+vi.mock('../src/bots/speech.js', () => ({ synthesizeSpeech: speak }));
+
 describe('reviewable bot communication', () => {
   let db: Database.Database,
     s: ReturnType<typeof communicationService>,
@@ -240,14 +243,10 @@ describe('reviewable bot communication', () => {
   }
   it('reads only real authorized messages, caches sections and rechecks access on playback', async () => {
     const call = await api('Long message. '.repeat(500));
-    const original = globalThis.fetch;
-    const speech = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-      if (!String(url).startsWith('https://api.openai.com/')) return original(url, init);
-      const body = JSON.parse(String(init?.body));
-      expect(body.input.length).toBeLessThanOrEqual(2800);
-      return new Response(new Uint8Array([73, 68, 51]), { headers: { 'Content-Type': 'audio/mpeg' } });
+    speak.mockReset().mockImplementation(async (_key, text) => {
+      expect(text.length).toBeLessThanOrEqual(2800);
+      return Buffer.from([73, 68, 51]);
     });
-    vi.stubGlobal('fetch', speech);
     const anchor = { turn: 'turn', at: '2026-09-23T01:00:00Z' };
     expect((await call('/chats/c2/listen', anchor)).status).toBe(404);
     expect((await call('/chats/c1/listen', { ...anchor, turn: 'invented' })).status).toBe(404);
@@ -266,7 +265,7 @@ describe('reviewable bot communication', () => {
     expect(range.data).toBe('D3');
     expect((await call(path, undefined, { Range: 'bytes=100-200' })).status).toBe(416);
     await call(path, {});
-    expect(speech.mock.calls.filter(([url]) => String(url).startsWith('https://api.openai.com/'))).toHaveLength(1);
+    expect(speak).toHaveBeenCalledTimes(1);
     expect((await call(`/message-audio/${first.data.id}/999`, {})).status).toBe(400);
     // Read-only archived messages still support listening.
     db.prepare('UPDATE conversations SET archived=1 WHERE id=?').run('c1');
@@ -401,12 +400,11 @@ describe('reviewable bot communication', () => {
               },
             ],
           });
-        return new Response(new Uint8Array([73, 68, 51]), {
-          headers: { 'Content-Type': 'audio/mpeg' },
-        });
+        throw new Error('unexpected provider request');
       },
     );
     vi.stubGlobal('fetch', provider);
+    speak.mockReset().mockResolvedValue(Buffer.from([73, 68, 51]));
     const [a, b] = await Promise.all([
       call(`/decisions/${d.id}/briefing`, { expected_version: 1 }),
       call(`/decisions/${d.id}/briefing`, { expected_version: 1 }),
@@ -422,7 +420,9 @@ describe('reviewable bot communication', () => {
       provider.mock.calls.filter(([url]) =>
         String(url).startsWith('https://api.openai.com/'),
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    expect(speak).toHaveBeenCalledTimes(1);
+    expect(speak.mock.calls[0]![1]).toContain('No refund is authorized.');
     expect(
       (
         db
@@ -446,19 +446,13 @@ describe('reviewable bot communication', () => {
       d.id,
       1,
     );
-    const original = globalThis.fetch;
-    vi.stubGlobal(
-      'fetch',
-      async (url: RequestInfo | URL, init?: RequestInit) => {
-        if (!String(url).startsWith('https://api.openai.com/'))
-          return original(url, init);
-        bots.revise(bot, d.id, 1, 'change', {
-          ...proposal,
-          consequence: 'New evidence, do not proceed.',
-        });
-        return new Response(new Uint8Array([73, 68, 51]));
-      },
-    );
+    speak.mockReset().mockImplementation(async () => {
+      bots.revise(bot, d.id, 1, 'change', {
+        ...proposal,
+        consequence: 'New evidence, do not proceed.',
+      });
+      return Buffer.from([73, 68, 51]);
+    });
     expect((await call(`/briefings/${b.id}/audio`, {})).status).toBe(409);
     expect(
       db.prepare('SELECT audio FROM bot_voice_briefings WHERE id=?').get(b.id),
