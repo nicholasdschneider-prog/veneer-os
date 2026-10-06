@@ -16,6 +16,7 @@ import {
   type Actor,
 } from '../src/bots/service.js';
 import { createCommunicationRouter } from '../src/bots/communicationRoutes.js';
+import { recordLiveMessage } from '../src/bots/messageAnchors.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 import type { AppContext } from '../src/context.js';
 import type { UserRow, ConversationWakeupRow } from '../src/db/db.js';
@@ -276,6 +277,29 @@ describe('reviewable bot communication', () => {
     expect(employeeRouteAllowed('POST', '/bot-communication/chats/c1/listen')).toBe(true);
     expect(employeeRouteAllowed('GET', `/bot-communication${path}`)).toBe(true);
     expect(employeeRouteAllowed('POST', `/bot-communication${path}`)).toBe(true);
+  });
+  it('resolves a reply by its streamed anchor after the transcript renames it', async () => {
+    const call = await api('Refund $212.50 only if the label is scanned.');
+    speak.mockReset().mockResolvedValue(Buffer.from([73, 68, 51]));
+    const live = { turn: '6f1c0f0e-live-turn', at: '2026-09-23T01:00:02.500Z' };
+    const saved = { turn: 'turn', at: '2026-09-23T01:00:00Z' };
+    // Nothing streamed under that anchor: an invented anchor reads nothing.
+    expect((await call('/chats/c1/listen', live)).status).toBe(404);
+    expect((await call('/chats/c1/threads', live)).status).toBe(404);
+    recordLiveMessage(db, 'c1', { type: 'text_final', turnId: live.turn, at: live.at, markdown: 'Refund $212.50 only if the label is scanned.' });
+    // Another chat's streamed reply never resolves here.
+    expect((await call('/chats/c2/listen', live)).status).toBe(404);
+    const heard = await call('/chats/c1/listen', live);
+    expect(heard.status).toBe(200);
+    expect((await call('/chats/c1/listen', saved)).data.id).toBe(heard.data.id);
+    const thread = await call('/chats/c1/threads', live);
+    expect(thread.status).toBe(200);
+    expect(thread.data.anchor).toBe(JSON.stringify(saved));
+    expect(thread.data.source_text).toBe('Refund $212.50 only if the label is scanned.');
+    expect((await call('/chats/c1/threads', saved)).data.id).toBe(thread.data.id);
+    const listed = (await call('/chats/c1/threads')).data;
+    expect(listed.threads).toHaveLength(1);
+    expect(listed.aliases).toEqual({ [JSON.stringify(live)]: JSON.stringify(saved) });
   });
   it('anchors threads to real messages, persists replies/reactions and tracks unread without granting approval', async () => {
     const call = await api();

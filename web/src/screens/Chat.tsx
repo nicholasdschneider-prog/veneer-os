@@ -9,7 +9,7 @@ import { CallButton, CallIcon } from '@/components/CallButton';
 import { useMessageListen } from '@/components/MessageAudioPlayer';
 import { MobileChatHeader } from '../components/chat/MobileChatHeader';
 import { ThreadReplyRow, useThreadReplies } from '../components/chat/ThreadReplies';
-import { replyTime, type ReplyAnchor } from '../lib/threadReplies';
+import { replyTime, sameAnchor, type AnchorAliases, type ReplyAnchor } from '../lib/threadReplies';
 import { communicationTime, voiceTimeline, type VoiceSession } from '../lib/voiceTimeline';
 import { VoiceSessions } from '../components/VoiceSessions';
 import { BotCommunicationContent, DraftCard, useBotCommunication } from '../components/BotCommunication';
@@ -485,6 +485,8 @@ export function Chat({
   const quoteStorageKey = `veneer.quote.${conversationId}`;
   const threadReplies = useThreadReplies(isNew ? '' : conversationId);
   const [sourceAnchor, setSourceAnchor] = useState<(ReplyAnchor & {request:number}) | null>(null);
+  // A reply streamed into this page keeps its streamed anchor; the server maps it to the saved one.
+  const [anchorAliases, setAnchorAliases] = useState<AnchorAliases>({});
   const [sentReplyId, setSentReplyId] = useState<string>();
   const replySending = useRef(false);
   const [sendingReply, setSendingReply] = useState(false);
@@ -2040,7 +2042,7 @@ export function Chat({
   useEffect(()=>{
     if(focusMessageId&&!focusedMessageReady&&history.window?.hasOlder&&!history.busy&&!history.error)history.load();
   },[focusMessageId,focusedMessageReady,history.window?.before,history.busy,history.error,history.load]);
-  const sourceMessage = sourceAnchor ? items.find(i => i.kind === 'assistant' && i.turnId === sourceAnchor.turn && i.at === sourceAnchor.at) : undefined;
+  const sourceMessage = sourceAnchor ? items.find(i => i.kind === 'assistant' && !!i.turnId && !!i.at && sameAnchor(anchorAliases, JSON.stringify({turn:i.turnId,at:i.at}), JSON.stringify({turn:sourceAnchor.turn,at:sourceAnchor.at}))) : undefined;
   useEffect(() => {
     if (!sourceAnchor || sourceMessage) return;
     if (history.window?.hasOlder && !history.busy && !history.error) history.load();
@@ -2270,16 +2272,17 @@ export function Chat({
   useEffect(()=>{
     if(isNew)return;
     let active=true;
-    const refresh=()=>requestJson<{threads:{anchor:string;count:number;unread:number;reactions:{emoji:string;count:number;mine:number}[]}[]}>(`/api/bot-communication/chats/${encodeURIComponent(conversationId)}/threads`).then(({threads})=>{
+    const refresh=()=>requestJson<{aliases?:AnchorAliases;threads:{anchor:string;count:number;unread:number;reactions:{emoji:string;count:number;mine:number}[]}[]}>(`/api/bot-communication/chats/${encodeURIComponent(conversationId)}/threads`).then(({threads,aliases={}})=>{
       if(!active)return;
+      setAnchorAliases(current=>JSON.stringify(current)===JSON.stringify(aliases)?current:aliases);
       for(const button of screenRef.current?.querySelectorAll<HTMLElement>('[data-result-thread]')??[]){
-        const t=threads.find(t=>t.anchor===button.dataset.resultThread);
+        const t=threads.find(t=>sameAnchor(aliases,button.dataset.resultThread,t.anchor));
         button.textContent=t?.count?`Reply · ${t.count} ${t.count===1?'reply':'replies'}${t.unread?` · ${t.unread} new`:''}`:'Reply';
         button.setAttribute('aria-label', t?.count ? `Reply to message · ${button.textContent}` : 'Reply to message');
         button.dataset.unread = t?.unread ? 'true' : 'false';
       }
       for(const button of screenRef.current?.querySelectorAll<HTMLButtonElement>('[data-result-reaction]')??[]){
-        const t=threads.find(t=>t.anchor===button.dataset.resultAnchor);
+        const t=threads.find(t=>sameAnchor(aliases,button.dataset.resultAnchor,t.anchor));
         const r=t?.reactions.find(r=>r.emoji===button.dataset.resultReaction);
         button.textContent=`${button.dataset.resultReaction}${r?.count ? ` ${r.count}` : ''}`;
         button.setAttribute('aria-pressed',r?.mine?'true':'false');

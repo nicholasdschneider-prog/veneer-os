@@ -53,6 +53,7 @@ import {
   guardLoopbackDeliverableEvents,
   guardLoopbackDeliverableMarkdown,
 } from './loopbackDeliverables.js';
+import { pruneLiveMessages, recordLiveMessage } from '../bots/messageAnchors.js';
 import { providerSkillPrompt } from './skillInvocation.js';
 import type { TranscriptArchive } from './transcriptArchive.js';
 import {
@@ -739,6 +740,7 @@ export function createConversationManager({
   log?: Pick<Console, 'warn' | 'error'>;
 }): ConversationManager {
   const live = new Map<string, LiveConversation>();
+  try { pruneLiveMessages(db); } catch { /* Housekeeping only. */ }
   const bus = new EventEmitter();
   const historyPages=new HistoryPages(),snapshotRevisions=new WeakMap<ConversationEvent[],number>();
   const streamEpoch=crypto.randomUUID();
@@ -1724,6 +1726,8 @@ export function createConversationManager({
       (event) => {
         if (event.type === 'text_final') {
           event.markdown = guardLoopbackDeliverableMarkdown(turn.promptText, event.markdown);
+          // The transcript will name this reply differently; keep what the page was sent.
+          try { recordLiveMessage(db, conv.id, event); } catch { /* Listen and replies fall back to a reload. */ }
         }
         if (event.type === 'error') sawError = true;
         else if (event.type === 'turn_done') {

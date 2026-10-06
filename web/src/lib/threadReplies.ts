@@ -1,6 +1,11 @@
 import type { MessageOrigin } from './types';
 
 export type ReplyAnchor = { turn: string; at: string };
+/** Streamed anchor JSON → saved anchor JSON, for replies this page received live. */
+export type AnchorAliases = Record<string, string>;
+export function sameAnchor(aliases: AnchorAliases, held: string | undefined, saved: string): boolean {
+  return held !== undefined && (held === saved || aliases[held] === saved);
+}
 export type ThreadReply = {
   id: string; seq: number; thread_id: string; anchor: string; source_text: string;
   text: string; actor_name: string; actor_conversation_id: string | null;

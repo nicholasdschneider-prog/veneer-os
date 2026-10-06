@@ -6,6 +6,7 @@ import { migrate } from '../src/db/migrate.js';
 import type { ApprovalRow, ConversationRow } from '../src/db/db.js';
 import { createConversationManager } from '../src/runtime/conversationManager.js';
 import type { ConversationEvent } from '../src/runtime/events.js';
+import { resolveMessage } from '../src/bots/messageAnchors.js';
 import type { ApprovalDecision, ProviderAdapter, TurnSpec } from '../src/providers/types.js';
 
 const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
@@ -105,6 +106,25 @@ describe('conversation manager approvals', () => {
     // focused precedence case below.
     db.prepare('UPDATE assistants SET full_access = 0 WHERE id = ?').run(conv.assistant_id);
     fake = fakeAdapter();
+  });
+
+  it('remembers a streamed reply so its anchor still resolves once the transcript renames it', async () => {
+    makeManager();
+    manager.postMessage(conv, 'What happened?');
+    await flush();
+    fake.state.onEvent!({ type: 'text_final', turnId: 'adapter-turn', markdown: 'It shipped.', at: new Date().toISOString() });
+    const streamed = events.map((e) => e.event).find((e) => e.type === 'text_final') as Extract<ConversationEvent, { type: 'text_final' }>;
+    fake.state.finishTurn!();
+    await flush();
+    const savedAt = new Date(Date.parse(streamed.at) - 800).toISOString();
+    fake.state.transcript = [
+      { type: 'turn_started', turnId: 't1', role: 'user', text: 'What happened?', at: savedAt, via: 'web' },
+      { type: 'text_final', turnId: 't1', markdown: 'It shipped.', at: savedAt },
+    ];
+    const snapshot = await manager.snapshot(conv);
+    expect(snapshot.some((e) => e.type === 'text_final' && e.turnId === streamed.turnId && e.at === streamed.at)).toBe(false);
+    const found = resolveMessage(db, snapshot, conv.id, { turn: streamed.turnId, at: streamed.at });
+    expect(found?.event).toMatchObject({ turnId: 't1', at: savedAt, markdown: 'It shipped.' });
   });
 
   it.each(['ask', 'auto'] as const)('routes MCP approvals through fresh %s mode without Full Access', (mode) => {

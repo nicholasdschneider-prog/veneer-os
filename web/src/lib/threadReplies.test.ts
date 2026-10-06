@@ -1,6 +1,6 @@
 import { isResultReplyDelivery } from './threadReplies';
 import {describe, expect, it} from 'vitest';
-import {mergeThreadReplies, replyTime, type ThreadReply} from './threadReplies';
+import {mergeThreadReplies, replyTime, sameAnchor, type ThreadReply} from './threadReplies';
 const reply=(id:string,seq:number):ThreadReply=>({id,seq,thread_id:'thread',anchor:'{}',source_text:'Original',text:id,actor_name:'Person',actor_conversation_id:null,bot_name:'Bot',created_at:'2026-09-24 14:05:00',unread:0});
 describe('reply feed reconciliation',()=>{
   it('deduplicates readback and polling while retaining older pages and unrelated replies',()=>{
@@ -23,4 +23,13 @@ it('suppresses only internal result deliveries, leaving the canonical reply and 
   expect(isResultReplyDelivery({text})).toBe(false);
   expect(isResultReplyDelivery({text:'Check inventory tomorrow',origin:{kind:'wakeup',from:'Bot',to:'Bot'}})).toBe(false);
   expect(isResultReplyDelivery({text:'Actual human reply',origin:{kind:'result_reply',from:'Human',to:'Bot'}})).toBe(true);
+});
+describe('streamed anchors',()=>{
+  it('matches a thread by the saved anchor or by the streamed anchor the server mapped to it',()=>{
+    const saved='{"turn":"t2","at":"2026-10-06T20:10:00.000Z"}', streamed='{"turn":"live","at":"2026-10-06T20:10:01.200Z"}';
+    expect(sameAnchor({},saved,saved)).toBe(true);
+    expect(sameAnchor({},streamed,saved)).toBe(false);
+    expect(sameAnchor({[streamed]:saved},streamed,saved)).toBe(true);
+    expect(sameAnchor({[streamed]:saved},undefined,saved)).toBe(false);
+  });
 });

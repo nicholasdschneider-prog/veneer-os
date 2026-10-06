@@ -20,6 +20,7 @@ import { approvedMessageSchema } from './draftPayload.js';
 import express from 'express';
 import { messageAudioRoutes } from './messageAudioRoutes.js';
 import { synthesizeSpeech } from './speech.js';
+import { anchorJson, liveAnchorAliases, resolveMessage } from './messageAnchors.js';
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
@@ -464,6 +465,7 @@ export function createCommunicationRouter(ctx: AppContext) {
         c = current(req);
       s.access(a, c);
       res.json({
+        aliases: liveAnchorAliases(ctx.db, c),
         threads: ctx.db
           .prepare(
             `SELECT t.id,t.anchor,(SELECT count(*) FROM bot_message_replies WHERE thread_id=t.id) AS count,(SELECT count(*) FROM bot_message_replies WHERE thread_id=t.id AND (actor_id<>? OR actor_conversation_id IS NOT NULL) AND seq>coalesce((SELECT seq FROM bot_message_thread_seen WHERE thread_id=t.id AND user_id=?),0)) AS unread FROM bot_message_threads t WHERE t.conversation_id=?`,
@@ -517,12 +519,10 @@ export function createCommunicationRouter(ctx: AppContext) {
         .parse(req.body);
       const events = await ctx.manager.snapshot(c);
       s.access(a, c, true);
-      const e = events.find(
-        (e) => e.type === 'text_final' && e.turnId === p.turn && e.at === p.at,
-      );
-      if (!e || e.type !== 'text_final')
-        throw new BotError(404, 'Original message is unavailable');
-      const anchor = JSON.stringify(p);
+      // A thread always hangs off the transcript's anchor, so it survives a reload.
+      const e = resolveMessage(ctx.db, events, c, p)?.event;
+      if (!e) throw new BotError(404, 'Original message is unavailable');
+      const anchor = anchorJson({ turn: e.turnId, at: e.at });
       ctx.db
         .prepare(
           'INSERT OR IGNORE INTO bot_message_threads(id,conversation_id,anchor,source_text) VALUES(?,?,?,?)',

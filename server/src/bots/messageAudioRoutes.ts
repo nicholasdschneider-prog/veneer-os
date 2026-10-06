@@ -5,6 +5,7 @@ import type { AppContext } from '../context.js';
 import { BotError } from './service.js';
 import { communicationService } from './communication.js';
 import { spokenMarkdown, speechParts } from './messageSpeech.js';
+import { resolveMessage } from './messageAnchors.js';
 
 type Saved = { id: string; conversation_id: string; parts_json: string };
 export function messageAudioRoutes(ctx: AppContext, speak: (text: string) => Promise<Buffer>) {
@@ -38,11 +39,12 @@ export function messageAudioRoutes(ctx: AppContext, speak: (text: string) => Pro
     const p = z.object({ turn: z.string().min(1).max(200), at: z.string().min(1).max(100) }).strict().parse(req.body);
     const events = await ctx.manager.snapshot(chat);
     access(req, chat);
-    const event = events.find(e => e.type === 'text_final' && e.turnId === p.turn && e.at === p.at);
-    if (!event || event.type !== 'text_final') throw new BotError(404, 'Original message is unavailable');
-    const text = spokenMarkdown(event.markdown);
+    const found = resolveMessage(ctx.db, events, chat, p);
+    if (!found) throw new BotError(404, 'Original message is unavailable');
+    const text = spokenMarkdown(found.markdown);
     if (!text) throw new BotError(400, 'This message has no readable text');
-    const hash = crypto.createHash('sha256').update(`v1:${p.turn}:${p.at}:${text}`).digest('hex');
+    // Key on the transcript's anchor so a streamed copy and a reloaded copy share one recording.
+    const hash = crypto.createHash('sha256').update(`v1:${found.event?.turnId ?? p.turn}:${found.event?.at ?? p.at}:${text}`).digest('hex');
     ctx.db.prepare('INSERT OR IGNORE INTO message_audio(id,conversation_id,source_hash,parts_json) VALUES(?,?,?,?)')
       .run(crypto.randomUUID(), chat, hash, JSON.stringify(speechParts(text)));
     const row = ctx.db.prepare('SELECT * FROM message_audio WHERE conversation_id=? AND source_hash=?').get(chat, hash) as Saved;
