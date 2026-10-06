@@ -26,7 +26,11 @@ Verified configured `VP_SERVICE_HOME`: `/Users/archerclawdington/veneer-pro-home
 - Focused provider adapter/model tests passed (83 tests). Six runtime tests passed after correcting the version assertion missed in the initial edit; the initial stale assertion failure was a test expectation, not an installed runtime failure.
 - Full `npm test` passed: 3,442 server tests (15 skipped), 1,008 web tests, 51 browser-manager tests, and 29 installer tests.
 - Root `npm run build` passed; only the existing nonfatal large-chunk warning remains.
-- Deployment pending: run the supported root restart command with app-runner, terminal, browser-manager, web, then runner last. Before restart, PIDs were web 97212, runner 46125, app-runner 47345, terminal 47361. If runner shutdown interrupts this chat, reconcile fresh PIDs/health/model discovery before reporting completion; do not repeat installation or the restart without evidence.
+- Runtime pins, tests and this report were committed and pushed to `origin main` as `c0f6fc7` (`Update Claude Code and Codex to verified maintenance releases`).
+- Supported root `npm run restart` ran with app-runner, terminal, browser-manager, web, then runner last. Runner shutdown interrupted this chat before the command’s final receipt; the queue resumed the same build. Fresh PIDs confirmed all four Node services restarted: web 97212 → 7583, runner 46125 → 7593, app-runner 47345 → 7517, terminal 47361 → 7527. Browser-manager restart returned healthy before interruption.
+- Post-restart web, runner, app-runner, terminal and browser-manager probes all returned HTTP 200. Fresh supported `npm run restart -- --health-check` passed: local web/runner healthy, public front door HTTP 302 and four active tunnel edge connections. These probes do not certify authenticated end-to-end public chat.
+- Post-restart installed versions again matched all pins. Fresh live Veneer model discovery retained the existing Claude and Codex choices and defaults (Opus 5.5 and GPT-6.1 Sol).
+- Build #591 is complete. No owner blocker remains; unrelated untracked files were preserved. This final deployment receipt is committed separately from the runtime change.
 
 ## Rollback
 
