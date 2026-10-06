@@ -14,6 +14,12 @@ Nick must separately authorize native install/restart of this tested artifact. T
 
 Native context returns explicit unreviewed media and does not accept a bot assertion of byte review. Incomplete or undocumented source/native inventory closure remains blocked. Source scope/shared writer coverage is not certified by these synthetic tests. The original draft, ordinary authorization, retired audit and withdrawn purchase record are preserved; native migration guards cover structured return/SMS overlaps and ordinary/routine/delegated email claim races.
 
+### Subsequent review and fresh source checkpoint
+
+The retained passing suite results below are staged-code evidence, not activation or complete acceptance. Later read-only review found missing reverse vendor fencing, overbroad completed-recipient/per-order reply fences, and incomplete customer-email/all-version native inventory revision coverage. Isolated synthetic SQL checks exposed vendor writes allowed after a customer-email authority and later same-recipient claims still blocked after a synthetic accepted row; they do not prove a full application path or provider effect. Existing tests lack the complete both-order matrix. These defects remain unresolved in commit `44a7050`; source coupling must wait for corrected, explicitly repinned code and regression results. See the contract's review-blocker section.
+
+Grant's reported own recovery at October 6, 2026 15:28:44–46Z exhausted the exact unfiltered conversation queries for order `100122404`, email `ken_hall39@yahoo.com`, and `relatedOrderId` `bc7ebcc5-02c0-451b-9641-410ccda5e863`: each HTTP 200, `total:0`, `hasMore:false`, `limit:100`, `offset:0`. This supersedes the earlier 429/unexhausted checkpoint only for those exact scopes. No matching conversation/canonical case/customer/current owner was yielded; global customer absence is not established. The builder did not perform these source queries. Genuine canonical case/customer and ownership evidence remains missing; real binding is blocked and no case creation/mapping is commissioned. The contract records the precise original Grant evidence-gathering and actual-owner technical setup steps without inventing credentials or runtime setup.
+
 ## Validation
 
 - `npm run typecheck`: passed for server and web with installed Node 24.21.0. The default shell Node has a missing Homebrew dylib; no runtime/dependency installation was performed.
