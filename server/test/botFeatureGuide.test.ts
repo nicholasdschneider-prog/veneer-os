@@ -36,6 +36,12 @@ describe('living bot guide release contract', () => {
     for (const elevated of [false, true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
     expect(botFeatureInstructions()).toContain(f.agent);
   });
+  it('delivers staged UNKNOWN inspection and persistent command denial to employees and resumed agents',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-10-06')).features.find(f=>f.id==='browser-unknown-inspection')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('Metadata only');expect(f.agent).toContain('never clears UNKNOWN');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'browser-bot',elevated})).toContain(f.agent);
+  });
   it('labels controller recovery as staged and retains original-owner UNKNOWN limits in employee and resumed guidance',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(f=>f.id==='browser-controller-reconnect')!;
     expect(f.limits).toContain('pending deployment');expect(f.agent).toContain('UNKNOWN');

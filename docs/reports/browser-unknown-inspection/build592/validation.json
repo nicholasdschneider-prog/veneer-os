@@ -1,0 +1,43 @@
+{
+  "build": 592,
+  "status": "verified_staged_not_deployed",
+  "node": "24",
+  "checks": {
+    "typecheck": "passed",
+    "scoped_tests": 283,
+    "full_tests": {
+      "installer": 29,
+      "server": 3447,
+      "server_skipped": 15,
+      "web": 1008,
+      "browser_manager": 51,
+      "passes": 4535
+    },
+    "build": "passed",
+    "diff_check": "passed"
+  },
+  "live_recovery_test": false,
+  "restart": false,
+  "rendered_verification_ready": false,
+  "missing_prerequisites": [
+    "supported preservation-safe activation with retained-copy and bridge continuity evidence",
+    "authenticated original-owner original runtime/process plus existing bound pinned bridge provenance; legacy proof cannot be retrofitted",
+    "separately supported preservation-safe rendered inspection; metadata does not certify camera/model interaction"
+  ],
+  "sha256": {
+    "server/src/veneerBrowser/manager.ts": "c0473ddd35919ecc51737064c3ef85cc5b60d2e5656697fc87babfd28f325bb7",
+    "server/src/veneerBrowser/pinnedCdpBridge.ts": "bfab0750f5388d93681ca14afd1e11b067fe57ce9c18143184f9eee97678f0f0",
+    "server/src/mcp/agentBrowser.ts": "094b5c4251bc085b7177fe44d42d9840ff1a7274bbc2cd9feb795c78ad6e458f",
+    "server/src/veneerBrowser/mcp.ts": "6d0459ac7c35b4205842af9890631eae8cb53256ec138e11669b94f6b902ed07",
+    "server/src/db/migrations/0151_browser_unknown_inspection.sql": "a9c6a6ee70b0d4dd47934b7f5ad83d13b8104cf64bbd5a3b9f2e38c568df543a",
+    "server/src/featureGuide/catalog.ts": "9b96a99254f160fb3c62d9c0cab3962d4cc88ef3e0429cce9d09f0e432e59eaf",
+    "server/test/veneerBrowser.test.ts": "179ee16f1ec3b28474aaf20f09e6a5e716d498b9f59cc83ca022db28fd636fc0",
+    "server/test/pinnedCdpBridge.test.ts": "8bac31ec66ef4b8a29839d760c8f3839229198f77d26f621bb9552e4ad579c21",
+    "server/test/veneerBrowserMcp.test.ts": "91305051384742a90e4b139727260f9ca857209d871d5f98c602022f2a1c86d1",
+    "server/test/botFeatureGuide.test.ts": "c6bfa818942c10eb3b8da974af4331b4c5d74947972aa9fbdf2f87405adacd3c",
+    "docs/bot-feature-guide.md": "14816bc215e2c3701783167ae1085fc7e83501b70ebbdf40aecb182590094931",
+    "docs/reports/browser-unknown-inspection/build592/report.md": "899a84958ff523161b566d673293b5288c0fe9afeb28a15c2462b29068840d42",
+    "docs/reports/browser-unknown-inspection/build592/full-tests.txt": "5e4988c253dcfda896f9619905e0f369eac7a5bd2e834c68f70a2611bbe8c72e",
+    "docs/reports/browser-unknown-inspection/build592/build.txt": "0e73cc87e100883f960a82ff1e4fc129762ca357ad0f129ff12faee1d25a7683"
+  }
+}

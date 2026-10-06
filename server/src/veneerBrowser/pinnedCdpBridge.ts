@@ -3,9 +3,16 @@ import fs from 'node:fs';
 import http from 'node:http';
 import WebSocket, { WebSocketServer } from 'ws';
 
+export interface BridgeProvenance {
+  conversationId: string; actorUserId: number; clientScope: string; cloneId: string;
+  sourceProfileId: string; sourceGeneration: number; runtimeId: string; processGeneration: string;
+}
+
 interface Bridge {
+  provenance?: BridgeProvenance;
   target: string;
   certificate: string;
+  caFile: string;
   url: string;
   close(): void;
 }
@@ -18,7 +25,7 @@ const bridges = new Map<string, Bridge>();
  * The listener is loopback-only, capability protected, and rejects browser
  * Origins so a web page cannot use it. Tickets and traffic stay in memory.
  */
-export async function pinnedCdpAddress(session: string, target: string, caFile: string): Promise<string> {
+export async function pinnedCdpAddress(session: string, target: string, caFile: string, provenance?: BridgeProvenance): Promise<string> {
   const upstreamUrl = new URL(target);
   if (upstreamUrl.protocol !== 'wss:' || !upstreamUrl.pathname.startsWith('/cdp/')) {
     throw new Error('The pinned browser control address must use WSS.');
@@ -77,7 +84,7 @@ export async function pinnedCdpAddress(session: string, target: string, caFile: 
     });
   });
   const bridge: Bridge = {
-    target, certificate, url: '',
+    target, certificate, caFile, url: '', ...(provenance ? { provenance: { ...provenance } } : {}),
     close: () => {
       closed = true;
       for (const socket of upstreams) socket.terminate();
@@ -108,4 +115,57 @@ export function disconnectPinnedCdpBridge(session: string): boolean {
   if (!bridges.has(session)) return false;
   closePinnedCdpBridge(session);
   return true;
+}
+
+/** Fixed metadata read on the EXISTING pinned bridge. No ticket, bridge creation,
+ * CLI, target attachment, navigation, script or recovery is permitted here.
+ * Legacy bridges cannot acquire provenance retroactively by inspection.
+ */
+export async function inspectPinnedTabs(session: string, expected: BridgeProvenance, beforeRead: () => Promise<void> = async () => {}): Promise<Array<{target_id:string; title:string; url:string}>> {
+  const bridge = bridges.get(session);
+  const matches = () => {
+    try {
+      return bridges.get(session) === bridge && bridge?.provenance
+        && fs.readFileSync(bridge.caFile, 'utf8') === bridge.certificate
+        && JSON.stringify(bridge.provenance) === JSON.stringify(expected);
+    } catch { return false; }
+  };
+  if (!matches() || !bridge) throw new Error('Authenticated existing bridge provenance unavailable.');
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(bridge.url, {handshakeTimeout: 3000, maxPayload: 1024 * 1024});
+    let finished = false;
+    const finish = (tabs?: Array<{target_id:string;title:string;url:string}>) => {
+      if (finished) return;
+      finished = true; clearTimeout(timer); socket.terminate();
+      if (tabs && matches()) resolve(tabs);
+      else reject(new Error('Read-only bridge inspection unavailable.'));
+    };
+    const timer = setTimeout(() => finish(), 5000);
+    socket.on('error', () => finish());
+    socket.on('close', () => finish());
+    socket.once('open', async () => {
+      try {
+        await beforeRead();
+        if (finished || !matches()) return finish();
+        socket.send(JSON.stringify({id:1, method:'Target.getTargets'}));
+      } catch { finish(); }
+    });
+    socket.on('message', data => {
+      try {
+        const response = JSON.parse(data.toString());
+        if (response.id !== 1) return;
+        if (response.error || !Array.isArray(response.result?.targetInfos)) return finish();
+        const tabs = response.result.targetInfos.filter((t: {type?:string}) => t.type === 'page').slice(0, 100)
+          .map((t: {targetId?:unknown;title?:unknown;url?:unknown}) => {
+            if (typeof t.targetId !== 'string' || typeof t.title !== 'string' || typeof t.url !== 'string') throw new Error();
+            const url = new URL(t.url);
+            // Never return credentials, query tokens, fragment links or internal pages.
+            if (!['https:', 'http:'].includes(url.protocol)) return null;
+            url.username = ''; url.password = ''; url.search = ''; url.hash = '';
+            return {target_id:t.targetId.slice(0,200), title:t.title.slice(0,500), url:url.toString()};
+          }).filter((t: unknown) => t !== null);
+        finish(tabs);
+      } catch { finish(); }
+    });
+  });
 }

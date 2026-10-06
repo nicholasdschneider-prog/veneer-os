@@ -10,7 +10,7 @@ import {
   type BrowserTab,
 } from '../veneerBrowser/tabReuse.js';
 import { createSerialQueue } from './serialQueue.js';
-import { pinnedCdpAddress, closePinnedCdpBridge, disconnectPinnedCdpBridge } from '../veneerBrowser/pinnedCdpBridge.js';
+import { pinnedCdpAddress, closePinnedCdpBridge, disconnectPinnedCdpBridge, inspectPinnedTabs, type BridgeProvenance } from '../veneerBrowser/pinnedCdpBridge.js';
 
 const MAX_ARGS = 100;
 const MAX_ARG_LENGTH = 4_000;
@@ -348,6 +348,7 @@ export interface AgentBrowserRunOptions {
   remoteSessionId?: string;
   trustedCdpOrigin?: string;
   cdpCaFile?: string;
+  bridgeProvenance?: BridgeProvenance;
   /**
    * Values that must never leave this process: every occurrence is replaced in
    * stdout, stderr, the echoed argv, and any error message. Applied in the
@@ -389,7 +390,7 @@ async function runAgentBrowserRaw(
       const index = cliArgs.indexOf('--cdp');
       cliArgs[index + 1] = await pinnedCdpAddress(
         veneerBrowserSessionName(options.conversationId, options.remoteSessionId),
-        options.remoteCdpUrl, caFile,
+        options.remoteCdpUrl, caFile, options.bridgeProvenance,
       );
     }
     const localAddress = cliArgs[cliArgs.indexOf('--cdp') + 1];
@@ -686,4 +687,10 @@ export async function reconnectVeneerBrowserController(options: {
     recoveryReads.add(session);
     disconnectedSessions.delete(session);
   }, { waitTimeoutMs: EXTERNAL_BROWSER_WAIT_TIMEOUT_MS });
+}
+
+/** Uses the same stable controller queue but never invokes or reopens its CLI. */
+export async function inspectVeneerBrowserTabs(provenance: BridgeProvenance, beforeRead: () => Promise<void>) {
+  const session = veneerBrowserSessionName(provenance.conversationId, provenance.cloneId);
+  return veneerBrowserQueue(session).run(() => inspectPinnedTabs(session, provenance, beforeRead));
 }

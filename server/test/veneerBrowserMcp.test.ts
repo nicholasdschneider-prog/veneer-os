@@ -64,6 +64,7 @@ describe('Veneer Browser runner tool scope', () => {
   const updateConversationProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Saved login' }));
   const saveConversationAsProfile = vi.fn(async () => ({ ...(await conversationSession()), profileName: 'Other login' }));
   const setKeepOpen = vi.fn(async () => ({ expiresAt: '2026-09-29T17:00:00Z' }));
+  const inspectUnknownTabs = vi.fn(async()=>({execute:false,genericCommandsBlocked:true,recoveryOutcome:'unknown',tabs:[]}));
   const readPublic = vi.fn(async () => ({ok:true,mode:'public_http',rendered:false,text:'public research'}));
   const capacityWaits={register:vi.fn(()=>({id:'wait',status:'waiting',expiresAt:'2026-09-29T15:00:00Z'})),automatic:vi.fn(()=>({id:'auto',status:'waiting',expiresAt:'2026-09-29T15:00:00Z'})),cancel:vi.fn()};
   const stopConversation = vi.fn(async () => conversationSession());
@@ -82,6 +83,7 @@ describe('Veneer Browser runner tool scope', () => {
     token = mintAgentToken(db, 'owner@example.com', 'token-chat');
     const manager = {
       conversationSession,
+      inspectUnknownTabs,
       listProfilesForConversation,
       createForConversation,
       selectForConversation,
@@ -140,6 +142,16 @@ describe('Veneer Browser runner tool scope', () => {
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
     });
   }
+
+  it('binds UNKNOWN inspection to the signed owner/chat without running generic session work',async()=>{
+    const body=await(await call('inspect_unknown_tabs')).json();
+    expect(body.result.structuredContent).toMatchObject({execute:false,genericCommandsBlocked:true,recoveryOutcome:'unknown'});
+    expect(inspectUnknownTabs).toHaveBeenCalledWith(1,'token-chat');
+    expect(conversationSession).not.toHaveBeenCalled();expect(runCommand).not.toHaveBeenCalled();
+    inspectUnknownTabs.mockClear();
+    const invalid=await(await call('inspect_unknown_tabs',{conversation_id:'foreign-chat',request_key:'new-key'})).json();
+    expect(invalid.result.isError).toBe(true);expect(inspectUnknownTabs).not.toHaveBeenCalled();
+  });
 
   it('public research works without touching an unavailable or full browser manager', async () => {
     conversationSession.mockRejectedValueOnce(new Error('all five slots full'));

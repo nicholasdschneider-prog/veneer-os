@@ -6,7 +6,7 @@ import path from 'node:path';
 import https from 'node:https';
 import { execFileSync } from 'node:child_process';
 import WebSocket, { WebSocketServer } from 'ws';
-import { closePinnedCdpBridge, pinnedCdpAddress } from '../src/veneerBrowser/pinnedCdpBridge.js';
+import { closePinnedCdpBridge, pinnedCdpAddress, inspectPinnedTabs } from '../src/veneerBrowser/pinnedCdpBridge.js';
 
 describe('pinned CDP adapter', () => {
   let dir: string;
@@ -14,7 +14,7 @@ describe('pinned CDP adapter', () => {
   let target: string;
   let server: https.Server;
   let wss: WebSocketServer;
-  const sessions = ['echo', 'wrong-ca', 'origin', 'path', 'rotate', 'plain', 'hostname'];
+  const sessions = ['echo', 'wrong-ca', 'origin', 'path', 'rotate', 'plain', 'hostname', 'inspection', 'legacy-inspection'];
 
   beforeAll(async () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cdp-pin-test-'));
@@ -28,7 +28,11 @@ describe('pinned CDP adapter', () => {
       '-subj', '/CN=localhost'], { stdio: 'ignore' });
     server = https.createServer({ key: fs.readFileSync(path.join(dir, 'key.pem')), cert: fs.readFileSync(ca) });
     wss = new WebSocketServer({ server });
-    wss.on('connection', (socket) => socket.on('message', (data, binary) => socket.send(data, { binary })));
+    wss.on('connection', (socket) => socket.on('message', (data, binary) => {
+      if (data.toString() === JSON.stringify({id:1,method:'Target.getTargets'})) {
+        socket.send(JSON.stringify({id:1,result:{targetInfos:[{type:'page',targetId:'fixture-page',title:'Fixture',url:'https://example.test/media?private=value#secret'},{type:'page',targetId:'internal',title:'Internal',url:'chrome://settings'}]}}));
+      } else socket.send(data, {binary});
+    }));
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('Missing fixture address');
@@ -66,6 +70,32 @@ describe('pinned CDP adapter', () => {
         });
       });
     }
+  });
+
+  it('reads only fixed metadata on an existing proven bridge, without upgrading legacy scope or emitting effects', async()=>{
+    const proof={conversationId:'owner',actorUserId:1,clientScope:'fixture',cloneId:'clone',sourceProfileId:'profile',sourceGeneration:1,runtimeId:'runtime',processGeneration:'a'.repeat(64)};
+    await expect(inspectPinnedTabs('inspection',proof)).rejects.toThrow('provenance');
+    await pinnedCdpAddress('legacy-inspection',target,ca);
+    // A later request cannot label an already-existing legacy bridge.
+    await pinnedCdpAddress('legacy-inspection',target,ca,proof);
+    await expect(inspectPinnedTabs('legacy-inspection',proof)).rejects.toThrow('provenance');
+    await pinnedCdpAddress('inspection',target,ca,proof);
+    await expect(inspectPinnedTabs('inspection',{...proof,actorUserId:2})).rejects.toThrow('provenance');
+    await expect(inspectPinnedTabs('inspection',{...proof,processGeneration:'b'.repeat(64)})).rejects.toThrow('provenance');
+    const messages:string[]=[];
+    const observe=(socket:WebSocket)=>socket.on('message',data=>messages.push(data.toString()));
+    wss.on('connection',observe);
+    try {
+      expect(await inspectPinnedTabs('inspection',proof)).toEqual([{target_id:'fixture-page',title:'Fixture',url:'https://example.test/media'}]);
+      expect(messages).toEqual([JSON.stringify({id:1,method:'Target.getTargets'})]);
+      // Access revoked while the socket was connecting: no read can dispatch.
+      await expect(inspectPinnedTabs('inspection',proof,async()=>{throw new Error('revoked');})).rejects.toThrow('unavailable');
+      expect(messages).toHaveLength(1);
+      await expect(inspectPinnedTabs('inspection',proof,async()=>{closePinnedCdpBridge('inspection');})).rejects.toThrow('unavailable');
+      expect(messages).toHaveLength(1);
+      closePinnedCdpBridge('inspection');
+      await expect(inspectPinnedTabs('inspection',proof)).rejects.toThrow('provenance');
+    } finally {wss.off('connection',observe);}
   });
 
   it('rejects an unrelated certificate and wrong hostname', async () => {

@@ -38,6 +38,7 @@ type ToolContent = { type: 'text'; text: string } | { type: 'image'; data: strin
 
 const EMPTY = { type: 'object', properties: {}, additionalProperties: false };
 const TOOLS: ToolDef[] = [
+  {name:'inspect_unknown_tabs',description:'Original-owner fixed tab metadata inspection after unresolved recovery. Existing authenticated bridge and original runtime/process proof required. No recovery, ticket, CLI, lifecycle or page action; UNKNOWN and generic command fence remain. Does not certify rendered verification.',inputSchema:EMPTY},
   {name:'inspect_controller',description:'Original-owner read-only exact copy/profile/generation/runtime and recovery audit. No automation command, ticket rotation or page probe. Does not prove prior operation outcome or recovery readiness.',inputSchema:EMPTY},
   { name:'reconnect_controller', description:'Original owner only: detach a stalled automation controller from the exact live copy without closing Chrome, tabs or preview. Requires a proven pinned bridge. No page command or earlier operation is replayed. After success use tabs/read under your own identity; earlier operation remains UNKNOWN. Failure never falls back to Chrome close.', inputSchema:{type:'object',properties:{clone_id:{type:'string',format:'uuid'},source_profile_id:{type:'string',format:'uuid'},source_generation:{type:'integer',minimum:1},runtime_id:{type:'string'},process_generation:{type:'string',pattern:'^[a-f0-9]{64}$'},request_key:{type:'string',format:'uuid'}},required:['clone_id','source_profile_id','source_generation','runtime_id','process_generation','request_key'],additionalProperties:false}},
   { name: 'read_public', description: 'Read public HTML or plain text without Chrome, cookies, or a signed-in profile. Works when every browser slot is occupied. Use first for public research. Returns source text, not JavaScript-rendered content, video or transcripts; do not claim full video review. Private/local addresses and credential URLs are refused. Use fetch_url when an authorized signed-in or rendered page is required.', inputSchema: { type: 'object', properties: { url: { type: 'string' }, max_chars: { type: 'integer', minimum: 100, maximum: 100000 }, timeout_ms: { type: 'integer', minimum: 1000, maximum: 30000 } }, required: ['url'], additionalProperties: false } },
@@ -740,6 +741,11 @@ export async function handleVeneerBrowserMcp(
     if (memberActor && CREDENTIAL_TOOLS.has(name) && !['fill_secret','fill_totp'].includes(name)) throw new Error(CREDENTIAL_TOOLS_MEMBER_REFUSAL);
     if (memberActor && ['fill_secret','fill_totp'].includes(name) && !activeLoginGrants(db,user.id,conversationId).length) throw new Error(CREDENTIAL_TOOLS_MEMBER_REFUSAL);
     if (memberActor && ['fill_secret','fill_totp'].includes(name)) authorizeLoginSecret(db,user.id,conversationId,args,name === 'fill_secret' ? 'password' : 'totp');
+    if (name === 'inspect_unknown_tabs') {
+      if(Object.keys(args).length)throw new Error('inspect_unknown_tabs takes no arguments.');
+      const inspection=await manager.inspectUnknownTabs(user.id,conversationId);
+      return void sendJson(res,200,{jsonrpc:'2.0',id,result:{...textResult(JSON.stringify(inspection)),structuredContent:inspection}});
+    }
     if (name === 'inspect_controller') {
       if(Object.keys(args).length)throw new Error('inspect_controller takes no arguments.');
       const inspection=await manager.inspectAutomationController(user.id,conversationId);

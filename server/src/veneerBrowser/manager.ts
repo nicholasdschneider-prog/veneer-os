@@ -1,3 +1,4 @@
+import type { BridgeProvenance } from './pinnedCdpBridge.js';
 import { createCapacityWaits } from './capacityWait.js';
 import { PublicReadSchema, readPublicUrl, type PublicReadResult } from './publicReader.js';
 import { activeLoginGrants, authorizeLoginSecret, guardedLoginScript } from './loginGrants.js';
@@ -17,6 +18,7 @@ import type {
 import {
   closeVeneerBrowserSession,
   reconnectVeneerBrowserController,
+  inspectVeneerBrowserTabs,
   runAgentBrowser,
   type BrowserRunResult,
 } from '../mcp/agentBrowser.js';
@@ -224,6 +226,7 @@ export interface VeneerBrowserManagerOptions {
   readUrl?: typeof readBrowserUrl;
   runScript?: typeof runBrowserScript;
   reconnectController?: typeof reconnectVeneerBrowserController;
+  inspectTabs?: typeof inspectVeneerBrowserTabs;
 }
 
 function now(): string {
@@ -277,6 +280,7 @@ export class VeneerBrowserManager {
   private readonly runBrowser: typeof runAgentBrowser;
   private readonly closeBrowserSession: typeof closeVeneerBrowserSession;
   private readonly reconnectController: typeof reconnectVeneerBrowserController;
+  private readonly inspectTabs: typeof inspectVeneerBrowserTabs;
   private readonly readUrl: typeof readBrowserUrl;
   private readonly script: typeof runBrowserScript;
   private readonly queues = new Map<string, SerialQueue>();
@@ -292,6 +296,7 @@ export class VeneerBrowserManager {
     this.runBrowser = options.runBrowser ?? runAgentBrowser;
     this.closeBrowserSession = options.closeBrowserSession ?? closeVeneerBrowserSession;
     this.reconnectController = options.reconnectController ?? reconnectVeneerBrowserController;
+    this.inspectTabs = options.inspectTabs ?? inspectVeneerBrowserTabs;
     this.readUrl = options.readUrl ?? readBrowserUrl;
     this.script = options.runScript ?? runBrowserScript;
     this.capacityWaits = createCapacityWaits({ db: this.db, clientScope: () => this.clientScope(),
@@ -1138,6 +1143,22 @@ export class VeneerBrowserManager {
     // Only a LAN address needs the pinned certificate; a tunnel address is
     // already trusted by the public roots agent-browser ships with.
     const cdpCaFile = this.remote.cdpCaFile(ticket.cdpUrl);
+    // Bind only freshly observed owner/runtime scope at bridge creation. Existing
+    // legacy bridges are never upgraded by this read or by UNKNOWN inspection.
+    const status = cdpCaFile ? await this.remote.status(runtime.row.project_id, runtime.row.clone_profile_id) : null;
+    if (cdpCaFile) {
+      this.conversation(context.id, context.browser_actor_id ?? context.user_id, true);
+      const current = this.cloneSession(context.id);
+      if (!current || current.clone_profile_id !== runtime.row.clone_profile_id || current.source_profile_id !== runtime.row.source_profile_id
+        || current.source_generation !== runtime.row.source_generation || current.remote_runtime_id !== runtime.row.remote_runtime_id) {
+        throw new Error('Copy scope changed before bridge creation.');
+      }
+    }
+    const bridgeProvenance: BridgeProvenance | undefined = status?.active && status.runtimeId === runtime.row.remote_runtime_id
+      && status.processGeneration && runtime.row.source_profile_id && context.browser_actor_id === context.user_id
+      ? {conversationId:context.id, actorUserId:context.user_id, clientScope:this.clientScope(), cloneId:runtime.row.clone_profile_id,
+        sourceProfileId:runtime.row.source_profile_id, sourceGeneration:runtime.row.source_generation!,
+        runtimeId:status.runtimeId, processGeneration:status.processGeneration} : undefined;
     return this.runBrowser(args, {
       conversationId: context.id,
       workspaceDir: this.workspace(context),
@@ -1149,6 +1170,7 @@ export class VeneerBrowserManager {
       remoteSessionId: runtime.row.clone_profile_id,
       trustedCdpOrigin: ticket.cdpUrl,
       ...(cdpCaFile ? { cdpCaFile } : {}),
+      ...(bridgeProvenance ? { bridgeProvenance } : {}),
     });
   }
 
@@ -1427,6 +1449,49 @@ export class VeneerBrowserManager {
         clone_id:row.clone_profile_id,source_profile_id:row.source_profile_id,source_generation:row.source_generation,
         runtime_id:status.runtimeId??null,process_generation:status.processGeneration??null,earlierOperation:'UNKNOWN',retryPriorOperation:false,
         recovery:this.db.prepare('SELECT request_key,outcome,created_at FROM browser_controller_recovery WHERE conversation_id=? AND clone_id=? ORDER BY id DESC LIMIT 1').get(conversationId,row.clone_profile_id)??null};
+    });
+  }
+
+  /** Additive UNKNOWN inspection, never a recovery transition or execution grant. */
+  async inspectUnknownTabs(userId: number, conversationId: string) {
+    this.conversation(conversationId, userId);
+    return this.queue(`conversation:${conversationId}`).run(async () => {
+      const original = this.db.prepare("SELECT * FROM browser_controller_recovery WHERE conversation_id=? AND outcome='started' AND NOT EXISTS (SELECT 1 FROM browser_controller_recovery f WHERE f.conversation_id=browser_controller_recovery.conversation_id AND f.request_key=browser_controller_recovery.request_key AND f.outcome='detached') ORDER BY id LIMIT 1")
+        .get(conversationId) as {id:number;actor_user_id:number;clone_id:string;source_profile_id:string;source_generation:number;runtime_id:string;process_generation:string;request_key:string;request_hash:string}|undefined;
+      if (!original || original.actor_user_id !== userId) throw new Error('Original unresolved recovery owner required.');
+      const initial = this.cloneSession(conversationId);
+      const authorize = () => {
+        this.conversation(conversationId,userId);
+        const user = this.db.prepare('SELECT status FROM users WHERE id=?').get(userId) as {status:string}|undefined;
+        const row = this.cloneSession(conversationId);
+        if (user?.status !== 'active' || !row || row.status !== 'active' || JSON.stringify(row) !== JSON.stringify(initial)
+          || row.clone_profile_id !== original.clone_id || row.source_profile_id !== original.source_profile_id
+          || row.source_generation !== original.source_generation || row.remote_runtime_id !== original.runtime_id) throw new Error('Owner or original copy scope unavailable.');
+        this.profile(row.project_id,original.source_profile_id,userId);
+        if (hasLiveSecretField(conversationId)) throw new Error('Secret field readback blocked.');
+        return row;
+      };
+      const row = authorize();
+      const audit = (outcome:string) => this.db.prepare('INSERT INTO browser_unknown_inspection (recovery_id,actor_user_id,outcome) VALUES (?,?,?)').run(original.id,userId,outcome);
+      const check = async () => {
+        authorize();
+        const status = await this.remote.status(row.project_id,row.clone_profile_id);
+        authorize();
+        if (!status.active || status.runtimeId !== original.runtime_id || status.processGeneration !== original.process_generation) throw new Error('Original runtime/process provenance unavailable.');
+      };
+      audit('started');
+      try {
+        await check();
+        const tabs = await this.inspectTabs({conversationId,actorUserId:userId,clientScope:this.clientScope(),cloneId:original.clone_id,
+          sourceProfileId:original.source_profile_id,sourceGeneration:original.source_generation,runtimeId:original.runtime_id,processGeneration:original.process_generation}, check);
+        await check();
+        audit('observed');
+        return {execute:false, recoveryOutcome:'unknown', earlierOperation:'UNKNOWN', retryPriorOperation:false,
+          genericCommandsBlocked:true, renderedVerificationReady:false, tabs};
+      } catch {
+        audit('blocked');
+        throw new Error('UNKNOWN inspection blocked: authenticated original owner, unchanged runtime/process and existing pinned bridge proof are required. No replay or replacement permitted.');
+      }
     });
   }
 

@@ -165,6 +165,64 @@ describe('Veneer Browser manager', () => {
     expect(JSON.stringify(db.prepare('SELECT * FROM browser_controller_recovery').all())).not.toContain('secret-bearing');
   });
 
+  it('inspects UNKNOWN only through the fixed original-owner reader and preserves every original audit byte',async()=>{
+    const req=await recoveryFixture();
+    reconnectController.mockRejectedValueOnce(new Error('fixture uncertainty'));
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('UNKNOWN');
+    const original=db.prepare('SELECT * FROM browser_controller_recovery ORDER BY id').all();
+    const clones=db.prepare('SELECT * FROM veneer_browser_clone_sessions').all();
+    const inspectTabs=vi.fn(async()=>[{target_id:'fixture',title:'Page',url:'https://example.test/'}]);
+    const reader=new VeneerBrowserManager({db,dataDir,remote,runBrowser:runBrowser as never,inspectTabs});
+    try {
+      await expect(reader.inspectUnknownTabs(2,'conv-1')).rejects.toThrow();
+      await expect(reader.inspectUnknownTabs(1,'conv-2')).rejects.toThrow('Original');
+      expect(inspectTabs).not.toHaveBeenCalled();
+      remote.ticket.mockClear(); remote.start.mockClear(); remote.open.mockClear();
+      runBrowser.mockClear(); reconnectController.mockClear();
+      expect(await reader.inspectUnknownTabs(1,'conv-1')).toMatchObject({execute:false,recoveryOutcome:'unknown',genericCommandsBlocked:true,renderedVerificationReady:false,tabs:[{target_id:'fixture'}]});
+      expect(inspectTabs).toHaveBeenCalledWith(expect.objectContaining({cloneId:req.clone_id,processGeneration:req.process_generation,actorUserId:1,conversationId:'conv-1'}),expect.any(Function));
+      expect(db.prepare('SELECT * FROM browser_controller_recovery ORDER BY id').all()).toEqual(original);
+      expect(db.prepare('SELECT * FROM veneer_browser_clone_sessions').all()).toEqual(clones);
+      await expect(reader.runCommand(1,'conv-1',['snapshot'])).rejects.toThrow('unresolved');
+      await expect(reader.runCommand(1,'conv-1',['click','@e1'])).rejects.toThrow('unresolved');
+      await expect(reader.runCommand(1,'conv-1',['open','https://example.test'])).rejects.toThrow('unresolved');
+      expect(runBrowser).not.toHaveBeenCalled();expect(reconnectController).not.toHaveBeenCalled();
+      for(const op of ['ticket','start','open','stop','suspend','delete','clone']) {
+        if(op==='clone') continue; // fixture setup created this clone.
+        expect(remote[op]).not.toHaveBeenCalled();
+      }
+      expect(db.prepare('SELECT outcome FROM browser_unknown_inspection ORDER BY id').all()).toEqual([{outcome:'started'},{outcome:'observed'}]);
+      expect(()=>db.prepare('DELETE FROM browser_unknown_inspection').run()).toThrow('immutable');
+      expect(()=>db.prepare("UPDATE browser_unknown_inspection SET outcome='observed'").run()).toThrow('immutable');
+      reader.shutdown();
+      const restarted=new VeneerBrowserManager({db,dataDir,remote,inspectTabs});
+      try {await expect(restarted.runCommand(1,'conv-1',['click','@e1'])).rejects.toThrow('unresolved');} finally {restarted.shutdown();}
+    } finally {reader.shutdown();}
+  });
+
+  it('fails closed on UNKNOWN inspection provenance loss, process drift and revocation, without retaining error text',async()=>{
+    const req=await recoveryFixture();
+    reconnectController.mockRejectedValueOnce(new Error('fixture'));
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('UNKNOWN');
+    const inspectTabs=vi.fn(async()=>{throw new Error('secret-bearing fixture failure');});
+    const reader=new VeneerBrowserManager({db,dataDir,remote,inspectTabs});
+    try {
+      await expect(reader.inspectUnknownTabs(1,'conv-1')).rejects.toThrow('proof');
+      expect(inspectTabs).toHaveBeenCalledOnce();
+      remote.status.mockResolvedValueOnce({active:true,runtimeId:req.runtime_id,processGeneration:'b'.repeat(64)});
+      await expect(reader.inspectUnknownTabs(1,'conv-1')).rejects.toThrow('proof');
+      expect(inspectTabs).toHaveBeenCalledOnce();
+      inspectTabs.mockImplementationOnce(async()=>{
+        db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
+        return [] as never;
+      });
+      await expect(reader.inspectUnknownTabs(1,'conv-1')).rejects.toThrow('proof');
+      expect(db.prepare("SELECT count(*) AS n FROM browser_unknown_inspection WHERE outcome='observed'").get()).toEqual({n:0});
+      expect(JSON.stringify(db.prepare('SELECT * FROM browser_unknown_inspection').all())).not.toContain('secret-bearing');
+      expect(db.prepare("SELECT outcome FROM browser_controller_recovery ORDER BY id").all()).toEqual([{outcome:'started'},{outcome:'unknown'}]);
+    } finally {reader.shutdown();}
+  });
+
   it('serializes an inflight command and rechecks revocation/runtime before detaching',async()=>{
     const req=await recoveryFixture();
     let release!:()=>void;
