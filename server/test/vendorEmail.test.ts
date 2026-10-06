@@ -104,7 +104,11 @@ describe('prospective vendor email from a native human direction',()=>{
  it('blocks old native claims and prior/unknown native sends to the same account/recipient',async()=>{
   const old=communicationService(db).saveDraft(a,'clara','old',{channel:'email',account:scope().account,recipients:[scope().recipient],subject:'Old',body:'Old',customer:'Vendor',ticket:scope().thread_id,context:'',attachments:[]});
   const {id}=await setup();expect(()=>communicationService(db).claim(a,old.id,'raw')).toThrow('Vendor reply authority');
-  db.prepare("UPDATE bot_message_drafts SET state='uncertain',claim_key='prior' WHERE id=?").run(old.id);await expect(claim(id)).rejects.toThrow();
+  expect(()=>db.prepare("UPDATE bot_message_drafts SET state='uncertain',claim_key='prior' WHERE id=?").run(old.id)).toThrow('fenced');
+  // Reverse serialization: a prior UNKNOWN blocks binding, without bypassing the new guard.
+  const other=communicationService(db).saveDraft({...a,conversationId:'other'},'other','unknown',{channel:'email',account:'different@example.test',recipients:[scope().recipient],subject:'Old',body:'Old',customer:'Vendor',ticket:scope().thread_id,context:'',attachments:[]});
+  db.prepare("UPDATE bot_message_drafts SET state='uncertain',claim_key='prior' WHERE id=?").run(other.id);
+  const next=await prepared({...input(),scope:{...scope(),account:'different@example.test'}});await expect(s.bind(a,{...next,request_key:'unknown-reverse'})).rejects.toThrow();
  });
  it('guards immutable authority and event history, receipt scope and replay',async()=>{
   const {id}=await setup();expect(()=>db.prepare('UPDATE bot_vendor_email_authorities SET source_id=? WHERE id=?').run('fake',id)).toThrow('Immutable');await claim(id);

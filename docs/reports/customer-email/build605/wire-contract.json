@@ -1,0 +1,2632 @@
+{
+  "contract": "customer-email-direction-dispatch/v2",
+  "botAPI": {
+    "input": {
+      "kind": "ZodObject",
+      "unknownKeys": "strict",
+      "fields": {
+        "source_owner_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "source_kind": {
+          "kind": "ZodEnum",
+          "values": [
+            "direct_message",
+            "result_reply"
+          ]
+        },
+        "source_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "executor_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "draft_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "draft_version": {
+          "kind": "ZodNumber",
+          "checks": [
+            {
+              "kind": "int"
+            },
+            {
+              "kind": "min",
+              "value": 0,
+              "inclusive": false
+            }
+          ]
+        }
+      }
+    },
+    "captureInput": {
+      "kind": "ZodObject",
+      "unknownKeys": "strict",
+      "fields": {
+        "source_owner_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "source_kind": {
+          "kind": "ZodEnum",
+          "values": [
+            "direct_message",
+            "result_reply"
+          ]
+        },
+        "source_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "executor_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "draft_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "draft_version": {
+          "kind": "ZodNumber",
+          "checks": [
+            {
+              "kind": "int"
+            },
+            {
+              "kind": "min",
+              "value": 0,
+              "inclusive": false
+            }
+          ]
+        },
+        "registration_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "capture_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "canonical_case": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "canonical_customer": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "canonical_order": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        }
+      }
+    },
+    "bind": {
+      "kind": "ZodObject",
+      "unknownKeys": "strict",
+      "fields": {
+        "source_owner_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "source_kind": {
+          "kind": "ZodEnum",
+          "values": [
+            "direct_message",
+            "result_reply"
+          ]
+        },
+        "source_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "executor_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "draft_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "draft_version": {
+          "kind": "ZodNumber",
+          "checks": [
+            {
+              "kind": "int"
+            },
+            {
+              "kind": "min",
+              "value": 0,
+              "inclusive": false
+            }
+          ]
+        },
+        "registration_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "capture_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "canonical_case": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "canonical_customer": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "canonical_order": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "inspection_hash": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "regex",
+              "regex": {
+                "pattern": "^[a-f0-9]{64}$",
+                "flags": ""
+              }
+            }
+          ]
+        },
+        "request_key": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "min",
+              "value": 1
+            },
+            {
+              "kind": "max",
+              "value": 200
+            },
+            {
+              "kind": "regex",
+              "regex": {
+                "pattern": "^[A-Za-z0-9:_.-]+$",
+                "flags": ""
+              }
+            }
+          ]
+        },
+        "review": {
+          "kind": "ZodObject",
+          "unknownKeys": "strict",
+          "fields": {
+            "reviewed_full_context": {
+              "kind": "ZodLiteral",
+              "value": true
+            },
+            "interpretation": {
+              "kind": "ZodLiteral",
+              "value": "unconditional_compose_and_send"
+            },
+            "instruction": {
+              "kind": "ZodObject",
+              "unknownKeys": "strict",
+              "fields": {
+                "kind": {
+                  "kind": "ZodEnum",
+                  "values": [
+                    "direct_message",
+                    "result_reply",
+                    "decision_discussion",
+                    "voice_dispatch",
+                    "decision_event"
+                  ]
+                },
+                "id": {
+                  "kind": "ZodString",
+                  "checks": [
+                    {
+                      "kind": "min",
+                      "value": 1
+                    },
+                    {
+                      "kind": "max",
+                      "value": 200
+                    }
+                  ]
+                },
+                "text": {
+                  "kind": "ZodString",
+                  "checks": [
+                    {
+                      "kind": "min",
+                      "value": 1
+                    },
+                    {
+                      "kind": "max",
+                      "value": 120000
+                    }
+                  ]
+                }
+              }
+            },
+            "composition_explanation": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 20
+                },
+                {
+                  "kind": "max",
+                  "value": 3000
+                }
+              ]
+            },
+            "send_explanation": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 20
+                },
+                {
+                  "kind": "max",
+                  "value": 3000
+                }
+              ]
+            },
+            "later_context": {
+              "kind": "ZodArray",
+              "min": null,
+              "max": {
+                "value": 2000
+              },
+              "exact": null,
+              "item": {
+                "kind": "ZodObject",
+                "unknownKeys": "strict",
+                "fields": {
+                  "citation": {
+                    "kind": "ZodObject",
+                    "unknownKeys": "strict",
+                    "fields": {
+                      "kind": {
+                        "kind": "ZodEnum",
+                        "values": [
+                          "direct_message",
+                          "result_reply",
+                          "decision_discussion",
+                          "voice_dispatch",
+                          "decision_event"
+                        ]
+                      },
+                      "id": {
+                        "kind": "ZodString",
+                        "checks": [
+                          {
+                            "kind": "min",
+                            "value": 1
+                          },
+                          {
+                            "kind": "max",
+                            "value": 200
+                          }
+                        ]
+                      },
+                      "text": {
+                        "kind": "ZodString",
+                        "checks": [
+                          {
+                            "kind": "min",
+                            "value": 1
+                          },
+                          {
+                            "kind": "max",
+                            "value": 120000
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "classification": {
+                    "kind": "ZodEnum",
+                    "values": [
+                      "unrelated",
+                      "status_only",
+                      "supersedes",
+                      "ambiguous"
+                    ]
+                  },
+                  "explanation": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "min",
+                        "value": 20
+                      },
+                      {
+                        "kind": "max",
+                        "value": 3000
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "records": {
+              "kind": "ZodArray",
+              "min": null,
+              "max": {
+                "value": 5000
+              },
+              "exact": null,
+              "item": {
+                "kind": "ZodObject",
+                "unknownKeys": "strict",
+                "fields": {
+                  "key": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "min",
+                        "value": 1
+                      },
+                      {
+                        "kind": "max",
+                        "value": 200
+                      },
+                      {
+                        "kind": "regex",
+                        "regex": {
+                          "pattern": "^[A-Za-z0-9:_.-]+$",
+                          "flags": ""
+                        }
+                      }
+                    ]
+                  },
+                  "revision": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "regex",
+                        "regex": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "flags": ""
+                        }
+                      }
+                    ]
+                  },
+                  "classification": {
+                    "kind": "ZodEnum",
+                    "values": [
+                      "unrelated",
+                      "current_action",
+                      "completed_action",
+                      "blocking"
+                    ]
+                  },
+                  "explanation": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "min",
+                        "value": 20
+                      },
+                      {
+                        "kind": "max",
+                        "value": 3000
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "body_parts": {
+              "kind": "ZodArray",
+              "min": {
+                "value": 1
+              },
+              "max": {
+                "value": 100
+              },
+              "exact": null,
+              "item": {
+                "kind": "ZodObject",
+                "unknownKeys": "strict",
+                "fields": {
+                  "start": {
+                    "kind": "ZodNumber",
+                    "checks": [
+                      {
+                        "kind": "int"
+                      },
+                      {
+                        "kind": "min",
+                        "value": 0,
+                        "inclusive": true
+                      }
+                    ]
+                  },
+                  "end": {
+                    "kind": "ZodNumber",
+                    "checks": [
+                      {
+                        "kind": "int"
+                      },
+                      {
+                        "kind": "min",
+                        "value": 0,
+                        "inclusive": false
+                      }
+                    ]
+                  },
+                  "human_ids": {
+                    "kind": "ZodArray",
+                    "min": {
+                      "value": 1
+                    },
+                    "max": {
+                      "value": 100
+                    },
+                    "exact": null,
+                    "item": {
+                      "kind": "ZodString",
+                      "checks": [
+                        {
+                          "kind": "min",
+                          "value": 1
+                        }
+                      ]
+                    }
+                  },
+                  "evidence": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "min",
+                        "value": 20
+                      },
+                      {
+                        "kind": "max",
+                        "value": 3000
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "unresolved_choices": {
+              "kind": "ZodArray",
+              "min": null,
+              "max": null,
+              "exact": {
+                "value": 0
+              },
+              "item": {
+                "kind": "ZodString",
+                "checks": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "consume": {
+      "kind": "ZodObject",
+      "unknownKeys": "strict",
+      "fields": {
+        "authority_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "capture_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "request_key": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "min",
+              "value": 1
+            },
+            {
+              "kind": "max",
+              "value": 200
+            },
+            {
+              "kind": "regex",
+              "regex": {
+                "pattern": "^[A-Za-z0-9:_.-]+$",
+                "flags": ""
+              }
+            }
+          ]
+        },
+        "payload_hash": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "regex",
+              "regex": {
+                "pattern": "^[a-f0-9]{64}$",
+                "flags": ""
+              }
+            }
+          ]
+        }
+      }
+    },
+    "review": {
+      "kind": "ZodObject",
+      "unknownKeys": "strict",
+      "fields": {
+        "reviewed_full_context": {
+          "kind": "ZodLiteral",
+          "value": true
+        },
+        "interpretation": {
+          "kind": "ZodLiteral",
+          "value": "unconditional_compose_and_send"
+        },
+        "instruction": {
+          "kind": "ZodObject",
+          "unknownKeys": "strict",
+          "fields": {
+            "kind": {
+              "kind": "ZodEnum",
+              "values": [
+                "direct_message",
+                "result_reply",
+                "decision_discussion",
+                "voice_dispatch",
+                "decision_event"
+              ]
+            },
+            "id": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 200
+                }
+              ]
+            },
+            "text": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 120000
+                }
+              ]
+            }
+          }
+        },
+        "composition_explanation": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "min",
+              "value": 20
+            },
+            {
+              "kind": "max",
+              "value": 3000
+            }
+          ]
+        },
+        "send_explanation": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "min",
+              "value": 20
+            },
+            {
+              "kind": "max",
+              "value": 3000
+            }
+          ]
+        },
+        "later_context": {
+          "kind": "ZodArray",
+          "min": null,
+          "max": {
+            "value": 2000
+          },
+          "exact": null,
+          "item": {
+            "kind": "ZodObject",
+            "unknownKeys": "strict",
+            "fields": {
+              "citation": {
+                "kind": "ZodObject",
+                "unknownKeys": "strict",
+                "fields": {
+                  "kind": {
+                    "kind": "ZodEnum",
+                    "values": [
+                      "direct_message",
+                      "result_reply",
+                      "decision_discussion",
+                      "voice_dispatch",
+                      "decision_event"
+                    ]
+                  },
+                  "id": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "min",
+                        "value": 1
+                      },
+                      {
+                        "kind": "max",
+                        "value": 200
+                      }
+                    ]
+                  },
+                  "text": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "min",
+                        "value": 1
+                      },
+                      {
+                        "kind": "max",
+                        "value": 120000
+                      }
+                    ]
+                  }
+                }
+              },
+              "classification": {
+                "kind": "ZodEnum",
+                "values": [
+                  "unrelated",
+                  "status_only",
+                  "supersedes",
+                  "ambiguous"
+                ]
+              },
+              "explanation": {
+                "kind": "ZodString",
+                "checks": [
+                  {
+                    "kind": "min",
+                    "value": 20
+                  },
+                  {
+                    "kind": "max",
+                    "value": 3000
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "records": {
+          "kind": "ZodArray",
+          "min": null,
+          "max": {
+            "value": 5000
+          },
+          "exact": null,
+          "item": {
+            "kind": "ZodObject",
+            "unknownKeys": "strict",
+            "fields": {
+              "key": {
+                "kind": "ZodString",
+                "checks": [
+                  {
+                    "kind": "min",
+                    "value": 1
+                  },
+                  {
+                    "kind": "max",
+                    "value": 200
+                  },
+                  {
+                    "kind": "regex",
+                    "regex": {
+                      "pattern": "^[A-Za-z0-9:_.-]+$",
+                      "flags": ""
+                    }
+                  }
+                ]
+              },
+              "revision": {
+                "kind": "ZodString",
+                "checks": [
+                  {
+                    "kind": "regex",
+                    "regex": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "flags": ""
+                    }
+                  }
+                ]
+              },
+              "classification": {
+                "kind": "ZodEnum",
+                "values": [
+                  "unrelated",
+                  "current_action",
+                  "completed_action",
+                  "blocking"
+                ]
+              },
+              "explanation": {
+                "kind": "ZodString",
+                "checks": [
+                  {
+                    "kind": "min",
+                    "value": 20
+                  },
+                  {
+                    "kind": "max",
+                    "value": 3000
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "body_parts": {
+          "kind": "ZodArray",
+          "min": {
+            "value": 1
+          },
+          "max": {
+            "value": 100
+          },
+          "exact": null,
+          "item": {
+            "kind": "ZodObject",
+            "unknownKeys": "strict",
+            "fields": {
+              "start": {
+                "kind": "ZodNumber",
+                "checks": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "min",
+                    "value": 0,
+                    "inclusive": true
+                  }
+                ]
+              },
+              "end": {
+                "kind": "ZodNumber",
+                "checks": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "min",
+                    "value": 0,
+                    "inclusive": false
+                  }
+                ]
+              },
+              "human_ids": {
+                "kind": "ZodArray",
+                "min": {
+                  "value": 1
+                },
+                "max": {
+                  "value": 100
+                },
+                "exact": null,
+                "item": {
+                  "kind": "ZodString",
+                  "checks": [
+                    {
+                      "kind": "min",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              "evidence": {
+                "kind": "ZodString",
+                "checks": [
+                  {
+                    "kind": "min",
+                    "value": 20
+                  },
+                  {
+                    "kind": "max",
+                    "value": 3000
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "unresolved_choices": {
+          "kind": "ZodArray",
+          "min": null,
+          "max": null,
+          "exact": {
+            "value": 0
+          },
+          "item": {
+            "kind": "ZodString",
+            "checks": []
+          }
+        }
+      }
+    },
+    "lookup": {
+      "kind": "ZodObject",
+      "unknownKeys": "strict",
+      "fields": {
+        "source_owner_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "source_kind": {
+          "kind": "ZodEnum",
+          "values": [
+            "direct_message",
+            "result_reply"
+          ]
+        },
+        "source_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "draft_id": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        },
+        "request_key": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "min",
+              "value": 1
+            },
+            {
+              "kind": "max",
+              "value": 200
+            },
+            {
+              "kind": "regex",
+              "regex": {
+                "pattern": "^[A-Za-z0-9:_.-]+$",
+                "flags": ""
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "projection": {
+    "kind": "ZodObject",
+    "unknownKeys": "strict",
+    "fields": {
+      "schemaVersion": {
+        "kind": "ZodLiteral",
+        "value": "customer-email-direction-dispatch/v2"
+      },
+      "authorityId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "actionId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "actionFence": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "registrationId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "registrationHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "contractHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "sourceRegistrationHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "guardManifestHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "sourceArtifactHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "nativeArtifactHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "businessId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "sourceOwnerId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "sourceKind": {
+        "kind": "ZodEnum",
+        "values": [
+          "direct_message",
+          "result_reply"
+        ]
+      },
+      "sourceId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "sourceHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "contextRevision": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "inventoryHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "executorId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "executorPrincipalId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "draftId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "draftVersion": {
+        "kind": "ZodNumber",
+        "checks": [
+          {
+            "kind": "int"
+          },
+          {
+            "kind": "min",
+            "value": 0,
+            "inclusive": false
+          }
+        ]
+      },
+      "payload": {
+        "kind": "ZodObject",
+        "unknownKeys": "strict",
+        "fields": {
+          "channel": {
+            "kind": "ZodEnum",
+            "values": [
+              "email",
+              "sms",
+              "slack",
+              "customer_portal"
+            ]
+          },
+          "account": {
+            "kind": "ZodEffects",
+            "effectType": "refinement",
+            "inner": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 500
+                }
+              ]
+            }
+          },
+          "recipients": {
+            "kind": "ZodArray",
+            "min": {
+              "value": 1
+            },
+            "max": {
+              "value": 20
+            },
+            "exact": null,
+            "item": {
+              "kind": "ZodEffects",
+              "effectType": "refinement",
+              "inner": {
+                "kind": "ZodString",
+                "checks": [
+                  {
+                    "kind": "min",
+                    "value": 1
+                  },
+                  {
+                    "kind": "max",
+                    "value": 500
+                  }
+                ]
+              }
+            }
+          },
+          "subject": {
+            "kind": "ZodDefault",
+            "inner": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "max",
+                  "value": 998
+                }
+              ]
+            }
+          },
+          "body": {
+            "kind": "ZodString",
+            "checks": [
+              {
+                "kind": "min",
+                "value": 1
+              },
+              {
+                "kind": "max",
+                "value": 12000
+              }
+            ]
+          },
+          "attachments": {
+            "kind": "ZodDefault",
+            "inner": {
+              "kind": "ZodArray",
+              "min": null,
+              "max": {
+                "value": 10
+              },
+              "exact": null,
+              "item": {
+                "kind": "ZodObject",
+                "unknownKeys": "strict",
+                "fields": {
+                  "name": {
+                    "kind": "ZodEffects",
+                    "effectType": "refinement",
+                    "inner": {
+                      "kind": "ZodString",
+                      "checks": [
+                        {
+                          "kind": "min",
+                          "value": 1
+                        },
+                        {
+                          "kind": "max",
+                          "value": 500
+                        }
+                      ]
+                    }
+                  },
+                  "reference": {
+                    "kind": "ZodEffects",
+                    "effectType": "refinement",
+                    "inner": {
+                      "kind": "ZodString",
+                      "checks": [
+                        {
+                          "kind": "min",
+                          "value": 1
+                        },
+                        {
+                          "kind": "max",
+                          "value": 500
+                        }
+                      ]
+                    }
+                  },
+                  "sha256": {
+                    "kind": "ZodString",
+                    "checks": [
+                      {
+                        "kind": "regex",
+                        "regex": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "flags": ""
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "customer": {
+            "kind": "ZodEffects",
+            "effectType": "refinement",
+            "inner": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 500
+                }
+              ]
+            }
+          },
+          "ticket": {
+            "kind": "ZodEffects",
+            "effectType": "refinement",
+            "inner": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 500
+                }
+              ]
+            }
+          },
+          "context": {
+            "kind": "ZodDefault",
+            "inner": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "max",
+                  "value": 2000
+                }
+              ]
+            }
+          }
+        }
+      },
+      "payloadHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "reviewMaterialHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "canonicalCaseId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "canonicalCustomerId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "canonicalOrderId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "orderNumber": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "shopifyOrderId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "sourceAccountId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "materialHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "scopeHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "identityHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "crossActionFenceHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "idempotencyKey": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "expiresAt": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "datetime",
+            "precision": null,
+            "offset": false,
+            "local": false
+          }
+        ]
+      }
+    }
+  },
+  "capture": {
+    "kind": "ZodObject",
+    "unknownKeys": "strict",
+    "fields": {
+      "schemaVersion": {
+        "kind": "ZodLiteral",
+        "value": "customer-email-capture/v2"
+      },
+      "captureId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "registrationId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "registrationHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "sourceRegistrationHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "guardManifestHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "sourceArtifactHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "runtime": {
+        "kind": "ZodObject",
+        "unknownKeys": "strict",
+        "fields": {
+          "projectId": {
+            "kind": "ZodString",
+            "checks": [
+              {
+                "kind": "uuid"
+              }
+            ]
+          },
+          "environmentId": {
+            "kind": "ZodString",
+            "checks": [
+              {
+                "kind": "uuid"
+              }
+            ]
+          },
+          "serviceId": {
+            "kind": "ZodString",
+            "checks": [
+              {
+                "kind": "uuid"
+              }
+            ]
+          }
+        }
+      },
+      "businessId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "accountId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "principalId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "executorPrincipalId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "observedAt": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "datetime",
+            "precision": null,
+            "offset": false,
+            "local": false
+          }
+        ]
+      },
+      "expiresAt": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "datetime",
+            "precision": null,
+            "offset": false,
+            "local": false
+          }
+        ]
+      },
+      "complete": {
+        "kind": "ZodLiteral",
+        "value": true
+      },
+      "unreviewedMedia": {
+        "kind": "ZodArray",
+        "min": null,
+        "max": null,
+        "exact": {
+          "value": 0
+        },
+        "item": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "min",
+              "value": 1
+            },
+            {
+              "kind": "max",
+              "value": 200
+            },
+            {
+              "kind": "regex",
+              "regex": {
+                "pattern": "^[A-Za-z0-9:_.-]+$",
+                "flags": ""
+              }
+            }
+          ]
+        }
+      },
+      "canonicalCaseId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "canonicalCustomerId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "canonicalOrderId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "orderNumber": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "shopifyOrderId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "caseOwnerPrincipalId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "leaseId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "leaseExpiresAt": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "datetime",
+            "precision": null,
+            "offset": false,
+            "local": false
+          }
+        ]
+      },
+      "payloadHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "payloadAccount": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "email"
+          }
+        ]
+      },
+      "recipient": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "email"
+          }
+        ]
+      },
+      "materialHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "scopeHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "identityHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "contextRevision": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "inventoryHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "records": {
+        "kind": "ZodArray",
+        "min": null,
+        "max": {
+          "value": 5000
+        },
+        "exact": null,
+        "item": {
+          "kind": "ZodObject",
+          "unknownKeys": "strict",
+          "fields": {
+            "key": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 200
+                },
+                {
+                  "kind": "regex",
+                  "regex": {
+                    "pattern": "^[A-Za-z0-9:_.-]+$",
+                    "flags": ""
+                  }
+                }
+              ]
+            },
+            "revision": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "regex",
+                  "regex": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "flags": ""
+                  }
+                }
+              ]
+            },
+            "relation": {
+              "kind": "ZodEnum",
+              "values": [
+                "unrelated",
+                "current_action",
+                "completed_action",
+                "blocking",
+                "unknown"
+              ]
+            },
+            "closureHash": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "regex",
+                  "regex": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "flags": ""
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "suppression": {
+        "kind": "ZodLiteral",
+        "value": "clear"
+      },
+      "duplicates": {
+        "kind": "ZodLiteral",
+        "value": "clear"
+      },
+      "ownership": {
+        "kind": "ZodLiteral",
+        "value": "exclusive"
+      },
+      "crossActionFenceHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "sourceMaterial": {
+        "kind": "ZodRecord",
+        "key": {
+          "kind": "ZodString",
+          "checks": []
+        },
+        "value": {
+          "kind": "ZodUnknown"
+        }
+      },
+      "snapshotHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      }
+    }
+  },
+  "intent": {
+    "kind": "ZodObject",
+    "unknownKeys": "strict",
+    "fields": {
+      "schemaVersion": {
+        "kind": "ZodLiteral",
+        "value": "customer-email-intent/v1"
+      },
+      "registrationId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "principalId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "runtime": {
+        "kind": "ZodObject",
+        "unknownKeys": "strict",
+        "fields": {
+          "projectId": {
+            "kind": "ZodString",
+            "checks": [
+              {
+                "kind": "uuid"
+              }
+            ]
+          },
+          "environmentId": {
+            "kind": "ZodString",
+            "checks": [
+              {
+                "kind": "uuid"
+              }
+            ]
+          },
+          "serviceId": {
+            "kind": "ZodString",
+            "checks": [
+              {
+                "kind": "uuid"
+              }
+            ]
+          }
+        }
+      },
+      "intentId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "authorityId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "authorityHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "claimId": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "requestKey": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "idempotencyKey": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "payloadHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "contextRevision": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "materialHash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "state": {
+        "kind": "ZodEnum",
+        "values": [
+          "association_requested",
+          "dispatching",
+          "UNKNOWN",
+          "NO_EFFECT",
+          "SENT_ACCEPTED"
+        ]
+      },
+      "preProviderCommitted": {
+        "kind": "ZodBoolean"
+      },
+      "associationId": {
+        "kind": "ZodNullable",
+        "inner": {
+          "kind": "ZodString",
+          "checks": [
+            {
+              "kind": "uuid"
+            }
+          ]
+        }
+      },
+      "receipt": {
+        "kind": "ZodNullable",
+        "inner": {
+          "kind": "ZodObject",
+          "unknownKeys": "strict",
+          "fields": {
+            "provider": {
+              "kind": "ZodLiteral",
+              "value": "gmail"
+            },
+            "providerMessageId": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 200
+                },
+                {
+                  "kind": "regex",
+                  "regex": {
+                    "pattern": "^[A-Za-z0-9:_.-]+$",
+                    "flags": ""
+                  }
+                }
+              ]
+            },
+            "messageId": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 200
+                },
+                {
+                  "kind": "regex",
+                  "regex": {
+                    "pattern": "^[A-Za-z0-9:_.-]+$",
+                    "flags": ""
+                  }
+                }
+              ]
+            },
+            "account": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "email"
+                }
+              ]
+            },
+            "recipient": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "email"
+                }
+              ]
+            },
+            "subject": {
+              "kind": "ZodString",
+              "checks": []
+            },
+            "body": {
+              "kind": "ZodString",
+              "checks": []
+            },
+            "attachments": {
+              "kind": "ZodArray",
+              "min": null,
+              "max": null,
+              "exact": {
+                "value": 0
+              },
+              "item": {
+                "kind": "ZodNever"
+              }
+            },
+            "cc": {
+              "kind": "ZodArray",
+              "min": null,
+              "max": null,
+              "exact": {
+                "value": 0
+              },
+              "item": {
+                "kind": "ZodNever"
+              }
+            },
+            "bcc": {
+              "kind": "ZodArray",
+              "min": null,
+              "max": null,
+              "exact": {
+                "value": 0
+              },
+              "item": {
+                "kind": "ZodNever"
+              }
+            },
+            "acceptedAt": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "datetime",
+                  "precision": null,
+                  "offset": false,
+                  "local": false
+                }
+              ]
+            },
+            "payloadHash": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "regex",
+                  "regex": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "flags": ""
+                  }
+                }
+              ]
+            },
+            "idempotencyKey": {
+              "kind": "ZodString",
+              "checks": [
+                {
+                  "kind": "min",
+                  "value": 1
+                },
+                {
+                  "kind": "max",
+                  "value": 200
+                },
+                {
+                  "kind": "regex",
+                  "regex": {
+                    "pattern": "^[A-Za-z0-9:_.-]+$",
+                    "flags": ""
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "association": {
+    "kind": "ZodObject",
+    "unknownKeys": "strict",
+    "fields": {
+      "authority_id": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "claim_id": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "intent_id": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      },
+      "request_key": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "min",
+            "value": 1
+          },
+          {
+            "kind": "max",
+            "value": 200
+          },
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[A-Za-z0-9:_.-]+$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "authority_hash": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "context_revision": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "regex",
+            "regex": {
+              "pattern": "^[a-f0-9]{64}$",
+              "flags": ""
+            }
+          }
+        ]
+      },
+      "capture_id": {
+        "kind": "ZodString",
+        "checks": [
+          {
+            "kind": "uuid"
+          }
+        ]
+      }
+    }
+  },
+  "encoding": "canonical-json-utf8-sha256",
+  "replay": "never-entitles",
+  "nativeClaim": "reserve-only",
+  "reviewContinuity": "reinspect-identical-semantic-material-with-fresh-capture",
+  "inventory": "complete-all-version-with-exact-own-creation-transition",
+  "overlapRelease": "authenticated-exact-SENT_ACCEPTED-only"
+}

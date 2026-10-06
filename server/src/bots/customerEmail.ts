@@ -6,7 +6,7 @@ import { BotError, type Actor } from './service.js';
 import { canonicalJson, canonicalSha256 } from './canonical.js';
 import { customerEmailNative } from './customerEmailNative.js';
 import { emailRegistrationCurrent } from './customerEmailTrust.js';
-import { validateEmailCapture, emailCaptureMatchesProjection, type EmailIO, type EmailNativeSnapshot } from './customerEmailIO.js';
+import { validateEmailCapture, emailCaptureMatchesProjection, emailReviewMaterial, type EmailIO, type EmailNativeSnapshot } from './customerEmailIO.js';
 import { EMAIL_CONTRACT, EMAIL_CONTRACT_HASH, emailInput, emailCaptureInput, emailBind, emailConsume, emailLookup, emailReview, emailProjection, emailAssociation, emailIntent, emailId, emailKey, type EmailCaptureInput, type EmailProjection, type EmailRegistration } from './customerEmailContract.js';
 const nativeInput = (p: EmailCaptureInput) => ({
     source_owner_id: p.source_owner_id, source_kind: p.source_kind, source_id: p.source_id, executor_id: p.executor_id, draft_id: p.draft_id, draft_version: p.draft_version
@@ -24,6 +24,7 @@ type Authority = {
     request_hash: string;
     projection_json: string;
     native_json: string;
+    binding_hash: string | null;
 };
 type Event = {
     id: string;
@@ -48,6 +49,9 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
         const g = db.prepare('SELECT * FROM customer_email_authorities WHERE id=?').get(id) as Authority | undefined;
         if (!g)
             throw new BotError(404, 'Customer email authority not found');
+        const {binding_hash, ...original} = g;
+        if (!binding_hash || binding_hash !== canonicalSha256(original))
+            throw new BotError(409, 'Original corrected authority binding integrity unavailable; historical v1 is not executable');
         return g;
     }
     const projection = (g: Authority) => emailProjection.parse(JSON.parse(g.projection_json));
@@ -95,28 +99,34 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
                 user, conversationId: p.source_owner_id
             };
         }
-        const n = native.snapshot(actor, nativeInput(p), actor.conversationId === p.executor_id), proof = await io.capture(a, p, n, r);
+        const n = native.snapshot(actor, nativeInput(p), actor.conversationId === p.executor_id, g?.id), proof = await io.capture(a, p, n, r);
         proof.assertFresh();
         validateEmailCapture(proof.wire, p, n, r, a?.conversationId === p.source_owner_id ? r.sourcePrincipalId : r.executorPrincipalId, io.now());
         const fresh = () => {
             emailRegistrationCurrent(db, io.registration(r.id), io.now());
             proof.assertFresh();
-            const current = native.snapshot(actor!, nativeInput(p), actor!.conversationId === p.executor_id);
+            const current = native.snapshot(actor!, nativeInput(p), actor!.conversationId === p.executor_id, g?.id);
             if (current.contextRevision !== n.contextRevision || current.inventoryHash !== n.inventoryHash)
                 throw new BotError(409, 'Native context changed during source read');
             duplicate(current);
             if (g) {
                 const t = projection(g);
-                if (t.contextRevision !== current.contextRevision || t.inventoryHash !== current.inventoryHash || t.payloadHash !== current.payloadHash || t.registrationHash !== canonicalSha256(r))
+                if (t.contextRevision !== current.contextRevision || t.inventoryHash !== canonicalSha256(current.inventory.filter(x => x.key !== current.currentAuthorityKey)) || t.payloadHash !== current.payloadHash || t.registrationHash !== canonicalSha256(r))
                     throw new BotError(409, 'Authority context, inventory, payload or registration changed');
                 emailCaptureMatchesProjection(proof.wire, t);
+                row(g.id); // Verify full immutable original row, including authority/review/audit pins.
+                const accepted = event(g.id, 'accepted');
+                if (accepted && JSON.parse(accepted.payload_json).full_review_material_hash !== emailReviewMaterial(proof.wire))
+                    throw new BotError(409, 'Full accepted authority record revision/relation/closure or material changed');
+                if (emailReviewMaterial(proof.wire, current.currentAuthorityKey) !== t.reviewMaterialHash)
+                    throw new BotError(409, 'Reviewed source material, record revision/relation/closure or lease changed');
             }
             return current;
         };
         fresh();
         return {
             n, r, proof, fresh, inspectionHash: canonicalSha256({
-                input: p, context: n.contextRevision, inventory: n.inventoryHash, source: n.sourceHash, payload: n.payloadHash, capture: proof.wire.snapshotHash, registration: canonicalSha256(r)
+                input: nativeInput(p), context: n.contextRevision, inventory: n.inventoryHash, source: n.sourceHash, payload: n.payloadHash, semanticMaterial: emailReviewMaterial(proof.wire), registration: canonicalSha256(r)
             })
         };
     }
@@ -188,7 +198,7 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
                 throw new BotError(403, 'Original source owner only');
             const { n, r, proof, inspectionHash } = await prepare(a, p);
             return {
-                execute: false, ready: false, inspection_hash: inspectionHash, native: n, source: proof.wire, registration_hash: canonicalSha256(r)
+                execute: false, ready: false, inspection_hash: inspectionHash, review_material_hash: emailReviewMaterial(proof.wire), review_renewal: 'Obtain a new fresh own-reader capture and inspect again. Reuse full semantic review only if inspection_hash and review_material_hash are identical. Bind with the new capture; no older capture is renewed.', native: n, source: proof.wire, registration_hash: canonicalSha256(r)
             };
         },
         async bind(a: Actor, raw: unknown) {
@@ -197,11 +207,14 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
                 throw new BotError(403, 'Original source owner only');
             const old = db.prepare('SELECT * FROM customer_email_authorities WHERE source_owner_id=? AND request_key=?').get(p.source_owner_id, p.request_key) as Authority | undefined;
             if (old) {
+                row(old.id);
                 access(a, old);
                 if (old.request_hash !== canonicalSha256(p))
                     throw new BotError(409, 'Conflicting binding key');
                 return result(old);
             }
+            if (db.prepare('SELECT 1 FROM customer_email_authorities WHERE draft_id=? OR (source_kind=? AND source_id=?)').get(p.draft_id,p.source_kind,p.source_id))
+                throw new BotError(409, 'Permanent original source/action/draft fence already exists; exact original lookup only');
             const { n, r, proof, fresh, inspectionHash } = await prepare(a, p);
             return db.transaction(() => {
                 fresh();
@@ -209,17 +222,23 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
                     throw new BotError(409, 'Inspection changed');
                 review(n, proof.wire, p.review);
                 const w = proof.wire, actionFence = canonicalSha256({
-                    business: r.businessId, order: w.canonicalOrderId, action: 'customer-contact'
+                    business: r.businessId, sourceOwner: p.source_owner_id, sourceKind: p.source_kind, sourceId: p.source_id, action: 'customer-email-direction'
                 });
-                if (db.prepare('SELECT 1 FROM customer_email_authorities WHERE action_fence=? OR (business_id=? AND lower(account)=lower(?) AND lower(recipient)=lower(?)) OR (source_kind=? AND source_id=?)').get(actionFence, r.businessId, n.payload.account, n.payload.recipients[0], p.source_kind, p.source_id))
-                    throw new BotError(409, 'Permanent original source/action/recipient fence already exists');
+                if (db.prepare('SELECT 1 FROM customer_email_authorities WHERE action_fence=? OR draft_id=? OR (source_kind=? AND source_id=?)').get(actionFence, p.draft_id, p.source_kind, p.source_id))
+                    throw new BotError(409, 'Permanent original source/action/draft fence already exists');
                 const id = crypto.randomUUID(), actionId = crypto.randomUUID();
                 const t = emailProjection.parse({
-                    schemaVersion: EMAIL_CONTRACT, authorityId: id, actionId, actionFence, registrationId: r.id, registrationHash: canonicalSha256(r), contractHash: EMAIL_CONTRACT_HASH, sourceRegistrationHash: r.sourceRegistrationHash, guardManifestHash: r.guardManifestHash, sourceArtifactHash: r.sourceArtifactHash, nativeArtifactHash: r.nativeArtifactHash, businessId: r.businessId, sourceOwnerId: p.source_owner_id, sourceKind: p.source_kind, sourceId: p.source_id, sourceHash: n.sourceHash, contextRevision: n.contextRevision, inventoryHash: n.inventoryHash, executorId: p.executor_id, executorPrincipalId: r.executorPrincipalId, draftId: p.draft_id, draftVersion: p.draft_version, payload: n.payload, payloadHash: n.payloadHash, canonicalCaseId: w.canonicalCaseId, canonicalCustomerId: w.canonicalCustomerId, canonicalOrderId: w.canonicalOrderId, orderNumber: w.orderNumber, shopifyOrderId: w.shopifyOrderId, sourceAccountId: r.sourceAccountId, materialHash: w.materialHash, scopeHash: w.scopeHash, identityHash: w.identityHash, crossActionFenceHash: w.crossActionFenceHash, idempotencyKey: `customer-email:${actionId}`, expiresAt: new Date(Math.min(io.now() + 30 * 60000, ...[r.expiresAt, r.credentialExpiresAt, r.custodyExpiresAt, r.readbackExpiresAt].map(Date.parse))).toISOString()
+                    schemaVersion: EMAIL_CONTRACT, authorityId: id, actionId, actionFence, registrationId: r.id, registrationHash: canonicalSha256(r), contractHash: EMAIL_CONTRACT_HASH, sourceRegistrationHash: r.sourceRegistrationHash, guardManifestHash: r.guardManifestHash, sourceArtifactHash: r.sourceArtifactHash, nativeArtifactHash: r.nativeArtifactHash, businessId: r.businessId, sourceOwnerId: p.source_owner_id, sourceKind: p.source_kind, sourceId: p.source_id, sourceHash: n.sourceHash, contextRevision: n.contextRevision, inventoryHash: n.inventoryHash, executorId: p.executor_id, executorPrincipalId: r.executorPrincipalId, draftId: p.draft_id, draftVersion: p.draft_version, payload: n.payload, payloadHash: n.payloadHash, reviewMaterialHash: emailReviewMaterial(w), canonicalCaseId: w.canonicalCaseId, canonicalCustomerId: w.canonicalCustomerId, canonicalOrderId: w.canonicalOrderId, orderNumber: w.orderNumber, shopifyOrderId: w.shopifyOrderId, sourceAccountId: r.sourceAccountId, materialHash: w.materialHash, scopeHash: w.scopeHash, identityHash: w.identityHash, crossActionFenceHash: w.crossActionFenceHash, idempotencyKey: `customer-email:${actionId}`, expiresAt: new Date(Math.min(io.now() + 30 * 60000, ...[r.expiresAt, r.credentialExpiresAt, r.custodyExpiresAt, r.readbackExpiresAt].map(Date.parse))).toISOString()
                 });
-                db.prepare('INSERT INTO customer_email_authorities VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id, actionId, actionFence, p.source_owner_id, p.source_kind, p.source_id, p.executor_id, p.draft_id, r.businessId, n.payload.account, n.payload.recipients[0], p.request_key, canonicalSha256(p), canonicalJson(t), canonicalJson({
+                const record = {id, action_id:actionId, action_fence:actionFence, source_owner_id:p.source_owner_id,
+                    source_kind:p.source_kind, source_id:p.source_id, executor_id:p.executor_id, draft_id:p.draft_id,
+                    business_id:r.businessId, account:n.payload.account, recipient:n.payload.recipients[0]!, request_key:p.request_key,
+                    request_hash:canonicalSha256(p), projection_json:canonicalJson(t), native_json:canonicalJson({
                     input: emailCaptureInput.parse(Object.fromEntries(Object.keys(emailCaptureInput.shape).map(k => [k, (p as unknown as Record<string, unknown>)[k]]))), contextRevision: n.contextRevision, inventoryHash: n.inventoryHash, source: n.source, native: n, source_capture: proof.wire
-                }), canonicalJson(p.review), stamp());
+                }), review_json:canonicalJson(p.review), created_at:stamp()};
+                const keys=Object.keys(record);
+                db.prepare(`INSERT INTO customer_email_authorities(${keys.join(',')},binding_hash) VALUES(${keys.map(()=>'?').join(',')},?)`)
+                    .run(...Object.values(record), canonicalSha256(record));
                 return result(row(id));
             }).immediate();
         },
@@ -275,7 +294,7 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
             const p = inputFor(g, JSON.parse(g.native_json).input.capture_id);
             const n = native.snapshot({
                 user, conversationId: r.sourceOwnerId
-            }, nativeInput(p));
+            }, nativeInput(p), false, g.id);
             return {
                 execute: false, authority_id: g.id, context_revision: n.contextRevision, inventory_hash: n.inventoryHash, records: n.inventory, unreviewed_media: n.unreviewedMedia, complete: true
             };
@@ -359,7 +378,7 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
             if (p.payload_hash !== projection(g).payloadHash || (kind === 'reserved' && !event(g.id, 'accepted')))
                 throw new BotError(409, 'Exact acceptance and full payload required');
             append(a, g, kind, p.request_key, {
-                payload_hash: p.payload_hash, capture_id: p.capture_id, idempotency_key: projection(g).idempotencyKey
+                payload_hash: p.payload_hash, capture_id: p.capture_id, idempotency_key: projection(g).idempotencyKey, full_review_material_hash: emailReviewMaterial(prepared.proof.wire)
             }, canonicalSha256(p));
             return result(g);
         }).immediate();

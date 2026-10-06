@@ -57,8 +57,7 @@ export function emailSourceIO(ctx: Pick<AppContext, 'db' | 'config' | 'projectDo
                 if (emailRegistrationCurrent(ctx.db, registration(r.id), Date.now()) !== regHash)
                     throw new BotError(403, 'Customer email registration drift');
                 validateEmailCapture(wire, p, n, r, principal, Date.now());
-                if (Date.now() - received > 5000 || Date.now() < received)
-                    throw new BotError(409, 'Customer email source read expired');
+                validateEmailReadWindow(received, Date.now());
             };
             assertFresh();
             return {
@@ -80,13 +79,29 @@ export function validateEmailCapture(w: EmailCapture, p: EmailCaptureInput, n: E
         throw new BotError(409, 'Complete unique native scope coverage required');
     for (const item of n.inventory) {
         const record = w.records.find(x => x.key === item.key);
-        if (!record || record.revision !== item.revision || ['blocking', 'unknown'].includes(record.relation) || (record.relation === 'current_action' && item.key !== `draft:${p.draft_id}`))
+        if (!record || (record.relation === 'completed_action' && !n.completedActionKeys.includes(item.key)) || record.revision !== item.revision || ['blocking', 'unknown'].includes(record.relation) || (record.relation === 'current_action' && item.key !== `draft:${p.draft_id}` && item.key !== n.currentAuthorityKey))
             throw new BotError(409, 'Unreviewed, overlapping or stale native scope remains blocking');
     }
-    if (w.records.find(x => x.key === `draft:${p.draft_id}`)?.relation !== 'current_action' || n.unreviewedMedia.length)
+    if (w.records.find(x => x.key === `draft:${p.draft_id}`)?.relation !== 'current_action' || (n.currentAuthorityKey && w.records.find(x=>x.key===n.currentAuthorityKey)?.relation !== 'current_action') || n.unreviewedMedia.length)
         throw new BotError(409, 'Current draft or actual native media coverage unavailable');
 }
 export function emailCaptureMatchesProjection(w: EmailCapture, t: EmailProjection) {
     if (w.materialHash !== t.materialHash || w.scopeHash !== t.scopeHash || w.identityHash !== t.identityHash || w.crossActionFenceHash !== t.crossActionFenceHash || w.canonicalCaseId !== t.canonicalCaseId || w.canonicalCustomerId !== t.canonicalCustomerId || w.canonicalOrderId !== t.canonicalOrderId || w.orderNumber !== t.orderNumber || w.shopifyOrderId !== t.shopifyOrderId)
         throw new BotError(409, 'Source material, identity, scope or duplicate fences changed');
+}
+
+/** Reinspection continuity: authenticated read envelope may renew, reviewed material
+ * may not. Sort record order only; revision, relation and closure remain exact pins.
+ * No expiry extension/lease replacement is silently adopted by semantic review. */
+export function emailReviewMaterial(w: EmailCapture, ownAuthorityKey?: string) {
+    const { captureId: _capture, observedAt: _observed, expiresAt: _expires,
+        snapshotHash: _snapshot, principalId: _reader, inventoryHash: _inventory,
+        records, ...material } = w;
+    return canonicalSha256({ ...material, records: records.filter(x => x.key !== ownAuthorityKey)
+        .sort((a,b) => a.key.localeCompare(b.key)) });
+}
+
+export function validateEmailReadWindow(received: number, now: number) {
+    if (!Number.isFinite(received) || !Number.isFinite(now) || now-received > 5000 || now < received)
+        throw new BotError(409, 'Customer email source read expired');
 }

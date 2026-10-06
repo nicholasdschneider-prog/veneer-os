@@ -115,7 +115,9 @@ export function vendorEmailService(db:Database.Database,verifyAttachments?:(a:Ac
  function read(a:Actor,id:string){const g=authority(a,id);return {execute:false as const,authority:g,target:target(g),events:db.prepare('SELECT * FROM bot_vendor_email_events WHERE authority_id=? ORDER BY rowid').all(g.id),idempotency_key:`veneer-vendor-email:${g.target_key}`};}
  // All existing native channels keep their own gates; exact known overlaps fail closed.
  function duplicates(a:Actor,s:Scope){
-  const c=owner(a),rows=db.prepare('SELECT d.payload_json,d.state,d.authorized_by,d.claim_key FROM bot_message_drafts d JOIN conversations c ON c.id=d.conversation_id WHERE c.business_team_id=?').all(c.business_team_id) as Array<{payload_json:string;state:string;authorized_by:number|null;claim_key:string|null}>;
+  const c=owner(a);
+  if(db.prepare('SELECT 1 FROM customer_email_overlap_locks WHERE business_id=? AND lower(account)=lower(?) AND lower(recipient)=lower(?)').get(c.business_team_id,s.account,s.recipient))throw new BotError(409,'Competing customer email authority or uncertain action fenced');
+  const rows=db.prepare('SELECT d.payload_json,d.state,d.authorized_by,d.claim_key FROM bot_message_drafts d JOIN compose_context_memberships c ON c.conversation_id=d.conversation_id WHERE c.business_id=?').all(c.business_team_id) as Array<{payload_json:string;state:string;authorized_by:number|null;claim_key:string|null}>;
   for(const d of rows){const p=JSON.parse(d.payload_json);if(p.channel==='email'&&p.account.toLowerCase()===s.account.toLowerCase()&&p.recipients.some((r:string)=>r.toLowerCase()===s.recipient.toLowerCase())&&(d.claim_key||d.authorized_by||['queued','sending','sent','uncertain'].includes(d.state)))throw new BotError(409,'Existing authorized or attempted email to this recipient requires reconciliation; no parallel vendor send');}
  }
  return {

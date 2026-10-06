@@ -5,7 +5,7 @@ export const emailId = z.string().uuid();
 export const emailKey = z.string().min(1).max(200).regex(/^[A-Za-z0-9:_.-]+$/);
 export const emailHash = z.string().regex(/^[a-f0-9]{64}$/);
 const time = z.string().datetime(), explanation = z.string().min(20).max(3000);
-export const EMAIL_CONTRACT = 'customer-email-direction-dispatch/v1' as const;
+export const EMAIL_CONTRACT = 'customer-email-direction-dispatch/v2' as const;
 export const emailInput = z.object({
     source_owner_id: emailId, source_kind: z.enum(['direct_message', 'result_reply']), source_id: emailId, executor_id: emailId, draft_id: emailId, draft_version: z.number().int().positive()
 }).strict();
@@ -21,7 +21,7 @@ export const emailReview = z.object({
         citation, classification: z.enum(['unrelated', 'status_only', 'supersedes', 'ambiguous']), explanation
     }).strict()).max(2000),
     records: z.array(z.object({
-        key: emailKey, revision: emailHash, classification: z.enum(['unrelated', 'current_action', 'blocking']), explanation
+        key: emailKey, revision: emailHash, classification: z.enum(['unrelated', 'current_action', 'completed_action', 'blocking']), explanation
     }).strict()).max(5000),
     body_parts: z.array(z.object({
         start: z.number().int().nonnegative(), end: z.number().int().positive(), human_ids: z.array(z.string().min(1)).min(1).max(100), evidence: explanation
@@ -57,17 +57,17 @@ export const emailRecord = z.object({
     key: emailKey, revision: emailHash
 }).strict();
 export const emailScopeRecord = emailRecord.extend({
-    relation: z.enum(['unrelated', 'current_action', 'blocking', 'unknown']), closureHash: emailHash
+    relation: z.enum(['unrelated', 'current_action', 'completed_action', 'blocking', 'unknown']), closureHash: emailHash
 }).strict();
 export const emailCapture = z.object({
-    schemaVersion: z.literal('customer-email-capture/v1'), captureId: emailId, registrationId: emailId, registrationHash: emailHash, sourceRegistrationHash: emailHash, guardManifestHash: emailHash, sourceArtifactHash: emailHash, runtime: emailRegistration.shape.runtime, businessId: emailId, accountId: emailKey, principalId: emailKey, executorPrincipalId: emailKey,
+    schemaVersion: z.literal('customer-email-capture/v2'), captureId: emailId, registrationId: emailId, registrationHash: emailHash, sourceRegistrationHash: emailHash, guardManifestHash: emailHash, sourceArtifactHash: emailHash, runtime: emailRegistration.shape.runtime, businessId: emailId, accountId: emailKey, principalId: emailKey, executorPrincipalId: emailKey,
     observedAt: time, expiresAt: time, complete: z.literal(true), unreviewedMedia: z.array(emailKey).length(0), canonicalCaseId: emailId, canonicalCustomerId: emailId, canonicalOrderId: emailId, orderNumber: emailKey, shopifyOrderId: emailKey, caseOwnerPrincipalId: emailKey, leaseId: emailKey, leaseExpiresAt: time,
     payloadHash: emailHash, payloadAccount: z.string().email(), recipient: z.string().email(), materialHash: emailHash, scopeHash: emailHash, identityHash: emailHash, contextRevision: emailHash, inventoryHash: emailHash, records: z.array(emailScopeRecord).max(5000),
     suppression: z.literal('clear'), duplicates: z.literal('clear'), ownership: z.literal('exclusive'), crossActionFenceHash: emailHash, sourceMaterial: z.record(z.string(), z.unknown()), snapshotHash: emailHash
 }).strict();
 export type EmailCapture = z.infer<typeof emailCapture>;
 export const emailProjection = z.object({
-    schemaVersion: z.literal(EMAIL_CONTRACT), authorityId: emailId, actionId: emailId, actionFence: emailHash, registrationId: emailId, registrationHash: emailHash, contractHash: emailHash, sourceRegistrationHash: emailHash, guardManifestHash: emailHash, sourceArtifactHash: emailHash, nativeArtifactHash: emailHash, businessId: emailId, sourceOwnerId: emailId, sourceKind: emailInput.shape.source_kind, sourceId: emailId, sourceHash: emailHash, contextRevision: emailHash, inventoryHash: emailHash, executorId: emailId, executorPrincipalId: emailKey, draftId: emailId, draftVersion: z.number().int().positive(), payload: exactDraftPayload, payloadHash: emailHash, canonicalCaseId: emailId, canonicalCustomerId: emailId, canonicalOrderId: emailId, orderNumber: emailKey, shopifyOrderId: emailKey, sourceAccountId: emailKey, materialHash: emailHash, scopeHash: emailHash, identityHash: emailHash, crossActionFenceHash: emailHash, idempotencyKey: emailKey, expiresAt: time
+    schemaVersion: z.literal(EMAIL_CONTRACT), authorityId: emailId, actionId: emailId, actionFence: emailHash, registrationId: emailId, registrationHash: emailHash, contractHash: emailHash, sourceRegistrationHash: emailHash, guardManifestHash: emailHash, sourceArtifactHash: emailHash, nativeArtifactHash: emailHash, businessId: emailId, sourceOwnerId: emailId, sourceKind: emailInput.shape.source_kind, sourceId: emailId, sourceHash: emailHash, contextRevision: emailHash, inventoryHash: emailHash, executorId: emailId, executorPrincipalId: emailKey, draftId: emailId, draftVersion: z.number().int().positive(), payload: exactDraftPayload, payloadHash: emailHash, reviewMaterialHash: emailHash, canonicalCaseId: emailId, canonicalCustomerId: emailId, canonicalOrderId: emailId, orderNumber: emailKey, shopifyOrderId: emailKey, sourceAccountId: emailKey, materialHash: emailHash, scopeHash: emailHash, identityHash: emailHash, crossActionFenceHash: emailHash, idempotencyKey: emailKey, expiresAt: time
 }).strict();
 export type EmailProjection = z.infer<typeof emailProjection>;
 export const emailAssociation = z.object({
@@ -121,6 +121,6 @@ export function emailSchemaManifest(schema: z.ZodTypeAny): unknown {
     throw new Error('Unsupported customer email contract schema');
 }
 export const EMAIL_WIRE_MANIFEST = {
-    contract: EMAIL_CONTRACT, projection: emailSchemaManifest(emailProjection), capture: emailSchemaManifest(emailCapture), intent: emailSchemaManifest(emailIntent), association: emailSchemaManifest(emailAssociation), encoding: 'canonical-json-utf8-sha256', replay: 'never-entitles', nativeClaim: 'reserve-only'
+    contract: EMAIL_CONTRACT, botAPI: Object.fromEntries(Object.entries({input:emailInput,captureInput:emailCaptureInput,bind:emailBind,consume:emailConsume,review:emailReview,lookup:emailLookup}).map(([k,v])=>[k,emailSchemaManifest(v)])), projection: emailSchemaManifest(emailProjection), capture: emailSchemaManifest(emailCapture), intent: emailSchemaManifest(emailIntent), association: emailSchemaManifest(emailAssociation), encoding: 'canonical-json-utf8-sha256', replay: 'never-entitles', nativeClaim: 'reserve-only', reviewContinuity: 'reinspect-identical-semantic-material-with-fresh-capture', inventory: 'complete-all-version-with-exact-own-creation-transition', overlapRelease: 'authenticated-exact-SENT_ACCEPTED-only'
 };
 export const EMAIL_CONTRACT_HASH = canonicalSha256(EMAIL_WIRE_MANIFEST);

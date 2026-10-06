@@ -1,3 +1,9 @@
+import {createBotService,proposalSchema} from '../src/bots/service.js';
+import {approvedMessageSchema} from '../src/bots/draftPayload.js';
+import {messageDelegationService} from '../src/bots/messageDelegation.js';
+import {routinePolicyService} from '../src/bots/routinePolicies.js';
+import {routineExecutionService,routineCaptureSchema} from '../src/bots/routineExecution.js';
+import {vendorEmailService,vendorEmailScope,vendorEmailReview,vendorEmailCheck} from '../src/bots/vendorEmail.js';
 import { CUSTOMER_EMAIL_NATIVE_ARTIFACT_HASH, CUSTOMER_EMAIL_NATIVE_ARTIFACT_FILES } from '../src/bots/customerEmailArtifact.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,7 +20,7 @@ import { emailEnrollment, emailBearer, loadEmailRegistry } from '../src/bots/cus
 import { customerEmailRoutes, customerEmailVerifierRoutes } from '../src/bots/customerEmailRoutes.js';
 import { canonicalSha256 } from '../src/bots/canonical.js';
 import { EMAIL_CONTRACT_HASH, emailRegistration, emailCapture, emailIntent, type EmailRegistration } from '../src/bots/customerEmailContract.js';
-import type { EmailIO } from '../src/bots/customerEmailIO.js';
+import {validateEmailReadWindow, type EmailIO} from '../src/bots/customerEmailIO.js';
 import type { Actor } from '../src/bots/service.js';
 import type { UserRow } from '../src/db/db.js';
 import type { AppContext } from '../src/context.js';
@@ -78,7 +84,7 @@ describe('staged native customer email direction', () => {
                 projectId: uuid(), environmentId: uuid(), serviceId: uuid()
             }, sourceCredential: credential('SAGE'), executorCredential: credential('GRANT'), serviceReadCredential: credential('SERVICE'), servicePrincipalId: 'fixture:service', serviceBearerHash: crypto.createHash('sha256').update('fixture-service-token-'.repeat(3)).digest('hex'), nativeAudience: 'dedicated-email-aud', cfClientId: 'dedicated-email-client', contractHash: EMAIL_CONTRACT_HASH, sourceArtifactHash: hash(), nativeArtifactHash: CUSTOMER_EMAIL_NATIVE_ARTIFACT_HASH, guardManifestHash: hash(), sourceRegistrationHash: hash(), custodyReceipt: 'fixture-custody', acceptanceReceipt: 'fixture-adoption', expiresAt: new Date(now + 86400000).toISOString(), credentialExpiresAt: new Date(now + 86400000).toISOString(), readbackExpiresAt: new Date(now + 86400000).toISOString(), custodyExpiresAt: new Date(now + 86400000).toISOString(), acceptedAt: new Date(now - 10000).toISOString()
         });
-        db.prepare('INSERT INTO customer_email_enrollments VALUES(?,?,?,?,?,?)').run(r.id, canonicalSha256(r), 1, 'fixture-enrollment', '{}', new Date(now).toISOString());
+        db.prepare('INSERT INTO customer_email_enrollments VALUES(?,?,?,?,?,?)').run(r.id, canonicalSha256(r), 1, 'fixture-enrollment', JSON.stringify(r), new Date(now).toISOString());
         wireIntent = null;
         alter = () => {
         };
@@ -89,8 +95,8 @@ describe('staged native customer email direction', () => {
                 if (sourceError)
                     throw Error('Fixture source unavailable');
                 const raw: Record<string, unknown> = {
-                    schemaVersion: 'customer-email-capture/v1', captureId: p.capture_id, registrationId: r.id, registrationHash: canonicalSha256(r), sourceRegistrationHash: r.sourceRegistrationHash, guardManifestHash: r.guardManifestHash, sourceArtifactHash: r.sourceArtifactHash, runtime: r.runtime, businessId: r.businessId, accountId: r.sourceAccountId, principalId: actor?.conversationId === owner ? r.sourcePrincipalId : r.executorPrincipalId, executorPrincipalId: r.executorPrincipalId, observedAt: new Date(now).toISOString(), expiresAt: new Date(now + 15000).toISOString(), complete: true, unreviewedMedia: [], canonicalCaseId: p.canonical_case, canonicalCustomerId: p.canonical_customer, canonicalOrderId: p.canonical_order, orderNumber: '123', shopifyOrderId: 'fixture123', caseOwnerPrincipalId: r.executorPrincipalId, leaseId: 'fixture-lease', leaseExpiresAt: new Date(now + 30000).toISOString(), payloadHash: n.payloadHash, payloadAccount: n.payload.account, recipient: n.payload.recipients[0], materialHash: hash(), scopeHash: hash(), identityHash: hash(), contextRevision: n.contextRevision, inventoryHash: n.inventoryHash, records: n.inventory.map(x => ({
-                        ...x, relation: x.key === `draft:${draft}` ? 'current_action' : 'unrelated', closureHash: hash()
+                    schemaVersion: 'customer-email-capture/v2', captureId: p.capture_id, registrationId: r.id, registrationHash: canonicalSha256(r), sourceRegistrationHash: r.sourceRegistrationHash, guardManifestHash: r.guardManifestHash, sourceArtifactHash: r.sourceArtifactHash, runtime: r.runtime, businessId: r.businessId, accountId: r.sourceAccountId, principalId: actor?.conversationId === owner ? r.sourcePrincipalId : r.executorPrincipalId, executorPrincipalId: r.executorPrincipalId, observedAt: new Date(now).toISOString(), expiresAt: new Date(now + 15000).toISOString(), complete: true, unreviewedMedia: [], canonicalCaseId: p.canonical_case, canonicalCustomerId: p.canonical_customer, canonicalOrderId: p.canonical_order, orderNumber: '123', shopifyOrderId: 'fixture123', caseOwnerPrincipalId: r.executorPrincipalId, leaseId: 'fixture-lease', leaseExpiresAt: new Date(Date.parse(r.acceptedAt) + 900000).toISOString(), payloadHash: n.payloadHash, payloadAccount: n.payload.account, recipient: n.payload.recipients[0], materialHash: hash(), scopeHash: hash(), identityHash: hash(), contextRevision: n.contextRevision, inventoryHash: n.inventoryHash, records: n.inventory.map(x => ({
+                        ...x, relation: x.key === `draft:${p.draft_id}` || x.key === n.currentAuthorityKey ? 'current_action' : n.completedActionKeys.includes(x.key) ? 'completed_action' : 'unrelated', closureHash: hash()
                     })), suppression: 'clear', duplicates: 'clear', ownership: 'exclusive', crossActionFenceHash: hash(), sourceMaterial: {
                         fixture: 'complete canonical evidence'
                     }
@@ -127,7 +133,7 @@ describe('staged native customer email direction', () => {
                         kind: m.kind, id: m.id, text: m.text
                     }, classification: 'status_only' as const, explanation: explain
                 })), records: i.source.records.map(m => ({
-                    key: m.key, revision: m.revision, classification: m.relation as 'unrelated' | 'current_action', explanation: explain
+                    key: m.key, revision: m.revision, classification: m.relation as 'unrelated' | 'current_action' | 'completed_action', explanation: explain
                 })), body_parts: [{
                         start: 0, end: i.native.payload.body.length, human_ids: [source], evidence: explain
                     }], unresolved_choices: []
@@ -266,7 +272,7 @@ describe('staged native customer email direction', () => {
         })).rejects.toThrow();
     });
     it('NO_EFFECT and revoked/expired reservations retain all action/source/recipient fences', async () => {
-        const { id } = await setup();
+        const { id, p: originalBind } = await setup();
         await reserve(id);
         const p = await association(id), x = await s.associate(r.id, p);
         wireIntent = {
@@ -281,7 +287,7 @@ describe('staged native customer email direction', () => {
         now += 3600000;
         expect((await s.associate(r.id, p)).dispatchEntitlement).toBe(false);
         await expect(s.bind(a, {
-            ...await prepared(), request_key: 'replacement'
+            ...originalBind, request_key: 'replacement'
         })).rejects.toThrow('fence');
     });
     it('requires original source and every later human/result/voice/correction and all exact body spans', async () => {
@@ -491,6 +497,9 @@ describe('staged native customer email direction', () => {
         const f = botFeatureCatalog(now).features.find(x => x.id === 'customer-email-direction')!;
         expect(f.limits).toContain('Staged');
         expect(f.agent).toContain('Nick');
+        expect(f.agent).toContain('review_material_hash');
+        expect(f.agent).toContain('all-version SMS');
+        expect(f.steps.join(' ')).toContain('dispatch/v2');
         expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
         for (const elevated of [false, true])
             expect(coreVeneerRules({
@@ -560,12 +569,12 @@ describe('staged native customer email direction', () => {
                 id: orderId
             }
         }), '{}');
-        expect(() => db.prepare('INSERT INTO return_bridge_claims VALUES(?,?,?,?,?,?)').run(uuid(), mapping, decision, 'fixture-return-claim', hash(), new Date(now).toISOString())).toThrow('shared native');
+        expect(() => db.prepare('INSERT INTO return_bridge_claims VALUES(?,?,?,?,?,?)').run(uuid(), mapping, decision, 'fixture-return-claim', hash(), new Date(now).toISOString())).toThrow('fenced');
         expect(() => db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(uuid(), 'fixture-sms', owner, executor, source, draft, 'fixture-sms', hash(), JSON.stringify({
             scope: {
                 canonical_case: caseId
             }
-        }), r.expiresAt)).toThrow('shared native');
+        }), r.expiresAt)).toThrow('fenced');
         expect(s.read(grant, {
             authority_id: id
         }).execute).toBe(false);
@@ -611,6 +620,280 @@ describe('staged native customer email direction', () => {
       const decision=uuid(),event=uuid();db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,?,?,?,?,2)").run(decision,owner,'coarse-fixture','coarse-fixture','{}');
       db.prepare('INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,payload_json,request_key,created_at) VALUES(?,?,1,?,2,?,?,?)').run(event,decision,'discussion',JSON.stringify({text:'Hold the email'}),'coarse-event',new Date(now).toISOString().slice(0,19).replace('T',' '));now+=1000;
       const p=await prepared();expect(p.review.later_context.some(x=>x.citation.id===event)).toBe(true);p.review.later_context=p.review.later_context.filter(x=>x.citation.id!==event);await expect(s.bind(a,p)).rejects.toThrow('every later');
+    });
+    // Build605 regression fixtures: every identity and effect is synthetic.
+    async function vendorPrepared() {
+        const actor={...a,conversationId:other}, service=vendorEmailService(db);
+        const id=uuid(); human(id,'Compose and send this separate fixture reply.',other,new Date(now-1000).toISOString());
+        const scope=vendorEmailScope.parse({executor_conversation_id:other,channel:'email',account:r.payloadAccount,recipient:'customer@example.test',thread_id:'fixture-thread',in_reply_to:'fixture-message',subject:'Fixture distinct reply',body:'Fixture reply',attachments:[]});
+        const i=await service.inspect(actor,{source_kind:'direct_message',source_id:id,scope});
+        const review=vendorEmailReview.parse({reviewed_full_context:true,interpretation:'unconditional_compose_and_send',instruction:{kind:i.source.kind,id:i.source.id,text:i.source.text},explanation:explain,scope_explanation:explain,later_context:i.later_human_context.map(m=>({citation:{kind:m.kind,id:m.id,text:m.text},classification:'status_only',explanation:explain})),records:[...i.context.drafts,...i.context.decisions].map(m=>({kind:m.kind,id:m.id,classification:'unrelated',explanation:explain})),body_parts:[{start:0,end:scope.body.length,human_ids:[id],evidence:explain}],unresolved_choices:[]});
+        const source_check=vendorEmailCheck.parse({observed_at:new Date().toISOString(),payload_hash:i.payload_hash,account_thread_recipient_verified:true,permissions_verified:true,attachments_verified:true,no_prior_or_uncertain_send:true,exclusive_source_ownership:true,evidence:explain});
+        return {actor,service,source_hash:i.source_hash,p:{source_kind:'direct_message' as const,source_id:id,scope,inspection_hash:i.inspection_hash,review,source_check,request_key:'fixture-vendor'}};
+    }
+    function insertLegacyVendor(p:Awaited<ReturnType<typeof vendorPrepared>>['p'],sourceHash:string) {
+        // Emulate an existing pre-correction coexistence record. Restore the guard
+        // before testing the genuine service claim and its transaction boundaries.
+        const sql=(db.prepare("SELECT sql FROM sqlite_master WHERE name='customer_email_vendor_bind'").get() as {sql:string}).sql;
+        db.exec('DROP TRIGGER customer_email_vendor_bind');
+        const id=uuid(),key=uuid();
+        db.prepare('INSERT INTO bot_vendor_email_authorities(id,conversation_id,executor_user_id,business_id,source_kind,source_id,author_id,target_key,account,recipient,scope_json,payload_hash,source_hash,request_key,request_hash,review_json) VALUES(?,?,1,?,?,?,2,?,?,?,?,?,?,?,?,?)').run(id,other,r.businessId,p.source_kind,p.source_id,key,p.scope.account,p.scope.recipient,JSON.stringify(p.scope),p.source_check.payload_hash,sourceHash,'legacy',hash(),JSON.stringify(p));
+        db.prepare('INSERT INTO bot_vendor_email_targets(target_key,authority_id) VALUES(?,?)').run(key,id);
+        db.exec(sql);
+        return {id,key};
+    }
+    async function acceptedFixture(id:string, priorUnknown=false) {
+        await reserve(id);const p=await association(id),x=await s.associate(r.id,p),t=s.read(grant,{authority_id:id}).authority;
+        if(priorUnknown){wireIntent={...wireIntent!,state:'UNKNOWN',preProviderCommitted:true,associationId:x.association_id};await s.receipt(grant,{authority_id:id,claim_id:p.claim_id});}
+        wireIntent={...wireIntent!,state:'SENT_ACCEPTED',preProviderCommitted:true,associationId:x.association_id,receipt:{provider:'gmail',providerMessageId:uuid(),messageId:uuid(),account:t.payload.account,recipient:t.payload.recipients[0]!,subject:t.payload.subject,body:t.payload.body,attachments:[],cc:[],bcc:[],acceptedAt:new Date(now).toISOString(),payloadHash:t.payloadHash,idempotencyKey:t.idempotencyKey}};
+        await s.receipt(grant,{authority_id:id,claim_id:p.claim_id});return p;
+    }
+    it.each(['bound','associated','UNKNOWN'] as const)('customer %s first denies genuine vendor bind and legacy vendor claim without writes',async state=>{
+        const v=await vendorPrepared();const {id}=await setup();
+        if(state!=='bound'){await reserve(id);const assoc=await association(id),x=await s.associate(r.id,assoc);if(state==='UNKNOWN'){wireIntent={...wireIntent!,state:'UNKNOWN',preProviderCommitted:true,associationId:x.association_id};await s.receipt(grant,{authority_id:id,claim_id:assoc.claim_id});}}
+        await expect(v.service.bind(v.actor,v.p)).rejects.toThrow('customer email');
+        expect(db.prepare('SELECT count(*) n FROM bot_vendor_email_authorities').get()).toEqual({n:0});
+        const legacy=insertLegacyVendor(v.p,v.source_hash);
+        await expect(v.service.claim(v.actor,{authority_id:legacy.id,claim_key:'legacy-claim',inspection_hash:v.p.inspection_hash,review:v.p.review,source_check:v.p.source_check})).rejects.toThrow('customer email');
+        expect(db.prepare('SELECT count(*) n FROM bot_vendor_email_events').get()).toEqual({n:0});
+        expect((db.prepare('SELECT claim_key FROM bot_vendor_email_targets WHERE target_key=?').get(legacy.key) as {claim_key:null}).claim_key).toBeNull();
+        expect(()=>db.prepare("UPDATE bot_vendor_email_targets SET claim_key='raw',state='claimed' WHERE target_key=?").run(legacy.key)).toThrow('fenced');
+        expect(s.read(grant,{authority_id:id}).execute).toBe(false);
+    });
+    it.each(['bound','claimed','uncertain'])('vendor %s first denies customer bind without authority insertion',async state=>{
+        const v=await vendorPrepared(),g=await v.service.bind(v.actor,v.p);
+        if(state!=='bound'){await v.service.claim(v.actor,{authority_id:g.authority.id,claim_key:'vendor-claim',inspection_hash:v.p.inspection_hash,review:v.p.review,source_check:v.p.source_check});}
+        if(state==='uncertain')v.service.receipt(v.actor,{authority_id:g.authority.id,claim_key:'vendor-claim',request_key:'uncertain',state:'uncertain',evidence:explain});
+        await expect(s.inspect(a,captureInput())).rejects.toThrow('vendor');
+        expect(db.prepare('SELECT count(*) n FROM customer_email_authorities').get()).toEqual({n:0});
+    });
+    it.each(['bot_vendor_email_authorities','bot_vendor_email_targets','bot_vendor_email_sources'])('vendor bind %s persistence failure rolls back all fences atomically',async table=>{
+        const v=await vendorPrepared();db.exec(`CREATE TRIGGER fixture_fail BEFORE INSERT ON ${table} BEGIN SELECT RAISE(ABORT,'fixture persistence failure'); END`);
+        await expect(v.service.bind(v.actor,v.p)).rejects.toThrow('persistence failure');
+        for(const t of ['bot_vendor_email_authorities','bot_vendor_email_targets','bot_vendor_email_sources','bot_vendor_email_events'])expect(db.prepare(`SELECT count(*) n FROM ${t}`).get()).toEqual({n:0});
+        expect((await setup()).g.execute).toBe(false);
+    });
+    it.each(['event','target'])('vendor claim %s persistence failure rolls back consumption and keeps competitor fence',async boundary=>{
+        const v=await vendorPrepared(),g=await v.service.bind(v.actor,v.p);
+        db.exec(boundary==='event'?"CREATE TRIGGER fixture_fail BEFORE INSERT ON bot_vendor_email_events BEGIN SELECT RAISE(ABORT,'fixture persistence failure'); END":"CREATE TRIGGER fixture_fail BEFORE UPDATE OF claim_key ON bot_vendor_email_targets BEGIN SELECT RAISE(ABORT,'fixture persistence failure'); END");
+        await expect(v.service.claim(v.actor,{authority_id:g.authority.id,claim_key:'vendor-claim',inspection_hash:v.p.inspection_hash,review:v.p.review,source_check:v.p.source_check})).rejects.toThrow('persistence failure');
+        expect(db.prepare('SELECT count(*) n FROM bot_vendor_email_events').get()).toEqual({n:0});
+        expect(v.service.read(v.actor,g.authority.id).target.claim_key).toBeNull();
+        await expect(s.inspect(a,captureInput())).rejects.toThrow('vendor');
+    });
+    it('native bind persistence failure leaves no phantom recipient lock',async()=>{
+        const p=await prepared();db.exec("CREATE TRIGGER fixture_fail BEFORE INSERT ON customer_email_authorities BEGIN SELECT RAISE(ABORT,'fixture persistence failure'); END");
+        await expect(s.bind(a,p)).rejects.toThrow('persistence failure');
+        expect(db.prepare('SELECT count(*) n FROM customer_email_overlap_locks').get()).toEqual({n:0});
+        const v=await vendorPrepared();expect((await v.service.bind(v.actor,v.p)).execute).toBe(false);
+    });
+    it('authenticated acceptance permits a genuinely distinct later reply, never original source/draft/key replay',async()=>{
+        const {id,p}=await setup();const claim=await acceptedFixture(id,true);
+        expect(db.prepare('SELECT count(*) n FROM customer_email_overlap_locks').get()).toEqual({n:0});
+        expect(s.read(grant,{authority_id:id}).receipts).toHaveLength(2); // UNKNOWN audit retained.
+        await expect(s.bind(a,{...p,request_key:'original-retry'})).rejects.toThrow('Permanent original');
+        expect(()=>db.prepare("UPDATE bot_message_drafts SET claim_key='ordinary-original',state='sending' WHERE id=?").run(draft)).toThrow('fenced');
+        expect((await s.associate(r.id,claim)).dispatchEntitlement).toBe(false);
+        const oldDraft=draft;source=uuid();human(source,'Compose and send the genuinely distinct later reply.',owner);
+        draft=communicationService(db).saveDraft(grant,executor,'later-reply',{...s.read(grant,{authority_id:id}).authority.payload,body:'Genuinely distinct authorized later reply.'}).id;
+        const later=await prepared();later.request_key='later-action';expect(later.review.records.find(x=>x.key===`customer_email:${id}`)?.classification).toBe('completed_action');
+        const g=await s.bind(a,later);expect(g.authority.actionFence).not.toBe(s.read(grant,{authority_id:id}).authority.actionFence);expect(g.authority.draftId).not.toBe(oldDraft);
+        await reserve(g.authority_id);expect(db.prepare('SELECT count(*) n FROM customer_email_authorities').get()).toEqual({n:2});
+        expect(s.read(grant,{authority_id:id}).receipts).toHaveLength(2);
+    });
+    it('only authenticated saved positive receipt releases overlap; lost receipt save keeps overlap blocked',async()=>{
+        const {id}=await setup();await reserve(id);const p=await association(id),x=await s.associate(r.id,p),t=s.read(grant,{authority_id:id}).authority;
+        wireIntent={...wireIntent!,state:'SENT_ACCEPTED',associationId:x.association_id,preProviderCommitted:true,receipt:{provider:'gmail',providerMessageId:uuid(),messageId:uuid(),account:t.payload.account,recipient:t.payload.recipients[0]!,subject:t.payload.subject,body:t.payload.body,attachments:[],cc:[],bcc:[],acceptedAt:new Date(now).toISOString(),payloadHash:t.payloadHash,idempotencyKey:t.idempotencyKey}};
+        db.exec("CREATE TRIGGER fixture_fail BEFORE INSERT ON customer_email_readbacks BEGIN SELECT RAISE(ABORT,'fixture loss'); END");
+        await expect(s.receipt(grant,{authority_id:id,claim_id:p.claim_id})).rejects.toThrow('loss');
+        expect(db.prepare('SELECT count(*) n FROM customer_email_overlap_locks').get()).toEqual({n:1});
+        db.exec('DROP TRIGGER fixture_fail');await s.receipt(grant,{authority_id:id,claim_id:p.claim_id});expect(db.prepare('SELECT count(*) n FROM customer_email_overlap_locks').get()).toEqual({n:0});
+    });
+    it.each(['bound','UNKNOWN','NO_EFFECT','revoked','expired'])('%s never releases recipient/order overlap for distinct later action',async state=>{
+        const {id}=await setup();
+        if(state==='UNKNOWN'||state==='NO_EFFECT'){await reserve(id);const p=await association(id),x=await s.associate(r.id,p);wireIntent={...wireIntent!,state,associationId:x.association_id};await s.receipt(grant,{authority_id:id,claim_id:p.claim_id});}
+        if(state==='revoked')s.revoke(a,{authority_id:id,request_key:'revoke',reason:explain});
+        if(state==='expired')now+=1800001;
+        expect(db.prepare('SELECT count(*) n FROM customer_email_overlap_locks').get()).toEqual({n:1});
+        const v=await vendorPrepared();await expect(v.service.bind(v.actor,v.p)).rejects.toThrow('customer email');
+    });
+    it('pre-bind semantic review survives supported reinspection with fresh envelope after minutes',async()=>{
+        const p=await prepared(),i=await s.inspect(a,{...input(),registration_id:p.registration_id,capture_id:p.capture_id,canonical_case:p.canonical_case,canonical_customer:p.canonical_customer,canonical_order:p.canonical_order});now+=120000;
+        const renewed={...captureInput(),capture_id:uuid()},next=await s.inspect(a,renewed);
+        expect(next.inspection_hash).toBe(i.inspection_hash);expect(next.review_material_hash).toBe(i.review_material_hash);expect(next.source.snapshotHash).not.toBe(i.source.snapshotHash);
+        const bound=await s.bind(a,{...renewed,inspection_hash:next.inspection_hash,review:p.review,request_key:p.request_key});expect(bound.execute).toBe(false);await reserve(bound.authority_id);
+    });
+    it.each(['materialHash','identityHash','scopeHash','crossActionFenceHash','leaseId','leaseExpiresAt','sourceMaterial','closure','relation','coverage'])('pre-bind renewal rejects reviewed %s drift',async field=>{
+        const p=await prepared();now+=1000;alter=w=>{
+            if(field==='closure')(w.records as Array<{closureHash:string}>)[0]!.closureHash='b'.repeat(64);
+            else if(field==='relation')(w.records as Array<{relation:string}>)[0]!.relation='blocking';
+            else if(field==='coverage')(w.records as unknown[]).pop();
+            else w[field]=field==='sourceMaterial'?{fixture:'changed material'}:field==='leaseId'?'different-lease':field==='leaseExpiresAt'?new Date(now+20000).toISOString():'b'.repeat(64);
+        };
+        await expect(s.bind(a,{...p,capture_id:uuid()})).rejects.toThrow();expect(db.prepare('SELECT count(*) n FROM customer_email_authorities').get()).toEqual({n:0});
+    });
+    it.each(['human','ACL','payload','registration'])('pre-bind fresh renewal rejects %s drift even with original semantic review',async field=>{
+        const p=await prepared();
+        if(field==='human')human(uuid(),'Hold this message.');
+        if(field==='ACL')db.prepare("UPDATE conversations SET visibility='private' WHERE id=?").run(executor);
+        if(field==='payload'){const payload=s.context(a,input()).payload;db.prepare('UPDATE bot_message_drafts SET payload_json=? WHERE id=?').run(JSON.stringify({...payload,body:payload.body+'Changed'}),draft);}
+        if(field==='registration')r={...r,revision:2};
+        await expect(s.bind(a,{...p,capture_id:uuid()})).rejects.toThrow();
+    });
+    it.each(['oldCapture','postRead'])('fresh review continuity never weakens %s timing bound',async mode=>{
+        const p=await prepared();
+        if(mode==='oldCapture')alter=w=>{w.observedAt=new Date(now-15001).toISOString();w.expiresAt=new Date(now-1).toISOString();};
+        else sourceFresh=false;
+        await expect(s.bind(a,{...p,capture_id:uuid()})).rejects.toThrow();
+    });
+    it('current authority is fully inventoried; only exact own acceptance/reservation/receipt bookkeeping is stable',async()=>{
+        const {id}=await setup(),view=()=>s.serviceContext(r.id,id),before=view();
+        expect(before.records.some(x=>x.key===`customer_email:${id}`)).toBe(true);
+        await acceptedFixture(id,true);expect(view().inventory_hash).toBe(before.inventory_hash);
+        s.revoke(a,{authority_id:id,request_key:'revoke',reason:explain});expect(view().inventory_hash).not.toBe(before.inventory_hash);
+    });
+    it.each(['accepted','reserved','associated','readback','revoked'])('competing customer authority %s audit always changes inventory',async change=>{
+        const {id}=await setup(),view=()=>s.context(a,input()).inventoryHash,before=view();
+        if(change==='revoked')s.revoke(a,{authority_id:id,request_key:'revoke',reason:explain});
+        else if(change==='accepted')await s.accept(grant,consume(id,'accept'));
+        else if(change==='reserved')await reserve(id);
+        else {await reserve(id);const p=await association(id),x=await s.associate(r.id,p);if(change==='readback'){wireIntent={...wireIntent!,state:'UNKNOWN',associationId:x.association_id};await s.receipt(grant,{authority_id:id,claim_id:p.claim_id});}}
+        expect(view()).not.toBe(before);
+    });
+    it('corrected authority integrity detects changed original row even if immutable trigger is bypassed in a fixture',async()=>{
+        const {id}=await setup();db.exec('DROP TRIGGER customer_email_authorities_no_update');db.prepare("UPDATE customer_email_authorities SET review_json='{}' WHERE id=?").run(id);
+        expect(()=>s.read(grant,{authority_id:id})).toThrow('integrity');
+    });
+    it.each(['lineage','dispatch','association','receipt','scope','scope_revocation','event'])('all-version SMS %s is inventoried and invalidates review',async change=>{
+        const sms=uuid(),smsSource=uuid();human(smsSource,'Fixture independent SMS direction.',other,new Date(now-2000).toISOString());
+        db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(sms,uuid(),other,other,smsSource,draft,'sms',hash(),JSON.stringify({version:'fixture-correction-v2',scope:{canonical_case:uuid()}}),r.expiresAt);
+        const dispatch=()=>db.prepare('INSERT INTO bot_composed_sms_dispatch_authorities VALUES(?,?,?,?,?,?,?)').run(sms,uuid(),r.id,hash(),'{}',r.expiresAt,r.expiresAt);
+        const associate=()=>{dispatch();const id=uuid();db.prepare('INSERT INTO bot_composed_sms_associations VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id,sms,uuid(),uuid(),r.id,uuid(),'sms-associate',hash(),hash(),'{}',new Date(now).toISOString(),r.expiresAt);return id;};
+        const scope=()=>{const id=uuid();db.prepare('INSERT INTO compose_scope_reviews(id,authority_id,owner_id,request_key,request_hash,context_revision,evidence_json) VALUES(?,?,?,?,?,?,?)').run(id,sms,other,'scope',hash(),hash(),'{}');return id;};
+        // Start after prerequisite records so each individual surface is the drift.
+        const assoc=change==='receipt'?associate():null,review=change==='scope_revocation'?scope():null;
+        const p=await prepared(),before=s.context(a,input()).inventoryHash;
+        if(change==='lineage')db.prepare('INSERT INTO compose_action_lineages VALUES(?,?,?,?,?,?)').run(hash(),uuid(),r.businessId,uuid(),sms,new Date(now).toISOString());
+        if(change==='dispatch')dispatch();if(change==='association')associate();
+        if(change==='receipt')db.prepare('INSERT INTO bot_composed_sms_service_receipts VALUES(?,?,?,?,?,?)').run(assoc,r.id,'{"state":"UNKNOWN"}','fixture-account',uuid(),new Date(now).toISOString());
+        if(change==='scope')scope();if(change==='scope_revocation')db.prepare('INSERT INTO compose_scope_revocations VALUES(?,?,?)').run(review,'Fixture revoke',new Date(now).toISOString());
+        if(change==='event')db.prepare('INSERT INTO bot_composed_sms_events(authority_id,kind,actor_id,actor_conversation_id,request_key,payload_json) VALUES(?,\'unknown\',1,?,?,?)').run(sms,other,'unknown','{}');
+        expect(s.context(a,input()).inventoryHash).not.toBe(before);await expect(s.bind(a,p)).rejects.toThrow('Inspection changed');
+    });
+
+    it.each(['closure','relation','lease','material'])('accepted full own-authority %s pin cannot drift before claim',async drift=>{
+        const {id}=await setup();await s.accept(grant,consume(id,'accept'));
+        alter=w=>{if(drift==='closure'||drift==='relation'){const record=(w.records as Array<{key:string;closureHash:string;relation:string}>).find(x=>x.key===`customer_email:${id}`)!;if(drift==='closure')record.closureHash='b'.repeat(64);else record.relation='unrelated';}else if(drift==='lease')w.leaseId='changed-lease';else w.sourceMaterial={fixture:'changed'};};
+        await expect(s.claim(grant,consume(id,'claim'))).rejects.toThrow();expect(s.read(grant,{authority_id:id}).reservation).toBeNull();
+    });
+    it('production post-read bound is exactly five seconds, finite and monotonic',()=>{
+        expect(()=>validateEmailReadWindow(now,now+5000)).not.toThrow();
+        for(const n of [now+5001,now-1,NaN,Infinity])expect(()=>validateEmailReadWindow(now,n)).toThrow('expired');
+    });
+
+    it('technical customer enrollment audit revision is part of complete inventory',async()=>{
+        const before=s.context(a,input()).inventoryHash;
+        db.prepare('INSERT INTO customer_email_enrollment_revocations VALUES(?,?,?,?)').run(r.id,1,'Fixture withdrawal',new Date(now).toISOString());
+        expect(s.context(a,input()).inventoryHash).not.toBe(before);
+        await expect(s.inspect(a,captureInput())).rejects.toThrow('CUSTODY');
+    });
+    function readyOrdinary(kind:'ordinary'|'delegated') {
+        const actor={...a,conversationId:other}, comm=communicationService(db), payload={...s.context(a,input()).payload,body:'Independent synthetic '+kind+' reply.',ticket:caseId};
+        let id:string,checks:unknown;
+        if(kind==='ordinary'){
+            const d=comm.saveDraft(actor,other,'ordinary-'+uuid(),payload);
+            comm.mutateDraft({user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow},d.id,d.version,'send');id=d.id;
+        }else{
+            const bots=createBotService(db),bridge=messageDelegationService(db),scope=approvedMessageSchema.parse({canonical_case:caseId,executor_conversation_id:other,payload});
+            const d=bots.raise(actor,{source_key:uuid(),proposal_key:uuid(),proposal:proposalSchema.parse({question:'Send this exact synthetic reply?',recommendation:'One separate synthetic message.',consequence:'Fixture only.',blocked_action:'Exact synthetic customer-message scope; no real send.',assignee_id:2,message_delivery:scope})});
+            bots.answer({user:db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow},d.id,1,'synthetic-approval',{action:'approve',text:'Approve synthetic fixture only.',scope:'this_case'});
+            const g=bridge.delegate(actor,d.id,1,other,'synthetic-delegate',scope),draft=bridge.accept(actor,g.id,'synthetic-accept',scope);id=draft.id;
+            db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE id IN (SELECT id FROM bot_decision_events WHERE decision_id=? AND kind='answered')").run(d.id);
+            db.prepare("UPDATE bot_decisions SET state='action_pending' WHERE id=?").run(d.id);
+            bots.result(actor,d.id,1,'synthetic-running',{state:'running',evidence:explain,material_evidence_unchanged:true});
+            checks={payload_hash:g.payload_hash,material_evidence_unchanged:true,recipient_account_case_verified:true,lease_and_duplicates_checked:true,evidence:explain};
+        }
+        return {id,actor,claim:()=>comm.claim(actor,id,'synthetic-claim',checks)};
+    }
+    function readyRoutine() {
+        const actor={...a,conversationId:other},person={user:a.user},identity={clientId:'fixture-routine',audience:'fixture-routine-audience'};
+        const policy=routinePolicyService(db).enroll(person,{business_id:r.businessId,policy_key:'fixture-routine',expected_version:0,request_key:'fixture-policy',source_reference:explain,policy_text:explain+explain,executor_ids:[other],categories:['missing_information']}).id;
+        const service=routineExecutionService(db,{now:()=>now,identity});
+        const trust=service.enroll(person,{policy_id:policy,executor_id:other,request_key:'fixture-routine-trust',client_id:identity.clientId,audience:identity.audience,account_id:'fixture-routine-account',principal_id:'fixture-routine-principal',source_origin:'https://source.example.test',registration_reference:explain,adapter_digest:hash(),contract:'routine-missing-information/v1'}).trust_id;
+        const capture=(key:string)=>routineCaptureSchema.parse({schema_version:'routine-missing-information/v1',trust_id:trust,request_key:key,native_context_revision:service.nativeContext(identity,{trust_id:trust,canonical_case:caseId}).revision,captured_at:new Date(now).toISOString(),adapter_digest:hash(),account_id:'fixture-routine-account',principal_id:'fixture-routine-principal',source_origin:'https://source.example.test',enrollment_revision:'fixture',source_intent:'fixture-routine-intent',lease:{case_id:caseId,principal_id:'fixture-routine-principal',revision:'fixture-lease',expires_at:new Date(now+60000).toISOString()},material:{case_id:caseId,ticket:caseId,customer_id:customerId,sender_account:r.payloadAccount,recipient:'customer@example.test',retained_principal_id:'fixture-routine-principal',revision:'fixture-material',context:{completeness:'all-channels-sisters-and-outbound/v1',snapshot_revision:'fixture',channels:['email'],conversation_ids:[caseId],message_count:1,messages_hash:hash(),source_records_hash:hash(),next_cursor:null,truncation:'none'},human_directive:'none',prior_effect:'none',disposition:'open_question',requested_fields:['model_number'],field_evidence:[{field:'model_number',state:'missing',relevance:'needed_for_current_question',evidence_revision:'fixture'}],duplicate_scope_hashes:[]}});
+        const proof=service.capture(identity,capture('prepare')),d=communicationService(db).saveDraft(actor,other,'routine-draft',proof.scope.payload);
+        service.accept(actor,{draft_id:d.id,proof_id:proof.proof_id,expected_version:d.version,request_key:'accept'});
+        const claimProof=service.capture(identity,capture('claim'));
+        return {id:d.id,claim:()=>service.claim(actor,{draft_id:d.id,proof_id:claimProof.proof_id,claim_key:'fixture-routine-claim'})};
+    }
+    it.each((['ordinary','delegated','routine'] as const).flatMap(kind=>(['bound','associated','UNKNOWN'] as const).map(state=>({kind,state}))))('customer $state first atomically denies actual $kind claim and rolls back internal events',async ({kind,state})=>{
+        const {id}=await setup();
+        if(state!=='bound'){await reserve(id);const assoc=await association(id),x=await s.associate(r.id,assoc);if(state==='UNKNOWN'){wireIntent={...wireIntent!,state:'UNKNOWN',preProviderCommitted:true,associationId:x.association_id};await s.receipt(grant,{authority_id:id,claim_id:assoc.claim_id});}}
+        const p=kind==='routine'?readyRoutine():readyOrdinary(kind);
+        const before=db.prepare('SELECT * FROM bot_message_drafts WHERE id=?').get(p.id);
+        expect(()=>p.claim()).toThrow('fenced');
+        expect(db.prepare('SELECT * FROM bot_message_drafts WHERE id=?').get(p.id)).toEqual(before);
+        expect(db.prepare('SELECT count(*) n FROM routine_draft_claims').get()).toEqual({n:0});
+        expect(db.prepare("SELECT count(*) n FROM bot_message_delegation_events WHERE kind='claimed'").get()).toEqual({n:0});
+    });
+    it.each(['ordinary','delegated','routine'] as const)('%s claim first atomically prevents customer authority insertion',async kind=>{
+        const p=kind==='routine'?readyRoutine():readyOrdinary(kind);expect(p.claim().execute).toBe(kind!=='routine');
+        await expect(s.inspect(a,captureInput())).rejects.toThrow('claim');
+        expect(db.prepare('SELECT count(*) n FROM customer_email_authorities').get()).toEqual({n:0});
+    });
+    it.each(['ordinary','delegated','routine'] as const)('%s queued authority first prevents customer bind before either can dispatch',async kind=>{
+        kind==='routine'?readyRoutine():readyOrdinary(kind);
+        const p=await prepared();await expect(s.bind(a,p)).rejects.toThrow('fenced');
+        expect(db.prepare('SELECT count(*) n FROM customer_email_authorities').get()).toEqual({n:0});
+    });
+    it('new ordinary reply can claim only after authenticated original acceptance; original draft stays fenced',async()=>{
+        const {id}=await setup();await acceptedFixture(id);
+        const p=readyOrdinary('ordinary');expect(p.claim().execute).toBe(true);
+        expect(()=>db.prepare("UPDATE bot_message_drafts SET claim_key='original-resend',state='sending' WHERE id=?").run(draft)).toThrow('fenced');
+    });
+    it.each(['SMS','customer','SMS_scope'].flatMap(kind=>['accept','claim'].map(phase=>({kind,phase}))))('competitor $kind insertion DURING source read invalidates snapshot before $phase',async ({kind,phase})=>{
+        const competitorDraft=communicationService(db).saveDraft({...a,conversationId:other},other,'competitor',{...s.context(a,input()).payload,recipients:['other@example.test']}).id;
+        const competitorSource=uuid();human(competitorSource,'Independent synthetic direction.',other,new Date(now-3000).toISOString());
+        let sms:string|undefined;
+        if(kind==='SMS_scope'){sms=uuid();db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(sms,uuid(),other,other,competitorSource,competitorDraft,'sms',hash(),JSON.stringify({scope:{canonical_case:uuid()}}),r.expiresAt);}
+        const {id}=await setup();if(phase==='claim')await s.accept(grant,consume(id,'accept'));const original=io.capture;
+        io.capture=async(...args)=>{const proof=await original(...args);
+            if(kind==='SMS')db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(uuid(),uuid(),other,other,competitorSource,competitorDraft,'sms',hash(),JSON.stringify({scope:{canonical_case:uuid()}}),r.expiresAt);
+            if(kind==='SMS_scope')db.prepare('INSERT INTO compose_scope_reviews(id,authority_id,owner_id,request_key,request_hash,context_revision,evidence_json) VALUES(?,?,?,?,?,?,?)').run(uuid(),sms,other,'new-scope',hash(),hash(),'{}');
+            if(kind==='customer'){
+                const row=db.prepare('SELECT * FROM customer_email_authorities WHERE id=?').get(id) as Record<string,unknown>,t=JSON.parse(String(row.projection_json));
+                const newId=uuid(),newSource=competitorSource,newPayload={...t.payload,recipients:['other@example.test']},newProjection={...t,authorityId:newId,actionId:uuid(),actionFence:canonicalSha256({fixture:newId}),sourceId:newSource,draftId:competitorDraft,payload:newPayload,payloadHash:canonicalSha256(newPayload),canonicalCaseId:uuid(),canonicalOrderId:uuid(),idempotencyKey:'fixture:'+newId};
+                const {binding_hash:_binding,...copy}=row;Object.assign(copy,{id:newId,action_id:newProjection.actionId,action_fence:newProjection.actionFence,source_id:newSource,draft_id:competitorDraft,recipient:'other@example.test',request_key:'competing',projection_json:JSON.stringify(newProjection)});
+                const columns=Object.keys(copy);db.prepare(`INSERT INTO customer_email_authorities(${columns.join(',')},binding_hash) VALUES(${columns.map(()=>'?').join(',')},?)`).run(...Object.values(copy),canonicalSha256(copy));
+            }
+            return proof;
+        };
+        await expect(phase==='accept'?s.accept(grant,consume(id,'accept')):s.claim(grant,consume(id,'claim'))).rejects.toThrow('during source read');
+        expect(db.prepare("SELECT count(*) n FROM customer_email_events WHERE authority_id=? AND kind=?").get(id,phase==='accept'?'accepted':'reserved')).toEqual({n:0});
+    });
+    it.each(['SMS','return'])('prior structured %s canonical overlap rejects reverse customer bind',async kind=>{
+        if(kind==='SMS'){
+            const smsSource=uuid();human(smsSource,'Synthetic separate SMS.',other,new Date(now-2000).toISOString());
+            db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(uuid(),uuid(),other,other,smsSource,draft,'sms',hash(),JSON.stringify({scope:{canonical_case:caseId}}),r.expiresAt);
+        }else{
+            const decision=uuid(),trust=uuid(),mapping=uuid(),approval=uuid();
+            db.prepare('INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,?,?,?,?,2)').run(decision,other,'return','return','{}');
+            db.prepare('INSERT INTO return_bridge_trust(id,business_id,owner_id,executor_id,client_id,audience,account_id,principal_id,source_origin,request_key) VALUES(?,?,1,?,?,?,?,?,?,?)').run(trust,r.businessId,other,'fixture-client','fixture-aud',r.sourceAccountId,'fixture-other',r.sourceOrigin,'return');
+            db.prepare('INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,payload_json,request_key) VALUES(?,?,1,?,2,?,?)').run(approval,decision,'answered','{}','approval');
+            db.prepare('INSERT INTO return_bridge_mappings(id,trust_id,decision_id,decision_version,approval_event_id,proposal_hash,request_key,scope_hash,capture_json,receipt_json) VALUES(?,?,?,1,?,?,?,?,?,?)').run(mapping,trust,decision,approval,hash(),'map',hash(),JSON.stringify({conversation:{id:caseId},order:{id:orderId}}),'{}');
+            db.prepare('INSERT INTO return_bridge_claims VALUES(?,?,?,?,?,?)').run(uuid(),mapping,decision,'claim',hash(),new Date(now).toISOString());
+        }
+        const p=await prepared();await expect(s.bind(a,p)).rejects.toThrow('shared native');expect(db.prepare('SELECT count(*) n FROM customer_email_authorities').get()).toEqual({n:0});
+    });
+
+    it('competitor insertion after awaited intent read invalidates first association before durable entitlement',async()=>{
+        const smsSource=uuid();human(smsSource,'Independent synthetic SMS direction.',other,new Date(now-3000).toISOString());
+        const {id}=await setup();await reserve(id);const p=await association(id),original=io.intent;
+        io.intent=async(...args)=>{const wire=await original(...args);db.prepare('INSERT INTO bot_composed_sms_authorities(id,action_id,owner_id,executor_id,source_id,draft_id,request_key,request_hash,snapshot_json,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(uuid(),uuid(),other,other,smsSource,draft,'intent-race',hash(),JSON.stringify({scope:{canonical_case:uuid()}}),r.expiresAt);return wire;};
+        await expect(s.associate(r.id,p)).rejects.toThrow('during source read');
+        expect(db.prepare('SELECT count(*) n FROM customer_email_associations').get()).toEqual({n:0});
+        expect(()=>s.serviceAssociation(r.id,{authority_id:id,intent_id:p.intent_id,request_key:p.request_key})).toThrow('not found');
+        expect(s.read(grant,{authority_id:id}).association).toBeNull();
     });
 
 });

@@ -36,7 +36,7 @@ const review = object({
         }, explanation: str
     })), records: array(object({
         key: str, revision: str, classification: {
-            enum: ['unrelated', 'current_action', 'blocking']
+            enum: ['unrelated', 'current_action', 'completed_action', 'blocking']
         }, explanation: str
     })), body_parts: array(object({
         start: {
@@ -54,8 +54,8 @@ const define = (name: string, description: string, p: Record<string, unknown>): 
 });
 export const CUSTOMER_EMAIL_TOOLS = [
     define('read_customer_email_direction_context', 'Staged customer-email contract: original registered source-owning bot only. Read exact authenticated direct human/result source, full bounded original owner/executor human/result/shared voice/correction context and original executor draft. Independent of withdrawn purchasing decisions; never reopen or retrofit. Business inventory hashes do not certify unrelatedness. Missing media/context fails closed. No caller-private voice or builder source access.', input),
-    define('inspect_customer_email_direction', 'Original source owner only after separate actual-owner technical enrollment and source custody. Supply genuine authenticated canonical case/customer/order and persisted own-source capture UUID; no descriptive-ticket aliases. Read entire native/context/source package. No authority or send. Missing source setup is not missing human consent.', capture),
-    define('bind_customer_email_direction', 'Original source owner only: semantic unconditional composition AND send review of full human source, every later human/voice/correction, every authenticated inventory relation and all contiguous exact body spans. Stable original key and exact inspection hash. Append separate prospective authority; ordinary authorized_by, draft/version, retired audit and withdrawn purchase decision stay unchanged. Never keyword consent, bind as builder or borrow identity. UNKNOWN never frees source/action/recipient fence.', {
+    define('inspect_customer_email_direction', 'Original source owner only after separate actual-owner technical enrollment and source custody. Supply genuine authenticated canonical case/customer/order and persisted own-source capture UUID; no descriptive-ticket aliases. Read entire native/context/source package. No authority or send. Missing source setup is not missing human consent. Before binding after a long review, obtain a new fresh own-reader capture and inspect again: reuse the full semantic review only when inspection_hash and review_material_hash are identical. Capture remains <=15s fresh and post-read <=5s; lease/material/scope/context/ACL/full-record drift invalidates continuity.', capture),
+    define('bind_customer_email_direction', 'Original source owner only: semantic unconditional composition AND send review of full human source, every later human/voice/correction, every authenticated inventory relation and all contiguous exact body spans. Stable original key and exact inspection hash. Append separate prospective authority; ordinary authorized_by, draft/version, retired audit and withdrawn purchase decision stay unchanged. Never keyword consent, bind as builder or borrow identity. UNKNOWN never frees original source/action/draft/idempotency fences. Only authenticated exact SENT_ACCEPTED reconciliation can release recipient/order overlap for a genuinely distinct fresh instruction/draft; completed_action record classification requires native verified acceptance and authenticated full closure.', {
         ...capture, inspection_hash: str, request_key: str, review
     }),
     define('read_customer_email_direction', 'Original source owner or named executor only: exact authority/reservation/association/provider-acceptance readback and revocation audit. Always execute:false; no fresh key, claim or replay after uncertainty.', {

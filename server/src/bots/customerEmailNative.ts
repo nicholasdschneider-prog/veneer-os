@@ -35,7 +35,7 @@ export function customerEmailNative(db: Database.Database) {
             throw new BotError(403, 'Original registered participant access revoked');
         return c;
     }
-    function snapshot(a: Actor, raw: unknown, executorRead = false) {
+    function snapshot(a: Actor, raw: unknown, executorRead = false, currentAuthorityId?: string) {
         const p = emailInput.parse(raw);
         if (!a.conversationId || a.conversationId !== (executorRead ? p.executor_id : p.source_owner_id))
             throw new BotError(403, 'Original source owner or exact executor required');
@@ -132,11 +132,29 @@ export function customerEmailNative(db: Database.Database) {
         add('draft', rows(`SELECT * FROM bot_message_drafts WHERE conversation_id IN (${membership}) ORDER BY id`, business), r => [...rows('SELECT * FROM bot_message_retirements WHERE draft_id=?', r.id), ...rows('SELECT * FROM bot_message_delivery_proofs WHERE draft_id=?', r.id)]);
         add('delegation', rows(`SELECT * FROM bot_message_delegations WHERE owner_conversation_id IN (${membership}) OR executor_conversation_id IN (${membership}) ORDER BY id`, business, business), r => rows('SELECT * FROM bot_message_delegation_events WHERE delegation_id=? ORDER BY id', r.id));
         add('instruction', rows(`SELECT * FROM bot_instruction_obligations WHERE owner_id IN (${membership}) ORDER BY id`, business), r => rows('SELECT * FROM bot_instruction_obligation_revocations WHERE obligation_id=?', r.id));
-        add('composition', rows(`SELECT * FROM bot_composed_sms_authorities WHERE owner_id IN (${membership}) OR executor_id IN (${membership}) ORDER BY id`, business, business), r => [...rows('SELECT * FROM bot_composed_sms_events WHERE authority_id=? ORDER BY id', r.id), ...rows('SELECT s.* FROM bot_composed_sms_service_receipts s JOIN bot_composed_sms_associations a ON a.id=s.association_id WHERE a.authority_id=?', r.id)]);
-        add('routine', rows(`SELECT * FROM routine_draft_authorizations WHERE executor_id IN (${membership}) ORDER BY draft_id`, business), r => [...rows('SELECT * FROM routine_draft_claims WHERE draft_id=?', r.draft_id), ...rows('SELECT * FROM routine_delivery_readbacks WHERE draft_id=?', r.draft_id)]);
+        add('composition', rows(`SELECT * FROM bot_composed_sms_authorities WHERE owner_id IN (${membership}) OR executor_id IN (${membership}) ORDER BY id`, business, business), r => [
+            ...rows('SELECT * FROM bot_composed_sms_events WHERE authority_id=? ORDER BY id', r.id),
+            ...rows('SELECT * FROM compose_action_lineages WHERE authority_id=? ORDER BY original_action_digest', r.id),
+            ...rows('SELECT * FROM bot_composed_sms_dispatch_authorities WHERE authority_id=?', r.id),
+            ...rows('SELECT * FROM bot_composed_sms_associations WHERE authority_id=? ORDER BY id', r.id),
+            ...rows('SELECT s.* FROM bot_composed_sms_service_receipts s JOIN bot_composed_sms_associations a ON a.id=s.association_id WHERE a.authority_id=? ORDER BY s.association_id', r.id),
+            ...rows('SELECT * FROM compose_scope_reviews WHERE authority_id=? ORDER BY id', r.id),
+            ...rows('SELECT v.* FROM compose_scope_revocations v JOIN compose_scope_reviews s ON s.id=v.review_id WHERE s.authority_id=? ORDER BY v.review_id', r.id)
+        ]);
+        add('routine', rows(`SELECT * FROM routine_draft_authorizations WHERE executor_id IN (${membership}) ORDER BY draft_id`, business), r => [...rows('SELECT * FROM routine_draft_claims WHERE draft_id=?', r.draft_id), ...rows('SELECT * FROM routine_dispatch_claims WHERE draft_id=?',r.draft_id), ...rows('SELECT * FROM routine_delivery_readbacks WHERE draft_id=?', r.draft_id)]);
         add('deleted', rows('SELECT * FROM compose_context_deleted_drafts WHERE business_id=? ORDER BY id', business));
         add('return', rows('SELECT * FROM return_bridge_trust WHERE business_id=? ORDER BY id', business), r => [...rows('SELECT * FROM return_bridge_revocations WHERE trust_id=?', r.id), ...rows('SELECT c.* FROM return_bridge_claims c JOIN return_bridge_mappings m ON m.id=c.mapping_id WHERE m.trust_id=?', r.id)]);
-        add('vendor', rows('SELECT * FROM bot_vendor_email_authorities WHERE business_id=? ORDER BY id', business), r => rows('SELECT * FROM bot_vendor_email_events WHERE authority_id=? ORDER BY id', r.id));
+        add('vendor', rows('SELECT * FROM bot_vendor_email_authorities WHERE business_id=? ORDER BY id', business), r => [...rows('SELECT * FROM bot_vendor_email_events WHERE authority_id=? ORDER BY id', r.id), ...rows('SELECT * FROM bot_vendor_email_targets WHERE authority_id=? ORDER BY target_key',r.id), ...rows('SELECT * FROM bot_vendor_email_sources WHERE target_key=? ORDER BY source_kind,source_id',r.target_key)]);
+        add('customer_email_enrollment', rows("SELECT *,registration_id AS id FROM customer_email_enrollments WHERE json_extract(evidence_json,'$.businessId')=? ORDER BY registration_id",business), r=>rows('SELECT * FROM customer_email_enrollment_revocations WHERE registration_id=?',r.registration_id));
+        add('customer_email', rows('SELECT * FROM customer_email_authorities WHERE business_id=? ORDER BY id', business), r => [
+            ...rows(`SELECT * FROM customer_email_events WHERE authority_id=? ${r.id === currentAuthorityId ? "AND kind='revoked'" : ''} ORDER BY id`, r.id),
+            ...(r.id === currentAuthorityId ? [] : [
+                ...rows('SELECT * FROM customer_email_associations WHERE authority_id=? ORDER BY id', r.id),
+                ...rows('SELECT b.* FROM customer_email_readbacks b JOIN customer_email_associations a ON a.id=b.association_id WHERE a.authority_id=? ORDER BY b.id', r.id)
+            ])
+        ]);
+        // Historical lineage rows remain visible even after participant membership changes.
+        add('sms_lineage', rows('SELECT *,native_action_id AS id FROM compose_action_lineages WHERE business_id=? ORDER BY original_action_digest', business));
         inventory.sort((x, y) => x.key < y.key ? -1 : x.key > y.key ? 1 : 0);
         if (inventory.length > 5000 || new Set(inventory.map(x => x.key)).size !== inventory.length)
             throw new BotError(409, 'Complete unique native inventory required');
@@ -162,7 +180,7 @@ export function customerEmailNative(db: Database.Database) {
         }), inventoryHash = canonicalSha256(inventory), sourceHash = canonicalSha256(source);
         const later = messages.filter(m => !m.actor_conversation_id && !(m.kind === source.kind && m.id === source.id) && stamp(m.created_at) + (/\.\d+/.test(m.created_at) ? 0 : 999) >= stamp(source.created_at));
         return {
-            execute: false as const, ready: false as const, input: p, businessId: business, source, sourceHash, payload, payloadHash: canonicalSha256(payload), context, contextRevision, inventory, inventoryHash, later_human_context: later, unreviewedMedia, coverage: {
+            execute: false as const, ready: false as const, input: p, businessId: business, source, sourceHash, payload, payloadHash: canonicalSha256(payload), context, contextRevision, inventory, inventoryHash, currentAuthorityKey: currentAuthorityId ? `customer_email:${currentAuthorityId}` : undefined, completedActionKeys: rows('SELECT c.id FROM customer_email_completed_actions c JOIN customer_email_authorities a ON a.id=c.id WHERE a.business_id=?',business).map(x=>`customer_email:${x.id}`).filter(k=>inventory.some(x=>x.key===k)), later_human_context: later, unreviewedMedia, coverage: {
                 complete: true, caller_private_voice: false
             }, instructions: 'Original owner must semantically review ALL human context, result anchors, shared voice directions, later corrections, full draft and native records. No keyword consent. Media without trusted actual byte review blocks binding. No withdrawn purchase decision is reopened or used as approval.'
         };
