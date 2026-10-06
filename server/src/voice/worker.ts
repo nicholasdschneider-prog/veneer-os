@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { applyVoicePreferenceResult, voicePreferenceToolSchema, voicePreferencesSchema, voiceStyleInstructions, voiceGreetingInstructions } from './preferences.js';
 import { voiceFailureCode } from './failure.js';
+import { callVoiceSchema } from './voices.js';
 
 initializeLogger({ pretty: false, level: 'silent' });
 const room = new Room();
@@ -74,13 +75,14 @@ process.on('message', (raw: unknown) => {
   started = true;
   void (async () => {
     const config = z.object({ url: z.string(), token: z.string(), apiKey: z.string(),
+      voice: callVoiceSchema.default('marin'),
       preferences: voicePreferencesSchema.default({}), instructions: z.string(),
       // Absent on a phone call: the callee joins over the phone bridge under an identity we do not choose.
       participantIdentity: z.string().optional(), phone: z.boolean().default(false),
       mode: z.enum(['coordinator', 'bot', 'hotline']).default('coordinator'), agentName: z.string().default('Henry'),
       // Set only on a call the bot placed to ask one question.
       opening: z.string().optional() }).parse(message);
-    const model = new realtime.RealtimeModel({ apiKey: config.apiKey, model: 'gpt-realtime', voice: 'marin',
+    const model = new realtime.RealtimeModel({ apiKey: config.apiKey, model: 'gpt-realtime', voice: config.voice,
       // OpenAI owns interruption onset in this pipeline; AgentSession's local
       // minimum-duration/word settings do not gate server speech_started events.
       // Near-field filtering suits phone/headset mics. A higher onset threshold

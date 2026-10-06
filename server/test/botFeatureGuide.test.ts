@@ -4,6 +4,14 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('explains Archer’s voice to employees and resumed agents', () => {
+    const feature = botFeatureCatalog(Date.parse('2026-10-06')).features.find(f => f.id === 'bot-calls')!;
+    expect(feature.steps.join(' ')).toContain('male Cedar voice');
+    expect(feature.limits).toContain('not saved Listen audio');
+    expect(feature.announcement).toContain('Cedar');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    for (const elevated of [false, true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(feature.agent);
+  });
   it('delivers staged exact refund limits to employee and resumed-agent instructions',()=>{
     const f=botFeatureCatalog(Date.parse('2026-10-06')).features.find(f=>f.id==='exact-refund')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('Staged');expect(f.agent).toContain('Never issue as builder');

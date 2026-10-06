@@ -12,6 +12,7 @@ import { botCalls } from '../bots/botCalls.js';
 import type { UserRow } from '../db/db.js';
 
 import { voiceFailureMessage } from './failure.js';
+import { callVoice } from './voices.js';
 import { ensureSip, phoneConfigured, phoneRoomName, phoneRoomToken, sipUriFor, twilioProvider, PHONE_ENDED, PHONE_MAX_SECONDS, type PhoneProvider } from './phone.js';
 
 interface Call {
@@ -344,6 +345,7 @@ export class LiveVoiceService {
       const history = workspace.history(6).map(item => ({ ...item, text: item.text.slice(0,600) }));
       child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), ...(call.phone ? { phone: true } : { participantIdentity }),
         preferences: readVoicePreferences(this.ctx.db, userId),
+        voice: callVoice(bot?.conversationId),
         mode: hotline ? 'hotline' : bot ? 'bot' : 'coordinator', agentName: hotline ? 'Question hotline' : bot?.name ?? 'Henry',
         ...(call.incoming ? { opening: incomingOpening(bot!.name, callerFirstName((this.ctx.db.prepare('SELECT display_name FROM users WHERE id=?').get(userId) as { display_name: string } | undefined)?.display_name)) } : {}),
         instructions: (call.phone ? PHONE_RULES : '') + (hotline ? HOTLINE_INSTRUCTIONS + SHARED_RULES : bot ? botInstructions(bot, options.decisionId ?? null, call.incoming) : HENRY_INSTRUCTIONS)

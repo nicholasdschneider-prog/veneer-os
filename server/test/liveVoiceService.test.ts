@@ -14,6 +14,7 @@ vi.mock('livekit-server-sdk', () => ({
 }));
 import { LiveVoiceService } from '../src/voice/service.js';
 import { VoiceWorkspace } from '../src/voice/workspace.js';
+import { callVoiceSchema } from '../src/voice/voices.js';
 let db: Database.Database;
 let service: LiveVoiceService;
 let secrets: Record<string,string>;
@@ -31,6 +32,38 @@ beforeEach(() => {
 });
 afterEach(() => { service.close(); db.close(); vi.useRealTimers(); });
 describe('live voice lifecycle', () => {
+  it.each([false, true])('uses Archer’s assigned voice for browser and incoming phone calls (phone=%s)', async phoneCall => {
+    const archer = 'f4131f81-27c5-4332-902a-a0d9873dfeb9';
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES(?,1,1,'Archer','codex','archer')").run(archer);
+    // Renaming must not affect the exact identity assignment.
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,'Renamed assistant',1)").run(archer);
+    db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES('q',?,'q','q',?,1)").run(archer, JSON.stringify({question:'Review this email?',recommendation:'Review',consequence:'Review only',blocked_action:'Review',blocks_scope:'task',deadline:null,evidence:[]}));
+    Object.assign(secrets, { TWILIO_VOICE_ACCOUNT_SID:'ACtest', TWILIO_VOICE_API_KEY_SID:'SKtest', TWILIO_VOICE_API_KEY_SECRET:'s', TWILIO_VOICE_FROM_NUMBER:'+15550001111', LIVEKIT_SIP_URI:'sip:test1.sip.livekit.cloud' });
+    const store = new Map<string,string>();
+    const phone = { place: vi.fn().mockResolvedValue('CA1'), status: vi.fn().mockResolvedValue({status:'ringing',answeredBy:null}), hangUp: vi.fn().mockResolvedValue(undefined) };
+    service.close();
+    service = new LiveVoiceService({db,manager,doppler:{get:(name:string)=>secrets[name]??null,refresh:async()=>({})},secrets:{getApiKeyOverride:(k:string)=>store.get(k)??null,setApiKeyOverride:(k:string,v:string)=>void store.set(k,v)}} as unknown as AppContext,phone);
+    db.prepare("INSERT INTO bot_phone_calls(id,user_id,started_ms) VALUES('voice-test',1,?)").run(Date.now());
+    await service.start(1,{botConversationId:archer,...(phoneCall ? {decisionId:'q',incoming:true,phone:{to:'+15745550100',logId:'voice-test'}} : {})});
+    const start = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
+    expect(start).toMatchObject({mode:'bot',voice:'cedar'});
+    expect(callVoiceSchema.parse(start.voice)).toBe('cedar');
+    if (phoneCall) expect(start).toMatchObject({phone:true});
+    else expect(start.participantIdentity).toBe('user-1');
+  });
+
+  it('keeps other identities and coordinator/hotline calls on Marin and rejects unsupported IPC voices', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('other',1,1,'Archer','codex','other')").run();
+    for (const options of [{botConversationId:'other'}, {}, {hotline:true}]) {
+      child.send.mockClear();
+      const call = await service.start(1,options);
+      expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start').voice).toBe('marin');
+      service.end(1,call.id);
+    }
+    expect(callVoiceSchema.safeParse('unsupported').success).toBe(false);
+    expect(callVoiceSchema.safeParse({id:'custom'}).success).toBe(false);
+  });
+
   it('keeps approved work queued after hangup and never approves an unanswered discussion on end', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('ticket',1,1,'Ticket owner','codex','ticket')").run();
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('ticket','Case owner',1)").run();
