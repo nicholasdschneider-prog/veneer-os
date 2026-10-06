@@ -1,3 +1,4 @@
+import {exactRefundRoutes} from './exactRefundRoutes.js';
 import { proposalDiagnostics } from './proposalDiagnostics.js';
 import {contactVerificationRoutes} from './contactVerificationRoutes.js';
 import {caseCustodyRoutes} from './caseCustodyRoutes.js';
@@ -47,6 +48,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   router.use(mergeAuthorizationRoutes(ctx, deps.mergeIO));
   const merges = mergeAuthorization(ctx.db, deps.mergeIO ?? mergeIO(ctx));
   router.use(contactVerificationRoutes(ctx));
+  router.use(exactRefundRoutes(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
     (

@@ -1,0 +1,43 @@
+{
+  "activation": "dedicated actual enrollment/custody and reviewed exact source implementation/writer manifest; all refund paths mediated; no production registration supplied",
+  "canonical": "recursive ordinal-key sorted compact UTF8 JSON; arrays ordered; null preserved; native canonicalSha256",
+  "failure": "all lookup/read/replay execute=false refundEntitlement=false retryAllowed=false; unknown/lost/rollback/expired/revoked never release identity or permit another key; absence explicitly no retry",
+  "hashes": {
+    "acceptance": "H('exact-refund/acceptance/v1',complete registration.acceptance)",
+    "action": "H('exact-refund/action/v1',{businessId,storeId,shopifyOrderId,effect:'refund'})",
+    "answer": "canonicalSha256(original answered event payload)",
+    "associationRequest": "H('exact-refund/association-request/v1',complete strict association input)",
+    "authority": "H('exact-refund/authority/v1',all authority fields except authorityHash)",
+    "context": "H('exact-refund/context/v1',{context,registrationHash,author:{id,status,role},executor})",
+    "evidence": "H('exact-refund/evidence/v1',all evidence fields except sourceCaptureAt/expiresAt/snapshotHash)",
+    "inspection": "H('exact-refund/inspection/v1',{registrationHash,contextRevision,sourceEvidenceHash,target,revisions})",
+    "instruction": "H('exact-refund/instruction/v1',{id,actorId,text,version})",
+    "intent": "H('exact-refund/intent/v1',complete immutable binding)",
+    "issueRequest": "H('exact-refund/issue-request/v1',complete issue input)",
+    "proposal": "canonicalSha256(original parsed proposal)",
+    "receipt": "H('exact-refund/receipt/v1',{associationId,intentHash,state,attemptId,outcome})",
+    "registration": "canonicalSha256(complete protected registration)",
+    "review": "H('exact-refund/review/v1',complete review input)"
+  },
+  "identifiers": {
+    "businessId": "native enrolled UUID unchanged",
+    "items.amountMinor": "net amount for the entire quantity, not unit price; discount already allocated",
+    "items.id": "OrderOps source item UUID",
+    "items.shopifyLineItemId": "Shopify line-item numeric REST ID canonical decimal",
+    "paymentId": "Shopify original transaction numeric REST ID canonical decimal",
+    "scopeChanges": "never normalize values; immutable conflicts fail; new registration cannot release order fence",
+    "shopifyOrderId": "Shopify order numeric REST ID canonical decimal",
+    "storeId": "Shopify shop numeric REST ID, canonical decimal, not domain/handle/GID"
+  },
+  "inventory": "Exact currentReservation authenticates own reservation bookkeeping excluded from evidence/refundInventory. No effect or uncertainty is excluded even for this intent; all other reservations/effects remain blocking. Source acceptance verifies projection and serialization.",
+  "linearization": "source durable PREPARED->REDEEMING before native SQLite immediate first reservation; SENDING commit before provider; revoke-first denies, reserve-first irrevocable; no distributed cancellation",
+  "receipt": "fresh authenticated intent; immutable original binding; current evidence may show effects/changed inventory, never reuse it for eligibility; SUCCESS requires sending fence+exact association/attempt/payment/refund transaction SUCCESS+providerReceiptHash; unknown may lack association/attempt/outcome; terminal rollback/failed audit noRetry:true UNKNOWN may retain authenticated partial provider IDs/commitments without success; audits distinct from prepare/redeem/send and ordered after latest fence. FOUND/non-null and ABSENT/null enforced.",
+  "routes": {
+    "service": "GET /api/exact-refund/verifier/authorities/:authorityId; POST /associations; POST /associations/lookup; GET /associations/:associationId; POST /receipts/:associationId empty body",
+    "source": "GET /api/cs/exact-refund/evidence/:registrationId; GET /api/cs/exact-refund/intents/:sourceIntentId"
+  },
+  "schemaSha256WithCommitmentMasked": "1c194d567e21b1f7929b5e5f1eea637e067ab5895e7401300c1922867356502d",
+  "schemaVersion": "exact-refund-normative/v1",
+  "timing": "15s observations; authority <=15min and minimum all credential/custody/acceptance expiries; no observation renews durable expiry",
+  "transport": "dedicated source reader bearer, HTTPS pinned origin, no queries/redirects/fallback; dedicated native CF JWT audience+common_name and bearer+X-Exact-Refund-Registration-Id"
+}

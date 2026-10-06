@@ -336,3 +336,19 @@ Verified on an isolated instance with real turns: Claude and Codex assistant cha
 Build #592 stages `inspect_unknown_tabs {}` for the original recovery actor in the original browser-owning chat. It reads only tab metadata through an existing authenticated pinned bridge, checks unchanged original runtime/process and owner access before dispatch and after observation, and appends a separate immutable sanitized inspection audit. The original recovery tuple, actor, request key/hash, UNKNOWN history and generic command fence remain unchanged. No original request body is needed or reconstructed.
 
 This is metadata inspection, not rendered gallery verification, camera interaction, a successful recovery or execution entitlement. No ticket, CLI, new bridge, lifecycle operation, page action or retry is issued. A removed bridge or a legacy bridge without bound provenance stays blocked; current status cannot retroactively label it. Employee guide and fresh/resumed agent instruction delivery are tested. Activation remains subject to BUILD505 preservation restrictions. Neither a root restart nor an old process-local bridge surviving deployment is assumed.
+
+## Exact original-payment refund — October 6, 2026 (staged)
+
+The `exact-refund` catalog supplies employee and fresh/resumed-agent instructions.
+Only the original registered executor may inspect and prospectively bind unchanged
+human approval through dedicated protected scope pins and complete context review.
+Bots never obtain refund execution entitlement. A dedicated source service must
+prove one durable intent and obtain the first one-time association after current
+native and source checks. All refund paths must share source mediation; native
+SQLite is not a lock on external provider actions. UNKNOWN/rollback permanently
+fence the order. Existing return-window refundAuthorized:false is unchanged.
+
+Dedicated production trust, actual source integration/writer acceptance and fresh
+payment/material/refund inventory mapping remain missing. No issuance, refund,
+customer SMS or automatic setup occurs. BUILD505 preservation still blocks restart;
+this capability is staged, not deployed. See the [contract](./reports/exact-refund/build606/contract.md).

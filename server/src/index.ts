@@ -1,3 +1,4 @@
+import {exactRefundVerifierRoutes} from './bots/exactRefundRoutes.js';
 import {customerEmailVerifierRoutes} from './bots/customerEmailRoutes.js';
 import {contactVerificationVerifierRoutes} from './bots/contactVerificationRoutes.js';
 import {caseCustodyVerifierRoutes} from './bots/caseCustodyRoutes.js';
@@ -214,6 +215,7 @@ app.use('/webhooks/composio', createComposioWebhookRouter(ctx));
 app.use('/api/autoship/candidates', autoshipCandidateRoutes(ctx));
 app.use('/api/case-custody/verifier', caseCustodyVerifierRoutes(ctx));
 app.use('/api/cs/merge-authorization', mergeAuthorizationServiceRoutes(ctx));
+app.use('/api/exact-refund/verifier', exactRefundVerifierRoutes(ctx));
 app.use('/api/contact-verification/verifier', contactVerificationVerifierRoutes(ctx));
 app.use('/api/customer-email-direction/verifier', customerEmailVerifierRoutes(ctx));
 app.use('/api/composed-sms/verifier', composedSmsVerifierRoutes(ctx));

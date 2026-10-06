@@ -4,6 +4,12 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers staged exact refund limits to employee and resumed-agent instructions',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-10-06')).features.find(f=>f.id==='exact-refund')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('Staged');expect(f.agent).toContain('Never issue as builder');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);expect(botFeatureInstructions()).toContain(f.agent);
+    for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(f.agent);
+  });
   it('delivers staged strict evidence guidance to employees and fresh/resumed agents', () => {
     const f = botFeatureCatalog(Date.parse('2026-10-02')).features.find(f => f.id === 'decision-evidence-validation')!;
     expect(f.isNew).toBe(true); expect(f.limits).toContain('Staged');

@@ -1,0 +1,63 @@
+{
+  "previousNativeArtifactHash": "b287f1117c163330747729f2c5671bbaea41870f0a349afe9140f733e9fbb26d",
+  "nativeArtifactHash": "d2912dfa355288bf6d968cfd24f7180e55378c981e443470675f976dad480ead",
+  "reason": "Dedicated refund additions to shared config/index/botTools only; email contract and implementation unchanged. Old acceptance does not match new bytes. Historical BUILD605 receipt preserved.",
+  "files": [
+    {
+      "path": "server/src/bots/communicationRoutes.ts",
+      "sha256": "f43cc3f1289ec342c1960745d30c7bb3250202d4b4d32f090f0998be5ffacb22"
+    },
+    {
+      "path": "server/src/bots/customerEmail.ts",
+      "sha256": "3195dbdf4dcb2f6213232e5bfe68cf1b28f539c8c488f455f9c09cb75cc963ce"
+    },
+    {
+      "path": "server/src/bots/customerEmailContract.ts",
+      "sha256": "95e808458b943e007b275fb7dc1d37e406c90763c74d95ddd87a5c49841e61c8"
+    },
+    {
+      "path": "server/src/bots/customerEmailIO.ts",
+      "sha256": "6b1007c1b46d38ffee795587224b6d4569fbf3e802501caf7cee8f46e48bc108"
+    },
+    {
+      "path": "server/src/bots/customerEmailNative.ts",
+      "sha256": "a4523b4800d152488b4ac828cabb9de45857955aa4ab13cbe23745a7f19e3d1b"
+    },
+    {
+      "path": "server/src/bots/customerEmailRoutes.ts",
+      "sha256": "7624610d4391ae6b609d400724d1abbfede9aed83a350f31d825e078c56bba02"
+    },
+    {
+      "path": "server/src/bots/customerEmailTrust.ts",
+      "sha256": "8bb9c3e921af3c0cdebb650f295ed05f4eb9494dd14ffce360f2d7e57639bc6b"
+    },
+    {
+      "path": "server/src/bots/vendorEmail.ts",
+      "sha256": "37f708de84b96d12240828bc1b4f1a0ef1d649ace5c3be223819c1f8c3ab7629"
+    },
+    {
+      "path": "server/src/config.ts",
+      "sha256": "9d6b1a7a890d1904b784218dd6c53c210fd6d0f61f339fd2eb13e3087b28014a"
+    },
+    {
+      "path": "server/src/db/migrations/0152_customer_email_direction.sql",
+      "sha256": "26bae09fbd742d6364299af5ec840d4767440949c53278a19997594f3aec5d33"
+    },
+    {
+      "path": "server/src/db/migrations/0153_customer_email_corrections.sql",
+      "sha256": "5fc5db21d5e9e2e1bc2fb3d7a353536b305e9324ce18cdc97444b2999b875f9c"
+    },
+    {
+      "path": "server/src/index.ts",
+      "sha256": "d55aea4e2a0e8a4b1baf987662a63b04fd73a8bf76de57c84cd899f96eef26c2"
+    },
+    {
+      "path": "server/src/mcp/botTools.ts",
+      "sha256": "3c54cd96700175fc7fd8ac13c4de2bd6632603d74578e7878f7eacd12ea60ab9"
+    },
+    {
+      "path": "server/src/mcp/customerEmailTools.ts",
+      "sha256": "5d5719bd0d3d80b67e7d829d567027934ce36564b59f553c35a4f86af9ff4c18"
+    }
+  ]
+}

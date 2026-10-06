@@ -1,0 +1,835 @@
+{
+  "postSuccess": {
+    "schemaVersion": "exact-refund-intent/v1",
+    "binding": {
+      "schemaVersion": "exact-refund-intent-binding/v1",
+      "identity": {
+        "registrationId": "00000000-0000-4000-8000-000000000001",
+        "registrationRevision": 1,
+        "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+        "businessId": "00000000-0000-4000-8000-000000000002",
+        "executorConversationId": "00000000-0000-4000-8000-000000000003",
+        "executorPrincipalId": "fixture:executor",
+        "servicePrincipalId": "fixture:service",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000004",
+          "environmentId": "00000000-0000-4000-8000-000000000005",
+          "serviceId": "00000000-0000-4000-8000-000000000006"
+        },
+        "storeId": "123456",
+        "accountId": "fixture-account",
+        "enrollmentId": "00000000-0000-4000-8000-000000000007",
+        "enrollmentRevision": 1,
+        "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "authorityId": "00000000-0000-4000-8000-000000000016",
+      "authorityHash": "13988b5d4baa3aa600c6f26ed0cfac05548e30e4b31f9fc4143d383a6283c6ce",
+      "originalActionDigest": "3ae85ae99c1291f9a88f8ceb51f160a7831633188a209781a8f9239579109e5f",
+      "target": {
+        "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+        "orderId": "00000000-0000-4000-8000-000000000011",
+        "shopifyOrderId": "100",
+        "orderNumber": "100001",
+        "customerId": "200",
+        "paymentId": "300",
+        "currency": "USD",
+        "amountMinor": 1000,
+        "items": [
+          {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "shopifyLineItemId": "400",
+            "quantity": 1,
+            "amountMinor": 1000
+          }
+        ],
+        "taxMinor": 0,
+        "shippingMinor": 0,
+        "policy": {
+          "kind": "original_payment_refund_only",
+          "returnPrerequisite": false,
+          "restock": false,
+          "notification": false,
+          "customerSend": false,
+          "label": false,
+          "insurance": false
+        }
+      },
+      "revisions": {
+        "case": "case-v1",
+        "order": "order-v1",
+        "customer": "customer-v1",
+        "payment": "payment-v1",
+        "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "refundInventory": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sourceEvidenceHash": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+      "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+      "requestKey": "00000000-0000-4000-8000-000000000018",
+      "providerIdempotencyKey": "fixture-provider-key",
+      "preparedEventId": "00000000-0000-4000-8000-000000000019",
+      "preparedAt": "2026-10-06T12:00:00.000Z",
+      "expiresAt": "2026-10-06T12:05:00.000Z"
+    },
+    "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+    "state": "SUCCESS",
+    "redeemingEventId": "00000000-0000-4000-8000-000000000020",
+    "redeemingAt": "2026-10-06T12:00:00.000Z",
+    "sendingEventId": "00000000-0000-4000-8000-000000000022",
+    "sendingAt": "2026-10-06T12:00:00.000Z",
+    "observedAt": "2026-10-06T12:00:00.000Z",
+    "expiresAt": "2026-10-06T12:00:15.000Z",
+    "currentEvidence": {
+      "schemaVersion": "exact-refund-evidence/v1",
+      "identity": {
+        "registrationId": "00000000-0000-4000-8000-000000000001",
+        "registrationRevision": 1,
+        "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+        "businessId": "00000000-0000-4000-8000-000000000002",
+        "executorConversationId": "00000000-0000-4000-8000-000000000003",
+        "executorPrincipalId": "fixture:executor",
+        "servicePrincipalId": "fixture:service",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000004",
+          "environmentId": "00000000-0000-4000-8000-000000000005",
+          "serviceId": "00000000-0000-4000-8000-000000000006"
+        },
+        "storeId": "123456",
+        "accountId": "fixture-account",
+        "enrollmentId": "00000000-0000-4000-8000-000000000007",
+        "enrollmentRevision": 1,
+        "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "target": {
+        "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+        "orderId": "00000000-0000-4000-8000-000000000011",
+        "shopifyOrderId": "100",
+        "orderNumber": "100001",
+        "customerId": "200",
+        "paymentId": "300",
+        "currency": "USD",
+        "amountMinor": 1000,
+        "items": [
+          {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "shopifyLineItemId": "400",
+            "quantity": 1,
+            "amountMinor": 1000
+          }
+        ],
+        "taxMinor": 0,
+        "shippingMinor": 0,
+        "policy": {
+          "kind": "original_payment_refund_only",
+          "returnPrerequisite": false,
+          "restock": false,
+          "notification": false,
+          "customerSend": false,
+          "label": false,
+          "insurance": false
+        }
+      },
+      "revisions": {
+        "case": "case-v1",
+        "order": "order-v1",
+        "customer": "customer-v1",
+        "payment": "payment-v1",
+        "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "refundInventory": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "sourceCaptureAt": "2026-10-06T12:00:00.000Z",
+      "expiresAt": "2026-10-06T12:00:15.000Z",
+      "snapshotHash": "225735445a1d503143eb14e392c22b733b76450deb7a812384602c3e52e7f8fe",
+      "payment": {
+        "kind": "successful_original_payment",
+        "amountMinor": 1000,
+        "remainingMinor": 0,
+        "currency": "USD"
+      },
+      "coverage": {
+        "writerManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "implementationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "complete": true,
+        "omissions": [],
+        "priorEffects": [
+          {
+            "id": "888",
+            "state": "SUCCESS"
+          }
+        ]
+      },
+      "blockers": []
+    },
+    "currentReservation": {
+      "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+      "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+      "preparedEventId": "00000000-0000-4000-8000-000000000019",
+      "exclusion": "own_reservation_only_not_effects"
+    },
+    "associationId": "00000000-0000-4000-8000-000000000021",
+    "attemptId": "00000000-0000-4000-8000-000000000023",
+    "outcome": {
+      "receiptId": "fixture-receipt",
+      "associationId": "00000000-0000-4000-8000-000000000021",
+      "attemptId": "00000000-0000-4000-8000-000000000023",
+      "requestKey": "00000000-0000-4000-8000-000000000018",
+      "refundTransactionId": "999",
+      "providerStatus": "SUCCESS",
+      "providerReceiptHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "auditEventId": "00000000-0000-4000-8000-000000000024",
+      "noRetry": true,
+      "paymentId": "300",
+      "refundId": "888",
+      "amountMinor": 1000,
+      "currency": "USD",
+      "providerIdempotencyKey": "fixture-provider-key",
+      "state": "SUCCESS",
+      "recordedAt": "2026-10-06T12:00:00.000Z"
+    }
+  },
+  "synthetic": true,
+  "registration": {
+    "schemaVersion": "exact-refund-registration/v1",
+    "id": "00000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "active": true,
+    "businessId": "00000000-0000-4000-8000-000000000002",
+    "ownerUserId": 1,
+    "executorConversationId": "00000000-0000-4000-8000-000000000003",
+    "executorPrincipalId": "fixture:executor",
+    "servicePrincipalId": "fixture:service",
+    "sourceOrigin": "https://source.example.test",
+    "runtime": {
+      "projectId": "00000000-0000-4000-8000-000000000004",
+      "environmentId": "00000000-0000-4000-8000-000000000005",
+      "serviceId": "00000000-0000-4000-8000-000000000006"
+    },
+    "storeId": "123456",
+    "accountId": "fixture-account",
+    "audience": "fixture-audience",
+    "cfClientId": "fixture-client",
+    "bearerHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "readerCredential": {
+      "project": "fixture",
+      "config": "test",
+      "name": "EXACT_REFUND_FIXTURE"
+    },
+    "enrollment": {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "revision": 1,
+      "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiptHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "custodyReceiptHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reviewReceiptHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "pins": {
+      "decisionId": "00000000-0000-4000-8000-000000000008",
+      "version": 2,
+      "proposalHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "approvalEventId": "00000000-0000-4000-8000-000000000009",
+      "answerHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "instructionId": "00000000-0000-4000-8000-000000000013",
+      "instructionHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "recordingEventId": "00000000-0000-4000-8000-000000000014",
+      "authorUserId": 2,
+      "instructionVersion": 2,
+      "instructionHandlingRevision": 0
+    },
+    "target": {
+      "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+      "orderId": "00000000-0000-4000-8000-000000000011",
+      "shopifyOrderId": "100",
+      "orderNumber": "100001",
+      "customerId": "200",
+      "paymentId": "300",
+      "currency": "USD",
+      "amountMinor": 1000,
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000012",
+          "shopifyLineItemId": "400",
+          "quantity": 1,
+          "amountMinor": 1000
+        }
+      ],
+      "taxMinor": 0,
+      "shippingMinor": 0,
+      "policy": {
+        "kind": "original_payment_refund_only",
+        "returnPrerequisite": false,
+        "restock": false,
+        "notification": false,
+        "customerSend": false,
+        "label": false,
+        "insurance": false
+      }
+    },
+    "acceptance": {
+      "receiptHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "implementationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "writerManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "contractHash": "42afab55b95731f9ac32229fb08a8cbd2482dba07f3437b2a5330c093f99912b",
+      "reviewedBy": "00000000-0000-4000-8000-000000000015",
+      "reviewedAt": "2026-10-06T12:00:00.000Z",
+      "expiresAt": "2026-10-06T12:05:00.000Z"
+    },
+    "expiresAt": "2026-10-06T12:05:00.000Z",
+    "credentialExpiresAt": "2026-10-06T12:05:00.000Z",
+    "readerExpiresAt": "2026-10-06T12:05:00.000Z",
+    "custodyExpiresAt": "2026-10-06T12:05:00.000Z"
+  },
+  "evidence": {
+    "schemaVersion": "exact-refund-evidence/v1",
+    "identity": {
+      "registrationId": "00000000-0000-4000-8000-000000000001",
+      "registrationRevision": 1,
+      "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+      "businessId": "00000000-0000-4000-8000-000000000002",
+      "executorConversationId": "00000000-0000-4000-8000-000000000003",
+      "executorPrincipalId": "fixture:executor",
+      "servicePrincipalId": "fixture:service",
+      "sourceOrigin": "https://source.example.test",
+      "runtime": {
+        "projectId": "00000000-0000-4000-8000-000000000004",
+        "environmentId": "00000000-0000-4000-8000-000000000005",
+        "serviceId": "00000000-0000-4000-8000-000000000006"
+      },
+      "storeId": "123456",
+      "accountId": "fixture-account",
+      "enrollmentId": "00000000-0000-4000-8000-000000000007",
+      "enrollmentRevision": 1,
+      "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "target": {
+      "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+      "orderId": "00000000-0000-4000-8000-000000000011",
+      "shopifyOrderId": "100",
+      "orderNumber": "100001",
+      "customerId": "200",
+      "paymentId": "300",
+      "currency": "USD",
+      "amountMinor": 1000,
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000012",
+          "shopifyLineItemId": "400",
+          "quantity": 1,
+          "amountMinor": 1000
+        }
+      ],
+      "taxMinor": 0,
+      "shippingMinor": 0,
+      "policy": {
+        "kind": "original_payment_refund_only",
+        "returnPrerequisite": false,
+        "restock": false,
+        "notification": false,
+        "customerSend": false,
+        "label": false,
+        "insurance": false
+      }
+    },
+    "revisions": {
+      "case": "case-v1",
+      "order": "order-v1",
+      "customer": "customer-v1",
+      "payment": "payment-v1",
+      "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "refundInventory": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "sourceCaptureAt": "2026-10-06T12:00:00.000Z",
+    "expiresAt": "2026-10-06T12:00:15.000Z",
+    "snapshotHash": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+    "payment": {
+      "kind": "successful_original_payment",
+      "amountMinor": 1000,
+      "remainingMinor": 1000,
+      "currency": "USD"
+    },
+    "coverage": {
+      "writerManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "implementationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "complete": true,
+      "omissions": [],
+      "priorEffects": []
+    },
+    "blockers": []
+  },
+  "authority": {
+    "schemaVersion": "exact-refund-authority/v1",
+    "authorityId": "00000000-0000-4000-8000-000000000016",
+    "revision": 1,
+    "registrationId": "00000000-0000-4000-8000-000000000001",
+    "registrationRevision": 1,
+    "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+    "runtimeAcceptanceHash": "706546ecb3598acc4b59616007f1f68f95bbfdeb9e92017da61e43d8ce29a88b",
+    "pins": {
+      "decisionId": "00000000-0000-4000-8000-000000000008",
+      "version": 2,
+      "proposalHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "approvalEventId": "00000000-0000-4000-8000-000000000009",
+      "answerHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "instructionId": "00000000-0000-4000-8000-000000000013",
+      "instructionHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "recordingEventId": "00000000-0000-4000-8000-000000000014",
+      "authorUserId": 2,
+      "instructionVersion": 2,
+      "instructionHandlingRevision": 0
+    },
+    "contextRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reviewHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "identity": {
+      "registrationId": "00000000-0000-4000-8000-000000000001",
+      "registrationRevision": 1,
+      "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+      "businessId": "00000000-0000-4000-8000-000000000002",
+      "executorConversationId": "00000000-0000-4000-8000-000000000003",
+      "executorPrincipalId": "fixture:executor",
+      "servicePrincipalId": "fixture:service",
+      "sourceOrigin": "https://source.example.test",
+      "runtime": {
+        "projectId": "00000000-0000-4000-8000-000000000004",
+        "environmentId": "00000000-0000-4000-8000-000000000005",
+        "serviceId": "00000000-0000-4000-8000-000000000006"
+      },
+      "storeId": "123456",
+      "accountId": "fixture-account",
+      "enrollmentId": "00000000-0000-4000-8000-000000000007",
+      "enrollmentRevision": 1,
+      "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "target": {
+      "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+      "orderId": "00000000-0000-4000-8000-000000000011",
+      "shopifyOrderId": "100",
+      "orderNumber": "100001",
+      "customerId": "200",
+      "paymentId": "300",
+      "currency": "USD",
+      "amountMinor": 1000,
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000012",
+          "shopifyLineItemId": "400",
+          "quantity": 1,
+          "amountMinor": 1000
+        }
+      ],
+      "taxMinor": 0,
+      "shippingMinor": 0,
+      "policy": {
+        "kind": "original_payment_refund_only",
+        "returnPrerequisite": false,
+        "restock": false,
+        "notification": false,
+        "customerSend": false,
+        "label": false,
+        "insurance": false
+      }
+    },
+    "revisions": {
+      "case": "case-v1",
+      "order": "order-v1",
+      "customer": "customer-v1",
+      "payment": "payment-v1",
+      "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "refundInventory": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "sourceEvidenceHash": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+    "sourceCaptureAt": "2026-10-06T12:00:00.000Z",
+    "originalActionDigest": "3ae85ae99c1291f9a88f8ceb51f160a7831633188a209781a8f9239579109e5f",
+    "issuedAt": "2026-10-06T12:00:00.000Z",
+    "expiresAt": "2026-10-06T12:05:00.000Z",
+    "authorityHash": "13988b5d4baa3aa600c6f26ed0cfac05548e30e4b31f9fc4143d383a6283c6ce"
+  },
+  "intent": {
+    "schemaVersion": "exact-refund-intent/v1",
+    "binding": {
+      "schemaVersion": "exact-refund-intent-binding/v1",
+      "identity": {
+        "registrationId": "00000000-0000-4000-8000-000000000001",
+        "registrationRevision": 1,
+        "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+        "businessId": "00000000-0000-4000-8000-000000000002",
+        "executorConversationId": "00000000-0000-4000-8000-000000000003",
+        "executorPrincipalId": "fixture:executor",
+        "servicePrincipalId": "fixture:service",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000004",
+          "environmentId": "00000000-0000-4000-8000-000000000005",
+          "serviceId": "00000000-0000-4000-8000-000000000006"
+        },
+        "storeId": "123456",
+        "accountId": "fixture-account",
+        "enrollmentId": "00000000-0000-4000-8000-000000000007",
+        "enrollmentRevision": 1,
+        "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "authorityId": "00000000-0000-4000-8000-000000000016",
+      "authorityHash": "13988b5d4baa3aa600c6f26ed0cfac05548e30e4b31f9fc4143d383a6283c6ce",
+      "originalActionDigest": "3ae85ae99c1291f9a88f8ceb51f160a7831633188a209781a8f9239579109e5f",
+      "target": {
+        "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+        "orderId": "00000000-0000-4000-8000-000000000011",
+        "shopifyOrderId": "100",
+        "orderNumber": "100001",
+        "customerId": "200",
+        "paymentId": "300",
+        "currency": "USD",
+        "amountMinor": 1000,
+        "items": [
+          {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "shopifyLineItemId": "400",
+            "quantity": 1,
+            "amountMinor": 1000
+          }
+        ],
+        "taxMinor": 0,
+        "shippingMinor": 0,
+        "policy": {
+          "kind": "original_payment_refund_only",
+          "returnPrerequisite": false,
+          "restock": false,
+          "notification": false,
+          "customerSend": false,
+          "label": false,
+          "insurance": false
+        }
+      },
+      "revisions": {
+        "case": "case-v1",
+        "order": "order-v1",
+        "customer": "customer-v1",
+        "payment": "payment-v1",
+        "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "refundInventory": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sourceEvidenceHash": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+      "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+      "requestKey": "00000000-0000-4000-8000-000000000018",
+      "providerIdempotencyKey": "fixture-provider-key",
+      "preparedEventId": "00000000-0000-4000-8000-000000000019",
+      "preparedAt": "2026-10-06T12:00:00.000Z",
+      "expiresAt": "2026-10-06T12:05:00.000Z"
+    },
+    "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+    "state": "REDEEMING",
+    "redeemingEventId": "00000000-0000-4000-8000-000000000020",
+    "redeemingAt": "2026-10-06T12:00:00.000Z",
+    "sendingEventId": null,
+    "sendingAt": null,
+    "observedAt": "2026-10-06T12:00:00.000Z",
+    "expiresAt": "2026-10-06T12:00:15.000Z",
+    "currentEvidence": {
+      "schemaVersion": "exact-refund-evidence/v1",
+      "identity": {
+        "registrationId": "00000000-0000-4000-8000-000000000001",
+        "registrationRevision": 1,
+        "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+        "businessId": "00000000-0000-4000-8000-000000000002",
+        "executorConversationId": "00000000-0000-4000-8000-000000000003",
+        "executorPrincipalId": "fixture:executor",
+        "servicePrincipalId": "fixture:service",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000004",
+          "environmentId": "00000000-0000-4000-8000-000000000005",
+          "serviceId": "00000000-0000-4000-8000-000000000006"
+        },
+        "storeId": "123456",
+        "accountId": "fixture-account",
+        "enrollmentId": "00000000-0000-4000-8000-000000000007",
+        "enrollmentRevision": 1,
+        "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "target": {
+        "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+        "orderId": "00000000-0000-4000-8000-000000000011",
+        "shopifyOrderId": "100",
+        "orderNumber": "100001",
+        "customerId": "200",
+        "paymentId": "300",
+        "currency": "USD",
+        "amountMinor": 1000,
+        "items": [
+          {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "shopifyLineItemId": "400",
+            "quantity": 1,
+            "amountMinor": 1000
+          }
+        ],
+        "taxMinor": 0,
+        "shippingMinor": 0,
+        "policy": {
+          "kind": "original_payment_refund_only",
+          "returnPrerequisite": false,
+          "restock": false,
+          "notification": false,
+          "customerSend": false,
+          "label": false,
+          "insurance": false
+        }
+      },
+      "revisions": {
+        "case": "case-v1",
+        "order": "order-v1",
+        "customer": "customer-v1",
+        "payment": "payment-v1",
+        "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "refundInventory": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sourceCaptureAt": "2026-10-06T12:00:00.000Z",
+      "expiresAt": "2026-10-06T12:00:15.000Z",
+      "snapshotHash": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+      "payment": {
+        "kind": "successful_original_payment",
+        "amountMinor": 1000,
+        "remainingMinor": 1000,
+        "currency": "USD"
+      },
+      "coverage": {
+        "writerManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "implementationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "complete": true,
+        "omissions": [],
+        "priorEffects": []
+      },
+      "blockers": []
+    },
+    "currentReservation": {
+      "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+      "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+      "preparedEventId": "00000000-0000-4000-8000-000000000019",
+      "exclusion": "own_reservation_only_not_effects"
+    },
+    "associationId": null,
+    "attemptId": null,
+    "outcome": null
+  },
+  "request": {
+    "schemaVersion": "exact-refund-association/v1",
+    "authorityId": "00000000-0000-4000-8000-000000000016",
+    "authorityHash": "13988b5d4baa3aa600c6f26ed0cfac05548e30e4b31f9fc4143d383a6283c6ce",
+    "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+    "requestKey": "00000000-0000-4000-8000-000000000018",
+    "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b"
+  },
+  "association": {
+    "schemaVersion": "exact-refund-association-receipt/v1",
+    "associationId": "00000000-0000-4000-8000-000000000021",
+    "authorityId": "00000000-0000-4000-8000-000000000016",
+    "authorityHash": "13988b5d4baa3aa600c6f26ed0cfac05548e30e4b31f9fc4143d383a6283c6ce",
+    "registrationId": "00000000-0000-4000-8000-000000000001",
+    "originalActionDigest": "3ae85ae99c1291f9a88f8ceb51f160a7831633188a209781a8f9239579109e5f",
+    "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+    "requestKey": "00000000-0000-4000-8000-000000000018",
+    "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+    "reservedAt": "2026-10-06T12:00:00.000Z",
+    "dispatchExpiresAt": "2026-10-06T12:05:00.000Z"
+  },
+  "success": {
+    "schemaVersion": "exact-refund-intent/v1",
+    "binding": {
+      "schemaVersion": "exact-refund-intent-binding/v1",
+      "identity": {
+        "registrationId": "00000000-0000-4000-8000-000000000001",
+        "registrationRevision": 1,
+        "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+        "businessId": "00000000-0000-4000-8000-000000000002",
+        "executorConversationId": "00000000-0000-4000-8000-000000000003",
+        "executorPrincipalId": "fixture:executor",
+        "servicePrincipalId": "fixture:service",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000004",
+          "environmentId": "00000000-0000-4000-8000-000000000005",
+          "serviceId": "00000000-0000-4000-8000-000000000006"
+        },
+        "storeId": "123456",
+        "accountId": "fixture-account",
+        "enrollmentId": "00000000-0000-4000-8000-000000000007",
+        "enrollmentRevision": 1,
+        "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "authorityId": "00000000-0000-4000-8000-000000000016",
+      "authorityHash": "13988b5d4baa3aa600c6f26ed0cfac05548e30e4b31f9fc4143d383a6283c6ce",
+      "originalActionDigest": "3ae85ae99c1291f9a88f8ceb51f160a7831633188a209781a8f9239579109e5f",
+      "target": {
+        "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+        "orderId": "00000000-0000-4000-8000-000000000011",
+        "shopifyOrderId": "100",
+        "orderNumber": "100001",
+        "customerId": "200",
+        "paymentId": "300",
+        "currency": "USD",
+        "amountMinor": 1000,
+        "items": [
+          {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "shopifyLineItemId": "400",
+            "quantity": 1,
+            "amountMinor": 1000
+          }
+        ],
+        "taxMinor": 0,
+        "shippingMinor": 0,
+        "policy": {
+          "kind": "original_payment_refund_only",
+          "returnPrerequisite": false,
+          "restock": false,
+          "notification": false,
+          "customerSend": false,
+          "label": false,
+          "insurance": false
+        }
+      },
+      "revisions": {
+        "case": "case-v1",
+        "order": "order-v1",
+        "customer": "customer-v1",
+        "payment": "payment-v1",
+        "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "refundInventory": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sourceEvidenceHash": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+      "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+      "requestKey": "00000000-0000-4000-8000-000000000018",
+      "providerIdempotencyKey": "fixture-provider-key",
+      "preparedEventId": "00000000-0000-4000-8000-000000000019",
+      "preparedAt": "2026-10-06T12:00:00.000Z",
+      "expiresAt": "2026-10-06T12:05:00.000Z"
+    },
+    "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+    "state": "SUCCESS",
+    "redeemingEventId": "00000000-0000-4000-8000-000000000020",
+    "redeemingAt": "2026-10-06T12:00:00.000Z",
+    "sendingEventId": "00000000-0000-4000-8000-000000000022",
+    "sendingAt": "2026-10-06T12:00:00.000Z",
+    "observedAt": "2026-10-06T12:00:00.000Z",
+    "expiresAt": "2026-10-06T12:00:15.000Z",
+    "currentEvidence": {
+      "schemaVersion": "exact-refund-evidence/v1",
+      "identity": {
+        "registrationId": "00000000-0000-4000-8000-000000000001",
+        "registrationRevision": 1,
+        "registrationHash": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+        "businessId": "00000000-0000-4000-8000-000000000002",
+        "executorConversationId": "00000000-0000-4000-8000-000000000003",
+        "executorPrincipalId": "fixture:executor",
+        "servicePrincipalId": "fixture:service",
+        "sourceOrigin": "https://source.example.test",
+        "runtime": {
+          "projectId": "00000000-0000-4000-8000-000000000004",
+          "environmentId": "00000000-0000-4000-8000-000000000005",
+          "serviceId": "00000000-0000-4000-8000-000000000006"
+        },
+        "storeId": "123456",
+        "accountId": "fixture-account",
+        "enrollmentId": "00000000-0000-4000-8000-000000000007",
+        "enrollmentRevision": 1,
+        "identityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "target": {
+        "canonicalCaseId": "00000000-0000-4000-8000-000000000010",
+        "orderId": "00000000-0000-4000-8000-000000000011",
+        "shopifyOrderId": "100",
+        "orderNumber": "100001",
+        "customerId": "200",
+        "paymentId": "300",
+        "currency": "USD",
+        "amountMinor": 1000,
+        "items": [
+          {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "shopifyLineItemId": "400",
+            "quantity": 1,
+            "amountMinor": 1000
+          }
+        ],
+        "taxMinor": 0,
+        "shippingMinor": 0,
+        "policy": {
+          "kind": "original_payment_refund_only",
+          "returnPrerequisite": false,
+          "restock": false,
+          "notification": false,
+          "customerSend": false,
+          "label": false,
+          "insurance": false
+        }
+      },
+      "revisions": {
+        "case": "case-v1",
+        "order": "order-v1",
+        "customer": "customer-v1",
+        "payment": "payment-v1",
+        "items": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "material": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "refundInventory": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sourceCaptureAt": "2026-10-06T12:00:00.000Z",
+      "expiresAt": "2026-10-06T12:00:15.000Z",
+      "snapshotHash": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+      "payment": {
+        "kind": "successful_original_payment",
+        "amountMinor": 1000,
+        "remainingMinor": 1000,
+        "currency": "USD"
+      },
+      "coverage": {
+        "writerManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "implementationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "complete": true,
+        "omissions": [],
+        "priorEffects": []
+      },
+      "blockers": []
+    },
+    "currentReservation": {
+      "sourceIntentId": "00000000-0000-4000-8000-000000000017",
+      "intentHash": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+      "preparedEventId": "00000000-0000-4000-8000-000000000019",
+      "exclusion": "own_reservation_only_not_effects"
+    },
+    "associationId": "00000000-0000-4000-8000-000000000021",
+    "attemptId": "00000000-0000-4000-8000-000000000023",
+    "outcome": {
+      "receiptId": "fixture-receipt",
+      "associationId": "00000000-0000-4000-8000-000000000021",
+      "attemptId": "00000000-0000-4000-8000-000000000023",
+      "requestKey": "00000000-0000-4000-8000-000000000018",
+      "refundTransactionId": "999",
+      "providerStatus": "SUCCESS",
+      "providerReceiptHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "auditEventId": "00000000-0000-4000-8000-000000000024",
+      "noRetry": true,
+      "paymentId": "300",
+      "refundId": "888",
+      "amountMinor": 1000,
+      "currency": "USD",
+      "providerIdempotencyKey": "fixture-provider-key",
+      "state": "SUCCESS",
+      "recordedAt": "2026-10-06T12:00:00.000Z"
+    }
+  },
+  "digests": {
+    "registration": "42704c535d5925a2f7ca57a396402db58ae4144fc68aa4d720c5153bf80fea0b",
+    "evidence": "d45649125231518ff3f898276c634c72834730e0115a0443b13b5138f7542458",
+    "authority": "13988b5d4baa3aa600c6f26ed0cfac05548e30e4b31f9fc4143d383a6283c6ce",
+    "action": "3ae85ae99c1291f9a88f8ceb51f160a7831633188a209781a8f9239579109e5f",
+    "intent": "a6309214fa665a888d565f2b5df4846b05de88b28137691c2a5414479aed4e1b",
+    "request": "60ae636da91a9b256d66d04f3f279ae4ae865d5210408c308fbf77f3efc808f7",
+    "receipt": "ede090e63f76b0f07f526b3ee417080c3e0da395dba8acbf05338f4008a92751"
+  }
+}

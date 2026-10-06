@@ -19,6 +19,7 @@ const EnvSchema = z.object({
   VP_COMPOSE_EVIDENCE_REGISTRY_FILE: z.string().trim().optional(),
   VP_CASE_CUSTODY_REGISTRY_FILE: z.string().trim().optional(),
   VP_MERGE_AUTHORIZATION_REGISTRY_FILE: z.string().trim().optional(),
+  VP_EXACT_REFUND_REGISTRY_FILE: z.string().trim().optional(),
   VP_CONTACT_VERIFICATION_REGISTRY_FILE: z.string().trim().optional(),
   VP_CUSTOMER_EMAIL_REGISTRY_FILE: z.string().trim().optional(),
   VP_COMPOSE_SERVICE_REGISTRY_FILE: z.string().trim().optional(),
@@ -153,6 +154,7 @@ export interface Config {
   composeEvidenceRegistryFile?: string | null;
   caseCustodyRegistryFile?: string | null;
   mergeAuthorizationRegistryFile?: string | null;
+  exactRefundRegistryFile?: string | null;
   contactVerificationRegistryFile?: string | null;
   customerEmailRegistryFile?: string | null;
   composeServiceRegistryFile?: string | null;
@@ -298,6 +300,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     composeEvidenceRegistryFile: parsed.VP_COMPOSE_EVIDENCE_REGISTRY_FILE || null,
     caseCustodyRegistryFile: parsed.VP_CASE_CUSTODY_REGISTRY_FILE || null,
     mergeAuthorizationRegistryFile: parsed.VP_MERGE_AUTHORIZATION_REGISTRY_FILE || null,
+    exactRefundRegistryFile: parsed.VP_EXACT_REFUND_REGISTRY_FILE || null,
     contactVerificationRegistryFile: parsed.VP_CONTACT_VERIFICATION_REGISTRY_FILE || null,
     customerEmailRegistryFile: parsed.VP_CUSTOMER_EMAIL_REGISTRY_FILE || null,
     composeServiceRegistryFile: parsed.VP_COMPOSE_SERVICE_REGISTRY_FILE || null,

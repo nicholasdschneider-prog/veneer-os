@@ -1,0 +1,48 @@
+{
+  "build": 606,
+  "recordedAt": "2026-10-06T17:09:13.365236+00:00",
+  "node": "24",
+  "checks": {
+    "rootTypecheck": "passed",
+    "scoped": {
+      "passed": 228,
+      "refund": 56,
+      "email": 139,
+      "guide": 33
+    },
+    "fullRoot": {
+      "installerPassed": 29,
+      "serverPassed": 3643,
+      "serverSkipped": 15,
+      "webPassed": 1008,
+      "browserManagerPassed": 51
+    },
+    "rootBuild": "passed",
+    "note": "Full root suite passed; final scoped rerun also covers additional deterministic single-clock observation regression. Root typecheck repeated after it."
+  },
+  "initialFailure": "One email artifact pin mismatch caused by shared-file additions; corrected with explicit hash/append-only delta and email regression pass.",
+  "logHashes": {
+    "typecheck": "4a231081cbf2b87d09a14e1de654f8c98fac63cb9efc1a76db81289fe11e2f02",
+    "scoped": "edef9b42373b5301ae1e4ba9c78be4712b1f8602a19447d980fde9586c4ea5c8",
+    "full": "f3d3233066fdf4bd4d3e0b4d5e85396c17ab91fdd89a7cdf4c53ed8e693926a2",
+    "build": "a476865a61e7a32bbb48b8091462a83768b8c788a9c3dea78f5a0f965cc7c6da"
+  },
+  "artifactHashes": {
+    "server/src/bots/exactRefundContract.ts": "ee27013ec1c2972f53a9ccadc1c5aca1df13d71cabfbbefc25d48a9f628f3fe8",
+    "server/src/bots/exactRefund.ts": "523d084b482a9b5de3e45942115ed531a8858bb26195b6ca0d319e6cd200b419",
+    "server/src/bots/exactRefundRoutes.ts": "52f7fadb0bdd01f2c354c12022145b082a2f3560ea69481c9ad6ce97c2599076",
+    "server/src/db/migrations/0154_exact_refund.sql": "15a8d925f2dd155fdcd3fbe5e46425f1a147cb46d18a6fbc319330d1f78d7457",
+    "server/dist/bots/exactRefundContract.js": "f3f174fb44fe115589d47569d1ae136bc0236033d6b28d1fddb410072fb9f310",
+    "server/dist/bots/exactRefund.js": "ac68914ebf18dc9a2a61343598ce07090f7684ed861f0141a2edbff484b79fea",
+    "server/dist/bots/exactRefundRoutes.js": "ce0ab01b9c7a11b0c7a218b8cda46364ee717759d422a943ad4679da619095f4",
+    "server/dist/db/migrations/0154_exact_refund.sql": "15a8d925f2dd155fdcd3fbe5e46425f1a147cb46d18a6fbc319330d1f78d7457"
+  },
+  "deployment": {
+    "restarted": false,
+    "productionMigrationApplied": false,
+    "activated": false,
+    "runtimeReadiness": "not verified; staged only",
+    "blocker": "BUILD505 retained Chrome/preview preservation restriction unresolved; root restart withheld"
+  },
+  "productionEffects": false
+}
