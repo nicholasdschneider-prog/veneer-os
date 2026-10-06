@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
-import type { UserRow } from '../db/db.js';
 import { BotError, type Actor } from './service.js';
 import { canonicalJson, canonicalSha256 } from './canonical.js';
 import { customerEmailNative } from './customerEmailNative.js';
@@ -90,22 +89,18 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
     }
     async function prepare(a: Actor | null, input: EmailCaptureInput, g?: Authority) {
         const p = emailCaptureInput.parse(Object.fromEntries(Object.keys(emailCaptureInput.shape).map(k => [k, (input as unknown as Record<string, unknown>)[k]]))), r = registration(p);
-        let actor = a;
-        if (!actor) {
-            const user = db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(r.ownerUserId) as UserRow | undefined;
-            if (!user)
-                throw new BotError(403, 'Original owner revoked');
-            actor = {
-                user, conversationId: p.source_owner_id
-            };
-        }
-        const n = native.snapshot(actor, nativeInput(p), actor.conversationId === p.executor_id, g?.id), proof = await io.capture(a, p, n, r);
+        const readNative=()=> {
+            if(a)return native.snapshot(a,nativeInput(p),a.conversationId===p.executor_id,g?.id);
+            const {locatorRows:_privateLocatorRows,...n}=native.serviceSnapshot(r,nativeInput(p),g?.id);
+            return n;
+        };
+        const n = readNative(), proof = await io.capture(a, p, n, r);
         proof.assertFresh();
         validateEmailCapture(proof.wire, p, n, r, a?.conversationId === p.source_owner_id ? r.sourcePrincipalId : r.executorPrincipalId, io.now());
         const fresh = () => {
             emailRegistrationCurrent(db, io.registration(r.id), io.now());
             proof.assertFresh();
-            const current = native.snapshot(actor!, nativeInput(p), actor!.conversationId === p.executor_id, g?.id);
+            const current = readNative();
             if (current.contextRevision !== n.contextRevision || current.inventoryHash !== n.inventoryHash)
                 throw new BotError(409, 'Native context changed during source read');
             duplicate(current);
@@ -290,11 +285,9 @@ export function customerEmailService(db: Database.Database, io: EmailIO) {
             };
         },
         serviceContext(registrationId: string, id: string) {
-            const g = row(emailId.parse(id)), r = serviceAccess(registrationId, g), user = db.prepare('SELECT * FROM users WHERE id=?').get(r.ownerUserId) as UserRow;
+            const g = row(emailId.parse(id)), r = serviceAccess(registrationId, g);
             const p = inputFor(g, JSON.parse(g.native_json).input.capture_id);
-            const n = native.snapshot({
-                user, conversationId: r.sourceOwnerId
-            }, nativeInput(p), false, g.id);
+            const n = native.serviceSnapshot(r, nativeInput(p), g.id);
             return {
                 execute: false, authority_id: g.id, context_revision: n.contextRevision, inventory_hash: n.inventoryHash, records: n.inventory, unreviewed_media: n.unreviewedMedia, complete: true
             };

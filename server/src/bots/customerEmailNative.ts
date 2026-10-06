@@ -4,7 +4,7 @@ import { createBotService, BotError, type Actor } from './service.js';
 import { canSendToConversation } from '../conversations/access.js';
 import type { UserRow } from '../db/db.js';
 import { exactDraftPayload } from './draftPayload.js';
-import { emailInput, type EmailInput } from './customerEmailContract.js';
+import { emailInput, type EmailInput, type EmailRegistration } from './customerEmailContract.js';
 type Row = Record<string, unknown>;
 export type EmailMessage = {
     kind: 'direct_message' | 'result_reply' | 'decision_discussion' | 'voice_dispatch' | 'decision_event';
@@ -39,6 +39,22 @@ export function customerEmailNative(db: Database.Database) {
         const p = emailInput.parse(raw);
         if (!a.conversationId || a.conversationId !== (executorRead ? p.executor_id : p.source_owner_id))
             throw new BotError(403, 'Original source owner or exact executor required');
+        const {locatorRows: _privateLocatorRows, ...result}=collect(a, p, currentAuthorityId);
+        return result;
+    }
+    // Service custody is checked by the dedicated boundary. No bot actor/session is
+    // manufactured. Native ACL queries use the enrolled human owner's current ACL.
+    function serviceSnapshot(r: EmailRegistration, raw: unknown, currentAuthorityId?: string) {
+        const p = emailInput.parse(raw);
+        if(p.source_owner_id!==r.sourceOwnerId || p.executor_id!==r.executorId)
+            throw new BotError(403,'Exact registered service participants required');
+        const user=db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(r.ownerUserId) as UserRow|undefined;
+        if(!user)throw new BotError(403,'Service custody owner revoked');
+        const n=collect({user},p,currentAuthorityId);
+        if(n.businessId!==r.businessId)throw new BotError(403,'Exact registered business required');
+        return n;
+    }
+    function collect(a: Actor, p: EmailInput, currentAuthorityId?: string) {
         const owner = participant(a, p.source_owner_id), executor = participant(a, p.executor_id);
         if (owner.business_team_id !== executor.business_team_id)
             throw new BotError(403, 'Same native business required');
@@ -120,13 +136,24 @@ export function customerEmailNative(db: Database.Database) {
             key: string;
             revision: string;
         }> = [];
+        const locatorRows: Array<{key:string; revision:string; row:Row}> = [];
         function add(kind: string, list: Row[], audit: (r: Row) => Row[] = () => []) {
-            for (const r of list)
-                inventory.push({
+            for (const r of list) {
+                const record = {
                     key: `${kind}:${r.id ?? r.draft_id ?? canonicalSha256(r)}`, revision: canonicalSha256({
                         row: r, audit: audit(r)
                     })
-                });
+                };
+                inventory.push(record);
+                const locatorRow={...r};
+                if(kind==='routine') {
+                    const proof=rows('SELECT id,scope_json FROM routine_source_proofs WHERE id=?',r.proof_id);
+                    if(proof.length!==1)throw new BotError(409,'Retained routine locator proof missing');
+                    locatorRow.locator_proof_id=proof[0]!.id;
+                    locatorRow.locator_scope_json=proof[0]!.scope_json;
+                }
+                locatorRows.push({...record,row:locatorRow});
+            }
         }
         add('decision', rows(`SELECT * FROM bot_decisions WHERE conversation_id IN (${membership}) ORDER BY id`, business), r => rows('SELECT * FROM bot_decision_events WHERE decision_id=? ORDER BY id', r.id));
         add('draft', rows(`SELECT * FROM bot_message_drafts WHERE conversation_id IN (${membership}) ORDER BY id`, business), r => [...rows('SELECT * FROM bot_message_retirements WHERE draft_id=?', r.id), ...rows('SELECT * FROM bot_message_delivery_proofs WHERE draft_id=?', r.id)]);
@@ -180,12 +207,12 @@ export function customerEmailNative(db: Database.Database) {
         }), inventoryHash = canonicalSha256(inventory), sourceHash = canonicalSha256(source);
         const later = messages.filter(m => !m.actor_conversation_id && !(m.kind === source.kind && m.id === source.id) && stamp(m.created_at) + (/\.\d+/.test(m.created_at) ? 0 : 999) >= stamp(source.created_at));
         return {
-            execute: false as const, ready: false as const, input: p, businessId: business, source, sourceHash, payload, payloadHash: canonicalSha256(payload), context, contextRevision, inventory, inventoryHash, currentAuthorityKey: currentAuthorityId ? `customer_email:${currentAuthorityId}` : undefined, completedActionKeys: rows('SELECT c.id FROM customer_email_completed_actions c JOIN customer_email_authorities a ON a.id=c.id WHERE a.business_id=?',business).map(x=>`customer_email:${x.id}`).filter(k=>inventory.some(x=>x.key===k)), later_human_context: later, unreviewedMedia, coverage: {
+            execute: false as const, ready: false as const, input: p, businessId: business, source, sourceHash, payload, payloadHash: canonicalSha256(payload), context, contextRevision, aclHash:canonicalSha256(acl), inventory, inventoryHash, locatorRows, currentAuthorityKey: currentAuthorityId ? `customer_email:${currentAuthorityId}` : undefined, completedActionKeys: rows('SELECT c.id FROM customer_email_completed_actions c JOIN customer_email_authorities a ON a.id=c.id WHERE a.business_id=?',business).map(x=>`customer_email:${x.id}`).filter(k=>inventory.some(x=>x.key===k)), later_human_context: later, unreviewedMedia, coverage: {
                 complete: true, caller_private_voice: false
             }, instructions: 'Original owner must semantically review ALL human context, result anchors, shared voice directions, later corrections, full draft and native records. No keyword consent. Media without trusted actual byte review blocks binding. No withdrawn purchase decision is reopened or used as approval.'
         };
     }
     return {
-        snapshot, participant
+        snapshot, serviceSnapshot, participant
     };
 }

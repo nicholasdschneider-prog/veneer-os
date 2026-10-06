@@ -1,3 +1,5 @@
+import { customerEmailPrebind } from './customerEmailPrebind.js';
+import { canonicalSha256 } from './canonical.js';
 import express from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
@@ -43,6 +45,7 @@ export function customerEmailVerifierRoutes(ctx: AppContext, override?: {
         res.set('Cache-Control', 'no-store');
         void (async () => {
             const id = emailId.parse(req.headers['x-customer-email-registration-id']), r = io.registration(id);
+            if(r.id!==id)throw new BotError(403,'Exact authenticated registration required');
             emailRegistrationCurrent(ctx.db, r, io.now());
             const c = ctx.config;
             if ([c.cfAud, c.autoshipVerifierCfAud, c.returnVerifierCfAud, c.routineVerifierCfAud, c.purchaseTimingCfAud, c.autoshipCandidateCfAud].includes(r.nativeAudience) || [c.autoshipVerifierClientId, c.returnVerifierClientId, c.routineVerifierClientId, c.purchaseTimingClientId, c.autoshipCandidateClientId].includes(r.cfClientId))
@@ -57,6 +60,9 @@ export function customerEmailVerifierRoutes(ctx: AppContext, override?: {
             })(req));
             if (!emailBearer(req.headers.authorization, r) || !await cf(req, r))
                 throw new BotError(401, 'Dedicated customer email service identity required');
+            const current=io.registration(id);
+            emailRegistrationCurrent(ctx.db,current,io.now());
+            if(canonicalSha256(current)!==canonicalSha256(r))throw new BotError(403,'Service registration changed during authentication');
             res.locals.registrationId = id;
             next();
         })().catch(next);
@@ -64,6 +70,10 @@ export function customerEmailVerifierRoutes(ctx: AppContext, override?: {
     const run = (f: (req: express.Request, id: string) => unknown) => (req: express.Request, res: express.Response, next: express.NextFunction) => {
         void Promise.resolve().then(() => f(req, res.locals.registrationId)).then(x => res.json(x)).catch(next);
     };
+    router.post('/prebind-context', run((req,id)=>{
+        z.object({}).strict().parse(req.query);
+        return customerEmailPrebind(ctx.db,io)(id,req.body);
+    }));
     router.get('/authorities/:id', run((req, id) => {
         z.object({}).strict().parse(req.query);
         return service.serviceAuthority(id, emailId.parse(req.params.id));

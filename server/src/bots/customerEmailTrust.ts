@@ -36,6 +36,8 @@ export function emailBearer(header: unknown, r: EmailRegistration) {
 }
 export function emailRegistrationCurrent(db: Database.Database, r: EmailRegistration, now: number, enrolled = true) {
     emailRegistration.parse(r);
+    if(r.prebindCapability && (r.prebindCapability.input.source_owner_id!==r.sourceOwnerId || r.prebindCapability.input.executor_id!==r.executorId))
+        throw new BotError(403,'Prebind capability participant scope differs');
     const credentials = [r.sourceCredential, r.executorCredential, r.serviceReadCredential].map(c => canonicalSha256(c));
     if (new Set(credentials).size !== 3 || new Set([r.sourcePrincipalId, r.executorPrincipalId, r.servicePrincipalId]).size !== 3 || r.sourceOwnerId === r.executorId)
         throw new BotError(403, 'Distinct original participant and dedicated service custody required');
@@ -79,7 +81,7 @@ export function emailEnrollment(db: Database.Database, registration: (id: string
             return {
                 execute: false, registration: r, registration_hash: h, confirmation_hash: canonicalSha256({
                     registration: r, owner: a.user.id
-                }), instructions: 'Review exact dedicated custody, artifacts, guards and source adoption. Confirmation enrolls technical trust only; no customer action or native restart.'
+                }), instructions: 'Review exact dedicated custody, artifacts, guards and source adoption. Optional prebindCapability grants only the pinned original source/draft read plus explicitly declared complete-business minimized structured locator inventory. No native human transcript export; unknown references remain unresolved. Existing enrollment does not inherit this capability. Confirmation enrolls technical trust only; no customer action or native restart.'
             };
         }, confirm(a: Actor, raw: unknown) {
             const p = z.object({

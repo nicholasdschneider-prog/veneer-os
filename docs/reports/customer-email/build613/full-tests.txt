@@ -1,0 +1,853 @@
+
+> veneer-os@0.1.0 test
+> npm run test:installer && npm run test -w @veneer-pro/server && npm run test -w @veneer-pro/web && npm test -w veneer-browser-manager
+
+
+> veneer-os@0.1.0 test:installer
+> node --test installer/*.test.mjs
+
+✔ writes the identity 0600 and the server wiring into the env file (2.190625ms)
+✔ rotates the token without disturbing operator overrides (0.876416ms)
+✔ fails loudly when the client script prints no identity (0.398417ms)
+✔ replaces an existing key in place and appends a new one (1.3235ms)
+✔ leaves unrelated lines, comments and ordering untouched (0.281042ms)
+✔ collapses duplicate definitions of a rewritten key (0.265667ms)
+✔ onlyIfMissing keeps an operator value but still adds absent keys (0.244375ms)
+✔ creates a missing file and enforces the mode on every write (0.352834ms)
+✔ quotes values containing spaces and quotes (0.203709ms)
+✔ validateInstallEnv fails when cloudflare identity has no team domain (0.126458ms)
+✔ validateInstallEnv fails when cloudflare identity has no AUD (0.056334ms)
+✔ validateInstallEnv treats an unset identity as cloudflare (0.053833ms)
+✔ validateInstallEnv passes a complete cloudflare config (0.33775ms)
+✔ validateInstallEnv skips the Access check for a non-cloudflare identity (0.049417ms)
+✔ validateInstallEnv treats a blank Access value as missing (0.043625ms)
+✔ validateInstallEnv warns but does not fail on missing DATA_DIR and VP_SOURCE_DIR (0.046042ms)
+✔ validateInstallEnv warns for each unset path independently (0.032958ms)
+✔ reloads the runner after persistent services and before the boot probe (0.824459ms)
+✔ continues reloading later services after one bootstrap fails (0.541458ms)
+✔ reports a failed post-install health assertion (0.158875ms)
+✔ renders a one-shot helper plist with escaped paths and no KeepAlive (0.105ms)
+✔ attributes readiness to the log-owning tunnel rather than another default-port tunnel (10.928167ms)
+✔ refuses ambiguous, unrelated, non-loopback, or missing listeners (0.143292ms)
+✔ rejects disconnected or malformed readiness 503 {"status":503,"readyConnections":0} (0.264708ms)
+✔ rejects disconnected or malformed readiness 200 {"status":200,"readyConnections":0} (0.125166ms)
+✔ rejects disconnected or malformed readiness 200 {"status":200,"readyConnections":"4"} (0.123375ms)
+✔ rejects disconnected or malformed readiness 200 {} (0.113334ms)
+✔ a healthy Access redirect cannot substitute for a disconnected tunnel (0.264666ms)
+✔ public errors do not echo credentials, URLs, or response bodies (0.214958ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 58.381
+
+> @veneer-pro/server@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/veneerBrowser.test.ts (161 tests) 8678ms
+ ✓ test/bots.test.ts (74 tests) 6126ms
+ ✓ test/customerEmail.test.ts (165 tests) 16184ms
+   ✓ staged native customer email direction > requires explicit human-reviewed exact prebind capability; old enrollment is not broadened 2622ms
+ ✓ test/veneerBrowserSecretTools.test.ts (47 tests) 621ms
+   ✓ agent-browser redaction > keeps a redacted value out of stdout, stderr, argv, and errors 302ms
+ ✓ test/migrate.test.ts (25 tests) 483ms
+ ✓ test/connectorsRoutes.test.ts (55 tests) 160ms
+ ✓ test/composedSms.test.ts (77 tests) 6772ms
+ ✓ test/turnResume.test.ts (41 tests) 3304ms
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > keeps approved work queued after hangup and never approves an unanswered discussion on end
+[voice] call 6757952a-00fd-4820-8fcf-4a09cc8d276b ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > keeps approved work queued after hangup and never approves an unanswered discussion on end
+[voice] transcript handoff skipped for call 6757952a-00fd-4820-8fcf-4a09cc8d276b: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > finishes an accepted instruction dispatch after its caller hangs up without replaying it
+[voice] call e02dc344-1e2e-4e39-b919-887c586ae353 ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > finishes an accepted instruction dispatch after its caller hangs up without replaying it
+[voice] transcript handoff skipped for call e02dc344-1e2e-4e39-b919-887c586ae353: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > speaks as the bot in first person and never as a third-party voice line
+[voice] call fdf28195-3622-4880-a238-305b701136ba ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > speaks as the bot in first person and never as a third-party voice line
+[voice] transcript handoff skipped for call fdf28195-3622-4880-a238-305b701136ba: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] call b59b6f1f-825a-4113-b9be-c8baeae8494f ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] transcript handoff skipped for call b59b6f1f-825a-4113-b9be-c8baeae8494f: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] call bf43b854-5362-445c-9266-ea8a9af53f05 ended (agent_ended/worker_user_initiated) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > asks its one question plainly on a call the bot placed, stops calling on request, and hangs up itself
+[voice] transcript handoff skipped for call bf43b854-5362-445c-9266-ea8a9af53f05: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > never records an offered option the caller did not state on a call the bot placed
+[voice] call 84f70ac2-28d1-45e8-81bb-e547f32bb3f8 ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > never records an offered option the caller did not state on a call the bot placed
+[voice] transcript handoff skipped for call 84f70ac2-28d1-45e8-81bb-e547f32bb3f8: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > records an offered option on a placed call when the caller states and confirms it
+[voice] call 42a49311-60f8-4df1-9823-609df046c7ac ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > records an offered option on a placed call when the caller states and confirms it
+[voice] transcript handoff skipped for call 42a49311-60f8-4df1-9823-609df046c7ac: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] call 8142259f-7757-424f-a10e-2ae4b5436495 ended (phone_voicemail) after 97s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] transcript handoff skipped for call 8142259f-7757-424f-a10e-2ae4b5436495: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] call 065176b2-f7d9-4ffe-ac6c-b110a8f5efba ended (phone_hangup/worker_participant_disconnected) after 0s
+[voice] call 23405404-f571-4394-984a-443d5a414a5e ended (phone_voicemail) after 0s
+[voice] call 673424c5-b863-4dc5-9347-9b329dc85d62 failed (phone_not_placed) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > phones the person, bridges them into the room, and hangs up on voicemail without speaking
+[voice] transcript handoff skipped for call 065176b2-f7d9-4ffe-ac6c-b110a8f5efba: no_caller_turns
+[voice] transcript handoff skipped for call 23405404-f571-4394-984a-443d5a414a5e: no_caller_turns
+[voice] phone call 673424c5-b863-4dc5-9347-9b329dc85d62 could not be placed: refused
+[voice] transcript handoff skipped for call 673424c5-b863-4dc5-9347-9b329dc85d62: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > hands the saved transcript to the bot once after every bot call, marking relayed items
+[voice] call 07770252-28bd-4788-a43a-215e1bc4ab27 ended (unspecified) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > hands off after an interrupted call but not for coordinator calls or calls without caller turns
+[voice] call 81a2088d-3bba-4f03-9c1a-790707d66b51 ended (unspecified) after 0s
+[voice] call d75434c7-bf85-479e-adf0-90620d92e251 ended (unspecified) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > hands off after an interrupted call but not for coordinator calls or calls without caller turns
+[voice] transcript handoff skipped for call 81a2088d-3bba-4f03-9c1a-790707d66b51: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > hands off after an interrupted call but not for coordinator calls or calls without caller turns
+[voice] call f0ed420b-c75c-48a1-b0ee-0e4cfb1c3671 interrupted (not_ready) after 46s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > survives transient conversation check failures and only interrupts after sustained failure
+[voice] call cfcd6c01-4dcd-4fe5-a201-ab4a7878b615 interrupted (lost_bot_conversation) after 17s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > saves style for the authenticated caller and reloads it across calls without dispatching bot work
+[voice] call 310c9fdd-1ac2-4a07-9e06-427af2b07348 ended (unspecified) after 0s
+[voice] call 55983860-0e0f-4a0a-b583-d5b726559869 ended (unspecified) after 0s
+[voice] call fd94fb49-0f78-4ee3-a5f4-d8dc5338e9da ended (unspecified) after 0s
+[voice] call 282bed9e-9d44-4be6-a8a5-5d521ead61d7 ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > saves style for the authenticated caller and reloads it across calls without dispatching bot work
+[voice] transcript handoff skipped for call 55983860-0e0f-4a0a-b583-d5b726559869: no_caller_turns
+[voice] transcript handoff skipped for call fd94fb49-0f78-4ee3-a5f4-d8dc5338e9da: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > persists real connected duration, bounds restart interruption, and ignores foreign end attempts
+[voice] call 7df3d3a1-d4fd-4d9c-af65-f01ec19f134c ended (unspecified) after 15s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > bounds large bot context and preserves an older selected decision in startup and notices
+[voice] call 09506d40-0db7-4d46-9517-3b7a0834d618 ended (service_shutdown) after 5s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > bounds large bot context and preserves an older selected decision in startup and notices
+[voice] transcript handoff skipped for call 09506d40-0db7-4d46-9517-3b7a0834d618: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > reports only approved error categories, never worker diagnostics
+[voice] call 12e6f45e-f427-46ec-b124-6db7b357d381 failed (service_shutdown) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > scopes calls to one user, refuses overlap and keeps credentials out of status
+[voice] call a89df0f8-fd98-48bf-9c13-049d3883c3e0 ended (unspecified) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > loads existing work before starting audio, even without blockers or decisions
+[voice] call 62b83f59-1cbe-441e-ab99-5baffc24eecc ended (service_shutdown) after 0s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > loads existing work before starting audio, even without blockers or decisions
+[voice] transcript handoff skipped for call 62b83f59-1cbe-441e-ab99-5baffc24eecc: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > keeps a normal thread call alive through task dispatch and reports real replies
+[voice] call 619dd02f-b54a-4937-8ad2-e1b2f1595691 interrupted (lost_bot_conversation) after 10s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > keeps a normal thread call alive through task dispatch and reports real replies
+[voice] call 619dd02f-b54a-4937-8ad2-e1b2f1595691 interrupted after 10 consecutive conversation check failures
+[voice] transcript handoff failed for call 619dd02f-b54a-4937-8ad2-e1b2f1595691: User not available.
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > notifies a call about a decision discussion reply even when chat and run status do not change
+[voice] call 822fb65b-8ebd-4933-95e9-a613d2e76691 ended (service_shutdown) after 2s
+
+stderr | test/liveVoiceService.test.ts > live voice lifecycle > notifies a call about a decision discussion reply even when chat and run status do not change
+[voice] transcript handoff skipped for call 822fb65b-8ebd-4933-95e9-a613d2e76691: no_caller_turns
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > reaps an abandoned phone connection even if its worker stays alive
+[voice] call c3de613a-7a38-4833-907c-1679b1035913 interrupted (heartbeat_timeout) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > times out a stuck startup and reports worker failures without raw diagnostics
+[voice] call 80c288b3-8bd3-44c7-8bac-aa0ec1704263 interrupted (not_ready) after 46s
+[voice] call f9d4f425-ab20-493d-a09c-c0bb5f8d2fe1 failed (service_shutdown) after 0s
+
+stdout | test/liveVoiceService.test.ts > live voice lifecycle > cleans up remote rooms when worker startup fails and permits retry
+[voice] call 84a17e5d-e543-4f35-96c5-927d232f95c1 ended (service_shutdown) after 0s
+
+stdout | test/liveVoiceService.test.ts > routes the hotline through selected owners and keeps its transcript out of unrelated bots
+[voice] call aa5f88b7-8a06-4fab-b810-5c3fd87d1dae ended (unspecified) after 0s
+
+ ✓ test/liveVoiceService.test.ts (25 tests) 2316ms
+   ✓ live voice lifecycle > bounds large bot context and preserves an older selected decision in startup and notices 303ms
+ ✓ test/mergeAuthorization.test.ts (15 tests) 1435ms
+ ✓ test/veneerBrowserMcp.test.ts (51 tests) 166ms
+ ✓ test/routineExecution.test.ts (81 tests) 6512ms
+ ✓ test/skills.test.ts (34 tests) 256ms
+ ✓ test/codexAppServer.test.ts (59 tests) 27964ms
+   ✓ canonical Codex App Server adapter > retires the app-server of an account that was disconnected since it was spawned 15010ms
+   ✓ Codex paginated fork preparation failure (resume in place, option A) > starts no turn and reports no session when the fallback resume never answers 6006ms
+   ✓ Codex startup recovery history > retains startup timeout stage and never adopts a late fork or starts its turn 2228ms
+ ✓ test/grokAcp.test.ts (34 tests) 1376ms
+ ✓ test/contactVerification.test.ts (60 tests) 5885ms
+stderr | test/buildQueue.test.ts > Platform Dev build queue > keeps dispatching other workspaces when a chat cannot be reached at all
+[build-queue] could not dispatch #1: conversation is unreachable
+[build-queue] could not notify #1 of its failure: conversation is unreachable
+
+ ✓ test/buildQueue.test.ts (23 tests) 1892ms
+ ✓ test/transcript.test.ts (27 tests) 26ms
+stderr | test/usage.test.ts > claude probe — oauth-first with header fallback > records oauth windows + plan and skips the header probe when oauth works
+[usage] claude oauth profile failed: oauth profile failed: HTTP 401
+
+ ✓ test/restart.test.ts (32 tests) 248ms
+stderr | test/usage.test.ts > claude probe — oauth-first with header fallback > falls back to the header probe when the token lacks the scope (null)
+[usage] claude oauth profile failed: oauth profile failed: HTTP 401
+
+ ✓ test/usage.test.ts (42 tests) 364ms
+ ✓ test/agentBrowser.test.ts (31 tests) 1896ms
+   ✓ scoped Agent Browser commands > serializes one working copy through its stable daemon and closes that daemon explicitly 1167ms
+ ✓ test/messageDelegation.test.ts (48 tests) 3957ms
+stdout | test/huddles.test.ts > huddles > REST routes > exposes create, read, post, actions, close and reopen with the request identity as the actor
+[huddle] wake 16e7b8d7-7b31-4137-ad5f-84140777c9c4 huddle=443e3297-2d99-4b71-9a5b-c9d0739ba02f bot=bot-robin through=#1 at=2026-10-06T18:24:10.572Z
+[huddle] wake c785befd-4e09-4754-8798-dcc6762f3ba1 huddle=443e3297-2d99-4b71-9a5b-c9d0739ba02f bot=bot-sage through=#1 at=2026-10-06T18:24:10.572Z
+[huddle] opened 443e3297-2d99-4b71-9a5b-c9d0739ba02f lead=bot-lead members=3
+
+stdout | test/huddles.test.ts > huddles > REST routes > exposes create, read, post, actions, close and reopen with the request identity as the actor
+[huddle] wake 6494b1b5-d348-449a-8a90-6fb0e35a5cf0 huddle=443e3297-2d99-4b71-9a5b-c9d0739ba02f bot=bot-lead through=#2 at=2026-10-06T18:24:10.579Z
+
+stdout | test/huddles.test.ts > huddles > REST routes > exposes create, read, post, actions, close and reopen with the request identity as the actor
+[huddle] wake 49e94cdb-a927-4fa5-8ce3-bece1fee040d huddle=443e3297-2d99-4b71-9a5b-c9d0739ba02f bot=bot-lead through=#6 at=2026-10-06T18:24:40.579Z
+
+ ✓ test/huddles.test.ts (13 tests) 1107ms
+ ✓ test/composedSmsCorrectionV2.test.ts (37 tests) 3798ms
+ ✓ test/employeeWorkspace.test.ts (16 tests) 1331ms
+ ✓ test/liveVoice.test.ts (22 tests) 1796ms
+ ✓ test/connectorToolDetails.test.ts (20 tests) 12ms
+ ✓ test/desktop.test.ts (50 tests) 8ms
+ ✓ test/materialize.test.ts (26 tests) 2047ms
+ ✓ test/exactRefund.test.ts (56 tests) 4469ms
+ ✓ test/composedSmsCorrection.test.ts (40 tests) 3287ms
+ ✓ test/veneerBrowserRoutes.test.ts (22 tests) 58ms
+ ✓ test/botFeatureGuide.test.ts (33 tests) 16ms
+ ✓ test/caseCustody.test.ts (50 tests) 3865ms
+ ✓ test/approvedCaseResolver.test.ts (44 tests) 3386ms
+ ✓ test/teamRooms.test.ts (25 tests) 1925ms
+ ✓ test/vendorEmail.test.ts (40 tests) 3085ms
+ ✓ test/decisionEvidence.test.ts (16 tests) 1300ms
+ ✓ test/scheduledTasksRoutes.test.ts (13 tests) 477ms
+ ✓ test/purchaseTiming.test.ts (42 tests) 3312ms
+ ✓ test/botCommunication.test.ts (12 tests) 1003ms
+ ✓ test/miniApps.test.ts (12 tests) 31ms
+ ✓ test/veneerBrowserScript.test.ts (14 tests | 10 skipped) 4ms
+ ✓ test/codexAccounts.test.ts (14 tests) 268ms
+ ✓ test/wakeups.test.ts (13 tests) 1035ms
+ ✓ test/connectorAccessModes.test.ts (13 tests) 7ms
+stdout | test/secretRequests.test.ts > agent secret reveals > returns the value to the chat owner, answers "shown", and keeps it out of events
+[reveal-secret] user=1 secret=STRIPE_API_KEY target=veneer/prd conversation=conv-1
+
+stdout | test/secretRequests.test.ts > agent secret reveals > lets an already-shown request be revealed again after a reload
+[reveal-secret] user=1 secret=STRIPE_API_KEY target=veneer/prd conversation=conv-1
+[reveal-secret] user=1 secret=STRIPE_API_KEY target=veneer/prd conversation=conv-1
+
+ ✓ test/secretRequests.test.ts (16 tests) 138ms
+stdout | test/claudeAccountFailover.test.ts > claude failover — detect, switch, continue > constructs a runtime with recovery wired and attributes late usage to the spawn account
+[veneer-pro] froze instruction context for 1 existing chat(s)
+
+ ✓ test/claudeAccountFailover.test.ts (16 tests) 233ms
+ ✓ test/memoryCurator.test.ts (15 tests) 11ms
+ ✓ test/machineAccess.test.ts (21 tests) 493ms
+   ✓ provider auth and session state stay in the Pro service directories > runs one Codex app-server per access level, since Codex owns the shell env 376ms
+ ✓ test/smsCode.test.ts (35 tests | 1 skipped) 1105ms
+   ✓ findSmsCode > kills a catastrophically backtracking caller pattern instead of wedging the runner 1006ms
+stdout | test/cdpDesktopMessages.test.ts > viewer newtab message > creates a blank tab, activates it and attaches the screencast to it
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer newtab message > publishes the new tab to the viewer as the active one
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer insert message > inserts the whole clipboard string into the attached page
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer insert message > ignores a non-string, an oversized and an unknown message
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > viewer insert message > accepts a paste right at the size limit
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > keeps the shared desktop at its legacy JPEG quality when no override is supplied
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > uses the requested JPEG quality for live frames and keyframes
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > uses a high-density bitmap while keeping the emulated viewport in CSS pixels
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > downscales thumbnail screencasts and keyframes without changing CSS coordinates
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > follows the agent to another tab and publishes it as active
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > Veneer Browser frame quality and agent cursor > relays cursor activity only for the target the viewer is watching
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > New Tab page handling > sends a fresh browser from the New Tab page to about:blank on attach
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > New Tab page handling > leaves an ordinary page where it is
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > frame metrics > republishes the viewport when a frame reports a different CSS size, once per change
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > idle-page keyframe > captures a keyframe on attach and retries once when nothing streams
+[veneer-pro] desktop viewer attached (cdp)
+
+stdout | test/cdpDesktopMessages.test.ts > frame delivery pacing > acks Chrome at once and streams consecutive frames without waiting for the viewer
+[veneer-pro] desktop viewer attached (cdp)
+
+ ✓ test/cdpDesktopMessages.test.ts (17 tests) 1601ms
+   ✓ idle-page keyframe > captures a keyframe on attach and retries once when nothing streams 731ms
+ ✓ test/emailCode.test.ts (28 tests) 346ms
+ ✓ test/approvalAdapter.test.ts (20 tests) 6168ms
+   ✓ claude adapter approval round trip (fake CLI) > pauses the inactivity watchdog while an approval is pending 5037ms
+   ✓ claude adapter approval round trip (fake CLI) > reports delivery immediately and acknowledges only once the delayed replay lands 337ms
+ ✓ test/businessTeams.test.ts (10 tests) 823ms
+ ✓ test/autoshipVerifier.test.ts (9 tests) 428ms
+ ✓ test/botWorkflows.test.ts (14 tests) 1090ms
+ ✓ test/veneerBrowserRemote.test.ts (18 tests) 14ms
+ ✓ test/generatedFiles.test.ts (13 tests) 144ms
+ ✓ test/purchaseEvents.test.ts (16 tests) 1277ms
+ ✓ test/botCalls.test.ts (14 tests) 1100ms
+ ✓ test/files.test.ts (20 tests) 64ms
+ ✓ test/codexConnectorTranscript.test.ts (5 tests) 10ms
+ ✓ test/approvalManager.test.ts (16 tests) 1360ms
+ ✓ test/csStandingPolicy.test.ts (17 tests) 1300ms
+ ✓ test/sonioxSpeechToText.test.ts (16 tests) 23ms
+ ✓ test/fixturePreparation.test.ts (21 tests) 75ms
+ ✓ test/remoteMcp.test.ts (6 tests) 532ms
+ ✓ test/netsuite.test.ts (24 tests) 41ms
+ ✓ test/instructionContext.test.ts (11 tests) 237ms
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Assistant and persists a safe replacement default
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Assistant and persists a safe replacement default
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Assistant and persists a safe replacement default
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/assistantDeletion.test.ts > deletable built-in agents > retires an unused Platform Dev and moves defaults to a regular agent
+[auto-title] skipped: no OpenRouter key configured
+
+ ✓ test/assistantDeletion.test.ts (8 tests) 652ms
+ ✓ test/agentScheduledTaskTools.test.ts (6 tests) 1216ms
+   ✓ scheduled-agent MCP tools > maps run history, run updates, run-now, and both delete actions to the owner-scoped API 448ms
+ ✓ test/buildDispatchIdentity.test.ts (9 tests) 703ms
+ ✓ test/coordinatedBuildChat.test.ts (9 tests) 471ms
+ ✓ test/instructionObligations.test.ts (20 tests) 1610ms
+ ✓ test/grokDeviceAuth.test.ts (26 tests) 1443ms
+   ✓ createGrokConnectManager > hard-expires the attempt and kills the child 345ms
+ ✓ test/coordination.test.ts (6 tests) 536ms
+ ✓ test/ringcentral.test.ts (29 tests) 30ms
+stdout | test/lanViewer.test.ts > LAN viewer listener > serves nothing but the ticketed upgrade
+[veneer-pro] LAN viewer listening on https://localhost:0 (viewer socket only)
+
+ ✓ test/lanViewer.test.ts (7 tests) 110ms
+ ✓ test/pageThumbnails.test.ts (6 tests) 359ms
+ ✓ test/returnException.test.ts (24 tests) 2047ms
+ ✓ test/csReadiness.test.ts (9 tests) 675ms
+ ✓ test/settledQuestions.test.ts (6 tests) 471ms
+ ✓ test/supermemory.test.ts (10 tests) 2210ms
+   ✓ Supermemory client > allows a contended memory search to finish within the four-second read budget 2202ms
+ ✓ test/turnWatchdog.test.ts (14 tests) 18191ms
+   ✓ turn watchdog > reaps a turn that goes quiet, and never reaps one that keeps working 1057ms
+   ✓ turn watchdog > suspends the window while a hold is open and resumes when it clears 1604ms
+   ✓ turn watchdog > fires the ceiling however alive the turn looks 801ms
+   ✓ turn watchdog > stop() disarms both timers 802ms
+   ✓ claude turns measure liveness, not elapsed time > kills a turn that only polls, and spares one blocked on a real tool 9056ms
+   ✓ claude turns measure liveness, not elapsed time > the ceiling still reaps a turn that never stops emitting 304ms
+   ✓ grok cancellation distinguishes stopping from replacing > keeps children running for "Send now" but abandons them on an explicit Stop 324ms
+   ✓ grok cancellation distinguishes stopping from replacing > keeps children running when Veneer's own timeout fires 4101ms
+ ✓ test/questionManager.test.ts (6 tests) 701ms
+   ✓ durable structured questions > round-trips all 32 choices through API validation and durable multi-answer storage 326ms
+ ✓ test/buildQueueRoutes.test.ts (6 tests) 104ms
+ ✓ test/pinnedCdpBridge.test.ts (8 tests) 315ms
+ ✓ test/teamRoomRoutes.test.ts (6 tests) 527ms
+ ✓ test/claudeAccounts.test.ts (12 tests) 10ms
+ ✓ test/setupToken.test.ts (15 tests) 3472ms
+   ✓ ClaudeConnectManager > complete() with a good code stores the token (0600) and runs the probe 588ms
+   ✓ ClaudeConnectManager > complete() with a bad code errors and stores nothing 956ms
+   ✓ ClaudeConnectManager > submits the code then Enter as SEPARATE writes (not one code\r chunk) 435ms
+   ✓ ClaudeConnectManager > fails fast (bad_code) on an explicit OAuth error, without waiting the full timeout 384ms
+   ✓ ClaudeConnectManager > redacts the token if the verify probe throws it back 440ms
+   ✓ ClaudeConnectManager > hard-expires an attempt and kills the child 334ms
+ ✓ test/chatAutoArchive.test.ts (7 tests) 124ms
+ ✓ test/teachingAudio.test.ts (9 tests) 922ms
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > uses a valid client id for optimistic sidebar reconciliation
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > stores an explicit origin that matches the authenticated agent chat
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > keeps an agent-created chat top-level when no handoff origin is explicit
+[auto-title] skipped: no OpenRouter key configured
+
+stderr | test/handoffOrigins.test.ts > handoff conversation origins > starts a fresh empty chat with the latest fixed settings snapshot
+[auto-title] skipped: no OpenRouter key configured
+
+ ✓ test/handoffOrigins.test.ts (8 tests) 124ms
+ ✓ test/conversationCompaction.test.ts (4 tests) 695ms
+ ✓ test/pagesRoutes.test.ts (6 tests) 99ms
+ ✓ test/providerSwitch.test.ts (6 tests) 490ms
+ ✓ test/chiefOfStaff.test.ts (7 tests) 536ms
+ ✓ test/transcriptArchive.test.ts (10 tests) 178ms
+ ✓ test/recentConversations.test.ts (7 tests) 130ms
+ ✓ test/conversationalConsent.test.ts (14 tests) 1093ms
+ ✓ test/correctionPreflight.test.ts (20 tests) 4213ms
+   ✓ reviews complete native correction with no draft, credential, source or writes 2703ms
+ ✓ test/autoshipCandidates.test.ts (8 tests) 640ms
+stdout | test/veneerOffice.test.ts > veneer office provisioning > installs both commands, their pinned library, and an idempotent PATH entry
+[veneer-office] added /var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-FxE11Q/.local/bin to the runner PATH (/var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-FxE11Q/.config/veneer-pro/env)
+[veneer-office] installed veneer-docx and veneer-xlsx -> /var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-FxE11Q/.local/bin
+[veneer-office] ready
+[veneer-office] installed veneer-docx and veneer-xlsx -> /var/folders/d7/stg6hrrn1cg8ftppcdn971q00000gn/T/veneer-office-test-FxE11Q/.local/bin
+[veneer-office] ready
+
+ ✓ test/veneerOffice.test.ts (7 tests) 1602ms
+   ✓ veneer office provisioning > installs both commands, their pinned library, and an idempotent PATH entry 815ms
+ ✓ test/codexLifecycle.test.ts (12 tests) 6829ms
+   ✓ persistent Codex bots release idle runtime subscriptions > waits for an in-flight unsubscribe before resuming, so a late release cannot detach the new turn 5224ms
+ ✓ test/sessionFiles.test.ts (17 tests) 4ms
+ ✓ test/supermemoryProvision.test.ts (7 tests) 12ms
+ ✓ test/customFonts.test.ts (16 tests) 1207ms
+test_actual_native_configuration_and_scope_denials (__main__.CodexBoundary) ... ok
+test_cli_and_resource_drift_stop_before_native_spawn (__main__.CodexBoundary) ... ok
+test_peer_positive_capability_and_scope_denial_registry (__main__.CodexBoundary) ... ok
+test_private_credential_home_not_keyring_or_shared_worker_home (__main__.CodexBoundary) ... ok
+test_same_uid_kernel_environment_control_and_hardened_denial (__main__.CodexBoundary) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 9.314s
+
+OK
+ ✓ test/fixtureCodexSetup.test.ts (4 tests) 20836ms
+   ✓ isolated native Codex pre-auth coupling > uses real isolated native bootstrap, scoped peer, authenticated lineage and durable no-replay effects 10521ms
+   ✓ isolated native Codex pre-auth coupling > denies bots/employees and native RPC/profile/token overrides before setup 746ms
+   ✓ isolated native Codex pre-auth coupling > proves real same-policy credential/socket/process/session denials and closed peer capability registry 9531ms
+ ✓ test/decisionImages.test.ts (8 tests) 669ms
+ ✓ test/conversationUnread.test.ts (8 tests) 657ms
+ ✓ test/connectorAccess.test.ts (4 tests) 112ms
+ ✓ test/todosRoutes.test.ts (7 tests) 118ms
+ ✓ test/wakeupRoutes.test.ts (6 tests) 124ms
+ ✓ test/decisionHandoffs.test.ts (11 tests) 874ms
+ ✓ test/browserCapacityWait.test.ts (14 tests) 1049ms
+ ✓ test/codexDeviceAuth.test.ts (15 tests) 1083ms
+   ✓ createCodexConnectManager > hard-expires the attempt and kills the child 344ms
+ ✓ test/scheduler.test.ts (5 tests) 406ms
+ ✓ test/runnerIpcAuth.test.ts (13 tests) 109ms
+ ✓ test/gmailDrafts.test.ts (4 tests) 115ms
+ ✓ test/fontRoutes.test.ts (9 tests) 108ms
+ ✓ test/webSocketUnread.test.ts (3 tests) 257ms
+ ✓ test/questionReconcile.test.ts (9 tests) 3ms
+ ✓ test/projectSettingsRoutes.test.ts (5 tests) 121ms
+ ✓ test/dopplerRoutes.test.ts (5 tests) 120ms
+ ✓ test/agentBrowserInstaller.test.ts (6 tests) 12ms
+ ✓ test/purchaseTimingRoutes.test.ts (1 test) 125ms
+ ✓ test/browserLoginGrants.test.ts (4 tests) 333ms
+ ✓ test/tabReuse.test.ts (14 tests) 5ms
+ ✓ test/grokUsage.test.ts (11 tests) 5ms
+ ✓ test/conversationOrder.test.ts (3 tests) 116ms
+ ✓ test/messageOriginPresentation.test.ts (6 tests) 459ms
+ ✓ test/codexUsage.test.ts (10 tests) 8ms
+ ✓ test/draftRetirement.test.ts (17 tests) 1327ms
+ ✓ test/projectRootDir.test.ts (14 tests) 133ms
+ ✓ test/conversationDebugContext.test.ts (3 tests) 252ms
+ ✓ test/webSocketAccess.test.ts (3 tests) 449ms
+ ✓ test/terminalSessions.test.ts (9 tests) 3ms
+ ✓ test/paperConnector.test.ts (14 tests) 4ms
+ ✓ test/routineOwnerSetup.test.ts (8 tests) 618ms
+ ✓ test/miniAppsRoutes.test.ts (5 tests) 110ms
+ ✓ test/providerRuntimesProvisioner.test.ts (6 tests) 8ms
+ ✓ test/csPilotDelivery.test.ts (7 tests) 548ms
+ ✓ test/composedSmsReader.test.ts (12 tests) 919ms
+ ✓ test/localAppStorage.test.ts (4 tests) 65ms
+ ✓ test/composedSmsVerifierRoutes.test.ts (10 tests) 622ms
+ ✓ test/migrateConcurrent.test.ts (3 tests) 440ms
+   ✓ concurrent first boot > lets every service migrate the same fresh database at once 328ms
+ ✓ test/wire.test.ts (8 tests) 4ms
+ ✓ test/snapshot-merge.test.ts (10 tests) 3ms
+ ✓ test/conversationCompactionRoute.test.ts (6 tests) 122ms
+ ✓ test/platformSkills.test.ts (6 tests) 516ms
+ ✓ test/chatLink.test.ts (23 tests) 117ms
+ ✓ test/turnStops.test.ts (9 tests) 165ms
+ ✓ test/veneerBrowserReadUrl.test.ts (5 tests | 4 skipped) 2ms
+ ✓ test/botWorkflowRoutes.test.ts (3 tests) 272ms
+ ✓ test/routinePolicies.test.ts (6 tests) 462ms
+ ✓ test/connectionsRoutes.test.ts (7 tests) 113ms
+ ✓ test/projectOrder.test.ts (3 tests) 122ms
+ ✓ test/clientLogoRoutes.test.ts (5 tests) 123ms
+ ✓ test/composedSmsEvidence.test.ts (14 tests) 7ms
+ ✓ test/openrouterAdapter.test.ts (4 tests) 75ms
+ ✓ test/conversationMove.test.ts (6 tests) 120ms
+ ✓ test/codexHistory.test.ts (6 tests) 12ms
+ ✓ test/platform.test.ts (14 tests) 81ms
+ ✓ test/migrateCoreProject.test.ts (7 tests) 2ms
+ ✓ test/agentHuddleTools.test.ts (2 tests) 659ms
+   ✓ huddle MCP tools > routes every tool to the REST surface under the agent token, so authority is decided server-side 569ms
+ ✓ test/questionLine.test.ts (6 tests) 513ms
+ ✓ test/frontmatter.test.ts (15 tests) 3ms
+ ✓ test/shutdown.test.ts (8 tests) 333ms
+ ✓ test/apiKeys.test.ts (11 tests) 7ms
+ ✓ test/projectDopplerCli.test.ts (6 tests) 274ms
+ ✓ test/claudePreferencesRoutes.test.ts (5 tests) 354ms
+ ✓ test/chatInlineImages.test.ts (4 tests) 135ms
+ ✓ test/brandRoutes.test.ts (6 tests) 125ms
+ ✓ test/memoryRecallQuality.test.ts (1 test) 4ms
+ ✓ test/voicePreferences.test.ts (4 tests) 164ms
+ ✓ test/composedSmsHashes.test.ts (25 tests) 6ms
+ ✓ test/claudeLimitReset.test.ts (5 tests) 6ms
+ ✓ test/jevSkill.test.ts (5 tests) 40ms
+ ✓ test/decisionEvidenceSchema.test.ts (4 tests) 56ms
+ ✓ test/composedSmsLineage.test.ts (4 tests) 6ms
+ ✓ test/pageExpiry.test.ts (5 tests) 386ms
+ ✓ test/composedSmsCorrectionContract.test.ts (11 tests) 6ms
+ ✓ test/candidateOwnerSetup.test.ts (4 tests) 309ms
+ ✓ test/projectSettingsTool.test.ts (6 tests) 3ms
+ ✓ test/navigationRoutes.test.ts (4 tests) 105ms
+ ✓ test/terminalService.test.ts (4 tests) 22ms
+ ✓ test/returnOwnerSetup.test.ts (4 tests) 316ms
+ ✓ test/csScenarios.test.ts (7 tests) 3ms
+ ✓ test/composioWebhook.test.ts (2 tests) 192ms
+ ✓ test/conversationReactivation.test.ts (2 tests) 112ms
+ ✓ test/conversationDiscoveryTools.test.ts (5 tests) 2ms
+ ✓ test/workspaceResolver.test.ts (6 tests) 460ms
+ ✓ test/contactVerificationContract.test.ts (4 tests) 10ms
+ ✓ test/rateLimitMessage.test.ts (11 tests) 11ms
+ ✓ test/localMiniApps.test.ts (2 tests) 102ms
+ ✓ test/schedule.test.ts (7 tests) 36ms
+ ✓ test/chatOrganization.test.ts (4 tests) 319ms
+ ✓ test/projectFileLinks.test.ts (8 tests) 12ms
+ ✓ test/veneerBrowserProxy.test.ts (3 tests) 23ms
+ ✓ test/memberProviderAccess.test.ts (18 tests) 129ms
+ ✓ test/totp.test.ts (17 tests) 4ms
+ ✓ test/connectorEvents.test.ts (6 tests) 2ms
+ ✓ test/fileScan.test.ts (15 tests) 2ms
+ ✓ test/renameConversationTool.test.ts (11 tests) 4ms
+ ✓ test/historyPages.test.ts (4 tests) 240ms
+ ✓ test/webTranscript.test.ts (4 tests) 2ms
+ ✓ test/sessionCompactionAdapters.test.ts (8 tests) 289ms
+ ✓ test/migrateHostPaths.test.ts (5 tests) 2ms
+ ✓ test/composedSmsTools.test.ts (6 tests) 2ms
+ ✓ test/projectTools.test.ts (5 tests) 3ms
+ ✓ test/todoTools.test.ts (4 tests) 3ms
+ ✓ test/openrouterUsage.test.ts (5 tests) 5ms
+ ✓ test/veneerPdf.test.ts (8 tests) 4ms
+ ✓ test/voiceSettingsRoutes.test.ts (9 tests) 126ms
+ ✓ test/markdownImage.test.ts (12 tests) 37ms
+ ✓ test/loopbackDeliverables.test.ts (18 tests) 4ms
+ ✓ test/pagesConfig.test.ts (4 tests) 2ms
+ ✓ test/automationRecipes.test.ts (3 tests) 4ms
+ ✓ test/veneerBrowserPublicReader.test.ts (25 tests) 12ms
+ ✓ test/conversationAutomationView.test.ts (3 tests) 83ms
+ ✓ test/policy.test.ts (8 tests) 3ms
+ ✓ test/questionLineRoutes.test.ts (1 test) 110ms
+ ✓ test/serialQueue.test.ts (5 tests) 141ms
+ ✓ test/conversationalConsentRoutes.test.ts (2 tests) 118ms
+ ✓ test/doppler.test.ts (4 tests) 5ms
+ ✓ test/systemUsage.test.ts (5 tests) 2ms
+ ✓ test/envFile.test.ts (8 tests) 4ms
+ ✓ test/sharedChromeInstaller.test.ts (4 tests) 7ms
+ ✓ test/historySocket.test.ts (1 test) 306ms
+   ✓ buffers snapshot races by runner watermark and authorizes each older page after revocation 306ms
+ ✓ test/browserHealth.test.ts (3 tests) 7ms
+ ✓ test/routineVerifierRoutes.test.ts (6 tests) 31ms
+ ✓ test/publicReaderTransport.test.ts (4 tests) 8ms
+ ✓ test/composedSmsContext.test.ts (11 tests) 7ms
+ ✓ test/localAppIsolation.test.ts (2 tests) 35ms
+ ✓ test/veneerBrowserIdentity.test.ts (4 tests) 5ms
+ ✓ test/providerVersions.test.ts (5 tests) 2ms
+ ✓ test/decisionReviewSummary.test.ts (4 tests) 3ms
+ ✓ test/desktopActivity.test.ts (4 tests) 3ms
+ ✓ test/codexModels.test.ts (4 tests) 2ms
+ ✓ test/skillInvocation.test.ts (4 tests) 2ms
+ ✓ test/correspondenceCustody.test.ts (2 tests) 4ms
+ ✓ test/caseCustodyContract.test.ts (2 tests) 4ms
+ ✓ test/autoshipCandidateRoutes.test.ts (3 tests) 21ms
+ ✓ test/nodeShellProfile.test.ts (2 tests) 76ms
+ ✓ test/memoryRelevance.test.ts (2 tests) 4ms
+ ✓ test/agentSecretBindings.test.ts (3 tests) 2ms
+ ✓ test/veneerBrowserResolution.test.ts (4 tests) 1ms
+ ✓ test/pages.test.ts (2 tests) 99ms
+ ✓ test/codexCreatedFiles.test.ts (3 tests) 3ms
+ ✓ test/csDraftState.test.ts (11 tests) 2ms
+ ✓ test/sessionFileViews.test.ts (2 tests) 2ms
+ ✓ test/veneerBrowserSettings.test.ts (2 tests) 4ms
+ ✓ test/botOrderReference.test.ts (2 tests) 2ms
+ ✓ test/voiceSettings.test.ts (3 tests) 3ms
+ ✓ test/identityMode.test.ts (3 tests) 3ms
+ ✓ test/conversationAccess.test.ts (4 tests) 1ms
+ ✓ test/replyOnce.test.ts (3 tests) 1ms
+ ✓ test/agentTokenFile.test.ts (3 tests) 2ms
+ ✓ src/conversations/sideChat.test.ts (3 tests) 1ms
+ ✓ test/messageSpeech.test.ts (3 tests) 10ms
+ ✓ test/removeCustomSkillsMigration.test.ts (1 test) 4ms
+ ✓ test/voiceFailure.test.ts (1 test) 1ms
+ ✓ test/inlineContentType.test.ts (4 tests) 1ms
+ ✓ test/connectionErrors.test.ts (1 test) 14ms
+ ✓ test/agentMessageToolDetails.test.ts (3 tests) 1ms
+ ✓ test/hotlineConsent.test.ts (2 tests) 2ms
+ ✓ test/gmailDraftTools.test.ts (1 test) 2ms
+ ✓ test/caseTimeline.test.ts (2 tests) 2ms
+ ✓ test/subagentProgress.test.ts (2 tests) 2ms
+ ✓ test/modelAccess.test.ts (2 tests) 1ms
+ ✓ test/conversationSummary.test.ts (1 test) 1ms
+ ✓ test/artifactKind.test.ts (9 tests) 1ms
+ ✓ test/routineTools.test.ts (2 tests) 1ms
+ ✓ test/fixtureHostBootstrap.test.ts (1 test) 917ms
+   ✓ harmless native fixture host acceptance package > boots real C/Node probes and validates denial controls plus fail-closed cases 917ms
+ ✓ test/approvalMode.test.ts (2 tests) 1ms
+ ✓ test/fixtureEgress.test.ts (1 test) 7184ms
+   ✓ protected native fixture synthetic egress > proves TLS identity, exact routes/wires, scoped one-attempt UNKNOWN and actual kernel socket denial 7184ms
+ ✓ test/clientBrand.test.ts (2 tests) 1ms
+
+ Test Files  278 passed (278)
+      Tests  3670 passed | 15 skipped (3685)
+   Start at  14:23:15
+   Duration  154.18s (transform 2.48s, setup 0ms, collect 20.28s, tests 258.51s, environment 19ms, prepare 5.57s)
+
+
+> @veneer-pro/web@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/web
+
+ ✓ src/screens/settings/UsagePage.test.tsx (30 tests) 37ms
+ ✓ src/components/browser/ConversationBrowserPanel.test.tsx (35 tests) 66ms
+ ✓ src/lib/transcript.test.ts (19 tests) 4ms
+ ✓ src/components/chat/connections/ConnectionToolRow.test.tsx (25 tests) 45ms
+ ✓ src/components/ConversationList.test.tsx (26 tests) 102ms
+ ✓ src/components/Markdown.test.ts (41 tests) 93ms
+ ✓ src/lib/connectionTranscript.test.ts (8 tests) 2ms
+ ✓ src/lib/assistantNotes.test.ts (23 tests) 4ms
+ ✓ src/components/NavBar.test.tsx (20 tests) 93ms
+ ✓ src/components/chat/QueuedPeek.test.tsx (16 tests) 25ms
+ ✓ src/lib/stt.test.ts (7 tests) 17ms
+ ✓ src/screens/Settings.test.tsx (13 tests) 55ms
+ ✓ src/lib/artifacts.test.ts (20 tests) 4ms
+ ✓ src/components/BotProposalSummary.test.tsx (11 tests) 10ms
+ ✓ src/lib/useUsage.test.ts (12 tests) 12ms
+ ✓ src/lib/skillCommands.test.ts (8 tests) 7ms
+ ✓ src/lib/officePreview.test.ts (5 tests) 108ms
+ ✓ src/lib/voiceTimeline.test.ts (12 tests) 8ms
+ ✓ src/components/chat/RevealSecretCard.test.tsx (10 tests) 15ms
+ ✓ src/lib/useUsage.lifecycle.test.ts (8 tests) 7ms
+ ✓ src/lib/mentions.test.ts (25 tests) 3ms
+ ✓ src/lib/chatListFilter.test.ts (17 tests) 3ms
+ ✓ src/lib/decisionPresentation.test.ts (18 tests) 12ms
+ ✓ src/components/chat/OpenQuestionsPanel.test.tsx (4 tests) 9ms
+ ✓ src/lib/newChatSelection.test.ts (9 tests) 2ms
+ ✓ src/components/DeskPill.test.tsx (9 tests) 9ms
+ ✓ src/components/chat/SecretCard.test.tsx (9 tests) 12ms
+ ✓ src/components/DecisionEvidence.test.tsx (3 tests) 21ms
+ ✓ src/screens/Huddles.test.tsx (4 tests) 36ms
+ ✓ src/components/BuildQueue.test.tsx (6 tests) 16ms
+ ✓ src/lib/fileDownload.test.ts (9 tests) 5ms
+ ✓ src/lib/mobileGmailLinks.test.ts (7 tests) 2ms
+ ✓ src/lib/responseMetadata.test.ts (18 tests) 10ms
+ ✓ src/components/chat/WakeupChip.test.tsx (10 tests) 22ms
+ ✓ src/components/chat/ChatDecisionCard.test.tsx (9 tests) 12ms
+ ✓ src/lib/conversationBrowserMemory.test.ts (9 tests) 2ms
+ ✓ src/components/browser/ProjectBrowserPanel.test.tsx (5 tests) 11ms
+ ✓ src/lib/transcriptFreeze.test.ts (6 tests) 2ms
+ ✓ src/lib/chatDeletion.test.ts (12 tests) 3ms
+ ✓ src/components/chat/ChatHeaderMenuItems.test.tsx (4 tests) 25ms
+ ✓ src/screens/pageGroups.test.ts (5 tests) 7ms
+ ✓ src/components/chat/QuestionCard.test.tsx (6 tests) 13ms
+ ✓ src/components/chat/ModelThinkingPicker.test.tsx (7 tests) 10ms
+ ✓ src/components/chat/ArtifactsStrip.test.tsx (6 tests) 21ms
+ ✓ src/components/BotIdentity.test.tsx (20 tests) 7ms
+ ✓ src/lib/composerPaste.test.ts (7 tests) 3ms
+ ✓ src/lib/promptCollapse.test.ts (7 tests) 2ms
+ ✓ src/components/chat/AssistantResponseMetadata.test.tsx (5 tests) 19ms
+ ✓ src/components/chat/MarkdownFilePreview.test.tsx (18 tests) 47ms
+ ✓ src/lib/mermaidPresentation.test.ts (5 tests) 4ms
+ ✓ src/screens/ChatList.test.ts (11 tests) 3ms
+ ✓ src/components/UsageRing.test.tsx (8 tests) 8ms
+ ✓ src/components/skills/SkillPage.test.tsx (6 tests) 24ms
+ ✓ src/lib/agentMessageActivity.test.tsx (6 tests) 5ms
+ ✓ src/lib/teachingRecorder.test.ts (4 tests) 6ms
+ ✓ src/screens/TicketMergeSetup.test.tsx (4 tests) 14ms
+ ✓ src/screens/settings/DopplerPage.test.tsx (3 tests) 17ms
+ ✓ src/components/chat/AgentMessagePromptDisclosure.test.tsx (6 tests) 10ms
+ ✓ src/components/NewProjectDialog.test.tsx (2 tests) 3ms
+ ✓ src/screens/EmployeeWorkspace.test.tsx (8 tests) 7ms
+ ✓ src/components/chat/ArtifactPanel.test.tsx (4 tests) 17ms
+ ✓ src/lib/localFileLinks.test.ts (9 tests) 2ms
+ ✓ src/lib/composerTrailingAction.test.ts (8 tests) 1ms
+ ✓ src/lib/newChatDrafts.test.ts (4 tests) 2ms
+ ✓ src/lib/projectFilesRoute.test.ts (5 tests) 2ms
+ ✓ src/lib/chatArtifactMemory.test.ts (4 tests) 1ms
+ ✓ src/components/chat/ChatMentionOption.test.tsx (3 tests) 12ms
+ ✓ src/components/chat/ThinkingLevelControl.test.tsx (6 tests) 8ms
+ ✓ src/screens/CsPhotoRequestSetup.test.tsx (3 tests) 4ms
+ ✓ src/components/ContactVerificationProposal.test.tsx (2 tests) 10ms
+ ✓ src/lib/citations.test.ts (5 tests) 9ms
+ ✓ src/lib/todoChatPrompt.test.ts (5 tests) 1ms
+ ✓ src/screens/Bots.queueApproval.test.tsx (2 tests) 10ms
+ ✓ src/lib/chatViewport.test.ts (8 tests) 1ms
+ ✓ src/components/chat/Coordination.test.tsx (1 test) 6ms
+ ✓ src/lib/projectFileLinks.test.ts (5 tests) 2ms
+ ✓ src/settingsRoutes.test.ts (18 tests) 2ms
+ ✓ src/lib/theme.test.ts (3 tests) 2ms
+ ✓ src/lib/dictationWaveformMeter.test.ts (5 tests) 2ms
+ ✓ src/screens/FocusedWorkspace.test.tsx (29 tests) 14ms
+ ✓ src/components/chat/Citations.test.tsx (3 tests) 10ms
+ ✓ src/screens/settings/MemberProvidersPage.test.tsx (1 test) 8ms
+ ✓ src/lib/threadReplies.test.ts (3 tests) 2ms
+ ✓ src/lib/connectorTools.test.ts (8 tests) 2ms
+ ✓ src/lib/queueSnapshots.test.ts (3 tests) 2ms
+ ✓ src/screens/CsReadiness.test.tsx (2 tests) 13ms
+ ✓ src/lib/brandTheme.test.ts (4 tests) 1ms
+ ✓ src/components/chat/MessageSelection.test.tsx (4 tests) 5ms
+ ✓ src/components/chat/HtmlFilePreview.test.tsx (7 tests) 8ms
+ ✓ src/components/chat/AgentWorkingStatus.test.tsx (3 tests) 8ms
+ ✓ src/lib/pinnedTerminal.test.ts (4 tests) 2ms
+ ✓ src/lib/activityRuns.test.ts (2 tests) 2ms
+ ✓ src/hooks/useScrollMemory.test.ts (4 tests) 1ms
+ ✓ src/components/ChatListFilterControl.test.tsx (5 tests) 8ms
+ ✓ src/lib/wakeups.test.ts (3 tests) 7ms
+ ✓ src/lib/navigation.test.ts (4 tests) 2ms
+ ✓ src/components/desktop/FloatingDesktop.test.tsx (3 tests) 6ms
+ ✓ src/components/ui/embedded-preview-frame.test.tsx (2 tests) 4ms
+ ✓ src/lib/ws.test.ts (2 tests) 2ms
+ ✓ src/lib/botGroups.test.ts (2 tests) 1ms
+ ✓ src/screens/Files.test.ts (2 tests) 3ms
+ ✓ src/lib/botGuide.test.ts (2 tests) 2ms
+ ✓ src/components/chat/ChatArchiveButton.test.tsx (4 tests) 10ms
+ ✓ src/components/BotCaseTimeline.test.tsx (2 tests) 4ms
+ ✓ src/screens/Connectors.test.tsx (1 test) 5ms
+ ✓ src/components/chat/SkillCommandPicker.test.tsx (2 tests) 4ms
+ ✓ src/components/chat/ChatContextDialog.test.tsx (2 tests) 13ms
+ ✓ src/lib/botComposer.test.ts (6 tests) 1ms
+ ✓ src/lib/workspaceSearch.test.ts (2 tests) 1ms
+ ✓ src/components/chat/ComposerSkillChip.test.tsx (2 tests) 5ms
+ ✓ src/lib/modelTier.test.ts (3 tests) 1ms
+ ✓ src/lib/apiViewHeader.test.ts (3 tests) 3ms
+ ✓ src/components/ChatUnread.test.tsx (2 tests) 5ms
+ ✓ src/lib/connectorIcons.test.tsx (13 tests) 8ms
+ ✓ src/lib/pageExpiry.test.ts (4 tests) 11ms
+ ✓ src/components/chat/AccountSwitcher.test.ts (3 tests) 2ms
+ ✓ src/lib/todoDictation.test.ts (3 tests) 1ms
+ ✓ src/components/BotCalls.test.tsx (2 tests) 4ms
+ ✓ src/components/MessageAudioPlayer.test.tsx (2 tests) 1ms
+ ✓ src/hooks/useDocumentScrollLock.test.tsx (2 tests) 3ms
+ ✓ src/components/ui/file-download-link.test.tsx (2 tests) 7ms
+ ✓ src/components/NewChatPlaceholderRow.test.tsx (2 tests) 8ms
+ ✓ src/lib/decisionHandoffs.test.ts (2 tests) 2ms
+ ✓ src/components/chat/PromptDisclosure.test.tsx (2 tests) 13ms
+ ✓ src/components/chat/CodeFilePreview.test.tsx (11 tests) 8ms
+ ✓ src/lib/composerKeys.test.ts (3 tests) 1ms
+ ✓ src/lib/chatAccess.test.ts (5 tests) 1ms
+ ✓ src/hooks/useDismissTokenCards.test.ts (2 tests) 1ms
+ ✓ src/lib/teamRooms.test.ts (2 tests) 1ms
+ ✓ src/lib/clientLogo.test.ts (4 tests) 2ms
+ ✓ src/lib/composerScroll.test.ts (2 tests) 1ms
+ ✓ src/lib/sideChat.test.ts (2 tests) 1ms
+ ✓ src/components/chat/CollapsedMessageDisclosure.test.tsx (1 test) 6ms
+ ✓ src/lib/fileDownloadEntryPoints.test.ts (4 tests) 2ms
+ ✓ src/lib/terminalPaste.test.ts (3 tests) 1ms
+ ✓ src/lib/pageTitle.test.ts (3 tests) 1ms
+ ✓ src/hooks/useVisualViewportBounds.test.ts (2 tests) 1ms
+ ✓ src/lib/approvalMode.test.ts (2 tests) 1ms
+ ✓ src/screens/settings/BrowserSettingsPage.test.ts (2 tests) 1ms
+ ✓ src/components/PwaUpdatePrompt.test.tsx (1 test) 7ms
+ ✓ src/components/chat/AgentWakeupClock.test.tsx (1 test) 4ms
+ ✓ src/lib/modelLabel.test.ts (2 tests) 1ms
+ ✓ src/hooks/useMediaQuery.test.ts (1 test) 1ms
+ ✓ src/screens/settings/AgentsPage.test.tsx (1 test) 9ms
+
+ Test Files  144 passed (144)
+      Tests  1008 passed (1008)
+   Start at  14:25:50
+   Duration  11.48s (transform 1.27s, setup 0ms, collect 8.26s, tests 1.53s, environment 10ms, prepare 2.87s)
+
+
+> test
+> node --test *.test.mjs
+
+✔ waits fairly and admits queued projects in arrival order when capacity frees (19.216ms)
+✔ timed-out allocations are removed and never run later (71.078375ms)
+✔ non-capacity errors are never retried, including uncertain starts (0.201125ms)
+✔ cancels queued requests and bounds queue size (5.482584ms)
+✔ a waiter refused only by its project cap does not block a later waiter from another project (18.525708ms)
+✔ buffers commands arriving before the Chrome address resolves and forwards them in order (61.903708ms)
+✔ does not connect upstream after the requesting client closes during lookup (54.438875ms)
+✔ refuses local-file and browser-internal navigations without forwarding them (26.518834ms)
+✔ retargets the container download path at the profile downloads directory (13.313583ms)
+✔ ticket purpose defaults safely to viewer (0.367416ms)
+✔ agent cursor events are emitted only after their target is known (0.510458ms)
+✔ tracker accepts auto-attach events and ignores unsafe or unrelated traffic (0.106625ms)
+✔ detaching a target stops cursor events for its old session (0.967333ms)
+✔ a page command on another tab reports the agent moving there, once (0.204291ms)
+✔ a click on a new tab yields the target change before the cursor (0.102625ms)
+✔ frames and workers never count as the agent tab (0.072458ms)
+✔ clones a live profile and retains idle working data until explicitly deleted (2601.852708ms)
+✔ updates a saved profile atomically, keeps a backup, and rejects an old generation (196.452083ms)
+✔ leaves disposable cache data out of a clone and keeps profile data (48.693459ms)
+✔ creates a signed-out temporary profile and saves it only through save-as (51.917375ms)
+✔ opens a saved profile as a running working copy with a ticket (493.341959ms)
+✔ rebuilds a warm copy after an open and keeps it out of the active browser limit (1529.967458ms)
+✔ refuses warm adoption at the limit and adopts it after a slot is released (19372.429333ms)
+✔ leaves passkeys alone for a saved profile and when VP_BROWSER_ALLOW_PASSKEYS=1 (16701.300125ms)
+✔ rejects an open for a profile that does not exist (6.584333ms)
+✔ refuses to adopt a warm copy of a superseded generation (1258.708416ms)
+✔ sweeps stray warm containers but keeps the registered one (957.682041ms)
+✔ rebuilds the warm registry from container labels after a restart (697.136958ms)
+✔ keeps the warm pool inside VENEER_BROWSER_WARM_MAX by evicting the oldest copy (1276.59325ms)
+✔ expires a ticket once its container is gone instead of reaching a recycled port (434.184667ms)
+✔ leaves the warm pool switched off when VENEER_BROWSER_WARM is 0 (1862.951417ms)
+✔ refuses to boot with a partial TLS listener configuration (77.263583ms)
+✔ refuses a non-loopback bind on macOS unless remote access is explicit (180.626ms)
+✔ keeps the plain listener on loopback whenever a TLS listener is configured (212.626708ms)
+✔ serves the same API over the TLS listener with https ticket urls (513.932542ms)
+✔ opens a working copy as a native chrome process and stops it again (445.267042ms)
+✔ reaps a native process record whose browser died while the manager was down (226.934542ms)
+✔ forces the ticket origin the Pro server pins with VENEER_BROWSER_PUBLIC_ORIGIN (381.705417ms)
+✔ merges download preferences into an existing profile instead of clobbering it (0.796333ms)
+✔ serializes concurrent admission across projects and releases a slot without deleting copy data (17069.009416ms)
+✔ a pending viewer ticket protects a copy from suspension; the application's own agent ticket does not (16417.536667ms)
+✔ caps one project inside the shared admission path while another project still starts (4755.373959ms)
+✔ runs seven browsers and four per project by default, and refuses the next of each (23424.800708ms)
+✔ a waiter refused only by its project cap is admitted as soon as that project frees a slot (18041.327ms)
+✔ old human-view protection expires while connected viewers still block suspension (16276.432666ms)
+✔ passkeys are blocked unless the opt-out env is set (2.837875ms)
+✔ the virtual authenticator can never satisfy a passkey prompt (0.061583ms)
+✔ resolves the browser socket from /json/version on the loopback port (9.475583ms)
+✔ auto-attaches to pages and installs an empty virtual authenticator on each, then releases it (39.049334ms)
+✔ a page that refuses the authenticator is still released (14.071208ms)
+✔ reports a socket that closes underneath it (1.870209ms)
+ℹ tests 51
+ℹ suites 0
+ℹ pass 51
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145639.496959

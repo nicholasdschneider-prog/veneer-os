@@ -39,11 +39,18 @@ export const emailLookup = z.object({
 const credential = z.object({
     project: emailKey, config: emailKey, name: z.string().regex(/^[A-Z][A-Z0-9_]{0,199}$/)
 }).strict();
+export const emailPrebindCapability = z.object({
+    schemaVersion: z.literal('customer-email-prebind-capability/v1'),
+    input: emailInput, contractHash: emailHash, custodyReceipt: emailKey,
+    acceptanceReceipt: emailKey, expiresAt: time,
+    nativeRecords: z.literal('complete-business-structured-locators-no-human-text/v1')
+}).strict();
 export const emailRegistration = z.object({
     schemaVersion: z.literal('customer-email-registration/v1'), id: emailId, revision: z.number().int().positive(), active: z.boolean(), businessId: emailId, ownerUserId: z.number().int().positive(), sourceOwnerId: emailId, executorId: emailId, executorUserId: z.number().int().positive(), sourcePrincipalId: emailKey, executorPrincipalId: emailKey, sourceAccountId: emailKey, payloadAccount: z.string().email(), sourceOrigin: z.literal('https://orderops-dev-web-production.up.railway.app'), runtime: z.object({
         projectId: emailId, environmentId: emailId, serviceId: emailId
     }).strict(),
     sourceCredential: credential, executorCredential: credential, serviceReadCredential: credential, servicePrincipalId: emailKey, serviceBearerHash: emailHash, nativeAudience: emailKey, cfClientId: emailKey,
+    prebindCapability: emailPrebindCapability.optional(),
     contractHash: emailHash, sourceArtifactHash: emailHash, nativeArtifactHash: emailHash, guardManifestHash: emailHash, sourceRegistrationHash: emailHash, custodyReceipt: emailKey, acceptanceReceipt: emailKey, expiresAt: time,
     credentialExpiresAt: time, readbackExpiresAt: time, custodyExpiresAt: time, acceptedAt: time
 }).strict();

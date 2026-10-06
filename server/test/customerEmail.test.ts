@@ -1,3 +1,4 @@
+import { customerEmailPrebind, EMAIL_PREBIND_CONTRACT_HASH, emailPrebindResponse, retainedEmailLocators } from '../src/bots/customerEmailPrebind.js';
 import {createBotService,proposalSchema} from '../src/bots/service.js';
 import {approvedMessageSchema} from '../src/bots/draftPayload.js';
 import {messageDelegationService} from '../src/bots/messageDelegation.js';
@@ -505,6 +506,144 @@ describe('staged native customer email direction', () => {
             expect(coreVeneerRules({
                 workspaceDir: '/repo', assistantSlug: 'bot', elevated
             })).toContain(f.agent);
+    });
+    function permitPrebind() {
+        r=emailRegistration.parse({...r,id:uuid(),prebindCapability:{
+            schemaVersion:'customer-email-prebind-capability/v1',input:input(),contractHash:EMAIL_PREBIND_CONTRACT_HASH,
+            custodyReceipt:'fixture-prebind-custody',acceptanceReceipt:'fixture-prebind-adoption',
+            expiresAt:new Date(now+60000).toISOString(),nativeRecords:'complete-business-structured-locators-no-human-text/v1'
+        }});
+        const e=emailEnrollment(db,()=>r,()=>now), humanActor={user:a.user};
+        const p=e.prepare(humanActor,{registration_id:r.id});
+        e.confirm(humanActor,{registration_id:r.id,confirmation_hash:p.confirmation_hash,request_key:uuid()});
+    }
+    async function prebindRoute(cf:()=>Promise<boolean>=async()=>true) {
+        const app=express(),ctx={db,config:{}} as unknown as AppContext;
+        app.use('/verifier',customerEmailVerifierRoutes(ctx,{io,cf}));
+        const server=app.listen(0,'127.0.0.1');servers.push(server);
+        await new Promise<void>(done=>server.once('listening',done));
+        const url=`http://127.0.0.1:${(server.address() as {port:number}).port}/verifier/prebind-context`;
+        return (body:unknown=input(),headers:Record<string,string>={})=>fetch(url,{method:'POST',headers:{
+            'Content-Type':'application/json','x-customer-email-registration-id':r.id,
+            Authorization:'Bearer '+'fixture-service-token-'.repeat(3),...headers},body:JSON.stringify(body)});
+    }
+    it('requires explicit human-reviewed exact prebind capability; old enrollment is not broadened',async()=>{
+        const post=await prebindRoute();
+        expect((await post()).status).toBe(403);
+        permitPrebind();
+        const before=db.serialize();
+        const response=await post();expect(response.status).toBe(200);
+        const value=emailPrebindResponse.parse(await response.json());
+        expect(value.payload_hash).toBe(canonicalSha256(value.payload));
+        expect(value.records.map(x=>({key:x.key,revision:x.revision}))).toEqual(customerEmailNative(db).snapshot(a,input()).inventory);
+        expect(value).toMatchObject({execute:false,authority:false,ready:false,dispatchEntitlement:false,scope_complete:false});
+        expect(value.records.find(x=>x.key===`draft:${draft}`)?.unknown).toBe(true);
+        expect(JSON.stringify(value)).not.toContain('Compose and send a customer email');
+        expect(JSON.stringify(value)).not.toContain('sourceCredential');
+        expect(JSON.stringify(customerEmailNative(db).snapshot(a,input()))).not.toContain('locatorRows');
+        expect(db.serialize()).toEqual(before);
+    });
+    it.each(['source_owner_id','executor_id','source_id','draft_id'])('prebind denies changed %s identifiers',async field=>{
+        permitPrebind();const post=await prebindRoute();
+        expect((await post({...input(),[field]:uuid()})).status).toBe(403);
+    });
+    it('strict prebind rejects caller scope, payload, inventory, mapping, registration and authority assertions',async()=>{
+        permitPrebind();const post=await prebindRoute();
+        for(const field of ['registration_id','payload','inventory','canonical_case','authority_id','actor_id','inspection_hash'])
+            expect((await post({...input(),[field]:'forbidden'})).status).toBe(400);
+        expect((await post({...input(),draft_version:2})).status).toBe(403);
+    });
+    it('prebind service requires dedicated bearer and CF identity with current registration after authentication',async()=>{
+        permitPrebind();const post=await prebindRoute();
+        expect((await post(input(),{Authorization:'Bearer '+'wrong-service-token-'.repeat(3)})).status).toBe(401);
+        expect((await post(input(),{'x-customer-email-registration-id':uuid()})).status).toBe(403);
+        const failed=await prebindRoute(async()=>false);expect((await failed()).status).toBe(401);
+        const drift=await prebindRoute(async()=>{db.prepare('INSERT INTO customer_email_enrollment_revocations VALUES(?,?,?,?)').run(r.id,1,'fixture revoked',new Date(now).toISOString());return true;});
+        expect((await drift()).status).toBe(503);
+    });
+    it.each(['active','custody','capability','business','principal','account','sourceAuthor','executor','draft'])('prebind fails current %s drift',async drift=>{
+        permitPrebind();const post=await prebindRoute();
+        if(drift==='active')r={...r,active:false};
+        if(drift==='custody')r={...r,custodyExpiresAt:new Date(now).toISOString()};
+        if(drift==='capability')now+=60001;
+        if(drift==='business')r={...r,businessId:uuid()};
+        if(drift==='principal')r={...r,servicePrincipalId:r.executorPrincipalId};
+        if(drift==='account')db.prepare("UPDATE bot_message_drafts SET payload_json=json_set(payload_json,'$.account','changed@example.test') WHERE id=?").run(draft);
+        if(drift==='sourceAuthor')db.prepare("UPDATE users SET status='disabled' WHERE id=2").run();
+        if(drift==='executor')db.prepare('UPDATE bot_registrations SET active=0 WHERE conversation_id=?').run(executor);
+        if(drift==='draft')db.prepare('UPDATE bot_message_drafts SET version=2 WHERE id=?').run(draft);
+        expect((await post()).status).toBeGreaterThanOrEqual(400);
+    });
+    it.each(['media','chronology','anchor','cap','source','rows'])('prebind fails incomplete %s context',async failure=>{
+        if(failure==='source')source=uuid();
+        permitPrebind();const post=await prebindRoute();
+        if(failure==='media')human(uuid(),'![Private media](/uploads/private.png)');
+        if(failure==='chronology')human(uuid(),'fixture status',owner,'invalid');
+        if(failure==='anchor')db.prepare('INSERT INTO bot_message_threads(id,conversation_id,anchor,source_text) VALUES(?,?,?,?)').run(uuid(),owner,'fixture-empty','');
+        if(failure==='cap')human(uuid(),'x'.repeat(2000001));
+        if(failure==='rows')db.transaction(()=>{for(let i=0;i<5001;i++)human(uuid(),'fixture status');})();
+        expect((await post()).status).toBe(409);
+    });
+    it('prebind captures full context/payload/inventory drift and stable ACL revisions without source IO',()=>{
+        permitPrebind();io.capture=async()=>{throw Error('Must not call source');};io.intent=async()=>{throw Error('Must not read source');};
+        const read=customerEmailPrebind(db,io),one=read(r.id,input()),same=read(r.id,input());
+        expect(one).toEqual(same);
+        human(uuid(),'status-only private human text');
+        const two=read(r.id,input());expect(two.context_revision).not.toBe(one.context_revision);expect(two.acl_hash).toBe(one.acl_hash);
+        expect(JSON.stringify(two)).not.toContain('status-only private human text');
+        db.prepare("UPDATE bot_message_drafts SET payload_json=json_set(payload_json,'$.body','Changed fixture body') WHERE id=?").run(draft);
+        const three=read(r.id,input());expect(three.payload_hash).not.toBe(two.payload_hash);expect(three.inventory_hash).not.toBe(two.inventory_hash);
+    });
+    it('prebind denies unreviewed competing inventory media without exposing unrelated draft payload or file paths',async()=>{
+        permitPrebind();
+        communicationService(db).saveDraft({...a,conversationId:other},other,'foreign-media',{
+            channel:'email',account:'other@example.test',recipients:['different@example.test'],subject:'PRIVATE other subject',
+            body:'PRIVATE other body',attachments:[{name:'private.pdf',reference:'private-fixture-document'}],customer:'Fixture',ticket:'Fixture',context:'Fixture'
+        });
+        const post=await prebindRoute(),response=await post();expect(response.status).toBe(409);
+        const value=await response.json();expect(value.error).toContain('INVENTORY_MEDIA');expect(JSON.stringify(value)).not.toContain('PRIVATE');
+    });
+    it('prebind read envelope is bounded by current custody and fails clock or long-read drift',()=>{
+        permitPrebind();const read=customerEmailPrebind(db,io),value=read(r.id,input());
+        expect(Date.parse(value.expires_at)-Date.parse(value.observed_at)).toBe(5000);
+        let calls=0;io.registration=()=>{if(++calls===2)now+=5001;return r;};
+        expect(()=>read(r.id,input())).toThrow('fresh bound');
+        calls=0;io.registration=()=>{if(++calls===2)now-=1;return r;};
+        expect(()=>read(r.id,input())).toThrow('fresh bound');
+    });
+    it('prebind supports exact result-reply provenance without exporting original result or human text',async()=>{
+        const thread=uuid();source=uuid();
+        db.prepare('INSERT INTO bot_message_threads(id,conversation_id,anchor,source_text) VALUES(?,?,?,?)').run(thread,owner,'fixture-result','PRIVATE retained original result text');
+        db.prepare('INSERT INTO bot_message_replies(id,thread_id,actor_id,text,request_key,created_at) VALUES(?,?,2,?,?,?)').run(source,thread,'PRIVATE result-reply human instruction','fixture-reply',new Date(now).toISOString());
+        const tuple={...input(),source_kind:'result_reply' as const};
+        r=emailRegistration.parse({...r,id:uuid(),prebindCapability:{schemaVersion:'customer-email-prebind-capability/v1',input:tuple,contractHash:EMAIL_PREBIND_CONTRACT_HASH,custodyReceipt:'fixture-custody',acceptanceReceipt:'fixture-adoption',expiresAt:new Date(now+60000).toISOString(),nativeRecords:'complete-business-structured-locators-no-human-text/v1'}});
+        const e=emailEnrollment(db,()=>r,()=>now),h={user:a.user},p=e.prepare(h,{registration_id:r.id});e.confirm(h,{registration_id:r.id,confirmation_hash:p.confirmation_hash,request_key:uuid()});
+        const post=await prebindRoute(),response=await post(tuple);expect(response.status).toBe(200);
+        const value=await response.json();expect(value.input.source_kind).toBe('result_reply');expect(JSON.stringify(value)).not.toContain('PRIVATE');
+    });
+    it('prebind includes competing immutable customer authority and subsequent revocation revisions',async()=>{
+        permitPrebind();const read=customerEmailPrebind(db,io);const before=read(r.id,input());
+        const {id}=await setup(),bound=read(r.id,input());
+        expect(bound.inventory_hash).not.toBe(before.inventory_hash);
+        const row=bound.records.find(x=>x.key===`customer_email:${id}`)!;
+        expect(row.references.filter(x=>x.namespace.startsWith('source_'))).toHaveLength(3);
+        s.revoke(a,{authority_id:id,reason:'Synthetic immutable competing authority revocation.',request_key:'fixture-prebind-revoke'});
+        const revoked=read(r.id,input());expect(revoked.records.find(x=>x.key===row.key)?.revision).not.toBe(row.revision);
+        expect(revoked.dispatchEntitlement).toBe(false);
+    });
+    it('locators retain actual structured provenance without inventing roots from descriptive payload or prose',()=>{
+        const id=uuid(),root=uuid(),revision=hash();
+        const records=retainedEmailLocators([
+            {key:`composition:${id}`,revision,row:{snapshot_json:JSON.stringify({scope:{canonical_case:root,contact_case:'descriptive'},review:{text:'private human'}}),draft_id:uuid()}},
+            {key:`draft:${uuid()}`,revision,row:{payload_json:JSON.stringify({ticket:root,customer:root})}},
+            {key:`routine:${uuid()}`,revision,row:{locator_scope_json:JSON.stringify({canonical_case:root}),proof_id:uuid()}},
+            {key:`customer_email:${uuid()}`,revision,row:{projection_json:JSON.stringify({canonicalCaseId:root,canonicalCustomerId:uuid(),canonicalOrderId:uuid()})}}
+        ]);
+        expect(records.find(x=>x.key===`composition:${id}`)?.references).toContainEqual({namespace:'source_case',id:root,field:'snapshot_json.scope.canonical_case',provenance:'retained-native-structured-field'});
+        expect(records.find(x=>x.key.startsWith('draft:'))?.references).toEqual([]);
+        expect(records.every(x=>x.resolution==='SOURCE_CLOSURE_REQUIRED')).toBe(true);
+        expect(JSON.stringify(records)).not.toContain('private human');
+        expect(()=>retainedEmailLocators([{key:`composition:${id}`,revision,row:{snapshot_json:'{malformed'}}])).toThrow();
     });
     it('dedicated verifier denies missing/wrong service authentication and returns no private human text', async () => {
         const ctx = {
