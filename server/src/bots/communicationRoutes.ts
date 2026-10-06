@@ -1,3 +1,4 @@
+import {customerEmailRoutes} from './customerEmailRoutes.js';
 import {vendorEmailService} from './vendorEmail.js';
 import {loadConversationFile,documentType} from './decisionImages.js';
 import { approvedCaseResolver } from './approvedCaseResolver.js';
@@ -81,6 +82,7 @@ export function createCommunicationRouter(ctx: AppContext) {
           else next(e);
         });
     };
+  r.use('/customer-email-direction',customerEmailRoutes(ctx));
   r.post('/vendor-email/context',run((req,res)=>{z.object({}).strict().parse(req.body);res.json(vendorEmails.context(actor(req)));}));
   r.post('/vendor-email/inspect',run(async(req,res)=>res.json(await vendorEmails.inspect(actor(req),req.body))));
   r.post('/vendor-email/bind',run(async(req,res)=>res.json(await vendorEmails.bind(actor(req),req.body))));

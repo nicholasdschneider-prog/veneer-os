@@ -20,6 +20,7 @@ const EnvSchema = z.object({
   VP_CASE_CUSTODY_REGISTRY_FILE: z.string().trim().optional(),
   VP_MERGE_AUTHORIZATION_REGISTRY_FILE: z.string().trim().optional(),
   VP_CONTACT_VERIFICATION_REGISTRY_FILE: z.string().trim().optional(),
+  VP_CUSTOMER_EMAIL_REGISTRY_FILE: z.string().trim().optional(),
   VP_COMPOSE_SERVICE_REGISTRY_FILE: z.string().trim().optional(),
   VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE: z.string().trim().optional(),
   VP_APPROVED_CASE_REGISTRY_FILE: z.string().trim().optional(),
@@ -153,6 +154,7 @@ export interface Config {
   caseCustodyRegistryFile?: string | null;
   mergeAuthorizationRegistryFile?: string | null;
   contactVerificationRegistryFile?: string | null;
+  customerEmailRegistryFile?: string | null;
   composeServiceRegistryFile?: string | null;
   composeCorrespondenceRegistryFile?: string | null;
   approvedCaseRegistryFile?: string | null;
@@ -297,6 +299,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     caseCustodyRegistryFile: parsed.VP_CASE_CUSTODY_REGISTRY_FILE || null,
     mergeAuthorizationRegistryFile: parsed.VP_MERGE_AUTHORIZATION_REGISTRY_FILE || null,
     contactVerificationRegistryFile: parsed.VP_CONTACT_VERIFICATION_REGISTRY_FILE || null,
+    customerEmailRegistryFile: parsed.VP_CUSTOMER_EMAIL_REGISTRY_FILE || null,
     composeServiceRegistryFile: parsed.VP_COMPOSE_SERVICE_REGISTRY_FILE || null,
     composeCorrespondenceRegistryFile: parsed.VP_COMPOSE_CORRESPONDENCE_REGISTRY_FILE || null,
     approvedCaseRegistryFile: parsed.VP_APPROVED_CASE_REGISTRY_FILE || null,

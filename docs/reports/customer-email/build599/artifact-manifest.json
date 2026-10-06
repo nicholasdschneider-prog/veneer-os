@@ -1,0 +1,54 @@
+{
+  "nativeArtifactHash": "5cc1af250ff6c5fe84f46ea54b0a7e246cfcd7aa0784ec0ae3ad0ed3bc05f8f5",
+  "contractHash": "f525e16c1ec36f2964f0999e16b12848dfdec9d7b37afdb55d97269157919991",
+  "files": [
+    {
+      "path": "server/src/bots/communicationRoutes.ts",
+      "sha256": "f43cc3f1289ec342c1960745d30c7bb3250202d4b4d32f090f0998be5ffacb22"
+    },
+    {
+      "path": "server/src/bots/customerEmail.ts",
+      "sha256": "cd6cc1aa91aea3fb97de556487dca8ee2668e43d4217c5897f9abf3c619b62d2"
+    },
+    {
+      "path": "server/src/bots/customerEmailContract.ts",
+      "sha256": "08501f3390020f6f3ca605d051d6be25f07dc473f9d96b0166ec8e8bd3db39dc"
+    },
+    {
+      "path": "server/src/bots/customerEmailIO.ts",
+      "sha256": "1b36f6c95c31ec5bceacb02b25dbbfcaff32d6d29f7eeff653631ef9f48e0389"
+    },
+    {
+      "path": "server/src/bots/customerEmailNative.ts",
+      "sha256": "2206bc752dab5a77ce19c7984efab126898439bdbc6eb08ff662d0fc03f94ce8"
+    },
+    {
+      "path": "server/src/bots/customerEmailRoutes.ts",
+      "sha256": "7624610d4391ae6b609d400724d1abbfede9aed83a350f31d825e078c56bba02"
+    },
+    {
+      "path": "server/src/bots/customerEmailTrust.ts",
+      "sha256": "8bb9c3e921af3c0cdebb650f295ed05f4eb9494dd14ffce360f2d7e57639bc6b"
+    },
+    {
+      "path": "server/src/config.ts",
+      "sha256": "9b1644de40a156d80d8414ad1fa4bbf6efd8c156231c5ee6c674c8e69fc1b09b"
+    },
+    {
+      "path": "server/src/db/migrations/0152_customer_email_direction.sql",
+      "sha256": "26bae09fbd742d6364299af5ec840d4767440949c53278a19997594f3aec5d33"
+    },
+    {
+      "path": "server/src/index.ts",
+      "sha256": "0a6148d468def50652e193838d8548ff1eafa184cd8df01fae5bccd2d8e485ff"
+    },
+    {
+      "path": "server/src/mcp/botTools.ts",
+      "sha256": "fe990a68e045e56122cac83c45858cf6ad2dabfdf3ef3fcb8b39c9413d9f1d64"
+    },
+    {
+      "path": "server/src/mcp/customerEmailTools.ts",
+      "sha256": "0584325f9e4a325f713404752b3c04bf63664d54dcb01351b2d54d6d67fbe41e"
+    }
+  ]
+}

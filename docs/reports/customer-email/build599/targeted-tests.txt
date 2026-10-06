@@ -1,0 +1,16 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run --run test/customerEmail.test.ts test/vendorEmail.test.ts test/botCommunication.test.ts test/botFeatureGuide.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/botFeatureGuide.test.ts (32 tests) 19ms
+ ✓ test/botCommunication.test.ts (12 tests) 1084ms
+ ✓ test/vendorEmail.test.ts (40 tests) 3097ms
+ ✓ test/customerEmail.test.ts (58 tests) 4617ms
+
+ Test Files  4 passed (4)
+      Tests  142 passed (142)
+   Start at  11:48:01
+   Duration  5.11s (transform 442ms, setup 0ms, collect 1.12s, tests 8.82s, environment 0ms, prepare 153ms)

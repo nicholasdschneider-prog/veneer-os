@@ -1,0 +1,16 @@
+
+> @veneer-pro/server@0.1.0 test
+> vitest run --run test/codexAppServer.test.ts
+
+
+ RUN  v2.1.9 /Users/archerclawdington/veneer-os/server
+
+ ✓ test/codexAppServer.test.ts (59 tests) 28208ms
+   ✓ canonical Codex App Server adapter > retires the app-server of an account that was disconnected since it was spawned 15013ms
+   ✓ Codex paginated fork preparation failure (resume in place, option A) > starts no turn and reports no session when the fallback resume never answers 6007ms
+   ✓ Codex startup recovery history > retains startup timeout stage and never adopts a late fork or starts its turn 2230ms
+
+ Test Files  1 passed (1)
+      Tests  59 passed (59)
+   Start at  11:37:55
+   Duration  28.73s (transform 166ms, setup 0ms, collect 210ms, tests 28.21s, environment 0ms, prepare 53ms)

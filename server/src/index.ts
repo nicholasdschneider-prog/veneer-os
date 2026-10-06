@@ -1,3 +1,4 @@
+import {customerEmailVerifierRoutes} from './bots/customerEmailRoutes.js';
 import {contactVerificationVerifierRoutes} from './bots/contactVerificationRoutes.js';
 import {caseCustodyVerifierRoutes} from './bots/caseCustodyRoutes.js';
 import { mergeAuthorizationServiceRoutes } from './bots/mergeAuthorizationRoutes.js';
@@ -214,6 +215,7 @@ app.use('/api/autoship/candidates', autoshipCandidateRoutes(ctx));
 app.use('/api/case-custody/verifier', caseCustodyVerifierRoutes(ctx));
 app.use('/api/cs/merge-authorization', mergeAuthorizationServiceRoutes(ctx));
 app.use('/api/contact-verification/verifier', contactVerificationVerifierRoutes(ctx));
+app.use('/api/customer-email-direction/verifier', customerEmailVerifierRoutes(ctx));
 app.use('/api/composed-sms/verifier', composedSmsVerifierRoutes(ctx));
 app.use('/api/routine-message/verifier', routineVerifierRoutes(ctx));
 app.use('/api/purchase-timing/verifier', purchaseTimingVerifierRoutes(ctx));
