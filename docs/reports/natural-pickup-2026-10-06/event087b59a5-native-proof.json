@@ -1,0 +1,79 @@
+{
+  "observed_at": "2026-10-06T17:02:15.061497+00:00",
+  "read_only": true,
+  "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+  "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+  "event_payload": {
+    "id": "087b59a5-81dd-4aab-b876-9bd49b7d281f",
+    "occurred_at": "2026-10-06T14:37:45.383Z",
+    "order_id": "bc7ebcc5-02c0-451b-9641-410ccda5e863",
+    "order_revision": "85f1f4705b27047624908f752aec6bab79e10f75c90afe8d240387960d565ce2",
+    "schema_version": "lippert.purchase_candidate/v1",
+    "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "type": "order.purchase_candidate"
+  },
+  "immutable_receipt": {
+    "schema_version": "lippert.purchase_candidate_receipt/v1",
+    "receipt_id": "50fe96f4-7873-4d4a-98e4-3efc1feccb6a",
+    "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+    "event_id": "087b59a5-81dd-4aab-b876-9bd49b7d281f",
+    "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "order_id": "bc7ebcc5-02c0-451b-9641-410ccda5e863",
+    "order_revision": "85f1f4705b27047624908f752aec6bab79e10f75c90afe8d240387960d565ce2",
+    "payload_hash": "dc554e478bdf5fe48d904085fb5240e05e8586c17d575335b013979fe20f1546",
+    "accepted_at": "2026-10-06T14:37:47.104Z",
+    "status": "accepted",
+    "purchase_authority": false
+  },
+  "stored_payload_hash": "dc554e478bdf5fe48d904085fb5240e05e8586c17d575335b013979fe20f1546",
+  "recomputed_canonical_sha256": "dc554e478bdf5fe48d904085fb5240e05e8586c17d575335b013979fe20f1546",
+  "digest_matches": true,
+  "event_batch": {
+    "id": "1a664f78-5fbd-4a8d-b974-bd82aa05d4b9",
+    "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+    "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "status": "linked",
+    "run_id": "b1d37048-c2a7-4a34-94c2-50f4da9a2c4b",
+    "blocked_reason": null,
+    "created_at": "2026-10-06T14:37:47.104Z"
+  },
+  "scheduled_run": {
+    "id": "b1d37048-c2a7-4a34-94c2-50f4da9a2c4b",
+    "scheduled_task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "conversation_id": "444961f1-2734-4417-a002-bdfdf913596c",
+    "scheduled_for": "2026-10-06T14:37:47.373Z",
+    "trigger": "manual",
+    "status": "completed",
+    "important": 0,
+    "event_id": null,
+    "error": null,
+    "started_at": "2026-10-06 14:37:47",
+    "finished_at": "2026-10-06 14:38:55"
+  },
+  "persisted_start": {
+    "run_id": "b1d37048-c2a7-4a34-94c2-50f4da9a2c4b",
+    "conversation_id": "444961f1-2734-4417-a002-bdfdf913596c",
+    "turn_id": "12d75b73-faeb-4319-a567-98b9a960828d",
+    "started_at": "2026-10-06T14:37:47.396Z"
+  },
+  "persisted_pass": {
+    "run_id": "b1d37048-c2a7-4a34-94c2-50f4da9a2c4b",
+    "conversation_id": "444961f1-2734-4417-a002-bdfdf913596c",
+    "outcome": "clear",
+    "cursor": "pass 2026-10-06T14:38:06Z queue next=null; event 087b59a5-81dd-4aab-b876-9bd49b7d281f order bc7ebcc5 rev 85f1f470 deferred to Sage/Nick live checkout (decision 53d28351); 0 placed; skipped 100122005, 100122343, 100122404",
+    "recorded_at": "2026-10-06T14:38:49.111Z"
+  },
+  "receipt_count": {
+    "count": 1
+  },
+  "active_runs": [],
+  "pending_batches": [],
+  "global_native_fences": [],
+  "provenance": [
+    "Scheduler tick dispatches pending purchase batches with launch(task,now(),manual); stored manual is shared launch label, not evidence of a human run-now.",
+    "Persisted receipt/event link ties this run to the candidate; no original HTTP HMAC header/dispatch caller audit is retained for independent historical wire reconstruction.",
+    "Receiver intake requires exact source HMAC and current binding; retained receipt is authenticated-intake evidence under that installed contract.",
+    "This proves native candidate pickup/start/pass, not purchasing acceptance or independent current portal/source eligibility.",
+    "No POST, acknowledgment call, launch, mutation, restart, source edit or fence clearing performed."
+  ]
+}
