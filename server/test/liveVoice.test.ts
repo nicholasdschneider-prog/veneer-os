@@ -75,18 +75,27 @@ describe('Henry voice workspace', () => {
     await expect(workspace.readChat('own',-1)).rejects.toThrow('cursor');
     await expect(new VoiceWorkspace(ctx,2).readChat('own',7)).rejects.toThrow();
   });
-  it('hands a call only the replies posted since its last count, clipped', async () => {
+  it('derives reply count and the delta since a cursor from one filtered snapshot, clipped', async () => {
     const long = 'x'.repeat(5000);
-    ctx.manager.snapshot = async () => [
+    let reads = 0;
+    ctx.manager.snapshot = async () => { reads++; return [
       { type: 'text_final', turnId: 'a', markdown: 'first' }, { type: 'turn_started', turnId: 'b', text: 'user words' },
+      { type: 'text_final', turnId: 'b', markdown: '   ' }, // blank after sanitizing: counted by neither side
       { type: 'text_final', turnId: 'b', markdown: 'second' }, { type: 'text_final', turnId: 'c', markdown: long },
-    ] as never;
+    ] as never; };
     const bot = new VoiceWorkspace(ctx, 1, 'own');
-    expect(await bot.newReplies(1)).toMatchObject([{ text: 'second' }, { text: expect.stringContaining('[Middle of message omitted]') }]);
-    expect((await bot.newReplies(1))[1]!.text.length).toBeLessThan(4000);
-    expect(await bot.newReplies(3)).toEqual([]);
-    expect(await bot.newReplies(9)).toEqual([]);
-    expect(await workspace.newReplies(0)).toEqual([]);
+    const delta = await bot.replyDelta(1);
+    expect(reads).toBe(1);
+    expect(delta.count).toBe(3);
+    expect(delta.replies).toMatchObject([{ index: 1, text: 'second' }, { index: 2, text: expect.stringContaining('[Middle of message omitted]') }]);
+    expect(delta.replies[1]!.text.length).toBeLessThan(4000);
+    expect(await bot.replyDelta(3)).toEqual({ count: 3, replies: [] });
+    expect(await bot.replyDelta(9)).toEqual({ count: 3, replies: [] });
+    // Prefetched events are reused instead of a second snapshot.
+    reads = 0;
+    expect((await bot.replyDelta(0, [{ type: 'text_final', turnId: 'z', markdown: 'given' }] as never)).replies).toEqual([{ index: 0, text: 'given' }]);
+    expect(reads).toBe(0);
+    expect(await workspace.replyDelta(0)).toEqual({ count: 0, replies: [] });
   });
   it('searches recorded facts directly without waking a bot or leaking hidden tool data', async () => {
     ctx.manager.snapshot = async () => [

@@ -15,6 +15,9 @@ import { voiceFailureMessage } from './failure.js';
 import { callVoice } from './voices.js';
 import { ensureSip, phoneConfigured, phoneRoomName, phoneRoomToken, sipUriFor, twilioProvider, PHONE_ENDED, PHONE_MAX_SECONDS, type PhoneProvider } from './phone.js';
 
+/** How long the service waits for the worker to confirm a history insert before re-sending the same cursor, and how often. */
+const REPLY_ACK_WAIT_MS = 3000;
+const REPLY_ACK_ATTEMPTS = 5;
 /** Voice tools whose failure message never contains caller speech, so it can be logged. */
 const READ_ONLY_VOICE_TOOLS = new Set(['read_chat', 'blockers', 'decisions', 'search_context', 'read_decision', 'chats', 'voice_preferences', 'question_line']);
 interface Call {
@@ -22,6 +25,8 @@ interface Call {
   id: string; userId: number; room: string; child: ChildProcess; client: RoomServiceClient;
   state: string; error: string | null; lastSeen: number; expiresAt: number;
   createdAt: number; ready: boolean; seenKeys: Set<string>; replies: number; workStatus: string | null;
+  /** A notice carrying new replies the worker has not yet confirmed as inserted into history. */
+  replyNotice: { id: string; cursor: number; count: number; sentAt: number; attempts: number; failed: boolean } | null;
   bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number; faults: number;
   incoming: boolean; closeReason: string | null; callerWords: string[];
   /** Set when the person is on their phone instead of in the browser. */
@@ -66,7 +71,7 @@ function botInstructions(bot: { name: string; role: string | null; subteam: stri
   return `You ARE ${bot.name}${title ? ` (${title})` : ''}, on the phone with the caller. Always speak in the first person as ${bot.name}; identify yourself as ${bot.name} when asked. Never refer to ${bot.name} in the third person: never say "I'll let ${bot.name} know", "I'll tell ${bot.name}", "I'll pass this to ${bot.name}" or "when ${bot.name} answers". Follow the caller's saved greeting policy at call startup.
 How you work: this phone channel and your working chat are the same agent. The phone channel itself has no access to orders, purchase orders, queues, inventory, email, browsers or any system, so nothing gets done by talking about it. The only way you start work is the send_message tool, which posts the caller's words into your own background chat, where you actually do the work and reply. Say this in first person: "Kicking off <item>; I'll work it in the background while we keep talking."
 START RULE: whenever the caller gives an instruction, order details, measurements, weights, locations, numbers or any data to act on, call send_message immediately with that item in the caller's words: one call per item, as each item is given, before you speak your acknowledgment. Do not wait for the batch to finish, do not combine several items into one later call, and do not ask clarifying questions unless the item is genuinely unusable. After a successful result say briefly that you have kicked it off and repeat the item. Never say something is confirmed, checked, queued or done unless your background chat actually replied with that result. If send_message was not called or it failed, say plainly that the item was not started. Thinking aloud, hypotheticals and questions about the past are not instructions; for those, ask before starting anything. Keep the same instructionId when retrying. The dispatch disposition is authoritative: queued means waiting, running means started, steered means forwarded into the active turn; none means completed. Completion or failure must come from your actual background replies. Tool approval policies still apply in the underlying chat.
-Fresh currentConversation messages and status from your background chat are provided below before this call starts; keep them available internally and give an opening recap only when the greeting policy requests it. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done. Summarize completed work from the actual messages when asked. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fact questions, first use search_context with an exact order number, tracking number or short phrase; it searches recorded evidence only, not external systems, so say when the evidence was recorded. If missing or stale, ask one targeted question through discuss_decision and tell the caller the check is pending. For fresh updates use read_chat; if older history is needed, call read_chat with beforeMessage=coverage.olderBefore, and acknowledge clipped or missing messages instead of inventing details. When you are told a reply arrived, read it with read_chat and report it aloud as your own progress in first person ("I've queued 100121413" or "I hit a problem with..."), never as "${bot.name} replied". New background replies are also added to your conversation as "[Your background chat just replied]" entries: treat the latest one as your current state. If the caller says the chat shows a result you have not mentioned, or asks what you found, call read_chat before answering and report the latest assistant message from it; never say you are still working when your chat already has a result. A reply posted while the chat status is still working is a real reply: say what it says, with its concrete identifiers (part, SKU, order, count), and only then that work continues. Never summarize a reply that names a part, SKU, order or count as "still working".
+Fresh currentConversation messages and status from your background chat are provided below before this call starts; keep them available internally and give an opening recap only when the greeting policy requests it. Pending questions and decisions are separate from conversation history: empty lists never mean no work was done. Summarize completed work from the actual messages when asked. Prior voice replies may have been mistaken; current thread evidence takes precedence. For fact questions, first use search_context with an exact order number, tracking number or short phrase; it searches recorded evidence only, not external systems, so say when the evidence was recorded. If missing or stale, ask one targeted question through discuss_decision and tell the caller the check is pending. For fresh updates use read_chat; if older history is needed, call read_chat with beforeMessage=coverage.olderBefore, and acknowledge clipped or missing messages instead of inventing details. When you are told a reply arrived, read it with read_chat and report it aloud as your own progress in first person ("I've queued 100121413" or "I hit a problem with..."), never as "${bot.name} replied". New background replies are added to your conversation as "[Your background chat just replied]" entries while you are speaking or busy, and announced at the next quiet moment: treat the latest one as your current state. If the caller says the chat shows a result you have not mentioned, or asks what you found, call read_chat before answering and report the latest assistant message from it; never say you are still working when your chat already has a result. A reply posted while the chat status is still working is a real reply: say what it says, with its concrete identifiers (part, SKU, order, count), and only then that work continues. Never summarize a reply that names a part, SKU, order or count as "still working".
 For decisions: read_decision gives paged proposal fields and recent discussion excerpts. Read all proposal pages, including proposalDetails with the exact customer reply, recipient and structured constraints, using coverage.nextOffset before advising approval; never treat omitted constraints as absent. list_decisions accepts offset for the next catalog page. discuss_decision posts into that decision's thread (it wakes the bot but approves nothing). answer_decision records approve, reject, defer or withdraw only after the caller explicitly states that decision; repeat it back first, using the exact decisionId and version from list_decisions.
 An explicit spoken approval of the current proposal MUST use answer_decision, not discuss_decision or send_message; it claims an available shared card and records approval in one operation, so never ask them to click Approve afterward. Authorized teammates can approve shared customer-service cards; Nicholas is not the mandatory final approver. If another teammate is handling a card, explain that honestly. Separate a current approval from a conditional future action. For an explicit wording edit to the customer reply, use edit_reply to save the complete revised body, then read the new version and confirm it before answer_decision; an edit is not approval. If the caller changes remedies, amounts, recipients or other scope, post the change with discuss_decision so your background chat revises it, then read and confirm the new version on this call before answering it. After success, say approval is recorded and work is queued; use read_decision to report execution. Never infer completion from an idle chat. Start instructions and record approvals during the call, not at hangup; your background chat continues after the call ends, and ending a call neither approves unconfirmed discussion nor cancels accepted work. Image metadata is not visual evidence.
 Your own structured pending questions are in list_blockers; deliver those with answer_question using exact option values.
@@ -95,7 +100,9 @@ export class LiveVoiceService {
         if (Date.now() > call.expiresAt || (!call.ready && Date.now() - call.createdAt > 45_000)) { this.end(call.userId, call.id, 'interrupted', Date.now(), call.ready ? 'expired' : 'not_ready'); continue; }
         try { if (call.bot) new VoiceWorkspace(this.ctx, call.userId, call.bot.conversationId).bot(); }
         catch { if (this.fault(call, 'bot access check')) continue; }
-        if (call.state === 'listening' && call.child.connected) void this.notice(call);
+        // Context is polled in every voice state: a reply posted while the agent is speaking,
+        // thinking or inside a tool still reaches its history. The worker alone gates speech.
+        if (call.ready && call.child.connected) void this.notice(call);
       }
     }, 1_000);
     this.timer.unref();
@@ -136,11 +143,23 @@ export class LiveVoiceService {
         call.faults=0; return;
       }
       const workspace = new VoiceWorkspace(this.ctx, call.userId, call.bot?.conversationId ?? null);
+      // Replies already handed over wait for the worker's acknowledgment before the cursor moves.
+      // Until then the same cursor is re-sent (after a short wait or a reported failure); the
+      // worker dedupes by reply index. After enough attempts the text is spoken instead.
+      const waiting = call.replyNotice;
+      let fallback = false;
+      if (waiting) {
+        if (!waiting.failed && Date.now() - waiting.sentAt < REPLY_ACK_WAIT_MS) return;
+        if (waiting.attempts >= REPLY_ACK_ATTEMPTS) fallback = true;
+      }
       const blockers = workspace.blockers();
       const decisions = call.bot ? workspace.decisions() : [];
       const keys = [...blockers.map(q => `q:${q.requestId}`),
         ...decisions.filter(d => d.state === 'needs_input').map(d => `d:${d.decisionId}:${d.version}`)];
-      const replies = call.bot ? await workspace.replyCount() : 0;
+      // One snapshot per tick: the count, the new-reply delta and the conversation page all come from it.
+      const events = call.bot ? await this.ctx.manager.snapshot(call.bot.conversationId) : [];
+      const delta = call.bot ? await workspace.replyDelta(call.replies, events) : { count: 0, replies: [] };
+      const replies = delta.count;
       const status = call.bot ? await this.ctx.manager.statusOf(call.bot.conversationId) : null;
       const discussionRevision = workspace.discussionRevision();
       const changed = discussionRevision !== (call.discussionRevision ?? 0) || keys.some(key => !call.seenKeys.has(key)) || replies > call.replies ||
@@ -148,16 +167,19 @@ export class LiveVoiceService {
       if (changed && this.calls.get(call.userId) === call && call.child.connected) {
         // Include fresh evidence rather than relying on the model to obey a
         // request to call read_chat (it may otherwise reuse an old tool result).
-        const currentConversation = call.bot ? await workspace.readChat(call.bot.conversationId) : null;
+        const currentConversation = call.bot ? await workspace.readChat(call.bot.conversationId, undefined, events) : null;
         // The exact new replies are handed over separately: the worker adds them to the model's
         // own conversation history, so a later caller question is answered from them even when
         // the spoken announcement has not had a quiet moment yet.
-        const newReplies = call.bot && replies > call.replies ? await workspace.newReplies(call.replies) : [];
-        call.child.send({ type: 'notice', kind: call.bot ? 'update' : 'question',
-          context: { currentConversation, newReplies, blockers, decisions: workspace.decisionCatalog(), focusedDecision: call.decisionId ? workspace.voiceDecision(call.decisionId) : null } });
+        const noticeId = randomUUID();
+        call.child.send({ type: 'notice', kind: call.bot ? 'update' : 'question', noticeId, ...(fallback ? { fallback: true } : {}),
+          context: { currentConversation, newReplies: delta.replies, blockers, decisions: workspace.decisionCatalog(), focusedDecision: call.decisionId ? workspace.voiceDecision(call.decisionId) : null } });
+        if (delta.replies.length && !fallback) {
+          call.replyNotice = { id: noticeId, cursor: call.replies, count: replies, sentAt: Date.now(), attempts: (waiting?.attempts ?? 0) + 1, failed: false };
+        } else { call.replyNotice = null; }
       }
       keys.forEach(key => call.seenKeys.add(key));
-      call.replies = replies;
+      if (!call.replyNotice) call.replies = replies;
       call.discussionRevision = discussionRevision;
       call.workStatus = status;
       call.faults = 0;
@@ -245,7 +267,7 @@ export class LiveVoiceService {
         env: { PATH: process.env.PATH, NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS } });
       const call: Call = { hotline: !!options.hotline, consent:new HotlineConsent(), timezone:options.timezone, id: randomUUID(), userId, room, child, client, state: 'connecting', error: null,
         lastSeen: Date.now(), expiresAt: Date.now() + 55 * 60_000, createdAt: Date.now(), ready: false,
-        seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, checking: false, faults: 0,
+        seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, replyNotice: null, checking: false, faults: 0,
         bot: bot ? { conversationId: bot.conversationId, name: bot.name } : null, decisionId: options.decisionId ?? null,
         incoming: incoming && !!bot, closeReason: null, callerWords: [],
         phone: options.phone ? { logId: options.phone.logId, sid: null, polling: false, lastPoll: 0 } : null };
@@ -253,7 +275,7 @@ export class LiveVoiceService {
       if (call.phone) call.expiresAt = Date.now() + (PHONE_MAX_SECONDS + 60) * 1000;
       if (bot) {
         workspace.decisions().filter(d => d.state === 'needs_input').forEach(d => call.seenKeys.add(`d:${d.decisionId}:${d.version}`));
-        call.replies = await workspace.replyCount().catch(() => 0);
+        call.replies = await workspace.replyDelta(0).then(d => d.count).catch(() => 0);
       }
       this.ctx.db.prepare('INSERT INTO voice_sessions(id,user_id,conversation_id,started_ms,last_seen_ms) VALUES(?,?,?,?,?)')
         .run(call.id, userId, bot?.conversationId ?? options.contextConversationId ?? null, call.createdAt, call.createdAt);
@@ -274,6 +296,10 @@ export class LiveVoiceService {
         }
         if(call.incoming && message.type==='caller_final' && typeof message.turn==='number' && typeof message.text==='string') { call.consent.finish(message.turn,message.text); call.callerWords.push(message.text.slice(0,2000)); }
         if (message.type === 'ready') { call.state = 'listening'; call.ready = true; }
+        if (message.type === 'notice_ack' && call.replyNotice && message.noticeId === call.replyNotice.id) {
+          if (message.applied === true) { call.replies = call.replyNotice.count; call.replyNotice = null; }
+          else call.replyNotice.failed = true;
+        }
         if (message.type === 'closed' && typeof message.reason === 'string') call.closeReason = message.reason.replace(/[^\w-]/g, '').slice(0, 60);
         if (call.phone && message.type === 'joined') this.connected(userId, call.id);
         // The person hung up their phone: that is a normal end, not a failure.

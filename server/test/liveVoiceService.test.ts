@@ -435,23 +435,81 @@ describe('live voice lifecycle', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(manager.steerMessage).toHaveBeenCalledTimes(1);
     manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t1',markdown:'Verified order result'}]);
-    await vi.advanceTimersByTimeAsync(5000);
-    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({type:'notice',kind:'update',context:expect.objectContaining({currentConversation:expect.objectContaining({messages:[{role:'assistant',text:'Verified order result'}]}),newReplies:[{text:'Verified order result'}]})}));
-    // A second reply is handed over on its own, so the call hears only what is new.
+    await vi.advanceTimersByTimeAsync(1000);
+    const first = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(first).toMatchObject({type:'notice',kind:'update',noticeId:expect.any(String),context:expect.objectContaining({currentConversation:expect.objectContaining({messages:[{role:'assistant',text:'Verified order result'}]}),newReplies:[{index:0,text:'Verified order result'}]})});
+    // The cursor waits for the worker's acknowledgment: until then the same cursor is re-sent, no sooner than the ack wait.
     child.send.mockClear();
-    manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t1',markdown:'Verified order result'},{type:'text_final',turnId:'t2',markdown:'Best match: SKU 2021124055'}]);
     await vi.advanceTimersByTimeAsync(2000);
+    expect(child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(2000);
+    const resent = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(resent.context.newReplies).toEqual([{index:0,text:'Verified order result'}]);
+    expect(resent.noticeId).not.toBe(first.noticeId);
+    // A failed insert is re-sent at once on the next tick.
+    child.send.mockClear();
+    child.emit('message',{type:'notice_ack',noticeId:resent.noticeId,applied:false});
+    await vi.advanceTimersByTimeAsync(1000);
+    const retried = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(retried.context.newReplies).toEqual([{index:0,text:'Verified order result'}]);
+    child.emit('message',{type:'notice_ack',noticeId:retried.noticeId,applied:true});
+    child.send.mockClear();
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice')).toHaveLength(0);
+    // A second reply is handed over on its own, so the call hears only what is new.
+    manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t1',markdown:'Verified order result'},{type:'text_final',turnId:'t2',markdown:'Best match: SKU 2021124055'}]);
+    await vi.advanceTimersByTimeAsync(1000);
     const second = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
-    expect(second.context.newReplies).toEqual([{text:'Best match: SKU 2021124055'}]);
+    expect(second.context.newReplies).toEqual([{index:1,text:'Best match: SKU 2021124055'}]);
+    child.emit('message',{type:'notice_ack',noticeId:second.noticeId,applied:true});
     // A status change without a new reply carries no replies to remember.
     child.send.mockClear();
     manager.statusOf.mockResolvedValue('working');
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice')?.context.newReplies).toEqual([]);
     expect(service.status(1)?.id).toBe(call.id);
     db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
     await vi.advanceTimersByTimeAsync(5000);
     expect(service.status(1)).toBeNull();
+  });
+  it('polls context in every voice state and takes one snapshot per tick', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();
+    await service.start(1,{botConversationId:'thread'});
+    child.emit('message',{type:'ready'});
+    child.emit('message',{type:'state',state:'speaking'});
+    manager.snapshot.mockClear();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(manager.snapshot).toHaveBeenCalledTimes(1); // quiet tick
+    // Blank sanitized replies are skipped by count and delta alike, so indexes stay aligned.
+    manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t0',markdown:'   '},{type:'text_final',turnId:'t1',markdown:'Found it: SKU 2021124055'}]);
+    manager.snapshot.mockClear();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(manager.snapshot).toHaveBeenCalledTimes(1); // changed tick: count, delta and page from the same read
+    const notice = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(notice.context.newReplies).toEqual([{index:0,text:'Found it: SKU 2021124055'}]);
+    expect(notice.context.currentConversation.messages).toEqual([{role:'assistant',text:'Found it: SKU 2021124055'}]);
+    child.emit('message',{type:'notice_ack',noticeId:notice.noticeId,applied:true});
+    // After the bounded number of unacknowledged attempts the text is spoken instead and the cursor moves on.
+    child.send.mockClear();
+    manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t0',markdown:'   '},{type:'text_final',turnId:'t1',markdown:'Found it: SKU 2021124055'},{type:'text_final',turnId:'t2',markdown:'Bin BIN-018-260821'}]);
+    await vi.advanceTimersByTimeAsync(1000 + 5 * 3000);
+    const notices = child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice');
+    expect(notices.length).toBeGreaterThanOrEqual(5);
+    expect(notices.slice(0,-1).every(n=>!n.fallback && n.context.newReplies[0].index===1)).toBe(true);
+    expect(notices.at(-1)).toMatchObject({fallback:true,context:expect.objectContaining({newReplies:[{index:1,text:'Bin BIN-018-260821'}]})});
+    child.send.mockClear();
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice')).toHaveLength(0);
+  });
+  it('sends no notice when access is revoked while the snapshot is pending', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();
+    await service.start(1,{botConversationId:'thread'});
+    child.emit('message',{type:'ready'});
+    child.send.mockClear();
+    manager.snapshot.mockImplementation(async () => { db.prepare("UPDATE users SET status='disabled' WHERE id=1").run(); return [{type:'text_final',turnId:'t1',markdown:'Private result'}]; });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice')).toHaveLength(0);
+    expect(JSON.stringify(child.send.mock.calls)).not.toContain('Private result');
   });
   it('logs voice tool failures by name, with the reason only for read-only tools', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();

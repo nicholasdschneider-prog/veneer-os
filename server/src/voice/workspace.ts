@@ -1,6 +1,6 @@
 import type { AppContext } from '../context.js';
 import type { ConversationRow, QuestionRow, UserRow } from '../db/db.js';
-import type { QuestionAnswers, QuestionPrompt } from '../runtime/events.js';
+import type { ConversationEvent, QuestionAnswers, QuestionPrompt } from '../runtime/events.js';
 import { sanitizeMemoryText } from '../memory/capture.js';
 import { canSendToConversation, canViewConversation, canManageConversation } from '../conversations/access.js';
 import { createBotService } from '../bots/service.js';
@@ -108,10 +108,10 @@ export class VoiceWorkspace {
     return row;
   }
 
-  async readChat(conversationId: string, beforeMessage?: number) {
+  async readChat(conversationId: string, beforeMessage?: number, prefetched?: ConversationEvent[]) {
     const row = this.visibleChat(conversationId);
     if (beforeMessage !== undefined && (!Number.isSafeInteger(beforeMessage) || beforeMessage < 0)) throw new Error('Invalid history cursor.');
-    const events = await this.ctx.manager.snapshot(row.id);
+    const events = prefetched ?? await this.ctx.manager.snapshot(row.id);
     // Recheck after the runner read in case access changed while it was pending.
     this.visibleChat(conversationId);
     const all = events.flatMap(event => {
@@ -168,23 +168,19 @@ export class VoiceWorkspace {
       JOIN bot_decisions d ON d.id=t.decision_id WHERE d.conversation_id=?`).get(this.botConversationId) as { revision: number }).revision;
   }
 
-  /** The bot replies posted after the first `since` ones, so a live call can be handed exactly
-   * what is new instead of the whole page. Capped to the last five; long replies are clipped. */
-  async newReplies(since: number): Promise<{ text: string }[]> {
-    if (!this.botConversationId) return [];
+  /** One snapshot for both the reply count and the replies posted after the first `since`
+   * ones, so a reply landing between two reads is never handed over twice or skipped. Blank
+   * sanitized replies are excluded from both. Capped to the last five; long replies are clipped. */
+  async replyDelta(since: number, events?: ConversationEvent[]): Promise<{ count: number; replies: { index: number; text: string }[] }> {
+    if (!this.botConversationId) return { count: 0, replies: [] };
     this.visibleChat(this.botConversationId);
-    const events = await this.ctx.manager.snapshot(this.botConversationId);
-    const replies = events.flatMap(event => event.type === 'text_final' ? [sanitizeMemoryText(event.markdown)] : []).filter(Boolean);
-    return replies.slice(Math.max(0, Math.min(since, replies.length))).slice(-5)
-      .map(text => ({ text: text.length <= 4000 ? text : text.slice(0, 3100) + '\n[Middle of message omitted]\n' + text.slice(-800) }));
-  }
-
-  /** Number of bot replies so far; the call loop uses it to notice a new reply. */
-  async replyCount(): Promise<number> {
-    if (!this.botConversationId) return 0;
+    const all = events ?? await this.ctx.manager.snapshot(this.botConversationId);
+    // Recheck after the runner read in case access changed while it was pending.
     this.visibleChat(this.botConversationId);
-    const events = await this.ctx.manager.snapshot(this.botConversationId);
-    return events.filter(event => event.type === 'text_final').length;
+    const replies = all.flatMap(event => event.type === 'text_final' ? [sanitizeMemoryText(event.markdown)] : []).filter(Boolean);
+    const from = Math.max(0, Math.min(since, replies.length));
+    return { count: replies.length, replies: replies.slice(from).map((text, i) => ({ index: from + i, text })).slice(-5)
+      .map(r => ({ ...r, text: r.text.length <= 4000 ? r.text : r.text.slice(0, 3100) + '\n[Middle of message omitted]\n' + r.text.slice(-800) })) };
   }
 
   /** Relay what the caller said into the bot's own conversation, the same way the chat composer would. */
