@@ -489,7 +489,7 @@ describe('live voice lifecycle', () => {
     expect(notice.context.newReplies).toEqual([{index:0,text:'Found it: SKU 2021124055'}]);
     expect(notice.context.currentConversation.messages).toEqual([{role:'assistant',text:'Found it: SKU 2021124055'}]);
     child.emit('message',{type:'notice_ack',noticeId:notice.noticeId,applied:true});
-    // After the bounded number of unacknowledged attempts the text is spoken instead and the cursor moves on.
+    // After bounded history attempts, fallback still needs a retention ack.
     child.send.mockClear();
     manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t0',markdown:'   '},{type:'text_final',turnId:'t1',markdown:'Found it: SKU 2021124055'},{type:'text_final',turnId:'t2',markdown:'Bin BIN-018-260821'}]);
     await vi.advanceTimersByTimeAsync(1000 + 5 * 3000);
@@ -497,6 +497,40 @@ describe('live voice lifecycle', () => {
     expect(notices.length).toBeGreaterThanOrEqual(5);
     expect(notices.slice(0,-1).every(n=>!n.fallback && n.context.newReplies[0].index===1)).toBe(true);
     expect(notices.at(-1)).toMatchObject({fallback:true,context:expect.objectContaining({newReplies:[{index:1,text:'Bin BIN-018-260821'}]})});
+    child.send.mockClear();
+    await vi.advanceTimersByTimeAsync(4000);
+    const fallbackRetry = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(fallbackRetry).toMatchObject({fallback:true,context:expect.objectContaining({newReplies:[{index:1,text:'Bin BIN-018-260821'}]})});
+    child.emit('message',{type:'notice_ack',noticeId:fallbackRetry.noticeId,applied:false,retained:true});
+    child.send.mockClear();
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice')).toHaveLength(0);
+  });
+  it('preserves the fallback cursor after an asynchronous IPC failure and ignores stale acknowledgments', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();
+    await service.start(1,{botConversationId:'thread'});
+    child.emit('message',{type:'ready'});
+    manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t1',markdown:'Four on hand'}]);
+    child.send.mockClear();
+    child.send.mockImplementation((message, callback) => {
+      if (message.type==='notice' && message.fallback) callback(new Error('IPC closed'));
+    });
+    await vi.advanceTimersByTimeAsync(16000);
+    const notices = child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice');
+    const failed = notices.at(-1);
+    expect(failed.fallback).toBe(true);
+    child.send.mockImplementation(() => {});
+    child.send.mockClear();
+    await vi.advanceTimersByTimeAsync(1000);
+    const retry = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(retry.context.newReplies).toEqual([{index:0,text:'Four on hand'}]);
+    expect(retry.fallback).toBe(true);
+    child.emit('message',{type:'notice_ack',noticeId:failed.noticeId,applied:false,retained:true});
+    child.send.mockClear();
+    await vi.advanceTimersByTimeAsync(3000);
+    const next = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(next.context.newReplies).toEqual([{index:0,text:'Four on hand'}]);
+    child.emit('message',{type:'notice_ack',noticeId:next.noticeId,applied:false,retained:true});
     child.send.mockClear();
     await vi.advanceTimersByTimeAsync(4000);
     expect(child.send.mock.calls.map(a=>a[0]).filter(m=>m.type==='notice')).toHaveLength(0);
@@ -539,7 +573,7 @@ describe('live voice lifecycle', () => {
     db.prepare("INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,actor_conversation_id,payload_json,request_key) VALUES('reply','d',1,'message',1,'thread','{}','reply')").run();
     db.prepare("INSERT INTO bot_decision_threads(id,decision_id,actor_id,actor_conversation_id,text) VALUES('reply','d',1,'thread','Verified: package weight is unavailable.')").run();
     await vi.advanceTimersByTimeAsync(1000);
-    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'notice', context: expect.objectContaining({ focusedDecision: expect.objectContaining({ discussion: [expect.objectContaining({ text: 'Verified: package weight is unavailable.' })] }) }) }));
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'notice', context: expect.objectContaining({ focusedDecision: expect.objectContaining({ discussion: [expect.objectContaining({ text: 'Verified: package weight is unavailable.' })] }) }) }), expect.any(Function));
   });
   it('reaps an abandoned phone connection even if its worker stays alive', async () => {
     await service.start(1); child.emit('message',{type:'ready'});

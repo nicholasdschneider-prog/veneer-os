@@ -26,7 +26,7 @@ interface Call {
   state: string; error: string | null; lastSeen: number; expiresAt: number;
   createdAt: number; ready: boolean; seenKeys: Set<string>; replies: number; workStatus: string | null;
   /** A notice carrying new replies the worker has not yet confirmed as inserted into history. */
-  replyNotice: { id: string; cursor: number; count: number; sentAt: number; attempts: number; failed: boolean } | null;
+  replyNotice: { id: string; cursor: number; count: number; sentAt: number; attempts: number; failed: boolean; fallback: boolean } | null;
   bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number; faults: number;
   incoming: boolean; closeReason: string | null; callerWords: string[];
   /** Set when the person is on their phone instead of in the browser. */
@@ -172,11 +172,15 @@ export class LiveVoiceService {
         // own conversation history, so a later caller question is answered from them even when
         // the spoken announcement has not had a quiet moment yet.
         const noticeId = randomUUID();
-        call.child.send({ type: 'notice', kind: call.bot ? 'update' : 'question', noticeId, ...(fallback ? { fallback: true } : {}),
-          context: { currentConversation, newReplies: delta.replies, blockers, decisions: workspace.decisionCatalog(), focusedDecision: call.decisionId ? workspace.voiceDecision(call.decisionId) : null } });
-        if (delta.replies.length && !fallback) {
-          call.replyNotice = { id: noticeId, cursor: call.replies, count: replies, sentAt: Date.now(), attempts: (waiting?.attempts ?? 0) + 1, failed: false };
+        if (delta.replies.length) {
+          // Establish the pending cursor before IPC; a send callback or fast ack
+          // must refer to this notice, including when only fallback is possible.
+          call.replyNotice = { id: noticeId, cursor: call.replies, count: replies, sentAt: Date.now(), attempts: (waiting?.attempts ?? 0) + 1, failed: false, fallback };
         } else { call.replyNotice = null; }
+        call.child.send({ type: 'notice', kind: call.bot ? 'update' : 'question', noticeId, ...(fallback ? { fallback: true } : {}),
+          context: { currentConversation, newReplies: delta.replies, blockers, decisions: workspace.decisionCatalog(), focusedDecision: call.decisionId ? workspace.voiceDecision(call.decisionId) : null } }, (error: Error | null) => {
+          if (error && call.replyNotice?.id === noticeId) call.replyNotice.failed = true;
+        });
       }
       keys.forEach(key => call.seenKeys.add(key));
       if (!call.replyNotice) call.replies = replies;
@@ -297,7 +301,7 @@ export class LiveVoiceService {
         if(call.incoming && message.type==='caller_final' && typeof message.turn==='number' && typeof message.text==='string') { call.consent.finish(message.turn,message.text); call.callerWords.push(message.text.slice(0,2000)); }
         if (message.type === 'ready') { call.state = 'listening'; call.ready = true; }
         if (message.type === 'notice_ack' && call.replyNotice && message.noticeId === call.replyNotice.id) {
-          if (message.applied === true) { call.replies = call.replyNotice.count; call.replyNotice = null; }
+          if (message.applied === true || (call.replyNotice.fallback && message.retained === true)) { call.replies = call.replyNotice.count; call.replyNotice = null; }
           else call.replyNotice.failed = true;
         }
         if (message.type === 'closed' && typeof message.reason === 'string') call.closeReason = message.reason.replace(/[^\w-]/g, '').slice(0, 60);

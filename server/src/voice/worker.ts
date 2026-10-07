@@ -48,7 +48,7 @@ const notices = new NoticeQueue({
     for (const text of texts) chatCtx.addMessage({ role: 'system', content: text });
     await agent.updateChatCtx(chatCtx);
   },
-  ack: (noticeId, applied) => send({ type: 'notice_ack', noticeId, applied }),
+  ack: (noticeId, applied, retained) => send({ type: 'notice_ack', noticeId, applied, retained }),
   now: Date.now,
 });
 let lastSpeechAt = Date.now();

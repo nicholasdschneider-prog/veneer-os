@@ -22,7 +22,7 @@ export interface NoticeQueueHooks {
   /** Insert the texts into the model's conversation history; reject on failure. */
   apply(texts: string[]): Promise<void>;
   /** Tell the service whether the replies of that notice are in history. */
-  ack(noticeId: string, applied: boolean): void;
+  ack(noticeId: string, applied: boolean, retained?: boolean): void;
   now(): number;
 }
 export interface SpeechState { agentState: string | undefined; userState: string | undefined }
@@ -52,14 +52,20 @@ export class NoticeQueue {
     for (const r of incoming) if (!replies.has(r.index)) replies.set(r.index, { ...r, inHistory: this.applied.has(r.index) });
     while (replies.size > max) replies.delete(Math.min(...replies.keys()));
     this.pending = { kind: message.kind, context: message.context, replies };
-    const fresh = incoming.filter(r => !this.applied.has(r.index));
-    if (message.fallback || !fresh.length) {
-      if (message.noticeId && !message.fallback) this.hooks.ack(message.noticeId, true);
+    if (message.fallback) {
+      // Retention is distinct from a successful history insert. The parent must
+      // receive this acknowledgment before consuming a fallback's reply cursor.
+      if (message.noticeId) this.hooks.ack(message.noticeId, incoming.every(r => this.applied.has(r.index)), true);
       return Promise.resolve();
     }
     const run = this.chain.then(async () => {
-      let applied = false;
-      try { await this.hooks.apply(fresh.map(r => HISTORY_PREFIX + r.text)); applied = true; } catch { applied = false; }
+      // A resend can arrive while an earlier insert is still in flight. Check
+      // here, after that insert settles, rather than capturing stale state.
+      const fresh = incoming.filter(r => !this.applied.has(r.index));
+      let applied = true;
+      if (fresh.length) {
+        try { await this.hooks.apply(fresh.map(r => HISTORY_PREFIX + r.text)); } catch { applied = false; }
+      }
       for (const r of fresh) {
         if (applied) this.applied.add(r.index);
         const kept = this.pending?.replies.get(r.index);

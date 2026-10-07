@@ -77,13 +77,46 @@ describe('NoticeQueue', () => {
     expect(bounded).toContain('result 7');
     expect(h.queue.applied.size).toBe(8);
   });
-  it('speaks a fallback notice with the text and inserts nothing', async () => {
+  it('acknowledges retention of a fallback before speaking it and inserts nothing', async () => {
     const h = harness();
     await h.queue.receive({ ...notice('f', [{ index: 4, text: 'late result' }]), fallback: true });
     expect(h.applied).toHaveLength(0);
-    expect(h.acks).toHaveLength(0);
+    expect(h.acks).toEqual([['f', false]]);
+    expect(h.hooks.ack).toHaveBeenCalledWith('f', false, true);
     h.advance(2500);
     expect(h.queue.flush(listening)).toContain('NOT in your conversation history yet');
+  });
+  it('deduplicates a resend queued while the first history insert is still pending', async () => {
+    const h = harness();
+    let finish!: () => void;
+    h.hooks.apply.mockImplementationOnce(async texts => {
+      await new Promise<void>(resolve => { finish = resolve; });
+      h.applied.push(texts);
+    });
+    const first = h.queue.receive(notice('first', [{ index: 0, text: 'Found SKU 2021124055' }]));
+    await Promise.resolve();
+    const retry = h.queue.receive(notice('retry', [{ index: 0, text: 'Found SKU 2021124055' }]));
+    expect(h.acks).toEqual([]);
+    finish();
+    await Promise.all([first, retry]);
+    expect(h.hooks.apply).toHaveBeenCalledTimes(1);
+    expect(h.acks).toEqual([['first', true], ['retry', true]]);
+    h.advance(2500);
+    expect(h.queue.flush(listening)).not.toContain('NOT in your conversation history');
+  });
+  it('retries after a delayed insert fails and acknowledges each settled attempt', async () => {
+    const h = harness();
+    let reject!: (error: Error) => void;
+    h.hooks.apply.mockImplementationOnce(() => new Promise<void>((_resolve, fail) => { reject = fail; }));
+    const first = h.queue.receive(notice('first', [{ index: 0, text: 'Four on hand' }]));
+    await Promise.resolve();
+    const retry = h.queue.receive(notice('retry', [{ index: 0, text: 'Four on hand' }]));
+    reject(new Error('insert rejected'));
+    await Promise.all([first, retry]);
+    expect(h.hooks.apply).toHaveBeenCalledTimes(2);
+    expect(h.acks).toEqual([['first', false], ['retry', true]]);
+    h.advance(2500);
+    expect(h.queue.flush(listening)).not.toContain('NOT in your conversation history');
   });
   it('acks a notice without replies and ignores malformed entries; speech resets the lull', async () => {
     const h = harness();
