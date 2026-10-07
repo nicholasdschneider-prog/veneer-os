@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import Database from 'better-sqlite3';
 import { freshWebLoopDelay, observeWeb, recordWebSample, watchdogPersistenceFailure } from './webWatchdog.js';
+import { readWebOperations } from './webOperationMetrics.js';
 
 const args = process.argv.slice(2);
 const argument = (name: string) => args[args.indexOf(name) + 1];
@@ -37,8 +38,11 @@ const tick = async () => {
         previous = { pid, started, time, at };
       }
       try {
-        const telemetry: unknown = JSON.parse(fs.readFileSync(path.join(dataDir, 'ops/web-event-loop.json'), 'utf8'));
+        const file = path.join(dataDir, 'ops/web-event-loop.json');
+        if (fs.statSync(file).size > 32768) throw new Error('Telemetry size limit');
+        const telemetry: unknown = JSON.parse(fs.readFileSync(file, 'utf8'));
         sample.eventLoop = freshWebLoopDelay(telemetry, pid, sample.at);
+        sample.operations = readWebOperations(telemetry, pid, sample.at);
       } catch { sample.eventLoop = null; }
     } else previous = null;
   } catch { previous = null; }

@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
+import { sanitizeWebOperations, type WebOperation } from './webOperationMetrics.js';
 
-export interface WebSample { at: number; pid: number | null; latency: number; cpu: number | null; eventLoop: number | null; ok: boolean; code: 'ok' | 'timeout' | 'unreachable' | 'http_error' }
+export interface WebSample { at: number; pid: number | null; latency: number; cpu: number | null; eventLoop: number | null; ok: boolean; code: 'ok' | 'timeout' | 'unreachable' | 'http_error'; operations?: WebOperation[] }
 /** Only the independent collector's verified listener may own this telemetry. */
 export function freshWebLoopDelay(telemetry: unknown, pid: number, at: number): number | null {
   if (!telemetry || typeof telemetry !== 'object') return null;
@@ -74,11 +75,13 @@ export function recordWebSample(db: Database.Database, sample: WebSample) {
       .run(sample.at, sample.pid, sample.latency, sample.cpu, sample.eventLoop, Number(sample.ok), sample.code);
     db.prepare('DELETE FROM web_watchdog_samples WHERE id NOT IN (SELECT id FROM web_watchdog_samples ORDER BY id DESC LIMIT 120)').run();
     if (notification) {
+      const operations = sample.pid !== null ? sanitizeWebOperations(sample.operations, sample.at).slice(-6) : [];
       const reason = `Veneer web watchdog: ${notification}. Incident ${incident}. Observation at ${new Date(sample.at).toISOString()}: health=${sample.code}, latency=${sample.latency.toFixed(0)}ms, web CPU=${sample.cpu?.toFixed(1) ?? 'unknown'}%, event-loop delay=${sample.eventLoop?.toFixed(0) ?? 'unknown'}ms. This is technical monitoring evidence, not business authority. Read the last 120 sanitized samples in web_watchdog_samples and investigate safely. Queue any source repair. Never cancel active business turns, replay uncertain effects or broadly restart services. A recovery notice reports measured health, not proof that every user action succeeded.`;
+      const operationEvidence = ` Recent slow/error phase evidence: ${JSON.stringify(operations)}. Sync is synchronous phase time; elapsed includes waits and other event-loop work, not proof of the blocking cause. Durations are capped at 60000ms. Empty evidence means unavailable or no retained slow/error phase.`;
       // Native runner consumption works even when the web interface is stalled.
       db.prepare(`INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for)
         VALUES(?,?,?,?,?,?)`).run(crypto.randomUUID(), s.conversation_id, s.owner_id,
-        `web-watchdog:${incident}:${notification}`, reason, new Date(sample.at).toISOString());
+        `web-watchdog:${incident}:${notification}`, reason + operationEvidence, new Date(sample.at).toISOString());
       if (notification === 'recovered') incident = null;
     }
     db.prepare('UPDATE web_watchdog_state SET incident=?,bad_samples=?,good_samples=?,last_notice_ms=?,last_sample_ms=? WHERE singleton=1')

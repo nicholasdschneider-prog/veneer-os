@@ -1,9 +1,10 @@
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createWebOperationMetrics, type WebOperationMetrics } from './webOperationMetrics.js';
 
 /** Pure bounded telemetry; no middleware, request bodies or business gates. */
-export function startWebLoopMetrics(dataDir: string) {
+export function startWebLoopMetrics(dataDir: string, operations: WebOperationMetrics = createWebOperationMetrics()) {
   const histogram = monitorEventLoopDelay({ resolution: 20 }); histogram.enable();
   const dir = path.join(dataDir, 'ops'), file = path.join(dir, 'web-event-loop.json');
   const temporary = `${file}.${process.pid}.tmp`;
@@ -11,7 +12,7 @@ export function startWebLoopMetrics(dataDir: string) {
   const publish = async () => {
     if (busy || stopped) return;
     busy = true;
-    const value = { pid: process.pid, at: Date.now(), delayMs: Number((histogram.percentile(99) / 1e6).toFixed(1)) };
+    const value = { pid: process.pid, at: Date.now(), delayMs: Number((histogram.percentile(99) / 1e6).toFixed(1)), operations: operations.snapshot() };
     histogram.reset();
     try {
       await fs.mkdir(dir, { recursive: true, mode: 0o700 });

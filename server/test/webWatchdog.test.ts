@@ -159,6 +159,23 @@ it('durably alerts once, delivers through the native runner and reports measured
   } finally {db.close();}
 });
 
+it('bounds and sanitizes phase evidence attached to native incident wakes', () => {
+  const db=new Database(':memory:');
+  try {
+    enrollFixture(db);
+    for(let i=0;i<3;i++) {
+      const at=1000000+i*30000;
+      const operations=Array.from({length:50},()=>({at,phase:'routines',kind:'sync',ms:160,failure:'busy',private:'secret fixture'}));
+      recordWebSample(db,{at,pid:123,latency:3000,cpu:25,eventLoop:400,ok:false,code:'timeout',operations:operations as never});
+    }
+    const {reason}=db.prepare('SELECT reason FROM conversation_wakeups').get() as {reason:string};
+    expect(reason).not.toContain('secret fixture');
+    expect(reason.match(/"phase":"routines"/g)).toHaveLength(6);
+    expect(reason).toContain('not proof of the blocking cause');
+    expect(reason).toContain('"failure":"busy"');
+  } finally {db.close();}
+});
+
 it('rejects foreign ownership and requires independent consecutive observations', () => {
   const db=new Database(':memory:');
   try {

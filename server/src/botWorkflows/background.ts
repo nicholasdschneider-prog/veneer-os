@@ -1,28 +1,29 @@
 import type { AppContext } from '../context.js';
 import { startWebLoopMetrics } from '../ops/webLoopMetrics.js';
+import { createWebOperationMetrics, type WebOperationMetrics } from '../ops/webOperationMetrics.js';
 import { tickRoutines } from './routines.js';
 import { createBotService } from '../bots/service.js';
 import { tickSearch } from './search.js';
 import { tickNotifications, queueNotification, sendCallPush } from './notifications.js';
 import { startPhoneCall, tickBotCalls } from '../bots/botCalls.js';
 import { startCalendarReminderWorker } from '../calendarReminders/worker.js';
-export function startBotWorkflows(ctx: AppContext) {
+export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics = createWebOperationMetrics()) {
   const stopReminders=startCalendarReminderWorker(ctx);
-  const stopLoopMetrics = startWebLoopMetrics(ctx.config.dataDir);
+  const stopLoopMetrics = startWebLoopMetrics(ctx.config.dataDir, metrics);
   let busy = false,
     searchBusy = false;
   const tick = async () => {
     if (busy) return;
     busy = true;
     try {
-      tickRoutines(ctx.db);
+      metrics.measure('routines', () => tickRoutines(ctx.db));
       const bots = createBotService(ctx.db);
-      bots.withdrawStaleQuestions(ctx.config.staleQuestionWithdrawMs, Date.now(), ctx.config.resolvedQuestionWithdrawMs);
-      bots.queueQuestionRechecks(ctx.config.questionRecheckMs);
-      const calls = tickBotCalls(ctx);
+      metrics.measure('stale_questions', () => bots.withdrawStaleQuestions(ctx.config.staleQuestionWithdrawMs, Date.now(), ctx.config.resolvedQuestionWithdrawMs));
+      metrics.measure('question_rechecks', () => bots.queueQuestionRechecks(ctx.config.questionRecheckMs));
+      const calls = metrics.measure('call_poll', () => tickBotCalls(ctx));
       for (const { userId, ring } of calls.pushes) void sendCallPush(ctx, userId, ring).catch(() => {});
       for (const phone of calls.phones) void startPhoneCall(ctx, phone);
-      await tickNotifications(ctx);
+      await metrics.measureAsync('notifications', () => tickNotifications(ctx));
     } catch {
       console.warn('[bot-workflows] Background pass failed; retrying.');
     } finally {
@@ -32,7 +33,7 @@ export function startBotWorkflows(ctx: AppContext) {
   const searchTimer = setInterval(() => {
     if (searchBusy) return;
     searchBusy = true;
-    void tickSearch(ctx)
+    void metrics.measureAsync('search', () => tickSearch(ctx))
       .catch(() => {})
       .finally(() => {
         searchBusy = false;

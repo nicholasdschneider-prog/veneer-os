@@ -10,6 +10,10 @@ describe('living bot guide release contract', () => {
     expect(feature.limits).toContain('never clears an incident');
     expect(feature.agent).toContain('missing, stale or unattributed telemetry resets');
     expect(feature.agent).toContain('fixed busy/locked/other log categories');
+    expect(feature.announcement).toContain('activation are still required');
+    expect(feature.limits).toContain('32 fixed-label slow/error entries');
+    expect(feature.agent).toContain('observer-only reload cannot activate them');
+    expect(feature.agent).toContain('durations overlap');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true]) {
       expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'platform-dev',elevated})).toContain(feature.agent);
