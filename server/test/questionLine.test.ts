@@ -58,6 +58,23 @@ describe('global question line and hotline',()=>{
   const a=raise('a','a');const line=questionLine(ctx,user);line.mutate({action:'remind',decisionId:a.id,until:Date.now()+60000,revision:0});
   service.choose({user},a.id,1,'answer','hold','','this_case');expect(line.snapshot().decisions).toEqual([]);expect(line.snapshot().sleeping).toEqual([]);
  });
+ it('preserves historical rotation and full-list visibility while refreshing revocations',()=>{
+  const a=raise('a','history-a'),b=raise('b','history-b');
+  service.choose({user},a.id,1,'answer','use','','this_case');
+  service.choose({user},b.id,1,'answer','use','','this_case');
+  raise('a','waiting-a');raise('b','waiting-b');
+  const line=questionLine(ctx,user);
+  const result=line.snapshot();
+  expect(result.decisions).toHaveLength(2);
+  expect(result.decisions.map(d=>d.conversation_id)).toEqual(['a','b']);
+  // Compare against the original all-decision projection used for rotation.
+  const all=service.list({user});
+  expect(service.questionLineData({user}).history).toEqual(all.map(d=>({id:d.id,conversation_id:d.conversation_id})));
+  expect(service.questionLineData({user}).waiting).toEqual(all.filter(d=>d.state==='needs_input'));
+  db.prepare('UPDATE users SET status=\'disabled\' WHERE id=1').run();
+  expect(line.snapshot().decisions).toEqual([]);
+  expect(line.snapshot().sleeping).toEqual([]);
+ });
  it('does not turn skipping into native defer and supports out-of-order selection',()=>{
   const a=raise('a','a'),b=raise('b','b');const h=new QuestionHotline(ctx,1);h.navigate('select',b.id);h.navigate('skip');
   expect(service.view({user},service.read({user},b.id)).state).toBe('needs_input');expect(h.navigate('next')).toMatchObject({decisionId:a.id});

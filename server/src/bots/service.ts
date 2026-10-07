@@ -9,6 +9,7 @@ import { canonicalSha256 } from './canonical.js';
 import { orderReference, shopifyOrderSchema } from './orderReference.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
+import { listReadScope } from './listReadScope.js';
 
 const text = z.string().trim().min(1).max(12000);
 export const evidenceSchema = z
@@ -292,7 +293,8 @@ export function chiefOfStaffActive(db: Database.Database, c: ConversationRow, ow
       WHERE s.conversation_id=? AND s.owner_id=? AND r.active=1`).get(c.id, ownerId),
   );
 }
-export function createBotService(db: Database.Database) {
+export function createBotService(source: Database.Database) {
+  const { db, scope: listScope } = listReadScope(source);
   const conversation = (id: string) =>
     db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as
       | ConversationRow
@@ -355,17 +357,17 @@ export function createBotService(db: Database.Database) {
     if (actor.conversationId)
       throw new BotError(403, 'A human answer is required');
   }
-  function shared(d: Decision) {
+  function shared(d: Pick<Decision, 'conversation_id' | 'assignee_id'>) {
     if (!db.prepare('SELECT 1 FROM shared_bot_queues WHERE conversation_id=?').get(d.conversation_id)) return false;
     const c = conversation(d.conversation_id)!;
     // An opt-in queue shares only decisions addressed to its owner or its
     // explicitly authorized staff, never unrelated approvers' authority.
     return d.assignee_id === c.user_id || Boolean(db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(d.assignee_id, c.id));
   }
-  function nonexclusive(d: Decision) {
+  function nonexclusive(d: Pick<Decision, 'conversation_id' | 'assignee_id'>) {
     return shared(d) && Boolean(db.prepare('SELECT 1 FROM nonexclusive_bot_queues q JOIN conversations c ON c.id=q.conversation_id WHERE q.conversation_id=? AND q.business_id=c.business_team_id').get(d.conversation_id));
   }
-  function eligible(actor: Actor, d: Decision) {
+  function eligible(actor: Actor, d: Pick<Decision, 'conversation_id' | 'assignee_id'>) {
     if (actor.conversationId) return false;
     const c = conversation(d.conversation_id)!;
     if (!canSendToConversation(actor.user, c, db)) return false;
@@ -692,6 +694,35 @@ export function createBotService(db: Database.Database) {
       ).display_name,
     };
   }
+  function listRows(actor: Actor, filter = 'all', state?: Decision['state'], conversationId?: string, visit?: (d: Decision) => void) {
+    const clauses: string[] = []; const args: string[] = [];
+    if (state) { clauses.push('state=?'); args.push(state); }
+    if (conversationId) { clauses.push('conversation_id=?'); args.push(conversationId); }
+    const rows = db.prepare(`SELECT * FROM bot_decisions ${clauses.length ? 'WHERE ' + clauses.join(' AND ') : ''}
+      ORDER BY created_at DESC,id`).all(...args) as Decision[];
+    return rows.filter(d => {
+      try {
+        // Keep the complete existing evidence and access validation. Avoid the
+        // redundant decision re-read; these rows are already current.
+        chat(actor, d.conversation_id);
+        decisionEvidenceAllowed(actor, JSON.parse(d.proposal_json), d);
+        if (actor.conversationId) {
+          read(actor, d.id);
+          if (d.conversation_id !== actor.conversationId) return false;
+        }
+        if (!matchesFilter(actor, d, filter)) return false;
+        visit?.(d);
+        return true;
+      } catch (e) {
+        if (e instanceof BotError && e.status === 404) return false;
+        throw e;
+      }
+    });
+  }
+  function matchesFilter(actor: Actor, d: Pick<Decision, 'conversation_id' | 'assignee_id'>, filter: string) {
+    if (filter === 'me' && d.assignee_id !== actor.user.id && !(shared(d) && eligible(actor, d))) return false;
+    return filter !== 'team' || chat(actor, d.conversation_id).visibility === 'team';
+  }
   return {
     read,
     view,
@@ -711,31 +742,25 @@ export function createBotService(db: Database.Database) {
         'INSERT INTO bot_registrations(conversation_id,name,active,registered_by) VALUES(?,?,?,?) ON CONFLICT(conversation_id) DO UPDATE SET name=excluded.name,active=excluded.active',
       ).run(id, name, Number(active), actor.user.id);
     },
-    list(actor: Actor, filter = 'all') {
-      return (
-        db
-          .prepare('SELECT * FROM bot_decisions ORDER BY created_at DESC,id')
-          .all() as Decision[]
-      ).flatMap((d) => {
-        try {
-          read(actor, d.id);
-          if (
-            actor.conversationId &&
-            d.conversation_id !== actor.conversationId
-          )
-            return [];
-          if (filter === 'me' && d.assignee_id !== actor.user.id && !(shared(d) && eligible(actor, d))) return [];
-          if (
-            filter === 'team' &&
-            chat(actor, d.conversation_id).visibility !== 'team'
-          )
-            return [];
-          return [view(actor, d)];
-        } catch (e) {
-          if (e instanceof BotError && e.status === 404) return [];
-          throw e;
-        }
+    list(actor: Actor, filter = 'all', conversationId?: string) {
+      return listScope(() => {
+        const decisions: ReturnType<typeof view>[] = [];
+        // Render immediately after validation: a bot read can change its
+        // discussion focus, and that ordering must stay identical to read().
+        listRows(actor, filter, undefined, conversationId, d => decisions.push(view(actor, d)));
+        return decisions;
       });
+    },
+    filterList(actor: Actor, decisions: ReturnType<typeof view>[], filter: string) {
+      return listScope(() => decisions.filter(d => matchesFilter(actor, d, filter)));
+    },
+    questionLineData(actor: Actor) {
+      return listScope(() => ({
+        // Historical decisions still determine fair bot rotation, but need no
+        // answer bridge, reply state, image metadata or other expensive views.
+        history: listRows(actor).map(d => ({ id: d.id, conversation_id: d.conversation_id })),
+        waiting: listRows(actor, 'all', 'needs_input').map(d => view(actor, d)),
+      }));
     },
     /** Read-only overview for the owner's chief of staff bot: other bots'
      * unanswered questions that its owner could answer. It reveals nothing the

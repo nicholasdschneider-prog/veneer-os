@@ -14,7 +14,7 @@ export function questionLine(ctx: Pick<AppContext, 'db'>, user: UserRow) {
   const service = createBotService(ctx.db);
   const state = () => ctx.db.prepare('SELECT selected_id, show_evidence, revision FROM question_line_state WHERE user_id=?').get(user.id) as { selected_id: string | null; show_evidence: number; revision: number } | undefined;
   const snapshot = () => {
-    const all = service.list({ user });
+    const { waiting: all, history } = service.questionLineData({ user });
     const positions = ctx.db.prepare('SELECT decision_id,served_ms,until_ms FROM question_line_positions WHERE user_id=?').all(user.id) as { decision_id: string; served_ms: number; until_ms: number }[];
     const prefs = new Map(positions.map(p => [p.decision_id, p]));
     const now = Date.now();
@@ -25,7 +25,7 @@ export function questionLine(ctx: Pick<AppContext, 'db'>, user: UserRow) {
     const served = new Map<string, number>();
     const answerOrder=new Map<string,number>();
     const answers=new Map((ctx.db.prepare("SELECT decision_id,created_at,max(rowid) AS ordinal FROM bot_decision_events WHERE kind='answered' GROUP BY decision_id").all() as {decision_id:string;created_at:string;ordinal:number}[]).map(a=>[a.decision_id,a]));
-    for (const d of all) {
+    for (const d of history) {
       const answer=answers.get(d.id);
       const at = Math.max(prefs.get(d.id)?.served_ms ?? 0, answer ? Date.parse(answer.created_at.replace(' ', 'T') + (/Z$|[+-]\d\d:\d\d$/.test(answer.created_at) ? '' : 'Z')) || 0 : 0);
       answerOrder.set(d.conversation_id,Math.max(answerOrder.get(d.conversation_id)??0,answer?.ordinal??0));

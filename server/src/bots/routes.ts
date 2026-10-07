@@ -113,13 +113,14 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
       // One chat's own questions, for the conversation page's poller: the full
       // list is over a megabyte and was being fetched every few seconds.
       const conversation = typeof req.query.conversation === 'string' && req.query.conversation ? req.query.conversation : null;
-      const decisions = s.list(a, String(req.query.filter ?? 'all')).filter(d => inTeam(d.conversation_id) && (!conversation || d.conversation_id === conversation));
+      const allDecisions = s.list(a, 'all', conversation ?? undefined);
+      const decisions = s.filterList(a, allDecisions, String(req.query.filter ?? 'all')).filter(d => inTeam(d.conversation_id));
       if (conversation) {
         res.json({ bots: [], decisions, approvers: [], teams: teams.list(a) });
         return;
       }
-      const allDecisions = s.list(a);
       const bots = [];
+      const visible: { registration: { conversation_id: string; name: string }; conversation: ConversationRow }[] = [];
       for (const r of ctx.db
         .prepare('SELECT * FROM bot_registrations WHERE active=1 ORDER BY name')
         .all() as { conversation_id: string; name: string }[]) {
@@ -130,8 +131,14 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
           continue;
         }
         if (!inTeam(c.id)) continue;
+        visible.push({ registration: r, conversation: c });
+      }
+      // Resolve existing read-only RPCs together, instead of serially delaying
+      // every bot behind the preceding request. No runner restart/API change.
+      const statuses = await Promise.all(visible.map(({ conversation }) => ctx.manager.statusOf(conversation.id)));
+      for (const [index, { registration: r, conversation: c }] of visible.entries()) {
         const membership = ctx.db.prepare('SELECT role,subteam,reports_to FROM business_bot_members WHERE conversation_id=?').get(c.id) as { role: string; subteam: string; reports_to: string | null } | undefined;
-        const status = await ctx.manager.statusOf(c.id);
+        const status = statuses[index];
         const own = allDecisions.filter((d) => d.conversation_id === c.id);
         const whole = own.some(
           (d) =>
