@@ -2,6 +2,17 @@
 
 Standing order from the owner, September 23, 2026: employees and bots must discover and know how to use capabilities as they ship. The owner should not have to teach or announce every release.
 
+## Nick calendar phone reminder preparation — October 7, 2026 (staged)
+
+Build #629 adds `calendar-phone-reminders` to the same employee and fresh/resumed
+agent catalog. It prepares a disabled owner-only manifest API, dedicated read-only
+Google reader, permanent occurrence/reference fences and a static telephone speech
+adapter. No worker or dialer is registered; no restart or live effect is authorized.
+The actual owner must separately approve deployment and accepted technical source
+custody/shared phone serialization before activation can be implemented. Existing
+meeting-reminder business direction is retained; this is not a second consent ask.
+See [setup, tests and approval scope](./reports/calendar-reminders/build629.md).
+
 ## Employee access
 
 The permanent authenticated route is `/#/bot-guide`. It is part of the installed product, not an expiring public page. Desktop navigation has **Bot guide**; mobile navigation includes it under **More**. The restricted employee header also links directly to the guide. VeneerBots shows a feature-update notice with links to new and all features. The guide supports search, example copying, a share link, and individual feature links.

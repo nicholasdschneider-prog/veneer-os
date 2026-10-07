@@ -65,6 +65,7 @@ import { createConversationReactivator } from './conversationActivity.js';
 import { createRecentConversationsRouter } from './recentConversations.js';
 import { createQuestionLineRouter } from './questionLine.js';
 import { createBotCallsRouter } from './botCalls.js';
+import { createCalendarRemindersRouter } from './calendarReminders.js';
 import { createLiveVoiceRouter } from './liveVoice.js';
 import {
   autoArchiveInactiveConversations,
@@ -885,6 +886,7 @@ export function createApiRouter(ctx: AppContext): Router {
   router.use(createCoordinationRouter(ctx));
   router.use('/question-line', createQuestionLineRouter(ctx));
   router.use('/bot-calls', createBotCallsRouter(ctx));
+  router.use('/calendar-phone-reminders', createCalendarRemindersRouter(ctx));
   router.use('/live-voice', createLiveVoiceRouter(ctx));
   router.use('/bot-workflows', createBotWorkflowsRouter(ctx));
   router.use('/fixture-tests', createFixtureTestsRouter(ctx));
