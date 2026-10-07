@@ -140,7 +140,14 @@ export function isFocusedRoute(routePath: string, params: URLSearchParams): bool
   if (routePath === '#/bots') return !params.has('register');
   if (routePath.startsWith('#/bots/')) return routePath.split('/')[2] !== 'talk';
   if (routePath.startsWith('#/messages/')) return true;
-  if (/^#\/chat\/[^/]+$/.test(routePath)) return routePath !== '#/chat/new' && !params.has('files') && !params.has('browser');
+  // A bot chat with a live assigned browser session reopens its own pane as
+  // ?browser=chat; that pane is a shared chat feature, so it stays in scope.
+  // Project files and project browsers remain owner destinations.
+  if (/^#\/chat\/[^/]+$/.test(routePath)) {
+    if (routePath === '#/chat/new' || params.has('files')) return false;
+    const browser = params.get('browser');
+    return browser === null || browser === 'chat';
+  }
   if (routePath === '#/automations' || routePath === '#/scheduled') return true;
   return routePath === '#/settings' || routePath.startsWith('#/settings/');
 }

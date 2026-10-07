@@ -8,7 +8,7 @@ vi.mock('@/components/chat/ChatWorkspace', () => ({ ChatWorkspace: () => <div />
 
 describe('focused member routes', () => {
   const route = (hash: string) => { const [path, query = ''] = hash.split('?'); return isFocusedRoute(path!, new URLSearchParams(query)); };
-  it.each(['#/bots', '#/bots?view=work', '#/bots/decision-1', '#/messages/room-1', '#/chat/clara', '#/chat/clara?from=bots&side=questions', '#/chat/clara?side=open', '#/automations', '#/settings', '#/settings/appearance'])('keeps %s', hash => {
+  it.each(['#/bots', '#/bots?view=work', '#/bots/decision-1', '#/messages/room-1', '#/chat/clara', '#/chat/clara?from=bots&side=questions', '#/chat/clara?from=bots&browser=chat', '#/chat/clara?side=open', '#/automations', '#/settings', '#/settings/appearance'])('keeps %s', hash => {
     expect(route(hash)).toBe(true);
   });
   it.each(['#/', '#/?project=x', '#/chat/new', '#/chat/clara?files=p', '#/chat/clara?browser=p', '#/project/p', '#/todos', '#/pages', '#/apps', '#/files', '#/tools', '#/terminal', '#/bot-guide', '#/huddles', '#/voice', '#/bots/talk/clara', '#/bots?register=1'])('sends %s back to Chats', hash => {
