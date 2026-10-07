@@ -83,8 +83,12 @@ process.on('message', (raw: unknown) => {
       // Absent on a phone call: the callee joins over the phone bridge under an identity we do not choose.
       participantIdentity: z.string().optional(), phone: z.boolean().default(false),
       mode: z.enum(['coordinator', 'bot', 'hotline']).default('coordinator'), agentName: z.string().default('Henry'),
-      // Set only on a call the bot placed to ask one question.
-      opening: z.string().optional() }).parse(message);
+      decisionCall:z.boolean().optional(),
+      // A brief opening purpose; the conversation remains unrestricted by its starting topic.
+      opening: z.string().optional() }).transform(config=>({ ...config,
+        // A running pre-deployment parent only supplied opening for decision calls.
+        // New parents always send the explicit flag, including false for reminders.
+        decisionCall:config.decisionCall??!!config.opening })).parse(message);
     const model = new realtime.RealtimeModel({ apiKey: config.apiKey, model: 'gpt-realtime', voice: config.voice,
       // OpenAI owns interruption onset in this pipeline; AgentSession's local
       // minimum-duration/word settings do not gate server speech_started events.
@@ -147,28 +151,26 @@ process.on('message', (raw: unknown) => {
     }
     if(bot || hotline) tools.answer_choice=llm.tool({description:'Record an explicitly selected option using the exact choice ID and current version from read_decision, after repeating it back. No inference from silence or questions. Existing authorization checks apply.',parameters:z.object({decisionId:z.string(),version:z.number().int(),choiceId:z.string(),text:z.string(),callerQuote:z.string().optional().describe('Hotline: entire latest caller utterance verbatim, including their explicit selection. Must be fresh for this exact question.')}),execute:async args=>call('answer_choice',args)});
     // The agent hangs up only after it has finished speaking, so its last words are not cut off.
-    let endRequested = false;
-    const hangUp = () => send({ type: 'tool', id: randomUUID(), name: 'end_call', args: {} });
+    let endRequested = false; let endGeneration=0;
+    const hangUp = () => {if(endRequested)send({ type: 'tool', id: randomUUID(), name: 'end_call', args: {} });};
     if (config.phone) {
       tools.voicemail = llm.tool({ description: 'You reached voicemail, a recording, an automated system or a beep instead of a live person. Hangs up at once. Say nothing before or after calling this.',
         execute: async () => call('voicemail') });
-      if (!config.opening) tools.end_call = llm.tool({ description: 'Hang up the phone call once the caller is done. Say a brief goodbye first.',
-        execute: async () => { endRequested = true; setTimeout(hangUp, 12_000).unref(); return { ok: true, note: 'The call ends when you stop speaking.' }; } });
     }
-    if (config.opening) {
+    if (config.decisionCall) {
       tools.stop_calling = llm.tool({ description: 'The caller cannot answer this question now, needs to look at it, or will handle it at their computer. Keeps the question card on their desk, records no answer, and stops any further calls about this question.',
         execute: async () => call('stop_calling') });
       tools.answer_custom = llm.tool({ description: 'Record the caller\'s own answer in their words when it does not match an offered option exactly, for example a different weight, size or amount. Approves no option; the bot reads the words and continues under its normal checks. Only after you read the value back and the caller confirmed.',
         parameters: z.object({ decisionId: z.string(), version: z.number().int(), text: z.string().describe('The caller\'s answer with every value they gave, in their words.'), callerQuote: z.string().describe('The entire latest caller utterance verbatim.') }),
         execute: async args => call('answer_custom', args) });
-      tools.end_call = llm.tool({ description: 'Hang up. Call this last, once the answer is recorded and the caller has nothing else. Say a short natural goodbye first; do not recite the answer again.',
-        execute: async () => { endRequested = true; setTimeout(hangUp, 12_000).unref(); return { ok: true, note: 'The call ends when you stop speaking. Say nothing more than a brief goodbye.' }; } });
     }
+    if (config.phone || config.opening) tools.end_call = llm.tool({ description: 'End the call only when the caller is finished or asks to hang up. A reminder, recorded decision or topic change does not end the conversation. Stay for questions and new instructions.',
+      execute: async () => { endRequested = true;const generation=++endGeneration;setTimeout(()=>{if(generation===endGeneration)hangUp();}, 12_000).unref(); return { ok: true, note: 'The call ends after your goodbye, when the caller is done.' }; } });
     agent = new voice.Agent({ instructions: config.instructions + voiceStyleInstructions(config.preferences, config.opening), tools });
     let callerTurn=0;
     const pendingCallerTurns:number[]=[];
     const transcribedItems=new Set<string>();
-    session.on(voice.AgentSessionEventTypes.UserStateChanged,event=>{notices.noteSpeech();lastSpeechAt=Date.now();if(event.newState==='speaking'){callerTurn++;pendingCallerTurns.push(callerTurn);send({type:'caller_turn',turn:callerTurn});}});
+    session.on(voice.AgentSessionEventTypes.UserStateChanged,event=>{notices.noteSpeech();lastSpeechAt=Date.now();if(event.newState==='speaking'){endRequested=false;endGeneration++;callerTurn++;pendingCallerTurns.push(callerTurn);send({type:'caller_turn',turn:callerTurn});}});
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed,event=>{
       if(!event.isFinal || (event.itemId && transcribedItems.has(event.itemId)))return;
       if(event.itemId)transcribedItems.add(event.itemId);
@@ -184,7 +186,7 @@ process.on('message', (raw: unknown) => {
     session.on(voice.AgentSessionEventTypes.AgentStateChanged, event => {
       notices.noteSpeech(); lastSpeechAt = Date.now();
       send({ type: 'state', state: event.newState });
-      if (endRequested && event.newState === 'listening') setTimeout(() => { if (session?.agentState === 'listening') hangUp(); }, 1200).unref();
+      if (endRequested && event.newState === 'listening') {const generation=endGeneration;setTimeout(() => { if (generation===endGeneration && session?.agentState === 'listening') hangUp(); }, 1200).unref();}
     });
     session.on(voice.AgentSessionEventTypes.Error, fail);
     // The reason is a short SDK category (for example participant_disconnected), never call content.
@@ -193,7 +195,7 @@ process.on('message', (raw: unknown) => {
     await session.start({ agent, room, inputOptions: { ...(config.participantIdentity ? { participantIdentity: config.participantIdentity } : {}),
       textEnabled: false, videoEnabled: false, closeOnDisconnect: true }, record: false });
     // The short opening of a call the bot placed is not restarted by pickup noise.
-    const greet = () => session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences), ...(config.opening ? { allowInterruptions: false } : {}) });
+    const greet = () => session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences), allowInterruptions: true });
     if (config.phone) {
       // On the phone the callee speaks first ("hello") and the agent answers with its opening.
       // If they pick up and say nothing, open after a short wait instead of leaving dead air.

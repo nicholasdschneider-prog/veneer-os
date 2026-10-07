@@ -5,6 +5,7 @@ import { BotAvatar } from './BotIdentity';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { useLiveVoice } from './VoiceProvider';
+import { ArcherCallSettings } from './ArcherCallSettings';
 
 export type BotCallRing = { decisionId: string; conversationId: string; botName: string; question: string; remainingMs: number };
 type Settings = { dnd: boolean; windowStart: string; windowEnd: string; timezone: string; bots: { conversationId: string; name: string; enabled: boolean }[];
@@ -186,7 +187,7 @@ export function BotCallSettings() {
       <label className="flex items-center gap-2">Call me from<input type="time" name="call-window-start" className={time} value={settings.windowStart} disabled={busy} onChange={e => { if (e.target.value) void save({ windowStart: e.target.value }); }} /></label>
       <label className="flex items-center gap-2">to<input type="time" name="call-window-end" className={time} value={settings.windowEnd} disabled={busy} onChange={e => { if (e.target.value) void save({ windowEnd: e.target.value }); }} /></label>
     </div>
-    <p className="text-muted-foreground">Eastern time. Outside these hours a bot can still ring while you are using Veneer. A missed call is tried again every 15 minutes.</p>
+    <p className="text-muted-foreground">Eastern time. Outside these hours a bot can still ring while you are using Veneer. Missed decision calls are retried every 15 minutes; other calls aren’t automatically redialed.</p>
     {settings.phoneAvailable && <div className="space-y-2 rounded-xl border p-3">
       <div className="flex items-center justify-between gap-3">
         <div><p className="font-medium">Call my phone</p><p className="text-muted-foreground">When you are away from Veneer, bots phone you instead of ringing here. Only inside your calling hours.</p></div>
@@ -200,6 +201,7 @@ export function BotCallSettings() {
         void post('test-phone', {}).then(() => setNotice('Calling your phone now. It can take a few seconds to ring.')).catch(e => setError((e as Error).message)).finally(() => setBusy(false)); }}><Phone className="size-4" /> Call my phone now</Button>}
       {notice && <p role="status" className="text-muted-foreground">{notice}</p>}
     </div>}
+    {settings.phone==='+15743708714'&&settings.bots.some(b=>b.conversationId==='f4131f81-27c5-4332-902a-a0d9873dfeb9')&&<ArcherCallSettings phoneEnabled={settings.phoneEnabled} botEnabled={!!settings.bots.find(b=>b.conversationId==='f4131f81-27c5-4332-902a-a0d9873dfeb9')?.enabled}/>}
     <p className="font-medium">Bots that can call me</p>
     {!settings.bots.length && <p className="text-muted-foreground">No bots yet.</p>}
     <ul className="space-y-1">

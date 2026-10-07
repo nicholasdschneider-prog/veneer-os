@@ -2,16 +2,19 @@
 
 Standing order from the owner, September 23, 2026: employees and bots must discover and know how to use capabilities as they ship. The owner should not have to teach or announce every release.
 
-## Nick calendar phone reminder preparation — October 7, 2026 (staged)
+## Archer conversational phone calls — October 7, 2026 (staged)
 
-Build #629 adds `calendar-phone-reminders` to the same employee and fresh/resumed
-agent catalog. It prepares a disabled owner-only manifest API, dedicated read-only
-Google reader, permanent occurrence/reference fences and a static telephone speech
-adapter. No worker or dialer is registered; no restart or live effect is authorized.
-The actual owner must separately approve deployment and accepted technical source
-custody/shared phone serialization before activation can be implemented. Existing
-meeting-reminder business direction is retained; this is not a second consent ask.
-See [setup, tests and approval scope](./reports/calendar-reminders/build629.md).
+Build #638 replaces #629's staged static reminder adapter with Archer's existing live
+voice worker, original chat and assigned voice. The catalog includes `bot-outbound-calls`
+and updated `calendar-phone-reminders`; all bot calls support interruptions, questions
+and new instructions through their original chat and existing execution guards.
+Owner-only controls reuse the existing phone connection and Archer-scoped Google
+connectors. The bounded worker and durable shared phone reservations are implemented,
+with activation off by default. No restart, activation or live call was performed.
+The original meeting-reminder direction is retained; deployment approval and the
+concrete technical controls remain separate from business consent.
+See [setup, tests and approval scope](./reports/calendar-reminders/build638.md).
+The [#629 report](./reports/calendar-reminders/build629.md) remains historical evidence.
 
 ## Employee access
 

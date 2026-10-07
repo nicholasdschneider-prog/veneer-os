@@ -5,6 +5,7 @@ import { migrate } from '../src/db/migrate.js';
 import { createBotService, proposalSchema } from '../src/bots/service.js';
 import { botCalls, inCallWindow, normalizePhone, startPhoneCall, tickBotCalls, PAUSE_MS, PHONE_CALLS_PER_HOUR, RETRY_MS, RING_MS } from '../src/bots/botCalls.js';
 import { unofferedNumbers } from '../src/voice/hotlineConsent.js';
+import { releaseUnstartedPhone } from '../src/voice/phoneReservation.js';
 import { bridgeTwiml, ensureSip, phoneRoomName, sipHost, sipUriFor, twilioProvider } from '../src/voice/phone.js';
 import { sendCallPush } from '../src/botWorkflows/notifications.js';
 import type { UserRow } from '../src/db/db.js';
@@ -126,8 +127,10 @@ describe('bot calls',()=>{
   expect(db.prepare('SELECT state FROM bot_call_rings WHERE decision_id=?').get(a.id)).toEqual({state:'answered'});
   expect(await startPhoneCall(ctx,tick.phones[0]!)).toBe(true);
   expect(started).toEqual([{userId:1,options:{botConversationId:'a',decisionId:a.id,incoming:true,phone:{to:'+15745550100',logId:tick.phones[0]!.logId}}}]);
-  // No second call while that one is reserved; it is tried again after the usual gap.
-  expect(tickBotCalls(ctx).phones).toEqual([]);vi.advanceTimersByTime(RETRY_MS);expect(tickBotCalls(ctx).phones).toHaveLength(1);
+  // The fixture start never enters the provider. A reserved call blocks even after the retry gap.
+  expect(tickBotCalls(ctx).phones).toEqual([]);vi.advanceTimersByTime(RETRY_MS);expect(tickBotCalls(ctx).phones).toHaveLength(0);
+  releaseUnstartedPhone(db,tick.phones[0]!.logId);db.prepare('UPDATE bot_phone_calls SET ended_ms=? WHERE id=?').run(Date.now(),tick.phones[0]!.logId);
+  expect(tickBotCalls(ctx).phones).toHaveLength(1);
   // Outside the hours the phone stays quiet even though a retry is due.
   vi.setSystemTime(new Date('2026-10-03T03:00:00Z'));expect(tickBotCalls(ctx)).toEqual({pushes:[],phones:[]});
   calls.update({phone:''});expect(calls.settings()).toMatchObject({phone:null,phoneEnabled:false});
@@ -137,7 +140,7 @@ describe('bot calls',()=>{
   startFails=true;const test=calls.testPhone();expect(test).toMatchObject({to:'+15745550100',conversationId:'a',decisionId:null});
   expect(await startPhoneCall(ctx,test)).toBe(false);
   expect(db.prepare('SELECT status FROM bot_phone_calls WHERE id=?').get(test.logId)).toEqual({status:'not_started'});
-  for(let i=1;i<PHONE_CALLS_PER_HOUR;i++)calls.testPhone();
+  for(let i=1;i<PHONE_CALLS_PER_HOUR;i++){const call=calls.testPhone();releaseUnstartedPhone(db,call.logId);db.prepare('UPDATE bot_phone_calls SET ended_ms=? WHERE id=?').run(Date.now(),call.logId);}
   expect(()=>calls.testPhone()).toThrow(/enough calls/);
   onCall=true;vi.advanceTimersByTime(3600_001);expect(()=>calls.testPhone()).toThrow(/already on a call/);
  });

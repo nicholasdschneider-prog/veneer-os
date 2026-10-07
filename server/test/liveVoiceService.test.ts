@@ -32,6 +32,44 @@ beforeEach(() => {
 });
 afterEach(() => { service.close(); db.close(); vi.useRealTimers(); });
 describe('live voice lifecycle', () => {
+  it('reconciles an interrupted retained phone session only through exact terminal provider readback',async()=>{
+    service.close();
+    db.prepare("INSERT INTO voice_sessions(id,user_id,started_ms,last_seen_ms) VALUES('retained-session',1,?,?)").run(Date.now()-1000,Date.now());
+    db.prepare("INSERT INTO bot_phone_calls(id,user_id,voice_session_id,provider_sid,status,started_ms,to_phone) VALUES('retained-call',1,'retained-session','CAretained','in-progress',?, '+15743708714')").run(Date.now()-1000);
+    db.prepare("INSERT INTO phone_call_locks VALUES('+15743708714',1,'retained-call','ACCEPTED')").run();
+    const phone={place:vi.fn(),status:vi.fn().mockResolvedValue({status:'in-progress',answeredBy:null}),hangUp:vi.fn()};
+    service=new LiveVoiceService({db,manager,doppler:{get:(n:string)=>secrets[n]??null}} as unknown as AppContext,phone);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(phone.status).toHaveBeenCalledWith('CAretained');expect(db.prepare('SELECT count(*) AS n FROM phone_call_locks').get()).toEqual({n:1});
+    phone.status.mockResolvedValue({status:'completed',answeredBy:null});await vi.advanceTimersByTimeAsync(1000);
+    expect(db.prepare('SELECT count(*) AS n FROM phone_call_locks').get()).toEqual({n:0});expect(db.prepare("SELECT status FROM bot_phone_calls WHERE id='retained-call'").get()).toEqual({status:'completed'});
+    expect(phone.place).not.toHaveBeenCalled();expect(phone.hangUp).not.toHaveBeenCalled();
+  });
+  it('Archer outbound phone purpose keeps Cedar, normal tools and durable new-instruction routing without a decision',async()=>{
+    const archer='f4131f81-27c5-4332-902a-a0d9873dfeb9';
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES(?,1,1,'Archer','codex','archer')").run(archer);
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,'Archer',1)").run(archer);
+    Object.assign(secrets,{TWILIO_VOICE_ACCOUNT_SID:'ACtest',TWILIO_VOICE_API_KEY_SID:'SKtest',TWILIO_VOICE_API_KEY_SECRET:'synthetic',TWILIO_VOICE_FROM_NUMBER:'+15550001111',LIVEKIT_SIP_URI:'sip:test1.sip.livekit.cloud'});
+    const phone={place:vi.fn().mockResolvedValue('CAfixture'),status:vi.fn().mockResolvedValue({status:'ringing',answeredBy:null}),hangUp:vi.fn().mockResolvedValue(undefined)};const store=new Map<string,string>();
+    service.close();service=new LiveVoiceService({db,manager,doppler:{get:(n:string)=>secrets[n]??null,refresh:async()=>({})},secrets:{getApiKeyOverride:(k:string)=>store.get(k)??null,setApiKeyOverride:(k:string,v:string)=>void store.set(k,v)}} as unknown as AppContext,phone);
+    db.prepare("INSERT INTO bot_phone_calls(id,user_id,started_ms) VALUES('conversation-call',1,?)").run(Date.now());
+    await service.start(1,{botConversationId:archer,outboundReason:'Calendar reminder with an untrusted event title',phone:{to:'+15743708714',logId:'conversation-call'}});
+    const start=child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start');
+    expect(start).toMatchObject({voice:'cedar',mode:'bot',phone:true,decisionCall:false});expect(start.opening).toContain('topic changes');expect(start.instructions).toContain('send_message');expect(start.instructions).not.toContain('then call end_call');
+    child.emit('message',{type:'tool',id:'work1',name:'send_message',args:{text:'Please check my plan for tomorrow too',instructionId:'original-new-task'}});await vi.advanceTimersByTimeAsync(1);
+    child.emit('message',{type:'tool',id:'work2',name:'send_message',args:{text:'Please check my plan for tomorrow too',instructionId:'original-new-task'}});await vi.advanceTimersByTimeAsync(1);
+    expect(manager.steerMessage).toHaveBeenCalledTimes(1);expect(manager.steerMessage).toHaveBeenCalledWith(archer,'[Voice call] Please check my plan for tomorrow too',1);
+    expect(service.status(1)).toMatchObject({botConversationId:archer,decisionId:null});expect(db.prepare('SELECT count(*) AS n FROM bot_decisions').get()).toEqual({n:0});
+  });
+  it('rechecks an internal cancellation after voice setup and before phone provider entry',async()=>{
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('bot',1,1,'Bot','codex','bot')").run();
+    Object.assign(secrets,{TWILIO_VOICE_ACCOUNT_SID:'ACtest',TWILIO_VOICE_API_KEY_SID:'SKtest',TWILIO_VOICE_API_KEY_SECRET:'synthetic',TWILIO_VOICE_FROM_NUMBER:'+15550001111',LIVEKIT_SIP_URI:'sip:test1.sip.livekit.cloud'});
+    const phone={place:vi.fn().mockResolvedValue('CAfixture'),status:vi.fn(),hangUp:vi.fn()};const store=new Map<string,string>();
+    service.close();service=new LiveVoiceService({db,manager,doppler:{get:(n:string)=>secrets[n]??null,refresh:async()=>({})},secrets:{getApiKeyOverride:(k:string)=>store.get(k)??null,setApiKeyOverride:(k:string,v:string)=>void store.set(k,v)}} as unknown as AppContext,phone);
+    db.prepare("INSERT INTO bot_phone_calls(id,user_id,started_ms) VALUES('cancelled-call',1,?)").run(Date.now());
+    await expect(service.start(1,{botConversationId:'bot',outboundReason:'Meeting reminder',beforePhoneDispatch:async()=>{throw new Error('Meeting cancelled');},phone:{to:'+15743708714',logId:'cancelled-call'}})).rejects.toThrow();
+    expect(phone.place).not.toHaveBeenCalled();expect(db.prepare('SELECT count(*) AS n FROM phone_call_locks').get()).toEqual({n:0});
+  });
   it.each([false, true])('uses Archer’s assigned voice for browser and incoming phone calls (phone=%s)', async phoneCall => {
     const archer = 'f4131f81-27c5-4332-902a-a0d9873dfeb9';
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES(?,1,1,'Archer','codex','archer')").run(archer);
@@ -209,21 +247,25 @@ describe('live voice lifecycle', () => {
     expect(db.prepare('SELECT end_reason FROM voice_sessions WHERE id=?').get(call.id)).toEqual({end_reason:'phone_voicemail'});
     expect(db.prepare("SELECT status,answered_by,ended_ms IS NOT NULL AS ended FROM bot_phone_calls WHERE id='p1'").get()).toEqual({status:'in-progress',answered_by:'machine_end_beep',ended:1});
     // A person hanging up is a normal end, and the model's voicemail tool ends the call too.
+    phone.status.mockResolvedValue({status:'completed',answeredBy:'human'});await vi.advanceTimersByTimeAsync(1000);
     phone.status.mockResolvedValue({ status:'in-progress', answeredBy:'human' });
     const second = await service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p2')}});
     await vi.advanceTimersByTimeAsync(1);
     child.emit('message',{type:'joined'}); child.emit('message',{type:'closed',reason:'participant_disconnected'});
     expect(db.prepare('SELECT outcome,end_reason,connected_ms IS NOT NULL AS connected FROM voice_sessions WHERE id=?').get(second.id)).toEqual({outcome:'ended',end_reason:'phone_hangup/worker_participant_disconnected',connected:1});
+    phone.status.mockResolvedValue({status:'completed',answeredBy:'human'});await vi.advanceTimersByTimeAsync(1000);
     const third = await service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p3')}});
     child.emit('message',{type:'tool',id:'vm',name:'voicemail',args:{}}); await vi.advanceTimersByTimeAsync(1);
     expect(db.prepare('SELECT end_reason FROM voice_sessions WHERE id=?').get(third.id)).toEqual({end_reason:'phone_voicemail'});
-    // A call that cannot be placed ends cleanly.
+    await vi.advanceTimersByTimeAsync(1000);
+    // Provider uncertainty ends the local session but keeps the durable attempt fenced.
     phone.place.mockRejectedValueOnce(new Error('refused'));
-    const fourth = await service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p4')}});
+    await expect(service.start(1,{botConversationId:'sage',phone:{to:'+15745550100',logId:log('p4')}})).rejects.toThrow();
     await vi.advanceTimersByTimeAsync(1);
     expect(service.status(1)).toBeNull();
-    expect(db.prepare('SELECT outcome,end_reason FROM voice_sessions WHERE id=?').get(fourth.id)).toEqual({outcome:'failed',end_reason:'phone_not_placed'});
-    expect(db.prepare("SELECT status FROM bot_phone_calls WHERE id='p4'").get()).toEqual({status:'not_placed'});
+    expect(db.prepare("SELECT outcome,end_reason FROM voice_sessions WHERE id=(SELECT voice_session_id FROM bot_phone_calls WHERE id='p4')").get()).toEqual({outcome:'failed',end_reason:'phone_not_placed'});
+    expect(db.prepare("SELECT status FROM bot_phone_calls WHERE id='p4'").get()).toEqual({status:'unknown'});
+    expect(db.prepare("SELECT phase FROM phone_call_locks WHERE log_id='p4'").get()).toEqual({phase:'UNKNOWN'});
   });
   it('greets a person by first name but never by an account label', async () => {
     const { callerFirstName } = await import('../src/voice/service.js');

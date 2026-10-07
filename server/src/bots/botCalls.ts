@@ -5,6 +5,7 @@ import { createBotService } from './service.js';
 import { questionLine } from './questionLine.js';
 import { randomUUID } from 'node:crypto';
 import { E164, phoneConfigured } from '../voice/phone.js';
+import { phoneBusy, reservePhone, releaseUnstartedPhone } from '../voice/phoneReservation.js';
 
 /** How long one call rings before it counts as missed. */
 export const RING_MS = 25_000;
@@ -72,7 +73,7 @@ export function botCalls(ctx: Ctx, user: UserRow) {
     db.prepare("UPDATE bot_call_rings SET state='missed',next_attempt_ms=? WHERE user_id=? AND decision_id=? AND state='ringing'").run(now + RETRY_MS, user.id, decisionId);
     db.prepare('UPDATE bot_call_settings SET idle_ms=? WHERE user_id=?').run(now, user.id);
   };
-  const onCall = () => !!ctx.liveVoice?.status(user.id);
+  const onCall = () => !!ctx.liveVoice?.status(user.id) || phoneBusy(db,user.id);
   const startRing = (decisionId: string, now: number, attempt: boolean) => {
     db.prepare(`INSERT INTO bot_call_rings(user_id,decision_id,state,attempts,ring_started_ms,pushed) VALUES(?,?,'ringing',1,?,0)
       ON CONFLICT(user_id,decision_id) DO UPDATE SET state='ringing',attempts=attempts+?,ring_started_ms=excluded.ring_started_ms,pushed=0`).run(user.id, decisionId, now, Number(attempt));
@@ -114,7 +115,7 @@ export function botCalls(ctx: Ctx, user: UserRow) {
   const settings = () => { const s = row(); return { dnd: !!s.dnd, windowStart: s.window_start, windowEnd: s.window_end, timezone: s.timezone, bots: bots(),
     phone: s.phone, phoneEnabled: !!s.phone_enabled && !!s.phone, phoneAvailable: phoneAvailable() }; };
   const phoneCallsLastHour = (now: number) => (db.prepare('SELECT count(*) AS n FROM bot_phone_calls WHERE user_id=? AND started_ms>?').get(user.id, now - 3600_000) as { n: number }).n;
-  const logPhoneCall = (decisionId: string | null, now: number) => { const id = randomUUID(); db.prepare('INSERT INTO bot_phone_calls(id,user_id,decision_id,started_ms) VALUES(?,?,?,?)').run(id, user.id, decisionId, now); return id; };
+  const logPhoneCall = (decisionId: string | null, now: number) => reservePhone(db,user.id,row().phone!,decisionId,now);
   return {
     advance,
     settings,
@@ -238,7 +239,11 @@ export function tickBotCalls(ctx: Ctx, now = Date.now()) {
 
 /** Place one reserved phone call. A call that cannot start is recorded and retried after the usual gap. */
 export function startPhoneCall(ctx: Pick<AppContext, 'db' | 'liveVoice'>, call: PhoneCall): Promise<boolean> {
-  const failed = () => { ctx.db.prepare("UPDATE bot_phone_calls SET status='not_started',ended_ms=? WHERE id=? AND ended_ms IS NULL").run(Date.now(), call.logId); return false; };
+  const failed = () => {
+    const consumed = ctx.db.prepare("SELECT 1 FROM phone_call_locks WHERE log_id=? AND phase<>'RESERVED'").get(call.logId);
+    ctx.db.prepare('UPDATE bot_phone_calls SET status=?,ended_ms=? WHERE id=? AND ended_ms IS NULL').run(consumed ? 'unknown' : 'not_started',Date.now(),call.logId);
+    releaseUnstartedPhone(ctx.db,call.logId); return false;
+  };
   if (!ctx.liveVoice) return Promise.resolve(failed());
   return ctx.liveVoice.start(call.userId, { botConversationId: call.conversationId, ...(call.decisionId ? { decisionId: call.decisionId, incoming: true } : {}), phone: { to: call.to, logId: call.logId } })
     .then(() => true).catch(() => failed());

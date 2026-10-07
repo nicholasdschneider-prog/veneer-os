@@ -5,7 +5,9 @@ import { createBotService } from '../bots/service.js';
 import { tickSearch } from './search.js';
 import { tickNotifications, queueNotification, sendCallPush } from './notifications.js';
 import { startPhoneCall, tickBotCalls } from '../bots/botCalls.js';
+import { startCalendarReminderWorker } from '../calendarReminders/worker.js';
 export function startBotWorkflows(ctx: AppContext) {
+  const stopReminders=startCalendarReminderWorker(ctx);
   const stopLoopMetrics = startWebLoopMetrics(ctx.config.dataDir);
   let busy = false,
     searchBusy = false;
@@ -50,6 +52,7 @@ export function startBotWorkflows(ctx: AppContext) {
       );
   });
   return () => {
+    stopReminders();
     stopLoopMetrics();
     clearInterval(timer);
     clearInterval(searchTimer);

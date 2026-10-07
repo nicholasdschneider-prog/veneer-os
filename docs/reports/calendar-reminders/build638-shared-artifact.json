@@ -1,0 +1,67 @@
+{
+  "previousNativeArtifactHash": "c720605b580809ea87e088476ba765550193de215e0e7cd8764d58c2a3f774a2",
+  "nativeArtifactHash": "024e1c2cf878ebe2f877a4d9e9e0a3f79b764e75dabac94c4f9ad27ec1dd3ffc",
+  "reason": "Existing shared mcp/botTools.ts adds only the request_bot_call definition and route. Customer email approval, bind, claim, source and dispatch guards are unchanged; old artifact acceptance is not transferred or renewed.",
+  "files": [
+    {
+      "path": "server/src/bots/communicationRoutes.ts",
+      "sha256": "19c7e64751b04f025962c0eeac14b71a10108e6b51e87b52e7162918ff93d5d0"
+    },
+    {
+      "path": "server/src/bots/customerEmail.ts",
+      "sha256": "14630d47a5da02195e9a22b91e86edabdafca45ea521ecf24cb47bf1cd9aa08c"
+    },
+    {
+      "path": "server/src/bots/customerEmailContract.ts",
+      "sha256": "119f6a72733084bf847a2e8e18061531a86e7bc6420efc85755b2dd95b564b93"
+    },
+    {
+      "path": "server/src/bots/customerEmailIO.ts",
+      "sha256": "6b1007c1b46d38ffee795587224b6d4569fbf3e802501caf7cee8f46e48bc108"
+    },
+    {
+      "path": "server/src/bots/customerEmailNative.ts",
+      "sha256": "c6d806f3a233aeced00618dbd3acd871b553266201b2cd21fcb689d0e025cfcd"
+    },
+    {
+      "path": "server/src/bots/customerEmailRoutes.ts",
+      "sha256": "840e32fecc9c4d265eaa0d2e7770c04e9bad0e7f2e1a509663f68af0f6f53df2"
+    },
+    {
+      "path": "server/src/bots/customerEmailPrebind.ts",
+      "sha256": "60c7d0d6ec58cbe5a152d55fc7c2d7212f6f66498b66223f4342f54719c756c7"
+    },
+    {
+      "path": "server/src/bots/customerEmailTrust.ts",
+      "sha256": "4276dca5cac9af3f686ba60a37c863fc3ff152638d247f617b2bb74d36b8f908"
+    },
+    {
+      "path": "server/src/bots/vendorEmail.ts",
+      "sha256": "37f708de84b96d12240828bc1b4f1a0ef1d649ace5c3be223819c1f8c3ab7629"
+    },
+    {
+      "path": "server/src/config.ts",
+      "sha256": "9d6b1a7a890d1904b784218dd6c53c210fd6d0f61f339fd2eb13e3087b28014a"
+    },
+    {
+      "path": "server/src/db/migrations/0152_customer_email_direction.sql",
+      "sha256": "26bae09fbd742d6364299af5ec840d4767440949c53278a19997594f3aec5d33"
+    },
+    {
+      "path": "server/src/db/migrations/0153_customer_email_corrections.sql",
+      "sha256": "5fc5db21d5e9e2e1bc2fb3d7a353536b305e9324ce18cdc97444b2999b875f9c"
+    },
+    {
+      "path": "server/src/index.ts",
+      "sha256": "d55aea4e2a0e8a4b1baf987662a63b04fd73a8bf76de57c84cd899f96eef26c2"
+    },
+    {
+      "path": "server/src/mcp/botTools.ts",
+      "sha256": "9eb174493b16273de013fad067f6924b723ce8e5e84d40998e1ac8d28270d8c1"
+    },
+    {
+      "path": "server/src/mcp/customerEmailTools.ts",
+      "sha256": "5d5719bd0d3d80b67e7d829d567027934ce36564b59f553c35a4f86af9ff4c18"
+    }
+  ]
+}

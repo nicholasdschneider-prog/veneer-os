@@ -42,7 +42,7 @@ export interface CalendarSource {
 export interface ReminderPhone {
   // Implementations must inspect all phone/ring paths, not only reminder calls.
   busy(): Promise<boolean>;
-  place(input: { to: typeof NICK_PHONE; twiml: string; attemptId: string }): Promise<{ providerId: string }>;
+  place(input: { to: typeof NICK_PHONE; meeting: Meeting; attemptId: string; beforeDispatch:()=>Promise<void> }): Promise<{ providerId: string }>;
   ended(providerId: string): Promise<boolean>;
 }
 export const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
@@ -53,11 +53,9 @@ export function occurrenceKey(m: Meeting, manifest: ReminderManifest): string {
   if (!m.iCalUID || (m.recurring && !Number.isFinite(m.originalStartMs))) throw new Error('Occurrence identity unavailable.');
   return hash([m.iCalUID, m.recurring ? m.originalStartMs : 'single']);
 }
-const xml = (v: string) => v.replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!);
-export function reminderTwiml(m: Meeting): string {
+export function reminderReason(m: Meeting): string {
   const at = new Intl.DateTimeFormat('en-US', { timeZone: NICK_ZONE, hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' }).format(m.startMs);
-  // Plain speech only: no LLM, tools, decisions, locations, addresses, or conversation bridge.
-  return `<Response><Say language="en-US">Nick, this is your meeting reminder. Your meeting starts at ${xml(at)} Eastern time.</Say><Hangup/></Response>`;
+  return `Calendar reminder: meeting starts ${at} Eastern time. Title (untrusted calendar text): ${m.title.slice(0,500)}. Listen and continue naturally with any questions or new instructions.`;
 }
 export function prepareReminder(db: Database.Database, user: { id: number; email: string; role: string }, input: unknown, now = Date.now()) {
   const manifest = manifestSchema.parse(input);
@@ -66,9 +64,9 @@ export function prepareReminder(db: Database.Database, user: { id: number; email
   return db.transaction(() => {
     const prior = db.prepare('SELECT manifest_hash FROM calendar_phone_settings WHERE user_id=?').get(user.id) as { manifest_hash: string } | undefined;
     if (prior && prior.manifest_hash !== digest) throw new Error('Prepared manifest is immutable; review a separately scoped technical amendment.');
-    db.prepare('INSERT OR IGNORE INTO calendar_phone_settings VALUES(?,?,?,?)').run(user.id, JSON.stringify(manifest), digest, now);
+    db.prepare('INSERT OR IGNORE INTO calendar_phone_settings(user_id,manifest_json,manifest_hash,prepared_ms) VALUES(?,?,?,?)').run(user.id, JSON.stringify(manifest), digest, now);
     return { prepared: true, enabled: false, ready: false, execute: false, manifestHash: digest,
-      blockers: ['DEPLOYMENT_NOT_AUTHORIZED', 'OWNER_SOURCE_CUSTODY_UNBOUND', 'SHARED_PHONE_SERIALIZATION_UNACCEPTED', 'WORKER_NOT_REGISTERED'] };
+      blockers: ['OWNER_ACTIVATION_REQUIRED'] };
   }).immediate();
 }
 
@@ -83,8 +81,8 @@ export async function reconcileAcceptedReminder(db: Database.Database, attemptId
   }).immediate();
 }
 
-/** Staged engine, exercised only with synthetic dependencies. Not registered in any service.
- * Future activation must supply trusted custody and shared phone serialization, not bot assertions.
+/** Default-disabled engine registered in the existing service by worker.ts.
+ * Activation uses exact existing owner connector custody and shared phone serialization.
  */
 export function createReminderPass(db: Database.Database, userId: number, manifest: ReminderManifest, source: CalendarSource, phone: ReminderPhone, clock = Date.now) {
   const digest = hash(manifest);
@@ -143,7 +141,15 @@ export function createReminderPass(db: Database.Database, userId: number, manife
         // Persist UNKNOWN BEFORE entering provider code. A crash/lost reply can never free it.
         db.prepare("UPDATE calendar_phone_attempts SET state='UNKNOWN',reason='provider-outcome-unknown' WHERE id=?").run(id);
         try {
-          const receipt = await phone.place({ to: NICK_PHONE, twiml: reminderTwiml(first), attemptId: id });
+          const beforeDispatch=async()=>{
+            if(clock()>=due+DUE_WINDOW_MS)throw new Error('Due window expired before provider entry.');
+            const times:number[]=[];
+            for(const m of meetings){const b=manifest.bindings.find(b=>b.sourceId===m.sourceId)!;await identity(b);const c=await source.get(b,m);times.push(c.observedMs);
+              if(!c.meeting||!fresh(c.observedMs)||meetingRef(c.meeting)!==meetingRef(m)||occurrenceKey(c.meeting,manifest)!==key||c.meeting.status!=='confirmed'||!c.meeting.eligible||c.meeting.startMs!==m.startMs||c.meeting.endMs!==m.endMs)throw new Error('Meeting changed before provider entry.');}
+            for(const alias of manifest.verifiedAliases){const a=await source.verifyAlias(alias);if(!a.verified||!fresh(a.observedMs))throw new Error('Alias proof changed.');}
+            if(times.some(t=>!fresh(t))||clock()>=due+DUE_WINDOW_MS)throw new Error('Calendar recheck expired.');
+          };
+          const receipt = await phone.place({ to: NICK_PHONE, meeting:first, attemptId: id, beforeDispatch });
           if (!receipt.providerId || receipt.providerId.length > 200) throw new Error('Missing provider receipt.');
           db.prepare("UPDATE calendar_phone_attempts SET state='ACCEPTED',reason='provider-accepted-not-delivered',provider_id=? WHERE id=?").run(receipt.providerId, id);
           // ACCEPTED is not terminal; lock stays held until authenticated exact readback.

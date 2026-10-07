@@ -1,4 +1,5 @@
 import {exactRefundRoutes} from './exactRefundRoutes.js';
+import { requestOutboundCall } from './outboundCalls.js';
 import { proposalDiagnostics } from './proposalDiagnostics.js';
 import {contactVerificationRoutes} from './contactVerificationRoutes.js';
 import {caseCustodyRoutes} from './caseCustodyRoutes.js';
@@ -35,6 +36,9 @@ const mutation = z.object({
 export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: EvidenceFetchers; mergeIO?: MergeIO } = {}) {
   const evidenceFetchers = deps.evidenceFetchers ?? composioGmailFetchers();
   const router = express.Router();
+  router.post('/outbound-calls', (req,res)=> {
+    void requestOutboundCall(ctx,req.user!,req.agentConversationId,req.body).then(result=>res.json(result)).catch(()=>res.status(409).json({error:'Call request refused. Check original Archer scope, owner phone policy, calling hours and prior reservations; do not retry an unknown call.'}));
+  });
   const s = createBotService(ctx.db);
   const teams = createTeamService(ctx.db);
   const chiefOfStaff = createChiefOfStaffService(ctx.db);

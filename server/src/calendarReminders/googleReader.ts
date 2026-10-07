@@ -39,8 +39,14 @@ export function googleReminderReader(tokenAtUse: (binding: Binding) => Promise<s
     if (!response.ok) throw new Error('Calendar read unavailable.');
     return response.json() as Promise<unknown>;
   };
+  return calendarReminderReader(read,clock);
+}
+export type CalendarRead = (b: Binding, pathname: string, params?: URLSearchParams) => Promise<unknown>;
+/** Shared event/inventory validation for direct synthetic and existing connector transports. */
+export function calendarReminderReader(read: CalendarRead, clock = Date.now): CalendarSource {
   const identity = async (b: Binding) => {
-    const i = z.object({ email: z.string().email(), verified_email: z.literal(true) }).parse(await read(b, '/oauth2/v2/userinfo'));
+    const i = z.object({ email: z.string().email(), verified_email: z.boolean().optional() }).parse(await read(b, '/oauth2/v2/userinfo'));
+    if (i.verified_email === false) throw new Error('Calendar identity is unverified.');
     if (i.email.toLowerCase() !== b.account) throw new Error('Calendar account identity mismatch.');
     return { email: i.email.toLowerCase(), observedMs: clock() };
   };

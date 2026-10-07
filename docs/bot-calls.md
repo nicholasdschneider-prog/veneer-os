@@ -14,8 +14,8 @@ first; the question card in the desk line stays the durable record and the fallb
 | Busy | Never ring someone already on a call. (Assumed; not confirmed by the owner.) |
 | Who is called | Each bot calls one person first: customer service bots call Ali, Clara calls Mackenzie, AutoShip Worker calls Nick. No automatic escalation to Nick. |
 | Opening | The bot asks the question plainly, with no lead-in. Background and recommendation only when asked. |
-| Answer | Short repeat-back, record the answer, hang up. The bot then continues its work. |
-| "I can't do that now" | Hang up, leave the card in the line with its evidence, and never call again about that question. |
+| Answer | Short repeat-back, record the answer, and stay for questions or new instructions. End when the caller is finished. |
+| "I can't do that now" | Leave the card in the line with its evidence and stop retries for that question. Stay if the caller wants to discuss something else. |
 | Stacking | One bot and one question per call, one call at a time. The next bot may ring after a short pause. |
 | Missed call | Ring 25 seconds. Retry every 15 minutes with no cap, inside the calling window, until answered or told "I can't do that now". |
 | Voice limits | None: anything approvable on a card is approvable by voice. Existing approval and execution guards are unchanged. |
@@ -49,9 +49,9 @@ How it works:
   order numbers. The person can answer in pieces, correct themselves or ask questions back; the bot
   asks only for what is missing and avoids stock phrases. An answer with numbers or anything easy to
   mishear is said back once, briefly, and recorded on agreement; a plain yes/no or clear option is
-  just acknowledged and recorded. It does not recite the answer again, and hangs up (`end_call`). On
+  just acknowledged and recorded. It does not recite the answer again; it stays for conversation until the caller is done (`end_call`). On
   "I can't do that now" it calls `stop_calling`: no answer is recorded, the card stays, and that
-  question never rings again. A call that ends any other way is retried after 15 minutes.
+  question never rings again. Ordinary unanswered decision calls retain their retry policy; an uncertain provider attempt remains fenced pending exact readback.
 - **Voice training.** Saved voice preferences (length, tone, structure) apply to these calls. Only
   the saved greeting is replaced, by the plain-question opening.
 
@@ -128,3 +128,21 @@ the caller said "8 ounces", and order 100122334 was recorded as 18 lb after the 
 (coordination thread a26fed07). Build #544 added the answer guards above, forced English
 transcription, made the one-sentence opening uninterruptible so pickup noise cannot restart it, and
 replaced the silent Web Audio ring. Which device the calls were taken on is not recorded.
+
+
+## Archer non-decision calls and conversational follow-ups — build 638 (staged)
+
+Nick’s October 7 correction supersedes the historical forced-hangup and uninterruptible
+opening behavior above. All bot calls remain open for ordinary questions, interruptions,
+topic changes and new instructions until the caller is done, within the existing bounded
+session duration. Spoken work enters the original bot chat durably; the phone channel
+itself cannot execute business actions. Existing authority guards apply to that work.
+
+Original Archer uses `request_bot_call` for grounded authorized calls without inventing a
+question card. Nick’s calendar calls use the same worker, Cedar voice and chat, and actual
+phone even with recent in-app presence under the explicit owner policy. Other bots and
+arbitrary recipients cannot use this Nick-only interface. Decision retries retain their
+separate policy; calendar/non-decision attempts never redial after UNKNOWN or a missed call.
+Durable shared phone occupancy releases only on exact terminal provider readback.
+
+No restart or activation was authorized. See [build 638 setup and deployment approval](./reports/calendar-reminders/build638.md).
