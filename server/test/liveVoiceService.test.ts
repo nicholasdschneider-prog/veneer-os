@@ -453,6 +453,23 @@ describe('live voice lifecycle', () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(service.status(1)).toBeNull();
   });
+  it('logs voice tool failures by name, with the reason only for read-only tools', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Support','codex','s1')").run();
+    const call = await service.start(1,{botConversationId:'thread'});
+    child.emit('message',{type:'ready'});
+    const warn = vi.spyOn(console,'warn').mockImplementation(() => {});
+    manager.snapshot.mockRejectedValue(new Error('Runner unavailable'));
+    child.emit('message',{type:'tool',id:'rc',name:'read_chat',args:{}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.id==='rc').result.error).toBe('Runner unavailable');
+    expect(warn).toHaveBeenCalledWith(`[voice] tool read_chat failed for call ${call.id}: Runner unavailable`);
+    manager.steerMessage.mockRejectedValue(new Error('Rejected: SECRET CALLER WORDS'));
+    child.emit('message',{type:'tool',id:'sm',name:'send_message',args:{text:'SECRET CALLER WORDS',instructionId:'i1'}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(warn).toHaveBeenCalledWith(`[voice] tool send_message failed for call ${call.id}: error`);
+    expect(warn.mock.calls.flat().join('\n')).not.toContain('SECRET CALLER WORDS');
+    warn.mockRestore();
+  });
   it('notifies a call about a decision discussion reply even when chat and run status do not change', async () => {
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id) VALUES('thread',1,1,'Grant','codex','s1')").run();
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES('thread','Grant',1)").run();

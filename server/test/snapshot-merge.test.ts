@@ -112,6 +112,59 @@ describe('mergeLiveIntoSnapshot', () => {
   });
 });
 
+describe('mergeLiveIntoSnapshot with steered lines', () => {
+  // A voice call steers "[Voice call] bin 018260821" into the running turn; the
+  // adapter echoes it as a further turn_started with the same turnId.
+  it('drops the whole disk copy of a steered in-flight turn, echo included', () => {
+    const file = [
+      started('t1', 'old prompt'), final('t1', 'old answer'),
+      started('t2', 'find the part'), final('t2', 'I found a likely match: 2021124055'),
+      started('t2', '[Voice call] bin 018260821'), final('t2', 'Normalized bin BIN-018-260821'),
+    ];
+    const turn = { promptText: 'find the part', events: [
+      started('live', 'find the part'), final('live', 'I found a likely match: 2021124055'),
+      started('live', '[Voice call] bin 018260821'), final('live', 'Normalized bin BIN-018-260821'),
+    ], partialText: '' };
+    const merged = mergeLiveIntoSnapshot(file, turn);
+    expect(merged).toHaveLength(6);
+    expect(merged.slice(0, 2)).toEqual(file.slice(0, 2));
+    expect(merged.slice(2)).toEqual(turn.events);
+    expect(merged.filter(e => e.type === 'text_final')).toHaveLength(3);
+  });
+  it('cuts at the opening prompt when the steered echo has not reached the disk yet', () => {
+    const file = [started('t1', 'old prompt'), final('t1', 'old answer'), started('t2', 'find the part'), final('t2', 'I found a likely match')];
+    const turn = { promptText: 'find the part', events: [started('live', 'find the part'), final('live', 'I found a likely match'), started('live', '[Voice call] bin 018260821')], partialText: '' };
+    const merged = mergeLiveIntoSnapshot(file, turn);
+    expect(merged).toHaveLength(5);
+    expect(merged.slice(2)).toEqual(turn.events);
+  });
+  it('does not cut history when a steered line repeats an older completed prompt', () => {
+    const file = [
+      started('t1', 'check status'), final('t1', 'all clear'),
+      started('t2', 'find the part'), final('t2', 'partial'),
+      started('t2', 'check status'), final('t2', 'still clear'),
+    ];
+    const turn = { promptText: 'find the part', events: [started('live', 'find the part'), final('live', 'partial'), started('live', 'check status'), final('live', 'still clear')], partialText: '' };
+    const merged = mergeLiveIntoSnapshot(file, turn);
+    expect(merged).toHaveLength(6);
+    expect(merged[0]).toMatchObject({ turnId: 't1', text: 'check status' });
+    expect(merged[1]).toMatchObject({ markdown: 'all clear' });
+    expect(merged.slice(2)).toEqual(turn.events);
+    // Without the echo on disk, the older completed exchange is still kept.
+    const lagging = mergeLiveIntoSnapshot(file.slice(0, 4), turn);
+    expect(lagging).toHaveLength(6);
+    expect(lagging[0]).toMatchObject({ turnId: 't1' });
+  });
+  it('keeps an identical completed prompt when the steered echo also repeats the prompt text', () => {
+    const file = [started('t1', 'ok'), final('t1', 'first'), started('t2', 'ok'), final('t2', 'second partial'), started('t2', 'ok'), final('t2', 'after steer')];
+    const turn = { promptText: 'ok', events: [started('live', 'ok'), final('live', 'second partial'), started('live', 'ok'), final('live', 'after steer')], partialText: '' };
+    const merged = mergeLiveIntoSnapshot(file, turn);
+    expect(merged).toHaveLength(6);
+    expect(merged[1]).toMatchObject({ markdown: 'first' });
+    expect(merged.slice(2)).toEqual(turn.events);
+  });
+});
+
 describe('settleOrphanedSubagentEvents', () => {
   const launched = (turnId: string, agentKey: string): ConversationEvent => ({
     type: 'subagent_started',

@@ -340,16 +340,26 @@ export function mergeLiveIntoSnapshot(
   // A completed prior exchange is followed by its reply while the live turn is
   // still empty → keep it.
   const liveProduced = turn.events.length > 1 || turn.partialText !== '';
+  // A line steered into the running turn is echoed by the adapter as a further
+  // turn_started with the same text, on disk and in the live buffer alike. Walk
+  // back over such echoes to the opening prompt; cutting at an echo would keep
+  // the disk copy of the opening and its replies under the live buffer and show
+  // the in-flight turn twice.
+  const steered = new Set(turn.events.slice(1).flatMap((e) => (e.type === 'turn_started' ? [e.text.trim()] : [])));
+  const matchesLivePrompt = (text: string) => text === turn.promptText || isMemoryWrappedPromptFor(text, turn.promptText);
   let cut = fileEvents.length;
+  let skipped = 0; // turn_started rows passed over on the way back
   for (let i = fileEvents.length - 1; i >= 0; i--) {
     const e = fileEvents[i]!;
-    if (e.type === 'turn_started') {
-      const isLastEvent = i === fileEvents.length - 1;
-      const matchesLivePrompt =
-        e.text === turn.promptText || isMemoryWrappedPromptFor(e.text, turn.promptText);
-      if (matchesLivePrompt && (isLastEvent || liveProduced)) cut = i;
-      break; // only ever the tail-most turn
-    }
+    if (e.type !== 'turn_started') continue;
+    const isLastEvent = i === fileEvents.length - 1;
+    // At most one echo per steered line can be on disk, so the opening prompt is
+    // the deepest matching row within that many steps of the tail. When an echo
+    // repeats the prompt text ("ok" steered into "ok") this picks the deepest
+    // plausible opening.
+    if (matchesLivePrompt(e.text) && (isLastEvent || liveProduced)) cut = i;
+    if (!steered.has(e.text.trim()) || skipped >= steered.size) break;
+    skipped++;
   }
   const merged = fileEvents.slice(0, cut).concat(turn.events);
   if (turn.partialText) {
