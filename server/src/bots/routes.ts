@@ -1,3 +1,4 @@
+import { customDirections, customDirectionInput, customDirectionReview, customDirectionRead, customDirectionFence } from './customDirection.js';
 import {exactRefundRoutes} from './exactRefundRoutes.js';
 import { requestOutboundCall } from './outboundCalls.js';
 import { proposalDiagnostics } from './proposalDiagnostics.js';
@@ -419,6 +420,11 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   router.post('/composed-sms/:id/claim',run(async(req,res)=>{const p=z.object({request_key:key,send_check:z.unknown()}).strict().parse(req.body);res.json(await composed.claim(actor(req),req.params.id!,p.request_key,p.send_check));}));
   router.post('/composed-sms/:id/delivery',run(async(req,res)=>{const p=z.object({request_key:key,claim_key:key}).strict().parse(req.body);const target=composed.receiptTarget(actor(req),req.params.id!,p.claim_key);res.json(await composedSmsVerifier(ctx.db,composeVerifierIO(ctx)).receipt(target.registration_id,target.action_id));}));
   router.post('/composed-sms/:id/revoke',run((req,res)=>{const p=z.object({request_key:key,reason:z.string().min(1).max(2000)}).strict().parse(req.body);res.json(composed.revoke(actor(req),req.params.id!,p.request_key,p.reason));}));
+  const directions=customDirections(ctx.db);
+  router.post('/custom-directions/inspect',run((req,res)=>res.json(directions.inspect(actor(req),customDirectionInput.parse(req.body)))));
+  router.post('/custom-directions/reviews',run((req,res)=>res.json(directions.record(actor(req),customDirectionReview.parse(req.body)))));
+  router.post('/custom-directions/read',run((req,res)=>res.json(directions.read(actor(req),customDirectionRead.parse(req.body)))));
+  router.post('/custom-directions/fences',run((req,res)=>res.json(directions.fence(actor(req),customDirectionFence.parse(req.body)))));
   const obligations=createInstructionObligations(ctx.db);
   router.post('/instruction-obligations/inspect', run((req,res)=>res.json(obligations.inspect(actor(req),obligationInspectionSchema.parse(req.body)))));
   router.post('/instruction-obligations', run((req,res)=>res.json(obligations.record(actor(req),obligationRecordSchema.parse(req.body)))));

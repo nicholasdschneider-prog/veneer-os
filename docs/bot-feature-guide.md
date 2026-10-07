@@ -366,3 +366,36 @@ Dedicated production trust, actual source integration/writer acceptance and fres
 payment/material/refund inventory mapping remain missing. No issuance, refund,
 customer SMS or automatic setup occurs. BUILD505 preservation still blocks restart;
 this capability is staged, not deployed. See the [contract](./reports/exact-refund/build606/contract.md).
+
+## Custom purchasing direction review — October 7, 2026
+
+Build #640 adds original-owner native text inspection, semantic review and immutable
+tracking through `inspect_custom_direction`, `record_custom_direction_review`,
+`read_custom_direction` and `record_custom_direction_fence`. The old decision, its
+version and raw custom answer stay unchanged. Every response denies execution,
+authority, readiness and dispatch entitlement. No approval consumer accepts this
+review; no blanket custom-to-running transition was added.
+
+The only scope shape is a purchasing unit-cost correction. Complete bounded native
+human/result/shared voice text and all later human classifications are required.
+Every scope field needs an explicit supported/unsupported/ambiguous assessment;
+observed source identifiers and business authority are not server-authenticated
+proof. Missing source execution mediation, media bytes and current source guards
+remain named dependencies, rather than another request for business consent.
+Inflight and UNKNOWN evidence is permanent and cannot be replaced or cleared.
+
+Employees can ask: “Retain my MORryde price correction separately and report the
+exact source execution dependency without asking again.” The original bot inspects
+the immutable answer and reports dependencies; Platform Dev never records the
+review as Clara. Guide: `/#/bot-guide?feature=custom-direction-review`. The shared
+catalog delivers these limits to full/restricted employees and fresh/resumed bots.
+
+The shared MCP surface is included in the staged customer-email native artifact
+manifest. Build #640 regenerates that digest after adding these separate tools.
+Existing registries pinned to the prior artifact fail the unchanged trust guard;
+this release does not replace registry pins, enroll custody or approve a customer
+send. Historical acceptance reports remain unchanged.
+
+A clear human direction and unverified source mapping are reported separately.
+`direction_assessment: direction_retained` can coexist with `scope_unverified`;
+missing source proof is never labeled as missing human business consent.

@@ -17,7 +17,7 @@ import type { Server } from 'node:http';
 import { migrate } from '../src/db/migrate.js';
 import { customerEmailService } from '../src/bots/customerEmail.js';
 import { customerEmailNative } from '../src/bots/customerEmailNative.js';
-import { emailEnrollment, emailBearer, loadEmailRegistry } from '../src/bots/customerEmailTrust.js';
+import { emailEnrollment, emailBearer, loadEmailRegistry, emailRegistrationCurrent } from '../src/bots/customerEmailTrust.js';
 import { customerEmailRoutes, customerEmailVerifierRoutes } from '../src/bots/customerEmailRoutes.js';
 import { canonicalSha256 } from '../src/bots/canonical.js';
 import { EMAIL_CONTRACT_HASH, emailRegistration, emailCapture, emailIntent, type EmailRegistration } from '../src/bots/customerEmailContract.js';
@@ -669,6 +669,9 @@ describe('staged native customer email direction', () => {
         const value = await response.json();
         expect(value.execute).toBe(false);
         expect(JSON.stringify(value)).not.toContain('Compose and send a customer email');
+    });
+    it('keeps registrations pinned to the previous native MCP artifact rejected after build 640', () => {
+        expect(() => emailRegistrationCurrent(db, {...r, nativeArtifactHash:'024e1c2cf878ebe2f877a4d9e9e0a3f79b764e75dabac94c4f9ad27ec1dd3ffc'}, now)).toThrow('unaccepted');
     });
     it('pins actual native artifacts and separates own-principal custody', () => {
         const root = fileURLToPath(new URL('../../', import.meta.url));
