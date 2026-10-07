@@ -75,6 +75,19 @@ describe('Henry voice workspace', () => {
     await expect(workspace.readChat('own',-1)).rejects.toThrow('cursor');
     await expect(new VoiceWorkspace(ctx,2).readChat('own',7)).rejects.toThrow();
   });
+  it('hands a call only the replies posted since its last count, clipped', async () => {
+    const long = 'x'.repeat(5000);
+    ctx.manager.snapshot = async () => [
+      { type: 'text_final', turnId: 'a', markdown: 'first' }, { type: 'turn_started', turnId: 'b', text: 'user words' },
+      { type: 'text_final', turnId: 'b', markdown: 'second' }, { type: 'text_final', turnId: 'c', markdown: long },
+    ] as never;
+    const bot = new VoiceWorkspace(ctx, 1, 'own');
+    expect(await bot.newReplies(1)).toMatchObject([{ text: 'second' }, { text: expect.stringContaining('[Middle of message omitted]') }]);
+    expect((await bot.newReplies(1))[1]!.text.length).toBeLessThan(4000);
+    expect(await bot.newReplies(3)).toEqual([]);
+    expect(await bot.newReplies(9)).toEqual([]);
+    expect(await workspace.newReplies(0)).toEqual([]);
+  });
   it('searches recorded facts directly without waking a bot or leaking hidden tool data', async () => {
     ctx.manager.snapshot = async () => [
       { type: 'text_final', turnId: 'a', at: '2026-09-21T15:00:00Z', markdown: 'Order 100121722: the second parcel has no carrier acceptance. Weight is unknown.' },

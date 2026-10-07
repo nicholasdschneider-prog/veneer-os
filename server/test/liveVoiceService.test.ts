@@ -436,7 +436,18 @@ describe('live voice lifecycle', () => {
     expect(manager.steerMessage).toHaveBeenCalledTimes(1);
     manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t1',markdown:'Verified order result'}]);
     await vi.advanceTimersByTimeAsync(5000);
-    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({type:'notice',kind:'update',context:expect.objectContaining({currentConversation:expect.objectContaining({messages:[{role:'assistant',text:'Verified order result'}]})})}));
+    expect(child.send).toHaveBeenCalledWith(expect.objectContaining({type:'notice',kind:'update',context:expect.objectContaining({currentConversation:expect.objectContaining({messages:[{role:'assistant',text:'Verified order result'}]}),newReplies:[{text:'Verified order result'}]})}));
+    // A second reply is handed over on its own, so the call hears only what is new.
+    child.send.mockClear();
+    manager.snapshot.mockResolvedValue([{type:'text_final',turnId:'t1',markdown:'Verified order result'},{type:'text_final',turnId:'t2',markdown:'Best match: SKU 2021124055'}]);
+    await vi.advanceTimersByTimeAsync(2000);
+    const second = child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice');
+    expect(second.context.newReplies).toEqual([{text:'Best match: SKU 2021124055'}]);
+    // A status change without a new reply carries no replies to remember.
+    child.send.mockClear();
+    manager.statusOf.mockResolvedValue('working');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='notice')?.context.newReplies).toEqual([]);
     expect(service.status(1)?.id).toBe(call.id);
     db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
     await vi.advanceTimersByTimeAsync(5000);

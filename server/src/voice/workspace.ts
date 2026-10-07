@@ -168,6 +168,17 @@ export class VoiceWorkspace {
       JOIN bot_decisions d ON d.id=t.decision_id WHERE d.conversation_id=?`).get(this.botConversationId) as { revision: number }).revision;
   }
 
+  /** The bot replies posted after the first `since` ones, so a live call can be handed exactly
+   * what is new instead of the whole page. Capped to the last five; long replies are clipped. */
+  async newReplies(since: number): Promise<{ text: string }[]> {
+    if (!this.botConversationId) return [];
+    this.visibleChat(this.botConversationId);
+    const events = await this.ctx.manager.snapshot(this.botConversationId);
+    const replies = events.flatMap(event => event.type === 'text_final' ? [sanitizeMemoryText(event.markdown)] : []).filter(Boolean);
+    return replies.slice(Math.max(0, Math.min(since, replies.length))).slice(-5)
+      .map(text => ({ text: text.length <= 4000 ? text : text.slice(0, 3100) + '\n[Middle of message omitted]\n' + text.slice(-800) }));
+  }
+
   /** Number of bot replies so far; the call loop uses it to notice a new reply. */
   async replyCount(): Promise<number> {
     if (!this.botConversationId) return 0;
