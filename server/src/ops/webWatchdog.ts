@@ -2,6 +2,24 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 
 export interface WebSample { at: number; pid: number | null; latency: number; cpu: number | null; eventLoop: number | null; ok: boolean; code: 'ok' | 'timeout' | 'unreachable' | 'http_error' }
+/** Only the independent collector's verified listener may own this telemetry. */
+export function freshWebLoopDelay(telemetry: unknown, pid: number, at: number): number | null {
+  if (!telemetry || typeof telemetry !== 'object') return null;
+  const value = telemetry as { pid?: unknown; at?: unknown; delayMs?: unknown };
+  if (value.pid !== pid || typeof value.at !== 'number' || !Number.isFinite(value.at)
+    || at < value.at || at - value.at >= 90000
+    || typeof value.delayMs !== 'number' || !Number.isFinite(value.delayMs) || value.delayMs < 0) return null;
+  return Math.min(60000, value.delayMs);
+}
+
+/** Never expose exception text, SQL, paths or arbitrary provider error codes. */
+export function watchdogPersistenceFailure(error: unknown): 'busy' | 'locked' | 'other' {
+  const code = error && typeof error === 'object' && 'code' in error ? error.code : null;
+  if (typeof code !== 'string') return 'other';
+  if (code === 'SQLITE_BUSY' || code.startsWith('SQLITE_BUSY_')) return 'busy';
+  if (code === 'SQLITE_LOCKED' || code.startsWith('SQLITE_LOCKED_')) return 'locked';
+  return 'other';
+}
 export async function observeWeb(port: number, fetchImpl: typeof fetch = fetch): Promise<WebSample> {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid loopback web port');
   const start = performance.now();
@@ -24,25 +42,29 @@ export function watchdogOwner(db: Database.Database, id: string, owner: number) 
     AND a.slug='platform-dev' AND u.role='owner' AND u.status='active'`).get(id, owner));
 }
 export function bindWebWatchdog(db: Database.Database, id: string, owner: number) {
-  if (!watchdogOwner(db, id, owner)) throw new Error('An active owner’s unarchived Platform Dev chat is required');
   db.transaction(() => {
+    if (!watchdogOwner(db, id, owner)) throw new Error('An active owner’s unarchived Platform Dev chat is required');
     const old = db.prepare('SELECT * FROM web_watchdog_state WHERE singleton=1').get() as State;
     if (old.incident && (old.conversation_id !== id || old.owner_id !== owner)) throw new Error('Resolve the current incident before changing repair ownership');
     db.prepare('UPDATE web_watchdog_state SET conversation_id=?,owner_id=? WHERE singleton=1').run(id, owner);
-  })();
+  }).immediate();
 }
 
 /** Samples and wake records commit together. One alert per incident survives
- * process restarts; recovery needs three good samples. Never restart anything. */
+ * process restarts; recovery needs three fully measured good samples. Never restart anything. */
 export function recordWebSample(db: Database.Database, sample: WebSample) {
   return db.transaction(() => {
     const s = db.prepare('SELECT * FROM web_watchdog_state WHERE singleton=1').get() as State;
     const ownerReady = Boolean(s.conversation_id && s.owner_id && watchdogOwner(db, s.conversation_id, s.owner_id));
     if (sample.at <= s.last_sample_ms || sample.at - s.last_sample_ms < 20000) return { notification: null, ownerReady };
     const bad = !sample.ok || sample.latency >= 1500 || (sample.cpu ?? 0) >= 85 || (sample.eventLoop ?? 0) >= 250;
+    const known = Number.isSafeInteger(sample.pid) && sample.pid! > 0
+      && Number.isFinite(sample.latency) && sample.latency >= 0
+      && sample.cpu !== null && Number.isFinite(sample.cpu) && sample.cpu >= 0
+      && sample.eventLoop !== null && Number.isFinite(sample.eventLoop) && sample.eventLoop >= 0;
     const contiguous = sample.at - s.last_sample_ms <= 90000;
     const badCount = bad ? (contiguous ? s.bad_samples : 0) + 1 : 0;
-    const goodCount = bad ? 0 : (contiguous ? s.good_samples : 0) + 1;
+    const goodCount = !bad && known ? (contiguous ? s.good_samples : 0) + 1 : 0;
     let incident = s.incident, notice = s.last_notice_ms;
     let notification: 'stalled' | 'recovered' | null = null;
     if (ownerReady && !incident && badCount >= 3 && sample.at - notice >= 600000) {
@@ -62,5 +84,9 @@ export function recordWebSample(db: Database.Database, sample: WebSample) {
     db.prepare('UPDATE web_watchdog_state SET incident=?,bad_samples=?,good_samples=?,last_notice_ms=?,last_sample_ms=? WHERE singleton=1')
       .run(incident, badCount, goodCount, notice, sample.at);
     return { notification, ownerReady };
-  })();
+  // Reserve the write lock before reading state. In WAL mode a deferred
+  // read-to-write upgrade can fail immediately despite busy_timeout.
+  // The independent collector sets a bounded one-second busy_timeout;
+  // failure leaves samples, incident state and native wakes unchanged.
+  }).immediate();
 }

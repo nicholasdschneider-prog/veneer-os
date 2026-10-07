@@ -4,6 +4,17 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers measured watchdog recovery and bounded persistence limits to employees and resumed agents', () => {
+    const feature=botFeatureCatalog(Date.parse('2026-10-07')).features.find(f=>f.id==='web-watchdog')!;
+    expect(feature.steps.join(' ')).toContain('fully measured healthy observations');
+    expect(feature.limits).toContain('never clears an incident');
+    expect(feature.agent).toContain('missing, stale or unattributed telemetry resets');
+    expect(feature.agent).toContain('fixed busy/locked/other log categories');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true]) {
+      expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'platform-dev',elevated})).toContain(feature.agent);
+    }
+  });
   it('explains Archer’s voice to employees and resumed agents', () => {
     const feature = botFeatureCatalog(Date.parse('2026-10-06')).features.find(f => f.id === 'bot-calls')!;
     expect(feature.steps.join(' ')).toContain('male Cedar voice');

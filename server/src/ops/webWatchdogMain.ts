@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import Database from 'better-sqlite3';
-import { observeWeb, recordWebSample } from './webWatchdog.js';
+import { freshWebLoopDelay, observeWeb, recordWebSample, watchdogPersistenceFailure } from './webWatchdog.js';
 
 const args = process.argv.slice(2);
 const argument = (name: string) => args[args.indexOf(name) + 1];
@@ -15,6 +15,9 @@ let stopped = false;
 let missingOwnerSamples = 0;
 const tick = async () => {
   const sample = await observeWeb(port);
+  // HTTP is health evidence only. PID and loop metrics require independent
+  // listener attribution and fresh telemetry, including after a restart.
+  sample.pid = null; sample.cpu = null; sample.eventLoop = null;
   try {
     const pid = Number(fs.readFileSync(path.join(dataDir, 'run', 'veneer-pro.pid'), 'utf8').trim());
     if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Invalid advisory PID');
@@ -34,8 +37,8 @@ const tick = async () => {
         previous = { pid, started, time, at };
       }
       try {
-        const telemetry = JSON.parse(fs.readFileSync(path.join(dataDir, 'ops/web-event-loop.json'), 'utf8')) as {pid:number;at:number;delayMs:number};
-        if (telemetry.pid === pid && sample.at >= telemetry.at && sample.at - telemetry.at < 90000 && Number.isFinite(telemetry.delayMs)) sample.eventLoop = Math.max(0,Math.min(60000,telemetry.delayMs));
+        const telemetry: unknown = JSON.parse(fs.readFileSync(path.join(dataDir, 'ops/web-event-loop.json'), 'utf8'));
+        sample.eventLoop = freshWebLoopDelay(telemetry, pid, sample.at);
       } catch { sample.eventLoop = null; }
     } else previous = null;
   } catch { previous = null; }
@@ -44,7 +47,7 @@ const tick = async () => {
     const result = recordWebSample(db, sample);
     if (result.notification) console.info(`[web-watchdog] ${result.notification}`);
     else if (!result.ownerReady && missingOwnerSamples++ % 10 === 0) console.warn('[web-watchdog] Repair chat missing, archived or inaccessible; samples retained, wake unavailable');
-  } catch { console.warn('[web-watchdog] Sample persistence unavailable; retrying on next bounded pass'); }
+  } catch (error) { console.warn(`[web-watchdog] Sample persistence unavailable (${watchdogPersistenceFailure(error)}); retrying on next bounded pass`); }
   if (!stopped) setTimeout(() => void tick(), 30000);
 };
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.once(signal, () => { stopped = true; db.close(); process.exit(0); });
