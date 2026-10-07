@@ -63,15 +63,23 @@ export function BotCallRing({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (!enabled) { setRing(null); return; }
     let alive = true;
+    let polling = false;
+    let controller: AbortController | null = null;
     const touched = () => { active.current = true; primeRingtone(); };
     const poll = async () => {
-      if (document.visibilityState === 'hidden') return;
+      if (!alive || polling) return;
+      polling = true;
+      controller = new AbortController();
+      const timeout = window.setTimeout(() => controller?.abort(), 15000);
       const seq = ++serial.current;
       const wasActive = active.current; active.current = false;
       try {
-        const next = await post<{ ring: BotCallRing | null }>('poll', { active: wasActive });
+        const next = await requestJson<{ ring: BotCallRing | null }>('/api/bot-calls/poll', {
+          method: 'POST', body: JSON.stringify({ active: wasActive }), signal: controller.signal,
+        });
         if (alive && seq === serial.current) setRing(next.ring);
       } catch { if (wasActive) active.current = true; }
+      finally { polling = false; controller = null; window.clearTimeout(timeout); }
     };
     // A tapped call notification lands on #/answer-call/<decision>: ring it here, then show its card.
     const tapped = () => {
@@ -94,6 +102,7 @@ export function BotCallRing({ enabled }: { enabled: boolean }) {
     window.addEventListener('voice-session-ended', wake);
     return () => {
       alive = false; ++serial.current; window.clearInterval(timer);
+      controller?.abort();
       window.removeEventListener('pointerdown', touched, true);
       window.removeEventListener('keydown', touched, true);
       window.removeEventListener('focus', wake);

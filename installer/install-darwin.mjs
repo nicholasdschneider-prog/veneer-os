@@ -22,6 +22,7 @@ import { renderReloadJobPlist, waitForReloadStatus } from './launchd-reload.mjs'
 import { provisionNodeShellProfile } from './node-shell-profile.mjs';
 
 const SERVICES = [
+  { label: 'com.veneer.web-watchdog', plist: 'com.veneer.web-watchdog.plist' },
   { label: 'com.veneer.pro', plist: 'com.veneer.pro.plist' },
   { label: 'com.veneer.pro.app-runner', plist: 'com.veneer.pro.app-runner.plist' },
   { label: 'com.veneer.pro.term', plist: 'com.veneer.pro.term.plist' },
@@ -42,6 +43,13 @@ const SERVICES = [
 ];
 
 const args = process.argv.slice(2);
+// Safe targeted path for an independent observer. No runtime provisioning or
+// core-service reload is permitted on this path.
+if (args.includes('--web-watchdog-only')) {
+  const { installWebWatchdog } = await import('./web-watchdog.mjs');
+  await installWebWatchdog(args);
+  process.exit(0);
+}
 const flag = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
@@ -270,10 +278,19 @@ function warnAboutUnreachableProjectRoots() {
   }
 }
 
+function watchdogSetting(key, fallback) {
+  // Read only configuration values needed by the observer; never print the env.
+  try {
+    const value = new RegExp(`^\\s*(?:export\\s+)?${key}\\s*=\\s*(.+)$`, 'm').exec(fs.readFileSync(envFile, 'utf8'))?.[1]?.trim();
+    return value?.replace(/^(['"])([\s\S]*)\1$/, '$2') || process.env[key] || fallback;
+  } catch { return process.env[key] || fallback; }
+}
 function render(templateFile) {
   return fs
     .readFileSync(path.join(appRoot, 'deploy', 'launchd', templateFile), 'utf8')
     .replaceAll('__NODE__', nodeBin)
+    .replaceAll('__DATA_DIR__', watchdogSetting('DATA_DIR', path.join(home, '.local/share/veneer-pro')).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'))
+    .replaceAll('__WEB_PORT__', watchdogSetting('PORT', '3100'))
     .replaceAll('__CODE_DIR__', codeDir)
     .replaceAll('__LOG_DIR__', logDir)
     .replaceAll('__ENV_FILE__', envFile)

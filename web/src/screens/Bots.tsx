@@ -1,4 +1,5 @@
 import { DecisionHandoffStatus } from '@/components/DecisionHandoffStatus';
+import { boundedRead } from '@/lib/boundedRead';
 import { decisionTitle } from '@/lib/decisionPresentation';
 import { CallButton } from '@/components/CallButton';
 import { DecisionImages } from '../components/DecisionImages';
@@ -23,7 +24,7 @@ import { BotCaseTimeline } from '@/components/BotCaseTimeline';
 import { DecisionReplyEditor } from '@/components/DecisionReplyEditor';
 import { BotProposalSummary, BotProposalDetails } from '@/components/BotProposalSummary';
 import { BotComposer } from '@/components/BotComposer';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -229,11 +230,13 @@ export function Bots({
   const [amendConsequence, setAmendConsequence] = useState('');
   const [amendAction, setAmendAction] = useState('');
   const [activityUnavailable, setActivityUnavailable] = useState(false);
+  const reads = useMemo(() => boundedRead((signal) => Promise.all([
+    botsApi.list(filter, business, signal),
+    decisionId ? botsApi.detail(decisionId, signal) : Promise.resolve(null),
+  ])), [filter, business, restricted, decisionId]);
   const refresh = useCallback(async () => {
-    const [list, thread] = await Promise.all([
-      botsApi.list(filter, business),
-      decisionId ? botsApi.detail(decisionId) : Promise.resolve(null),
-    ]);
+    reads.cancel();
+    const [list, thread] = await reads.run();
     if (currentRoute.current !== decisionId) return;
     if (
       thread &&
@@ -252,28 +255,27 @@ export function Bots({
     setDetail(thread);
     setActivityUnavailable(false);
     setLoading(false);
-  }, [filter, decisionId, business]);
+  }, [reads, decisionId]);
   useEffect(() => {
     if (!active) return;
     let alive = true;
     const preferencesChanged = () => {
-      void botsApi.list(filter, business)
-        .then((list) => { if (alive) setBots(list.bots); })
-        .catch((e) => { if (alive) setError(e.message); });
+      reads.cancel();
+      void reads.run()
+        .then(([list]) => { if (alive) setBots(list.bots); })
+        .catch((e) => { if (alive && e.name !== 'AbortError') setError(e.message); });
     };
     window.addEventListener(BOT_PREFERENCES_CHANGED, preferencesChanged);
     void refresh().catch((e) => {
+      if (e.name === 'AbortError') return;
       if (alive) {
         setActivityUnavailable(true);
         setError(e.message);
         setLoading(false);
       }
     });
-    const timer = setInterval(() => {
-      void Promise.all([
-        botsApi.list(filter, business),
-        decisionId ? botsApi.detail(decisionId) : Promise.resolve(null),
-      ])
+    const poll = () => {
+      void reads.run()
         .then(([list, thread]) => {
           if (alive && currentRoute.current === decisionId) {
             setActivityUnavailable(false);
@@ -287,19 +289,25 @@ export function Bots({
           }
         })
         .catch((e) => {
+          if (e.name === 'AbortError') return;
           if (alive) {
             setActivityUnavailable(true);
             setError(e.message);
             if (e.status === 403 || e.status === 404) setDetail(null);
           }
         });
-    }, 5000);
+    };
+    const decisionsChanged = () => { reads.cancel(); poll(); };
+    window.addEventListener('chat-decisions-changed', decisionsChanged);
+    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') poll(); }, 5000);
     return () => {
       alive = false;
+      reads.cancel();
       clearInterval(timer);
       window.removeEventListener(BOT_PREFERENCES_CHANGED, preferencesChanged);
+      window.removeEventListener('chat-decisions-changed', decisionsChanged);
     };
-  }, [active, refresh, filter]);
+  }, [active, refresh, reads, filter]);
   useEffect(() => {
     reviewedVersion.current = null;
     setStale(false);

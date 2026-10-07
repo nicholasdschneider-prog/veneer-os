@@ -147,15 +147,16 @@ export const botsApi = {
   preferences: (id: string, patch: { pinned?: boolean; unread?: boolean }) =>
     requestJson(`/api/bots/preferences/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   manageTeam: (body: Record<string, unknown>) => requestJson('/api/bots/teams/manage', { method: 'POST', body: JSON.stringify(body) }),
-  list: (filter: string, business?: string) =>
+  list: (filter: string, business?: string, signal?: AbortSignal) =>
     requestJson<{ bots: Bot[]; decisions: BotDecision[]; teams: BusinessTeam[] }>(
       `/api/bots?filter=${filter}${business ? `&business=${encodeURIComponent(business)}` : ''}`,
+      { signal },
     ),
   /** Only this conversation's decisions; no bot rows or runner status calls. */
   decisionsFor: (conversationId: string) =>
     requestJson<{ decisions: BotDecision[] }>(`/api/bots?filter=all&conversation=${encodeURIComponent(conversationId)}`),
-  detail: (id: string) =>
-    requestJson<BotThread>(`/api/bots/decisions/${encodeURIComponent(id)}`),
+  detail: (id: string, signal?: AbortSignal) =>
+    requestJson<BotThread>(`/api/bots/decisions/${encodeURIComponent(id)}`, { signal }),
   candidates: () =>
     requestJson<{
       conversations: { id: string; title: string | null }[];

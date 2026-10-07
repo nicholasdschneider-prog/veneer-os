@@ -1,10 +1,12 @@
 import type { AppContext } from '../context.js';
+import { startWebLoopMetrics } from '../ops/webLoopMetrics.js';
 import { tickRoutines } from './routines.js';
 import { createBotService } from '../bots/service.js';
 import { tickSearch } from './search.js';
 import { tickNotifications, queueNotification, sendCallPush } from './notifications.js';
 import { startPhoneCall, tickBotCalls } from '../bots/botCalls.js';
 export function startBotWorkflows(ctx: AppContext) {
+  const stopLoopMetrics = startWebLoopMetrics(ctx.config.dataDir);
   let busy = false,
     searchBusy = false;
   const tick = async () => {
@@ -48,6 +50,7 @@ export function startBotWorkflows(ctx: AppContext) {
       );
   });
   return () => {
+    stopLoopMetrics();
     clearInterval(timer);
     clearInterval(searchTimer);
   };
