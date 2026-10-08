@@ -4,6 +4,17 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers Vibe setup and advertiser boundaries to employees and fresh/resumed agents', () => {
+    const feature = botFeatureCatalog(Date.parse('2026-10-08')).features.find(f => f.id === 'vibe-connector')!;
+    expect(feature.isNew).toBe(true);
+    expect(feature.steps.join(' ')).toContain('Selected projects');
+    expect(feature.limits).toContain('There is no read-only connector mode');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    expect(botFeatureInstructions()).toContain(feature.agent);
+    for (const elevated of [false, true]) {
+      expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'bot', elevated })).toContain(feature.agent);
+    }
+  });
   it('delivers measured watchdog recovery and bounded persistence limits to employees and resumed agents', () => {
     const feature=botFeatureCatalog(Date.parse('2026-10-07')).features.find(f=>f.id==='web-watchdog')!;
     expect(feature.steps.join(' ')).toContain('fully measured healthy observations');

@@ -81,6 +81,37 @@ describe('remote MCP connectors (OAuth)', () => {
     expect(await remote.accessToken(id)).toBe('a1');
   });
 
+  it('uses Vibe published metadata and scopes for public-client PKCE registration', async () => {
+    const def = connectorDef('vibe')!.remoteMcp!;
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); calls.push({ url, init });
+      const bodies: Record<string, unknown> = {
+        'https://api.vibe.co/.well-known/oauth-protected-resource/mcp': {
+          resource: 'https://api.vibe.co/mcp', authorization_servers: ['https://api.vibe.co'],
+          scopes_supported: ['offline_access', 'mcp:tools', 'mcp:resources'],
+        },
+        'https://api.vibe.co/.well-known/oauth-authorization-server': {
+          authorization_endpoint: 'https://api.vibe.co/oauth2/auth', token_endpoint: 'https://api.vibe.co/oauth2/token',
+          registration_endpoint: 'https://api.vibe.co/oauth2/register', code_challenge_methods_supported: ['plain', 'S256'],
+        },
+        'https://api.vibe.co/oauth2/register': { client_id: 'fixture-vibe-client' },
+      };
+      return Response.json(bodies[url] ?? {}, { status: bodies[url] ? 200 : 404 });
+    }) as typeof fetch;
+    const client = createRemoteMcp({ db, secrets }, fetcher);
+    const url = new URL(await client.begin(def, { id: install(), userId: 1 }, 'https://veneer.test', 'Veneer'));
+    expect(url.origin + url.pathname).toBe('https://api.vibe.co/oauth2/auth');
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      scope: 'offline_access mcp:tools mcp:resources', resource: 'https://api.vibe.co/mcp', code_challenge_method: 'S256',
+    });
+    expect(JSON.parse(String(calls.at(-1)!.init!.body))).toMatchObject({
+      token_endpoint_auth_method: 'none', scope: 'offline_access mcp:tools mcp:resources',
+      redirect_uris: ['https://veneer.test/api/connectors/oauth/callback'],
+    });
+    expect(store.size).toBe(0); // Registration is not an authenticated account.
+  });
+
   it('gives a chat the loopback proxy and its key, never a provider token', async () => {
     const id = install(); await signIn(id);
     const row = db.prepare('SELECT * FROM user_connectors WHERE id=?').get(id) as { id: number; config_json: string };
@@ -127,26 +158,26 @@ describe('remote MCP connectors (OAuth)', () => {
     });
     afterEach(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
-    it('installs as pending with a sign-in address, connects on the callback, reconnects after an error and forgets on uninstall', async () => {
-      const started = await (await fetch(`${base}/api/connectors/runway/install`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-proto': 'https', 'x-forwarded-host': 'veneer.test' }, body: '{}' })).json() as { status: string; redirectUrl: string; error?: string };
+    it.each(['runway', 'vibe'])('%s installs as pending, binds OAuth to its owner, reconnects and forgets on uninstall', async (slug) => {
+      const started = await (await fetch(`${base}/api/connectors/${slug}/install`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-proto': 'https', 'x-forwarded-host': 'veneer.test' }, body: '{}' })).json() as { status: string; redirectUrl: string; error?: string };
       expect(started.error).toBeUndefined();
       expect(started.status).toBe('pending');
       const state = new URL(started.redirectUrl).searchParams.get('state')!;
       expect(new URL(started.redirectUrl).searchParams.get('redirect_uri')).toBe('https://veneer.test/api/connectors/oauth/callback');
-      const row = () => db.prepare("SELECT id,status FROM user_connectors WHERE connector_slug='runway'").get() as { id: number; status: string };
+      const row = () => db.prepare("SELECT id,status FROM user_connectors WHERE connector_slug=?").get(slug) as { id: number; status: string };
       expect(row().status).toBe('pending');
       const other = await fetch(`${base}/api/connectors/oauth/callback?state=${state}&code=good-code`, { redirect: 'manual', headers: { 'x-test-user': '2' } });
       expect(other.headers.get('location')).toContain('connectError='); expect(row().status).toBe('pending');
       // That attempt consumed the state, so the owner starts again.
-      const retry = await (await fetch(`${base}/api/connectors/runway/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ installId: row().id }) })).json() as { redirectUrl: string };
+      const retry = await (await fetch(`${base}/api/connectors/${slug}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ installId: row().id }) })).json() as { redirectUrl: string };
       const done = await fetch(`${base}/api/connectors/oauth/callback?state=${new URL(retry.redirectUrl).searchParams.get('state')}&code=good-code`, { redirect: 'manual' });
-      expect(done.status).toBe(302); expect(done.headers.get('location')).toBe('/#/settings/connectors?connected=runway');
+      expect(done.status).toBe(302); expect(done.headers.get('location')).toBe(`/#/settings/connectors?connected=${slug}`);
       expect(row().status).toBe('connected');
       const listed = await (await fetch(`${base}/api/connectors`)).json() as { connectors: { slug: string; kind: string; installs: unknown[] }[] };
       expect(JSON.stringify(listed)).not.toMatch(/proxyKey|"a1"|Bearer/);
-      expect(listed.connectors.find((c) => c.slug === 'runway')).toMatchObject({ kind: 'remote_mcp', installs: [{ status: 'connected' }] });
+      expect(listed.connectors.find((c) => c.slug === slug)).toMatchObject({ kind: 'remote_mcp', installs: [{ status: 'connected' }] });
       await fetch(`${base}/api/connectors/install/${row().id}/uninstall`, { method: 'POST' });
-      expect(db.prepare("SELECT count(*) AS n FROM user_connectors WHERE connector_slug='runway'").get()).toEqual({ n: 0 });
+      expect(db.prepare("SELECT count(*) AS n FROM user_connectors WHERE connector_slug=?").get(slug)).toEqual({ n: 0 });
       expect(store.size).toBe(0);
     });
 

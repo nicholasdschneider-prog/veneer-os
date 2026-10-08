@@ -193,6 +193,14 @@ export const CONNECTOR_DEFS: ConnectorDef[] = [
     },
   },
   {
+    slug: 'vibe',
+    name: 'Vibe',
+    description: 'Read streaming TV advertising performance, audiences, and inventory, and manage campaigns and budgets through your Vibe account. Campaign launches and budget changes can spend money.',
+    kind: 'remote_mcp',
+    // Published protected-resource scopes: https://api.vibe.co/.well-known/oauth-protected-resource/mcp
+    remoteMcp: { url: 'https://api.vibe.co/mcp', scope: 'offline_access mcp:tools mcp:resources' },
+  },
+  {
     slug: 'runway',
     name: 'Runway',
     description: 'Generate video and images with Runway from a prompt or reference images, and fetch the finished output. Uses the credits on the Runway plan you sign in with.',

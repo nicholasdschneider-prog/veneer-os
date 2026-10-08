@@ -940,7 +940,7 @@ function SetupCard({
             <div>
               <p className="text-sm font-medium">Sign in with {connector.name}</p>
               <p className="text-xs text-muted-foreground">
-                Connect takes you to {connector.name} to sign in and approve access. Bots then act as that account, including spending its plan credits.
+                Connect takes you to {connector.name} to sign in and approve access. Bots then act as that account. Actions may spend money or plan credits.
               </p>
             </div>
           </div>
