@@ -43,7 +43,7 @@ it('records prospective separate review without altering raw decision/answer/wak
  const before=db.prepare('SELECT * FROM bot_decisions').get(),events=db.prepare('SELECT * FROM bot_decision_events').all(),wakes=db.prepare('SELECT * FROM conversation_wakeups').all();
  const p=request(),r=directions.record(bot,p);
  expect(r).toMatchObject({execute:false,ready:false,authority:false,dispatchEntitlement:false,review:{snapshot:{assessment:'direction_retained',source_observation_authenticated:false}}});
- expect(r.missing_proof).toContain('AUTHENTICATED_SOURCE_EXECUTION_BOUNDARY_UNAVAILABLE');
+ expect(r.missing_proof).toEqual([]);
  expect(directions.record(bot,p).review?.id).toBe(r.review?.id);
  expect(db.prepare('SELECT * FROM bot_decisions').get()).toEqual(before);expect(db.prepare('SELECT * FROM bot_decision_events').all()).toEqual(events);expect(db.prepare('SELECT * FROM conversation_wakeups').all()).toEqual(wakes);
  expect(()=>s.result(bot,decision,1,'running',{state:'running',evidence:'checked',material_evidence_unchanged:true})).toThrow('Invalid execution transition');
@@ -52,12 +52,12 @@ it('records prospective separate review without altering raw decision/answer/wak
 it.each(['identity_only','status_only','conditional','quoted_or_reported','ambiguous'] as const)('retains %s as unresolved, never execution authority',interpretation=>{
  const r=directions.record(bot,{...request(),interpretation});expect(r.review?.snapshot.assessment).toBe('unresolved');expect(r.execute).toBe(false);
 });
-it('rejects missing scope field, fabricated citations, unsafe/broadened amounts and unsupported scope',()=>{
- const p=request();expect(()=>directions.record(bot,{...p,scope_review:p.scope_review.slice(1)})).toThrow('every scope');
+it('rejects fabricated citations and unsafe scope while accepting source observations without human API IDs',()=>{
+ const p=request();expect(directions.inspect(bot,input()).missing_proof).toEqual([]);
  expect(()=>directions.record(bot,{...p,scope_review:p.scope_review.map(x=>({...x,citations:[{kind:'decision_event',id:answer,text:'partial quote'}]}))})).toThrow('citations');
  expect(()=>directions.record(bot,{...p,scope:{...scope,total_cents:1}})).toThrow('quantity');
  expect(()=>directions.record(bot,{...p,scope:{...scope,retail_cents:100}})).toThrow();
- const r=directions.record(bot,{...p,scope_review:p.scope_review.map(x=>({...x,assessment:'unsupported'}))});expect(r.review?.snapshot.assessment).toBe('scope_unverified');expect(r.review?.snapshot.direction_assessment).toBe('direction_retained');
+ const r=directions.record(bot,{...p,scope_review:p.scope_review.map(x=>({...x,assessment:'unsupported'}))});expect(r.review?.snapshot.assessment).toBe('direction_retained');expect(r.review?.snapshot.direction_assessment).toBe('direction_retained');
 });
 it('requires original bot/executor, active own user/author/registration, exact event/version and delivery',()=>{
  for(const a of [human,{...bot,conversationId:'other'}])expect(()=>directions.inspect(a,input())).toThrow('Original');
@@ -118,13 +118,13 @@ it('preserves ordinary approve delivery/running behavior',()=>{
  expect(s.result(bot,d.id,1,'run',{state:'running',evidence:'fresh evidence',material_evidence_unchanged:true}).state).toBe('running');
 });
 it('routes all MCP calls with exact payloads and announces truthful limits to employees/resumed bots',async()=>{
- for(const [name,path] of Object.entries({inspect_custom_direction:'inspect',record_custom_direction_review:'reviews',read_custom_direction:'read',record_custom_direction_fence:'fences'})) {
+ for(const [name,path] of Object.entries({inspect_custom_direction:'inspect',record_custom_direction_review:'reviews',read_custom_direction:'read',record_custom_direction_fence:'fences',renew_custom_direction:'renew',record_custom_direction_result:'result'})) {
   expect(BOT_TOOL_DEFINITIONS.some(x=>x.name===name)).toBe(true);
   const api=vi.fn(async()=>({execute:false}));await callBotTool({name,args:{decision_id:decision},callApi:api});
   expect(api).toHaveBeenCalledWith('/api/bots/custom-directions/'+path,{method:'POST',body:JSON.stringify({decision_id:decision})});
  }
- const feature=botFeatureCatalog(Date.parse('2026-10-07')).features.find(f=>f.id==='custom-direction-review')!;
- expect(feature.isNew).toBe(true);expect(feature.limits).toContain('AUTHENTICATED_SOURCE_EXECUTION_BOUNDARY_UNAVAILABLE');expect(botFeatureInstructions()).toContain(feature.agent);
+ const feature=botFeatureCatalog(Date.parse('2026-10-08')).features.find(f=>f.id==='custom-direction-review')!;
+ expect(feature.isNew).toBe(true);expect(feature.limits).toContain('No blanket verifier enrollment requirement');expect(botFeatureInstructions()).toContain(feature.agent);
  expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
  for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(feature.agent);
 });
@@ -140,4 +140,61 @@ it('HTTP inspection is original-owner-only and exposes no executable entitlement
   expect((await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-test-bot':'other'},body:JSON.stringify(input())})).status).toBe(403);
   expect((await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...input(),execute:true})})).status).toBe(400);
  } finally {await new Promise<void>(r=>server.close(()=>r()));}
+});
+function preparedSimple(){
+ const {scope_review,...p}=request();const result=directions.record(bot,p);return {p,result};
+}
+function start(){
+ const {p,result}=preparedSimple();return {decision_id:decision,request_key:'attempt',attempt_key:'attempt',expected_review_hash:result.review!.review_hash,state:'running' as const,evidence:'Original own-source tools verified exact material, permission and lease; no prior effect.',inspection_hash:p.inspection_hash,checks:{material_unchanged:true as const,source_identity_checked:true as const,existing_authority_checked:true as const,ownership_and_duplicates_checked:true as const,tool_permissions_checked:true as const,observed_at:new Date().toISOString(),evidence:'Existing trained workflow and exact current source tools checked'}};
+}
+function completion(p:ReturnType<typeof start>){return {decision_id:decision,request_key:'complete',attempt_key:p.attempt_key,expected_review_hash:p.expected_review_hash,state:'verified_completed' as const,evidence:'Original source operations completed once and read back.',readbacks:[{system:'autopo' as const,record_id:scope.autopo_line_id,unit_cents:6299,quantity:4,total_cents:25196,protected_fields_unchanged:true as const,observed_at:new Date().toISOString(),receipt:'Actual source operation and GET readback receipt for exact PO line'}, {system:'shopify' as const,record_id:scope.inventory_item_id,unit_cents:6299,retail_cents:8799,protected_fields_unchanged:true as const,observed_at:new Date().toISOString(),receipt:'Actual own-source inventory cost readback; protected fields unchanged'}]};}
+it('lets the original bot track the authorized task without new enrollment or human source-ID ceremony',()=>{
+ const original=db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(decision),p=start();
+ expect(directions.result(bot,p)).toMatchObject({execute:false,tracking_only:true,first_recording:true,reconcile_only:false,missing_proof:[],progress:{state:'running'}});
+ expect(directions.result(bot,p)).toMatchObject({first_recording:false,reconcile_only:true});
+ expect(()=>directions.result(bot,{...p,request_key:'retry',attempt_key:'retry'})).toThrow('never replay');
+ const done=completion(p);expect(directions.result(bot,done).progress?.state).toBe('verified_completed');
+ expect(directions.result(bot,done)).toMatchObject({first_recording:false,reconcile_only:true});
+ expect(db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(decision)).toEqual(original);
+ expect(()=>s.result(bot,decision,1,'old-running',{state:'running',evidence:'checked',material_evidence_unchanged:true})).toThrow('Invalid execution transition');
+});
+it.each(['identity_only','status_only','conditional','quoted_or_reported','ambiguous'] as const)('cannot start a %s review as an action',interpretation=>{
+ const p=request();const r=directions.record(bot,{...p,interpretation,scope_review:[]});
+ const run={decision_id:decision,request_key:'attempt',attempt_key:'attempt',expected_review_hash:r.review!.review_hash,state:'running',evidence:'Cannot act',inspection_hash:p.inspection_hash,checks:{material_unchanged:true,source_identity_checked:true,existing_authority_checked:true,ownership_and_duplicates_checked:true,tool_permissions_checked:true,observed_at:new Date().toISOString(),evidence:'Source checks'}};
+ expect(()=>directions.result(bot,run)).toThrow('Unconditional');
+});
+it('rejects running without fresh actual source/tool/ownership checks or after native drift',()=>{
+ const p=start();expect(()=>directions.result(bot,{...p,checks:undefined})).toThrow('source guards');
+ expect(()=>directions.result(bot,{...p,checks:{...p.checks,tool_permissions_checked:false}})).toThrow();
+ expect(()=>directions.result(bot,{...p,checks:{...p.checks,observed_at:'2000-01-01T00:00:00Z'}})).toThrow('Fresh');
+ captureHumanMessage(db,'clara',1,'Wait, use a different order instead.');
+ expect(()=>directions.result(bot,p)).toThrow('context changed');
+ const fresh=request(),renew=directions.renew(bot,{...fresh,scope_review:[],request_key:'renew',expected_review_hash:p.expected_review_hash,later_context:fresh.later_context.map(x=>({...x,classification:'substantive_supersession'}))});
+ expect(()=>directions.result(bot,{...p,inspection_hash:fresh.inspection_hash,expected_review_hash:renew.review!.review_hash})).toThrow('Unconditional');
+});
+it('renewal audits unchanged observations/narrowed operations and never changes economics or target',()=>{
+ const {p,result}=preparedSimple();const hash=result.review!.review_hash;
+ expect(()=>directions.renew(bot,{...p,request_key:'wrong',expected_review_hash:hash,scope:{...scope,quantity:5,total_cents:31495}})).toThrow('only narrow');
+ const renewal={...p,request_key:'renew',expected_review_hash:hash,operations:['autopo']};
+ const revised=directions.renew(bot,renewal);expect(revised.review!.snapshot.review.operations).toEqual(['autopo']);
+ expect(directions.renew(bot,renewal).review!.review_hash).toBe(revised.review!.review_hash);
+ expect(()=>directions.renew(bot,{...p,request_key:'broaden',expected_review_hash:revised.review!.review_hash,operations:['autopo','shopify']})).toThrow('only narrow');
+ expect(db.prepare('SELECT snapshot_json FROM bot_custom_direction_reviews').get()).toEqual({snapshot_json:JSON.stringify(result.review!.snapshot)});
+});
+it('requires every exact actual operation readback and protected values before completing',()=>{
+ const p=start();directions.result(bot,p);const done=completion(p);
+ expect(()=>directions.result(bot,{...done,readbacks:[]})).toThrow('every original operation');
+ for(const change of [{...done.readbacks[0],unit_cents:6599},{...done.readbacks[0],record_id:'other'},{...done.readbacks[0],quantity:8}])expect(()=>directions.result(bot,{...done,readbacks:[change,done.readbacks[1]]})).toThrow('Readback differs');
+ expect(()=>directions.result(bot,{...done,readbacks:[done.readbacks[0],{...done.readbacks[1],retail_cents:9999}]})).toThrow('Readback differs');
+ expect(()=>directions.result(bot,{...done,readbacks:done.readbacks.map(r=>({...r,observed_at:'2000-01-01T00:00:00Z'}))})).toThrow('Fresh');
+});
+it('UNKNOWN permits only read-only original receipt reconciliation, never renewal/restart or fence removal',()=>{
+ const p=start();directions.result(bot,p);
+ const unknown={decision_id:decision,request_key:'unknown',attempt_key:p.attempt_key,expected_review_hash:p.expected_review_hash,state:'unknown',evidence:'Provider response uncertain; do not replay'};
+ directions.result(bot,unknown);expect(directions.read(bot,{decision_id:decision}).fences).toHaveLength(1);
+ expect(()=>directions.renew(bot,{...request(),request_key:'renew',expected_review_hash:p.expected_review_hash})).toThrow('uncertain');
+ expect(()=>directions.result(bot,{...p,request_key:'new',attempt_key:'new'})).toThrow('never replay');
+ expect(directions.result(bot,completion(p))).toMatchObject({progress:{state:'verified_completed'},fences:[{state:'unknown'}]});
+ expect(()=>directions.result(bot,{...p,request_key:'again',attempt_key:'again'})).toThrow('Completed');
+ expect(()=>db.prepare('DELETE FROM bot_custom_direction_progress').run()).toThrow('immutable');
 });

@@ -25,7 +25,8 @@ export const customDirectionReview = customDirectionInput.extend({
   inspection_hash:hash, request_key:id, reviewed_full_context:z.literal(true), answer_text:text,
   interpretation:z.enum(['unconditional_direction','identity_only','status_only','conditional','quoted_or_reported','ambiguous']),
   explanation:z.string().trim().min(20).max(3000), scope:customDirectionScope,
-  scope_review:z.array(z.object({field:id,assessment:z.enum(['supported','unsupported','ambiguous']),citations:z.array(citation).min(1).max(20),explanation:text}).strict()).max(50),
+  scope_review:z.array(z.object({field:id,assessment:z.enum(['supported','unsupported','ambiguous']),citations:z.array(citation).min(1).max(20),explanation:text}).strict()).max(50).default([]),
+  operations:z.array(z.enum(['autopo','shopify'])).min(1).max(2).refine(v=>new Set(v).size===v.length,'Unique operations required').default(['autopo','shopify']),
   later_context:z.array(z.object({citation,classification:z.enum(['status_only','substantive_supersession','ambiguous']),explanation:text}).strict()).max(2500),
   observation:z.object({observed_at:z.string().datetime(),source_identity:text,existing_business_authority:text,ownership_and_duplicates:text,evidence:text}).strict(),
 }).strict();
@@ -36,7 +37,15 @@ type Event = {id:string;kind:string;version:number;actor_id:number;actor_convers
 type Stored = {id:string;decision_id:string;owner_id:string;request_key:string;request_hash:string;snapshot_json:string};
 const stamp=(s:string)=>Date.parse(/^\d{4}-\d\d-\d\d /.test(s)?s.replace(' ','T')+'Z':s);
 const limits = {execute:false,ready:false,authority:false,dispatchEntitlement:false} as const;
-const dependencies = ['AUTHENTICATED_SOURCE_EXECUTION_BOUNDARY_UNAVAILABLE','SOURCE_MEDIA_AND_CURRENT_GUARDS_NOT_VERIFIED'] as const;
+// This tracker supplies no authority, but ordinary existing source permissions need no new verifier enrollment.
+export const customDirectionRenew = customDirectionReview.extend({expected_review_hash:hash}).strict();
+const checks=z.object({material_unchanged:z.literal(true),source_identity_checked:z.literal(true),existing_authority_checked:z.literal(true),ownership_and_duplicates_checked:z.literal(true),tool_permissions_checked:z.literal(true),observed_at:z.string().datetime(),evidence:text}).strict();
+export const customDirectionResult = customDirectionRead.extend({request_key:id,attempt_key:id,expected_review_hash:hash,
+  state:z.enum(['running','blocked','unknown','verified_completed']),evidence:text,inspection_hash:hash.optional(),checks:checks.optional(),
+  readbacks:z.array(z.object({system:z.enum(['autopo','shopify']),record_id:id,unit_cents:z.number().int().nonnegative().safe(),quantity:z.number().int().positive().safe().optional(),total_cents:z.number().int().nonnegative().safe().optional(),retail_cents:z.number().int().nonnegative().safe().optional(),protected_fields_unchanged:z.literal(true),observed_at:z.string().datetime(),receipt:text}).strict()).max(2).default([]),
+}).strict();
+type Progress={id:string;review_id:string;request_key:string;request_hash:string;state:string;attempt_key:string;payload_json:string};
+
 
 /** Prospective review ledger only. Never updates decisions, authorizations, drafts or source systems. */
 export function customDirections(db:Database.Database) {
@@ -63,9 +72,15 @@ export function customDirections(db:Database.Database) {
     }
     return row;
   }
+  function latest(row:Stored) {
+    const amendment=db.prepare('SELECT snapshot_json FROM bot_custom_direction_amendments WHERE review_id=? ORDER BY rowid DESC LIMIT 1').get(row.id) as {snapshot_json:string}|undefined;
+    return JSON.parse(amendment?.snapshot_json??row.snapshot_json);
+  }
   function response(row:Stored|undefined) {
     const fences=row ? db.prepare('SELECT state,evidence,created_at FROM bot_custom_direction_fences WHERE review_id=? ORDER BY rowid').all(row.id) : [];
-    return {...limits,missing_proof:[...dependencies,...(fences.length ? ['EXISTING_INFLIGHT_OR_UNKNOWN_RECONCILE_ONLY'] : [])],review:row ? {id:row.id,snapshot:JSON.parse(row.snapshot_json)} : null,fences};
+    const snapshot=row&&latest(row);
+    const progress=row ? db.prepare('SELECT state,attempt_key,payload_json FROM bot_custom_direction_progress WHERE review_id=? ORDER BY rowid DESC LIMIT 1').get(row.id) as {state:string;attempt_key:string;payload_json:string}|undefined : undefined;
+    return {...limits,tracking_only:true,missing_proof:fences.length ? ['EXISTING_INFLIGHT_OR_UNKNOWN_RECONCILE_ONLY'] : [],review:row ? {id:row.id,snapshot,review_hash:canonicalSha256(snapshot)} : null,fences,progress:progress?{...progress,payload:JSON.parse(progress.payload_json)}:null};
   }
   function collect(a:Actor,raw:unknown) {
     const p=customDirectionInput.parse(raw),{d,c,user}=owner(a,p.decision_id);
@@ -103,15 +118,10 @@ export function customDirections(db:Database.Database) {
     if(Buffer.byteLength(JSON.stringify(context))>240000)throw new BotError(409,'Complete context exceeds 240000 bytes; no excerpt review');
     const later=messages.filter(m=>!m.actor_conversation_id && m.id!==answer.id && stamp(m.created_at)+(/\.\d+/.test(m.created_at)?0:999)>=stamp(answer.created_at));
     const binding={schema_version:'native-custom-direction-review/v1',input:p,owner_id:c.id,user_id:c.user_id,owner_role:user.role,business_id:c.business_team_id,author:{id:human.id,role:human.role,status:human.status},decision:d,answer_event:answer,context_hash:canonicalSha256(context)};
-    return {...limits,missing_proof:[...dependencies],inspection_hash:canonicalSha256(binding),binding,answer_text:payload.answer,context,later_human_context:later,
+    return {...limits,tracking_only:true,missing_proof:[],inspection_hash:canonicalSha256(binding),binding,answer_text:payload.answer,context,later_human_context:later,
       coverage:{complete_native_text:true,caller_private_voice:false,omitted:['external source facts','attachment/media bytes','authenticated source execution guards']},existing:response(stored(a,d.id))};
   }
-  return {
-    inspect(a:Actor,p:unknown){return db.transaction(()=>collect(a,p))();},
-    read(a:Actor,raw:unknown){const p=customDirectionRead.parse(raw);return response(stored(a,p.decision_id));},
-    record(a:Actor,raw:unknown){return db.transaction(()=>{
-      const r=customDirectionReview.parse(raw),prior=stored(a,r.decision_id),requestHash=canonicalSha256(r);
-      if(prior){if(prior.request_key!==r.request_key||prior.request_hash!==requestHash)throw new BotError(409,'Original answer already reviewed; no replacement or rekey');return response(prior);}
+  function reviewSnapshot(a:Actor,r:z.infer<typeof customDirectionReview>) {
       const now=collect(a,customDirectionInput.parse({decision_id:r.decision_id,expected_version:r.expected_version,answer_event_id:r.answer_event_id,executor_conversation_id:r.executor_conversation_id}));
       if(now.inspection_hash!==r.inspection_hash)throw new BotError(409,'Context, version or identity changed; inspect again');
       if(now.answer_text!==r.answer_text)throw new BotError(409,'Complete exact human answer citation required');
@@ -123,16 +133,65 @@ export function customDirections(db:Database.Database) {
       const answerCitation:Message={kind:'decision_event',id:now.binding.answer_event.id,text:now.binding.answer_event.payload_json,actor_id:now.binding.answer_event.actor_id,created_at:now.binding.answer_event.created_at};
       const fields=Object.keys(r.scope),reviewed=new Set<string>();
       for(const part of r.scope_review){if(!fields.includes(part.field)||reviewed.has(part.field)||part.citations.some(c=>![answerCitation,...allMessages].some(m=>!m.actor_conversation_id&&matches(c,m))))throw new BotError(409,'Exact supported scope citations required');reviewed.add(part.field);}
-      if(reviewed.size!==fields.length)throw new BotError(409,'Review every scope field; source IDs are observations, not native proof');
+
       const observed=Date.parse(r.observation.observed_at);if(observed>Date.now()+1000||Date.now()-observed>300000)throw new BotError(409,'Fresh source observation required');
       const directionAssessment=r.later_context.some(x=>x.classification==='substantive_supersession')?'superseded':r.interpretation!=='unconditional_direction'||r.later_context.some(x=>x.classification==='ambiguous')?'unresolved':'direction_retained';
-      const scopeAssessment=r.scope_review.some(x=>x.assessment!=='supported')?'unverified':'reviewed_observation_only';
+      const scopeAssessment=r.scope_review.some(x=>x.assessment==='ambiguous')?'unverified':'owner_source_observation';
       // Missing source linkage is not missing human consent. Keep the assessments separate.
       const assessment=directionAssessment==='direction_retained'&&scopeAssessment==='unverified'?'scope_unverified':directionAssessment;
-      const snapshot={schema_version:'native-custom-direction-review/v1',binding:now.binding,review:r,assessment,direction_assessment:directionAssessment,scope_assessment:scopeAssessment,source_observation_authenticated:false,coverage:now.coverage,missing_proof:[...dependencies]};
+      const snapshot={schema_version:'native-custom-direction-review/v2',binding:now.binding,review:r,assessment,direction_assessment:directionAssessment,scope_assessment:scopeAssessment,source_observation_authenticated:false,coverage:now.coverage,missing_proof:[]};
+      return snapshot;
+  }
+  function fresh(value:string){const t=Date.parse(value);if(t>Date.now()+1000||Date.now()-t>300000)throw new BotError(409,'Fresh original-owner source checks required');}
+  return {
+    inspect(a:Actor,p:unknown){return db.transaction(()=>collect(a,p))();},
+    read(a:Actor,raw:unknown){const p=customDirectionRead.parse(raw);return response(stored(a,p.decision_id));},
+    record(a:Actor,raw:unknown){return db.transaction(()=>{
+      const r=customDirectionReview.parse(raw),prior=stored(a,r.decision_id),requestHash=canonicalSha256(r);
+      if(prior){if(prior.request_key!==r.request_key||prior.request_hash!==requestHash)throw new BotError(409,'Original answer already reviewed; no replacement; use audited renewal before any attempt');return response(prior);}
+      const snapshot=reviewSnapshot(a,r);
       const reviewId=crypto.randomUUID();
       db.prepare('INSERT INTO bot_custom_direction_reviews(id,decision_id,owner_id,answer_event_id,request_key,request_hash,snapshot_json) VALUES(?,?,?,?,?,?,?)').run(reviewId,r.decision_id,a.conversationId,r.answer_event_id,r.request_key,requestHash,JSON.stringify(snapshot));
       return response(stored(a,r.decision_id));
+    }).immediate();},
+    renew(a:Actor,raw:unknown){return db.transaction(()=>{
+      const r=customDirectionRenew.parse(raw),row=stored(a,r.decision_id);if(!row)throw new BotError(409,'Original review required');
+      const requestHash=canonicalSha256(r),prior=db.prepare('SELECT request_hash FROM bot_custom_direction_amendments WHERE review_id=? AND request_key=?').get(row.id,r.request_key) as {request_hash:string}|undefined;
+      if(prior){if(prior.request_hash!==requestHash)throw new BotError(409,'Conflicting renewal replay');return response(row);}
+      if(db.prepare("SELECT 1 FROM bot_custom_direction_progress WHERE review_id=? AND state IN ('running','unknown','verified_completed')").get(row.id)||db.prepare('SELECT 1 FROM bot_custom_direction_fences WHERE review_id=?').get(row.id))throw new BotError(409,'Attempted or uncertain action cannot be renewed or rekeyed');
+      const old=latest(row);if(canonicalSha256(old)!==r.expected_review_hash)throw new BotError(409,'Review changed; read original record');
+      const p=old.review,operations=p.operations??['autopo','shopify'];
+      if(canonicalSha256(p.scope)!==canonicalSha256(r.scope)||p.answer_event_id!==r.answer_event_id||p.executor_conversation_id!==r.executor_conversation_id||p.expected_version!==r.expected_version||r.operations.some(x=>!operations.includes(x)))throw new BotError(409,'Renewal may only narrow operations and refresh unchanged source observations');
+      const snapshot=reviewSnapshot(a,r);
+      db.prepare('INSERT INTO bot_custom_direction_amendments(id,review_id,request_key,request_hash,snapshot_json) VALUES(?,?,?,?,?)').run(crypto.randomUUID(),row.id,r.request_key,requestHash,JSON.stringify(snapshot));
+      return response(row);
+    }).immediate();},
+    result(a:Actor,raw:unknown){return db.transaction(()=>{
+      const p=customDirectionResult.parse(raw),row=stored(a,p.decision_id);if(!row)throw new BotError(409,'Original review required');
+      const requestHash=canonicalSha256(p),prior=db.prepare('SELECT * FROM bot_custom_direction_progress WHERE review_id=? AND request_key=?').get(row.id,p.request_key) as Progress|undefined;
+      if(prior){if(prior.request_hash!==requestHash)throw new BotError(409,'Conflicting result replay');return {...response(row),first_recording:false,reconcile_only:true};}
+      const snapshot=latest(row);if(canonicalSha256(snapshot)!==p.expected_review_hash)throw new BotError(409,'Exact current review required');
+      const running=db.prepare("SELECT * FROM bot_custom_direction_progress WHERE review_id=? AND state='running'").get(row.id) as Progress|undefined;
+      const completed=db.prepare("SELECT 1 FROM bot_custom_direction_progress WHERE review_id=? AND state='verified_completed'").get(row.id);
+      if(completed)throw new BotError(409,'Completed action cannot be restarted or replaced');
+      if(p.state==='running') {
+        if(running||db.prepare('SELECT 1 FROM bot_custom_direction_fences WHERE review_id=?').get(row.id))throw new BotError(409,'Existing attempt or UNKNOWN: reconcile original action, never replay');
+        if(p.attempt_key!==p.request_key||!p.checks)throw new BotError(409,'One original attempt key and fresh existing source guards required');
+        fresh(p.checks.observed_at);
+        if(snapshot.direction_assessment!=='direction_retained'||snapshot.scope_assessment==='unverified')throw new BotError(409,'Unconditional unchanged action direction required');
+        const current=collect(a,snapshot.binding.input);
+        if(current.inspection_hash!==p.inspection_hash||current.inspection_hash!==snapshot.review.inspection_hash)throw new BotError(409,'Native context changed; renew semantic review before starting');
+      } else {
+        if((!running&&p.state!=='blocked')||(running&&running.attempt_key!==p.attempt_key))throw new BotError(409,'Exact original running attempt required');
+        if(p.state==='verified_completed') {
+          const scope=snapshot.review.scope,operations:string[]=snapshot.review.operations??['autopo','shopify'];
+          if(p.readbacks.length!==operations.length||new Set(p.readbacks.map(r=>r.system)).size!==operations.length)throw new BotError(409,'Actual readbacks for every original operation required');
+          for(const r of p.readbacks){fresh(r.observed_at);if(!operations.includes(r.system)||r.unit_cents!==scope.unit_cents||r.record_id!==(r.system==='autopo'?scope.autopo_line_id:scope.inventory_item_id)|| (r.system==='autopo'&&(r.quantity!==scope.quantity||r.total_cents!==scope.total_cents))||(r.system==='shopify'&&r.retail_cents!==scope.unchanged_retail_cents))throw new BotError(409,'Readback differs from original correction or protected fields');}
+        }
+      }
+      db.prepare('INSERT INTO bot_custom_direction_progress(id,review_id,request_key,request_hash,state,attempt_key,payload_json) VALUES(?,?,?,?,?,?,?)').run(crypto.randomUUID(),row.id,p.request_key,requestHash,p.state,p.attempt_key,JSON.stringify(p));
+      if(p.state==='unknown')db.prepare('INSERT INTO bot_custom_direction_fences(id,review_id,request_key,request_hash,state,evidence) VALUES(?,?,?,?,?,?)').run(crypto.randomUUID(),row.id,p.request_key,requestHash,'unknown',p.evidence);
+      return {...response(row),first_recording:true,reconcile_only:p.state!=='running'};
     }).immediate();},
     fence(a:Actor,raw:unknown){return db.transaction(()=>{
       const p=customDirectionFence.parse(raw),row=stored(a,p.decision_id);if(!row)throw new BotError(409,'Original review required');

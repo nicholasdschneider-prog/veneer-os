@@ -673,6 +673,9 @@ describe('staged native customer email direction', () => {
     it('keeps registrations pinned to the previous native MCP artifact rejected after build 640', () => {
         expect(() => emailRegistrationCurrent(db, {...r, nativeArtifactHash:'024e1c2cf878ebe2f877a4d9e9e0a3f79b764e75dabac94c4f9ad27ec1dd3ffc'}, now)).toThrow('unaccepted');
     });
+    it('does not retrofit build 651 artifact registration acceptance after custom tracking changes', () => {
+        expect(() => emailRegistrationCurrent(db, {...r, nativeArtifactHash:'4a5d39daecb778339ce0e1528d312935a97aa3025ef7781bce7a00982a2aca86'}, now)).toThrow('unaccepted');
+    });
     it('pins actual native artifacts and separates own-principal custody', () => {
         const root = fileURLToPath(new URL('../../', import.meta.url));
         const manifest = CUSTOMER_EMAIL_NATIVE_ARTIFACT_FILES.map(p => ({

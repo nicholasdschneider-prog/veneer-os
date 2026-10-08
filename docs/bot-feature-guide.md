@@ -383,7 +383,7 @@ payment/material/refund inventory mapping remain missing. No issuance, refund,
 customer SMS or automatic setup occurs. BUILD505 preservation still blocks restart;
 this capability is staged, not deployed. See the [contract](./reports/exact-refund/build606/contract.md).
 
-## Custom purchasing direction review — October 7, 2026
+## Custom purchasing direction review — October 7, 2026 (historical; corrected by #652)
 
 Build #640 adds original-owner native text inspection, semantic review and immutable
 tracking through `inspect_custom_direction`, `record_custom_direction_review`,
@@ -426,3 +426,32 @@ bot" error to never-registered chats (`server/src/bots/unregisteredChat.ts`) ins
 "revoked"; deactivated registrations keep their existing errors. No guard or approval for
 registered bots changed. `CUSTOMER_EMAIL_NATIVE_ARTIFACT_HASH` was regenerated because
 `vendorEmail.ts` and `customerEmailNative.ts` are pinned; no customer-email registry is configured.
+
+## Authorized custom-direction follow-through — October 8, 2026
+
+Build #652 corrects #640’s invented blanket integration requirement. The original
+bot may follow a clear purchasing correction through its existing trained source
+workflow. The tracker does not grant business permission, but its `execute:false`
+is not a reason to stop already-authorized source work or request a new enrollment.
+Actual source/tool permissions and any capability-specific approval gate still apply.
+
+The owner inspects the immutable custom answer, records the full direction and
+later-human assessment with bounded scope and fresh own-source observations, then
+calls `record_custom_direction_result` for `running`. Only the first recording
+starts the tracked attempt. The bot uses its existing source tools once and records
+`verified_completed` after actual matching PO and inventory-cost readbacks, including
+unchanged retail and protected fields. Source API IDs come from the bot’s source
+reads; `scope_review` is optional, not another human paperwork requirement.
+
+`renew_custom_direction` refreshes observations/review or narrows operations before
+any attempt. Immutable original records and migration 0160 are retained; migration
+0161 adds append-only amendments and progress with one running attempt and one
+completion. UNKNOWN/inflight fences cannot be removed, renewed or rekeyed. Lost
+running responses are reconciliation-only; no retry of source effects. Genuine
+readback reconciliation may record completion while keeping the fence permanent.
+Raw original answer/proposal/version and every approval-bound consumer stay unchanged.
+
+The catalog and durable answer-wake instructions explain the distinction to fresh
+and resumed agents. Guide: `/#/bot-guide?feature=custom-direction-review`. No business
+write, approval as Clara, duplicate consent or new business authority is performed
+by this release. The original Clara retains the actual correction and verification.
