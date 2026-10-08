@@ -457,7 +457,7 @@ write, approval as Clara, duplicate consent or new business authority is perform
 by this release. The original Clara retains the actual correction and verification.
 
 
-## Lippert startup failure reconciliation — October 8, 2026 (staged)
+## Lippert startup failure reconciliation — October 8, 2026
 
 Build #653 adds an owner/Platform Dev exact-run inspection and reconciliation endpoint.
 The server reads matching complete retained/current native Claude files and requires an
@@ -477,3 +477,6 @@ Automatic candidate dispatch reads fresh `needs_input` questions belonging to th
 Mapped held events retain the original pending batch and no run/start association. Eligible hints alone enter a separate sealed batch, with the eight-order limit applied only to eligible hints. Automatic worker prompts exclude held canonical IDs and order numbers from hints **and the full source queue/daily backup**. A held-only backlog does not launch or hot-loop. Inspect and signed readback expose `decision_holds`, including unresolved scope blockers. Fresh question resolution removes this scheduling hold only; original source approval, cost, address, ownership, duplicate and UNKNOWN checks still apply. Manual source purchasing remains independent.
 
 Example: “Reconcile the proven original startup failure, retain both pending cost questions and their candidate events, and allow only unrelated eligible hints after current portal coordination.” Deployment must pass root typecheck, full tests and build before root `npm run restart`; staged documentation never proves installation or a purchase.
+
+
+Build655 installed the validated reconciliation and cost-question exclusions on October8; see the report for exact authenticated receipts. The original ed3dac84 disposition is recorded, while failed #451 hints and #455/#466 cost holds remain. A distinct #463 successor subsequently failed for exhausted provider usage credits and remains fenced; installation does not establish automatic purchasing readiness or authorize a model switch/retry.

@@ -1,0 +1,37 @@
+{
+  "observed_at": "2026-10-08T14:47:06.847Z",
+  "http_status": 200,
+  "body": {
+    "run_id": "ed3dac84-83b9-4e0d-a3e4-2f50ba103932",
+    "conversation_id": "332c1946-f69b-420a-9d4d-b6764f1828ad",
+    "batch_id": "6eba4560-30fd-4512-bde0-f3e01cd734d2",
+    "disposition": "failed_before_model_execution",
+    "decision_holds": {
+      "held_orders": [
+        {
+          "decision_id": "4e4ce177-aade-408c-bb7b-4cf77ef111d7",
+          "version": 1,
+          "order_number": "100122455",
+          "order_id": "2e0f7eff-087d-4c60-80a2-1bf9ae353b33"
+        },
+        {
+          "decision_id": "a2bdd5ea-1af7-4138-a305-23463cc3212a",
+          "version": 1,
+          "order_number": "100122466",
+          "order_id": "087620d4-c538-4c02-8285-6004cd710766"
+        }
+      ],
+      "unresolved_scope_decisions": [],
+      "dispatch_blocked": false
+    },
+    "retained_queued_messages": 1,
+    "schema_ready": true,
+    "evidence_hash": "a571b35cbf4cc689d667c3f3ead45613bcb6b9151fdd92f33a521ee74ba99072",
+    "reconciled": false,
+    "original_status": "failed",
+    "original_blocked_reason": "WORKER_OUTCOME_UNRESOLVED",
+    "failed_hints_remain_fenced": true,
+    "purchase_authority": false,
+    "execute": false
+  }
+}

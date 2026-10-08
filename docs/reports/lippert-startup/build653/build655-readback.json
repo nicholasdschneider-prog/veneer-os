@@ -1,0 +1,129 @@
+{
+  "observed_at": "2026-10-08T14:48:38.511Z",
+  "installed_commit": "def0611",
+  "migrations": [
+    {
+      "name": "0162_purchase_startup_dispositions.sql",
+      "content_hash": "c68c6de21df84fbff986bf8795318d46c1e1c7067e54cbcc7d55a1f184d88a42",
+      "applied_at": "2026-10-08 14:30:15",
+      "source_hash_matches": true
+    },
+    {
+      "name": "0163_purchase_order_scopes.sql",
+      "content_hash": "88b0c51227e1fa9debf4499f71dac9659dff109f0bfd6c815e339f2203ad8037",
+      "applied_at": "2026-10-08 14:45:47",
+      "source_hash_matches": true
+    }
+  ],
+  "original_run": {
+    "id": "ed3dac84-83b9-4e0d-a3e4-2f50ba103932",
+    "conversation_id": "332c1946-f69b-420a-9d4d-b6764f1828ad",
+    "status": "failed",
+    "error": "You've hit your session limit · resets 3pm (America/Indianapolis)",
+    "started_at": "2026-10-07 17:43:45",
+    "finished_at": "2026-10-07 17:43:49"
+  },
+  "original_batch": {
+    "id": "6eba4560-30fd-4512-bde0-f3e01cd734d2",
+    "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+    "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "status": "blocked",
+    "run_id": "ed3dac84-83b9-4e0d-a3e4-2f50ba103932",
+    "blocked_reason": "WORKER_OUTCOME_UNRESOLVED",
+    "created_at": "2026-10-07T17:43:45.218Z"
+  },
+  "originals_unchanged": true,
+  "original_queued": {
+    "n": 1
+  },
+  "original_passes": {
+    "n": 0
+  },
+  "disposition": {
+    "run_id": "ed3dac84-83b9-4e0d-a3e4-2f50ba103932",
+    "batch_id": "6eba4560-30fd-4512-bde0-f3e01cd734d2",
+    "conversation_id": "332c1946-f69b-420a-9d4d-b6764f1828ad",
+    "evidence_hash": "a571b35cbf4cc689d667c3f3ead45613bcb6b9151fdd92f33a521ee74ba99072",
+    "actor_id": 1,
+    "actor_conversation_id": "7cdf1e39-7eeb-4d87-b5d2-3382384f0a57",
+    "coordination_reference": "8b174872-0a5e-4660-92da-de04a8da9574; current operational checkpoint e11fe859-83e1-4f3d-b237-3a51199a4faa 2026-10-08T14:41:49.989Z: Sage idle/no active attempt, browser suspended/zero occupied slots; positive cart/release proof 14:07 remains historical; UNKNOWN untouched. Human37c3a321 scoped repair/deploy authority; validated installed def0611. Fresh inspect and native readback preserve #455/#466 needs_input v1 holds and original a97e pending/run-null lineage; failed #451 hints/continuation remain fenced.",
+    "recorded_at": "2026-10-08T14:47:54.331Z"
+  },
+  "cost_decisions": [
+    {
+      "id": "4e4ce177-aade-408c-bb7b-4cf77ef111d7",
+      "conversation_id": "a6a9b2d4-384c-423a-a2fa-4f623aaeeb98",
+      "version": 1,
+      "state": "needs_input"
+    },
+    {
+      "id": "a2bdd5ea-1af7-4138-a305-23463cc3212a",
+      "conversation_id": "a6a9b2d4-384c-423a-a2fa-4f623aaeeb98",
+      "version": 1,
+      "state": "needs_input"
+    }
+  ],
+  "held_event": {
+    "receipt": {
+      "schema_version": "lippert.purchase_candidate_receipt/v1",
+      "receipt_id": "6e7109c9-58b2-4b0e-b616-5e052812da73",
+      "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+      "event_id": "f050bc3a-214c-44ff-af7f-40f0b31d721c",
+      "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+      "order_id": "087620d4-c538-4c02-8285-6004cd710766",
+      "order_revision": "c86572f3d0b102ab41fb9eae71c899b9be373ad5ed5cf050e8e7b2ef33229f07",
+      "payload_hash": "dbc486b06ae1ed0c2eb2bf95039c9fcd17f11c3e42ea27367cb27b3a5f7bb0ce",
+      "accepted_at": "2026-10-08T00:19:17.144Z",
+      "status": "accepted",
+      "purchase_authority": false
+    },
+    "startup_disposition": null,
+    "decision_holds": {
+      "held_orders": [
+        {
+          "decision_id": "4e4ce177-aade-408c-bb7b-4cf77ef111d7",
+          "version": 1,
+          "order_number": "100122455",
+          "order_id": "2e0f7eff-087d-4c60-80a2-1bf9ae353b33"
+        },
+        {
+          "decision_id": "a2bdd5ea-1af7-4138-a305-23463cc3212a",
+          "version": 1,
+          "order_number": "100122466",
+          "order_id": "087620d4-c538-4c02-8285-6004cd710766"
+        }
+      ],
+      "unresolved_scope_decisions": [],
+      "dispatch_blocked": false
+    },
+    "delivery": {
+      "status": "blocked",
+      "batch_id": "a97e8438-8b36-473a-9dfa-882d339b4745",
+      "run_id": null,
+      "conversation_id": null,
+      "run_status": null,
+      "worker_started": false,
+      "worker_started_at": null,
+      "turn_id": null,
+      "blocked_reason": "NATIVE_DECISION_HOLD",
+      "purchase_authority": false
+    }
+  },
+  "retained_pending_batch": {
+    "id": "a97e8438-8b36-473a-9dfa-882d339b4745",
+    "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+    "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "status": "pending",
+    "run_id": null,
+    "blocked_reason": null,
+    "created_at": "2026-10-07T18:33:48.832Z"
+  },
+  "recent_successor_runs": [
+    {
+      "id": "fc435b2b-1c92-47e2-b1fe-bc4c97ad2b4b",
+      "conversation_id": "dd49f189-b8b2-449d-91c9-75841c222d14",
+      "status": "failed",
+      "started_at": "2026-10-08 14:47:56"
+    }
+  ]
+}

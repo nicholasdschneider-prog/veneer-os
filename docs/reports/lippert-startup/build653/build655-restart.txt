@@ -1,0 +1,22 @@
+
+> veneer-os@0.1.0 restart
+> node scripts/restart.mjs
+
+[restart] preflight: /opt/homebrew/opt/node@24/bin/node v24.21.0 ABI 137; native modules load
+[restart] veneer-pro: draining pid 36873
+[restart] veneer-pro: healthy as pid 55444
+[restart] veneer-pro-runner: draining pid 82005
+
+> veneer-os@0.1.0 restart
+> node scripts/restart.mjs veneer-pro-app-runner veneer-pro-term veneer-browser-manager
+
+[restart] preflight: /opt/homebrew/opt/node@24/bin/node v24.21.0 ABI 137; native modules load
+[restart] veneer-pro-app-runner: draining pid 82044
+[restart] veneer-pro-app-runner: healthy as pid 56372
+[restart] veneer-pro-term: draining pid 82083
+[restart] veneer-pro-term: healthy as pid 56391
+[restart] veneer-browser-manager: healthy
+[health] local web and runner: healthy
+[health] Veneer tunnel: 4 active edge connections; authenticated public chat remains unverified
+[health] public front door: HTTP 302; public front door reachable, origin/authenticated chat unverified
+[health] These checks do not prove authenticated end-to-end chat delivery.

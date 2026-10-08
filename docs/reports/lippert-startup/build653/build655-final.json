@@ -1,0 +1,67 @@
+{
+  "observed_at": "2026-10-08T14:50:07.239Z",
+  "original_authenticated_readback": {
+    "http_status": 200,
+    "body": {
+      "run_id": "ed3dac84-83b9-4e0d-a3e4-2f50ba103932",
+      "conversation_id": "332c1946-f69b-420a-9d4d-b6764f1828ad",
+      "batch_id": "6eba4560-30fd-4512-bde0-f3e01cd734d2",
+      "disposition": "failed_before_model_execution",
+      "decision_holds": {
+        "held_orders": [
+          {
+            "decision_id": "4e4ce177-aade-408c-bb7b-4cf77ef111d7",
+            "version": 1,
+            "order_number": "100122455",
+            "order_id": "2e0f7eff-087d-4c60-80a2-1bf9ae353b33"
+          },
+          {
+            "decision_id": "a2bdd5ea-1af7-4138-a305-23463cc3212a",
+            "version": 1,
+            "order_number": "100122466",
+            "order_id": "087620d4-c538-4c02-8285-6004cd710766"
+          }
+        ],
+        "unresolved_scope_decisions": [],
+        "dispatch_blocked": false
+      },
+      "retained_queued_messages": 1,
+      "schema_ready": true,
+      "evidence_hash": "a571b35cbf4cc689d667c3f3ead45613bcb6b9151fdd92f33a521ee74ba99072",
+      "reconciled": true,
+      "original_status": "failed",
+      "original_blocked_reason": "WORKER_OUTCOME_UNRESOLVED",
+      "failed_hints_remain_fenced": true,
+      "purchase_authority": false,
+      "execute": false
+    }
+  },
+  "employee_guide": {
+    "http_status": 200,
+    "feature_present": true,
+    "current_hold_instructions": true,
+    "original_lineage_instructions": true
+  },
+  "new_successor": {
+    "id": "fc435b2b-1c92-47e2-b1fe-bc4c97ad2b4b",
+    "conversation_id": "dd49f189-b8b2-449d-91c9-75841c222d14",
+    "status": "failed",
+    "error": "You're out of usage credits. Switch to another model to continue.",
+    "batch_id": "59c6b494-6b0a-42f6-a152-e29b86b67bec",
+    "batch_status": "blocked",
+    "blocked_reason": "WORKER_OUTCOME_UNRESOLVED",
+    "turn_id": "f71db893-4606-4438-869e-99f3b3b51d3d"
+  },
+  "new_successor_hints": [
+    {
+      "event_id": "2c9bb5cd-1fb1-4555-90bf-37d6ff18a27d",
+      "order_id": "ae219af0-50ce-4ed8-95e7-f7e43fa3fbe3"
+    }
+  ],
+  "new_successor_passes": {
+    "n": 0
+  },
+  "automatic_held_launches": {
+    "n": 0
+  }
+}
