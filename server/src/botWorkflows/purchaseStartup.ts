@@ -1,3 +1,4 @@
+import { purchaseDecisionHolds } from './purchaseHolds.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { claudeSessionFilePath } from '../providers/claude/transcript.js';
@@ -96,7 +97,7 @@ export function reconcilePurchaseStartup(db: Database.Database, dataDir: string,
    if(!old) db.prepare('INSERT INTO purchase_startup_dispositions VALUES(?,?,?,?,?,?,?,?)').run(r.id,r.batch_id,r.conversation_id,hash,actorId,actorConversationId??null,p.coordination_reference,new Date().toISOString());
   }
   return {run_id:r.id,conversation_id:r.conversation_id,batch_id:r.batch_id,disposition:'failed_before_model_execution',
-   retained_queued_messages:queued.length,schema_ready:schemaReady,evidence_hash:hash,reconciled:!!old || p.mode==='reconcile',original_status:r.status,original_blocked_reason:r.blocked_reason,
+   decision_holds:purchaseDecisionHolds(db,r.scheduled_task_id),retained_queued_messages:queued.length,schema_ready:schemaReady,evidence_hash:hash,reconciled:!!old || p.mode==='reconcile',original_status:r.status,original_blocked_reason:r.blocked_reason,
    failed_hints_remain_fenced:true,purchase_authority:false,execute:false};
  }).immediate();
 }

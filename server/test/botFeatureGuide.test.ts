@@ -8,7 +8,7 @@ describe('living bot guide release contract', () => {
     const f=botFeatureCatalog(Date.parse('2026-10-08')).features.find(f=>f.id==='lippert-purchase-events')!;
     expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('shared portal owner');
     expect(f.limits).toContain('Unknown evidence');expect(f.agent).toContain('mode:"reconcile"');
-    expect(f.agent).toContain('only unrelated eligible candidates');expect(f.announcement).toContain('staged');
+    expect(f.agent).toContain('only unrelated eligible candidates');expect(f.announcement).toContain('Unmapped scopes');expect(f.agent).toContain('decision_holds');expect(f.agent).toContain('original pending batch/run-null lineage');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(f.agent);
   });

@@ -468,3 +468,12 @@ hint replayed. Current manual-lane/shared-portal coordination and native deploym
 clearance precede installation and reconciliation. UNKNOWN and attempted work remain
 fenced. The catalog delivers these limits to full/restricted employees and resumed bots.
 See the [implementation, exact original disposition and validation](./reports/lippert-startup/build653/report.md).
+
+
+## Pending Lippert cost questions — October 8, 2026
+
+Automatic candidate dispatch reads fresh `needs_input` questions belonging to the exact reviewed original source-custodian chat, with current task assistant, owner, project and active registration checks. A shared assistant name does not identify a custodian. It matches only structured `as_of.orders` roots through reviewed immutable source identity mappings. The build 655 mappings for #100122455 and #100122466 cite the original Sage authenticated source readbacks and their exact SHA-256 hashes; they grant no authority or eligibility. Unknown/missing or workload scope stops dispatch rather than inferring unrelatedness. Future mappings require independently reviewed source evidence and a queued technical change; this release provides no caller-supplied mapping or authority endpoint.
+
+Mapped held events retain the original pending batch and no run/start association. Eligible hints alone enter a separate sealed batch, with the eight-order limit applied only to eligible hints. Automatic worker prompts exclude held canonical IDs and order numbers from hints **and the full source queue/daily backup**. A held-only backlog does not launch or hot-loop. Inspect and signed readback expose `decision_holds`, including unresolved scope blockers. Fresh question resolution removes this scheduling hold only; original source approval, cost, address, ownership, duplicate and UNKNOWN checks still apply. Manual source purchasing remains independent.
+
+Example: “Reconcile the proven original startup failure, retain both pending cost questions and their candidate events, and allow only unrelated eligible hints after current portal coordination.” Deployment must pass root typecheck, full tests and build before root `npm run restart`; staged documentation never proves installation or a purchase.

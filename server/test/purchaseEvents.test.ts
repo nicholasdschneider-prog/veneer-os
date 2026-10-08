@@ -253,3 +253,47 @@ describe('native failed-before-model reconciliation',()=>{
  });
  it('freshness pins native bytes even when changed evidence would otherwise pass',()=>{const hash=inspect().evidence_hash;rows[0]!.message.content[0].text+=' changed';save();expect(()=>release(hash)).toThrow('FRESH_STARTUP');});
 });
+
+function heldQuestion(orderNumber='100122466',orderId=crypto.randomUUID()) {
+ const conversation=crypto.randomUUID(),decision=crypto.randomUUID();
+ db.prepare("INSERT INTO conversations(id,assistant_id,user_id,project_id,title,provider,model,native_session_id) VALUES(?,1,1,?,'Original owner','claude','fixture',?)").run(conversation,project,crypto.randomUUID());
+ db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,'Fixture',1)").run(conversation);
+ db.prepare('INSERT INTO purchase_order_scopes VALUES(?,?,?,?,?)').run(source,orderId,orderNumber,'Synthetic exact source mapping','a'.repeat(64));
+ db.prepare(`INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,?,'fixture','fixture',?,1)`).run(decision,conversation,JSON.stringify({blocks_scope:'task',as_of:{orders:[{order_number:orderNumber}]}}));
+ return {decision,orderId};
+}
+it('keeps held orders in the original pending batch, excludes full scans, and processes unrelated hints',()=>{
+ const {decision,orderId}=heldQuestion();const held=event(orderId),other=event();acceptPurchaseEvent(db,source,held);acceptPurchaseEvent(db,source,other);
+ const original=readPurchaseEvent(db,source,held.id).delivery.batch_id;
+ scheduler.tick();expect(posts).toHaveLength(1);expect(posts[0]!.text).not.toContain(held.id);expect(posts[0]!.text).toContain(other.id);
+ expect(posts[0]!.text).toContain('100122466');expect(posts[0]!.text).toContain('full source queue and daily backup');
+ expect(readPurchaseEvent(db,source,held.id).delivery).toMatchObject({batch_id:original,run_id:null,status:'blocked',blocked_reason:'NATIVE_DECISION_HOLD',worker_started:false});
+ expect(readPurchaseEvent(db,source,other.id).delivery.batch_id).not.toBe(original);
+ startDone(posts[0]!.id);for(let i=0;i<5;i++)scheduler.tick();expect(posts).toHaveLength(1);
+ db.prepare("UPDATE bot_decisions SET state='decided' WHERE id=?").run(decision);
+ scheduler.tick();expect(posts).toHaveLength(2);expect(posts[1]!.text).toContain(held.id);
+});
+it('refreshes holds for scheduled full scans and rejects unmapped or workload scope without inferring disjointness',()=>{
+ const {decision}=heldQuestion();db.prepare("UPDATE scheduled_tasks SET next_run_at='2000-01-01T00:00:00Z'").run();
+ scheduler.tick();expect(posts).toHaveLength(1);expect(posts[0]!.text).toContain('100122466');startDone(posts[0]!.id);
+ db.prepare("UPDATE bot_decisions SET proposal_json=? WHERE id=?").run(JSON.stringify({blocks_scope:'task',as_of:{orders:[{order_number:'999'}]}}),decision);
+ acceptPurchaseEvent(db,source,event());scheduler.tick();expect(posts).toHaveLength(1);
+ expect(readPurchaseEvent(db,source,(db.prepare('SELECT event_id FROM purchase_event_receipts').get() as {event_id:string}).event_id).decision_holds.dispatch_blocked).toBe(true);
+ db.prepare("UPDATE bot_decisions SET proposal_json=? WHERE id=?").run(JSON.stringify({blocks_scope:'workload',as_of:{orders:[{order_number:'100122466'}]}}),decision);
+ scheduler.tick();expect(posts).toHaveLength(1);
+});
+it('does not count held hints against the eight-order bound or launch held-only pending batches',()=>{
+ const {orderId}=heldQuestion();acceptPurchaseEvent(db,source,event(orderId));for(let i=0;i<4;i++)scheduler.tick();expect(posts).toHaveLength(0);
+ const eligible=Array.from({length:9},()=>event());for(const p of eligible)acceptPurchaseEvent(db,source,p);scheduler.tick();
+ for(const p of eligible.slice(0,8))expect(posts[0]!.text).toContain(p.id);expect(posts[0]!.text).not.toContain(eligible[8]!.id);
+ startDone(posts[0]!.id);scheduler.tick();expect(posts[1]!.text).toContain(eligible[8]!.id);
+});
+it('uses the exact original source custodian rather than other bots sharing the assistant and project',()=>{
+ const {decision,orderId}=heldQuestion();const owner=(db.prepare('SELECT conversation_id FROM bot_decisions WHERE id=?').get(decision) as {conversation_id:string}).conversation_id;
+ db.prepare('INSERT INTO purchase_task_decision_owners VALUES(?,?,?,?)').run(task,source,owner,'Synthetic genuine source custodian');
+ const unrelated=heldQuestion('100122999');db.prepare("UPDATE bot_decisions SET proposal_json='{}' WHERE id=?").run(unrelated.decision);
+ const held=event(orderId),eligible=event();acceptPurchaseEvent(db,source,held);acceptPurchaseEvent(db,source,eligible);scheduler.tick();expect(posts).toHaveLength(1);
+ startDone(posts[0]!.id);db.prepare('UPDATE bot_registrations SET active=0 WHERE conversation_id=?').run(owner);
+ acceptPurchaseEvent(db,source,event());scheduler.tick();expect(posts).toHaveLength(1);
+ expect(readPurchaseEvent(db,source,held.id).decision_holds.dispatch_blocked).toBe(true);
+});
