@@ -1,6 +1,6 @@
 # Build 653 — bounded Lippert startup reconciliation
 
-Current October 8 result: validated source `def0611` is installed and the exact original run `ed3dac84` is reconciled. #455/#466 remain excluded under their unanswered cost questions, with original pending events/run-null lineage retained. A new unrelated #463 successor failed because its provider has no usage credits; its separate failed-run fence remains blocked. Automatic purchasing is therefore still blocked by this new runtime condition. The historical staged/authority assessments below are superseded by build 655's exact evidence at the end.
+Current October 8 result: validated source `def0611` is installed and the exact original run `ed3dac84` is reconciled. #466 remains excluded under its unanswered cost question, with original pending event/run-null lineage retained. The later bounded checkpoint below records #455 moving to action_pending under original Sage; that state is not purchase-completion proof. A new unrelated #463 successor failed because its provider has no usage credits; its separate failed-run fence remains blocked. Automatic purchasing is therefore still blocked by this new runtime condition. The historical staged/authority assessments below are superseded by build 655's exact evidence at the end.
 The repair separates a proven provider failure before model execution from an uncertain business outcome. An append-only disposition can remove only that failed run’s task-wide successor fence. The original failed run, blocked batch, worker-start record, receipts, event identities, hinted orders and unconsumed continuation remain retained and blocked. No worker-pass acknowledgment is fabricated. No event is rePOSTed, rekeyed or replayed.
 
 ## Original source and current disposition
@@ -126,3 +126,8 @@ Additional changed files:
 
 - [Current native question guard](/Users/archerclawdington/veneer-os/server/src/botWorkflows/purchaseHolds.ts)
 - [Reviewed source identity and owner mapping migration](/Users/archerclawdington/veneer-os/server/src/db/migrations/0163_purchase_order_scopes.sql)
+
+
+### Bounded resumed checkpoint — 2026-10-08T14:57:57.489Z
+
+The older HEAD43b9af9/schema-absent/deployment-pending continuation was superseded by completed build655 and the accepted custody readbacks in both existing coordination threads. Current checkout was clean at HEAD4dce049 and queue empty. Original exact ed3dac84 disposition remains recorded14:47:54.331UTC under this own chat, original queued continuation remains1, and #466 event remains in original a97e pending/run-null batch. Its exact cost decision a2bdd5ea v1 remains needs_input under Sage. Fresh native state for #455 decision4e4ce177 v1 is now action_pending under original Sage, replacing the historical needs_input snapshot for that order; this review did not record an answer, claim, execute or infer purchase completion. The separate fc435b2b usage-credit failure remains failed/WORKER_OUTCOME_UNRESOLVED and is not reconciled or relaunched. No new software build, tests, restart, migration, native disposition, source action, model switch or duplicate commission occurred in this follow-up. Existing original-owner answer/follow-through and failure fences remain responsible for further source work.
