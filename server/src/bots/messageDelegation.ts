@@ -5,6 +5,7 @@ import { BotError, createBotService, type Actor, type Proposal } from './service
 import { approvedMessageSchema } from './draftPayload.js';
 import { canonicalJson, canonicalSha256 } from './canonical.js';
 import { canSendToConversation } from '../conversations/access.js';
+import { refuseUnregisteredChat } from './unregisteredChat.js';
 import type { UserRow } from '../db/db.js';
 
 type Scope = z.infer<typeof approvedMessageSchema>;
@@ -50,6 +51,7 @@ export function messageDelegationService(db: Database.Database, mappingCheck?: C
   function activeBot(a: Actor, id: string, own = false) {
     const u = user(a.user.id);
     const c = bots.chat({ ...a, user: u }, id);
+    if (id === a.conversationId) refuseUnregisteredChat(db, id);
     if (c.archived || !canSendToConversation(u, c, db) || !db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(id)) throw new BotError(403, 'Bot access or registration is inactive');
     if (own && (a.conversationId !== id || c.user_id !== u.id)) throw new BotError(403, 'Only this named bot may perform the operation');
     user(c.user_id);

@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {canonicalSha256, canonicalJson} from './canonical.js';
 import {BotError,createBotService,type Actor} from './service.js';
 import {canSendToConversation} from '../conversations/access.js';
+import {refuseUnregisteredChat} from './unregisteredChat.js';
 import type {UserRow} from '../db/db.js';
 
 const id=z.string().min(1).max(500).refine(s=>s===s.trim()&&!/[\r\n\0]/.test(s));
@@ -55,6 +56,7 @@ export function vendorEmailService(db:Database.Database,verifyAttachments?:(a:Ac
  function user(n:number){const u=db.prepare("SELECT * FROM users WHERE id=? AND status='active'").get(n) as UserRow|undefined;if(!u)throw new BotError(403,'Participant access revoked');return u;}
  function owner(a:Actor){
   if(!a.conversationId)throw new BotError(403,'Original registered executor required');
+  refuseUnregisteredChat(db,a.conversationId);
   const u=user(a.user.id),c=bots.chat({...a,user:u},a.conversationId);
   if(c.user_id!==u.id||c.archived||!c.business_team_id||!canSendToConversation(u,c,db)||!db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(c.id))throw new BotError(403,'Original executor ownership or access revoked');
   return c;

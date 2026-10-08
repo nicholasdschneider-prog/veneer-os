@@ -415,3 +415,14 @@ send. Historical acceptance reports remain unchanged.
 A clear human direction and unverified source mapping are reported separately.
 `direction_assessment: direction_retained` can coexist with `scope_unverified`;
 missing source proof is never labeled as missing human business consent.
+
+## Owner-chat email sends — October 8, 2026
+
+Build #651 adds the `owner-chat-email` entry. In an ordinary chat, the chat's own human's
+direct "send it" goes out once through their attached Gmail connector after a draft readback;
+the vendor, customer-email-direction and approved-message entries now state they govern
+registered business bots only. Those contracts return a distinct "not a registered business
+bot" error to never-registered chats (`server/src/bots/unregisteredChat.ts`) instead of
+"revoked"; deactivated registrations keep their existing errors. No guard or approval for
+registered bots changed. `CUSTOMER_EMAIL_NATIVE_ARTIFACT_HASH` was regenerated because
+`vendorEmail.ts` and `customerEmailNative.ts` are pinned; no customer-email registry is configured.

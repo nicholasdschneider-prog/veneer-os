@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import { canonicalSha256, canonicalJson } from './canonical.js';
 import { createBotService, BotError, type Actor } from './service.js';
 import { canSendToConversation } from '../conversations/access.js';
+import { refuseUnregisteredChat } from './unregisteredChat.js';
 import type { UserRow } from '../db/db.js';
 import { exactDraftPayload } from './draftPayload.js';
 import { emailInput, type EmailInput, type EmailRegistration } from './customerEmailContract.js';
@@ -31,6 +32,7 @@ export function customerEmailNative(db: Database.Database) {
         if(!user)throw new BotError(403,'Participant access revoked');
         const current={...a,user};
         const c = bots.chat(current, id);
+        if (id === a.conversationId) refuseUnregisteredChat(db, id);
         if (c.archived || !c.business_team_id || c.user_id !== a.user.id || !canSendToConversation(user, c, db) || !db.prepare("SELECT 1 FROM users WHERE id=? AND status='active'").get(a.user.id) || !db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(id))
             throw new BotError(403, 'Original registered participant access revoked');
         return c;

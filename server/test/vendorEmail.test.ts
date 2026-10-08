@@ -56,6 +56,12 @@ describe('prospective vendor email from a native human direction',()=>{
   expect(s.receipt(a,receipt(id)).target.state).toBe('sent');expect(s.receipt(a,receipt(id)).target.state).toBe('sent');
   expect(()=>s.receipt(a,{...receipt(id),request_key:'different'})).toThrow('Terminal');expect(db.prepare('SELECT * FROM bot_message_drafts WHERE id=?').get(old.id)).toEqual(before);
  });
+ it('tells an ordinary owner chat the contract does not apply, keeping revoked for deactivated bots',async()=>{
+  db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility) VALUES('plain',1,1,'plain','codex','plain','team')").run();
+  await expect(s.inspect({...a,conversationId:'plain'},{...input(),scope:{...scope(),executor_conversation_id:'plain'}})).rejects.toThrow('not a registered business bot');
+  db.prepare("UPDATE bot_registrations SET active=0 WHERE conversation_id='clara'").run();
+  await expect(s.inspect(a,input())).rejects.toThrow('Original executor ownership or access revoked');
+ });
  it.each(['account','recipient','thread_id','in_reply_to','subject','body','attachments','executor_conversation_id'] as const)('rejects changed %s after inspection',async(field)=>{
   const p=await prepared();Object.assign(p.scope,{[field]:field==='attachments'?[]:field==='account'||field==='recipient'?'other@example.test':p.scope[field]+'x'});await expect(s.bind(a,p)).rejects.toThrow();
  });
