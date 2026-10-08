@@ -4,6 +4,15 @@ import { coreVeneerRules } from '../src/instructions/context.js';
 import { employeeRouteAllowed } from '../src/bots/employeeAccess.js';
 
 describe('living bot guide release contract', () => {
+  it('delivers startup reconciliation limits to full/restricted employees and resumed bots',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-10-08')).features.find(f=>f.id==='lippert-purchase-events')!;
+    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('shared portal owner');
+    expect(f.limits).toContain('Unknown evidence');expect(f.agent).toContain('mode:"reconcile"');
+    expect(f.agent).toContain('only unrelated eligible candidates');expect(f.announcement).toContain('staged');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(f.agent);
+  });
+
   it('delivers Vibe setup and advertiser boundaries to employees and fresh/resumed agents', () => {
     const feature = botFeatureCatalog(Date.parse('2026-10-08')).features.find(f => f.id === 'vibe-connector')!;
     expect(feature.isNew).toBe(true);

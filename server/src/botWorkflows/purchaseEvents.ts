@@ -3,6 +3,11 @@ import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { BotError } from '../bots/service.js';
 
+export const purchaseTaskFenceSql = `SELECT 1 FROM purchase_event_batches b WHERE b.task_id=? AND b.status='blocked'
+ AND NOT EXISTS(SELECT 1 FROM purchase_startup_dispositions d WHERE d.run_id=b.run_id AND d.batch_id=b.id)`;
+
+export const purchaseExcludedOrderSql = `SELECT json_extract(r.payload_json,'$.order_id') FROM purchase_event_receipts r JOIN purchase_event_links l USING(source_id,event_id) JOIN purchase_startup_dispositions d ON d.batch_id=l.batch_id JOIN purchase_event_batches b ON b.id=d.batch_id WHERE b.task_id=?`;
+
 export const PurchaseEvent = z.object({
   schema_version: z.literal('lippert.purchase_candidate/v1'),
   type: z.literal('order.purchase_candidate'),
@@ -42,6 +47,8 @@ export function acceptPurchaseEvent(db: Database.Database, sourceId: string, inp
       if (old.payload_hash !== hash) throw new BotError(409,'EVENT_ID_CONFLICT');
       return JSON.parse(old.receipt_json);
     }
+    const excluded = db.prepare(`SELECT 1 FROM purchase_event_receipts r JOIN purchase_event_links l USING(source_id,event_id) JOIN purchase_startup_dispositions d ON d.batch_id=l.batch_id WHERE r.source_id=? AND json_extract(r.payload_json,'$.order_id')=?`).get(sourceId,p.order_id);
+    if (excluded) throw new BotError(409,'STARTUP_FAILURE_ORDER_FENCED');
     const backlog = db.prepare(`SELECT count(*) AS n FROM purchase_event_links l JOIN purchase_event_batches b ON b.id=l.batch_id WHERE b.task_id=? AND b.status='pending'`).get(p.task_id) as {n:number};
     if (backlog.n>=256) throw new BotError(409,'PURCHASE_BACKLOG_FULL');
     const receipt = {schema_version:'lippert.purchase_candidate_receipt/v1',receipt_id:crypto.randomUUID(),source_id:sourceId,event_id:p.id,task_id:p.task_id,order_id:p.order_id,order_revision:p.order_revision,payload_hash:hash,accepted_at:new Date().toISOString(),status:'accepted',purchase_authority:false};
@@ -61,8 +68,11 @@ export function readPurchaseEvent(db: Database.Database, sourceId: string, event
     LEFT JOIN purchase_worker_starts start ON start.run_id=b.run_id WHERE r.source_id=? AND r.event_id=?`).get(sourceId,eventId) as
     {receipt_json:string;batch_id:string;status:string;blocked_reason:string|null;run_id:string|null;conversation_id:string|null;run_status:string|null;turn_id:string|null;started_at:string|null}|undefined;
   if (!row) throw new BotError(404,'PURCHASE_EVENT_NOT_FOUND');
-  const fenced = db.prepare("SELECT blocked_reason FROM purchase_event_batches WHERE task_id=(SELECT task_id FROM purchase_event_bindings WHERE source_id=?) AND status='blocked' LIMIT 1").get(sourceId) as {blocked_reason:string|null}|undefined;
-  return {receipt:JSON.parse(row.receipt_json),delivery:{status:row.status==='pending' && fenced?'blocked':row.status,batch_id:row.batch_id,run_id:row.run_id,conversation_id:row.conversation_id,run_status:row.run_status,worker_started:!!row.turn_id,worker_started_at:row.started_at,turn_id:row.turn_id,blocked_reason:row.blocked_reason ?? (row.status==='pending' && fenced?fenced.blocked_reason:null),purchase_authority:false}};
+  const fenced = db.prepare("SELECT b.blocked_reason FROM purchase_event_batches b WHERE b.task_id=(SELECT task_id FROM purchase_event_bindings WHERE source_id=?) AND b.status='blocked' AND NOT EXISTS(SELECT 1 FROM purchase_startup_dispositions d WHERE d.run_id=b.run_id AND d.batch_id=b.id) LIMIT 1").get(sourceId) as {blocked_reason:string|null}|undefined;
+  const receipt=JSON.parse(row.receipt_json);
+  const excluded=db.prepare(`SELECT 1 WHERE ? IN (${purchaseExcludedOrderSql})`).get(receipt.order_id,receipt.task_id);
+  const disposition = row.run_id ? db.prepare('SELECT evidence_hash,recorded_at FROM purchase_startup_dispositions WHERE run_id=? AND batch_id=?').get(row.run_id,row.batch_id) ?? null : null;
+  return {receipt:JSON.parse(row.receipt_json),startup_disposition:disposition,delivery:{status:excluded || (row.status==='pending' && fenced)?'blocked':row.status,batch_id:row.batch_id,run_id:row.run_id,conversation_id:row.conversation_id,run_status:row.run_status,worker_started:!!row.turn_id,worker_started_at:row.started_at,turn_id:row.turn_id,blocked_reason:row.blocked_reason ?? (excluded?'STARTUP_FAILURE_ORDER_FENCED':null) ?? (row.status==='pending' && fenced?fenced.blocked_reason:null),purchase_authority:false}};
 }
 /** Exact current worker's scheduling acknowledgment, never purchasing authorization. */
 export function recordPurchasePass(db: Database.Database, conversationId: string, actorId: number, input: unknown) {

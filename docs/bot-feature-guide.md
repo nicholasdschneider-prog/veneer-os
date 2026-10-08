@@ -455,3 +455,16 @@ The catalog and durable answer-wake instructions explain the distinction to fres
 and resumed agents. Guide: `/#/bot-guide?feature=custom-direction-review`. No business
 write, approval as Clara, duplicate consent or new business authority is performed
 by this release. The original Clara retains the actual correction and verification.
+
+
+## Lippert startup failure reconciliation — October 8, 2026 (staged)
+
+Build #653 adds an owner/Platform Dev exact-run inspection and reconciliation endpoint.
+The server reads matching complete retained/current native Claude files and requires an
+initial provider-marked synthetic HTTP 429 before model/tool execution. A separately
+reviewed immutable disposition can remove only the task-wide fence; the original failed
+run, batch, hints and queued continuation stay blocked. No pass is forged or original
+hint replayed. Current manual-lane/shared-portal coordination and native deployment
+clearance precede installation and reconciliation. UNKNOWN and attempted work remain
+fenced. The catalog delivers these limits to full/restricted employees and resumed bots.
+See the [implementation, exact original disposition and validation](./reports/lippert-startup/build653/report.md).

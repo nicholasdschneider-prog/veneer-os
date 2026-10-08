@@ -1,3 +1,4 @@
+import { reconcilePurchaseStartup } from '../botWorkflows/purchaseStartup.js';
 import { recordPurchasePass } from '../botWorkflows/purchaseEvents.js';
 import crypto from 'node:crypto';
 import express, { type Request, type Response, type Router } from 'express';
@@ -798,6 +799,11 @@ export function createScheduledTasksRouter(
       }
     })();
     res.json({ ok: true, archivedConversationId: run.conversation_id });
+  });
+
+  router.post('/purchase-startup-reconciliation', (req,res) => {
+    try { res.json(reconcilePurchaseStartup(db,ctx.config.dataDir,req.user!.id,req.agentConversationId,req.body)); }
+    catch(e) { const error=e as Error & {status?:number};res.status(error.status??400).json({error:error.message}); }
   });
 
   router.post('/purchase-candidate-pass', (req,res) => {

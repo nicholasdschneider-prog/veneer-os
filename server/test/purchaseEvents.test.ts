@@ -172,3 +172,84 @@ it('skips a grounded ordinary exception in a clear finite pass and dispatches an
 it('does not accept a pass before the actual worker-start association',()=>{
  acceptPurchaseEvent(db,source,event());scheduler.tick();expect(()=>recordPurchasePass(db,posts[0]!.id,1,{outcome:'clear',cursor:null})).toThrow('WORKER_UNAVAILABLE');
 });
+
+// A disposition is not a worker acknowledgment, and never replays its original hints.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { describe } from 'vitest';
+import { reconcilePurchaseStartup } from '../src/botWorkflows/purchaseStartup.js';
+import { transcriptArchivePath } from '../src/runtime/transcriptArchive.js';
+import { claudeSessionFilePath } from '../src/providers/claude/transcript.js';
+describe('native failed-before-model reconciliation',()=>{
+ let dir:string,oldHome:string|undefined,run:string,session:string,id:string,p:ReturnType<typeof event>;
+ let rows:Record<string,any>[];
+ const error="You've hit your session limit · resets 3pm (America/Indianapolis)";
+ function save(){const bytes=rows.map(r=>JSON.stringify(r)).join('\n')+'\n';for(const f of [transcriptArchivePath(dir,'claude',session),claudeSessionFilePath('/tmp',session)]){fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,bytes);}}
+ const inspect=()=>reconcilePurchaseStartup(db,dir,1,undefined,{run_id:run,mode:'inspect'});
+ const release=(hash=inspect().evidence_hash)=>reconcilePurchaseStartup(db,dir,1,undefined,{run_id:run,mode:'reconcile',expected_hash:hash,coordination_reference:'Synthetic original-owner portal clearance'});
+ beforeEach(()=>{
+  dir=fs.mkdtempSync(path.join(os.tmpdir(),'purchase-startup-'));oldHome=process.env.VP_SERVICE_HOME;process.env.VP_SERVICE_HOME=dir;
+  p=event();acceptPurchaseEvent(db,source,p);scheduler.tick();id=posts[0]!.id;
+  const c=db.prepare('SELECT native_session_id FROM conversations WHERE id=?').get(id) as {native_session_id:string};session=c.native_session_id;
+  const r=db.prepare('SELECT id FROM scheduled_task_runs WHERE conversation_id=?').get(id) as {id:string};run=r.id;
+  bus.emit('event',id,{type:'turn_started',turnId:crypto.randomUUID(),at:new Date().toISOString()});
+  bus.emit('event',id,{type:'error',message:error});bus.emit('event',id,{type:'turn_done',outcome:'failed'});
+  const now=new Date().toISOString();rows=[{type:'user',sessionId:session,timestamp:now,cwd:'/tmp',message:{role:'user',content:[{type:'text',text:posts[0]!.text}]}},
+   {type:'assistant',sessionId:session,timestamp:now,isApiErrorMessage:true,apiErrorStatus:429,error:'rate_limit',message:{role:'assistant',model:'<synthetic>',content:[{type:'text',text:error}]}}];save();
+ });
+ afterEach(()=>{if(oldHome===undefined)delete process.env.VP_SERVICE_HOME;else process.env.VP_SERVICE_HOME=oldHome;fs.rmSync(dir,{recursive:true,force:true});});
+ it('requires fresh review, keeps originals immutable, and releases only unrelated candidates',()=>{
+  const duplicate={...event(p.order_id)};acceptPurchaseEvent(db,source,duplicate);const other=event();acceptPurchaseEvent(db,source,other);
+  const before=db.prepare('SELECT * FROM scheduled_task_runs WHERE id=?').get(run);const batch=db.prepare('SELECT * FROM purchase_event_batches WHERE run_id=?').get(run);
+  const reviewed=inspect();expect(reviewed.reconciled).toBe(false);scheduler.tick();expect(posts).toHaveLength(1);
+  expect(()=>release('a'.repeat(64))).toThrow('FRESH_STARTUP');release(reviewed.evidence_hash);expect(release(reviewed.evidence_hash).reconciled).toBe(true);
+  expect(db.prepare('SELECT * FROM scheduled_task_runs WHERE id=?').get(run)).toEqual(before);expect(db.prepare('SELECT * FROM purchase_event_batches WHERE run_id=?').get(run)).toEqual(batch);
+  expect(db.prepare('SELECT 1 FROM purchase_worker_passes WHERE run_id=?').get(run)).toBeUndefined();
+  expect(()=>db.prepare('DELETE FROM purchase_startup_dispositions').run()).toThrow('Immutable');
+  scheduler.tick();expect(posts).toHaveLength(2);expect(posts[1]!.text).toContain(other.id);expect(posts[1]!.text).not.toContain(duplicate.id);expect(posts[1]!.text).toContain(p.order_id);
+  expect(readPurchaseEvent(db,source,p.id).delivery.status).toBe('blocked');expect(readPurchaseEvent(db,source,duplicate.id).delivery).toMatchObject({status:'blocked',blocked_reason:'STARTUP_FAILURE_ORDER_FENCED'});
+  expect(()=>acceptPurchaseEvent(db,source,event(p.order_id))).toThrow('STARTUP_FAILURE_ORDER_FENCED');expect(acceptPurchaseEvent(db,source,p).event_id).toBe(p.id);
+ });
+ it('retains unconsumed continuation messages under the original blocked-chat guard',()=>{
+  db.prepare("INSERT INTO queued_messages(conversation_id,prompt,actor_user_id) VALUES(?,'Synthetic unconsumed continuation',1)").run(id);
+  expect(release().retained_queued_messages).toBe(1);expect(db.prepare('SELECT count(*) n FROM queued_messages WHERE conversation_id=?').get(id)).toEqual({n:1});
+  expect(db.prepare('SELECT status FROM purchase_event_batches WHERE run_id=?').get(run)).toEqual({status:'blocked'});
+ });
+ it('allows only authorized owner inspection through the authenticated API route',async()=>{
+  let actor=1;let caller:string|undefined;const app=express();app.use(express.json());
+  app.use((req,_res,next)=>{req.user=db.prepare('SELECT * FROM users WHERE id=1').get() as typeof req.user;req.user!.id=actor;req.agentConversationId=caller;next();});
+  app.use('/api/scheduled-tasks',createScheduledTasksRouter({db,config:{dataDir:dir},manager:{}} as unknown as AppContext));
+  const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));const url=`http://127.0.0.1:${(server.address() as {port:number}).port}/api/scheduled-tasks/purchase-startup-reconciliation`;
+  const post=(body:unknown)=>fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  try{
+   actor=2;expect((await post({run_id:run,mode:'inspect'})).status).toBe(403);actor=1;caller=id;expect((await post({run_id:run,mode:'inspect'})).status).toBe(403);caller=undefined;
+   const proof=await (await post({run_id:run,mode:'inspect'})).json() as {evidence_hash:string};
+   expect(db.prepare('SELECT 1 FROM purchase_startup_dispositions').get()).toBeUndefined();
+   expect((await post({run_id:run,mode:'reconcile',expected_hash:proof.evidence_hash,coordination_reference:'Synthetic clearance'})).status).toBe(200);
+  }finally{await new Promise<void>(r=>server.close(()=>r()));}
+ });
+ it('does not hot-loop a backlog containing only excluded originals',()=>{acceptPurchaseEvent(db,source,event(p.order_id));release();for(let i=0;i<5;i++)scheduler.tick();expect(posts).toHaveLength(1);});
+ it.each(['tool','model','truncated','unknown','session','sidechain','native_drift','later_user'])('rejects incomplete or dispatched evidence: %s',(kind)=>{
+  const hash=inspect().evidence_hash;
+  if(kind==='tool')rows[1]!.message.content.push({type:'tool_use',name:'Bash',input:{}});
+  if(kind==='model')rows[1]!.message.model='claude';
+  if(kind==='truncated')rows.pop();
+  if(kind==='unknown')rows.push({type:'unrecognized',sessionId:session});
+  if(kind==='session')rows[1]!.sessionId=crypto.randomUUID();
+  if(kind==='sidechain')rows[1]!.isSidechain=true;
+  if(kind==='later_user')rows.push(rows[0]!);
+  save();if(kind==='native_drift')fs.appendFileSync(claudeSessionFilePath('/tmp',session),'{}\n');
+  expect(()=>release(hash)).toThrow();expect(db.prepare('SELECT 1 FROM purchase_startup_dispositions').get()).toBeUndefined();
+ });
+ it.each(['UNKNOWN_LAUNCH','UNKNOWN_RUNNER_RESTART','SOURCE_UNKNOWN','SOURCE_BLOCKED','WORKER_PASS_UNACKNOWLEDGED'])('never clears permanent %s fences',(reason)=>{
+  db.prepare('UPDATE purchase_event_batches SET blocked_reason=? WHERE run_id=?').run(reason,run);expect(()=>release()).toThrow('STARTUP_FAILURE_NOT_PROVEN');
+ });
+ it('requires current owner/task/project access and stops after drift',()=>{
+  const hash=inspect().evidence_hash;
+  expect(()=>reconcilePurchaseStartup(db,dir,2,undefined,{run_id:run,mode:'inspect'})).toThrow('ACCESS');
+  expect(()=>reconcilePurchaseStartup(db,dir,1,id,{run_id:run,mode:'inspect'})).toThrow('PLATFORM_DEV');
+  db.prepare('UPDATE scheduled_tasks SET project_id=NULL WHERE id=?').run(task);expect(()=>release(hash)).toThrow('ACCESS');
+ });
+ it('freshness pins native bytes even when changed evidence would otherwise pass',()=>{const hash=inspect().evidence_hash;rows[0]!.message.content[0].text+=' changed';save();expect(()=>release(hash)).toThrow('FRESH_STARTUP');});
+});
