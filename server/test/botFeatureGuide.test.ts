@@ -135,10 +135,11 @@ describe('living bot guide release contract', () => {
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for (const elevated of [false,true]) expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated})).toContain(f.agent);
   });
-  it('announces the authorized Sol upgrade to employees and current agent instructions', () => {
-    const feature = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'provider-model-updates')!;
+  it('announces verified Haiku availability to employees and current agent instructions', () => {
+    const feature = botFeatureCatalog(Date.parse('2026-10-09')).features.find(f => f.id === 'provider-model-updates')!;
     expect(feature.isNew).toBe(true);
-    expect(feature.announcement).toContain('GPT-6.1 Sol replaces GPT-6 Sol');
+    expect(feature.announcement).toContain('Claude Haiku 5.5');
+    expect(feature.agent).toContain('connected account catalog and a live Claude Code turn');
     expect(feature.agent).toContain('owner-authorized migration');
     expect(feature.limits).toContain('does not migrate explicit conversation or bot selections');
     expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
