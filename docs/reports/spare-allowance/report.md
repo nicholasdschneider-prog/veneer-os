@@ -55,7 +55,7 @@ actual runtime/scene and bounded foreground-safe CPU/GPU execution remain prereq
 Piper returned a one-batch, 100-second substantive-work source-reconciliation definition,
 leaving 20 seconds for its final checkpoint. Enrollment binds connected accounts from
 the original chat; actual run eligibility is evaluated by the scheduler. First enrollment
-is useful source reconciliation and draft preparation, not speculative rendering. Nothing was rendered, installed, published or charged in this build.
+is useful source reconciliation and draft preparation, not speculative rendering. No tank rendering, Blender installation, website publication or paid generation occurred in this build.
 
 - [Piper workflow](/Users/archerclawdington/Projects/ERVP/out/piper/expiring-allowance-tanks-20261009/workflow.md)
 - [Piper backlog](/Users/archerclawdington/Projects/ERVP/out/piper/expiring-allowance-tanks-20261009/backlog.json)
@@ -68,8 +68,14 @@ is useful source reconciliation and draft preparation, not speculative rendering
 Root `npm run typecheck`, full `npm test` and root `npm run build` passed using Node 24.
 Final suite: 3,867 server tests passed (15 skipped), 1,013 web tests passed, 51
 browser-manager tests passed and 30 installer tests passed. The focused native account
-reconnection regression also passed. Deployment is pending root `npm run restart` and
-installed schema/service readbacks. Fixtures verify account-specific native binding, rejection without
+reconnection regression also passed. Commit `012d58b` was pushed to `origin main`. Root `npm run restart` refreshed web
+and runner; runner termination stopped the calling shell. Root `npm run restart --
+veneer-pro-app-runner veneer-pro-term veneer-browser-manager` then successfully
+refreshed the remaining services. Root `npm run health` verifies local web/runner
+health and four tunnel connections. Public front-door HTTP 302 proves reachability,
+not authenticated browser delivery. Authenticated `list_spare_tasks` succeeds on the
+installed schema with the intended original-chat scope and enabled queue. No live
+optional batch or provider generation was launched during validation. Fixtures verify account-specific native binding, rejection without
 credential/paid fallback proof, no global failover, authorization drift, time/DST/reset
 boundaries, reserve, normal-work preemption, immutable checkpoints and restart/no-replay.
 HTTP fixtures verify owner-only access, original-bot scoping and durable idempotency.
@@ -134,3 +140,11 @@ Native fixture cleanup uses bounded filesystem retries for asynchronous child lo
 - [web/src/screens/Settings.tsx](/Users/archerclawdington/veneer-os/web/src/screens/Settings.tsx)
 - [web/src/screens/settings/SpareAllowancePanel.tsx](/Users/archerclawdington/veneer-os/web/src/screens/settings/SpareAllowancePanel.tsx)
 - [web/src/screens/settings/UsagePage.tsx](/Users/archerclawdington/veneer-os/web/src/screens/settings/UsagePage.tsx)
+
+## Content handoff state
+
+Piper received the deployed integration contract and enrollment instruction in existing
+coordination thread `203b7585-6c81-4cea-bb9d-ed336e0fd130`. Its original chat is currently
+busy with normal work, so coordination delivery is queued without interruption. The
+one-batch task definition is prepared; enrollment must be performed by the original
+Piper identity after that work finishes. It is not falsely reported as enrolled here.
