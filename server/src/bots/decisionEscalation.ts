@@ -1,14 +1,16 @@
 import crypto from 'node:crypto';
 import type { UserRow } from '../db/db.js';
-import { queueNotification } from '../botWorkflows/notifications.js';
+import { queueEscalationNotification, queueNotification } from '../botWorkflows/notifications.js';
 import { botCalls } from './botCalls.js';
 
 /**
  * Stale question escalation. A question card still waiting for a human after more than four
  * business hours is escalated once per business day to its assignee and the install owner,
  * through the existing push outbox and the existing bot call rings. Nothing here answers,
- * approves, revises or reorders a decision, and no new channel is opened: every notification
- * preference, quiet hour, calling hour, do-not-disturb and stopped ring still applies.
+ * approves, revises or reorders a decision, and no new channel is opened. For the install owner
+ * (Nick, October 9 2026) the escalation ignores which bots they turned notifications and calls on
+ * for; do not disturb, quiet and calling hours, the hourly phone cap and a question they told to
+ * stop ringing still apply. Other recipients keep every per-bot preference.
  */
 
 export const BUSINESS_ZONE = 'America/New_York';
@@ -72,16 +74,21 @@ export interface EscalationCard { id: string; conversation_id: string; version: 
 export type RingOutcome = ReturnType<ReturnType<typeof botCalls>['rearm']> | 'error';
 export interface EscalationAdapters {
   /** Queue the usual "a bot needs your input" push for one person. Returns devices queued. */
-  notify(user: UserRow, card: EscalationCard, eventKey: string, now: number): number;
+  notify(user: UserRow, card: EscalationCard, eventKey: string, now: number, owner: boolean): number;
   /** Make one re-ring due for one person through the existing call ring. */
-  ring(user: UserRow, card: EscalationCard, now: number): RingOutcome;
+  ring(user: UserRow, card: EscalationCard, now: number, owner: boolean): RingOutcome;
 }
 type Ctx = Parameters<typeof botCalls>[0];
 
 export function defaultEscalationAdapters(ctx: Ctx): EscalationAdapters {
   return {
-    notify: (user, card, key, now) => queueNotification(ctx, card.conversation_id, key, 'input', `#/bots/${encodeURIComponent(card.id)}`, new Date(now).toISOString(), [user.id]),
-    ring: (user, card, now) => botCalls(ctx, user).rearm(card.id, now),
+    notify: (user, card, key, now, owner) => {
+      const href = `#/bots/${encodeURIComponent(card.id)}`;
+      return owner
+        ? queueEscalationNotification(ctx, card.conversation_id, key, href, [user.id], new Date(now).toISOString())
+        : queueNotification(ctx, card.conversation_id, key, 'input', href, new Date(now).toISOString(), [user.id]);
+    },
+    ring: (user, card, now, owner) => botCalls(ctx, user).rearm(card.id, now, { override: owner }),
   };
 }
 
@@ -127,8 +134,9 @@ export function escalateStaleDecisions(ctx: Ctx, now = Date.now(), adapters: Esc
       const key = `escalation:${card.id}:${card.version}:${day}`;
       const outcomes = [...recipients.values()].map(({ user, roles }) => {
         let pushes = 0; let ring: RingOutcome;
-        try { pushes = adapters.notify(user, card, key, now); } catch { pushes = -1; }
-        try { ring = adapters.ring(user, card, now); } catch { ring = 'error'; }
+        const owner = roles.includes('owner');
+        try { pushes = adapters.notify(user, card, key, now, owner); } catch { pushes = -1; }
+        try { ring = adapters.ring(user, card, now, owner); } catch { ring = 'error'; }
         return { user_id: user.id, roles, pushes, ring };
       });
       const queued = outcomes.reduce((n, o) => n + Math.max(0, o.pushes), 0);
@@ -139,7 +147,7 @@ export function escalateStaleDecisions(ctx: Ctx, now = Date.now(), adapters: Esc
     if (!result) continue;
     // Ids, counts and outcome categories only: never question, customer or proposal text.
     log(`[decision-escalation] decision=${card.id} version=${card.version} day=${day} waited_business_minutes=${minutes} ` +
-      `recipients=${result.outcomes.map(o => `${o.user_id}:${o.roles.join('+')}:push=${o.pushes}:ring=${o.ring}`).join(',') || 'none'} pushes=${result.queued}`);
+      `recipients=${result.outcomes.map(o => `${o.user_id}:${o.roles.join('+')}:push=${o.pushes}:ring=${o.ring === 'stopped' ? 'stopped_by_user' : o.ring}`).join(',') || 'none'} pushes=${result.queued}`);
     done.push({ decisionId: card.id, version: card.version, recipients: [...recipients.keys()] });
   }
   return done;

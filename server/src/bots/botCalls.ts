@@ -40,7 +40,7 @@ export function normalizePhone(input: string): string | null {
 interface SettingsRow { dnd: number; window_start: string; window_end: string; timezone: string; active_ms: number; idle_ms: number; phone: string | null; phone_enabled: number }
 type Ctx = Pick<AppContext, 'db' | 'liveVoice'> & { doppler?: Pick<AppContext['doppler'], 'get'> };
 export interface PhoneCall { userId: number; logId: string; to: string; conversationId: string; decisionId: string | null }
-interface RingRow { decision_id: string; state: 'ringing' | 'missed' | 'answered' | 'stopped'; attempts: number; ring_started_ms: number; next_attempt_ms: number; pushed: number }
+interface RingRow { decision_id: string; state: 'ringing' | 'missed' | 'answered' | 'stopped'; attempts: number; ring_started_ms: number; next_attempt_ms: number; pushed: number; escalated: number }
 export interface Ring { decisionId: string; conversationId: string; botName: string; question: string; remainingMs: number }
 
 export function inCallWindow(s: Pick<SettingsRow, 'window_start' | 'window_end' | 'timezone'>, now: number) {
@@ -70,7 +70,7 @@ export function botCalls(ctx: Ctx, user: UserRow) {
     remainingMs: Math.max(0, r.ring_started_ms + RING_MS - now),
   });
   const miss = (decisionId: string, now: number) => {
-    db.prepare("UPDATE bot_call_rings SET state='missed',next_attempt_ms=? WHERE user_id=? AND decision_id=? AND state='ringing'").run(now + RETRY_MS, user.id, decisionId);
+    db.prepare("UPDATE bot_call_rings SET state='missed',next_attempt_ms=?,escalated=0 WHERE user_id=? AND decision_id=? AND state='ringing'").run(now + RETRY_MS, user.id, decisionId);
     db.prepare('UPDATE bot_call_settings SET idle_ms=? WHERE user_id=?').run(now, user.id);
   };
   const onCall = () => !!ctx.liveVoice?.status(user.id) || phoneBusy(db,user.id);
@@ -85,11 +85,12 @@ export function botCalls(ctx: Ctx, user: UserRow) {
     const bots = enabledBots();
     const busy = onCall();
     const ringing = db.prepare("SELECT * FROM bot_call_rings WHERE user_id=? AND state='ringing'").get(user.id) as RingRow | undefined;
-    if (!ringing && (s.dnd || busy || !bots.size)) return null;
+    const escalatedWaiting = () => !!db.prepare("SELECT 1 FROM bot_call_rings WHERE user_id=? AND escalated=1 AND state<>'stopped'").get(user.id);
+    if (!ringing && (s.dnd || busy || (!bots.size && !escalatedWaiting()))) return null;
     const line = answerable();
     if (ringing) {
       const d = line.find(q => q.id === ringing.decision_id);
-      if (d && bots.has(d.conversation_id) && !s.dnd && !busy && now - ringing.ring_started_ms < RING_MS) return view(ringing, d, now);
+      if (d && (bots.has(d.conversation_id) || ringing.escalated) && !s.dnd && !busy && now - ringing.ring_started_ms < RING_MS) return view(ringing, d, now);
       miss(ringing.decision_id, now);
       return null;
     }
@@ -98,8 +99,9 @@ export function botCalls(ctx: Ctx, user: UserRow) {
     if (now - Math.max(s.idle_ms, lastCall) < PAUSE_MS) return null;
     const rings = new Map((db.prepare('SELECT * FROM bot_call_rings WHERE user_id=?').all(user.id) as RingRow[]).map(r => [r.decision_id, r]));
     const next = line.find(d => {
-      if (!bots.has(d.conversation_id)) return false;
       const r = rings.get(d.id);
+      // An escalated question rings once even when this person never turned calls on for its bot.
+      if (!bots.has(d.conversation_id) && !r?.escalated) return false;
       return !r || (r.state !== 'stopped' && r.next_attempt_ms <= now);
     });
     return next ? view(startRing(next.id, now, true), next, now) : null;
@@ -157,7 +159,7 @@ export function botCalls(ctx: Ctx, user: UserRow) {
         const d = answerable().find(q => q.id === decisionId);
         if (!r || r.state === 'stopped' || !d) throw new Error('That call is no longer waiting. The question is still on your desk.');
         // If the call ends without an answer, the bot may try again after the usual gap.
-        db.prepare("UPDATE bot_call_rings SET state='answered',next_attempt_ms=? WHERE user_id=? AND decision_id=?").run(now + RETRY_MS, user.id, decisionId);
+        db.prepare("UPDATE bot_call_rings SET state='answered',next_attempt_ms=?,escalated=0 WHERE user_id=? AND decision_id=?").run(now + RETRY_MS, user.id, decisionId);
         db.prepare('UPDATE bot_call_settings SET idle_ms=? WHERE user_id=?').run(now, user.id);
         return { conversationId: d.conversation_id, decisionId };
       })();
@@ -168,7 +170,7 @@ export function botCalls(ctx: Ctx, user: UserRow) {
       return db.transaction(() => {
         const d = answerable().find(q => q.id === decisionId);
         const r = ringRow(decisionId);
-        if (!d || !r || r.state === 'stopped' || onCall() || !enabledBots().has(d.conversation_id)) return null;
+        if (!d || !r || r.state === 'stopped' || onCall() || (!enabledBots().has(d.conversation_id) && !r.escalated)) return null;
         const other = db.prepare("SELECT decision_id FROM bot_call_rings WHERE user_id=? AND state='ringing' AND decision_id<>?").get(user.id, decisionId) as { decision_id: string } | undefined;
         if (other) miss(other.decision_id, now);
         return view(startRing(decisionId, now, false), d, now);
@@ -185,7 +187,7 @@ export function botCalls(ctx: Ctx, user: UserRow) {
         const s = row();
         if (!s.phone_enabled || !s.phone || !phoneAvailable() || onCall()) return null;
         if (now - s.active_ms <= PRESENT_MS || !inCallWindow(s, now) || phoneCallsLastHour(now) >= PHONE_CALLS_PER_HOUR) return null;
-        const reserved = db.prepare("UPDATE bot_call_rings SET state='answered',next_attempt_ms=?,pushed=1 WHERE user_id=? AND decision_id=? AND state='ringing'").run(now + RETRY_MS, user.id, ring.decisionId);
+        const reserved = db.prepare("UPDATE bot_call_rings SET state='answered',next_attempt_ms=?,pushed=1,escalated=0 WHERE user_id=? AND decision_id=? AND state='ringing'").run(now + RETRY_MS, user.id, ring.decisionId);
         if (!reserved.changes) return null;
         db.prepare('UPDATE bot_call_settings SET idle_ms=? WHERE user_id=?').run(now, user.id);
         return { userId: user.id, logId: logPhoneCall(ring.decisionId, now), to: s.phone, conversationId: ring.conversationId, decisionId: ring.decisionId };
@@ -214,17 +216,25 @@ export function botCalls(ctx: Ctx, user: UserRow) {
      * A question waited too long: make its next ring due now instead of after the retry gap.
      * Nothing rings here. advance() and phoneFor() still decide whether and how to ring, so do not
      * disturb, calling hours, the pause, the hourly phone cap and a stopped question all still apply.
+     * With `override` (the install owner's escalation) the question rings once even if this person
+     * never turned calls on for its bot; the flag clears when that ring ends.
      */
-    rearm(decisionId: string, now = Date.now()): 'rearmed' | 'due' | 'ringing' | 'stopped' | 'calls_off' | 'not_answerable' {
+    rearm(decisionId: string, now = Date.now(), opts: { override?: boolean } = {}): 'rearmed' | 'due' | 'ringing' | 'stopped' | 'calls_off' | 'not_answerable' {
       return db.transaction(() => {
         const d = answerable().find(q => q.id === decisionId);
         if (!d) return 'not_answerable';
-        if (!enabledBots().has(d.conversation_id)) return 'calls_off';
+        const enabled = enabledBots().has(d.conversation_id);
+        if (!enabled && !opts.override) return 'calls_off';
         const r = ringRow(decisionId);
-        if (!r) return 'due';
+        if (!r) {
+          if (enabled) return 'due';
+          db.prepare("INSERT INTO bot_call_rings(user_id,decision_id,state,attempts,next_attempt_ms,escalated) VALUES(?,?,'missed',0,?,1)").run(user.id, decisionId, now);
+          return 'rearmed';
+        }
         if (r.state === 'stopped' || r.state === 'ringing') return r.state;
-        if (r.next_attempt_ms <= now) return 'due';
-        db.prepare("UPDATE bot_call_rings SET next_attempt_ms=? WHERE user_id=? AND decision_id=? AND state IN ('missed','answered')").run(now, user.id, decisionId);
+        const flag = enabled ? r.escalated : 1;
+        if (r.next_attempt_ms <= now && flag === r.escalated) return 'due';
+        db.prepare("UPDATE bot_call_rings SET next_attempt_ms=?,escalated=? WHERE user_id=? AND decision_id=? AND state IN ('missed','answered')").run(Math.min(now, r.next_attempt_ms), flag, user.id, decisionId);
         return 'rearmed';
       })();
     },
@@ -237,7 +247,8 @@ export function botCalls(ctx: Ctx, user: UserRow) {
  */
 export function tickBotCalls(ctx: Ctx, now = Date.now()) {
   const users = ctx.db.prepare(`SELECT u.* FROM users u WHERE u.status='active'
-    AND EXISTS (SELECT 1 FROM bot_call_bots b WHERE b.user_id=u.id AND b.enabled=1)`).all() as UserRow[];
+    AND (EXISTS (SELECT 1 FROM bot_call_bots b WHERE b.user_id=u.id AND b.enabled=1)
+      OR EXISTS (SELECT 1 FROM bot_call_rings r WHERE r.user_id=u.id AND r.escalated=1 AND r.state<>'stopped'))`).all() as UserRow[];
   const pushes: { userId: number; ring: Ring }[] = [];
   const phones: PhoneCall[] = [];
   for (const user of users) {

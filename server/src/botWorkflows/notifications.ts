@@ -139,6 +139,35 @@ export function queueNotification(
       ).changes;
   return queued;
 }
+/**
+ * A stale question escalated to the install owner. Queued for every device of these people
+ * whether or not they turned notifications on for this bot; the sender still requires that
+ * they can view the conversation, still holds it through that bot's quiet hours, and drops it
+ * under the person's do not disturb.
+ */
+export function queueEscalationNotification(
+  ctx: Pick<AppContext, 'db'>,
+  conversationId: string,
+  key: string,
+  href: string,
+  userIds: readonly number[],
+  at = new Date().toISOString(),
+) {
+  if (!userIds.length) return 0;
+  const rows = ctx.db
+    .prepare(
+      `SELECT id FROM bot_push_devices WHERE user_id IN (${userIds.map(() => '?').join(',')}) AND julianday(created_at)<=julianday(?)`,
+    )
+    .all(...userIds, at) as { id: string }[];
+  let queued = 0;
+  for (const d of rows)
+    queued += ctx.db
+      .prepare(
+        "INSERT OR IGNORE INTO bot_notification_outbox(id,device_id,conversation_id,event_key,kind,href,next_attempt_at,escalation) VALUES(?,?,?,?,'input',?,?,1)",
+      )
+      .run(crypto.randomUUID(), d.id, conversationId, key, href, new Date().toISOString()).changes;
+  return queued;
+}
 export async function tickNotifications(
   ctx: AppContext,
   send = webpush.sendNotification,
@@ -183,6 +212,7 @@ export async function tickNotifications(
     kind: 'input' | 'blocked' | 'completed';
     href: string;
     attempts: number;
+    escalation: number;
   }[];
   for (const o of due) {
     const c = ctx.db
@@ -196,11 +226,16 @@ export async function tickNotifications(
         'SELECT * FROM bot_notification_preferences WHERE user_id=? AND conversation_id=?',
       )
       .get(o.user_id, o.conversation_id) as Preference | undefined;
+    const dnd = o.escalation
+      ? Boolean(
+          (ctx.db.prepare('SELECT dnd FROM bot_call_settings WHERE user_id=?').get(o.user_id) as { dnd: number } | undefined)?.dnd,
+        )
+      : false;
     if (
       !c ||
       !user ||
-      !p ||
-      !p[o.kind] ||
+      dnd ||
+      (!o.escalation && (!p || !p[o.kind])) ||
       !canViewConversation(user, c, ctx.db)
     ) {
       ctx.db
@@ -208,7 +243,7 @@ export async function tickNotifications(
         .run(o.id);
       continue;
     }
-    if (inQuietHours(p, now)) {
+    if (p && inQuietHours(p, now)) {
       ctx.db
         .prepare(
           'UPDATE bot_notification_outbox SET next_attempt_at=? WHERE id=?',

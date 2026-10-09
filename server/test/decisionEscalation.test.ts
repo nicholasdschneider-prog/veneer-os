@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { migrate } from '../src/db/migrate.js';
 import { createBotService, proposalSchema } from '../src/bots/service.js';
-import { botCalls, tickBotCalls, RETRY_MS } from '../src/bots/botCalls.js';
+import { botCalls, tickBotCalls, RETRY_MS, RING_MS } from '../src/bots/botCalls.js';
+import { tickNotifications } from '../src/botWorkflows/notifications.js';
 import {
   businessDay, businessMsBetween, defaultEscalationAdapters, escalateStaleDecisions, escalationEnabled,
   type EscalationAdapters,
@@ -185,24 +186,50 @@ describe('stale question escalation', () => {
     });
     const settings = (user: number) => db.prepare('SELECT * FROM users WHERE id=?').get(user) as UserRow;
 
-    it('queues the usual input push only for recipients whose notifications are on', () => {
+    it('pushes the owner whatever their per-bot notification settings, and honors them for everyone else', () => {
       const id = card('2026-10-05T12:00:00Z', { assignee: 1 });
       run(NOW, defaultEscalationAdapters(ctx));
-      expect(db.prepare('SELECT device_id,kind,href,event_key FROM bot_notification_outbox').all())
-        .toEqual([{ device_id: 'd1', kind: 'input', href: `#/bots/${id}`, event_key: `escalation:${id}:1:2026-10-05` }]);
-      // Turning input notifications off for that bot is honored.
+      expect(db.prepare('SELECT device_id,kind,href,event_key,escalation FROM bot_notification_outbox').all())
+        .toEqual([{ device_id: 'd1', kind: 'input', href: `#/bots/${id}`, event_key: `escalation:${id}:1:2026-10-05`, escalation: 1 }]);
+      // The owner turned input notifications off for this bot, and never turned any on for bot b: still pushed.
       db.prepare("UPDATE bot_notification_preferences SET input=0 WHERE user_id=1").run();
-      const quiet = card('2026-10-05T12:00:00Z', { assignee: 1 });
+      const off = card('2026-10-05T12:00:00Z', { assignee: 1 });
+      const otherBot = card('2026-10-05T12:00:00Z', { assignee: 1, conversation: 'b' });
       run(NOW, defaultEscalationAdapters(ctx));
-      expect(db.prepare('SELECT count(*) AS n FROM bot_notification_outbox WHERE href=?').get(`#/bots/${quiet}`)).toEqual({ n: 0 });
+      for (const c of [off, otherBot]) expect(db.prepare('SELECT count(*) AS n FROM bot_notification_outbox WHERE href=? AND device_id=?').get(`#/bots/${c}`, 'd1')).toEqual({ n: 1 });
+      // A non-owner assignee who turned input notifications off for this bot is not pushed.
+      db.prepare("UPDATE bot_notification_preferences SET input=0 WHERE user_id=3").run();
+      const forMember = card('2026-10-05T12:00:00Z', { assignee: 3 });
+      run(NOW, defaultEscalationAdapters(ctx));
+      expect(db.prepare('SELECT count(*) AS n FROM bot_notification_outbox WHERE href=? AND device_id=?').get(`#/bots/${forMember}`, 'd3')).toEqual({ n: 0 });
+    });
+
+    it('delivers an owner escalation push without a bot preference, but never under do not disturb', async () => {
+      const store = new Map<string, string>();
+      const secrets = { getApiKeyOverride: (k: string) => store.get(k) ?? null, setApiKeyOverride: (k: string, v: string) => { store.set(k, v); }, clearApiKeyOverride: (k: string) => { store.delete(k); } };
+      const sendCtx = { ...ctx, secrets } as unknown as AppContext;
+      store.set('bot-push-device-d1', JSON.stringify({ endpoint: 'https://fcm.googleapis.com/fcm/send/test', keys: { p256dh: 'A'.repeat(87), auth: 'B'.repeat(22) } }));
+      db.prepare('DELETE FROM bot_notification_preferences').run();
+      const id = card('2026-10-05T12:00:00Z', { assignee: 1, conversation: 'b' });
+      run(NOW, defaultEscalationAdapters(ctx));
+      const send = vi.fn(async () => ({}));
+      await tickNotifications(sendCtx, send as never, new Date(at(NOW)));
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(db.prepare('SELECT sent_at IS NOT NULL AS sent FROM bot_notification_outbox WHERE href=?').get(`#/bots/${id}`)).toEqual({ sent: 1 });
+      botCalls(ctx, settings(1)).update({ dnd: true });
+      const quiet = card('2026-10-05T12:00:00Z', { assignee: 1, conversation: 'b' });
+      run(NOW, defaultEscalationAdapters(ctx));
+      const muted = vi.fn(async () => ({}));
+      await tickNotifications(sendCtx, muted as never, new Date(at(NOW)));
+      expect(muted).not.toHaveBeenCalled();
+      expect(db.prepare('SELECT abandoned FROM bot_notification_outbox WHERE href=?').get(`#/bots/${quiet}`)).toEqual({ abandoned: 1 });
     });
 
     it('makes a waiting re-ring due now, and leaves every call setting in charge', () => {
       const id = card('2026-10-05T12:00:00Z', { assignee: 1 });
       const owner = settings(1);
-      // Calls not turned on for this bot: nothing is armed.
-      run(NOW, defaultEscalationAdapters(ctx));
-      expect(JSON.parse((db.prepare('SELECT outcome_json FROM bot_decision_escalations WHERE decision_id=?').get(id) as { outcome_json: string }).outcome_json)[0].ring).toBe('calls_off');
+      // Without the owner override, a bot whose calls are off is not rung.
+      expect(botCalls(ctx, owner).rearm(id, at(NOW))).toBe('calls_off');
       expect(db.prepare('SELECT count(*) AS n FROM bot_call_rings').get()).toEqual({ n: 0 });
 
       botCalls(ctx, owner).update({ bot: { conversationId: 'a', enabled: true } });
@@ -222,6 +249,35 @@ describe('stale question escalation', () => {
       // A card this person cannot answer is never rung for them.
       const forStaff = card('2026-10-05T12:00:00Z', { assignee: 2 });
       expect(botCalls(ctx, owner).rearm(forStaff, at(NOW))).toBe('not_answerable');
+    });
+
+    it('rings the owner once even when calls are off for that bot, then never again on its own', () => {
+      const id = card('2026-10-05T12:00:00Z', { assignee: 1 });
+      run(NOW, defaultEscalationAdapters(ctx));
+      expect(JSON.parse((db.prepare('SELECT outcome_json FROM bot_decision_escalations WHERE decision_id=?').get(id) as { outcome_json: string }).outcome_json)[0].ring).toBe('rearmed');
+      expect(db.prepare('SELECT state,escalated FROM bot_call_rings WHERE decision_id=?').get(id)).toEqual({ state: 'missed', escalated: 1 });
+      expect(tickBotCalls(ctx, at(NOW)).pushes.map(p => p.ring.decisionId)).toEqual([id]);
+      // The ring ends unanswered: the override is spent, and the usual 15-minute retries do not apply to a bot with calls off.
+      botCalls(ctx, settings(1)).advance(at(NOW) + RING_MS + 1);
+      expect(db.prepare('SELECT state,escalated FROM bot_call_rings WHERE decision_id=?').get(id)).toEqual({ state: 'missed', escalated: 0 });
+      expect(tickBotCalls(ctx, at(NOW) + RETRY_MS + RING_MS + 2).pushes).toEqual([]);
+    });
+
+    it('an owner escalation still respects do not disturb and a stopped question', () => {
+      const id = card('2026-10-05T12:00:00Z', { assignee: 1 });
+      const owner = settings(1);
+      botCalls(ctx, owner).update({ dnd: true });
+      expect(botCalls(ctx, owner).rearm(id, at(NOW), { override: true })).toBe('rearmed');
+      expect(tickBotCalls(ctx, at(NOW)).pushes).toEqual([]);
+      botCalls(ctx, owner).update({ dnd: false });
+      botCalls(ctx, owner).stop(id);
+      expect(botCalls(ctx, owner).rearm(id, at(NOW), { override: true })).toBe('stopped');
+      expect(tickBotCalls(ctx, at(NOW)).pushes).toEqual([]);
+      // A stopped question is logged as the person's own choice.
+      const other = card('2026-10-05T12:00:00Z', { assignee: 1 });
+      botCalls(ctx, owner).stop(other);
+      run(NOW, defaultEscalationAdapters(ctx));
+      expect(lines.some(l => l.includes(`decision=${other}`) && l.includes('ring=stopped_by_user'))).toBe(true);
     });
 
     it('escalation pass re-arms the ring for the next call poll', () => {
