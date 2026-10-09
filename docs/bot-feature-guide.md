@@ -26,7 +26,9 @@ A nonempty announcement plus its update date earns a **New** callout for 30 days
 
 ## Bot awareness
 
-`botFeatureInstructions()` derives current capability instructions from the same catalog. Core rules v15 deliver them to all agents, including registered bots, through the existing `prepareConversationInstructions` path on **every new turn**. Both normal toolbox materialization and its required-instruction fallback use that path. The instruction hash changes with the content, so resumed provider sessions receive updated instructions. Frozen agent/project snapshots and existing user roles remain intact.
+`botFeatureInstructions()` derives current capability instructions from the same catalog. Core rules v16 deliver them to all agents, including registered bots, through the existing `prepareConversationInstructions` path on **every new turn**. Both normal toolbox materialization and its required-instruction fallback use that path. The instruction hash changes with the content, so resumed provider sessions receive updated instructions. Frozen agent/project snapshots and existing user roles remain intact.
+
+Since build #672 (October 9, 2026) only features with a short `prompt` are injected, as one or two plain sentences each, and the injected catalog must stay under 3,000 words (pinned by `server/test/botFeatureGuide.test.ts`). Staged, unenrolled, single-worker and human-UI-only features keep their full guide entry and `agent` text but have no `prompt`; their tools still carry their own rules. Add a `prompt` only for something bots use in ordinary work.
 
 An idle bot receives the update before its next task; it is not woken merely to announce a feature or perform unrelated customer work. In-flight turns receive changes on their next turn. Guidance tells bots when to suggest/use each capability and retains authorization, approval, and setup limits. No owner broadcast or per-bot prompt editing is needed.
 

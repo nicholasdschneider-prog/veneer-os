@@ -124,9 +124,9 @@ it('routes all MCP calls with exact payloads and announces truthful limits to em
   expect(api).toHaveBeenCalledWith('/api/bots/custom-directions/'+path,{method:'POST',body:JSON.stringify({decision_id:decision})});
  }
  const feature=botFeatureCatalog(Date.parse('2026-10-08')).features.find(f=>f.id==='custom-direction-review')!;
- expect(feature.isNew).toBe(true);expect(feature.limits).toContain('No blanket verifier enrollment requirement');expect(botFeatureInstructions()).toContain(feature.agent);
+ expect(feature.isNew).toBe(true);expect(feature.limits).toContain('No blanket verifier enrollment requirement');expect(botFeatureInstructions()).toContain(`- ${feature.title}: ${feature.prompt}`);
  expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
- for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(feature.agent);
+ for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(feature.prompt!);
 });
 it('HTTP inspection is original-owner-only and exposes no executable entitlement',async()=>{
  const app=express();app.use(express.json());app.use((req,_res,next)=>{req.user=human.user;req.agentConversationId=(req.headers['x-test-bot'] as string|undefined)??bot.conversationId;next();});

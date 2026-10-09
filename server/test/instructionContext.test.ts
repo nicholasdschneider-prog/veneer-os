@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
+import { botFeatureInstructions } from '../src/featureGuide/catalog.js';
 import {
   LEGACY_GENERATED_INSTRUCTION_MARKER,
   cleanupLegacyGeneratedInstructionsOnce,
@@ -43,40 +44,19 @@ describe('instruction context migration', () => {
     db.prepare("UPDATE assistants SET instructions = 'A later unrelated role.' WHERE id=1").run();
     const result = prepareConversationInstructions(db, { workspaceDir: '/repo', assistantSlug: 'assistant', elevated: false }, 'existing');
     expect(result.developerInstructions).toContain('Current Veneer bot capabilities');
-    expect(result.developerInstructions).toContain('inspect_case_custody');
-    expect(result.developerInstructions).toContain('inspect_contact_verification');
-    expect(result.developerInstructions).toContain('No outreach approval ask before executable manifest');
-    expect(result.developerInstructions).toContain('No production trust installed by this release');
-    expect(result.developerInstructions).toContain('Routine training text, procedural documentation, task records and isolated artifacts do not require enqueue_build');
-    expect(result.developerInstructions).toContain('Keep software source, executable automation, dependencies, schemas and deployment work in the build queue');
-    expect(result.developerInstructions).toContain('defer that edit and continue unrelated work');
-
-    expect(result.developerInstructions).toContain('Proactively use ask_user');
-    expect(result.developerInstructions).toContain('no fixed option count cap');
-    expect(result.developerInstructions).toContain('list_bot_routines before save_bot_routine');
-    expect(result.developerInstructions).toContain('Teach a task');
-    expect(result.developerInstructions).toContain('timestamped narration');
-    expect(result.developerInstructions).toContain('inspect_routine_message');
-    expect(result.developerInstructions).toContain('retire_message_draft');
-    expect(result.developerInstructions).toContain('An explicit recorded human answer lowers the hand');
-    expect(result.developerInstructions).toContain('Without a fresh trusted proof, ready=false and execute=false');
-    expect(result.developerInstructions).toContain('Treat human result replies received mid-turn as follow-up input');
-    expect(result.developerInstructions).toContain('Rapid human follow-ups are retained through provider startup');
-    expect(result.developerInstructions).toContain('claim_routine_message');
-    expect(result.developerInstructions).toContain('/#/routine-reply-setup');
-    expect(result.developerInstructions).toContain('/#/routine-scope-review');
-    expect(result.developerInstructions).toContain('First observation must use the handoff request key');
-    expect(result.developerInstructions).toContain('A retired draft does not resolve the customer request');
-    expect(result.developerInstructions).toContain('manage_voice_preferences');
-    expect(result.developerInstructions).toContain('Ordinary chat agents must not claim to save these settings themselves.');
-    expect(result.developerInstructions).toContain('Listen beside Reply');
+    expect(result.developerInstructions).toContain(botFeatureInstructions());
+    expect(result.developerInstructions).toContain('training text needs no build slot');
+    expect(result.developerInstructions).toContain('Use ask_user for ordinary questions');
+    expect(result.developerInstructions).toContain('check list_bot_routines first');
+    expect(result.developerInstructions).toContain('record_decision_result');
+    expect(result.developerInstructions).toContain('withdraw_decision');
+    expect(result.developerInstructions).toContain('Answer a human result reply once');
     expect(result.developerInstructions).toContain('read_team_room');
     expect(result.developerInstructions).toContain('post_team_room_message');
-    expect(result.developerInstructions).toContain('Organize bots for personal display-group');
-    expect(result.developerInstructions).toContain('Chats → + (New conversation)');
-    expect(result.developerInstructions).toContain('reviewing shared context');
-    expect(result.developerInstructions).toContain('Room sessions do not inherit original external connections');
-    expect(result.developerInstructions).toContain('Casual groups created with + use team rooms');
+    expect(result.developerInstructions).toContain('Default to action.');
+    // Staged and unenrolled guarded contracts stay in the employee guide, not in every turn.
+    for (const staged of ['inspect_case_custody', 'inspect_contact_verification', 'inspect_routine_message', 'claim_routine_message', '/#/routine-scope-review', 'manage_voice_preferences'])
+      expect(result.developerInstructions).not.toContain(staged);
     expect(result.developerInstructions).toContain('Keep my original role.');
     expect(result.developerInstructions).not.toContain('A later unrelated role.');
     expect(ensureConversationInstructionSnapshot(db, 'existing')).toEqual(snapshot);

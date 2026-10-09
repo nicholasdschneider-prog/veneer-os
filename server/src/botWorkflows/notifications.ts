@@ -107,20 +107,24 @@ export function subscribeDevice(
   return id;
 }
 export function queueNotification(
-  ctx: AppContext,
+  ctx: Pick<AppContext, 'db'>,
   conversationId: string,
   key: string,
   kind: 'input' | 'blocked' | 'completed',
   href: string,
   at = new Date().toISOString(),
+  /** Only these people's devices; every other preference and gate still applies. */
+  userIds?: readonly number[],
 ) {
-  const rows = ctx.db
+  const rows = (ctx.db
     .prepare(
-      `SELECT d.id FROM bot_push_devices d JOIN bot_notification_preferences p ON p.user_id=d.user_id WHERE p.conversation_id=? AND p.${kind}=1 AND julianday(p.created_at)<=julianday(?) AND julianday(d.created_at)<=julianday(?)`,
+      `SELECT d.id,d.user_id FROM bot_push_devices d JOIN bot_notification_preferences p ON p.user_id=d.user_id WHERE p.conversation_id=? AND p.${kind}=1 AND julianday(p.created_at)<=julianday(?) AND julianday(d.created_at)<=julianday(?)`,
     )
-    .all(conversationId, at, at) as { id: string }[];
+    .all(conversationId, at, at) as { id: string; user_id: number }[])
+    .filter((d) => !userIds || userIds.includes(d.user_id));
+  let queued = 0;
   for (const d of rows)
-    ctx.db
+    queued += ctx.db
       .prepare(
         'INSERT OR IGNORE INTO bot_notification_outbox(id,device_id,conversation_id,event_key,kind,href,next_attempt_at) VALUES(?,?,?,?,?,?,?)',
       )
@@ -132,7 +136,8 @@ export function queueNotification(
         kind,
         href,
         new Date().toISOString(),
-      );
+      ).changes;
+  return queued;
 }
 export async function tickNotifications(
   ctx: AppContext,

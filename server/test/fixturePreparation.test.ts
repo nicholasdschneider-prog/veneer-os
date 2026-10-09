@@ -197,9 +197,9 @@ describe('authenticated preparation API', () => {
     const feature = BOT_FEATURES.find(f => f.id === 'sms-fixture-preparation')!;
     expect(feature.announcement).toBeNull(); expect(feature.limits).toContain('Not deployed');
     expect(feature.agent).toContain('PROTECTED_NATIVE_AUTH_BRIDGE_UNACCEPTED');
-    expect(botFeatureInstructions()).toContain(feature.agent);
-    expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'platform-dev', elevated: false })).toContain(feature.agent);
-    expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'platform-dev', elevated: true })).toContain(feature.agent);
+    expect(feature.prompt ?? null).toBeNull(); expect(botFeatureInstructions()).not.toContain(feature.agent);
+    expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'platform-dev', elevated: false })).not.toContain(feature.agent);
+    expect(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'platform-dev', elevated: true })).not.toContain(feature.agent);
     expect(employeeRouteAllowed('GET', '/fixture-tests/readiness')).toBe(false);
     expect(employeeRouteAllowed('POST', '/fixture-tests/runs')).toBe(false);
   });

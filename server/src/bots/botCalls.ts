@@ -210,6 +210,24 @@ export function botCalls(ctx: Ctx, user: UserRow) {
         ON CONFLICT(user_id,decision_id) DO UPDATE SET state='stopped'`).run(user.id, decisionId);
       return { ok: true, stopped: true };
     },
+    /**
+     * A question waited too long: make its next ring due now instead of after the retry gap.
+     * Nothing rings here. advance() and phoneFor() still decide whether and how to ring, so do not
+     * disturb, calling hours, the pause, the hourly phone cap and a stopped question all still apply.
+     */
+    rearm(decisionId: string, now = Date.now()): 'rearmed' | 'due' | 'ringing' | 'stopped' | 'calls_off' | 'not_answerable' {
+      return db.transaction(() => {
+        const d = answerable().find(q => q.id === decisionId);
+        if (!d) return 'not_answerable';
+        if (!enabledBots().has(d.conversation_id)) return 'calls_off';
+        const r = ringRow(decisionId);
+        if (!r) return 'due';
+        if (r.state === 'stopped' || r.state === 'ringing') return r.state;
+        if (r.next_attempt_ms <= now) return 'due';
+        db.prepare("UPDATE bot_call_rings SET next_attempt_ms=? WHERE user_id=? AND decision_id=? AND state IN ('missed','answered')").run(now, user.id, decisionId);
+        return 'rearmed';
+      })();
+    },
   };
 }
 

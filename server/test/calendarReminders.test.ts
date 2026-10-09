@@ -188,6 +188,6 @@ describe('staged read-only adapters', () => {
   it('publishes staged limits to employee guide and fresh/resumed instruction catalog', () => {
     const f = BOT_FEATURES.find(f=>f.id==='calendar-phone-reminders')!;
     expect(f.limits).toContain('staged'); expect(botFeatureCatalog(START).features.some(f=>f.id==='calendar-phone-reminders')).toBe(true);
-    expect(botFeatureInstructions()).toContain(f.agent); expect(f.agent).toContain('no live calls');
+    expect(botFeatureInstructions()).not.toContain(f.agent); expect(f.agent).toContain('no live calls');
   });
 });

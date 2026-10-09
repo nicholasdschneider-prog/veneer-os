@@ -7,6 +7,7 @@ import { tickSearch } from './search.js';
 import { tickNotifications, queueNotification, sendCallPush } from './notifications.js';
 import { startPhoneCall, tickBotCalls } from '../bots/botCalls.js';
 import { startCalendarReminderWorker } from '../calendarReminders/worker.js';
+import { escalateStaleDecisions, escalationEnabled } from '../bots/decisionEscalation.js';
 export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics = createWebOperationMetrics()) {
   const stopReminders=startCalendarReminderWorker(ctx);
   const stopLoopMetrics = startWebLoopMetrics(ctx.config.dataDir, metrics);
@@ -20,6 +21,10 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
       const bots = createBotService(ctx.db);
       metrics.measure('stale_questions', () => bots.withdrawStaleQuestions(ctx.config.staleQuestionWithdrawMs, Date.now(), ctx.config.resolvedQuestionWithdrawMs));
       metrics.measure('question_rechecks', () => bots.queueQuestionRechecks(ctx.config.questionRecheckMs));
+      // Before the call poll, so a re-ring made due here can ring in this same pass.
+      if (escalationEnabled()) {
+        try { escalateStaleDecisions(ctx); } catch { console.warn('[decision-escalation] Pass failed; retrying.'); }
+      }
       const calls = metrics.measure('call_poll', () => tickBotCalls(ctx));
       for (const { userId, ring } of calls.pushes) void sendCallPush(ctx, userId, ring).catch(() => {});
       for (const phone of calls.phones) void startPhoneCall(ctx, phone);

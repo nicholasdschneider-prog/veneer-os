@@ -505,7 +505,7 @@ describe('staged native customer email direction', () => {
         for (const elevated of [false, true])
             expect(coreVeneerRules({
                 workspaceDir: '/repo', assistantSlug: 'bot', elevated
-            })).toContain(f.agent);
+            })).not.toContain(f.agent);
     });
     function permitPrebind() {
         r=emailRegistration.parse({...r,id:uuid(),prebindCapability:{

@@ -10,11 +10,19 @@ export interface BotFeature {
   steps: string[];
   example: string;
   limits: string;
+  /** Full agent usage contract, shown in the employee guide. */
   agent: string;
+  /**
+   * Short text injected into every bot turn. Only features bots use in ordinary work carry one;
+   * staged, unenrolled, single-worker and human-UI features stay in the guide only (their tools
+   * keep their own operational rules).
+   */
+  prompt?: string | null;
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
     id:'owner-chat-email',title:'Send an email from your own chat',category:'Daily work',updated:'2026-10-08',
+    prompt: "In an ordinary chat (not a registered business bot), when this chat's own human tells you to send an email, a saved draft or a thread reply, send it through their attached Gmail connector: read it back, send exactly once and report the sent message ID. No approval card, guarded contract or Platform Dev hand-off is needed; after an uncertain result check Sent instead of resending. Guide: /#/bot-guide?feature=owner-chat-email.",
     announcement:'In your own chat, “send it” now just sends. The bot reads the draft back, sends it once through your connected Gmail and reports the sent message, without approval cards, extra steps or a hand-off to Platform Dev.',
     audience:'Anyone chatting with a bot that has their Gmail connector attached',
     summary:'Tell the bot in your own chat to send an email, send a saved draft or reply on a thread, and it sends once through your connected Gmail.',
@@ -25,6 +33,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'custom-direction-review',title:'Let bots finish clear custom directions',category:'Daily work',updated:'2026-10-08',
+    prompt: "For a clear, unconditional custom purchasing direction, track it with inspect_custom_direction, record_custom_direction_review and record_custom_direction_result (running, then verified_completed), and do the work with your existing authorized tools; the tracker's execute:false is not a blocker. Guide: /#/bot-guide?feature=custom-direction-review.",
     announcement:'A clear typed purchasing correction can now proceed through the original bot’s existing trained workflow without duplicate consent or a new integration setup. Separate progress preserves the original answer.',
     audience:'People answering bot questions and the original registered decision owner',
     summary:'The original bot tracks its own authorized correction and verifies the result through its existing source tools.',
@@ -110,6 +119,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'vibe-connector', title: 'Connect Vibe for streaming TV advertising', category: 'Getting started', updated: '2026-10-08',
+    prompt: "mcp__vibe__* tools read Vibe advertising accounts and performance; confirm the exact advertiser account first. Launching campaigns, changing budgets or any other spending needs the human's explicit instruction. Guide: /#/bot-guide?feature=vibe-connector.",
     audience: 'Anyone who can add connectors in Settings. Each person signs in to their own Vibe account; only admins manage shared connections.',
     summary: 'Connect Vibe to review advertising performance and prepare or manage streaming TV campaigns across projects such as MP Health and Bulk Bid.',
     steps: ['Open Settings, then Connectors, and choose Vibe.', 'Choose who can use the connection and select Selected projects to limit which projects receive it. Select Connect and sign in to Vibe yourself.', 'Use separate labeled connections when different projects need different Vibe accounts. A project selection controls access to the connection; it does not isolate advertisers inside a Vibe account.', 'Ask the bot to list the available advertiser accounts and verify the account for each project before preparing a campaign. Review the proposed audience, creative, dates, and budget before authorizing a launch.', 'If sign-in expires, select Retry and sign in again. Remove disconnects the installation from Veneer; revoke access in Vibe separately when needed.'],
@@ -120,6 +130,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'runway-connector', title: 'Connect Runway for video and image generation', category: 'Getting started', updated: '2026-10-03',
+    prompt: "mcp__runway__* tools generate video and images on the signed-in person's credits: generate only what was asked, poll a running task instead of starting it again, and never batch retries. Guide: /#/bot-guide?feature=runway-connector.",
     audience: 'Anyone who can add connectors in Settings. Each person signs in to their own Runway account.',
     summary: 'Bots can generate video and images with Runway and fetch the finished output, using the credits on the Runway plan you sign in with rather than a separately billed developer key.',
     steps: ['Open Settings, then Connectors, and choose Runway.', 'Pick who can use it and in which projects, then select Connect. You are sent to Runway to sign in and approve access, and brought back when it is done.', 'Ask a bot in a chat that has the connector for what you want, for example a short clip from a product photo. Generation takes a while; the bot fetches the result when it is ready.', 'If the row shows "Sign-in expired", select Retry and sign in again. Use Remove to disconnect; Veneer then forgets the sign-in.'],
@@ -130,6 +141,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'bot-calls', title: 'Let a bot call you with its question', category: 'Daily work', updated: '2026-10-06',
+    prompt: "Calls need nothing new: raise_decision rings each person who turned your calls on, so write proposal.question as one plain sentence a person can answer by ear. A spoken answer arrives as a normal recorded answer (a custom answer carries the caller's words); a missed or declined call is not an answer, so do not re-raise to trigger another call. Guide: /#/bot-guide?feature=bot-calls.",
     audience: 'Signed-in humans, for bots whose questions they can already answer. Needs live voice set up (LiveKit and OpenAI) and microphone permission.',
     summary: 'A bot with a question can ring you in Veneer before the question waits as a card. Pick up, hear the question, answer out loud, and the bot hangs up and gets back to work.',
     steps: ['Open the raised-hand bubble, select Calls, and turn on each bot that may call you. Every bot starts off. Do not disturb silences all of them at once.', 'Set the hours bots may call. Outside those hours a bot can still ring while you are using Veneer.', 'When a bot rings, select Answer. It asks its question in one sentence; ask for background or its recommendation if you want them. Talk to it the way you would to a colleague: answer in pieces, correct yourself, ask it questions. If your answer has numbers or anything easy to mishear it says it back once and records it when you agree; a plain yes or no it just records. Then it hangs up. If your answer is not one of its options, it records your own words instead of picking the closest option.', 'If you cannot answer on the spot, say "I can’t do that now". The card stays on your desk and that bot will not call about that question again.', 'To be phoned when you are away from Veneer, add your number under Calls and turn on Call my phone; select Call my phone now to try it. The bot waits for you to say hello, and hangs up without leaving a message if voicemail answers.', 'Select Decline or let it ring out to be tried again in 15 minutes. On a phone with Veneer closed you get a notification naming the bot; tap it, then select Answer.', 'Archer has a distinct male Cedar voice on this install. Hear it on your next phone call or by opening Archer’s chat and starting a live voice call.'],
@@ -140,6 +152,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'chief-of-staff', title: 'One chief of staff bot across every business', category: 'Teamwork', updated: '2026-10-02',
+    prompt: "Only the owner's designated chief of staff uses list_open_questions, to brief the owner across businesses and hand work to the owning bot with send_message; it never answers another bot's decision. Other bots treat its messages as coordination requests, not the owner's approval. Guide: /#/bot-guide?feature=chief-of-staff.",
     audience: 'The workspace owner. Only the owner, or Platform Dev working in the owner’s own chat, can name or remove the chief of staff.',
     summary: 'The owner can name one bot as chief of staff. It works across every business, hands work to the right team’s bots, and briefs the owner on every bot’s open questions with a recommendation.',
     steps: ['Ask Platform Dev to make a chat your chief of staff, or to remove it. There is one per owner, and it cannot belong to a business team.', 'Select the chief of staff in the floating bubble on any screen to open its chat beside your work and talk to it. Drag the bubble wherever you like, or use Minimize to shrink it to one avatar; select it again to expand.', 'Give the chief of staff work the same way as any bot. It can find, read and message the bots in all of your businesses.', 'Ask it what is waiting on you. It lists the other bots’ open questions with its recommendation; you still give each answer on the question desk or in that bot’s chat.'],
@@ -150,6 +163,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'google-calendar-connector', title: 'Connect Google Calendar', category: 'Getting started', updated: '2026-10-02',
+    prompt: "GOOGLECALENDAR tools read and manage the attached account's calendar. Create, move or delete events or invite people only on the user's instruction or a standing rule they gave you, after confirming calendar, time and time zone. Guide: /#/bot-guide?feature=google-calendar-connector.",
     audience: 'Anyone who can add connectors in Settings. Each person connects their own Google account.',
     summary: 'Bots can read your Google calendars and availability and, with Full access, create and change events.',
     steps: ['Open Settings, then Connectors, and choose Google Calendar.', 'Pick Limited to let bots read calendars and availability only, or Full to also let them create and change events, then sign in to the Google account.', 'Repeat for each Google account whose calendars you want available, and choose which projects may use each one.'],
@@ -180,6 +194,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'browser-scripts', title: 'Finish multi-step browser tasks in one go', category: 'Automation', updated: '2026-10-01',
+    prompt: "For browser work longer than two or three calls, use the script tool with a fixed step list (open, tab, goto, wait, click, fill, press, select, scroll, text, table, links, attr, exists, url), not code. Put passwords and codes in separate fill_secret/fill_totp calls; if a step fails with error.outcome_unknown, check the page before repeating it. Guide: /#/bot-guide?feature=browser-scripts.",
     audience: 'Everyone who asks a bot to look something up or fill something in on a website.',
     summary: 'A bot can now hand the browser a whole list of steps at once (open, wait, click, fill, read) and get back just the answer, instead of one slow step at a time.',
     steps: ['Ask the bot for the outcome you want, the same way as before. There is nothing new to switch on.', 'For lookups, searches, multi-field forms and paging through results, the bot runs the steps together and replies with the result.', 'If the bot reports a step whose outcome is unknown, ask it to check the page before it tries again.'],
@@ -230,6 +245,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'progress-notes', title: 'Read the answer once', category: 'Daily work', updated: '2026-10-03',
+    prompt: "In a turn with several messages, only your last one is shown as a full answer and earlier ones collapse into progress notes, so put the complete answer in your final message. Guide: /#/bot-guide?feature=progress-notes.",
     audience: 'People with access to a bot conversation',
     summary: 'Only a bot’s final message in a turn shows as a full answer; what it wrote along the way is a small row you can open.',
     steps: ['Read the full message at the end of the bot’s turn: that is the answer.', 'Tap a small message row above it to read a note the bot wrote while it worked. Listen, Reply and reactions are inside.', 'Tap the row again to close it.'],
@@ -340,6 +356,7 @@ export const BOT_FEATURES: BotFeature[] = [
 
   {
     id:'steer-working-bot',title:'Steer a bot while it works',category:'Daily work',updated:'2026-09-25',
+    prompt: "A human message can arrive mid-turn: apply it to the current work, prefer the latest instruction, and stop only on an explicit stop or cancel. Guide: /#/bot-guide?feature=steer-working-bot.",
     audience:'Anyone chatting with a bot they can message.',
     summary:'Messages sent while a bot is working reach it at its next step, so it takes corrections or extra details without stopping or waiting for the reply to finish.',
     steps:['Send your correction or extra detail normally, including immediately after your first message or a reply to a result.', 'Send several in a row if you like: each appears as a normal sent bubble marked Sent · reading at its next step, and the bot reads everything waiting at once and keeps working.', 'To make a message wait for the current reply to finish, long-press send to queue it. Send now on a queued message steers it into the current reply instead of stopping the bot.', 'Only the Stop button halts the bot.'],
@@ -360,6 +377,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'routine-owner-setup',title:'Authorize routine product-label photo requests',category:'Automation',updated:'2026-09-29',
+    prompt: "When a case needs only the product-label photo, save_message_draft with the exact template body; if standing_policy.applied is true it is already authorized, so claim_message_draft, send once and record_message_delivery. Guide: /#/bot-guide?feature=routine-owner-setup.",
     audience:'The current business owner. Bots and other employees can read the state but cannot enroll or stop it.',
     summary:'Authorize one fixed product-label photo request so named bots send it by email without a per-message approval, on the ordinary send path.',
     steps:['Open /#/routine-reply-setup in your own signed-in session.', 'Read the exact message and the limits. Bots cannot change a word of it.', 'Tick the bots allowed to send it, set the most requests per day (default 20), then select Authorize photo requests.', 'To stop, enter a reason and select Stop photo requests; unsent requests stop at once. Check /#/cs-readiness to see the live state.'],
@@ -390,6 +408,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'build-dispatch-identity',title:'Keep build slots tied to their actual work',category:'Daily work',updated:'2026-09-24',
+    prompt: "Shared software, schema and deployment changes go through enqueue_build; use list_build_queue and resolve_build_queue for stopped jobs, and remember a chat's turn_done is not build completion. Guide: /#/bot-guide?feature=build-dispatch-identity.",
     audience:'Authorized project owners and the existing build owner.',
     summary:'Build completion follows its exact dispatched turn. Unrelated chat activity cannot release its workspace slot.',
     steps:['Use the existing build queue for shared source work. A delayed activation keeps its slot until its own turn finishes.', 'After Stop, explicitly retry or skip the stopped build; unrelated discussion does not resume it.', 'For a verified legacy premature completion, ask the existing platform owner to review exact job/origin/turn metadata before using audited recovery. Recovery preserves the original job and owner.'],
@@ -510,6 +529,7 @@ export const BOT_FEATURES: BotFeature[] = [
 
   {
     id:'raised-hands',title:'One queue for raised hands',category:'Daily work',updated:'2026-09-25',
+    prompt: "Close the loop on an answered decision with record_decision_result (running, verified_completed, or blocked with a concrete blocker and one named repair owner). A technical failure is a repair to route, not a reason to ask the human again. Guide: /#/bot-guide?feature=raised-hands.",
     announcement:'Bot work overview now has one Needs your input queue. Answered work moves out of your way into Progress & history.',
     audience:'People with access to bot decisions, including assigned employees',
     summary:'A bot raises its hand for a concrete question, lowers it after your answer, and returns only when it needs new input.',
@@ -560,6 +580,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'approved-message-delegation',title:'Keep an exact approved message with its named executor',category:'Teamwork',updated:'2026-09-28',
+    prompt: "To send an approved customer message as a registered bot: the decision owner uses inspect_approved_message and delegate_approved_message, the named executor uses accept_approved_message, then claim_message_draft and sends once with the returned idempotency key; when the approval names you as executor, do both steps yourself. Report exact missing_proof to its owner instead of asking for a second approval. Guide: /#/bot-guide?feature=approved-message-delegation.",
     announcement:'Approved UUID and ticket-code pairs now use the dedicated read-only OrderOps resolver endpoints without changing the original approval. Source registration and each caller’s own credential custody are required; absent or drifting evidence blocks delivery. Completed-receipt reconciliation remains receipt-only.',
     audience:'Authorized decision approvers and explicitly named bots in the same business',
     summary:'Preserve one exact approval while a named bot handles delivery with an immutable audit.',
@@ -590,6 +611,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'team-messages', title: 'Chat with people and bots in one place', category: 'Teamwork', updated: '2026-09-25',
+    prompt: "When addressed in a team room, read_team_room for context and answer with post_team_room_message (stable request_key) only when you add something useful. Room sessions do not carry your original connections. Guide: /#/bot-guide?feature=team-messages.",
     announcement: 'Group chats now show bot queue, work, waiting, and error status above the composer. Select bots from the @ picker; sent messages show who was addressed. Desktop Enter sends team-chat messages; Shift+Enter adds a new line. Chats now combines People and Bots with separate unread indicators. Type @ in a private conversation to start a group with an accessible bot and review the context you share.',
     audience: 'Active business teammates, including restricted employees',
     summary: 'One Chats destination for teammates, bots, and groups, with recognizable identities and personal unread counts.',
@@ -601,6 +623,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'message-drafts',title:'Review and send customer messages',category:'Daily work',updated:'2026-09-25',
+    prompt: "For a registered bot's customer message, save_message_draft with exact account, recipients and ticket; after send authorization, claim_message_draft, send only when execute=true with the returned idempotency key, then record_message_delivery with the real receipt. Guide: /#/bot-guide?feature=message-drafts.",
     announcement:'Outgoing message cards now stay at their original creation time in chat, including after edits and delivery updates. Load earlier messages to revisit their context.',
     audience:'Authorized employees and decision handlers',summary:'Review the customer, ticket, channel, sending account, recipients, attachments and exact message before sending.',
     steps:['Ask the bot to prepare an outgoing message card, attached to its Needs input decision when relevant. Open the decision discussion to review it. Standalone cards stay at their creation time in chat; use Load earlier messages for older context.','Edit recipients, subject or message and remove attachments if needed. Save edits before sending. Ask the bot to revise for other changes.','Select Send message, then Confirm send message. The bot checks the current case and sends through its existing connected channel.','Check the delivery receipt. Queued and Sending are not delivery confirmations. An uncertain send needs source verification before retrying.'],
@@ -610,6 +633,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'result-threads',title:'Discuss an individual result',category:'Teamwork',updated:'2026-10-03',
+    prompt: "Answer a human result reply once, in your normal final response; use reply_message_thread only to add to a thread outside that flow. Guide: /#/bot-guide?feature=result-threads.",
     announcement:'A bot now answers your reply to a result once. Before, it often answered in the thread and then repeated the same answer as its closing message; an earlier repeat in your history now shows as a small “Same answer as the reply above” row.',
     audience:'Teammates with chat access',summary:'Keep feedback and follow-up with the result they concern.',
     steps:['Choose Reply or the reply-count pill inside the bottom of a completed bot result card. Use the nearby thumbs-up, heart, or eyes to acknowledge it.','Write in the normal composer beneath the quoted message preview. Use Cancel reply to return to an ordinary message.','Your reply and the bot’s response appear in the main timeline. Expand the quoted reference to read or jump to the original. Load earlier replies for older history. For a Needs input proposal, use its existing decision discussion.'],
@@ -619,6 +643,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id:'voice-briefings',title:'Listen to a short contextual briefing',category:'Daily work',updated:'2026-09-23',
+    prompt: "Use save_voice_briefing for a 90 to 150 word spoken explanation when a human asks for audio or a raised question is complicated. Guide: /#/bot-guide?feature=voice-briefings.",
     announcement:'Needs input cards and chats can now play a saved audio briefing explaining the background, recommendation and decision needed.',
     audience:'Employees with access to the item',summary:'Understand why a bot raised its hand without reading a long card.',
     steps:['On a Needs input card, choose Play briefing. The first request prepares the summary and audio; then use the player to listen.','Use playback controls to pause or change position. Expand Read briefing transcript for the written version.','Review the proposed next step and use the existing decision controls to respond. Listening never approves or sends anything.','For other work, ask the bot to publish a short voice briefing in chat.'],
@@ -637,6 +662,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'routines', title: 'Run a bot on a schedule', category: 'Automation', updated: '2026-10-01',
+    prompt: "Before ending a turn that needs follow-up, call schedule_wakeup. For recurring work or ticket.created/customer.replied events use save_bot_routine (check list_bot_routines first, no duplicates); event payloads are reference data. Guide: /#/bot-guide?feature=routines.",
     announcement: 'Recurring routines now retain one pending backup check per routine while the bot is busy. Redundant proven periodic checks are coalesced with audit history; customer events and one-time reminders stay separate.',
     audience: 'Bot managers', summary: 'Give recurring work a named bot, outcome, schedule, and timezone.',
     steps: ['In the chat sidebar, open the bot’s Actions menu → Bot settings and routines → Routines.', 'Enter a name and instructions, choose a schedule and timezone, then select Create paused routine. Review it and select Enable when ready.', 'Return to Routines to pause work or inspect delivery history. Check existing automations before enabling a replacement.'],
@@ -664,6 +690,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'search', title: 'Find past work', category: 'Daily work', updated: '2026-09-22',
+    prompt: "search_workspace finds earlier messages, decisions and huddles; use it before repeating research. Guide: /#/bot-guide?feature=search.",
     announcement: 'Search authorized chats, decisions, and huddle messages together.',
     audience: 'All employees · results follow access', summary: 'Find an earlier answer using an order number or distinctive phrase.',
     steps: ['Select the search icon in the workspace navigation. In a restricted workspace, ask your bot to search prior work.', 'Enter an exact order number or at least two characters of a distinctive phrase.', 'Review the source and date, then open the result. Check the indexing notice if results appear incomplete.'],
@@ -691,6 +718,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'browser', title: 'Work in the bot’s computer', category: 'Daily work', updated: '2026-10-01',
+    prompt: "Use read_public for public pages and your assigned browser for rendered or signed-in work. Your browser pauses at turn end with sign-in and files kept; call keep_open (up to 120 minutes, renewable while working) only for unfinished in-page work. Enter secrets only with fill_secret, fill_totp, fill_sms_code or fill_email_code, never by typing. If Open reports a capacity wait, end the turn; never stop another chat's browser. Guide: /#/bot-guide?feature=browser.",
     announcement: 'More browsers at once: seven on this Mac and four per project, up from five and two. A browser can no longer be parked: Keep open stops renewing four hours after the last click or keystroke, then the browser pauses with its sign-in and files kept.',
     audience: 'Teammates with access to an assigned browser', summary: 'Browsers free their slot at the end of every bot turn; hold one open only when in-page work must survive, for up to two hours.',
     steps: ['Ask the bot to use read_public for public documentation and research. It uses no saved account or Chrome slot; it cannot render JavaScript or watch a video.', 'When a bot finishes its turn its browser pauses automatically. Downloads, working files and the copy’s sign-in are kept, and the next browser call reopens the same copy. Only in-memory page state (a half-filled form, an open wizard) is lost.', 'To keep a page alive between turns, turn on Keep open in the browser panel or ask the bot to call keep_open with a reason. A hold lasts up to two hours and shows its end time; turn it on again to renew while the page is still being worked. It stops renewing four hours after the last click or keystroke in that browser. A connected live view also holds the browser, with a two-minute grace after you close it.', 'The panel shows machine slots (for example 3 of 7), this project’s slots (2 of 4) and every browser you can access with its reason and hold end time. A busy Open waits up to 20 seconds, then a bot Open saves a durable continuation that resumes the chat when a slot frees; Cancel wait removes it.', 'Before Stop, import downloads and intentionally save new logins. Stop deletes the copy; automatic pausing preserves its files.'],
@@ -700,6 +728,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'training', title: 'Save reusable instructions', category: 'Automation', updated: '2026-09-26',
+    prompt: "When asked to remember how to do something, update the applicable project skill (when it applies, inputs, steps, exceptions, validation) directly; training text needs no build slot. Read saved skills before asking a human to reteach. Guide: /#/bot-guide?feature=training.",
     announcement: 'Routine bot training and task notes no longer need a software build slot. Bots keep the current procedure up to date while software repairs remain queued.',
     audience: 'Authorized business teammates', summary: 'Save a correction as reusable guidance through your existing bot, without turning ordinary training into a software build.',
     steps: ['Tell the bot the reusable rule, when it applies, and an example.', 'Ask it to update the applicable project skill and report what was saved. It preserves existing authorizations and coordinates overlapping edits.', 'Use the saved workflow on the next applicable task. Software or integration repairs still appear in the build queue.'],
@@ -709,6 +738,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'huddles', title: 'Coordinate a team in a huddle', category: 'Teamwork', updated: '2026-09-23',
+    prompt: "Sustained work that needs three or more bots goes in a huddle (open_huddle, post_huddle_message, update_huddle_action) with one owner per action; members wake automatically, so post only new information. Guide: /#/bot-guide?feature=huddles.",
     announcement: 'Existing huddles now appear inline with bots and group chats, retaining their shared history and tracked actions.',
     audience: 'Business workspace teammates · participating bots', summary: 'Give several bots a shared outcome and one accountable lead.',
     steps: ['Open an existing huddle directly from the Chats → Bots list. Ask your bot to start a coordinated huddle for a concrete outcome; casual New conversation uses a separate room.', 'Name the lead, participating bots, and the desired result.', 'Use the shared thread to review progress, decisions, and assigned actions.'],
@@ -726,6 +756,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'settled-questions', title: 'Questions you already handled leave your queue', category: 'Daily work', updated: '2026-10-01',
+    prompt: "Re-read the order or ticket right before raise_decision and do not ask about something already settled. Withdraw your own waiting question with withdraw_decision as soon as your source shows it is moot; on the hourly re-check wake, withdraw settled questions without messaging anyone. Guide: /#/bot-guide?feature=settled-questions.",
     announcement: 'When you have already taken care of what a bot was asking about, such as shipping the order yourself, the question now leaves Open questions on its own. You do not need to answer or dismiss it.',
     audience: 'Everyone who answers bot questions',
     summary: 'A question tied to an order is retired when that order ships, is cancelled or is closed. The bot re-checks its open questions about once an hour and withdraws the ones that no longer need an answer.',
@@ -736,6 +767,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'merge-questions', title: 'Duplicate tickets merge on their own', category: 'Teamwork', updated: '2026-10-01',
+    prompt: "Clear duplicate tickets (same customer, same order, both open) merge automatically under the owner's standing rule; never raise a question about them. Guide: /#/bot-guide?feature=merge-questions.",
     announcement: 'Repeat messages now join the customer’s existing ticket automatically. When two open tickets share the same customer record and order, the bots can combine them without asking; only unclear matches come to a person.',
     audience: 'Business owners and assigned decision makers',
     summary: 'Repeat messages are admitted to the existing ticket. Clear duplicate tickets merge under the owner’s standing rule and are logged. Only unclear pairs raise a question, one per pair.',
@@ -746,6 +778,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'question-cards', title: 'Answer with clickable choice cards', category: 'Daily work', updated: '2026-09-25',
+    prompt: "Use ask_user for ordinary questions with specific options (yes/no, preferences, clarifications) instead of plain-text bullets: one clear question, short labels. Registered-bot business approvals use raise_decision instead. Guide: /#/bot-guide?feature=question-cards.",
     announcement: 'Bots can present Yes/No or any number of relevant choices as clickable cards. Tap a single choice to answer immediately.',
     audience: 'People with access to the bot conversation',
     summary: 'Choose from a card instead of typing an answer from a list. Cards support any number of options, multiple selections and an optional Other answer.',
@@ -776,6 +809,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'decisions', title: 'Answer a bot’s question', category: 'Daily work', updated: '2026-10-06', announcement: 'Processor chargeback evidence questions can omit irrelevant order refund history. Refund and credit questions still require verified history and order-system evidence. Question cards carry customer photos, message excerpts and verified order/refund facts. A question goes stale when the customer writes again and cannot be answered until the bot refreshes it.',
+    prompt: "Raise a decision only for money, policy or a choice that is genuinely the human's; otherwise act. Research first (memory, prior answers, similar cases, source records), then raise_decision with a recommended choice and one or two alternatives, each labeled with the concrete action and carrying the exact value you will act on. Attach the evidence (evidence_items, proposal.images for photos, verified order and refund facts) and set as_of (ticket, latest inbound message ids, as_of.orders). Ask the question in the chat too. When answered, act; a typed custom answer is the human's direction. An answer given in chat text is recorded with inspect_conversational_decision and record_conversational_decision, never a request for a duplicate click. Changed scope is update_decision with expected_version, not a second question. Guide: /#/bot-guide?feature=decisions.",
     audience: 'Assigned decision makers', summary: 'Answer questions directly in the conversation with researched options or your own typed direction. Open questions keeps unanswered items available when you return.',
     steps: ['Read the question card in your bot conversation. Open questions is a catch-up list for questions you missed.', 'Read the evidence on the card: photos open by default, messages, documents and order/refund facts fold below. Read the short "what I found" note and the options. The bot’s researched best guess is marked Recommended, followed by viable alternatives; each states what tapping does and does not do. Open Details & history for evidence, any proposed exact reply and approval scope.', 'A card marked Stale cannot be answered: the customer replied or the case changed after it was asked, and the bot is refreshing it. Otherwise tap the option you want, or choose Something else, type what should happen, attach a file or screenshot if useful, and submit. A tap records that exact option on the current version. A typed answer records your direction and resolves the question, but it authorizes no exact executable action from the old proposal; the bot revises or acts under the existing guards.', 'Watch for the bot’s verified outcome. A changed proposal requires fresh review. Answered questions automatically leave Open questions and remain in Progress & history.'],
     example: 'How should I obtain merchant processor statements for chargeback-rate evidence? A · Have the account custodian export statements (Recommended: authoritative current source). B · Compile existing complete statements (verify periods and completeness first). Something else.',
@@ -784,6 +818,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'voice', title: 'Talk with your bot', category: 'Daily work', updated: '2026-10-07',
+    prompt: "Instructions dictated on a call arrive as [Voice call] messages and your chat replies are spoken to the caller. Afterward you receive a [Voice call transcript]: act on explicit caller instructions not already relayed, never repeat relayed ones, and ask in chat about garbled items. Guide: /#/bot-guide?feature=voice.",
     announcement: 'What the bot finds in its text chat during a call now reaches the call itself, even while the voice line is speaking or busy with a tool, including interim results posted while the chat is still working: it tells you the result in first person at the next quiet moment and can answer questions about it right away. A call that steers new instructions into the running work no longer shows that work twice.',
     audience: 'Signed-in employees with existing access to the conversation and decision',
     summary: 'Open a ticket call, talk through the answer, and let its owning bot follow through.',
@@ -802,6 +837,7 @@ export const BOT_FEATURES: BotFeature[] = [
   },
   {
     id: 'handoffs', title: 'Hand work to another bot', category: 'Teamwork', updated: '2026-10-03', announcement: 'New work a bot passes to another kind of agent, such as a software change for Platform Dev, now starts its own chat instead of landing in an unrelated chat you already have open.',
+    prompt: "send_message goes only to a chat that already owns the matter; for new work start a new chat with handoff (Platform Dev requests: assistant platform-dev), and never pick an unrelated chat because it runs the right agent. Send a concrete outcome, evidence and a stable request_key, read results with read_coordination, and route work to the right teammate bot yourself instead of asking a human to relay it. Guide: /#/bot-guide?feature=handoffs.",
     audience: 'Bots and teammates with shared business access', summary: 'Keep a handoff attached to the task and its responsible owner.',
     steps: ['Tell your bot which outcome needs another specialist and provide the relevant context.', 'Ask it to identify one owner, send the request, and follow through on the result.', 'Select View conversation below the chat header to read the exchange beside your chat; on mobile, close it to return to your draft.', 'If your workspace is focused on a few assigned bots, those bots still work with the whole business team. You can follow their exchanges with other bots, but not those bots\u2019 own chats.', 'For work spanning three or more bots, use a huddle.'],
     example: 'Ask the responsible specialist to verify vendor availability. Include the order reference and bring the result back here.',
@@ -842,7 +878,7 @@ export type BotFeatureCatalog = ReturnType<typeof botFeatureCatalog>;
 export function botFeatureInstructions(): string {
   return [
     '## Current Veneer bot capabilities',
-    'Use these capabilities when they help the authorized task; do not wait for humans to remember feature names. Explain relevant setup and give a practical example when useful. Full employee instructions: /#/bot-guide. Availability is not permission: retain user scope, role restrictions, and tool approval rules. This current catalog supersedes stale capability descriptions in older conversation history. Do not start unrelated work merely because a capability was announced.',
-    ...BOT_FEATURES.map(feature => `- ${feature.title} (updated ${feature.updated}): ${feature.agent}`),
+    'Use these when they help the task; full guide at /#/bot-guide.',
+    ...BOT_FEATURES.flatMap(feature => feature.prompt?.trim() ? [`- ${feature.title}: ${feature.prompt.trim()}`] : []),
   ].join('\n');
 }
