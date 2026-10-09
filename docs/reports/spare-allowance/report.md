@@ -170,3 +170,17 @@ does not change scope enforcement or shared software, impersonate Piper, enroll 
 a replacement chat, or ask for redundant business consent. A bounded follow-up may
 check for an independently completed original-chat enrollment after normal work.
 The task remains prepared, not enrolled; rendering prerequisites remain unresolved.
+
+## Final bounded enrollment check — October 9, 2026
+
+The original Piper chat remains working on its separately authorized gallery batch.
+It reported 12 additional tanks completed through VR37575WBLANK and subsequently
+reported VR24597WBLANK's gallery live with four shadowed views, native 3D at #2 and
+the retained drawing. These are normal-work results, not spare-allowance execution.
+
+A fresh read-only backlog check again shows settings.enabled=1 and no task for
+Piper or stable request key `piper-alpha-207001cd-source-reconciliation-v1`. No
+enrollment ID or account binding exists. The original-chat delivery restriction
+recorded above remains unresolved; enrollment is not complete. This final check
+made no sends, enrollment attempts, source changes, rendering, publication or paid
+actions. Polling ends here as requested.
