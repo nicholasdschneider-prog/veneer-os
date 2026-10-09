@@ -148,3 +148,25 @@ coordination thread `203b7585-6c81-4cea-bb9d-ed336e0fd130`. Its original chat is
 busy with normal work, so coordination delivery is queued without interruption. The
 one-batch task definition is prepared; enrollment must be performed by the original
 Piper identity after that work finishes. It is not falsely reported as enrolled here.
+
+## Enrollment follow-up — October 9, 2026
+
+Read back both the original Piper chat and coordination thread after the deployment
+follow-up. Piper's original chat is working on its separately authorized Alpha catalog
+batch, now 210BLANK, and the human added a subtle ground-shadow requirement. That
+normal work was not interrupted. The deployed queue remains enabled. A read-only
+database check found no task for Piper or request key
+`piper-alpha-207001cd-source-reconciliation-v1`.
+
+Coordination completed its preparation and reported an exact routing blocker:
+“Coordination cannot steer its own human conversation.” Cross-bot messages enter the
+coordination lane; its token cannot enroll as Piper's original identity. Repeated
+coordination messages or waiting for idle alone do not repair that restriction.
+Prepared enrollment now limits accounts to the human-named drmark@mphealth.net
+subscription, with account IDs still unbound and no fabricated eligibility.
+
+Platform Dev owns resolution of original-chat delivery. This content-only follow-up
+does not change scope enforcement or shared software, impersonate Piper, enroll in
+a replacement chat, or ask for redundant business consent. A bounded follow-up may
+check for an independently completed original-chat enrollment after normal work.
+The task remains prepared, not enrolled; rendering prerequisites remain unresolved.
