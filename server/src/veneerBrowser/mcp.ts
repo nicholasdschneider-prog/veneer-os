@@ -728,6 +728,7 @@ export async function handleVeneerBrowserMcp(
   let result: { content: ToolContent[]; isError?: boolean; structuredContent?: unknown };
   try {
     const conversationId = tokenContext.conversationId;
+    if (tokenContext.spareRunId && name !== 'read_public') throw new Error('Optional batches use public research only; signed-in browser actions belong to ordinary work');
     rejectLoopbackUrl(name, args);
     // Every one of these expires the refs the guard is holding, so the field it
     // was protecting no longer exists as far as the agent is concerned.

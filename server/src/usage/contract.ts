@@ -25,6 +25,10 @@ export interface UsageWindow {
 }
 
 export interface ProviderUsage {
+  /** Nonsecret credential-file metadata revision for account-bound scheduling. */
+  credentialRevision?: string;
+  /** Only true when fresh provider telemetry proves no paid fallback is available. */
+  paidUsageDisabled?: boolean;
   connected: boolean;
   planType: string | null;
   /** Account the token belongs to (Claude only, from the OAuth profile). */
@@ -45,6 +49,8 @@ export interface ProviderUsage {
 
 /** One connected subscription's meters (Settings → Usage, one block each). */
 export interface ProviderAccountUsageBlock {
+  credentialRevision?: string;
+  paidUsageDisabled?: boolean;
   accountId: string;
   /** User-facing account name (defaults to the account email). */
   label: string;

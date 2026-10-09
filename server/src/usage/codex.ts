@@ -177,12 +177,15 @@ export function createCodexUsageReader(opts: CodexUsageReaderOptions): CodexUsag
     const rateLimits = (res as { rateLimits?: unknown } | null)?.rateLimits;
     const snap = normalizeCodexRpc(rateLimits);
     const windows = codexWindows(snap);
+    const credits = (rateLimits as {credits?:{hasCredits?:boolean;unlimited?:boolean}}|null)?.credits;
     return {
       connected: true,
       planType: snap.planType,
       windows,
       capturedAt: new Date().toISOString(),
       source: 'live',
+      credentialRevision: authRevision ?? undefined,
+      paidUsageDisabled: Boolean(snap.planType && ['plus','pro','prolite','team','business'].includes(snap.planType)) && credits?.hasCredits === false && credits?.unlimited === false,
       error: null,
     };
   }
@@ -297,6 +300,8 @@ export function createCodexAccountUsage(opts: CodexAccountUsageOptions): CodexUs
           source: usage.source,
           limitReset: null,
           connected: usage.connected,
+          paidUsageDisabled: usage.paidUsageDisabled,
+          credentialRevision: usage.credentialRevision,
           error: usage.error,
         };
       }));

@@ -1,3 +1,4 @@
+import { deniedTurn } from '../types.js';
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import readline from 'node:readline';
@@ -93,7 +94,7 @@ export interface ClaudeAdapterOptions {
   configDir?: string;
   /** Provider-specific environment construction and credential status. */
   prepareSpawnEnv?: (
-    spec: Pick<TurnSpec, 'dangerous' | 'model'>,
+    spec: Pick<TurnSpec, 'dangerous' | 'model' | 'subscriptionAccountId'>,
   ) => { env: NodeJS.ProcessEnv; hasCredential: boolean };
   /** Base agent environment, optionally extended with approved runtime credentials. */
   buildEnv?: (fullAccess: boolean) => NodeJS.ProcessEnv;
@@ -108,6 +109,8 @@ export interface ClaudeAdapterOptions {
    * without touching the env file. Read per-turn so logout takes effect live.
    */
   getOauthToken?: () => string | null;
+  getOauthTokenFor?: (accountId: string) => string | null;
+  accountRevisionFor?: (accountId: string) => string | null;
   /**
    * Passive subscription-usage capture: every `rate_limit_event` the CLI emits
    * on the stream is forwarded here (source 'stream'). The usage store keeps the
@@ -153,15 +156,19 @@ export function createClaudeAdapter(opts: ClaudeAdapterOptions): ProviderAdapter
     return null;
   };
 
-  function spawnEnvironment(spec: Pick<TurnSpec, 'dangerous' | 'model'>): {
+  function spawnEnvironment(spec: Pick<TurnSpec, 'dangerous' | 'model' | 'subscriptionAccountId'>): {
     env: NodeJS.ProcessEnv;
     hasCredential: boolean;
   } {
-    const appToken = opts.getOauthToken?.() ?? null;
+    const appToken = spec.subscriptionAccountId ? opts.getOauthTokenFor?.(spec.subscriptionAccountId) ?? null : opts.getOauthToken?.() ?? null;
     // Alternate Claude Code-backed providers supply a fully sanitized profile
     // environment. The normal Claude path overlays its in-app OAuth token.
     const prepared = opts.prepareSpawnEnv?.(spec);
     const env: NodeJS.ProcessEnv = prepared?.env ?? (opts.buildEnv ?? agentEnv)(spec.dangerous ?? false);
+    if (spec.subscriptionAccountId) {
+      delete env.ANTHROPIC_API_KEY; delete env.OPENAI_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN;
+      delete env.ANTHROPIC_BASE_URL; delete env.CLAUDE_CODE_OAUTH_TOKEN;
+    }
     if (!prepared && appToken) env.CLAUDE_CODE_OAUTH_TOKEN = appToken;
     return {
       env,
@@ -275,6 +282,7 @@ export function createClaudeAdapter(opts: ClaudeAdapterOptions): ProviderAdapter
     // Claude Code-backed providers construct their own sanitized environment so
     // credentials cannot bleed between profiles.
     const prepared = spawnEnvironment(spec);
+    if (spec.subscriptionAccountId && (!prepared.env.CLAUDE_CODE_OAUTH_TOKEN || (spec.subscriptionRevision && opts.accountRevisionFor?.(spec.subscriptionAccountId)!==spec.subscriptionRevision) || !spec.optionalDeadline || spec.optionalDeadline <= Date.now())) return deniedTurn(turnId,onEvent,'Optional subscription binding unavailable or expired');
     const env = prepared.env;
     // The agents `ask_user` tool blocks while the user answers; the CLI enforces
     // a hard per-call MCP tool timeout (progress notifications don't extend it),
@@ -300,7 +308,7 @@ export function createClaudeAdapter(opts: ClaudeAdapterOptions): ProviderAdapter
     let sawResult = false;
     // Which subscription this turn is spending. Captured at spawn: the active
     // account is one global setting, so it can move while the turn runs.
-    const spawnAccountId = opts.getAccountId?.() ?? null;
+    const spawnAccountId = spec.subscriptionAccountId ?? opts.getAccountId?.() ?? null;
     /** Text of a 429 `rate_limit` message seen this turn; drives failover at turn end. */
     let sessionLimitText: string | null = null;
     // OpenRouter can stream the complete text without following it with the
@@ -474,7 +482,7 @@ export function createClaudeAdapter(opts: ClaudeAdapterOptions): ProviderAdapter
     // for a hang. Poll-style calls deliberately hold nothing open.
     const watchdog = createTurnWatchdog({
       inactivityMs,
-      ceilingMs: opts.turnTimeoutMs,
+      ceilingMs: spec.optionalDeadline ? Math.max(1,Math.min(opts.turnTimeoutMs,spec.optionalDeadline-Date.now())) : opts.turnTimeoutMs,
       onExpire: (reason) => {
         onEvent({
           type: 'error',
@@ -912,7 +920,7 @@ export function createClaudeAdapter(opts: ClaudeAdapterOptions): ProviderAdapter
             // The subscription, not the work, ended this turn. Report it after
             // turn_done so the failover's continuation queues behind a finished
             // turn. Best effort: a throw here must not derail the stream.
-            if (outcome === 'failed' && sessionLimitText && opts.onSessionLimit) {
+            if (!spec.subscriptionAccountId && outcome === 'failed' && sessionLimitText && opts.onSessionLimit) {
               try {
                 opts.onSessionLimit({
                   conversationId: spec.conversationId ?? null,

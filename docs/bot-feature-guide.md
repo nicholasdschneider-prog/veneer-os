@@ -482,3 +482,25 @@ Example: “Reconcile the proven original startup failure, retain both pending c
 
 
 Build655 installed the validated reconciliation and cost-question exclusions on October8; see the report for exact authenticated receipts. The original ed3dac84 disposition is recorded, while failed #451 hints and #455/#466 cost holds remain. A distinct #463 successor subsequently failed for exhausted provider usage credits and remains fenced; installation does not establish automatic purchasing readiness or authorize a model switch/retry.
+
+
+## Spare subscription allowance — October 9, 2026
+
+Build #677 adds Settings → Usage → Use spare allowance for the installation owner.
+Finite optional tasks retain their original project/chat identity, explicit model and
+authorized account list. Fresh individual Claude/Codex provider meters govern dispatch
+in the final six hours before the weekly reset, outside 8 a.m.–5 p.m. Eastern every day.
+If business hours intervene before reset, the account is skipped. Normal work preempts
+optional batches even overnight. The 1% target is best effort; lagging meters cause an
+early stop near the reserve. Missing paid-fallback proof also skips the account.
+
+Original bots use `list_spare_tasks`, `save_spare_task`, and, as the last action of a
+running optional batch, `record_spare_checkpoint`. Successful bounded batches may
+continue only with a checkpoint and a fresh eligibility check. Interrupted or restarted
+batches become UNKNOWN and never replay automatically. Optional tokens permit reads
+and checkpoints, excluding native business mutations and signed-in browser actions.
+Local rendering, geometry verification, publication and paid service permissions remain
+separate; the tank rendering prerequisites are held by Piper Content.
+
+The full and restricted employee guide, mobile layout, search and fresh/resumed agent
+instructions are verified. See [implementation and validation](./reports/spare-allowance/report.md).

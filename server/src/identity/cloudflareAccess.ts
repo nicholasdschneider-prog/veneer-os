@@ -12,6 +12,7 @@ import type { Config } from '../config.js';
  */
 
 export interface Identity {
+  spareRunId?: string;
   email: string;
   /** Set when the caller authenticated with a per-turn agent token: the chat
       whose agent is making this request (see runtime/agentTokens.ts). */

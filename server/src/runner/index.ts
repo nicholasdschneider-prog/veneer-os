@@ -25,6 +25,11 @@ import { createDopplerTokenStore, DopplerRuntime } from '../secrets/doppler.js';
 import { installPlatformSkills } from '../skills/platform.js';
 import { createVeneerBrowserRemote } from '../veneerBrowser/remoteClient.js';
 import { VeneerBrowserManager } from '../veneerBrowser/manager.js';
+import { createSpareScheduler } from '../spareAllowance/scheduler.js';
+import { fetchClaudeOauthUsage } from '../usage/claudeProbe.js';
+import { buildClaudeAccountUsage } from '../usage/contract.js';
+import { createCodexAccountUsage } from '../usage/codex.js';
+import type { SpareAccount } from '../spareAllowance/policy.js';
 
 /**
  * Runner process (plan §"Target topology"): owns all agent CLI child processes
@@ -85,6 +90,24 @@ const codexAccounts = createCodexAccountStore(config.dataDir);
 adoptCodexLogins(codexAccounts);
 const runtime = buildAgentRuntime({ config, db, secrets, doppler, usage, claudeProbe, codexAccounts });
 const { manager, adapters, transcriptArchive, projectDopplerCli } = runtime;
+const spareCodexUsage = createCodexAccountUsage({codexBin:config.codexBin,accounts:codexAccounts,cacheTtlMs:5_000});
+const spare = createSpareScheduler({db,manager,loadAccounts:async () => {
+  const claude: SpareAccount[] = await Promise.all(secrets.listClaudeAccounts().map(async a => {
+    const base: SpareAccount = {provider:'claude',accountId:a.id,label:a.label,credentialRevision:a.connectedAt,connected:false,paidUsageDisabled:false,capturedAt:null,source:null,windows:[]};
+    try {
+      const token = secrets.getClaudeTokenFor(a.id);
+      if (!token) return base;
+      const reading = await fetchClaudeOauthUsage(token);
+      if (!reading) return base;
+      const capturedAt = new Date().toISOString();
+      const snapshots = reading.infos.map(i=>({...i,utilization:i.utilization ?? NaN,resetsAt:i.resetsAt ?? null,status:i.status ?? null,source:'oauth' as const,capturedAt}));
+      const block = buildClaudeAccountUsage({accountId:a.id,label:a.label,accountEmail:a.email,planType:a.planType,active:a.active,limitReset:null},snapshots);
+      return {...base,connected:secrets.listClaudeAccounts().some(current=>current.id===a.id && current.connectedAt===a.connectedAt),paidUsageDisabled:reading.paidUsageDisabled === true,capturedAt,source:'oauth',windows:block.windows};
+    } catch { return base; }
+  }));
+  const codex = await spareCodexUsage.read();
+  return [...claude,...(codex.accounts ?? []).map(a=>({provider:'codex' as const,accountId:a.accountId,label:a.label,credentialRevision:a.credentialRevision,connected:a.connected === true,paidUsageDisabled:a.paidUsageDisabled === true,capturedAt:a.capturedAt,source:a.source,windows:a.windows}))];
+}});
 const stopResourceMonitor = startResourceMonitor(adapters);
 const claudeLimitReset = createClaudeLimitResetManager({
   // The requested account is explicit. This never reads or changes the active
@@ -165,6 +188,7 @@ server.listen(config.runnerPort, '127.0.0.1', () => {
   console.log(`[veneer-pro-runner] IPC listening on http://127.0.0.1:${config.runnerPort} (data: ${config.dataDir})`);
   // Now that the IPC server is up (a resumed agent may need it), re-run any
   // turns that were in flight when the runner last died.
+  spare.start();
   manager.resumeInterruptedTurns();
   // Catch up the transcript archive for turns that ended while the runner was
   // down (process death skips the per-turn hook), and stop Claude Code deleting
@@ -186,6 +210,8 @@ const shutdown = createShutdown({
   server,
   release: () => {
     stopResourceMonitor();
+    spare.stop();
+    spareCodexUsage.shutdown();
     scheduled.stop();
     wakeups.stop();
     buildQueue.stop();

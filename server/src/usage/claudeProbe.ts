@@ -81,6 +81,7 @@ export interface OauthUsageWindow extends RateLimitInfo {
 }
 
 export interface OauthUsageResult {
+  paidUsageDisabled?: boolean;
   infos: OauthUsageWindow[];
   planType: string | null;
   limitReset?: ClaudeLimitResetStatus | null;
@@ -178,6 +179,7 @@ export async function fetchClaudeOauthUsage(
   if (infos.length === 0) throw new Error('oauth usage returned no recognizable windows');
   return {
     infos,
+    paidUsageDisabled: (body?.extra_usage as {is_enabled?:boolean}|undefined)?.is_enabled === false,
     planType: typeof body?.subscription_type === 'string' ? body.subscription_type : null,
     limitReset: parseClaudeLimitResetStatus(body?.juniper_tide),
   };

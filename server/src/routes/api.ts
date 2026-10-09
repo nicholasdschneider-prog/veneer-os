@@ -56,6 +56,7 @@ import { createMiniAppsRouter } from './miniApps.js';
 import { createNavigationRouter } from './navigation.js';
 import { createTodosRouter } from './todos.js';
 import { createScheduledTasksRouter } from './scheduledTasks.js';
+import { createSpareAllowanceRouter } from '../spareAllowance/routes.js';
 import { describeSchedule, parseScheduleSpec } from '../scheduled/schedule.js';
 import { triggerRecipe } from '../automations/recipes.js';
 import { createBuildQueueRouter } from './buildQueue.js';
@@ -482,6 +483,7 @@ declare module 'express-serve-static-core' {
     /** Chat whose agent authenticated this request (agent token), if any. */
     agentConversationId?: string;
     agentExecutionConversationId?: string;
+    spareRunId?: string;
     /** botSession marks a bot turn acting for this human; see focusApplies. */
     user?: UserRow & { botSession?: boolean };
   }
@@ -754,6 +756,7 @@ export function createApiRouter(ctx: AppContext): Router {
       req.identityEmail = identity.email;
       req.agentConversationId = identity.agentConversationId;
       req.agentExecutionConversationId = identity.agentExecutionConversationId;
+      req.spareRunId = identity.spareRunId;
       next();
     })().catch(() => res.status(500).json({ ok: false, error: 'Identity resolution failed' }));
   });
@@ -859,6 +862,14 @@ export function createApiRouter(ctx: AppContext): Router {
   });
 
   router.use(employeeApiBoundary(db));
+  // Optional-work tokens cannot send, publish, buy, enroll, schedule more work,
+  // or invoke outward-facing connector mutations merely because allowance remains.
+  router.use((req,res,next)=>{
+    if(req.spareRunId && !['GET','HEAD'].includes(req.method) && req.path!=='/spare-allowance/checkpoint') {
+      res.status(403).json({error:'Optional batches may save local drafts and checkpoints; external changes belong to ordinary authorized work'});return;
+    }
+    next();
+  });
   router.use(focusedApiBoundary(db));
   router.get('/focused-workspace/automations', (req, res) => {
     if (!isFocusedMember(db, req.user!.id)) { res.status(404).json({ error: 'Focused workspace not enabled' }); return; }
@@ -4762,6 +4773,7 @@ export function createApiRouter(ctx: AppContext): Router {
   // Automations: a persistent user-owned schedule with fresh execution chats
   // nested beneath it as run history.
   router.use('/scheduled-tasks', createScheduledTasksRouter(ctx));
+  router.use('/spare-allowance', createSpareAllowanceRouter(ctx));
 
   // One durable FIFO for Platform Dev chats sharing the live source checkout.
   router.use('/build-queue', createBuildQueueRouter(ctx));

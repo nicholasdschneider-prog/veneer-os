@@ -13,6 +13,7 @@ import {
 import { formatFreshness, formatReset, parseTime } from '../../lib/usageFormat';
 import { ProviderIcon } from '../../components/ProviderIcon';
 import { Button } from '@/components/ui/button';
+import { SpareAllowancePanel } from './SpareAllowancePanel';
 import { Segmented } from '../../components/toolbox/controls';
 import {
   Dialog,
@@ -527,7 +528,7 @@ export function OpenRouterSpend({ usage, now }: { usage: OpenRouterUsage; now: n
  * re-fetches with ?refresh=1. A local `now` ticks every 30s so
  * countdowns/freshness stay live between fetches.
  */
-export function UsagePage({ canManage = false }: { canManage?: boolean }) {
+export function UsagePage({ canManage = false, canUseSpare = false }: { canManage?: boolean; canUseSpare?: boolean }) {
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -650,6 +651,7 @@ export function UsagePage({ canManage = false }: { canManage?: boolean }) {
       </section>
 
       <OpenRouterPanel usage={usage} now={now} loading={loading} />
+      {canUseSpare && <SpareAllowancePanel />}
 
       <Dialog open={resetTarget !== null} onOpenChange={(open) => !open && !resetting && setResetTarget(null)}>
         <DialogContent showCloseButton={false}>

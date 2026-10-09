@@ -182,6 +182,8 @@ export function buildAgentRuntime({
       turnInactivityMs: config.turnInactivityMs,
       buildEnv: buildProviderEnv,
       getOauthToken: () => secrets.getClaudeToken(),
+      getOauthTokenFor: (id) => secrets.getClaudeTokenFor(id),
+      accountRevisionFor: (id) => secrets.listClaudeAccounts().find(a=>a.id===id)?.connectedAt ?? null,
       onRateLimit: (info, accountId) => {
         usage.recordClaudeFor(accountId ?? LEGACY_ACCOUNT_ID, info, 'stream');
       },
@@ -215,7 +217,10 @@ export function buildAgentRuntime({
       codexHomeFor: (accountId) => ensureCodexAccountHome(codexAccounts.homeFor(accountId)),
       // The registry is a shared file: a disconnect made in the web process is
       // seen here on the next spawn, and that account's app-server is retired.
-      accountExists: (accountId) => codexAccounts.list().some((account) => account.id === accountId),
+      accountExists: (accountId) => codexAccounts.list().some((account) => account.id === accountId && account.connected),
+      accountRevisionFor: (id) => {
+        try { const stat=fs.statSync(path.join(codexAccounts.homeFor(id),'auth.json'));return `${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`; } catch { return null; }
+      },
       onUsageLimit: (event) => {
         void codexFailover.handleUsageLimit(event);
       },

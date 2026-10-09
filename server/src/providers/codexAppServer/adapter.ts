@@ -1,3 +1,4 @@
+import { deniedTurn } from '../types.js';
 import crypto from 'node:crypto';
 import fsSync from 'node:fs';
 import path from 'node:path';
@@ -207,6 +208,7 @@ export interface CodexAdapterOptions {
    * credential; it is shut down on the next spawn rather than reused.
    */
   accountExists?: (accountId: string) => boolean;
+  accountRevisionFor?: (accountId: string) => string | null;
   /** A turn died on the subscription's usage limit — see ../codex/accountFailover.ts. */
   onUsageLimit?: (event: CodexUsageLimitEvent) => void;
 }
@@ -282,15 +284,24 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
   // its native turn. The next turn on that thread must quarantine unscoped late
   // notifications as well as rejecting messages carrying the old turn id.
   const fallbackInterruptedThreads = new Set<string>();
-  function clientFor(fullAccess: boolean, accountId: string | null): AppServerClient {
+  const optionalClientRevisions = new WeakMap<AppServerClient, string | undefined>();
+  function clientFor(fullAccess: boolean, accountId: string | null, subscriptionOnly = false, revision?: string): AppServerClient {
     reapRemovedAccountClients();
-    const key = `${accountId ?? ''}\u0000${fullAccess ? 'full' : 'safe'}`;
+    const key = `${accountId ?? ''}\u0000${fullAccess ? 'full' : 'safe'}${subscriptionOnly ? ':optional' : ''}`;
     let existing = clients.get(key);
+    if (subscriptionOnly && existing && optionalClientRevisions.get(existing) !== revision) {
+      // A native app-server may retain the previous login even after auth.json changes.
+      for (const [threadId, owner] of [...threadOwners]) if (owner === existing) threadOwners.delete(threadId);
+      clientAccounts.delete(existing); liveClients.delete(existing); clients.delete(key);
+      existing.shutdown(); existing = undefined;
+    }
     if (!existing) {
       const env = (opts.buildEnv ?? agentEnv)(fullAccess);
+      if (subscriptionOnly) { delete env.OPENAI_API_KEY; delete env.ANTHROPIC_API_KEY; delete env.OPENAI_BASE_URL; }
       if (accountId && opts.codexHomeFor) env.CODEX_HOME = opts.codexHomeFor(accountId);
       existing = new AppServerClient({ codexBin: opts.codexBin, env, log });
       clients.set(key, existing);
+      if (subscriptionOnly) optionalClientRevisions.set(existing,revision);
       if (accountId) clientAccounts.set(existing, accountId);
       liveClients.add(existing);
     }
@@ -309,8 +320,9 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     const turnId = spec.turnId;
     // Captured at spawn: the active account is one global setting, so it can
     // move while the turn runs; usage attribution stays with this one.
-    const spawnAccountId = opts.getAccountId?.() ?? null;
-    const client = clientFor(spec.dangerous ?? false, spawnAccountId);
+    const spawnAccountId = spec.subscriptionAccountId ?? opts.getAccountId?.() ?? null;
+    if (spec.subscriptionAccountId && (!opts.accountExists?.(spec.subscriptionAccountId) || (spec.subscriptionRevision && opts.accountRevisionFor?.(spec.subscriptionAccountId)!==spec.subscriptionRevision) || !spec.optionalDeadline || spec.optionalDeadline <= Date.now())) return deniedTurn(turnId,onEvent,'Optional subscription binding unavailable or expired');
+    const client = clientFor(spec.dangerous ?? false, spawnAccountId,Boolean(spec.subscriptionAccountId),spec.subscriptionRevision);
     let settled = false;
     let nativeWorkFinished = false;
     let nativeTurnRequested = false;
@@ -769,7 +781,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     // absolute ceiling bounds a turn that never stops looking busy.
     const watchdog = createTurnWatchdog({
       inactivityMs,
-      ceilingMs: opts.turnTimeoutMs,
+      ceilingMs: spec.optionalDeadline ? Math.max(1,Math.min(opts.turnTimeoutMs,spec.optionalDeadline-Date.now())) : opts.turnTimeoutMs,
       onExpire: (reason) => {
         emitPersisted({
           type: 'error',
@@ -1429,7 +1441,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           // The subscription, not the work, ended this turn. Reported after
           // turn_done so the failover's continuation queues behind a finished
           // turn. Best effort: a throw here must not derail the stream.
-          if (usageLimitText && opts.onUsageLimit) {
+          if (!spec.subscriptionAccountId && usageLimitText && opts.onUsageLimit) {
             try {
               opts.onUsageLimit({
                 conversationId: spec.conversationId ?? null,

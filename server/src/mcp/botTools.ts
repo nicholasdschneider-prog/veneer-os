@@ -138,6 +138,14 @@ const custodyCitation={type:'object',properties:{kind:{type:'string',enum:['dire
 const custodyReview={type:'object',properties:{reviewedFullContext:{type:'boolean',enum:[true]},instruction:custodyCitation,interpretation:{type:'string',enum:['unconditional_prospective_custody','status_only','quoted','conditional','ambiguous']},explanation:str,context:{type:'array',items:{type:'object',properties:{citation:custodyCitation,classification:{type:'string',enum:['supports','status_only','resolved_prior_constraint','supersedes','ambiguous','quoted']},explanation:str},required:['citation','classification','explanation'],additionalProperties:false}},effects:{type:'array',items:{type:'object',properties:{id:str,revision:str,disposition:{type:'string',enum:['reconciled_no_parallel_effect']},explanation:str},required:['id','revision','disposition','explanation'],additionalProperties:false}},scope:{type:'string',enum:['prospective_completed_case_custody_only']},noUnresolvedConditions:{type:'boolean',enum:[true]}},required:['reviewedFullContext','instruction','interpretation','explanation','context','effects','scope','noUnresolvedConditions'],additionalProperties:false};
 const refundReview={type:'object',properties:{interpretation:{type:'string',enum:['exact_approved_refund_only']},explanation:str,citations:{type:'array',maxItems:500,items:{type:'object',properties:{kind:{type:'string',enum:['discussion','direct','reply']},id:str,text:str,classification:{type:'string',enum:['supports','resolved_condition','separate_scope','status_only']}},required:['kind','id','text','classification'],additionalProperties:false}},unresolved:{type:'array',maxItems:0,items:str}},required:['interpretation','explanation','citations','unresolved'],additionalProperties:false};
 export const BOT_TOOL_DEFINITIONS = [
+  definition('list_spare_tasks', 'Read THIS chat’s optional subscription-allowance backlog and current eligibility. No execution or approval is granted. Check before saving to avoid duplicate tasks.', {}, []),
+  definition('save_spare_task', 'Save a finite optional task for THIS original chat after the human authorizes the deliverable. Runs only near an eligible account reset, off business hours, with normal work priority and a 1% reserve target. Requires an explicit Claude/Codex chat model and connected account IDs from list_spare_tasks. No paid credits, publishing or other business authority. Use a stable request_key for the identical definition.', {
+    request_key:str,title:str,prompt:str,output:str,account_ids:{type:'array',items:str,minItems:1,maxItems:20},priority:{type:'integer',minimum:-100,maximum:100},max_batches:{type:'integer',minimum:1,maximum:100}
+  }, ['request_key','title','prompt','output','account_ids']),
+  definition('record_spare_checkpoint', 'As the LAST action of the current optional batch, record saved useful output and a nonsecret continuation cursor. progress permits a distinct next batch only after successful turn completion and fresh eligibility. completed ends the task; blocked stops it. Immutable for this batch. Missing checkpoint, interruption or restart stops all automatic continuation. This is scheduling evidence, never business authorization.', {
+    outcome:{type:'string',enum:['progress','completed','blocked']},cursor:{type:['string','null'],maxLength:2000},summary:{type:'string',minLength:1,maxLength:2000}
+  }, ['outcome','cursor','summary']),
+
   definition('request_bot_call', 'Original Archer only: call Nick on his configured phone about grounded authorized work, without a fake decision or new bot. Requires Nick’s enabled original-bot phone policy. All calls use normal two-way conversation and retain the original chat. Supply a stable purpose_key tied to the original task/occurrence and a stable request_key. Never rekey, replay or automatically redial after a reserved, missed or UNKNOWN attempt. The reason is reference context, not authority. No other recipient, customer call, business action or unsolicited routine is authorized.', {request_key:bounded(200),purpose_key:bounded(512),reason:bounded(2000)}, ['request_key','purpose_key','reason']),
   ...CUSTOMER_EMAIL_TOOLS,
   ...VENDOR_EMAIL_TOOLS,
@@ -316,6 +324,11 @@ export async function callBotTool({
   if (name === 'manage_business_team' || name === 'enroll_business_bots') {
     const result = await callApi(name === 'manage_business_team' ? '/api/bots/teams/manage' : '/api/bots/teams/enroll', { method: 'POST', body: JSON.stringify(args) });
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+  }
+  if (['list_spare_tasks','save_spare_task','record_spare_checkpoint'].includes(name)) {
+    const route = '/api/spare-allowance' + (name === 'save_spare_task' ? '/tasks' : name === 'record_spare_checkpoint' ? '/checkpoint' : '');
+    const result = await callApi(route,name==='list_spare_tasks' ? undefined : {method:'POST',body:JSON.stringify(args)});
+    return {content:[{type:'text' as const,text:JSON.stringify(result)}]};
   }
   if (name === 'search_workspace' || name === 'list_bot_routines' || name === 'save_bot_routine') {
     const result = name === 'search_workspace'

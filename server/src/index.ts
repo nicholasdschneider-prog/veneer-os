@@ -148,6 +148,7 @@ const resolveIdentity: IdentityResolver = async (req) => {
       email: tokenCtx.email,
       agentConversationId: tokenCtx.conversationId ?? undefined,
       agentExecutionConversationId: tokenCtx.executionConversationId ?? undefined,
+      spareRunId: tokenCtx.spareRunId,
     } satisfies Identity;
   }
   return baseResolveIdentity(req);

@@ -7,6 +7,11 @@ import type { ConversationEvent, QuestionAnswers } from '../runtime/events.js';
  */
 
 export interface TurnSpec {
+  /** Exact subscription for an optional run; never changes global selection. */
+  subscriptionAccountId?: string;
+  subscriptionRevision?: string;
+  /** Absolute optional-work boundary, enforced by the adapter as well as the runner. */
+  optionalDeadline?: number;
   /** Assistant workspace dir the CLI runs in. */
   cwd: string;
   /** Veneer conversation id, used to isolate provider-neutral host tools. */
@@ -39,6 +44,13 @@ export interface TurnSpec {
    * for Claude, or danger-full-access + never approvals for Codex.
    */
   dangerous?: boolean;
+}
+
+export function deniedTurn(turnId: string, onEvent: (e: ConversationEvent) => void, message: string): TurnHandle {
+  return { done: Promise.resolve().then(() => {
+    onEvent({type:'error',message,fatal:true});
+    onEvent({type:'turn_done',turnId,outcome:'failed'});
+  }), kill() {}, respondToApproval() { return false; } };
 }
 
 /** Resolution for a pending approval, provider-agnostic. */

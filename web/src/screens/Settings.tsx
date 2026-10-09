@@ -413,7 +413,7 @@ function SettingsContent({
   if (section === 'providers') {
     return <ProviderModelSettings role={role} onNavigate={onNavigate} onToast={onToast} />;
   }
-  if (section === 'usage') return <UsagePage canManage={role !== 'member'} />;
+  if (section === 'usage') return <UsagePage canManage={role !== 'member'} canUseSpare={role === 'owner'} />;
   if (section === 'agents') return <AgentsPage />;
   if (section === 'memory') return <MemoryPage onToast={onToast} />;
   if (section === 'skills') {

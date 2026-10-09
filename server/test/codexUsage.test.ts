@@ -33,6 +33,14 @@ function setup() {
 }
 
 describe('Codex usage account lifecycle', () => {
+  it('proves paid fallback unavailable only from explicit subscription credit flags',async()=>{
+    const {reader,request}=setup();
+    request.mockResolvedValue({rateLimits:{...live.rateLimits,planType:'pro',credits:{hasCredits:false,unlimited:false}}});
+    expect((await reader.read()).paidUsageDisabled).toBe(true);
+    const missing=setup();expect((await missing.reader.read()).paidUsageDisabled).toBe(false);
+    const funded=setup();funded.request.mockResolvedValue({rateLimits:{...live.rateLimits,credits:{hasCredits:true,unlimited:false}}});
+    expect((await funded.reader.read()).paidUsageDisabled).toBe(false);
+  });
   it('clears a cached reading immediately on logout, even with old sessions present', async () => {
     const { reader, request, authFile, session } = setup();
     expect((await reader.read()).windows[0]?.usedPercent).toBe(62);

@@ -14,6 +14,8 @@ export interface MessageOrigin {
   kind: 'agent' | 'wakeup' | 'build_queue' | 'result_reply';
   /** Durable internal build activation; never inferred from prompt text. */
   buildDispatchId?: string;
+  /** Runner-owned optional batch identity, never inferred from prompt text. */
+  spareRunId?: string;
   from: string;
   to: string;
   /** Viewer-safe marker for a message sent from another chat on this instance.

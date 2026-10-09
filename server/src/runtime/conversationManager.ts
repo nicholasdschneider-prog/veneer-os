@@ -1,3 +1,6 @@
+import { spareBinding, spareRun, stopSpare } from '../spareAllowance/store.js';
+import fs from 'node:fs';
+import { normalWorkWaiting } from '../spareAllowance/scheduler.js';
 import { purchaseBinding } from '../botWorkflows/purchaseEvents.js';
 import { coalescePeriodicChecks } from '../botWorkflows/periodicChecks.js';
 import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js';
@@ -97,6 +100,7 @@ function parseMessageOrigin(value: unknown): MessageOrigin | undefined {
       : '';
     return {
       kind: candidate.kind,
+      ...(candidate.kind === 'wakeup' && typeof candidate.spareRunId === 'string' ? {spareRunId:candidate.spareRunId} : {}),
       ...(candidate.kind === 'build_queue' && typeof candidate.buildDispatchId === 'string' ? {buildDispatchId:candidate.buildDispatchId} : {}),
       from,
       to,
@@ -1441,6 +1445,12 @@ export function createConversationManager({
     reconcilePeriodicQueue(conv.id);
     const item = entry.queue.shift();
     if (item === undefined) return;
+    const optional = item.origin?.spareRunId ? spareBinding(db,item.origin.spareRunId,conv.id) : undefined;
+    if (item.origin?.spareRunId && (!optional || normalWorkWaiting(db))) {
+      const run = spareRun(db,conv.id); if (run) stopSpare(db,run,'Optional batch no longer eligible before start','skipped');
+      if (item.id !== null) deleteQueuedMessageStmt.run(item.id);
+      clearPendingTurnStmt.run(conv.id); emitQueue(conv.id); emitStatus(conv.id); void runNext(conv); return;
+    }
     if (lane) {
       // A lane is a bot session; the initiating human's focus never narrows it.
       const actor = {id:item.actorUserId ?? -1, botSession:true};
@@ -1498,6 +1508,7 @@ export function createConversationManager({
     }
 
     const turnId = crypto.randomUUID();
+    if (optional) db.prepare("UPDATE spare_allowance_runs SET status='running',turn_id=? WHERE id=? AND status='queued'").run(turnId,optional.id);
     let markProviderReady!: () => void;
     const providerReady = new Promise<void>(resolve => { markProviderReady = resolve; });
     const turn: LiveTurn = { providerReady, turnId, promptText: visibleText, actorUserId, origin, events: [], partialText: '' };
@@ -1612,7 +1623,7 @@ export function createConversationManager({
     let memoryBlock: string | null = null;
     try {
       // Memory reads and the optional semantic gate are bounded and fail open.
-      const recall = !isolatedRoom && loadMemoryBlock ? await loadMemoryBlock(authority, visibleText, { firstTurn }) : null;
+      const recall = !optional && !isolatedRoom && loadMemoryBlock ? await loadMemoryBlock(authority, visibleText, { firstTurn }) : null;
       memoryBlock = recall?.block ?? null;
       const memories = recall?.memories ?? [];
       // Persist every successful recall attempt, including an empty result, so
@@ -1660,8 +1671,8 @@ export function createConversationManager({
         const actorEmail = (activeUserEmailStmt.get(actorUserId) as { email: string } | undefined)?.email;
         if (!actorEmail) throw new Error('The user who initiated this turn is no longer active.');
         spawnConfig = materialize(
-          workspace,
-          mintAgentToken(db, actorEmail, authority.id, lane ? conv.id : null),
+          optional ? {...workspace,fullAccess:false} : workspace,
+          mintAgentToken(db, actorEmail, authority.id, lane ? conv.id : null, optional?.id ?? null),
           authority.id,
           actorUserId,
           memoryBlock,
@@ -1673,6 +1684,23 @@ export function createConversationManager({
       }
     }
 
+    if (optional && materialize && !spawnConfig.mcpConfigPath) {
+      stopSpare(db,optional,'Optional checkpoint toolbox could not be prepared','skipped');
+      clearPendingTurnStmt.run(conv.id);entry.turn=null;emitStatus(conv.id);return;
+    }
+    if (optional && spawnConfig.mcpConfigPath) {
+      try {
+      const file = spawnConfig.mcpConfigPath;
+      const config = JSON.parse(fs.readFileSync(file,'utf8')) as {mcpServers?:Record<string,unknown>};
+      config.mcpServers = Object.fromEntries(Object.entries(config.mcpServers ?? {}).filter(([name])=>['agents','veneer_browser'].includes(name)));
+      const optionalFile = `${file}.optional.json`;
+      fs.writeFileSync(optionalFile,JSON.stringify(config),{mode:0o600});
+      spawnConfig.mcpConfigPath=optionalFile;
+      } catch {
+        stopSpare(db,optional,'Optional toolbox isolation failed','skipped');
+        clearPendingTurnStmt.run(conv.id);entry.turn=null;emitStatus(conv.id);return;
+      }
+    }
     if (lane) {
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string};
       const peer = thread.left_id===authority.id ? thread.right_id : thread.left_id;
@@ -1712,8 +1740,13 @@ export function createConversationManager({
       }
     };
     if (entry.turn !== turn || turn.discarded) return;
+    if (optional && (!spareBinding(db,optional.id,conv.id) || normalWorkWaiting(db))) {
+      stopSpare(db,optional,'Optional eligibility changed during preparation','skipped');
+      clearPendingTurnStmt.run(conv.id); entry.turn=null; emitStatus(conv.id); return;
+    }
     const handle = adapter.runTurn(
       {
+        ...(optional ? {subscriptionAccountId:optional.account_id,subscriptionRevision:optional.credential_revision ?? undefined,optionalDeadline:Date.parse(optional.deadline)} : {}),
         cwd: workspace.workspaceDir,
         conversationId: conv.id,
         nativeSessionId: conv.native_session_id,
@@ -1731,7 +1764,7 @@ export function createConversationManager({
           !firstTurn &&
           Boolean(spawnConfig.instructionHash) &&
           conv.provider_instruction_hash !== spawnConfig.instructionHash,
-        dangerous: workspace.fullAccess ?? false,
+        dangerous: optional ? false : workspace.fullAccess ?? false,
       },
       (event) => {
         if (event.type === 'text_final') {
@@ -1759,7 +1792,7 @@ export function createConversationManager({
                 full_access: 0 | 1;
               }
             | undefined;
-          const effectiveMode = resolveEffectiveApprovalMode(
+          const effectiveMode = optional ? 'ask' : resolveEffectiveApprovalMode(
             Boolean(mode?.full_access),
             mode?.conversation_mode,
             mode?.assistant_mode,
@@ -1887,7 +1920,7 @@ export function createConversationManager({
             }).catch((err: Error) => log.warn(`[runtime] readModel failed: ${err.message}`));
         }
       }
-      if (!lane && !isolatedRoom && !sawError && captureMemoryTurn && turn.events.some((event) => event.type === 'text_final')) {
+      if (!optional && !lane && !isolatedRoom && !sawError && captureMemoryTurn && turn.events.some((event) => event.type === 'text_final')) {
         const captureEvents = [...turn.events];
         void captureMemoryTurn(conv, captureEvents).catch((err: Error) =>
           log.warn(`[runtime] memory capture failed: ${err.message}`),
@@ -1925,6 +1958,10 @@ export function createConversationManager({
     origin?: MessageOrigin,
     onPersisted?: () => void,
   ): PostMessageResult {
+    if (!origin?.spareRunId) {
+      const run = db.prepare("SELECT * FROM spare_allowance_runs WHERE status IN ('queued','running')").get() as ReturnType<typeof spareRun>;
+      if (run) { stopSpare(db,run,'Normal work arrived; reconcile optional batch before continuing'); live.get(run.conversation_id)?.kill?.('timeout'); }
+    }
     const entry = entryFor(conv.id);
     const disposition: PostMessageResult['disposition'] =
       entry.turn || entry.maintenance || failedTurnStmt.get(conv.id) || coordinationFamily(db,conv.id).some(id=>id!==conv.id && (entryFor(id).turn || entryFor(id).maintenance || entryFor(id).queue.length)) ? 'queued' : 'running';
@@ -2139,7 +2176,9 @@ export function createConversationManager({
       return enqueueMessage(conv, text, true, undefined, actorUserId, origin);
     },
     async steerMessage(conv, text, _idempotencyKey, actorUserId = conv.user_id, origin) {
+      const wasOptional = Boolean(spareRun(db,conv.id));
       const posted = enqueueMessage(conv, text, true, undefined, actorUserId, origin);
+      if (wasOptional) return posted;
       return steerQueued(conv, text, posted, actorUserId, origin);
     },
     queueMessage(conv, text, actorUserId = conv.user_id, origin, requestKey) {
@@ -2293,6 +2332,7 @@ export function createConversationManager({
         return { ok: false, error: 'not_found', queue: queueSnapshot(conv.id) };
       }
       const origin = parseMessageOrigin(failed.origin_json);
+      if (origin?.spareRunId) throw new Error('Reconcile the optional batch in Usage; it cannot be retried automatically.');
       entryFor(conv.id).queue.unshift({
         id: null,
         prompt: failed.prompt,
@@ -2475,6 +2515,9 @@ export function createConversationManager({
         attempts: number;
       }[];
       for (const row of rows) {
+        if (parseMessageOrigin(row.origin_json)?.spareRunId) {
+          clearPendingTurnStmt.run(row.conversation_id); continue;
+        }
         const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(row.conversation_id) as
           | ConversationRow
           | undefined;

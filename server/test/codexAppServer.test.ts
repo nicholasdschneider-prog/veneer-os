@@ -49,6 +49,27 @@ function turnSpec(over: Partial<TurnSpec> = {}): TurnSpec {
 }
 
 describe('AppServerClient cleanup (BUG 5)', () => {
+  it('pins an optional native app-server to its selected account without reading the global account',async()=>{
+    const dir=tmpDir();const home=vi.fn((id:string)=>path.join(dir,id));const active=vi.fn(()=> 'normal');let revision='revision';
+    const adapter=createCodexAdapter({codexBin:FAKE,turnTimeoutMs:5000,transcriptsDir:dir,getAccountId:active,codexHomeFor:home,accountExists:()=>true,accountRevisionFor:()=> revision,log:silent});
+    try {
+      await adapter.runTurn(turnSpec({dangerous:false,subscriptionAccountId:'spare',subscriptionRevision:'revision',optionalDeadline:Date.now()+5000}),()=>{}).done;
+      expect(home).toHaveBeenCalledWith('spare');expect(active).not.toHaveBeenCalled();
+      revision='reconnected';
+      await adapter.runTurn(turnSpec({turnId:'turn-2',dangerous:false,subscriptionAccountId:'spare',subscriptionRevision:revision,optionalDeadline:Date.now()+5000}),()=>{}).done;
+      expect(home).toHaveBeenCalledTimes(2);expect(active).not.toHaveBeenCalled();
+    } finally {
+      for(const resource of adapter.runtimeResources?.()??[])if(resource.pid)try{process.kill(resource.pid,'SIGTERM');}catch{}
+      fs.rmSync(dir,{recursive:true,force:true,maxRetries:3,retryDelay:10});
+    }
+  });
+  it('rejects a changed optional credential revision before starting an app-server',async()=>{
+    const dir=tmpDir();const home=vi.fn(()=> '/unused');const events:ConversationEvent[]=[];
+    const adapter=createCodexAdapter({codexBin:FAKE,turnTimeoutMs:5000,transcriptsDir:dir,codexHomeFor:home,accountExists:()=>true,accountRevisionFor:()=> 'new-revision',log:silent});
+    await adapter.runTurn(turnSpec({subscriptionAccountId:'spare',subscriptionRevision:'old-revision',optionalDeadline:Date.now()+5000}),e=>events.push(e)).done;
+    expect(home).not.toHaveBeenCalled();expect(events).toContainEqual(expect.objectContaining({type:'turn_done',outcome:'failed'}));
+    fs.rmSync(dir,{recursive:true,force:true,maxRetries:3,retryDelay:10});
+  });
   it('gates the code-mode disable flags on the codex version', () => {
     const legacy = [
       'app-server',
@@ -174,7 +195,7 @@ describe('canonical Codex App Server adapter', () => {
     delete process.env.SERVER_RESPONSE_LOG;
     delete process.env.COMPACT_MODE;
     _setMediaDirForTest(null);
-    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
   });
 
   it('persists whole-turn usage without double-counting cached Codex input', async () => {
@@ -1241,7 +1262,7 @@ describe('Codex thread writer locks across app-server processes', () => {
     delete process.env.WRITER_LOCK_FILE;
     delete process.env.COMPLETE_TURNS;
     delete process.env.REQUEST_LOG;
-    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
   });
 
   it('unsubscribes idle owners and forks safely while the native grace retains the writer lock', async () => {
@@ -1315,7 +1336,7 @@ describe('Codex paginated fork preparation failure (resume in place, option A)',
     delete process.env.RESUME_HANG;
     delete process.env.COMPLETE_TURNS;
     delete process.env.REQUEST_LOG;
-    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
   });
 
   function readRequests(requestLog: string): Array<{ method?: string; params?: Record<string, unknown> }> {

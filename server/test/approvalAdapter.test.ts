@@ -62,6 +62,23 @@ afterEach(() => {
 });
 
 describe('claude adapter approval round trip (fake CLI)', () => {
+  it('pins optional OAuth to the requested subscription and suppresses global failover',async()=>{
+    process.env.FAKE_CLAUDE_MODE='rate-limit';
+    const getActive=vi.fn(()=> 'normal');const getToken=vi.fn(()=> 'synthetic-active');
+    const getPinned=vi.fn(()=> 'synthetic-pinned');const failover=vi.fn();const attribution=vi.fn();
+    const adapter=createClaudeAdapter({claudeBin:FAKE_CLAUDE,turnTimeoutMs:5000,getAccountId:getActive,getOauthToken:getToken,getOauthTokenFor:getPinned,accountRevisionFor:()=> 'revision',onSessionLimit:failover,onRateLimit:attribution,log:{warn(){},error(){}}});
+    const events:ConversationEvent[]=[];
+    await adapter.runTurn({...turnSpec(),subscriptionAccountId:'spare',subscriptionRevision:'revision',optionalDeadline:Date.now()+5000},e=>events.push(e)).done;
+    expect(getPinned).toHaveBeenCalledWith('spare');expect(getActive).not.toHaveBeenCalled();expect(getToken).not.toHaveBeenCalled();expect(failover).not.toHaveBeenCalled();
+    expect(events).toContainEqual(expect.objectContaining({type:'turn_done',outcome:'failed'}));
+  });
+  it('does not fall back to normal OAuth when the optional account is revoked',async()=>{
+    const active=vi.fn(()=> 'synthetic-active');
+    const adapter=createClaudeAdapter({claudeBin:FAKE_CLAUDE,turnTimeoutMs:5000,getOauthToken:active,getOauthTokenFor:()=>null,log:{warn(){},error(){}}});
+    const events:ConversationEvent[]=[];
+    await adapter.runTurn({...turnSpec(),subscriptionAccountId:'revoked',optionalDeadline:Date.now()+5000},e=>events.push(e)).done;
+    expect(active).not.toHaveBeenCalled();expect(events).toContainEqual(expect.objectContaining({type:'turn_done',outcome:'failed'}));
+  });
   it('lists Haiku 5.5 while preserving the existing current Claude models', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
