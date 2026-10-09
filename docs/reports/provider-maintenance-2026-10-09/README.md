@@ -21,7 +21,13 @@ Verified configured service home `/Users/archerclawdington/veneer-pro-home` and 
 
 ## Validation and deployment
 
-Root typecheck passed. Focused runtime, Claude approval/model, Codex model/app-server and guide checks passed (127 tests). The first guide run failed against the old September announcement date; its expectation was updated for the October release, and the independent guide rerun passed all 38 tests. Full `npm test` passed: 3,827 server tests (15 skipped), 1,013 web tests, 51 browser-manager tests and 30 installer tests. Root `npm run build` passed with only the existing nonfatal large-chunk warning. Supported restart preflight passed with Node 24 and native modules loading. Deployment verification is pending the supported restart. Pre-restart PIDs: web 29938, runner 55473, app-runner 56372, terminal 56391.
+Root typecheck passed. Focused runtime, Claude approval/model, Codex model/app-server and guide checks passed (127 tests). The first guide run failed against the old September announcement date; its expectation was updated for the October release, and the independent guide rerun passed all 38 tests. Full `npm test` passed: 3,827 server tests (15 skipped), 1,013 web tests, 51 browser-manager tests and 30 installer tests. Root `npm run build` passed with only the existing nonfatal large-chunk warning. Supported restart preflight passed with Node 24 and native modules loading. Runtime/catalog changes were committed and pushed to `origin main` as `59af38a` (`Update provider runtimes and expose verified Haiku 5.5`).
+
+Supported root `npm run restart` restarted app-runner, terminal, browser-manager, web and runner last. Runner shutdown interrupted this chat before its final command receipt; the same build resumed for reconciliation without repeating the restart. Fresh PIDs confirm all four Node services restarted: web 29938 → 57364, runner 55473 → 57384, app-runner 56372 → 57324, terminal 56391 → 57342. The restart log records browser-manager healthy.
+
+Post-restart web, runner and terminal `/healthz`, app-runner `/rpc/statuses` and browser-manager `/health` returned HTTP 200. Supported `npm run restart -- --health-check` passed: local web/runner healthy, public front door HTTP 302 and four active tunnel edge connections. This does not certify authenticated end-to-end public chat.
+
+Post-restart runtime verification matched all three pins. Fresh live Veneer model discovery includes Haiku 5.5, preserves all prior eligible Claude and Codex choices, and retains Opus 5.5 and GPT-6.1 Sol defaults. Build #668 is complete; no owner blocker remains. Unrelated untracked files were preserved. This documentation-only deployment receipt is committed separately.
 
 Guide contract tests verify employee route access and delivery into normal and elevated current/resumed bot instructions. Existing guide layout is unchanged.
 
