@@ -792,6 +792,17 @@ export function createScheduledTasksRouter(
       res.status(409).json({ ok: false, error: 'An active run cannot be deleted' });
       return;
     }
+    // Purchase batches and worker starts reference their run as the audit trail.
+    if (
+      db.prepare('SELECT 1 FROM purchase_event_batches WHERE run_id = ?').get(run.id)
+      || db.prepare('SELECT 1 FROM purchase_worker_starts WHERE run_id = ?').get(run.id)
+    ) {
+      res.status(409).json({
+        ok: false,
+        error: 'PURCHASE_RUN_RETAINED: purchase runs are audit records and cannot be deleted; clear a failed-run fence with purchase-startup-reconciliation',
+      });
+      return;
+    }
     db.transaction(() => {
       db.prepare('DELETE FROM scheduled_task_runs WHERE id = ? AND scheduled_task_id = ?').run(run.id, task.id);
       if (run.conversation_id) {

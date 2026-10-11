@@ -251,6 +251,30 @@ describe('native failed-before-model reconciliation',()=>{
   expect(()=>reconcilePurchaseStartup(db,dir,1,id,{run_id:run,mode:'inspect'})).toThrow('PLATFORM_DEV');
   db.prepare('UPDATE scheduled_tasks SET project_id=NULL WHERE id=?').run(task);expect(()=>release(hash)).toThrow('ACCESS');
  });
+ it('accepts the synthetic out-of-credits refusal but only with provider 429 metadata',()=>{
+  const credits="You're out of usage credits. Switch to another model to continue.";
+  db.prepare('UPDATE scheduled_task_runs SET error=? WHERE id=?').run(credits,run);rows[1]!.message.content[0].text=credits;save();
+  expect(release().reconciled).toBe(true);
+ });
+ it.each(['model','status','api_error','run_error'])('rejects an out-of-credits text without matching evidence: %s',(kind)=>{
+  const credits="You're out of usage credits. Switch to another model to continue.";
+  db.prepare('UPDATE scheduled_task_runs SET error=? WHERE id=?').run(kind==='run_error'?error:credits,run);rows[1]!.message.content[0].text=credits;
+  if(kind==='model')rows[1]!.message.model='claude-opus-5-5';
+  if(kind==='status')rows[1]!.apiErrorStatus=500;
+  if(kind==='api_error')rows[1]!.isApiErrorMessage=false;
+  save();expect(()=>release()).toThrow('STARTUP_FAILURE_NOT_PROVEN');expect(db.prepare('SELECT 1 FROM purchase_startup_dispositions').get()).toBeUndefined();
+ });
+ it('refuses to delete a retained purchase run with a clear 409',async()=>{
+  const app=express();app.use(express.json());
+  app.use((req,_res,next)=>{req.user=db.prepare('SELECT * FROM users WHERE id=1').get() as typeof req.user;next();});
+  app.use('/api/scheduled-tasks',createScheduledTasksRouter({db,config:{dataDir:dir},manager:{}} as unknown as AppContext));
+  const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));
+  try{
+   const res=await fetch(`http://127.0.0.1:${(server.address() as {port:number}).port}/api/scheduled-tasks/${task}/runs/${run}`,{method:'DELETE'});
+   expect(res.status).toBe(409);expect(((await res.json()) as {error:string}).error).toContain('PURCHASE_RUN_RETAINED');
+   expect(db.prepare('SELECT 1 FROM scheduled_task_runs WHERE id=?').get(run)).toBeTruthy();
+  }finally{await new Promise<void>(r=>server.close(()=>r()));}
+ });
  it('freshness pins native bytes even when changed evidence would otherwise pass',()=>{const hash=inspect().evidence_hash;rows[0]!.message.content[0].text+=' changed';save();expect(()=>release(hash)).toThrow('FRESH_STARTUP');});
 });
 

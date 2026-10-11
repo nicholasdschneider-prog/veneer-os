@@ -19,6 +19,9 @@ const Input = z.object({run_id:z.string().uuid(), mode:z.enum(['inspect','reconc
  expected_hash:z.string().regex(/^[a-f0-9]{64}$/).optional(),
  coordination_reference:z.string().trim().min(1).max(1000).optional()}).strict();
 const metadataTypes = new Set(['queue-operation','atis-latch','last-prompt','cost-state']);
+// Claude Code's synthetic no-credits reply is the same provider-side 429 refusal as a
+// session limit; every metadata, archive and exact run.error check below still applies.
+const outOfCreditsRe=/^You're out of (?:usage )?credits\b/i;
 const attachmentTypes = new Set(['environment','model','output_style_instructions','deferred_tools_delta',
  'agent_listing_delta','mcp_instructions_delta','skill_listing','auto_mode','total_tokens_reminder',
  'output_style','instructions','session_context','date','remote_session_change','prompt_snapshot']);
@@ -76,7 +79,7 @@ export function reconcilePurchaseStartup(db: Database.Database, dataDir: string,
   const assistant=assistants[0]!;
   const text=assistant.message.content.map((b:any)=>b.text).join('\n\n');
   if(assistant.isApiErrorMessage!==true || assistant.apiErrorStatus!==429 || assistant.error!=='rate_limit'
-    || assistant.message.model!=='<synthetic>' || !isClaudeSessionLimitMessage(text,assistant) || text!==r.error
+    || assistant.message.model!=='<synthetic>' || !(isClaudeSessionLimitMessage(text,assistant) || outOfCreditsRe.test(text.trim())) || text!==r.error
     || assistant.message.role!=='assistant' || users[0]!.message.role!=='user'
     || Date.parse(assistant.timestamp)<Date.parse(users[0]!.timestamp)) throw new BotError(409,'STARTUP_FAILURE_NOT_PROVEN');
   const nativeStart=db.prepare('SELECT * FROM purchase_worker_starts WHERE run_id=? AND conversation_id=?').get(r.id,r.conversation_id);
