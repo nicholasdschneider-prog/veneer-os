@@ -39,11 +39,13 @@ export function createBuildQueueCoordinator({
   db,
   manager,
   tickMs = 15_000,
+  canDispatch = () => true,
   log = console,
 }: {
   db: Database.Database;
   manager: QueueManager;
   tickMs?: number;
+  canDispatch?: () => boolean;
   log?: Pick<Console, 'warn' | 'error'>;
 }): BuildQueueCoordinator {
   let timer: NodeJS.Timeout | null = null;
@@ -157,6 +159,7 @@ export function createBuildQueueCoordinator({
     try {
       const candidates = dispatchableJobs.all() as BuildQueueRow[];
       for (const job of candidates) {
+        if (!canDispatch()) break;
         // enqueue_build is called from inside the planning turn. A live head
         // waits, but must not prevent a different workspace from dispatching.
         if (manager.isLive(job.conversation_id)) continue;

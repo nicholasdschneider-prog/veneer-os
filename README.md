@@ -133,6 +133,7 @@ prerequisites; see [the exact contract and setup flow](docs/purchase-timing-veri
 | `VP_CLIENT_NAME` | — | optional workspace name used as the browser title |
 | `VP_DEV_EMAIL` | `owner@example.com` | the identity attributed to every request under `VP_IDENTITY=dev` |
 | `VP_RUNNER_PORT` | `3101` | loopback IPC for the agent-execution service |
+| `VP_BACKGROUND_ACTIVE_LIMIT` | `4` | defer new scheduled jobs, build dispatches, and automatic wakeups while this many turns are active; pending work is retained and checked again on the next scheduler tick. Direct user actions and result replies remain available. This is an automatic-dispatch limit, not a hard cap on all agents or subagents. |
 | `VP_APP_RUNNER_PORT` | `3102` | loopback IPC for local Mini Apps |
 | `VP_TERM_PORT` | `3103` | loopback IPC for the terminal service |
 | `VP_CLAUDE_BIN` / `VP_CODEX_BIN` / `VP_GROK_BIN` | `claude` / `codex` / `grok` | the installer pins these to the service home's `.local/bin` |

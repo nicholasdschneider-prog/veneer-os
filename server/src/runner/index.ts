@@ -21,6 +21,8 @@ import { createBuildQueueCoordinator } from '../buildQueue/coordinator.js';
 import { createShutdown } from '../shutdown.js';
 import { writePidFile } from '../servicePid.js';
 import { startResourceMonitor } from './resourceMonitor.js';
+import { createBackgroundAdmission } from './backgroundAdmission.js';
+import { resultReplyWake } from '../bots/communication.js';
 import { createDopplerTokenStore, DopplerRuntime } from '../secrets/doppler.js';
 import { installPlatformSkills } from '../skills/platform.js';
 import { createVeneerBrowserRemote } from '../veneerBrowser/remoteClient.js';
@@ -135,9 +137,15 @@ manager.bus.on('status', (conversationId: string, status: string) => {
 });
 // Two seconds keeps provider-triggered automations responsive; schedule checks
 // are cheap and share the same durable tick.
-const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000 });
-const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bus, tickMs: 2_000 });
-const buildQueue = createBuildQueueCoordinator({ db, manager });
+const canDispatchBackground = createBackgroundAdmission(db, Number(process.env.VP_BACKGROUND_ACTIVE_LIMIT ?? 4));
+const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000, canDispatch: canDispatchBackground });
+const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bus, tickMs: 2_000,
+  // A dependency reply must still reach its parent at capacity. Ordinary
+  // periodic wakes wait, even for busy chats, so they cannot keep every old
+  // worker perpetually queued and prevent the machine from draining.
+  canDispatch: row => canDispatchBackground() || Boolean(resultReplyWake(db, row.id)),
+});
+const buildQueue = createBuildQueueCoordinator({ db, manager, canDispatch: canDispatchBackground });
 // Huddle delivery rides on conversation_wakeups; this loop only repairs cursors
 // and re-wakes members whose wake was lost, so it can run after the scheduler.
 const huddles = createHuddleReconciler({ service: createHuddleService(db), tickMs: 5_000 });

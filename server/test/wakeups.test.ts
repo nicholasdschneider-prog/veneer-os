@@ -103,6 +103,35 @@ describe('conversation wake-up scheduler', () => {
     vi.clearAllMocks();
   });
 
+  it('defers automatic wakeups without losing or duplicating them', () => {
+    let allowed = false;
+    scheduler.stop();
+    scheduler = createConversationWakeupScheduler({db,manager,now:()=>new Date(current),log,canDispatch:()=>allowed});
+    const wake = scheduler.schedule({conversationId:conv.id,actorUserId:1,key:'capacity-test',reason:'Check progress',scheduledFor:new Date(BASE.getTime()+2000)});
+    if (!wake.ok) throw new Error('fixture failed');
+    current = new Date(BASE.getTime()+3000);
+    scheduler.tick();
+    expect(adapter.runs).toHaveLength(0);
+    expect(scheduler.listPending(conv.id)).toHaveLength(1);
+    allowed = true; scheduler.tick();
+    expect(adapter.runs).toHaveLength(1);
+    expect(scheduler.listPending(conv.id)).toHaveLength(0);
+    scheduler.tick();
+    expect(adapter.runs).toHaveLength(1);
+  });
+
+  it('checks result replies before a full page of deferred automatic wakes', () => {
+    const canDispatch = vi.fn((_row: ConversationWakeupRow) => false);
+    scheduler.stop();
+    scheduler = createConversationWakeupScheduler({db,manager,now:()=>new Date(current),log,canDispatch});
+    const insert = db.prepare("INSERT INTO conversation_wakeups(id,conversation_id,wake_key,reason,scheduled_for,actor_user_id) VALUES(?,?,?,'Check',?,1)");
+    for (let i=0;i<51;i++) insert.run(`ordinary-${i}`,conv.id,`ordinary-${i}`,new Date(BASE.getTime()-2000).toISOString());
+    insert.run('reply',conv.id,'message-thread:reply',new Date(BASE.getTime()-1000).toISOString());
+    scheduler.tick();
+    expect(canDispatch.mock.calls[0]?.[0]).toMatchObject({id:'reply'});
+    expect(scheduler.listPending(conv.id)).toHaveLength(52);
+  });
+
   function periodic() {
     db.prepare('INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,?,1)').run(conv.id, 'Backup');
     const user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;

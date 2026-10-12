@@ -55,6 +55,25 @@ afterEach(() => {
 });
 
 describe('scheduled task runner', () => {
+  it('leaves due work durable at capacity and checks again after every dispatch', () => {
+    let slots = 0;
+    scheduler.stop();
+    scheduler = createScheduledTaskScheduler({ db, now: () => NOW,
+      canDispatch: () => slots > 0,
+      manager: { bus, postMessage: (conv, text, actorUserId) => { slots--; posted.push({conv,text,actorUserId}); } },
+    });
+    insertTask({id:'one'}); insertTask({id:'two'});
+    scheduler.tick();
+    expect(posted).toHaveLength(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM scheduled_tasks WHERE enabled=1 AND next_run_at IS NOT NULL').get()).toEqual({n:2});
+    slots=1; scheduler.tick();
+    expect(posted).toHaveLength(1);
+    slots=1; scheduler.tick();
+    expect(posted).toHaveLength(2);
+    scheduler.tick();
+    expect(posted).toHaveLength(2);
+  });
+
   it('launches a due one-time task as a normal automation chat and records completion', () => {
     insertTask();
     scheduler.tick();

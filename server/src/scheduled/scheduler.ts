@@ -39,12 +39,14 @@ export function createScheduledTaskScheduler({
   manager,
   tickMs = 15_000,
   now = () => new Date(),
+  canDispatch = () => true,
   log = console,
 }: {
   db: Database.Database;
   manager: SchedulerManager;
   tickMs?: number;
   now?: () => Date;
+  canDispatch?: () => boolean;
   log?: Pick<Console, 'warn' | 'error'>;
 }): ScheduledTaskScheduler {
   let timer: NodeJS.Timeout | null = null;
@@ -247,12 +249,14 @@ export function createScheduledTaskScheduler({
         )
         .all(now().toISOString()) as ScheduledTaskRow[];
       for (const task of due) {
+        if (!canDispatch()) break;
         const scheduledFor = new Date(task.next_run_at!);
         launch(task, scheduledFor, 'scheduled');
       }
       processEvents();
       const purchases=db.prepare("SELECT task_id,source_id FROM purchase_event_batches WHERE status='pending' ORDER BY created_at LIMIT 20").all() as {task_id:string;source_id:string}[];
       for(const p of purchases) {
+        if (!canDispatch()) break;
         if(!purchaseBinding(db,p.source_id) || db.prepare(purchaseTaskFenceSql).get(p.task_id)) continue;
         const task=taskById.get(p.task_id) as ScheduledTaskRow|undefined;
         if(task) launch(task,now(),'manual');
@@ -274,6 +278,7 @@ export function createScheduledTaskScheduler({
       )
       .all() as AutomationEventRow[];
     for (const event of events) {
+      if (!canDispatch()) break;
       const task = taskById.get(event.scheduled_task_id) as ScheduledTaskRow | undefined;
       if (!task || activeRun.get(task.id)) continue;
       const claimed = db

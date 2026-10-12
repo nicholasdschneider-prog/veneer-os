@@ -106,6 +106,19 @@ describe('Platform Dev build queue', () => {
     db.close();
   });
 
+  it('keeps a build queued at capacity and dispatches it once capacity returns', () => {
+    const manager = fakeManager(db);
+    let allowed = false;
+    coordinator = createBuildQueueCoordinator({db,manager,canDispatch:()=>allowed});
+    coordinator.enqueue('build-1','Capacity test','Implement when there is room');
+    coordinator.tick();
+    expect(manager.sent).toHaveLength(0);
+    expect(db.prepare('SELECT status FROM build_queue').get()).toEqual({status:'queued'});
+    allowed=true; coordinator.tick(); coordinator.tick();
+    expect(manager.sent).toHaveLength(1);
+    expect(db.prepare('SELECT status FROM build_queue').get()).toEqual({status:'running'});
+  });
+
   it('preserves the requester at dispatch and refuses revoked access or cross-actor merges', () => {
     db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(2,'trainer@example.com','Trainer','member')").run();
     db.prepare("INSERT INTO business_teams(id,name,owner_id) VALUES('training','Training',1)").run();

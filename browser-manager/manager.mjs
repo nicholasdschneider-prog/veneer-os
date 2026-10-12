@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import crypto from 'node:crypto';
 import { createAdmissionQueue } from './admission.mjs';
+import { clearStoppedChromeCaches } from './cache-cleanup.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
@@ -800,6 +801,11 @@ async function stopProfileLocked(s) {
   dropPasskeyBlock(s);
   await backend.stop(s);
   purgeTickets(s);
+  if (!(await runtimeStatus(s)).running) {
+    await clearStoppedChromeCaches(s.chromeDir).catch(() => {
+      console.warn('[veneer-browser] stopped-profile cache cleanup failed');
+    });
+  }
   console.log(`[veneer-browser] stopped profile ${s.key.slice(0, 10)}`);
   return { active: false };
 }

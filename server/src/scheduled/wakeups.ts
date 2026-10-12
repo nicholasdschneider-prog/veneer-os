@@ -69,6 +69,7 @@ export function createConversationWakeupScheduler({
   bus,
   tickMs = 2_000,
   now = () => new Date(),
+  canDispatch = () => true,
   log = console,
 }: {
   db: Database.Database;
@@ -77,6 +78,7 @@ export function createConversationWakeupScheduler({
   bus?: Pick<EventEmitter, 'emit'>;
   tickMs?: number;
   now?: () => Date;
+  canDispatch?: (row: ConversationWakeupRow) => boolean;
   log?: Pick<Console, 'info' | 'warn' | 'error'>;
 }): ConversationWakeupScheduler {
   let timer: NodeJS.Timeout | null = null;
@@ -255,7 +257,7 @@ export function createConversationWakeupScheduler({
         .prepare(
           `SELECT * FROM conversation_wakeups
            WHERE status = 'pending' AND datetime(scheduled_for) <= datetime(?)
-           ORDER BY scheduled_for
+           ORDER BY CASE WHEN wake_key LIKE 'message-thread:%' THEN 0 ELSE 1 END, scheduled_for
            LIMIT 50`,
         )
         .all(now().toISOString()) as ConversationWakeupRow[];
@@ -277,7 +279,7 @@ export function createConversationWakeupScheduler({
           continue;
         }
 
-        deliver(row, conv);
+        if (canDispatch(row)) deliver(row, conv);
       }
     } catch (err) {
       log.error(`[wakeup] tick failed: ${(err as Error).message}`);
