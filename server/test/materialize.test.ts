@@ -13,7 +13,7 @@ import {
 import { createMaterializer } from '../src/toolbox/materialize.js';
 import { writeDopplerMetadata } from '../src/secrets/doppler.js';
 import { writeClaudePreferences } from '../src/providers/claude/preferences.js';
-import { proCodexHome } from '../src/homes.js';
+import { proCodexHome, serviceHome } from '../src/homes.js';
 
 const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
 const silent = { warn: () => undefined, error: () => undefined };
@@ -340,10 +340,12 @@ describe('materializer', () => {
       VP_AGENT_TOKEN: 'test-token',
       VP_INTERNAL_BASE_URL: INTERNAL_BASE_URL,
       VP_CONVERSATION_ID: 'tools-chat',
+      VP_SERVICE_HOME: serviceHome(),
     }));
     expect(mcp.mcpServers.agent_browser.env).toEqual(expect.objectContaining({
       VP_CONVERSATION_ID: 'tools-chat',
       VP_WORKSPACE_DIR: workspaceDir,
+      VP_SERVICE_HOME: serviceHome(),
       VP_DESKTOP_CDP_PORT: '9333',
       VP_APPS_PUBLIC_ORIGIN: 'https://pro.example.com',
       VP_AGENT_BROWSER_RETURN_IMAGES: '0',

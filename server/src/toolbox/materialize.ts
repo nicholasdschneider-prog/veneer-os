@@ -14,6 +14,7 @@ import {
 import { connectedConnectorRowsForConversation } from '../connectors/access.js';
 import { remoteMcpChatConfig } from '../connectors/remoteMcp.js';
 import { writeCurrentAgentToken } from '../runtime/agentTokenFile.js';
+import { serviceHome } from '../homes.js';
 import { readDopplerMetadata } from '../secrets/doppler.js';
 import type { ProjectDopplerCli } from '../secrets/projectDopplerCli.js';
 import {
@@ -239,6 +240,7 @@ export function createMaterializer({
           VP_AGENT_TOKEN: agentToken,
           VP_INTERNAL_BASE_URL: internalBaseUrl,
           VP_CONVERSATION_ID: conversationId,
+          VP_SERVICE_HOME: serviceHome(),
           ...(pagesPublicBase ? { VP_PAGES_PUBLIC_BASE: pagesPublicBase } : {}),
           ...(agentTokenFile ? { VP_AGENT_TOKEN_FILE: agentTokenFile } : {}),
           ...(secretToolsHidden ? { VP_SECRET_TOOLS_DISABLED: '1' } : {}),
@@ -256,6 +258,7 @@ export function createMaterializer({
             VP_INTERNAL_BASE_URL: internalBaseUrl,
             VP_CONVERSATION_ID: conversationId,
             VP_WORKSPACE_DIR: target.workspaceDir,
+            VP_SERVICE_HOME: serviceHome(),
             ...(dopplerApiConnected ? { VP_DOPPLER_API_CONNECTED: '1' } : {}),
             ...(projectDopplerCli
               ? { VP_PROJECT_DOPPLER_BIN: path.join(projectDopplerCli.binDir, 'doppler') }
@@ -273,6 +276,9 @@ export function createMaterializer({
         env: {
           VP_CONVERSATION_ID: conversationId,
           VP_WORKSPACE_DIR: target.workspaceDir,
+          // Codex starts stdio servers with a filtered environment, so the
+          // service home must ride here or the browser install is not found.
+          VP_SERVICE_HOME: serviceHome(),
           ...(desktopCdpPort ? { VP_DESKTOP_CDP_PORT: String(desktopCdpPort) } : {}),
           ...(publicOrigin ? { VP_APPS_PUBLIC_ORIGIN: publicOrigin } : {}),
           VP_AGENT_BROWSER_RETURN_IMAGES: conversation?.provider === 'openrouter' ? '0' : '1',
