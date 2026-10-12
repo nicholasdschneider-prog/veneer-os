@@ -4,6 +4,8 @@ import { z } from 'zod';
 import type Database from 'better-sqlite3';
 import { getThread, listThreads, resolveThreadId, threadMessages, setFollowed, STARTED_BY, THREAD_STATUSES } from './registry.js';
 import type { JamesLink } from './service.js';
+import { JAMES_API_DOCS } from './docs.js';
+import { idempotency } from './idempotency.js';
 
 /**
  * James's API at /api/james on the public hostname. Its own Cloudflare Access
@@ -50,6 +52,12 @@ const MessagesQuery = z.object({
   before: z.string().datetime({ offset: true }).transform((v) => new Date(v).toISOString()).optional(),
 });
 const ReplyBody = z.object({ expected_turn: z.number().int().min(0), text: z.string().trim().min(1).max(20_000) });
+const NewThreadBody = z.object({
+  project_id: z.string().trim().min(1).nullable().optional(),
+  title: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(20_000),
+});
+const BotMessageBody = z.object({ text: z.string().trim().min(1).max(20_000), expected_turn: z.number().int().min(0).optional() });
 const StatusBody = z.object({ expected_turn: z.number().int().min(0).optional() }).optional();
 const FollowBody = z.object({ follow: z.boolean() });
 const TestBody = z.object({ thread_id: z.string().min(8), simulate_webhook_failure: z.boolean().optional() });
@@ -58,6 +66,43 @@ export function createJamesRouter(db: Database.Database, link: JamesLink, getSec
   const router = express.Router();
   router.use(express.json({ limit: '128kb' }));
   router.use(jamesAuth(getSecret));
+  router.use(idempotency(db));
+
+  router.get('/docs', (_req, res) => { res.json(JAMES_API_DOCS); });
+
+  router.get('/projects', (_req, res) => {
+    const projects = db.prepare(
+      `SELECT p.id AS project_id, p.name, p.slug, a.slug AS default_agent,
+              (SELECT COUNT(*) FROM conversations c WHERE c.project_id = p.id AND c.archived = 0 AND c.side_chat_of IS NULL) AS open_threads,
+              (SELECT MAX(c.last_active_at) FROM conversations c WHERE c.project_id = p.id) AS last_activity
+         FROM projects p LEFT JOIN assistants a ON a.id = p.default_assistant_id AND a.deleted_at IS NULL
+        ORDER BY p.sort_order IS NULL, p.sort_order, p.name COLLATE NOCASE`,
+    ).all();
+    res.json({ ok: true, projects });
+  });
+
+  router.post('/threads', (req, res) => {
+    const body = NewThreadBody.safeParse(req.body);
+    if (!body.success) { res.status(400).json({ ok: false, error: 'title and text are required; project_id is optional' }); return; }
+    void link.createThread({ projectId: body.data.project_id ?? null, title: body.data.title, text: body.data.text }).then((result) => {
+      if (!result.ok) { const { status, ...rest } = result; res.status(status).json(rest); return; }
+      const { status_code, ...rest } = result;
+      res.status(status_code).json(rest);
+    }).catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+  });
+
+  router.get('/bots', (_req, res) => { res.json({ ok: true, bots: link.bots() }); });
+
+  router.post('/bots/:bot/message', (req, res) => {
+    const body = BotMessageBody.safeParse(req.body);
+    if (!body.success) { res.status(400).json({ ok: false, error: 'text is required; expected_turn is optional' }); return; }
+    const id = link.resolveBot(req.params.bot);
+    if (!id) { res.status(404).json({ ok: false, error: 'bot_not_found', bots: link.bots().map((b) => b.name) }); return; }
+    void link.postReply(id, body.data.expected_turn, body.data.text, 'james_api_bot').then((result) => {
+      if (!result.ok) { const { status, ...rest } = result; res.status(status).json(rest); return; }
+      res.json(result);
+    }).catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+  });
 
   router.get('/threads', (req, res) => {
     const query = ListQuery.safeParse(req.query);

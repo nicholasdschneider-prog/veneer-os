@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type { ConversationEvent } from '../runtime/events.js';
 import type { Mailer } from './mail.js';
+import { createJamesConversation, UnknownProjectError } from './create.js';
+import { pruneIdempotency } from './idempotency.js';
 import {
   JAMES_MARKER, ensureThread, excerpt, getState, getThread, iso, isJamesThread, listThreads, resolveThreadId, setState, setStatus,
   stampMessage, StaleTurnError, type ThreadRow,
@@ -99,7 +101,12 @@ export class JamesLink {
   onEvent(conversationId: string, event: ConversationEvent) {
     try {
       if (event.type === 'turn_started') {
-        if (event.text.startsWith(JAMES_MARKER)) return; // stamped by the API when James posted it
+        if (event.text.startsWith(JAMES_MARKER)) {
+          // Stamped by the API when James posted it; this turn is the answer to him.
+          this.db.prepare('UPDATE james_threads SET james_answer_turn_id = ? WHERE conversation_id = ? AND james_pending_since IS NOT NULL')
+            .run(event.turnId, conversationId);
+          return;
+        }
         const origin = event.origin;
         const author = /^\s*(?:\*\*)?(?:from james\b|james for nick\b)/i.test(event.text)
           ? 'james'
@@ -113,14 +120,18 @@ export class JamesLink {
       } else if (event.type === 'turn_done') {
         const last = this.lastText.get(conversationId);
         this.lastText.delete(conversationId);
+        // The turn answering James in a chat he does not follow (a bot's standing chat) is pushed once.
+        const answersJames = this.db.prepare(
+          'UPDATE james_threads SET james_pending_since = NULL, james_answer_turn_id = NULL WHERE conversation_id = ? AND james_answer_turn_id = ?',
+        ).run(conversationId, event.turnId).changes > 0;
         if (!last || last.turnId !== event.turnId || !last.markdown.trim()) return;
         const stamped = stampMessage(this.db, {
           conversationId, direction: 'from_veneer', author: 'veneer', via: 'agent',
           sourceRef: `turn:${event.turnId}`, text: last.markdown,
         }, this.deps.now());
-        if (!stamped?.inserted || !isJamesThread(stamped.thread)) return;
+        if (!stamped?.inserted || !(isJamesThread(stamped.thread) || answersJames)) return;
         this.enqueue(conversationId, 'reply', stamped.turn, {
-          author: 'veneer', asks_question: stamped.asked, excerpt: excerpt(last.markdown),
+          author: 'veneer', asks_question: stamped.asked, excerpt: excerpt(last.markdown), answers_james: answersJames,
         });
         void this.flush();
       }
@@ -135,7 +146,7 @@ export class JamesLink {
   }
 
   // ── James's actions ───────────────────────────────────────────────────────
-  async postReply(idOrPrefix: string, expectedTurn: number, text: string, via = 'james_api') {
+  async postReply(idOrPrefix: string, expectedTurn: number | undefined, text: string, via = 'james_api') {
     const id = resolveThreadId(this.db, idOrPrefix);
     const thread = id ? getThread(this.db, id) : undefined;
     if (!id || !thread) return { ok: false as const, status: 404, error: 'thread_not_found' };
@@ -156,8 +167,10 @@ export class JamesLink {
     }
     const body = `${JAMES_MARKER} · thread ${id} · turn ${stamped.turn}]\nFrom James (direct, no Nick relay): ${text}`;
     try {
+      this.db.prepare('UPDATE james_threads SET james_pending_since = ?, james_answer_turn_id = NULL WHERE conversation_id = ?')
+        .run(iso(this.deps.now()), id);
       const posted = await this.deps.postToChat(id, body);
-      return { ok: true as const, thread: this.summary(stamped.thread), turn: stamped.turn, disposition: posted.disposition ?? 'posted' };
+      return { ok: true as const, thread_id: id, turn: stamped.turn, thread: this.summary(getThread(this.db, id)!), disposition: posted.disposition ?? 'posted' };
     } catch (err) {
       // Undo the stamp so James can retry at the same turn.
       this.db.transaction(() => {
@@ -166,6 +179,50 @@ export class JamesLink {
       })();
       return { ok: false as const, status: 502, error: 'post_failed', detail: (err as Error).message, current_turn: stamped.turn - 1 };
     }
+  }
+
+  /** Start a new thread under James's name; he follows it for pushes. */
+  async createThread(input: { projectId: string | null; title: string; text: string }) {
+    let id: string;
+    try {
+      id = createJamesConversation(this.db, { projectId: input.projectId, title: input.title });
+    } catch (err) {
+      if (err instanceof UnknownProjectError) return { ok: false as const, status: 400, error: 'unknown_project' };
+      throw err;
+    }
+    ensureThread(this.db, id, `From James: ${input.text}`);
+    this.db.prepare(
+      "UPDATE james_threads SET started_by = 'james', started_by_source = 'james', followed = 1, quiet_pushed_at = NULL WHERE conversation_id = ?",
+    ).run(id);
+    const posted = await this.postReply(id, 0, input.text);
+    if (!posted.ok) return posted;
+    return { ...posted, status_code: 201 as const };
+  }
+
+  bots() {
+    return (this.db.prepare(
+      `SELECT r.name, r.conversation_id, p.name AS project, b.name AS business_team
+         FROM bot_registrations r
+         JOIN conversations c ON c.id = r.conversation_id
+         LEFT JOIN projects p ON p.id = c.project_id
+         LEFT JOIN business_teams b ON b.id = c.business_team_id
+        WHERE r.active = 1 AND c.archived = 0
+        ORDER BY r.name COLLATE NOCASE`,
+    ).all() as { name: string; conversation_id: string; project: string | null; business_team: string | null }[]).map((bot) => {
+      const thread = getThread(this.db, bot.conversation_id) ?? ensureThread(this.db, bot.conversation_id);
+      return { name: bot.name, project: bot.project, business_team: bot.business_team, ...(thread ? this.summary(thread) : { thread_id: bot.conversation_id }) };
+    });
+  }
+
+  resolveBot(ref: string): string | null {
+    const value = decodeURIComponent(ref).trim();
+    const byName = this.db.prepare(
+      `SELECT r.conversation_id FROM bot_registrations r JOIN conversations c ON c.id = r.conversation_id
+        WHERE r.active = 1 AND c.archived = 0 AND (r.name = ? COLLATE NOCASE OR r.conversation_id = ?)`,
+    ).all(value, value) as { conversation_id: string }[];
+    if (byName.length === 1) return byName[0]!.conversation_id;
+    const id = resolveThreadId(this.db, value);
+    return id && this.db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id = ? AND active = 1').get(id) ? id : null;
   }
 
   async changeStatus(idOrPrefix: string, action: 'close' | 'archive' | 'reopen', expectedTurn?: number) {
@@ -192,6 +249,7 @@ export class JamesLink {
     this.queueQuietThreads(now);
     this.queueHeartbeat(now);
     await this.autoArchive(now);
+    if (this.ticks % 60 === 1) pruneIdempotency(this.db, now);
     if (this.ticks % 2 === 1) await this.pollEmailCommands().catch((err: Error) => this.log(`email poll failed: ${err.message}`));
     await this.flush();
   }

@@ -319,3 +319,74 @@ describe('thread messages and waiting_on filter', () => {
     expect((await api('/api/james/threads?waiting_on=nick')).status).toBe(400);
   });
 });
+
+describe('API v2: docs, projects, new threads, bots, idempotency', () => {
+  const P = 'project-ervp';
+  const G = '77777777-7777-4777-8777-777777777777';
+  beforeAll(() => {
+    db.prepare("INSERT INTO projects (id, slug, name) VALUES (?, 'ervp', 'ERVP')").run(P);
+    addConversation(G, 'Sage standing chat');
+    db.prepare('INSERT INTO bot_registrations (conversation_id, name, registered_by) VALUES (?, ?, 1)').run(G, 'Sage');
+  });
+
+  it('serves docs and lists projects', async () => {
+    const docs = await (await api('/api/james/docs')).json();
+    expect(docs.endpoints.map((e: { method: string; path: string }) => `${e.method} ${e.path}`)).toEqual(expect.arrayContaining([
+      'GET /projects', 'POST /threads', 'GET /bots', 'POST /bots/{bot}/message', 'GET /threads/{id}/messages', 'POST /threads/{id}/follow',
+    ]));
+    const projects = await (await api('/api/james/projects')).json();
+    expect(projects.projects).toEqual([expect.objectContaining({ project_id: P, name: 'ERVP', open_threads: 0 })]);
+  });
+
+  it('starts a James thread in a project at turn 1, followed, and replays an idempotent retry', async () => {
+    const before = posted.length;
+    const init = { method: 'POST', body: JSON.stringify({ project_id: P, title: 'Check Irvine', text: 'Please check the Irvine order.' }), headers: { 'idempotency-key': 'new-thread-0001' } };
+    const first = await api('/api/james/threads', init);
+    expect(first.status).toBe(201);
+    const created = await first.json();
+    expect(created).toMatchObject({ ok: true, turn: 1, thread: { title: 'Check Irvine', started_by: 'james', followed: true, status: 'waiting_on_veneer' } });
+    const conv = db.prepare('SELECT project_id, title, archived, assistant_id FROM conversations WHERE id = ?').get(created.thread_id);
+    expect(conv).toMatchObject({ project_id: P, title: 'Check Irvine', archived: 0 });
+    expect(posted.at(-1)).toEqual({ id: created.thread_id, text: `${JAMES_MARKER} · thread ${created.thread_id} · turn 1]\nFrom James (direct, no Nick relay): Please check the Irvine order.` });
+    const replay = await api('/api/james/threads', init);
+    expect(replay.status).toBe(201);
+    expect(replay.headers.get('idempotent-replay')).toBe('true');
+    expect((await replay.json()).thread_id).toBe(created.thread_id);
+    expect(posted.length).toBe(before + 1);
+    const conflict = await api('/api/james/threads', { ...init, body: JSON.stringify({ title: 'Other', text: 'x' }) });
+    expect(conflict.status).toBe(409);
+    expect((await conflict.json()).error).toBe('idempotency_conflict');
+    expect((await api('/api/james/threads', { method: 'POST', body: JSON.stringify({ project_id: 'nope', title: 't', text: 'x' }) })).status).toBe(400);
+  });
+
+  it('replays an idempotent reply instead of posting twice', async () => {
+    const before = posted.length;
+    const turn = getThread(db, A)!.turn;
+    const init = { method: 'POST', body: JSON.stringify({ expected_turn: turn, text: 'once only' }), headers: { 'idempotency-key': 'reply-key-0001' } };
+    const one = await (await api(`/api/james/threads/${A}/reply`, init)).json();
+    const two = await (await api(`/api/james/threads/${A}/reply`, init)).json();
+    expect(two).toEqual(one);
+    expect(posted.length).toBe(before + 1);
+  });
+
+  it('lists bots and messages one by name, pushing only the reply to James', async () => {
+    const bots = await (await api('/api/james/bots')).json();
+    expect(bots.bots.map((b: { name: string }) => b.name)).toEqual(expect.arrayContaining(['Avery', 'Sage']));
+    expect(bots.bots.find((b: { name: string }) => b.name === 'Sage')).toMatchObject({ thread_id: G, followed: false });
+    const sent = await (await api('/api/james/bots/sage/message', { method: 'POST', body: JSON.stringify({ text: 'Test ping, no action needed.' }) })).json();
+    expect(sent).toMatchObject({ ok: true, thread_id: G, turn: 1 });
+    // Unrelated bot traffic first: not pushed.
+    userTurn(G, 'g-cs', 'Customer ticket 55 arrived');
+    veneerReply(G, 'g-cs', 'Ticket 55 handled.');
+    // Then the turn that answers James: pushed once.
+    userTurn(G, 'g-james', posted.at(-1)!.text);
+    veneerReply(G, 'g-james', 'Pong, James. Nothing needed.');
+    veneerReply(G, 'g-later', 'Ticket 56 handled.');
+    await link.flush({ force: true });
+    const pushes = fetchMock.mock.calls.map((c) => JSON.parse(c[1].body)).filter((p) => p.thread?.thread_id === G);
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0].events).toEqual([expect.objectContaining({ reason: 'reply', answers_james: true, excerpt: 'Pong, James. Nothing needed.' })]);
+    expect(getThread(db, G)).toMatchObject({ followed: 0, james_pending_since: null });
+    expect((await api('/api/james/bots/Nobody/message', { method: 'POST', body: JSON.stringify({ text: 'x' }) })).status).toBe(404);
+  });
+});

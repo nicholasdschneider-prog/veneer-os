@@ -33,6 +33,8 @@ export interface ThreadRow {
   quiet_pushed_at: string | null;
   done_at: string | null;
   archived_at: string | null;
+  james_pending_since?: string | null;
+  james_answer_turn_id?: string | null;
   conversation_archived: number;
 }
 
@@ -168,8 +170,10 @@ export function stampMessage(db: Database.Database, input: StampInput, nowMs = D
       `INSERT INTO james_thread_messages (conversation_id, turn, direction, author, via, source_ref, excerpt, at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(input.conversationId, turn, input.direction, input.author, input.via, input.sourceRef, excerpt(input.text, LEDGER_TEXT_MAX), now);
-    const followed = thread.followed || input.author === 'james'
-      || (input.direction === 'to_veneer' && mentionsJames(input.text) && !isRegisteredBotChat(db, input.conversationId)) ? 1 : 0;
+    // James writing in a thread follows it, except a bot's standing chat: there only his own answer is pushed.
+    const followed = thread.followed
+      || ((input.author === 'james' || (input.direction === 'to_veneer' && mentionsJames(input.text)))
+        && !isRegisteredBotChat(db, input.conversationId)) ? 1 : 0;
     // A question only waits on James in a thread he started or follows.
     const asked = input.direction === 'from_veneer' && isJamesThread({ started_by: thread.started_by, followed }) && asksQuestion(input.text);
     let status: ThreadStatus = thread.status;

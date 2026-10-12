@@ -37,6 +37,18 @@ the owner login for this path only.
 | `POST /threads/:id/close` / `archive` / `reopen` `{expected_turn?}` | status change; archive waits while a reply is being written |
 | `POST /threads/:id/follow {follow}` | follow or unfollow |
 | `POST /test-push {thread_id, simulate_webhook_failure?}` | immediate test push |
+| `GET /docs` | machine-readable description of every endpoint (`server/src/jamesLink/docs.ts`) |
+| `GET /projects` | Workspace projects with default agent, open thread count and last activity |
+| `POST /threads {project_id?, title, text}` | new chat under James's name (project default agent, site model defaults); text is turn 1; James follows it; 201 |
+| `GET /bots` | active registered bots with their standing chat as a thread |
+| `POST /bots/{bot}/message {text, expected_turn?}` | message a bot by name or chat id in its standing chat |
+
+Since build #722 every POST accepts an `Idempotency-Key` header (`james_idempotency`, kept 30 days). A replay with the
+same key and body returns the stored response with `Idempotent-Replay: true` and posts nothing; the same key with a
+different body is 409 `idempotency_conflict`; 5xx responses are not stored.
+
+James writing in a bot's standing chat does not make him follow it. The turn that starts with his marked message is
+recorded in `james_threads.james_answer_turn_id`, and only that turn's reply is pushed (`answers_james: true`).
 
 Messages carry `turn`, `role`, `direction`, `via`, `at`, `text` (up to 20,000 characters) and `source`. Stamped `ledger` rows (since go-live) have a turn and role james, human, bot or veneer. Older messages come from the search index as `history`, with no turn and role user or assistant, only from before the first stamped row.
 
