@@ -33,6 +33,7 @@ import { createRunnerClient } from './runner/client.js';
 import { ensureFileSyncBackfill, syncConversationFiles } from './files/generatedFiles.js';
 import { createApiRouter } from './routes/api.js';
 import { createComposioWebhookRouter } from './routes/composioWebhook.js';
+import { startJamesLink } from './jamesLink/index.js';
 import { createAutoshipVerifierRouter } from './bots/verifierRoutes.js';
 import { attachWebSocket } from './channels/webSocket.js';
 import { attachSpeechToText } from './channels/speechToText.js';
@@ -196,6 +197,7 @@ const app = express();
 app.disable('x-powered-by');
 app.use('/webhooks/bot-events', createBotEventsWebhook(ctx));
 const stopBotWorkflows = startBotWorkflows(ctx);
+const jamesLink = startJamesLink(ctx);
 app.get('/healthz', async (_req, res) => {
   try {
     const response = await fetch(`http://127.0.0.1:${config.runnerPort}/healthz`, {
@@ -226,6 +228,9 @@ app.use('/api/return-exception/verifier', returnExceptionRoutes(ctx));
 app.use('/api/autoship/verifier', createAutoshipVerifierRouter({ db, config }));
 // Loopback relay for chats calling a signed-in remote MCP connector. Authenticated by the
 // install's own proxy key and refused for anything that arrived through the tunnel.
+// James's API: its own Cloudflare Access bypass for this path only, authenticated
+// here with the bearer key held in Doppler (VENEER_JAMES_API_KEY).
+app.use('/api/james', jamesLink.router);
 app.use(REMOTE_MCP_PROXY_PATH, createRemoteMcpProxyRouter(ctx, ctx.remoteMcp, (slug) => connectorDef(slug)?.remoteMcp?.url ?? null));
 app.use('/api', createApiRouter(ctx));
 // Cloudflare-runtime apps are intercepted at the edge. Local-runtime apps have
@@ -319,6 +324,7 @@ const shutdown = createShutdown({
     grokConnect.shutdown();
     codexUsage.shutdown();
     stopBotWorkflows();
+    jamesLink.stop();
     doppler.stop();
     memoryProvisioner.stop();
       pageExpiry.close();
