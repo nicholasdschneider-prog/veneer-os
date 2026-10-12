@@ -293,6 +293,22 @@ const TOOLS: ToolDef[] = [
     inputSchema:{type:'object',properties:{job_id:{type:'number'},origin_id:{type:'number'},turn_id:{type:'string'},expected_finished_at:{type:['string','null']},request_key:{type:'string'},mode:{type:'string',enum:['review','recover_done','adopt_active']},reason:{type:'string'}},required:['job_id','origin_id','turn_id','expected_finished_at','request_key','mode','reason']},
   },
   {
+    name: 'move_build_queue',
+    description:
+      'Reorder a WAITING build inside this chat\'s own workspace queue, only on an explicit human direction (the user here, or a human direction relayed by another bot with its source named). Give job_id plus exactly one of position (1-based within the workspace), before (build id) or after (build id), and authority_note naming that direction, for example "James thread eeab8d3e: move #735 ahead of #732". A running, failed or stopped head cannot move and stays first. Every move is logged with this chat id and the note in the queue history. Never reorder on your own judgment and never touch another workspace\'s queue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        job_id: { type: 'number', description: 'Numeric job id from list_build_queue.' },
+        position: { type: 'number', description: 'New 1-based position within the workspace queue. Use exactly one of position, before, after.' },
+        before: { type: 'number', description: 'Build id to place this build directly ahead of.' },
+        after: { type: 'number', description: 'Build id to place this build directly behind.' },
+        authority_note: { type: 'string', description: 'Required: the human direction this move follows (who asked, where, and what they asked for).' },
+      },
+      required: ['job_id', 'authority_note'],
+    },
+  },
+  {
     name: 'resolve_build_queue',
     description:
       'Retry or skip a failed/queued workspace build. You may retry or skip THIS chat\'s own failed or stopped build on your own judgment (for example after list_build_queue shows it blocking the queue). Only touch another chat\'s queue item when the user explicitly asks.',
@@ -1178,6 +1194,24 @@ async function callTool(
       return { content: [{ type: 'text', text: lines.length ? `Build queues:\n${lines.join('\n')}` : 'The build queues are empty.' }] };
     }
     if(name==='recover_build_queue'){const result=await callApi('/api/build-queue/recover',{method:'POST',body:JSON.stringify(args)});return {content:[{type:'text',text:JSON.stringify(result)}]};}
+    if (name === 'move_build_queue') {
+      const jobId = Number(args.job_id);
+      const note = String(args.authority_note ?? '').trim();
+      const targets = (['position', 'before', 'after'] as const).filter((key) => typeof args[key] === 'number');
+      if (!Number.isSafeInteger(jobId) || jobId <= 0 || !note || targets.length !== 1) {
+        return { content: [{ type: 'text', text: 'move_build_queue needs job_id, a non-empty authority_note naming the human direction, and exactly one of position, before or after.' }], isError: true };
+      }
+      const key = targets[0]!;
+      const result = (await callApi(`/api/build-queue/${jobId}/move`, {
+        method: 'POST',
+        body: JSON.stringify({ [key]: args[key], authority_note: note }),
+      })) as { oldPosition: number; newPosition: number; changed: boolean; queue: { id: number; title: string; status: string; position: number }[] };
+      const order = result.queue.map((job) => `${job.position}. #${job.id} [${job.status}] ${job.title}`).join('\n');
+      const head = result.changed
+        ? `Moved build #${jobId} from position ${result.oldPosition} to ${result.newPosition}.`
+        : `Build #${jobId} already sits at position ${result.newPosition}; nothing changed.`;
+      return { content: [{ type: 'text', text: `${head}\nWorkspace queue now:\n${order}` }] };
+    }
     if (name === 'resolve_build_queue') {
       const jobId = Number(args.job_id);
       const action = String(args.action ?? '');

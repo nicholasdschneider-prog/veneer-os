@@ -100,8 +100,8 @@ beforeAll(async () => {
     if (!job) return { ok: false as const, error: 'not_found' as const };
     if (job.status !== 'queued') return { ok: false as const, error: 'not_movable' as const };
     moves.push({ jobId, target, actor });
-    db.prepare("INSERT INTO build_queue_reorders (job_id, scope_key, actor_user_id, actor_label, via, old_position, new_position) VALUES (?, ?, ?, ?, ?, 2, 1)")
-      .run(jobId, job.scope_key, (actor as { userId: number }).userId, (actor as { label: string }).label, (actor as { via: string }).via);
+    db.prepare("INSERT INTO build_queue_reorders (job_id, scope_key, actor_user_id, actor_label, via, old_position, new_position, authority_note) VALUES (?, ?, ?, ?, ?, 2, 1, ?)")
+      .run(jobId, job.scope_key, (actor as { userId: number }).userId, (actor as { label: string }).label, (actor as { via: string }).via, (actor as { authorityNote?: string }).authorityNote ?? null);
     return { ok: true as const, job, oldPosition: 2, newPosition: 1, changed: true, queue: [job] };
   };
   const buildQueueHistory = async () => db.prepare('SELECT r.*, b.title AS job_title, b.status AS job_status FROM build_queue_reorders r JOIN build_queue b ON b.id = r.job_id ORDER BY r.id DESC').all();
@@ -109,6 +109,7 @@ beforeAll(async () => {
   app.use(express.json());
   app.use((req, _res, next) => {
     req.user = users.get(Number(req.headers['x-user'] ?? 1)) as UserRow;
+    if (typeof req.headers['x-agent'] === 'string') req.agentConversationId = req.headers['x-agent'];
     next();
   });
   app.use(
@@ -241,6 +242,24 @@ describe('build queue routes', () => {
     const history = await fetch(`${base}/api/build-queue/history?scopeKey=project:project-1`, { headers: { 'x-user': '2' } });
     expect(history.status).toBe(200);
     await expect(history.json()).resolves.toMatchObject({ ok: true, entries: [{ jobId: 9, jobTitle: 'Member project build', actorLabel: 'Member', via: 'ui', oldPosition: 2, newPosition: 1 }] });
+  });
+
+  it('lets a bot move a build only inside its own workspace, with the human direction it followed', async () => {
+    const post = (agent: string, body: Record<string, unknown>) => fetch(`${base}/api/build-queue/9/move`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user': '2', 'x-agent': agent }, body: JSON.stringify(body),
+    });
+    const noNote = await post('member-build', { position: 1 });
+    expect(noNote.status).toBe(400);
+    await expect(noNote.json()).resolves.toMatchObject({ ok: false, error: expect.stringContaining('authority_note') });
+    // unfiled-chat is an unfiled Platform Dev chat, so its queue is the Veneer source, not project-1.
+    const crossScope = await post('unfiled-chat', { position: 1, authority_note: 'Nick in chat: move it' });
+    expect(crossScope.status).toBe(404);
+    const before = moves.length;
+    const moved = await post('member-build', { after: 7, authority_note: 'James thread eeab8d3e: #9 right after #7' });
+    expect(moved.status).toBe(200);
+    expect(moves.slice(before)).toEqual([{ jobId: 9, target: { after: 7 }, actor: { userId: 2, label: 'member-build', via: 'bot_tool', authorityNote: 'James thread eeab8d3e: #9 right after #7' } }]);
+    const history = await (await fetch(`${base}/api/build-queue/history?scopeKey=project:project-1&limit=1`, { headers: { 'x-user': '2' } })).json();
+    expect(history.entries[0]).toMatchObject({ jobId: 9, via: 'bot_tool', actorLabel: 'member-build', authorityNote: 'James thread eeab8d3e: #9 right after #7' });
   });
 
   it('prevents a member from resolving another user\'s Private-chat build', async () => {

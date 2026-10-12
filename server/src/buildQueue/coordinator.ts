@@ -26,7 +26,8 @@ export type ResolveBuildResult =
 /** Where a queued build should go: an absolute 1-based position within its
  * scope (as shown in the queue), or relative to another build in that scope. */
 export type MoveBuildTarget = { position: number } | { before: number } | { after: number };
-export interface MoveBuildActor { userId: number | null; label: string; via: 'ui' | 'james_api' | 'agent' }
+export type MoveBuildVia = 'ui' | 'james_api' | 'agent' | 'bot_tool';
+export interface MoveBuildActor { userId: number | null; label: string; via: MoveBuildVia; authorityNote?: string | null }
 export type MoveBuildResult =
   | { ok: true; job: BuildQueueRow; oldPosition: number; newPosition: number; changed: boolean; queue: BuildQueueRow[] }
   | { ok: false; error: 'not_found' | 'not_movable' | 'target_not_found' | 'different_scope' | 'invalid_target' };
@@ -156,9 +157,9 @@ export function createBuildQueueCoordinator({
           if (row.sort_key !== keys[i]) setKey.run(keys[i], row.id);
         });
         db.prepare(
-          `INSERT INTO build_queue_reorders (job_id, scope_key, actor_user_id, actor_label, via, old_position, new_position)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        ).run(job.id, job.scope_key, actor.userId, actor.label, actor.via, oldPosition, newPosition);
+          `INSERT INTO build_queue_reorders (job_id, scope_key, actor_user_id, actor_label, via, old_position, new_position, authority_note)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(job.id, job.scope_key, actor.userId, actor.label, actor.via, oldPosition, newPosition, actor.authorityNote ?? null);
       }).immediate();
       tick();
     }

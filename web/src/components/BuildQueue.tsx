@@ -29,6 +29,7 @@ function canMove(job: BuildQueueJob): boolean {
 
 function viaLabel(entry: BuildQueueReorder): string {
   if (entry.via === 'james_api') return 'via the James API';
+  if (entry.via === 'bot_tool') return 'by bot tool';
   if (entry.via === 'agent') return 'by a bot';
   return 'in Veneer';
 }
@@ -344,6 +345,7 @@ export function BuildQueue({
                   </span>
                   <span className="min-w-0 truncate">
                     {entry.jobTitle} moved by {entry.actorLabel} {viaLabel(entry)} · {elapsedLabel(entry.createdAt)} ago
+                    {entry.authorityNote ? ` · on: ${entry.authorityNote}` : ''}
                   </span>
                 </li>
               ))}

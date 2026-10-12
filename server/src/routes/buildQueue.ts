@@ -8,6 +8,7 @@ import { createConversationReactivator } from './conversationActivity.js';
 import { coordinationLane } from '../coordination/store.js';
 import { ensureConversationInstructionSnapshot } from '../instructions/context.js';
 import type { ConversationRow } from '../db/db.js';
+import type { MoveBuildActor } from '../buildQueue/coordinator.js';
 
 const EnqueueSchema = z.object({
   sourceConversationId: z.string().trim().min(1).max(100),
@@ -17,11 +18,22 @@ const EnqueueSchema = z.object({
   continuesThisChat: z.boolean().optional(),
 });
 const ResolveSchema = z.object({ action: z.enum(['retry', 'skip']) });
-export const MoveSchema = z.union([
+const MoveTargetSchema = z.union([
   z.object({ position: z.number().int().min(1) }).strict(),
   z.object({ before: z.number().int().min(1) }).strict(),
   z.object({ after: z.number().int().min(1) }).strict(),
 ]);
+// A bot names the human direction it acts on; the UI and James do not.
+const AuthorityNote = z.object({ authority_note: z.string().trim().min(1).max(500).optional() });
+export const MoveSchema = z.union([
+  z.object({ position: z.number().int().min(1) }).merge(AuthorityNote).strict(),
+  z.object({ before: z.number().int().min(1) }).merge(AuthorityNote).strict(),
+  z.object({ after: z.number().int().min(1) }).merge(AuthorityNote).strict(),
+]);
+const MoveTarget = (body: z.infer<typeof MoveSchema>) => {
+  const { authority_note: _note, ...target } = body;
+  return MoveTargetSchema.parse(target);
+};
 const HistoryQuery = z.object({
   scopeKey: z.string().trim().min(1).max(200).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
@@ -39,10 +51,20 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
      WHERE c.id = ?`,
   );
   const queueConversation = ctx.db.prepare(
-    `SELECT c.id, c.user_id, c.visibility, c.business_team_id
+    `SELECT c.id, c.user_id, c.visibility, c.business_team_id, b.scope_key
      FROM build_queue b JOIN conversations c ON c.id = b.conversation_id
      WHERE b.id = ?`,
   );
+  // Mirrors the coordinator's scopeFor: a filed chat's project queue, or the
+  // Veneer source queue for an unfiled Platform Dev chat.
+  const scopeOfConversation = (conversationId: string): string | null => {
+    const row = ctx.db.prepare(
+      'SELECT c.project_id, a.slug FROM conversations c JOIN assistants a ON a.id = c.assistant_id WHERE c.id = ?',
+    ).get(conversationId) as { project_id: string | null; slug: string } | undefined;
+    if (!row) return null;
+    if (row.project_id) return `project:${row.project_id}`;
+    return row.slug === 'platform-dev' ? 'source' : null;
+  };
 
   /** A build that another bot asked for through coordination is not something
    * the human in the receiving chat asked for there. Unless the receiving
@@ -224,6 +246,7 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
             via: entry.via,
             oldPosition: entry.old_position,
             newPosition: entry.new_position,
+            authorityNote: entry.authority_note,
             createdAt: entry.created_at,
           })),
         });
@@ -239,19 +262,30 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
       return;
     }
     const conversation = queueConversation.get(jobId) as
-      | { user_id: number; visibility: 'team' | 'private' }
+      | { user_id: number; visibility: 'team' | 'private'; scope_key: string }
       | undefined;
     if (!conversation || !canManageConversation(req.user!, conversation, ctx.db)) {
       res.status(404).json({ ok: false, error: 'not_found' });
       return;
     }
-    const actor = {
-      userId: req.user!.id,
-      label: req.user!.display_name || req.user!.email,
-      via: req.agentConversationId ? ('agent' as const) : ('ui' as const),
-    };
+    // A bot reorders only inside its own workspace, and only on a human
+    // direction it names; the note is kept with the move in the queue history.
+    let actor: MoveBuildActor;
+    if (req.agentConversationId) {
+      if (!body.data.authority_note) {
+        res.status(400).json({ ok: false, error: 'authority_note is required: name the human direction this move follows' });
+        return;
+      }
+      if (scopeOfConversation(req.agentConversationId) !== conversation.scope_key) {
+        res.status(404).json({ ok: false, error: 'not_found' });
+        return;
+      }
+      actor = { userId: req.user!.id, label: req.agentConversationId, via: 'bot_tool', authorityNote: body.data.authority_note };
+    } else {
+      actor = { userId: req.user!.id, label: req.user!.display_name || req.user!.email, via: 'ui' };
+    }
     void ctx.manager
-      .moveBuild(jobId, body.data, actor)
+      .moveBuild(jobId, MoveTarget(body.data), actor)
       .then((result) => {
         if (!result.ok) {
           res.status(result.error === 'not_found' || result.error === 'target_not_found' ? 404 : 409).json({ ok: false, error: result.error });

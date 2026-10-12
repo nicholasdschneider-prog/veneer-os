@@ -340,9 +340,11 @@ export interface BuildQueueReorderRow {
   scope_key: string;
   actor_user_id: number | null;
   actor_label: string;
-  via: 'ui' | 'james_api' | 'agent';
+  via: 'ui' | 'james_api' | 'agent' | 'bot_tool';
   old_position: number;
   new_position: number;
+  /** The human direction a bot acted on (bot_tool only). */
+  authority_note: string | null;
   created_at: string;
 }
 

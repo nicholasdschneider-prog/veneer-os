@@ -187,8 +187,12 @@ describe('Platform Dev build queue', () => {
       [c.job.id, 1, 3, 'James (API)', 'james_api'],
       [c.job.id, 3, 1, 'Owner', 'ui'],
     ]);
-    expect(history[0]).toMatchObject({ job_title: 'C', job_status: 'queued' });
+    expect(history[0]).toMatchObject({ job_title: 'C', job_status: 'queued', authority_note: null });
     expect(() => db.prepare('DELETE FROM build_queue_reorders').run()).toThrow(/Immutable/);
+    // A bot move keeps the human direction it followed beside the move.
+    expect(coordinator.move(a.job.id, { position: 2 }, { userId: 1, label: 'project-a-1', via: 'bot_tool', authorityNote: 'James thread eeab8d3e: A after B' })).toMatchObject({ ok: true, oldPosition: 1, newPosition: 2 });
+    expect(coordinator.history({ scopeKey: 'project:project-a', limit: 1 })[0]).toMatchObject({ job_id: a.job.id, via: 'bot_tool', actor_label: 'project-a-1', authority_note: 'James thread eeab8d3e: A after B' });
+    expect(coordinator.move(a.job.id, { position: 1 }, actor)).toMatchObject({ ok: true, newPosition: 1 });
 
     // Dispatch follows sort order: move C to the head and it runs first.
     coordinator.stop();

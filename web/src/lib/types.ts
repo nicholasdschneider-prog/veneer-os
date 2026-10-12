@@ -620,9 +620,11 @@ export interface BuildQueueReorder {
   scopeKey: string;
   actorUserId: number | null;
   actorLabel: string;
-  via: 'ui' | 'james_api' | 'agent';
+  via: 'ui' | 'james_api' | 'agent' | 'bot_tool';
   oldPosition: number;
   newPosition: number;
+  /** The human direction a bot acted on (bot_tool only). */
+  authorityNote?: string | null;
   createdAt: string;
 }
 
