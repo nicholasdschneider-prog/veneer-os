@@ -16,6 +16,8 @@ export type Author = 'james' | 'human' | 'bot' | 'veneer';
 /** Every message James posts through the link carries this marker first. */
 export const JAMES_MARKER = '[James link';
 export const EXCERPT_MAX = 4000;
+/** The stamped ledger keeps the message text itself, up to this length. */
+export const LEDGER_TEXT_MAX = 20_000;
 
 export interface ThreadRow {
   conversation_id: string;
@@ -70,9 +72,9 @@ export function isRegisteredBotChat(db: Database.Database, conversationId: strin
   return !!db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id = ?').get(conversationId);
 }
 
-export function excerpt(text: string): string {
+export function excerpt(text: string, max = EXCERPT_MAX): string {
   const trimmed = text.trim();
-  return trimmed.length > EXCERPT_MAX ? `${trimmed.slice(0, EXCERPT_MAX - 1)}…` : trimmed;
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
 }
 
 const THREAD_SELECT = `
@@ -165,7 +167,7 @@ export function stampMessage(db: Database.Database, input: StampInput, nowMs = D
     db.prepare(
       `INSERT INTO james_thread_messages (conversation_id, turn, direction, author, via, source_ref, excerpt, at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(input.conversationId, turn, input.direction, input.author, input.via, input.sourceRef, excerpt(input.text), now);
+    ).run(input.conversationId, turn, input.direction, input.author, input.via, input.sourceRef, excerpt(input.text, LEDGER_TEXT_MAX), now);
     const followed = thread.followed || input.author === 'james'
       || (input.direction === 'to_veneer' && mentionsJames(input.text) && !isRegisteredBotChat(db, input.conversationId)) ? 1 : 0;
     // A question only waits on James in a thread he started or follows.
@@ -267,14 +269,48 @@ export function listThreads(db: Database.Database, filter: ListFilter): { total:
   return { total, threads };
 }
 
-export function recentMessages(db: Database.Database, conversationId: string, limit = 20) {
-  return (db
-    .prepare(
-      `SELECT turn, direction, author, via, excerpt, at FROM james_thread_messages
-        WHERE conversation_id = ? ORDER BY turn DESC LIMIT ?`,
-    )
-    .all(conversationId, limit) as Array<{ turn: number; direction: string; author: string; via: string; excerpt: string; at: string }>)
-    .reverse();
+export interface ThreadMessage {
+  turn: number | null;
+  /** Ledger: james, human, bot or veneer. Indexed history from before the link: user or assistant. */
+  role: string;
+  direction: 'to_veneer' | 'from_veneer';
+  via: string | null;
+  at: string;
+  text: string;
+  source: 'ledger' | 'history';
+}
+
+/**
+ * A page of a thread's messages, oldest first, strictly before `before` (ISO).
+ * Stamped ledger rows cover everything since the link went live; older
+ * messages come from the search index, only from before the first stamped
+ * row, so the two never overlap.
+ */
+export function threadMessages(
+  db: Database.Database,
+  conversationId: string,
+  options: { limit?: number; before?: string } = {},
+): { messages: ThreadMessage[]; next_before: string | null } {
+  const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
+  const before = options.before ?? '9999-12-31T23:59:59.999Z';
+  const ledger = (db.prepare(
+    `SELECT turn, direction, author, via, excerpt, at FROM james_thread_messages
+      WHERE conversation_id = ? AND at < ? ORDER BY at DESC, turn DESC LIMIT ?`,
+  ).all(conversationId, before, limit) as Array<{ turn: number; direction: 'to_veneer' | 'from_veneer'; author: string; via: string; excerpt: string; at: string }>)
+    .map((r): ThreadMessage => ({ turn: r.turn, role: r.author, direction: r.direction, via: r.via, at: r.at, text: r.excerpt, source: 'ledger' }));
+  const floor = (db.prepare('SELECT MIN(at) AS at FROM james_thread_messages WHERE conversation_id = ?').get(conversationId) as { at: string | null }).at;
+  const historyBefore = floor && floor < before ? floor : before;
+  const history = (db.prepare(
+    `SELECT kind, body, at FROM bot_search_documents
+      WHERE conversation_id = ? AND kind IN ('user', 'assistant') AND at < ? ORDER BY at DESC, rowid DESC LIMIT ?`,
+  ).all(conversationId, historyBefore, limit) as Array<{ kind: 'user' | 'assistant'; body: string; at: string }>)
+    .map((r): ThreadMessage => ({
+      turn: null, role: r.kind, direction: r.kind === 'user' ? 'to_veneer' : 'from_veneer', via: null, at: r.at, text: r.body, source: 'history',
+    }));
+  const page = [...ledger, ...history].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)).slice(0, limit);
+  const oldest = page.at(-1)?.at ?? null;
+  const more = oldest !== null && page.length === limit;
+  return { messages: page.reverse(), next_before: more ? oldest : null };
 }
 
 export function getState(db: Database.Database, key: string): string | null {

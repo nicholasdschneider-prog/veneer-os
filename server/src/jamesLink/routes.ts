@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import type Database from 'better-sqlite3';
-import { getThread, listThreads, recentMessages, resolveThreadId, setFollowed, STARTED_BY, THREAD_STATUSES } from './registry.js';
+import { getThread, listThreads, resolveThreadId, threadMessages, setFollowed, STARTED_BY, THREAD_STATUSES } from './registry.js';
 import type { JamesLink } from './service.js';
 
 /**
@@ -38,11 +38,16 @@ const ListQuery = z.object({
   started_by: z.enum(STARTED_BY).optional(),
   status: z.string().optional(),
   waiting_on_james: z.enum(['1', 'true']).optional(),
+  waiting_on: z.enum(['james', 'veneer']).optional(),
   followed: z.enum(['0', '1', 'true', 'false']).optional(),
   james: z.enum(['1', 'true']).optional(),
   q: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
   offset: z.coerce.number().int().min(0).optional(),
+});
+const MessagesQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  before: z.string().datetime({ offset: true }).transform((v) => new Date(v).toISOString()).optional(),
 });
 const ReplyBody = z.object({ expected_turn: z.number().int().min(0), text: z.string().trim().min(1).max(20_000) });
 const StatusBody = z.object({ expected_turn: z.number().int().min(0).optional() }).optional();
@@ -58,7 +63,8 @@ export function createJamesRouter(db: Database.Database, link: JamesLink, getSec
     const query = ListQuery.safeParse(req.query);
     if (!query.success) { res.status(400).json({ ok: false, error: query.error.issues[0]?.message }); return; }
     const q = query.data;
-    const statuses = q.waiting_on_james ? ['waiting_on_james'] : q.status?.split(',').map((s) => s.trim()).filter(Boolean);
+    const waitingOn = q.waiting_on ?? (q.waiting_on_james ? 'james' : undefined);
+    const statuses = waitingOn ? [`waiting_on_${waitingOn}`] : q.status?.split(',').map((s) => s.trim()).filter(Boolean);
     if (statuses?.some((s) => !THREAD_STATUSES.includes(s as never))) {
       res.status(400).json({ ok: false, error: `status must be one of ${THREAD_STATUSES.join(', ')}` });
       return;
@@ -79,7 +85,15 @@ export function createJamesRouter(db: Database.Database, link: JamesLink, getSec
     const id = resolveThreadId(db, req.params.id);
     const thread = id ? getThread(db, id) : undefined;
     if (!id || !thread) { res.status(404).json({ ok: false, error: 'thread_not_found' }); return; }
-    res.json({ ok: true, thread: link.summary(thread), messages: recentMessages(db, id, 20) });
+    res.json({ ok: true, thread: link.summary(thread), ...threadMessages(db, id, { limit: 20 }) });
+  });
+
+  router.get('/threads/:id/messages', (req, res) => {
+    const query = MessagesQuery.safeParse(req.query);
+    if (!query.success) { res.status(400).json({ ok: false, error: 'limit must be 1-100 and before an ISO timestamp' }); return; }
+    const id = resolveThreadId(db, req.params.id);
+    if (!id || !getThread(db, id)) { res.status(404).json({ ok: false, error: 'thread_not_found' }); return; }
+    res.json({ ok: true, thread_id: id, ...threadMessages(db, id, { limit: query.data.limit, before: query.data.before }) });
   });
 
   router.post('/threads/:id/reply', (req, res) => {

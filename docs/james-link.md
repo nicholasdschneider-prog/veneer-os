@@ -30,12 +30,15 @@ the owner login for this path only.
 
 | call | effect |
 |---|---|
-| `GET /threads?started_by=james&waiting_on_james=1&status=a,b&james=1&q=&limit=&offset=` | list (archived excluded unless asked) |
-| `GET /threads/:id` | thread plus its last 20 stamped messages |
+| `GET /threads?started_by=james&waiting_on=james\|veneer&status=a,b&james=1&q=&limit=&offset=` | list (archived excluded unless asked; `waiting_on_james=1` still works) |
+| `GET /threads/:id` | thread plus its last 20 messages |
+| `GET /threads/:id/messages?limit=1-100&before=<ISO>` | older pages; follow `next_before` until it is null |
 | `POST /threads/:id/reply {expected_turn, text}` | posts into the chat; 409 `stale_turn` with `current_turn` if behind |
 | `POST /threads/:id/close` / `archive` / `reopen` `{expected_turn?}` | status change; archive waits while a reply is being written |
 | `POST /threads/:id/follow {follow}` | follow or unfollow |
 | `POST /test-push {thread_id, simulate_webhook_failure?}` | immediate test push |
+
+Messages carry `turn`, `role`, `direction`, `via`, `at`, `text` (up to 20,000 characters) and `source`. Stamped `ledger` rows (since go-live) have a turn and role james, human, bot or veneer. Older messages come from the search index as `history`, with no turn and role user or assistant, only from before the first stamped row.
 
 James's replies reach the chat as `[James link · thread <id> · turn <n>]` followed by his text. Done threads archive
 themselves after 7 quiet days. Nothing is deleted.

@@ -281,3 +281,41 @@ describe('close, archive and email commands', () => {
     expect(last).toEqual({ author: 'bot' });
   });
 });
+
+describe('thread messages and waiting_on filter', () => {
+  it('returns indexed history before the ledger, then stamped messages, without overlap', async () => {
+    const body = await (await api(`/api/james/threads/${B}`)).json();
+    expect(body.messages[0]).toMatchObject({ source: 'history', role: 'user', direction: 'to_veneer', text: 'Check the shipping report', turn: null });
+    const ledger = body.messages.filter((m: { source: string }) => m.source === 'ledger');
+    expect(ledger.map((m: { role: string }) => m.role)).toEqual(['veneer', 'bot']);
+    expect(ledger[1]).toMatchObject({ text: 'Nick-approved via James: archive the old report', direction: 'to_veneer' });
+    const times = body.messages.map((m: { at: string }) => m.at);
+    expect([...times].sort()).toEqual(times);
+    expect(body.next_before).toBeNull();
+  });
+
+  it('pages older messages with limit and before', async () => {
+    const first = await (await api(`/api/james/threads/${B}/messages?limit=2`)).json();
+    expect(first.messages.map((m: { role: string }) => m.role)).toEqual(['veneer', 'bot']);
+    expect(first.next_before).toBe(first.messages[0].at);
+    const older = await (await api(`/api/james/threads/${B}/messages?limit=2&before=${encodeURIComponent(first.next_before)}`)).json();
+    expect(older.messages.map((m: { text: string }) => m.text)).toEqual(['Check the shipping report']);
+    expect(older.next_before).toBeNull();
+    expect((await api(`/api/james/threads/${B}/messages?limit=500`)).status).toBe(400);
+  });
+
+  it('filters by waiting_on=james|veneer alongside started_by', async () => {
+    const F = '66666666-6666-4666-8666-666666666666';
+    addConversation(F, 'James asks');
+    userTurn(F, 'f-1', 'From James: please check the Irvine order');
+    const veneer = await (await api('/api/james/threads?waiting_on=veneer&started_by=james')).json();
+    expect(veneer.threads.map((t: { thread_id: string }) => t.thread_id)).toContain(F);
+    expect(veneer.threads.every((t: { status: string; started_by: string }) => t.status === 'waiting_on_veneer' && t.started_by === 'james')).toBe(true);
+    veneerReply(F, 'f-2', 'Checked. Should I email the customer?');
+    const james = await (await api('/api/james/threads?waiting_on=james')).json();
+    expect(james.threads.map((t: { thread_id: string }) => t.thread_id)).toContain(F);
+    const legacy = await (await api('/api/james/threads?waiting_on_james=1')).json();
+    expect(legacy.total).toBe(james.total);
+    expect((await api('/api/james/threads?waiting_on=nick')).status).toBe(400);
+  });
+});
