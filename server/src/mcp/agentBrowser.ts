@@ -10,7 +10,7 @@ import {
   type BrowserTab,
 } from '../veneerBrowser/tabReuse.js';
 import { createSerialQueue } from './serialQueue.js';
-import { pinnedCdpAddress, closePinnedCdpBridge, disconnectPinnedCdpBridge, inspectPinnedTabs, type BridgeProvenance } from '../veneerBrowser/pinnedCdpBridge.js';
+import { pinnedCdpAddress, closePinnedCdpBridge, disconnectPinnedCdpBridge, hasPinnedCdpBridge, inspectPinnedTabs, type BridgeProvenance } from '../veneerBrowser/pinnedCdpBridge.js';
 
 const MAX_ARGS = 100;
 const MAX_ARG_LENGTH = 4_000;
@@ -686,6 +686,24 @@ export async function reconnectVeneerBrowserController(options: {
     }
     recoveryReads.add(session);
     disconnectedSessions.delete(session);
+  }, { waitTimeoutMs: EXTERNAL_BROWSER_WAIT_TIMEOUT_MS });
+}
+
+/** Settles a controller whose earlier recovery ended UNKNOWN, but only when it
+ * is provably gone: no pinned bridge in this process and no controller pid
+ * file. Nothing is closed, started or replayed here; the next command must be
+ * the original owner's tab list and snapshot, exactly as after a clean detach.
+ */
+export async function settleGoneVeneerBrowserController(options: {
+  conversationId: string; remoteSessionId: string;
+}): Promise<boolean> {
+  const session = veneerBrowserSessionName(options.conversationId, options.remoteSessionId);
+  return veneerBrowserQueue(session).run(async () => {
+    if (hasPinnedCdpBridge(session) || veneerBrowserDaemonGeneration(session)) return false;
+    veneerBrowserStates.delete(session);
+    recoveryReads.add(session);
+    disconnectedSessions.delete(session);
+    return true;
   }, { waitTimeoutMs: EXTERNAL_BROWSER_WAIT_TIMEOUT_MS });
 }
 

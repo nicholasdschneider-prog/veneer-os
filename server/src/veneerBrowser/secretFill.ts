@@ -126,6 +126,15 @@ export function classifyProbe(signals: ProbeSignals): FillTargetClassification {
 // ---------------------------------------------------------------------------
 
 const guardedFields = new Map<string, Set<string>>();
+/**
+ * Chats whose filled secret was followed by a successful click or key press.
+ * Single-page sign-ins (Chrome Remote Desktop's access code, for one) submit
+ * without changing the URL, so waiting for navigation would block scripts
+ * forever. Scripts cannot read field values, so their page reads are safe once
+ * the form has been submitted; the raw `get` guard and the capture gate still
+ * wait for a real page change.
+ */
+const submittedFields = new Set<string>();
 /** One chat cannot fill more than a handful of secret fields before navigating. */
 const MAX_GUARDED_FIELDS = 20;
 
@@ -146,11 +155,23 @@ export function rememberSecretField(conversationId: string, target: string): voi
   }
   refs.add(normalizeRef(target));
   guardedFields.set(conversationId, refs);
+  submittedFields.delete(conversationId);
 }
 
 /** Called for every tool that invalidates refs; the guard has nothing to guard after one. */
 export function clearSecretFields(conversationId: string): void {
   guardedFields.delete(conversationId);
+  submittedFields.delete(conversationId);
+}
+
+/** A successful click or key press after the fill: treat the form as submitted. */
+export function markSecretFieldsSubmitted(conversationId: string): void {
+  if (hasLiveSecretField(conversationId)) submittedFields.add(conversationId);
+}
+
+/** True while a filled secret has been neither submitted nor navigated away from. */
+export function hasUnsubmittedSecretField(conversationId: string): boolean {
+  return hasLiveSecretField(conversationId) && !submittedFields.has(conversationId);
 }
 
 /**

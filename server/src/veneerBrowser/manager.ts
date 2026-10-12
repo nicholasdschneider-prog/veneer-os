@@ -18,6 +18,7 @@ import type {
 import {
   closeVeneerBrowserSession,
   reconnectVeneerBrowserController,
+  settleGoneVeneerBrowserController,
   inspectVeneerBrowserTabs,
   runAgentBrowser,
   type BrowserRunResult,
@@ -226,6 +227,7 @@ export interface VeneerBrowserManagerOptions {
   readUrl?: typeof readBrowserUrl;
   runScript?: typeof runBrowserScript;
   reconnectController?: typeof reconnectVeneerBrowserController;
+  settleController?: typeof settleGoneVeneerBrowserController;
   inspectTabs?: typeof inspectVeneerBrowserTabs;
 }
 
@@ -280,6 +282,7 @@ export class VeneerBrowserManager {
   private readonly runBrowser: typeof runAgentBrowser;
   private readonly closeBrowserSession: typeof closeVeneerBrowserSession;
   private readonly reconnectController: typeof reconnectVeneerBrowserController;
+  private readonly settleController: typeof settleGoneVeneerBrowserController;
   private readonly inspectTabs: typeof inspectVeneerBrowserTabs;
   private readonly readUrl: typeof readBrowserUrl;
   private readonly script: typeof runBrowserScript;
@@ -296,6 +299,7 @@ export class VeneerBrowserManager {
     this.runBrowser = options.runBrowser ?? runAgentBrowser;
     this.closeBrowserSession = options.closeBrowserSession ?? closeVeneerBrowserSession;
     this.reconnectController = options.reconnectController ?? reconnectVeneerBrowserController;
+    this.settleController = options.settleController ?? settleGoneVeneerBrowserController;
     this.inspectTabs = options.inspectTabs ?? inspectVeneerBrowserTabs;
     this.readUrl = options.readUrl ?? readBrowserUrl;
     this.script = options.runScript ?? runBrowserScript;
@@ -1402,7 +1406,7 @@ export class VeneerBrowserManager {
     const request = parsed.data;
     const total = request.steps.length;
     if (options.secretLive && scriptReadsPage(request)) {
-      return scriptFailure('secret_live', 'A field in this chat was just filled with a secret, so scripts cannot return page content until the page changes. Finish the sign-in with click, then run the script.', total);
+      return scriptFailure('secret_live', 'A field in this chat was just filled with a secret, so scripts cannot return page content until it is submitted. Finish the sign-in with click or press, then run the script.', total);
     }
     const context = this.conversation(conversationId, userId, true);
     const mutates = scriptMutates(request);
@@ -1521,18 +1525,49 @@ export class VeneerBrowserManager {
         if (prior[0]!.request_hash !== digest) throw new Error('Recovery key conflict.');
         return { execute:false, replay:true, outcome:prior.at(-1)!.outcome, earlierOperation:'UNKNOWN', retryPriorOperation:false };
       }
-      const held = this.db.prepare("SELECT 1 FROM browser_controller_recovery r WHERE conversation_id=? AND clone_id=? AND outcome='started' AND NOT EXISTS (SELECT 1 FROM browser_controller_recovery f WHERE f.conversation_id=r.conversation_id AND f.request_key=r.request_key AND f.outcome='detached')").get(conversationId, row.clone_profile_id);
-      if (held) throw new Error('Earlier controller recovery is unresolved; no new recovery or operation permitted.');
+      const held = this.db.prepare("SELECT * FROM browser_controller_recovery r WHERE conversation_id=? AND clone_id=? AND outcome='started' AND NOT EXISTS (SELECT 1 FROM browser_controller_recovery f WHERE f.conversation_id=r.conversation_id AND f.request_key=r.request_key AND f.outcome='detached') ORDER BY id LIMIT 1").get(conversationId, row.clone_profile_id) as {actor_user_id:number;source_profile_id:string;source_generation:number;runtime_id:string;process_generation:string;request_key:string;request_hash:string}|undefined;
       const checkRuntime = async () => {
         const status = await this.remote.status(row.project_id, row.clone_profile_id);
         if (!status.active || status.runtimeId !== request.runtime_id || status.processGeneration !== request.process_generation) throw new Error('Working copy runtime changed or unavailable.');
         authorize();
       };
-      await checkRuntime();
       const audit = (outcome: string) => this.db.prepare(`INSERT INTO browser_controller_recovery
         (conversation_id,actor_user_id,clone_id,source_profile_id,source_generation,runtime_id,process_generation,request_key,request_hash,outcome)
         VALUES (?,?,?,?,?,?,?,?,?,?)`).run(conversationId,userId,row.clone_profile_id,request.source_profile_id,
           request.source_generation,request.runtime_id,request.process_generation,request.request_key,digest,outcome);
+      if (held) {
+        // An earlier recovery ended UNKNOWN. Its original owner may settle it with
+        // a new key, on the very same Chrome process, once the controller is
+        // provably gone. Chrome is never stopped and nothing is replayed.
+        const latest = this.db.prepare('SELECT request_key,outcome FROM browser_controller_recovery WHERE conversation_id=? AND clone_id=? ORDER BY id DESC LIMIT 1').get(conversationId,row.clone_profile_id) as {request_key:string;outcome:string};
+        const sameScope = latest.request_key === held.request_key && latest.outcome === 'unknown' && held.actor_user_id === userId
+          && held.source_profile_id === request.source_profile_id && held.source_generation === request.source_generation
+          && held.runtime_id === request.runtime_id && held.process_generation === request.process_generation;
+        if (!sameScope) throw new Error('Earlier controller recovery is unresolved; no new recovery or operation permitted.');
+        await checkRuntime();
+        if (!await this.settleController({conversationId,remoteSessionId:row.clone_profile_id})) {
+          throw new Error('Earlier controller recovery is unresolved and its controller is still present; no new recovery or operation permitted.');
+        }
+        await checkRuntime();
+        this.db.transaction(() => {
+          authorize();
+          const still = this.db.prepare("SELECT 1 FROM browser_controller_recovery WHERE conversation_id=? AND request_key=? AND outcome='detached'").get(conversationId,held.request_key);
+          if (still) throw new Error('Concurrent recovery is unresolved.');
+          this.db.prepare(`INSERT INTO browser_controller_recovery
+            (conversation_id,actor_user_id,clone_id,source_profile_id,source_generation,runtime_id,process_generation,request_key,request_hash,outcome)
+            VALUES (?,?,?,?,?,?,?,?,?,'detached')`).run(conversationId,userId,row.clone_profile_id,held.source_profile_id,held.source_generation,
+              held.runtime_id,held.process_generation,held.request_key,held.request_hash);
+          this.db.prepare(`INSERT INTO browser_controller_recovery_resolution
+            (conversation_id,actor_user_id,clone_id,original_request_key,resolving_request_key,reason) VALUES (?,?,?,?,?,'controller_gone_same_process')`)
+            .run(conversationId,userId,row.clone_profile_id,held.request_key,request.request_key);
+          audit('started');
+          audit('detached');
+        }).immediate();
+        this.runtimeCache.delete(conversationId);
+        this.probeAddresses.delete(conversationId);
+        return {execute:false,replay:false,outcome:'detached',resolvedUnknown:true,reconnectPending:true,earlierOperation:'UNKNOWN',retryPriorOperation:false};
+      }
+      await checkRuntime();
       this.db.transaction(() => {
         authorize();
         const occupied = this.db.prepare("SELECT 1 FROM browser_controller_recovery r WHERE conversation_id=? AND clone_id=? AND outcome='started' AND NOT EXISTS (SELECT 1 FROM browser_controller_recovery f WHERE f.conversation_id=r.conversation_id AND f.request_key=r.request_key AND f.outcome='detached')").get(conversationId,row.clone_profile_id);

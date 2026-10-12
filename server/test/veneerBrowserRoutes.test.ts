@@ -8,6 +8,7 @@ import type { UserRow } from '../src/db/db.js';
 import { createVeneerBrowserRouter } from '../src/routes/veneerBrowser.js';
 import { handleVeneerBrowserMcp } from '../src/veneerBrowser/mcp.js';
 import type { VeneerBrowserManager } from '../src/veneerBrowser/manager.js';
+import { clearSecretFields, hasLiveSecretField, rememberSecretField } from '../src/veneerBrowser/secretFill.js';
 
 vi.mock('../src/runtime/agentTokens.js', () => ({
   resolveAgentTokenContext: () => ({ email: 'owner@example.com', conversationId: 'chat-1' }),
@@ -397,6 +398,31 @@ describe('Veneer Browser MCP endpoint', () => {
     expect(JSON.parse(result.text).results[0].value).toBe('Delivered');
     expect(runScript).toHaveBeenCalledWith(1, 'chat-1', request, { secretLive: false });
     expect(runCommand).not.toHaveBeenCalled();
+  });
+
+  it('lets scripts read again after a successful press submits a filled secret on the same URL', async () => {
+    rememberSecretField('chat-1', '#code');
+    try {
+      const request = { steps: [{ op: 'text', selector: 'main' }] };
+      await call('script', request);
+      expect(runScript).toHaveBeenLastCalledWith(1, 'chat-1', request, { secretLive: true });
+      runCommand.mockResolvedValueOnce({ args: ['press', 'Enter'], stdout: '', stderr: 'failed', exitCode: 1 });
+      await call('press', { key: 'Enter' });
+      await call('script', request);
+      expect(runScript).toHaveBeenLastCalledWith(1, 'chat-1', request, { secretLive: true });
+      await call('press', { key: 'Enter' });
+      await call('script', request);
+      expect(runScript).toHaveBeenLastCalledWith(1, 'chat-1', request, { secretLive: false });
+      // The raw readback guard and the capture gate still wait for a page change.
+      expect(hasLiveSecretField('chat-1')).toBe(true);
+      const read = await call('run', { args: ['get', 'value', '#code'] });
+      expect(read.isError).toBe(true);
+      rememberSecretField('chat-1', '#code2');
+      await call('script', request);
+      expect(runScript).toHaveBeenLastCalledWith(1, 'chat-1', request, { secretLive: true });
+    } finally {
+      clearSecretFields('chat-1');
+    }
   });
 
   it('reports a failed script as an error result', async () => {

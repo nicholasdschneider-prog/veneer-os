@@ -12,7 +12,8 @@ import { pointerCommands, pointerSummary } from './pointer.js';
 import {
   assertNoSecretReadback,
   clearSecretFields,
-  hasLiveSecretField,
+  markSecretFieldsSubmitted,
+  hasUnsubmittedSecretField,
   rememberSecretField,
   fillSecretTool,
   fillEmailCodeTool,
@@ -40,7 +41,7 @@ const EMPTY = { type: 'object', properties: {}, additionalProperties: false };
 const TOOLS: ToolDef[] = [
   {name:'inspect_unknown_tabs',description:'Original-owner fixed tab metadata inspection after unresolved recovery. Existing authenticated bridge and original runtime/process proof required. No recovery, ticket, CLI, lifecycle or page action; UNKNOWN and generic command fence remain. Does not certify rendered verification.',inputSchema:EMPTY},
   {name:'inspect_controller',description:'Original-owner read-only exact copy/profile/generation/runtime and recovery audit. No automation command, ticket rotation or page probe. Does not prove prior operation outcome or recovery readiness.',inputSchema:EMPTY},
-  { name:'reconnect_controller', description:'Original owner only: detach a stalled automation controller from the exact live copy without closing Chrome, tabs or preview. Requires a proven pinned bridge. No page command or earlier operation is replayed. After success use tabs/read under your own identity; earlier operation remains UNKNOWN. Failure never falls back to Chrome close.', inputSchema:{type:'object',properties:{clone_id:{type:'string',format:'uuid'},source_profile_id:{type:'string',format:'uuid'},source_generation:{type:'integer',minimum:1},runtime_id:{type:'string'},process_generation:{type:'string',pattern:'^[a-f0-9]{64}$'},request_key:{type:'string',format:'uuid'}},required:['clone_id','source_profile_id','source_generation','runtime_id','process_generation','request_key'],additionalProperties:false}},
+  { name:'reconnect_controller', description:'Original owner only: detach a stalled automation controller from the exact live copy without closing Chrome, tabs or preview. Requires a proven pinned bridge. If an earlier recovery ended UNKNOWN, call once more with a NEW request_key and the same tuple: it settles only on the same Chrome process with the old controller gone. No page command or earlier operation is replayed. After success use tabs/read under your own identity; earlier operation remains UNKNOWN. Failure never falls back to Chrome close.', inputSchema:{type:'object',properties:{clone_id:{type:'string',format:'uuid'},source_profile_id:{type:'string',format:'uuid'},source_generation:{type:'integer',minimum:1},runtime_id:{type:'string'},process_generation:{type:'string',pattern:'^[a-f0-9]{64}$'},request_key:{type:'string',format:'uuid'}},required:['clone_id','source_profile_id','source_generation','runtime_id','process_generation','request_key'],additionalProperties:false}},
   { name: 'read_public', description: 'Read public HTML or plain text without Chrome, cookies, or a signed-in profile. Works when every browser slot is occupied. Use first for public research. Returns source text, not JavaScript-rendered content, video or transcripts; do not claim full video review. Private/local addresses and credential URLs are refused. Use fetch_url when an authorized signed-in or rendered page is required.', inputSchema: { type: 'object', properties: { url: { type: 'string' }, max_chars: { type: 'integer', minimum: 100, maximum: 100000 }, timeout_ms: { type: 'integer', minimum: 1000, maximum: 30000 } }, required: ['url'], additionalProperties: false } },
   { name: 'wait_for_capacity', description: 'Persist one bounded browser wait for this owning chat after a capacity error. Supply a stable request_key and the exact unfinished task context. After this turn ends, the runner opens the same selected profile when capacity frees and wakes this chat once. Survives restarts, expires with one blocker notification, and cancels on owner/profile/project/new-human-instruction changes. No browser mutation is saved or replayed; after wake inspect tabs, fresh evidence and original approvals. Do not repeatedly create waits after expiration.', inputSchema: { type: 'object', properties: { request_key: { type: 'string', maxLength: 100 }, task: { type: 'string', maxLength: 1500 }, timeout_minutes: { type: 'integer', minimum: 1, maximum: 120 } }, required: ['request_key','task'], additionalProperties: false } },
   { name: 'cancel_capacity_wait', description: 'Cancel this chat durable browser wait and any undelivered wake. Does not stop or delete a browser or undo a business action.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -373,6 +374,9 @@ const DIALOG_HINT = 'A page dialog may be blocking this page. Use the dialog too
 const REF_INVALIDATING_TOOLS = new Set([
   'navigate', 'reload', 'fresh', 'back', 'forward', 'stop',
 ]);
+
+// A successful one of these after a secret fill is taken as submitting it.
+const SUBMITTING_TOOLS = new Set(['click', 'click_at', 'press']);
 
 // Tools that drive the page, and so are the ones a blocking dialog can freeze.
 const INTERACTION_TOOLS = new Set([
@@ -808,7 +812,7 @@ export async function handleVeneerBrowserMcp(
       manager.capacityWaits.cancel(user.id,conversationId);
       result = textResult('Browser capacity wait canceled. Existing browser work is unchanged.');
     } else if (name === 'script') {
-      const ran = await manager.runScript(user.id, conversationId, args, { secretLive: hasLiveSecretField(conversationId) });
+      const ran = await manager.runScript(user.id, conversationId, args, { secretLive: hasUnsubmittedSecretField(conversationId) });
       result = { ...textResult(JSON.stringify(ran), !ran.ok), structuredContent: ran };
     } else if (name === 'fetch_url') {
       const read = await manager.fetchUrl(user.id, conversationId, args);
@@ -923,5 +927,6 @@ export async function handleVeneerBrowserMcp(
       : null;
     result = textResult(`Error: ${message}${blocked ? `\n${blocked}` : ''}`, true);
   }
+  if (SUBMITTING_TOOLS.has(name) && !result.isError) markSecretFieldsSubmitted(tokenContext.conversationId);
   sendJson(res, 200, { jsonrpc: '2.0', id, result });
 }

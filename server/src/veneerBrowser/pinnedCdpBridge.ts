@@ -111,6 +111,10 @@ export function closePinnedCdpBridge(session: string): void {
 }
 
 /** Fail closed unless this process owns the exact controller's pinned bridge. */
+export function hasPinnedCdpBridge(session: string): boolean {
+  return bridges.has(session);
+}
+
 export function disconnectPinnedCdpBridge(session: string): boolean {
   if (!bridges.has(session)) return false;
   closePinnedCdpBridge(session);

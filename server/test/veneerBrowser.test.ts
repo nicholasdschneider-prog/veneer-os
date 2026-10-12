@@ -24,6 +24,7 @@ describe('Veneer Browser manager', () => {
   let readUrl: ReturnType<typeof vi.fn>;
   let runScript: ReturnType<typeof vi.fn>;
   let reconnectController: ReturnType<typeof vi.fn>;
+  let settleController: ReturnType<typeof vi.fn>;
   let running: Set<string>;
 
   beforeEach(() => {
@@ -103,6 +104,7 @@ describe('Veneer Browser manager', () => {
     readUrl = vi.fn(async () => ({ ok: true, final_url: 'https://example.com/', fetched_at: new Date().toISOString(), title: 'Example', text: 'Ready', tables: [], truncated: false }));
     runScript = vi.fn(async (request: { steps: unknown[] }) => ({ ok: true, steps_run: request.steps.length, steps_total: request.steps.length, duration_ms: 7, results: [{ step: 2, op: 'text', value: 'Delivered' }], truncated: false, url: 'https://example.com/', title: 'Example', kept_tabs: [], page_opened_tabs: [] }));
     reconnectController = vi.fn(async () => undefined);
+    settleController = vi.fn(async () => false);
     manager = new VeneerBrowserManager({
       db,
       dataDir,
@@ -110,6 +112,7 @@ describe('Veneer Browser manager', () => {
       runBrowser: runBrowser as never,
       closeBrowserSession: closeBrowserSession as never,
       reconnectController: reconnectController as never,
+      settleController: settleController as never,
       readUrl: readUrl as never,
       runScript: runScript as never,
     });
@@ -163,6 +166,37 @@ describe('Veneer Browser manager', () => {
     await expect(manager.runCommand(1,'conv-1',['pdf','receipt.pdf'])).rejects.toThrow('unresolved');
     expect(runBrowser).toHaveBeenCalledOnce();expect(remote.stop).not.toHaveBeenCalled();
     expect(JSON.stringify(db.prepare('SELECT * FROM browser_controller_recovery').all())).not.toContain('secret-bearing');
+  });
+
+  it('lets the original owner settle an UNKNOWN recovery with a new key only once the controller is gone on the same process',async()=>{
+    const req=await recoveryFixture();
+    reconnectController.mockRejectedValueOnce(new Error('fixture uncertainty'));
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('UNKNOWN');
+    const next={...req,request_key:'5179c156-35cb-4c52-97ec-504f77f55b96'};
+    await expect(manager.reconnectAutomationController(1,'conv-1',next)).rejects.toThrow('still present');
+    await expect(manager.reconnectAutomationController(1,'conv-1',{...next,process_generation:'b'.repeat(64)})).rejects.toThrow('unresolved');
+    await expect(manager.reconnectAutomationController(2,'conv-1',next)).rejects.toThrow();
+    remote.status.mockResolvedValueOnce({active:true,runtimeId:req.runtime_id,processGeneration:'b'.repeat(64)});
+    settleController.mockResolvedValue(true);
+    await expect(manager.reconnectAutomationController(1,'conv-1',next)).rejects.toThrow('runtime');
+    expect(db.prepare('SELECT outcome FROM browser_controller_recovery ORDER BY id').all()).toEqual([{outcome:'started'},{outcome:'unknown'}]);
+    runBrowser.mockClear();
+    expect(await manager.reconnectAutomationController(1,'conv-1',next)).toMatchObject({outcome:'detached',resolvedUnknown:true,earlierOperation:'UNKNOWN',retryPriorOperation:false});
+    expect(reconnectController).toHaveBeenCalledOnce();
+    expect(remote.stop).not.toHaveBeenCalled();
+    expect(db.prepare('SELECT request_key,outcome FROM browser_controller_recovery ORDER BY id').all()).toEqual([
+      {request_key:req.request_key,outcome:'started'},{request_key:req.request_key,outcome:'unknown'},
+      {request_key:req.request_key,outcome:'detached'},{request_key:next.request_key,outcome:'started'},{request_key:next.request_key,outcome:'detached'}]);
+    expect(db.prepare('SELECT original_request_key,resolving_request_key,reason FROM browser_controller_recovery_resolution').all())
+      .toEqual([{original_request_key:req.request_key,resolving_request_key:next.request_key,reason:'controller_gone_same_process'}]);
+    expect(await manager.reconnectAutomationController(1,'conv-1',next)).toMatchObject({replay:true,outcome:'detached'});
+    await expect(manager.runCommand(1,'conv-1',['click','@e1'])).rejects.toThrow('fresh snapshot');
+    await expect(manager.runCommand(2,'conv-1',['snapshot'])).rejects.toThrow();
+    expect(runBrowser).not.toHaveBeenCalled();
+    await manager.runCommand(1,'conv-1',['snapshot']);
+    expect(db.prepare("SELECT request_key FROM browser_controller_recovery WHERE outcome='read_verified'").all()).toEqual([{request_key:next.request_key}]);
+    await manager.runCommand(1,'conv-1',['click','@e1']);
+    expect(runBrowser).toHaveBeenCalledTimes(2);
   });
 
   it('inspects UNKNOWN only through the fixed original-owner reader and preserves every original audit byte',async()=>{

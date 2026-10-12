@@ -106,9 +106,9 @@ describe('living bot guide release contract', () => {
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'browser-bot',elevated}), f);
   });
-  it('labels controller recovery as staged and retains original-owner UNKNOWN limits in employee and resumed guidance',()=>{
+  it('labels controller recovery as deployed and retains original-owner UNKNOWN limits in employee and resumed guidance',()=>{
     const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(f=>f.id==='browser-controller-reconnect')!;
-    expect(f.limits).toContain('pending deployment');expect(f.agent).toContain('UNKNOWN');
+    expect(f.limits).toContain('Deployed');expect(f.limits).toContain('original owner');expect(f.agent).toContain('UNKNOWN');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'browser-bot',elevated}), f);
   });
