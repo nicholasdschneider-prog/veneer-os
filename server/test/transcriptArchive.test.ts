@@ -72,6 +72,21 @@ function makeArchive(adapters: Record<string, ProviderAdapter> = { claude: fakeA
 }
 
 describe('transcript archive', () => {
+  it('keeps archive and restored files independent when copies share disk blocks', async () => {
+    const native = writeNative('clone', ['original']);
+    const archive = makeArchive();
+    const conv = { cwd: '/tmp', nativeSessionId: 'clone' };
+    await archive.archive('claude', conv);
+    const saved = transcriptArchivePath(dataDir, 'claude', 'clone');
+    const original = fs.readFileSync(saved, 'utf8');
+    fs.appendFileSync(native, 'later native write\n');
+    expect(fs.readFileSync(saved, 'utf8')).toBe(original);
+    fs.rmSync(native);
+    expect(await archive.restore('claude', conv)).toBe(true);
+    fs.appendFileSync(saved, 'later archive write\n');
+    expect(fs.readFileSync(native, 'utf8')).toBe(original);
+  });
+
   it('round trips: archive, provider purges the native file, restore brings it back', async () => {
     const native = writeNative('sid-1', ['hello', 'world']);
     const before = fs.readFileSync(native, 'utf8');

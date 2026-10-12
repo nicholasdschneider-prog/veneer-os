@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import type { Stats } from 'node:fs';
+import { constants, type Stats } from 'node:fs';
 import path from 'node:path';
 import type { ConversationRow } from '../db/db.js';
 import { proClaudeConfigDir } from '../homes.js';
@@ -58,7 +58,8 @@ async function copyAtomic(from: string, to: string, mtime: Date, atime: Date): P
   await fs.mkdir(dir, { recursive: true });
   const tmp = path.join(dir, `.${path.basename(to)}.${process.pid}.${Date.now()}.tmp`);
   try {
-    await fs.copyFile(from, tmp);
+    // Share blocks on APFS while keeping independent files; fall back elsewhere.
+    await fs.copyFile(from, tmp, constants.COPYFILE_FICLONE);
     await fs.utimes(tmp, atime, mtime);
     await fs.rename(tmp, to);
   } catch (err) {
