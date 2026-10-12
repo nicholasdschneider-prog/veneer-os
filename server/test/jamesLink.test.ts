@@ -263,6 +263,17 @@ describe('close, archive and email commands', () => {
     expect(db.prepare('SELECT COUNT(*) AS n FROM james_email_commands').get()).toEqual({ n: 2 });
   });
 
+  it('does not auto-follow registered bot chats or wait on James in threads he is not part of', async () => {
+    const E = '55555555-5555-4555-8555-555555555555';
+    addConversation(E, 'Avery triage');
+    db.prepare('INSERT INTO bot_registrations (conversation_id, name, registered_by) VALUES (?, ?, 1)').run(E, 'Avery');
+    userTurn(E, 'e-1', 'Nick-approved via James: handle ticket 5');
+    veneerReply(E, 'e-2', 'Handled. Should I refund too?');
+    await settle();
+    expect(getThread(db, E)).toMatchObject({ followed: 0, status: 'open' });
+    expect(fetchMock.mock.calls.filter((c) => JSON.parse(c[1].body).thread?.thread_id === E)).toHaveLength(0);
+  });
+
   it('marks a bot-sent message as bot-authored and a James mention as followed', () => {
     userTurn(B, 'b-2', 'Nick-approved via James: archive the old report', { kind: 'agent', from: 'x', to: 'y' });
     expect(getThread(db, B)).toMatchObject({ followed: 1 });

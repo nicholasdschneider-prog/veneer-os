@@ -65,6 +65,11 @@ export function asksQuestion(markdown: string): boolean {
   return /\?/.test(tail);
 }
 
+/** Registered bots' standing chats mention James constantly; they are followed only on James's request. */
+export function isRegisteredBotChat(db: Database.Database, conversationId: string): boolean {
+  return !!db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id = ?').get(conversationId);
+}
+
 export function excerpt(text: string): string {
   const trimmed = text.trim();
   return trimmed.length > EXCERPT_MAX ? `${trimmed.slice(0, EXCERPT_MAX - 1)}…` : trimmed;
@@ -107,7 +112,7 @@ export function ensureThread(
   db.prepare(
     `INSERT OR IGNORE INTO james_threads (conversation_id, started_by, started_by_source, followed, status, last_activity)
      VALUES (?, ?, 'live', ?, ?, ?)`,
-  ).run(conversationId, startedBy, mentionsJames(firstText) ? 1 : 0, conv.archived ? 'archived' : 'open', iso());
+  ).run(conversationId, startedBy, mentionsJames(firstText) && !isRegisteredBotChat(db, conversationId) ? 1 : 0, conv.archived ? 'archived' : 'open', iso());
   return getThread(db, conversationId);
 }
 
@@ -161,7 +166,10 @@ export function stampMessage(db: Database.Database, input: StampInput, nowMs = D
       `INSERT INTO james_thread_messages (conversation_id, turn, direction, author, via, source_ref, excerpt, at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(input.conversationId, turn, input.direction, input.author, input.via, input.sourceRef, excerpt(input.text), now);
-    const asked = input.direction === 'from_veneer' && asksQuestion(input.text);
+    const followed = thread.followed || input.author === 'james'
+      || (input.direction === 'to_veneer' && mentionsJames(input.text) && !isRegisteredBotChat(db, input.conversationId)) ? 1 : 0;
+    // A question only waits on James in a thread he started or follows.
+    const asked = input.direction === 'from_veneer' && isJamesThread({ started_by: thread.started_by, followed }) && asksQuestion(input.text);
     let status: ThreadStatus = thread.status;
     if (input.direction === 'to_veneer') {
       // Any new message reopens a closed thread; archived stays archived unless the chat itself was restored.
@@ -169,7 +177,6 @@ export function stampMessage(db: Database.Database, input: StampInput, nowMs = D
     } else if (status !== 'archived' && status !== 'done') {
       status = asked ? 'waiting_on_james' : 'open';
     }
-    const followed = thread.followed || (input.author === 'james' || mentionsJames(input.direction === 'to_veneer' ? input.text : '') ? 1 : 0);
     db.prepare(
       `UPDATE james_threads
           SET turn = ?, last_activity = ?, status = ?, followed = ?,
@@ -298,7 +305,8 @@ export function backfillThreads(db: Database.Database, nowMs = Date.now()): numb
               (SELECT COUNT(*) FROM bot_search_documents d
                  WHERE d.conversation_id = c.id AND d.kind IN ('user', 'assistant')) AS turns,
               EXISTS (SELECT 1 FROM bot_search_documents d
-                 WHERE d.conversation_id = c.id AND d.kind = 'user' AND substr(d.body, 1, 400) LIKE '%james%') AS mentions
+                 WHERE d.conversation_id = c.id AND d.kind = 'user' AND substr(d.body, 1, 400) LIKE '%james%')
+                AND NOT EXISTS (SELECT 1 FROM bot_registrations r WHERE r.conversation_id = c.id) AS mentions
          FROM conversations c
         WHERE NOT EXISTS (SELECT 1 FROM james_threads t WHERE t.conversation_id = c.id)`,
     )
@@ -320,7 +328,7 @@ export function backfillThreads(db: Database.Database, nowMs = Date.now()): numb
       let status: ThreadStatus = 'open';
       if (row.archived) status = 'archived';
       else if (row.last_kind === 'user') status = 'waiting_on_veneer';
-      else if (row.last_reply && asksQuestion(row.last_reply)) status = 'waiting_on_james';
+      else if ((startedBy === 'james' || followed) && row.last_reply && asksQuestion(row.last_reply)) status = 'waiting_on_james';
       insert.run(row.id, startedBy, followed, status, row.turns, last, now, row.archived ? last : null);
     }
   })();
