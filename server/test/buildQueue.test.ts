@@ -149,6 +149,59 @@ describe('Platform Dev build queue', () => {
     expect(db.prepare("SELECT status FROM build_queue WHERE conversation_id='project-a-2'").get()).toEqual({status:'failed'});
   });
 
+  it('moves a queued build by position, before and after, logs each move, and dispatches in the new order', () => {
+    const manager = fakeManager(db);
+    coordinator = createBuildQueueCoordinator({ db, manager, canDispatch: () => false });
+    const a = coordinator.enqueue('project-a-1', 'A', 'a');
+    const b = coordinator.enqueue('project-a-2', 'B', 'b');
+    const c = coordinator.enqueue('project-platform', 'C', 'c');
+    const other = coordinator.enqueue('project-b-1', 'Other scope', 'o');
+    if (!a.ok || !b.ok || !c.ok || !other.ok) throw new Error('enqueue failed');
+    const ids = () => coordinator!.list().filter((j) => j.scope_key === 'project:project-a').map((j) => j.id);
+    expect(ids()).toEqual([a.job.id, b.job.id, c.job.id]);
+
+    const actor = { userId: 1, label: 'Owner', via: 'ui' as const };
+    expect(coordinator.move(c.job.id, { position: 1 }, actor)).toMatchObject({ ok: true, oldPosition: 3, newPosition: 1, changed: true });
+    expect(ids()).toEqual([c.job.id, a.job.id, b.job.id]);
+    expect(coordinator.move(c.job.id, { after: b.job.id }, { userId: null, label: 'James (API)', via: 'james_api' })).toMatchObject({ ok: true, oldPosition: 1, newPosition: 3 });
+    expect(ids()).toEqual([a.job.id, b.job.id, c.job.id]);
+    expect(coordinator.move(c.job.id, { before: b.job.id }, actor)).toMatchObject({ ok: true, oldPosition: 3, newPosition: 2 });
+    expect(ids()).toEqual([a.job.id, c.job.id, b.job.id]);
+    // The set of keys is only permuted, so a later enqueue still lands last.
+    const d = coordinator.enqueue('project-a-1', 'D', 'd');
+    expect(d).toMatchObject({ ok: true, disposition: 'merged' });
+    expect(coordinator.move(c.job.id, { position: 99 }, actor)).toMatchObject({ ok: true, newPosition: 3, changed: true });
+    expect(coordinator.move(c.job.id, { position: 3 }, actor)).toMatchObject({ ok: true, changed: false });
+    expect(ids()).toEqual([a.job.id, b.job.id, c.job.id]);
+    expect(ids()).toHaveLength(3);
+    expect(coordinator.list().filter((j) => j.scope_key === 'project:project-b').map((j) => j.id)).toEqual([other.job.id]);
+
+    expect(coordinator.move(c.job.id, { before: other.job.id }, actor)).toEqual({ ok: false, error: 'different_scope' });
+    expect(coordinator.move(c.job.id, { before: 9999 }, actor)).toEqual({ ok: false, error: 'target_not_found' });
+    expect(coordinator.move(9999, { position: 1 }, actor)).toEqual({ ok: false, error: 'not_found' });
+
+    const history = coordinator.history({ scopeKey: 'project:project-a' });
+    expect(history.map((h) => [h.job_id, h.old_position, h.new_position, h.actor_label, h.via])).toEqual([
+      [c.job.id, 2, 3, 'Owner', 'ui'],
+      [c.job.id, 3, 2, 'Owner', 'ui'],
+      [c.job.id, 1, 3, 'James (API)', 'james_api'],
+      [c.job.id, 3, 1, 'Owner', 'ui'],
+    ]);
+    expect(history[0]).toMatchObject({ job_title: 'C', job_status: 'queued' });
+    expect(() => db.prepare('DELETE FROM build_queue_reorders').run()).toThrow(/Immutable/);
+
+    // Dispatch follows sort order: move C to the head and it runs first.
+    coordinator.stop();
+    coordinator = createBuildQueueCoordinator({ db, manager });
+    expect(coordinator.move(c.job.id, { position: 1 }, actor)).toMatchObject({ ok: true, newPosition: 1 });
+    expect(db.prepare("SELECT id FROM build_queue WHERE status='running' AND scope_key='project:project-a'").get()).toEqual({ id: c.job.id });
+    expect(coordinator.move(c.job.id, { position: 3 }, actor)).toEqual({ ok: false, error: 'not_movable' });
+    // The running head stays first; a request to go before it lands in the first waiting slot.
+    expect(coordinator.move(b.job.id, { position: 1 }, actor)).toMatchObject({ ok: true, oldPosition: 3, newPosition: 2 });
+    expect(coordinator.move(b.job.id, { before: c.job.id }, actor)).toMatchObject({ ok: true, changed: false, newPosition: 2 });
+    expect(ids()).toEqual([c.job.id, b.job.id, a.job.id]);
+  });
+
   it('waits for the enqueueing planning turn, then dispatches FIFO one at a time', () => {
     const manager = fakeManager(db);
     manager.live.add('build-1');

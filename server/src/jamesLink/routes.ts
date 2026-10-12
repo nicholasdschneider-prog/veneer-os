@@ -6,6 +6,16 @@ import { getThread, listThreads, resolveThreadId, threadMessages, setFollowed, S
 import type { JamesLink } from './service.js';
 import { JAMES_API_DOCS } from './docs.js';
 import { idempotency } from './idempotency.js';
+import type { BuildQueueRow } from '../db/db.js';
+import type { MoveBuildActor, MoveBuildResult, MoveBuildTarget } from '../buildQueue/coordinator.js';
+
+/** The build queue as James sees it: list and reorder, acting as the owner. */
+export interface JamesBuildQueue {
+  list(): Promise<BuildQueueRow[]>;
+  move(jobId: number, target: MoveBuildTarget, actor: MoveBuildActor): Promise<MoveBuildResult>;
+  ownerId(): number;
+}
+export const JAMES_ACTOR_LABEL = 'James (API)';
 
 /**
  * James's API at /api/james on the public hostname. Its own Cloudflare Access
@@ -60,9 +70,15 @@ const NewThreadBody = z.object({
 const BotMessageBody = z.object({ text: z.string().trim().min(1).max(20_000), expected_turn: z.number().int().min(0).optional() });
 const StatusBody = z.object({ expected_turn: z.number().int().min(0).optional() }).optional();
 const FollowBody = z.object({ follow: z.boolean() });
+const MoveBuildBody = z.union([
+  z.object({ position: z.number().int().min(1) }).strict(),
+  z.object({ before: z.number().int().min(1) }).strict(),
+  z.object({ after: z.number().int().min(1) }).strict(),
+]);
+const BuildsQuery = z.object({ project_id: z.string().trim().min(1).optional() });
 const TestBody = z.object({ thread_id: z.string().min(8), simulate_webhook_failure: z.boolean().optional() });
 
-export function createJamesRouter(db: Database.Database, link: JamesLink, getSecret: (name: string) => string | null) {
+export function createJamesRouter(db: Database.Database, link: JamesLink, getSecret: (name: string) => string | null, builds?: JamesBuildQueue) {
   const router = express.Router();
   router.use(express.json({ limit: '128kb' }));
   router.use(jamesAuth(getSecret));
@@ -168,6 +184,69 @@ export function createJamesRouter(db: Database.Database, link: JamesLink, getSec
     if (!id || !getThread(db, id)) { res.status(404).json({ ok: false, error: 'thread_not_found' }); return; }
     setFollowed(db, id, body.data.follow);
     res.json({ ok: true, thread: link.summary(getThread(db, id)!) });
+  });
+
+  const projectName = db.prepare('SELECT name FROM projects WHERE id = ?');
+  const buildView = (job: BuildQueueRow, position: number) => {
+    const projectId = job.scope_key.startsWith('project:') ? job.scope_key.slice('project:'.length) : null;
+    return {
+      id: job.id,
+      title: job.title,
+      position,
+      status: job.status,
+      scope: job.scope_key,
+      project_id: projectId,
+      project: projectId ? ((projectName.get(projectId) as { name: string } | undefined)?.name ?? null) : 'Veneer source',
+      thread_id: job.conversation_id,
+      created_at: job.created_at,
+      started_at: job.started_at,
+      error: job.error,
+    };
+  };
+  const positioned = (jobs: BuildQueueRow[]) => {
+    const counters = new Map<string, number>();
+    return jobs.map((job) => {
+      const position = (counters.get(job.scope_key) ?? 0) + 1;
+      counters.set(job.scope_key, position);
+      return buildView(job, position);
+    });
+  };
+
+  /** Every active build (queued, running, or paused as failed/stopped), in queue order, with its 1-based position inside its workspace. */
+  router.get('/builds', (req, res) => {
+    const query = BuildsQuery.safeParse(req.query);
+    if (!builds) { res.status(503).json({ ok: false, error: 'build_queue_unavailable' }); return; }
+    if (!query.success) { res.status(400).json({ ok: false, error: 'project_id must be a project id' }); return; }
+    void builds.list().then((jobs) => {
+      const all = positioned(jobs);
+      const wanted = query.data.project_id;
+      res.json({ ok: true, builds: wanted ? all.filter((b) => b.project_id === wanted) : all });
+    }).catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+  });
+
+  router.post('/builds/:id/move', (req, res) => {
+    const body = MoveBuildBody.safeParse(req.body);
+    const jobId = Number(req.params.id);
+    if (!builds) { res.status(503).json({ ok: false, error: 'build_queue_unavailable' }); return; }
+    if (!body.success || !Number.isSafeInteger(jobId) || jobId <= 0) {
+      res.status(400).json({ ok: false, error: 'send exactly one of position (1-based), before (build id) or after (build id)' });
+      return;
+    }
+    void builds.move(jobId, body.data, { userId: builds.ownerId(), label: JAMES_ACTOR_LABEL, via: 'james_api' }).then((result) => {
+      if (!result.ok) {
+        const status = result.error === 'not_found' || result.error === 'target_not_found' ? 404 : result.error === 'invalid_target' ? 400 : 409;
+        res.status(status).json({ ok: false, error: result.error });
+        return;
+      }
+      res.json({
+        ok: true,
+        build: buildView(result.job, result.newPosition),
+        old_position: result.oldPosition,
+        new_position: result.newPosition,
+        changed: result.changed,
+        queue: result.queue.map((job, index) => buildView(job, index + 1)),
+      });
+    }).catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
 
   /** Push a test update for one thread now, optionally forcing the webhook-failure email path. */

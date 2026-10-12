@@ -178,6 +178,7 @@ export function ProjectView({
           selectedId={selectedId}
           onOpen={(conversationId) => onOpen(conversationId)}
           onRemoved={(jobId) => setBuildJobs((jobs) => jobs.filter((job) => job.id !== jobId))}
+          onJobsChanged={setBuildJobs}
         />
       </div>
 

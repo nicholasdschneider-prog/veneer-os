@@ -19,7 +19,16 @@ import type { ClaudeProbe } from '../usage/claudeProbe.js';
 import type { ClaudeLimitResetManager } from '../usage/claudeLimitReset.js';
 import type { ScheduledTaskScheduler } from '../scheduled/scheduler.js';
 import type { ConversationWakeupScheduler } from '../scheduled/wakeups.js';
-import type { BuildQueueCoordinator } from '../buildQueue/coordinator.js';
+import type { BuildQueueCoordinator, MoveBuildTarget } from '../buildQueue/coordinator.js';
+
+function parseMoveTarget(raw: unknown): MoveBuildTarget | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const t = raw as Record<string, unknown>;
+  if (typeof t.position === 'number') return { position: t.position };
+  if (typeof t.before === 'number') return { before: t.before };
+  if (typeof t.after === 'number') return { after: t.after };
+  return null;
+}
 import { ensureIpcSecret, IPC_SECRET_HEADER, ipcSecretMatches } from './ipcSecret.js';
 import { handleVeneerBrowserMcp } from '../veneerBrowser/mcp.js';
 import type { VeneerBrowserManager } from '../veneerBrowser/manager.js';
@@ -396,6 +405,29 @@ export function createIpcServer({
           200,
           buildQueue.resolve(Number(body.jobId), body.action === 'retry' ? 'retry' : 'skip'),
         );
+      case '/rpc/moveBuild': {
+        const target = parseMoveTarget(body.target);
+        const actor = body.actor as { userId?: unknown; label?: unknown; via?: unknown } | undefined;
+        if (!target || !actor || typeof actor.label !== 'string' || !['ui', 'james_api', 'agent'].includes(String(actor.via))) {
+          return void sendJson(res, 200, { ok: false, error: 'invalid_target' });
+        }
+        return void sendJson(
+          res,
+          200,
+          buildQueue.move(Number(body.jobId), target, {
+            userId: typeof actor.userId === 'number' ? actor.userId : null,
+            label: actor.label,
+            via: actor.via as 'ui' | 'james_api' | 'agent',
+          }),
+        );
+      }
+      case '/rpc/buildQueueHistory':
+        return void sendJson(res, 200, {
+          entries: buildQueue.history({
+            ...(typeof body.scopeKey === 'string' ? { scopeKey: body.scopeKey } : {}),
+            ...(typeof body.limit === 'number' ? { limit: body.limit } : {}),
+          }),
+        });
       case '/rpc/veneerBrowserProfiles':
         if (!veneerBrowser.configured()) {
           return void sendJson(res, 200, { configured: false, defaultProfileId: null, profiles: [], others: [] });

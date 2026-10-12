@@ -42,6 +42,8 @@ the owner login for this path only.
 | `POST /threads {project_id?, title, text}` | new chat under James's name (project default agent, site model defaults); text is turn 1; James follows it; 201 |
 | `GET /bots` | active registered bots with their standing chat as a thread |
 | `POST /bots/{bot}/message {text, expected_turn?}` | message a bot by name or chat id in its standing chat |
+| `GET /builds?project_id=` | the build queue: every queued, running or paused build with `id`, `title`, `position` (1-based within its workspace), `status`, `scope`, `project_id`, `project`, `thread_id` |
+| `POST /builds/:id/move {position: N} \| {before: id} \| {after: id}` | reorder a queued build within its workspace (build #736, 2026-10-12); a running, failed or stopped build cannot move (409 `not_movable`) and stays at the head; `before`/`after` must be in the same workspace; every move is logged with who, when, old and new position and shown in the queue history in Veneer |
 
 Since build #722 every POST accepts an `Idempotency-Key` header (`james_idempotency`, kept 30 days). A replay with the
 same key and body returns the stored response with `Idempotent-Replay: true` and posts nothing; the same key with a

@@ -8,6 +8,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { migrate } from '../src/db/migrate.js';
 import { asksQuestion, backfillThreads, getThread, guessStartedBy, JAMES_MARKER } from '../src/jamesLink/registry.js';
 import { createJamesRouter } from '../src/jamesLink/routes.js';
+import { createBuildQueueCoordinator, type BuildQueueCoordinator } from '../src/buildQueue/coordinator.js';
+import { EventEmitter } from 'node:events';
 import { JamesLink, parseEmailCommand, PUSH_GAP_MS, quietThresholdMs } from '../src/jamesLink/service.js';
 import type { MailMessage } from '../src/jamesLink/mail.js';
 
@@ -24,6 +26,7 @@ let inbox: MailMessage[] = [];
 const posted: Array<{ id: string; text: string }> = [];
 let liveStatus = 'idle';
 let link: JamesLink;
+let buildQueue: BuildQueueCoordinator;
 let server: Server;
 let base: string;
 
@@ -86,7 +89,16 @@ beforeAll(async () => {
   });
   backfillThreads(db, clock);
   const app = express();
-  app.use('/api/james', createJamesRouter(db, link, (name) => secrets[name] ?? null));
+  buildQueue = createBuildQueueCoordinator({
+    db,
+    manager: { bus: new EventEmitter(), dispatchBuild() {}, postMessage() {}, isLive: () => false, queueSnapshot: () => ({ messages: [] }) },
+    canDispatch: () => false,
+  });
+  app.use('/api/james', createJamesRouter(db, link, (name) => secrets[name] ?? null, {
+    list: async () => buildQueue.list(),
+    move: async (jobId, target, actor) => buildQueue.move(jobId, target, actor),
+    ownerId: () => 1,
+  }));
   await new Promise<void>((resolve) => { server = app.listen(0, '127.0.0.1', resolve); });
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -388,5 +400,60 @@ describe('API v2: docs, projects, new threads, bots, idempotency', () => {
     expect(pushes[0].events).toEqual([expect.objectContaining({ reason: 'reply', answers_james: true, excerpt: 'Pong, James. Nothing needed.' })]);
     expect(getThread(db, G)).toMatchObject({ followed: 0, james_pending_since: null });
     expect((await api('/api/james/bots/Nobody/message', { method: 'POST', body: JSON.stringify({ text: 'x' }) })).status).toBe(404);
+  });
+});
+
+describe('API v3: build queue', () => {
+  const P2 = 'project-builds';
+  const Q1 = '88888888-8888-4888-8888-888888888881';
+  const Q2 = '88888888-8888-4888-8888-888888888882';
+  const Q3 = '88888888-8888-4888-8888-888888888883';
+  beforeAll(() => {
+    db.prepare("INSERT INTO projects (id, slug, name) VALUES (?, 'builds', 'Builds')").run(P2);
+    for (const [id, title] of [[Q1, 'Chat one'], [Q2, 'Chat two'], [Q3, 'Chat three']] as const) {
+      addConversation(id, title);
+      db.prepare('UPDATE conversations SET project_id = ? WHERE id = ?').run(P2, id);
+    }
+  });
+
+  it('lists the queue with positions and moves a queued build by position, before and after', async () => {
+    const one = buildQueue.enqueue(Q1, 'First', 'one');
+    const two = buildQueue.enqueue(Q2, 'Second', 'two');
+    const three = buildQueue.enqueue(Q3, 'Third', 'three');
+    if (!one.ok || !two.ok || !three.ok) throw new Error('enqueue failed');
+    expect((await api('/api/james/builds', {}, 'wrong')).status).toBe(401);
+    const listed = await (await api(`/api/james/builds?project_id=${P2}`)).json();
+    expect(listed.builds.map((b: { id: number; position: number; status: string; project: string }) => [b.id, b.position, b.status, b.project])).toEqual([
+      [one.job.id, 1, 'queued', 'Builds'], [two.job.id, 2, 'queued', 'Builds'], [three.job.id, 3, 'queued', 'Builds'],
+    ]);
+    expect(listed.builds[0]).toMatchObject({ title: 'First', scope: `project:${P2}`, project_id: P2, thread_id: Q1 });
+
+    const bad = await api(`/api/james/builds/${three.job.id}/move`, { method: 'POST', body: JSON.stringify({ position: 1, after: 2 }) });
+    expect(bad.status).toBe(400);
+    const moved = await api(`/api/james/builds/${three.job.id}/move`, { method: 'POST', body: JSON.stringify({ after: one.job.id }) });
+    expect(moved.status).toBe(200);
+    const body = await moved.json();
+    expect(body).toMatchObject({ ok: true, old_position: 3, new_position: 2, changed: true, build: { id: three.job.id, position: 2 } });
+    expect(body.queue.map((b: { id: number }) => b.id)).toEqual([one.job.id, three.job.id, two.job.id]);
+    const byPosition = await (await api(`/api/james/builds/${two.job.id}/move`, { method: 'POST', body: JSON.stringify({ position: 1 }) })).json();
+    expect(byPosition.queue.map((b: { id: number }) => b.id)).toEqual([two.job.id, one.job.id, three.job.id]);
+    const before = await (await api(`/api/james/builds/${three.job.id}/move`, { method: 'POST', body: JSON.stringify({ before: one.job.id }) })).json();
+    expect(before.queue.map((b: { id: number }) => b.id)).toEqual([two.job.id, three.job.id, one.job.id]);
+    expect((await api(`/api/james/builds/${three.job.id}/move`, { method: 'POST', body: JSON.stringify({ before: 999999 }) })).status).toBe(404);
+    expect((await api('/api/james/builds/999999/move', { method: 'POST', body: JSON.stringify({ position: 1 }) })).status).toBe(404);
+
+    db.prepare("UPDATE build_queue SET status = 'running' WHERE id = ?").run(two.job.id);
+    const running = await api(`/api/james/builds/${two.job.id}/move`, { method: 'POST', body: JSON.stringify({ position: 3 }) });
+    expect(running.status).toBe(409);
+    await expect(running.json()).resolves.toMatchObject({ error: 'not_movable' });
+
+    const history = db.prepare('SELECT job_id, actor_user_id, actor_label, via, old_position, new_position FROM build_queue_reorders ORDER BY id').all();
+    expect(history).toEqual([
+      { job_id: three.job.id, actor_user_id: 1, actor_label: 'James (API)', via: 'james_api', old_position: 3, new_position: 2 },
+      { job_id: two.job.id, actor_user_id: 1, actor_label: 'James (API)', via: 'james_api', old_position: 3, new_position: 1 },
+      { job_id: three.job.id, actor_user_id: 1, actor_label: 'James (API)', via: 'james_api', old_position: 3, new_position: 2 },
+    ]);
+    const docs = await (await api('/api/james/docs')).json();
+    expect(docs.endpoints.map((e: { method: string; path: string }) => `${e.method} ${e.path}`)).toEqual(expect.arrayContaining(['GET /builds', 'POST /builds/{id}/move']));
   });
 });

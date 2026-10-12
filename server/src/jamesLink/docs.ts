@@ -1,7 +1,7 @@
 /** Served at GET /api/james/docs: every endpoint, for James and his Grok Bot. */
 export const JAMES_API_DOCS = {
   name: 'Veneer James API',
-  version: 2,
+  version: 3,
   base_url: 'https://nicksworld.dev/api/james',
   auth: 'Authorization: Bearer <key>. The key is the Doppler secret VENEER_JAMES_API_KEY (project main, config prd). 30 failed attempts in a minute get 429.',
   idempotency: 'Send an Idempotency-Key header (8-200 printable characters) on any POST. A retry with the same key and body returns the stored response with the header Idempotent-Replay: true and posts nothing. The same key with a different body is 409 idempotency_conflict; a key still running is 409 idempotency_in_progress. Keys are kept 30 days. Server errors are not stored, so retrying them runs again.',
@@ -20,6 +20,8 @@ export const JAMES_API_DOCS = {
     { method: 'POST', path: '/threads/{id}/follow', body: '{follow: true|false}', description: 'Follow or unfollow any thread. Followed threads push every Veneer reply to the webhook.' },
     { method: 'GET', path: '/bots', description: 'Active registered bots (Sage, Piper, Finn, Boris, AutoShip Worker, OrderOps Runtime Custodian, ...) with name, project, business_team and their standing chat as a thread.' },
     { method: 'POST', path: '/bots/{bot}/message', body: '{text, expected_turn?}', description: 'Message a bot in its own standing chat. {bot} is the name (case-insensitive, URL-encoded) or chat id. Only the bot\'s reply to this message is pushed to the webhook (its other traffic is not), unless you follow that chat.' },
+    { method: 'GET', path: '/builds', query: 'project_id=<project id> (optional)', description: 'The build queue: every queued, running or paused (failed/stopped) build with id, title, position (1-based within its workspace), status, scope, project_id, project, thread_id, created_at, started_at, error. Each workspace (project, or the Veneer source) has its own queue; position counts within it.' },
+    { method: 'POST', path: '/builds/{id}/move', body: '{position: N} | {before: <build id>} | {after: <build id>}', description: 'Reorder a queued build within its workspace queue (exactly one key). A running, failed or stopped build cannot be moved (409 not_movable) and stays at the head, so a position on or before it resolves to the first waiting slot. before/after must name a build in the same workspace (404 target_not_found, 409 different_scope). Returns build, old_position, new_position, changed and the workspace queue in its new order. Every move is logged (who, when, old and new position) and shown in the queue history in Veneer.' },
     { method: 'POST', path: '/test-push', body: '{thread_id, simulate_webhook_failure?}', description: 'Send a test push for a thread now; simulate_webhook_failure exercises the email fallback.' },
   ],
   webhook: {

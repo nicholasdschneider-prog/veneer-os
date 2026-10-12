@@ -329,6 +329,21 @@ export interface BuildQueueRow {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  /** Dispatch order within scope_key; equals id until the job is reordered. */
+  sort_key: number;
+}
+
+/** One reorder of a queued build (migration 0171). */
+export interface BuildQueueReorderRow {
+  id: number;
+  job_id: number;
+  scope_key: string;
+  actor_user_id: number | null;
+  actor_label: string;
+  via: 'ui' | 'james_api' | 'agent';
+  old_position: number;
+  new_position: number;
+  created_at: string;
 }
 
 /** A user-defined column for the todos scratch-pad (migration 0017). */

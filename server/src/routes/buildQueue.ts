@@ -17,6 +17,15 @@ const EnqueueSchema = z.object({
   continuesThisChat: z.boolean().optional(),
 });
 const ResolveSchema = z.object({ action: z.enum(['retry', 'skip']) });
+export const MoveSchema = z.union([
+  z.object({ position: z.number().int().min(1) }).strict(),
+  z.object({ before: z.number().int().min(1) }).strict(),
+  z.object({ after: z.number().int().min(1) }).strict(),
+]);
+const HistoryQuery = z.object({
+  scopeKey: z.string().trim().min(1).max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
 
 export function createBuildQueueRouter(ctx: AppContext): Router {
   const router = express.Router();
@@ -185,6 +194,81 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     if(!conv||!canManageConversation(req.user!,conv,ctx.db)){res.status(404).json({error:'Build not found'});return;}
     void ctx.manager.recoverBuild(p.data,req.user!.id,req.agentConversationId??null).then(result=>res.json(result)).catch((e:Error)=>res.status(409).json({error:e.message}));
   });
+  // Newest reorders first. Each entry names the build, who moved it and from
+  // where to where, so the queue history explains the current order.
+  router.get('/history', (req, res) => {
+    const query = HistoryQuery.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ ok: false, error: 'Invalid history query' });
+      return;
+    }
+    void ctx.manager
+      .buildQueueHistory({ ...(query.data.scopeKey ? { scopeKey: query.data.scopeKey } : {}), limit: query.data.limit ?? 50 })
+      .then((entries) => {
+        const visible = entries.filter((entry) => {
+          const conversation = queueConversation.get(entry.job_id) as
+            | { user_id: number; visibility: 'team' | 'private' }
+            | undefined;
+          return Boolean(conversation && canViewConversation(req.user!, conversation, ctx.db));
+        });
+        res.json({
+          ok: true,
+          entries: visible.map((entry) => ({
+            id: entry.id,
+            jobId: entry.job_id,
+            jobTitle: entry.job_title,
+            jobStatus: entry.job_status,
+            scopeKey: entry.scope_key,
+            actorUserId: entry.actor_user_id,
+            actorLabel: entry.actor_label,
+            via: entry.via,
+            oldPosition: entry.old_position,
+            newPosition: entry.new_position,
+            createdAt: entry.created_at,
+          })),
+        });
+      })
+      .catch((err: Error) => res.status(503).json({ ok: false, error: err.message }));
+  });
+
+  router.post('/:id/move', (req, res) => {
+    const body = MoveSchema.safeParse(req.body);
+    const jobId = Number(req.params.id);
+    if (!body.success || !Number.isSafeInteger(jobId) || jobId <= 0) {
+      res.status(400).json({ ok: false, error: 'Send exactly one of position, before or after' });
+      return;
+    }
+    const conversation = queueConversation.get(jobId) as
+      | { user_id: number; visibility: 'team' | 'private' }
+      | undefined;
+    if (!conversation || !canManageConversation(req.user!, conversation, ctx.db)) {
+      res.status(404).json({ ok: false, error: 'not_found' });
+      return;
+    }
+    const actor = {
+      userId: req.user!.id,
+      label: req.user!.display_name || req.user!.email,
+      via: req.agentConversationId ? ('agent' as const) : ('ui' as const),
+    };
+    void ctx.manager
+      .moveBuild(jobId, body.data, actor)
+      .then((result) => {
+        if (!result.ok) {
+          res.status(result.error === 'not_found' || result.error === 'target_not_found' ? 404 : 409).json({ ok: false, error: result.error });
+          return;
+        }
+        res.json({
+          ok: true,
+          job: result.job,
+          oldPosition: result.oldPosition,
+          newPosition: result.newPosition,
+          changed: result.changed,
+          queue: result.queue.map((job, index) => ({ id: job.id, title: job.title, status: job.status, position: index + 1 })),
+        });
+      })
+      .catch((err: Error) => res.status(503).json({ ok: false, error: err.message }));
+  });
+
   router.post('/:id/resolve', (req, res) => {
     const body = ResolveSchema.safeParse(req.body);
     const jobId = Number(req.params.id);

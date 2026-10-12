@@ -611,6 +611,23 @@ export interface BuildQueueJob {
   startedAt: string | null;
 }
 
+/** One reorder of a queued build (GET /api/build-queue/history). */
+export interface BuildQueueReorder {
+  id: number;
+  jobId: number;
+  jobTitle: string;
+  jobStatus: 'queued' | 'running' | 'done' | 'failed' | 'stopped' | 'skipped';
+  scopeKey: string;
+  actorUserId: number | null;
+  actorLabel: string;
+  via: 'ui' | 'james_api' | 'agent';
+  oldPosition: number;
+  newPosition: number;
+  createdAt: string;
+}
+
+export type BuildQueueMoveTarget = { position: number } | { before: number } | { after: number };
+
 /** One level of the server-side folder browser (GET /api/fs/dirs). */
 export interface DirListing {
   path: string;

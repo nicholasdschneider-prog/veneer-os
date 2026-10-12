@@ -2,7 +2,7 @@ import { recoverBuild } from './recovery.js';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
-import type { BuildQueueRow, ConversationRow } from '../db/db.js';
+import type { BuildQueueReorderRow, BuildQueueRow, ConversationRow } from '../db/db.js';
 import type { ConversationEvent, ConversationStatus, MessageOrigin } from '../runtime/events.js';
 import { canManageConversation, canTrainBusinessBot } from '../conversations/access.js';
 import { PLATFORM_DEV_VALIDATION_GUIDANCE } from './guidance.js';
@@ -23,17 +23,31 @@ export type ResolveBuildResult =
   | { ok: true; job: BuildQueueRow }
   | { ok: false; error: 'not_found' | 'invalid_status' };
 
+/** Where a queued build should go: an absolute 1-based position within its
+ * scope (as shown in the queue), or relative to another build in that scope. */
+export type MoveBuildTarget = { position: number } | { before: number } | { after: number };
+export interface MoveBuildActor { userId: number | null; label: string; via: 'ui' | 'james_api' | 'agent' }
+export type MoveBuildResult =
+  | { ok: true; job: BuildQueueRow; oldPosition: number; newPosition: number; changed: boolean; queue: BuildQueueRow[] }
+  | { ok: false; error: 'not_found' | 'not_movable' | 'target_not_found' | 'different_scope' | 'invalid_target' };
+export type BuildQueueReorderEntry = BuildQueueReorderRow & { job_title: string; job_status: BuildQueueRow['status'] };
+
 export interface BuildQueueCoordinator {
   start(): void;
   stop(): void;
   tick(): void;
   enqueue(conversationId: string, title: string, brief: string, actorUserId?: number): EnqueueBuildResult;
   list(): BuildQueueRow[];
+  move(jobId: number, target: MoveBuildTarget, actor: MoveBuildActor): MoveBuildResult;
+  history(options?: { scopeKey?: string; limit?: number }): BuildQueueReorderEntry[];
   recover(input:unknown, actorId:number, actorConversation:string|null): unknown;
   resolve(jobId: number, action: 'retry' | 'skip'): ResolveBuildResult;
 }
 
 const ACTIVE = "('queued','running','failed','stopped')";
+// Queue order within a scope: the running/failed/stopped head first (it blocks
+// the scope whatever its key), then queued jobs by their reorderable sort_key.
+const QUEUE_ORDER = "CASE WHEN status = 'queued' THEN 1 ELSE 0 END, sort_key, id";
 
 export function createBuildQueueCoordinator({
   db,
@@ -62,15 +76,19 @@ export function createBuildQueueCoordinator({
      FROM build_queue candidate
      WHERE candidate.status = 'queued'
        AND candidate.id = (
-         SELECT MIN(head.id) FROM build_queue head
+         SELECT head.id FROM build_queue head
          WHERE head.scope_key = candidate.scope_key AND head.status = 'queued'
+         ORDER BY head.sort_key, head.id LIMIT 1
        )
        AND NOT EXISTS (
          SELECT 1 FROM build_queue blocker
          WHERE blocker.scope_key = candidate.scope_key
            AND blocker.status IN ('running', 'failed', 'stopped')
        )
-     ORDER BY candidate.id`,
+     ORDER BY candidate.sort_key, candidate.id`,
+  );
+  const activeInScope = db.prepare(
+    `SELECT * FROM build_queue WHERE scope_key = ? AND status IN ${ACTIVE} ORDER BY ${QUEUE_ORDER}`,
   );
   const activeByConversation = db.prepare(
     `SELECT * FROM build_queue
@@ -91,12 +109,67 @@ export function createBuildQueueCoordinator({
   }
 
   function positionFor(job: BuildQueueRow): number {
-    return (
-      db.prepare(
-        `SELECT COUNT(*) AS n FROM build_queue
-         WHERE scope_key = ? AND status IN ${ACTIVE} AND id <= ?`,
-      ).get(job.scope_key, job.id) as { n: number }
-    ).n;
+    const active = activeInScope.all(job.scope_key) as BuildQueueRow[];
+    const index = active.findIndex((row) => row.id === job.id);
+    return index < 0 ? active.length + 1 : index + 1;
+  }
+
+  function moveBuild(jobId: number, target: MoveBuildTarget, actor: MoveBuildActor): MoveBuildResult {
+    const job = jobById.get(jobId) as BuildQueueRow | undefined;
+    if (!job) return { ok: false, error: 'not_found' };
+    if (job.status !== 'queued') return { ok: false, error: 'not_movable' };
+    const active = activeInScope.all(job.scope_key) as BuildQueueRow[];
+    const queued = active.filter((row) => row.status === 'queued');
+    const blockers = active.length - queued.length;
+    const oldPosition = active.findIndex((row) => row.id === job.id) + 1;
+    const remaining = queued.filter((row) => row.id !== job.id);
+
+    let index: number;
+    if ('position' in target) {
+      if (!Number.isSafeInteger(target.position)) return { ok: false, error: 'invalid_target' };
+      // A position on or before the blocking head resolves to the first queued slot.
+      index = Math.min(Math.max(target.position - 1 - blockers, 0), remaining.length);
+    } else {
+      const anchorId = 'before' in target ? target.before : target.after;
+      if (!Number.isSafeInteger(anchorId)) return { ok: false, error: 'invalid_target' };
+      const anchor = jobById.get(anchorId) as BuildQueueRow | undefined;
+      if (!anchor || !['queued', 'running', 'failed', 'stopped'].includes(anchor.status)) return { ok: false, error: 'target_not_found' };
+      if (anchor.scope_key !== job.scope_key) return { ok: false, error: 'different_scope' };
+      if (anchor.id === job.id) {
+        index = oldPosition - 1 - blockers;
+      } else if (anchor.status !== 'queued') {
+        index = 0;
+      } else {
+        const anchorIndex = remaining.findIndex((row) => row.id === anchor.id);
+        index = 'before' in target ? anchorIndex : anchorIndex + 1;
+      }
+    }
+
+    const order = [...remaining.slice(0, index), job, ...remaining.slice(index)];
+    const keys = queued.map((row) => row.sort_key).sort((a, b) => a - b);
+    const newPosition = index + blockers + 1;
+    const changed = newPosition !== oldPosition;
+    if (changed) {
+      db.transaction(() => {
+        const setKey = db.prepare('UPDATE build_queue SET sort_key = ? WHERE id = ?');
+        order.forEach((row, i) => {
+          if (row.sort_key !== keys[i]) setKey.run(keys[i], row.id);
+        });
+        db.prepare(
+          `INSERT INTO build_queue_reorders (job_id, scope_key, actor_user_id, actor_label, via, old_position, new_position)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(job.id, job.scope_key, actor.userId, actor.label, actor.via, oldPosition, newPosition);
+      }).immediate();
+      tick();
+    }
+    return {
+      ok: true,
+      job: jobById.get(job.id) as BuildQueueRow,
+      oldPosition,
+      newPosition,
+      changed,
+      queue: activeInScope.all(job.scope_key) as BuildQueueRow[],
+    };
   }
 
   // A terminal job leaves its chat waiting on a queue wake that will never
@@ -376,8 +449,17 @@ export function createBuildQueueCoordinator({
       return db.prepare(
         `SELECT * FROM build_queue
          WHERE status IN ${ACTIVE}
-         ORDER BY scope_key, id`,
+         ORDER BY scope_key, ${QUEUE_ORDER}`,
       ).all() as BuildQueueRow[];
+    },
+    move: moveBuild,
+    history({ scopeKey, limit = 50 } = {}) {
+      return db.prepare(
+        `SELECT r.*, b.title AS job_title, b.status AS job_status
+         FROM build_queue_reorders r JOIN build_queue b ON b.id = r.job_id
+         WHERE (? IS NULL OR r.scope_key = ?)
+         ORDER BY r.id DESC LIMIT ?`,
+      ).all(scopeKey ?? null, scopeKey ?? null, Math.min(Math.max(limit, 1), 500)) as BuildQueueReorderEntry[];
     },
     recover(input, actorId, actorConversation) { const result=recoverBuild(db,input,actorId,actorConversation,id=>manager.isLive(id)); if((input as {mode?:string}).mode==='recover_done') tick(); return result; },
     resolve(jobId, action) {

@@ -25,7 +25,7 @@ import type { ClaudeAccountUsage } from '../usage/store.js';
 import type { ClaudeSnapshot } from '../usage/contract.js';
 import type { ClaudeLimitResetClaim, ClaudeLimitResetStatus } from '../usage/claudeLimitReset.js';
 import type { BuildQueueRow, ConversationWakeupRow, UserRow } from '../db/db.js';
-import type { EnqueueBuildResult, ResolveBuildResult } from '../buildQueue/coordinator.js';
+import type { BuildQueueReorderEntry, EnqueueBuildResult, MoveBuildActor, MoveBuildResult, MoveBuildTarget, ResolveBuildResult } from '../buildQueue/coordinator.js';
 import type {
   CancelWakeupResult,
   FireWakeupResult,
@@ -121,6 +121,8 @@ export interface RunnerClient {
   listBuildQueue(): Promise<BuildQueueRow[]>;
   recoverBuild(input:unknown,actorId:number,actorConversation:string|null):Promise<unknown>;
   resolveBuild(jobId: number, action: 'retry' | 'skip'): Promise<ResolveBuildResult>;
+  moveBuild(jobId: number, target: MoveBuildTarget, actor: MoveBuildActor): Promise<MoveBuildResult>;
+  buildQueueHistory(options?: { scopeKey?: string; limit?: number }): Promise<BuildQueueReorderEntry[]>;
   veneerBrowserProfiles(
     userId: number,
     role: UserRow['role'],
@@ -339,6 +341,8 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     listBuildQueue: () => rpc<{ jobs: BuildQueueRow[] }>('/rpc/listBuildQueue', {}).then((r) => r.jobs),
     recoverBuild: (input,actorId,actorConversation) => rpc('/rpc/recoverBuild',{input,actorId,actorConversation}),
     resolveBuild: (jobId, action) => rpc('/rpc/resolveBuild', { jobId, action }),
+    moveBuild: (jobId, target, actor) => rpc('/rpc/moveBuild', { jobId, target, actor }),
+    buildQueueHistory: (options) => rpc<{ entries: BuildQueueReorderEntry[] }>('/rpc/buildQueueHistory', { ...(options ?? {}) }).then((r) => r.entries),
     veneerBrowserProfiles: (userId, role, projectId) =>
       rpc('/rpc/veneerBrowserProfiles', { userId, role, projectId }),
     veneerBrowserSetDefault: (userId, projectId, profileId) =>

@@ -895,6 +895,7 @@ export function ChatList({
                                 selectedId={selectedId}
                                 onOpen={(conversationId, projectId) => onOpen(conversationId, projectId ?? undefined)}
                                 onRemoved={(jobId) => setBuildJobs((jobs) => jobs.filter((job) => job.id !== jobId))}
+                                onJobsChanged={setBuildJobs}
                               />
                             </>
                           )}
@@ -973,6 +974,7 @@ export function ChatList({
             selectedId={selectedId}
             onOpen={(conversationId, projectId) => onOpen(conversationId, projectId ?? undefined)}
             onRemoved={(jobId) => setBuildJobs((jobs) => jobs.filter((job) => job.id !== jobId))}
+            onJobsChanged={setBuildJobs}
           />
         ) : null}
 

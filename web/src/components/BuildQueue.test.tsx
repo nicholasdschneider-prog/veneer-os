@@ -83,7 +83,7 @@ describe('BuildQueue', () => {
         onRemoved={vi.fn()}
       />,
     );
-    const rowClasses = [...html.matchAll(/<li class="([^"]*)"/g)].map((match) => match[1]?.split(' ') ?? []);
+    const rowClasses = [...html.matchAll(/<li [^>]*?class="([^"]*)"/g)].map((match) => match[1]?.split(' ') ?? []);
 
     expect(rowClasses).toHaveLength(2);
     expect(rowClasses[0]).not.toContain('bg-accent');
@@ -148,5 +148,24 @@ describe('BuildQueue', () => {
       <BuildQueue jobs={jobs} onOpen={vi.fn()} onRemoved={vi.fn()} />,
     );
     expect(untouched).not.toContain('Retry this build');
+  });
+
+  it('offers move controls only for waiting builds and marks the running build as fixed', () => {
+    const html = renderToStaticMarkup(
+      <BuildQueue
+        jobs={[...jobs, { ...jobs[1]!, id: 3, conversationId: 'third-chat', conversationTitle: 'Third chat', position: 3, title: 'Third build' }]}
+        onOpen={vi.fn()}
+        onRemoved={vi.fn()}
+      />,
+    );
+
+    expect(html).not.toContain('aria-label="Move Running build up"');
+    expect(html).toContain('aria-label="Move Selected build up"');
+    expect(html).toContain('aria-label="Move Third build down"');
+    expect(html).toContain('draggable="true"');
+    expect(html).toContain('Drag to reorder');
+    // The first waiting build cannot go above the running head; the last cannot go lower.
+    expect(html).toMatch(/aria-label="Move Selected build up"[^>]*disabled=""|disabled=""[^>]*aria-label="Move Selected build up"/);
+    expect(html).toMatch(/aria-label="Move Third build down"[^>]*disabled=""|disabled=""[^>]*aria-label="Move Third build down"/);
   });
 });

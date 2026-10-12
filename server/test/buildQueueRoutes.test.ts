@@ -14,6 +14,7 @@ const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../s
 let db: Database.Database;
 let server: Server;
 let base: string;
+const moves: unknown[] = [];
 
 beforeAll(async () => {
   db = new Database(':memory:');
@@ -78,6 +79,7 @@ beforeAll(async () => {
       created_at: '2026-07-23 10:00:00',
       started_at: null,
       finished_at: null,
+      sort_key: 10,
     };
     return { ok: true as const, job, position: 3, disposition: 'enqueued' as const };
   };
@@ -93,6 +95,16 @@ beforeAll(async () => {
       job: db.prepare('SELECT * FROM build_queue WHERE id = ?').get(jobId) as BuildQueueRow,
     };
   };
+  const moveBuild = async (jobId: number, target: unknown, actor: unknown) => {
+    const job = db.prepare('SELECT * FROM build_queue WHERE id = ?').get(jobId) as BuildQueueRow | undefined;
+    if (!job) return { ok: false as const, error: 'not_found' as const };
+    if (job.status !== 'queued') return { ok: false as const, error: 'not_movable' as const };
+    moves.push({ jobId, target, actor });
+    db.prepare("INSERT INTO build_queue_reorders (job_id, scope_key, actor_user_id, actor_label, via, old_position, new_position) VALUES (?, ?, ?, ?, ?, 2, 1)")
+      .run(jobId, job.scope_key, (actor as { userId: number }).userId, (actor as { label: string }).label, (actor as { via: string }).via);
+    return { ok: true as const, job, oldPosition: 2, newPosition: 1, changed: true, queue: [job] };
+  };
+  const buildQueueHistory = async () => db.prepare('SELECT r.*, b.title AS job_title, b.status AS job_status FROM build_queue_reorders r JOIN build_queue b ON b.id = r.job_id ORDER BY r.id DESC').all();
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -103,7 +115,7 @@ beforeAll(async () => {
     '/api/build-queue',
     createBuildQueueRouter({
       db,
-      manager: { enqueueBuild, listBuildQueue, resolveBuild, statusOf },
+      manager: { enqueueBuild, listBuildQueue, resolveBuild, statusOf, moveBuild, buildQueueHistory },
     } as unknown as AppContext),
   );
   await new Promise<void>((resolve) => {
@@ -212,6 +224,23 @@ describe('build queue routes', () => {
       db.prepare("SELECT archived, origin_conversation_id FROM conversations WHERE id = 'archived-build'").get(),
     ).toEqual({ archived: 0, origin_conversation_id: 'queue-parent' });
     expect(db.prepare("SELECT state FROM todos WHERE id = 'archived-build-todo'").get()).toEqual({ state: 'active' });
+  });
+
+  it('moves a queued build for its manager, refuses a running one, and shows the move in history', async () => {
+    const bad = await fetch(`${base}/api/build-queue/9/move`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user': '2' }, body: JSON.stringify({ position: 1, before: 7 }) });
+    expect(bad.status).toBe(400);
+    const running = await fetch(`${base}/api/build-queue/7/move`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: 2 }) });
+    expect(running.status).toBe(409);
+    await expect(running.json()).resolves.toMatchObject({ ok: false, error: 'not_movable' });
+    const hidden = await fetch(`${base}/api/build-queue/7/move`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user': '2' }, body: JSON.stringify({ position: 2 }) });
+    expect(hidden.status).toBe(404);
+    const moved = await fetch(`${base}/api/build-queue/9/move`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user': '2' }, body: JSON.stringify({ before: 7 }) });
+    expect(moved.status).toBe(200);
+    await expect(moved.json()).resolves.toMatchObject({ ok: true, oldPosition: 2, newPosition: 1, changed: true, queue: [{ id: 9, position: 1 }] });
+    expect(moves).toEqual([{ jobId: 9, target: { before: 7 }, actor: { userId: 2, label: 'Member', via: 'ui' } }]);
+    const history = await fetch(`${base}/api/build-queue/history?scopeKey=project:project-1`, { headers: { 'x-user': '2' } });
+    expect(history.status).toBe(200);
+    await expect(history.json()).resolves.toMatchObject({ ok: true, entries: [{ jobId: 9, jobTitle: 'Member project build', actorLabel: 'Member', via: 'ui', oldPosition: 2, newPosition: 1 }] });
   });
 
   it('prevents a member from resolving another user\'s Private-chat build', async () => {

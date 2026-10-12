@@ -5,6 +5,8 @@ import type {
   AutomationTriggerRecipe,
   AutomationsSummary,
   BuildQueueJob,
+  BuildQueueMoveTarget,
+  BuildQueueReorder,
   Conversation,
   ConversationEvent,
   ConversationQueueSnapshot,
@@ -513,6 +515,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ action: 'skip' }),
     }),
+  moveBuildQueueJob: (id: number, target: BuildQueueMoveTarget) =>
+    requestJson<{ ok: boolean; oldPosition: number; newPosition: number; changed: boolean }>(`/api/build-queue/${id}/move`, {
+      method: 'POST',
+      body: JSON.stringify(target),
+    }),
+  buildQueueHistory: (scopeKey?: string, limit = 20) =>
+    requestJson<{ entries: BuildQueueReorder[] }>(
+      `/api/build-queue/history?limit=${limit}${scopeKey ? `&scopeKey=${encodeURIComponent(scopeKey)}` : ''}`,
+    ),
   retryBuildQueueJob: (id: number) =>
     requestJson<{ ok: boolean }>(`/api/build-queue/${id}/resolve`, {
       method: 'POST',

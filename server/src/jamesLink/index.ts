@@ -42,7 +42,11 @@ export function startJamesLink(ctx: AppContext) {
   timer.unref?.();
   return {
     link,
-    router: createJamesRouter(db, link, getSecret),
+    router: createJamesRouter(db, link, getSecret, {
+      list: () => ctx.manager.listBuildQueue(),
+      move: (jobId, target, actor) => ctx.manager.moveBuild(jobId, target, actor),
+      ownerId,
+    }),
     stop() { clearInterval(timer); ctx.manager.bus.off('event', onEvent); },
   };
 }
