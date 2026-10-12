@@ -13,7 +13,7 @@ import { mintAgentToken } from '../src/runtime/agentTokens.js';
 import { readSecretValue } from '../src/secrets/readSecret.js';
 import type { SecretAccessDeps } from '../src/secrets/readSecret.js';
 import { handleVeneerBrowserMcp } from '../src/veneerBrowser/mcp.js';
-import { classifyProbe, clearSecretFields } from '../src/veneerBrowser/secretFill.js';
+import { classifyProbe, clearSecretFields, iframeAttributeSelector } from '../src/veneerBrowser/secretFill.js';
 import { findSmsCode, SmsCodeError } from '../src/veneerBrowser/smsCode.js';
 import { EmailCodeError, findEmailCode, type EmailCodeSource } from '../src/veneerBrowser/emailCode.js';
 import type { VeneerBrowserManager } from '../src/veneerBrowser/manager.js';
@@ -106,7 +106,13 @@ const PLAIN_DIV = element({ styles: { cursor: 'auto', appearance: 'none' } });
  * echo back — a previously filled secret sitting in the element, say — and
  * exists so the tests can prove none of it escapes this process.
  */
+/** What the frame probe's page script reports; see frameProbeScript. */
+let frameCounts: Record<string, unknown> = { by: 'title', matches: 1, iframes: 1, visible: 1 };
+
 function cliStdout(command: string[], fixture: ElementFixture, url: string, leak: string): string {
+  if (command[0] === 'eval' && command.includes('--json')) {
+    return JSON.stringify({ success: true, data: { lifecycle: { ok: true }, origin: url, result: JSON.stringify(frameCounts) }, error: null });
+  }
   if (command[0] !== 'get') return '';
   if (command[1] === 'url') return `${url}\n`;
   if (command[1] === 'attr') {
@@ -289,6 +295,7 @@ describe('Veneer Browser credential tools', () => {
     fixture = PASSWORD_INPUT;
     pageUrl = 'https://acme.example/login';
     leak = '';
+    frameCounts = { by: 'title', matches: 1, iframes: 1, visible: 1 };
     auditLines.length = 0;
     captureGrantActive.mockImplementation(() => false);
     runCommand.mockImplementation(async () => ({ stdout: 'ok', stderr: '', exitCode: 0, screenshotPath: null }));
@@ -499,6 +506,109 @@ describe('Veneer Browser credential tools', () => {
     const result = await call('fill_secret', { target: '@e3', secret_name: 'ACME_PASSWORD', submit: true });
     expect(JSON.parse(result.content[0]!.text).submitted).toBe(true);
     expect(runCommands.mock.calls[1]![2]).toEqual([['fill', '@e3', PASSWORD], ['press', 'Enter']]);
+  });
+
+  const CARD_FRAME = 'Secure card number input frame';
+  const CARD_SELECTOR = 'iframe[title="Secure card number input frame"]';
+
+  it('fills a field inside a cross-origin iframe named by its title', async () => {
+    pageUrl = 'https://dashboard.vapi.ai/org/billing';
+    const result = await call('fill_secret', { frame: CARD_FRAME, secret_name: 'ERVP_CARD_NUMBER', project: 'ervp', config: 'prd' });
+    expect(result.isError).toBeUndefined();
+    const [first, second] = result.content[0]!.text.split('\n');
+    expect(JSON.parse(first!)).toEqual({ ok: true, secret_name: 'ERVP_CARD_NUMBER', frame: CARD_FRAME, submitted: false });
+    expect(second).toMatch(/cannot be read back/);
+    expect(result.content[0]!.text).not.toContain(PASSWORD);
+    // The probe looks at the parent page only, and before the secret is read.
+    const [, , probe] = runCommands.mock.calls[0]!;
+    expect(probe.slice(0, 2)).toEqual([['frame', 'main'], ['get', 'url']]);
+    expect(probe[2]![0]).toBe('eval');
+    expect(probe[2]![1]).toContain(JSON.stringify(CARD_FRAME));
+    expect(probe.flat().join(' ')).not.toContain(PASSWORD);
+    const [, , commands, options] = runCommands.mock.calls[1]!;
+    expect(commands[0]).toEqual(['frame', 'main']);
+    expect(commands[1]).toEqual(['click', CARD_SELECTOR]);
+    // The focus check comes before the value is on any command line.
+    expect(commands[2]![0]).toBe('eval');
+    expect(commands[2]![1]).toContain('activeElement');
+    expect(commands[2]![1]).toContain(JSON.stringify(CARD_SELECTOR));
+    expect(commands.slice(3)).toEqual([['press', 'End'], ['press', 'Shift+Home'], ['keyboard', 'inserttext', PASSWORD]]);
+    expect(options).toEqual({ redact: [PASSWORD] });
+    expect(auditLines).toEqual([
+      '[veneer-browser] fill_secret user=1 conversation=token-chat secret=ERVP_CARD_NUMBER project=ervp config=prd '
+        + `frame=iframe[title="Secure_card_number_input_frame"] url=https://dashboard.vapi.ai/org/billing ok=true`,
+    ]);
+  });
+
+  it('guards a filled frame against readback and presses Enter in the same sequence', async () => {
+    const result = await call('fill_secret', { frame: 'card-frame', secret_name: 'ACME_PASSWORD', submit: true });
+    expect(JSON.parse(result.content[0]!.text.split('\n')[0]!).submitted).toBe(true);
+    expect(runCommands.mock.calls[1]![2].at(-1)).toEqual(['press', 'Enter']);
+    const blocked = await call('run', { args: ['get', 'text', 'body'] });
+    expect(blocked.isError).toBe(true);
+  });
+
+  it('uses a CSS selector as given when no title or name matches', async () => {
+    frameCounts = { by: 'css', matches: 1, iframes: 1, visible: 1 };
+    await call('fill_secret', { frame: '#card-element iframe', secret_name: 'ACME_PASSWORD' });
+    expect(runCommands.mock.calls[1]![2][1]).toEqual(['click', '#card-element iframe']);
+  });
+
+  it('refuses a frame that is missing, ambiguous, not an iframe, or hidden, before reading the secret', async () => {
+    const cases: Array<[Record<string, unknown>, RegExp]> = [
+      [{ by: 'css', matches: 0, iframes: 0, visible: 0 }, /No iframe on this page/],
+      [{ by: 'title', matches: 2, iframes: 2, visible: 2 }, /matches 2 elements/],
+      [{ by: 'css', matches: 1, iframes: 0, visible: 0 }, /not an iframe/],
+      [{ by: 'title', matches: 1, iframes: 1, visible: 0 }, /not visible/],
+      [{ nonsense: true }, /could not be checked/],
+    ];
+    for (const [counts, message] of cases) {
+      frameCounts = counts;
+      const result = await call('fill_secret', { frame: CARD_FRAME, secret_name: 'ACME_PASSWORD' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toMatch(message);
+    }
+    expect(readSecret).not.toHaveBeenCalled();
+    expect(runCommands).toHaveBeenCalledTimes(cases.length);
+  });
+
+  it('types nothing when the click did not move focus into the frame', async () => {
+    runCommands.mockImplementationOnce(async (_u, _c, commands) => ({
+      steps: commands.map((command) => ({
+        command,
+        result: { args: command, stdout: cliStdout(command, fixture, pageUrl, leak), stderr: '', exitCode: 0 },
+      })),
+      failure: null,
+      released: false,
+    }));
+    runCommands.mockImplementationOnce(async () => ({
+      steps: [],
+      failure: { index: 2, command: ['eval', '...'], output: 'Evaluation error: Error: focus did not move into the frame' },
+      released: false,
+    }));
+    const result = await call('fill_secret', { frame: CARD_FRAME, secret_name: 'ACME_PASSWORD' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toMatch(/did not move focus into it, so nothing was typed/);
+    expect(result.content[0]!.text).not.toContain(PASSWORD);
+    expect(auditLines.at(-1)).toContain('ok=false');
+    // Nothing landed, so no readback guard was armed.
+    const read = await call('run', { args: ['get', 'text', 'body'] });
+    expect(read.isError).toBeUndefined();
+  });
+
+  it('refuses both target and frame, and a frame fill while capture is on', async () => {
+    const both = await call('fill_secret', { target: '@e3', frame: CARD_FRAME, secret_name: 'ACME_PASSWORD' });
+    expect(both.content[0]!.text).toMatch(/either target .* or frame/);
+    captureGrantActive.mockImplementation(() => true);
+    const captured = await call('fill_secret', { frame: CARD_FRAME, secret_name: 'ACME_PASSWORD' });
+    expect(captured.content[0]!.text).toMatch(/Advanced capture/);
+    expect(runCommands).not.toHaveBeenCalled();
+    expect(readSecret).not.toHaveBeenCalled();
+  });
+
+  it('quotes an iframe title or name safely in the click selector', () => {
+    expect(iframeAttributeSelector('title', 'Secure CVC input frame')).toBe('iframe[title="Secure CVC input frame"]');
+    expect(iframeAttributeSelector('name', 'a"b\\c')).toBe('iframe[name="a\\"b\\\\c"]');
   });
 
   it('redacts the value out of a failing command, end to end', async () => {

@@ -408,9 +408,198 @@ function secretAccess(deps: SecretToolDeps): SecretAccessDeps {
   return deps.secrets;
 }
 
+// ---------------------------------------------------------------------------
+// Fields inside a cross-origin iframe.
+//
+// A card form built on Stripe Elements (and most hosted payment fields) puts
+// each input in its own iframe served from the processor's origin. Chrome runs
+// that frame in another process, the iframe carries role=presentation so the
+// snapshot gives it no refs, and agent-browser's `frame <css>` cannot enter it.
+// The page itself can still be driven from outside: clicking the iframe focuses
+// the one input it holds, the parent document then reports the iframe as its
+// activeElement, and CDP's insertText goes to whatever holds focus — which is
+// that input. Nothing inside the frame can be read from here, so the probe and
+// the focus check work only on the iframe element in the parent page.
+// ---------------------------------------------------------------------------
+
+const MAX_FRAME_SPEC = 300;
+
+export type FrameMatch = 'title' | 'name' | 'css';
+
+/** CSS attribute selector for an exact iframe title or name; quotes and backslashes escaped. */
+export function iframeAttributeSelector(attribute: 'title' | 'name', value: string): string {
+  return `iframe[${attribute}="${value.replace(/[\\"]/g, '\\$&').replace(/[\n\r\f]/g, ' ')}"]`;
+}
+
+/**
+ * Page script that finds the iframe a frame spec names: an exact title first,
+ * then an exact name, then a CSS selector. It returns only counts, so nothing
+ * from the page leaves the probe.
+ */
+export function frameProbeScript(spec: string): string {
+  return `(() => {
+    const spec = ${JSON.stringify(spec)};
+    const frames = Array.from(document.querySelectorAll('iframe'));
+    let by = 'title';
+    let hits = frames.filter((f) => f.title === spec);
+    if (!hits.length) { by = 'name'; hits = frames.filter((f) => f.name === spec); }
+    if (!hits.length) {
+      by = 'css';
+      try { hits = Array.from(document.querySelectorAll(spec)); } catch { hits = []; }
+    }
+    const iframes = hits.filter((f) => f instanceof HTMLIFrameElement).length;
+    const visible = hits.filter((f) => {
+      if (!(f instanceof HTMLIFrameElement)) return false;
+      const r = f.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && getComputedStyle(f).visibility !== 'hidden';
+    }).length;
+    return JSON.stringify({ by, matches: hits.length, iframes, visible });
+  })()`;
+}
+
+/** Page script that throws unless focus moved into the named iframe after the click. */
+export function frameFocusScript(selector: string): string {
+  return `(() => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLIFrameElement) || !active.matches(${JSON.stringify(selector)})) {
+      throw new Error('focus did not move into the frame');
+    }
+    return 'focused';
+  })()`;
+}
+
+export interface FrameProbe {
+  selector: string;
+  by: FrameMatch;
+  pageUrl: string;
+}
+
+const FRAME_PROBE_UNREADABLE = 'that frame could not be checked on the page; take a fresh read and try again';
+
+function evalResult(stdout: string): string | null {
+  const result = jsonPayload(stdout)?.result;
+  return typeof result === 'string' ? result : null;
+}
+
+/**
+ * Resolves a frame spec to exactly one visible iframe, before any secret is
+ * read. Same privacy rule as probeFillTarget: only counts and the page URL
+ * come back out of this function.
+ */
+export async function probeFrameTarget(deps: SecretFillDeps, spec: string): Promise<FrameProbe> {
+  const run = await deps.manager.runCommands(deps.userId, deps.conversationId, [
+    ['frame', 'main'],
+    ['get', 'url'],
+    ['eval', frameProbeScript(spec), '--json'],
+  ]);
+  if (run.failure || run.steps.length < 3) throw new Error(FRAME_PROBE_UNREADABLE);
+  let counts: { by?: unknown; matches?: unknown; iframes?: unknown; visible?: unknown };
+  try {
+    counts = JSON.parse(evalResult(run.steps[2]?.result.stdout ?? '') ?? '');
+  } catch {
+    throw new Error(FRAME_PROBE_UNREADABLE);
+  }
+  const by = counts.by === 'title' || counts.by === 'name' || counts.by === 'css' ? counts.by : null;
+  if (!by || typeof counts.matches !== 'number' || typeof counts.visible !== 'number') {
+    throw new Error(FRAME_PROBE_UNREADABLE);
+  }
+  if (counts.matches === 0) {
+    throw new Error('No iframe on this page has that title or name, and it matches no CSS selector. Take a fresh read; an iframe\'s title is the quoted name read shows for it.');
+  }
+  if (counts.matches > 1) {
+    throw new Error(`That frame matches ${counts.matches} elements; it must name exactly one iframe. Use a more specific CSS selector.`);
+  }
+  if (counts.iframes !== 1) throw new Error('That selector matches an element that is not an iframe.');
+  if (counts.visible !== 1) throw new Error('That iframe is not visible on the page; scroll to it or open the form first.');
+  return {
+    selector: by === 'css' ? spec : iframeAttributeSelector(by, spec),
+    by,
+    pageUrl: (run.steps[1]?.result.stdout ?? '').trim().split('\n')[0]?.trim() ?? '',
+  };
+}
+
+/**
+ * Click the iframe, refuse unless focus moved into it, replace the field's
+ * content, and optionally press Enter — one sequence, so no other chat command
+ * lands between the focus check and the typing. The focus check runs before
+ * the value is on any command line, so a failed check never types anything.
+ */
+export async function fillFrameWithResolvedValue(
+  deps: SecretFillDeps,
+  input: { frame: FrameProbe; value: string; submit?: boolean },
+): Promise<{ submitted: boolean }> {
+  const { frame, value } = input;
+  const submit = input.submit === true;
+  try {
+    const commands: string[][] = [
+      ['frame', 'main'],
+      ['click', frame.selector],
+      ['eval', frameFocusScript(frame.selector)],
+      // Select whatever the field already holds so the insert replaces it.
+      // Control+a is not select-all here (it navigated a test tab away), and
+      // Meta+a does not reach a field inside another process's frame.
+      ['press', 'End'],
+      ['press', 'Shift+Home'],
+      ['keyboard', 'inserttext', value],
+    ];
+    if (submit) commands.push(['press', 'Enter']);
+    const run = await deps.manager.runCommands(deps.userId, deps.conversationId, commands, { redact: [value] });
+    if (run.failure) {
+      if (run.failure.index === 2) {
+        throw new Error('Clicking that iframe did not move focus into it, so nothing was typed. Wait for the form to finish loading and try again.');
+      }
+      throw new Error(run.failure.output);
+    }
+    rememberSecretField(deps.conversationId, frame.selector);
+    return { submitted: submit };
+  } catch (error) {
+    throw scrubbed(error, value);
+  }
+}
+
+const FRAME_FIELD_NOTE =
+  'Typed into the field the iframe focused; it cannot be read back. Do not screenshot it; confirm by what the page does next (a validation message or the submit result).';
+
+async function fillSecretIntoFrame(
+  deps: SecretToolDeps,
+  args: Record<string, unknown>,
+  input: { frame: string; name: string; project?: string; config?: string },
+): Promise<string> {
+  const { frame, name, project, config } = input;
+  let pageUrl = '';
+  try {
+    if (deps.captureGranted) throw new Error(CAPTURE_SECRET_REFUSAL);
+    const probe = await probeFrameTarget(deps, frame);
+    pageUrl = probe.pageUrl;
+    const secret = await readSecretValue(secretAccess(deps), {
+      name,
+      ...(project ? { project } : {}),
+      ...(config ? { config } : {}),
+    });
+    const outcome = await fillFrameWithResolvedValue(deps, { frame: probe, value: secret.value, submit: args.submit === true });
+    logFill('fill_secret', deps, { secret: name, project, config, frame: probe.selector, url: pageUrl }, true);
+    return `${JSON.stringify({ ok: true, secret_name: name, frame, submitted: outcome.submitted })}\n${FRAME_FIELD_NOTE}`;
+  } catch (error) {
+    logFill('fill_secret', deps, { secret: name, project, config, frame, url: pageUrl }, false);
+    throw error;
+  }
+}
+
 export async function fillSecretTool(deps: SecretToolDeps, args: Record<string, unknown>): Promise<string> {
-  const target = requireTarget(args.target);
+  const frame = optionalSegment(args.frame);
   const name = requireSecretName(args.secret_name);
+  if (frame) {
+    if (optionalSegment(args.target)) {
+      throw new Error('Pass either target (a field on the page) or frame (an iframe holding one field), not both.');
+    }
+    if (frame.length > MAX_FRAME_SPEC) throw new Error(`frame must be at most ${MAX_FRAME_SPEC} characters.`);
+    const project = optionalSegment(args.project);
+    const config = optionalSegment(args.config);
+    return fillSecretIntoFrame(deps, args, {
+      frame, name, ...(project ? { project } : {}), ...(config ? { config } : {}),
+    });
+  }
+  const target = requireTarget(args.target);
   const project = optionalSegment(args.project);
   const config = optionalSegment(args.config);
   let pageUrl = '';
