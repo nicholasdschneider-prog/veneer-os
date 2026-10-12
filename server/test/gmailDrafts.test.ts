@@ -10,7 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { AppContext } from '../src/context.js';
 import type { UserRow } from '../src/db/db.js';
-import type { ComposioGmailDraftInput } from '../src/connectors/composio.js';
+import type { ComposioGmailDraftInput, ComposioGmailDraftUpdateInput } from '../src/connectors/composio.js';
 import { createGmailDraftsRouter } from '../src/routes/gmailDrafts.js';
 
 const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
@@ -37,6 +37,7 @@ let base: string;
 let root: string;
 let workspace: string;
 let createCalls: Array<{ apiKey: string; sessionId: string; input: ComposioGmailDraftInput }>;
+let updateCalls: Array<{ apiKey: string; sessionId: string; input: ComposioGmailDraftUpdateInput }>;
 
 function insertGmail(label = 'owner@example.com', userId = USER.id, sharing: 'personal' | 'shared' = 'personal'): void {
   db.prepare(
@@ -50,8 +51,8 @@ function insertGmail(label = 'owner@example.com', userId = USER.id, sharing: 'pe
   }));
 }
 
-async function call(body: unknown, agent = true, userId = USER.id) {
-  const response = await fetch(`${base}/api/connectors/gmail/drafts-with-attachments`, {
+async function call(body: unknown, agent = true, userId = USER.id, route = 'drafts-with-attachments') {
+  const response = await fetch(`${base}/api/connectors/gmail/${route}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -97,6 +98,10 @@ beforeAll(async () => {
       createCalls.push({ apiKey, sessionId, input });
       return { gmailUrl: 'https://mail.google.com/mail/u/0/#drafts/test' };
     },
+    updateDraft: async (apiKey, sessionId, input) => {
+      updateCalls.push({ apiKey, sessionId, input });
+      return { draftId: input.draftId, threadId: input.threadId ?? 'thread-existing', gmailUrl: null };
+    },
   }));
   await new Promise<void>((resolve) => {
     server = app.listen(0, '127.0.0.1', resolve);
@@ -113,6 +118,7 @@ afterAll(() => {
 beforeEach(() => {
   db.prepare('DELETE FROM user_connectors').run();
   createCalls = [];
+  updateCalls = [];
 });
 
 describe('agent Gmail draft attachments', () => {
@@ -205,5 +211,83 @@ describe('agent Gmail draft attachments', () => {
       'session-Member personal',
       'session-Shared inbox',
     ]);
+  });
+});
+
+describe('agent Gmail draft attachment update', () => {
+  const update = (body: unknown, agent = true) => call(body, agent, USER.id, 'drafts/update-attachments');
+  const full = {
+    draft_id: 'r-123',
+    thread_id: 'thread-1',
+    to: ['claims@example.com', 'second@example.com'],
+    cc: ['cc@example.com'],
+    subject: 'Re: Claim',
+    body: 'Exact existing body.',
+    attachments: ['proof.png'],
+  };
+
+  it('updates the existing draft in place with complete content and never sends', async () => {
+    insertGmail();
+    const file = path.join(workspace, 'proof.png');
+    fs.writeFileSync(file, 'png-bytes');
+
+    const result = await update(full);
+
+    expect(result.status).toBe(200);
+    expect(result.json.draft).toEqual({
+      updated: true, draft_id: 'r-123', thread_id: 'thread-1', attached: 1, gmailUrl: null, sent: false,
+    });
+    expect(JSON.stringify(result.json)).not.toContain('s3key');
+    expect(updateCalls).toEqual([{
+      apiKey: 'test-composio-key',
+      sessionId: 'session-owner@example.com',
+      input: {
+        draftId: 'r-123',
+        threadId: 'thread-1',
+        to: ['claims@example.com', 'second@example.com'],
+        cc: ['cc@example.com'],
+        subject: 'Re: Claim',
+        body: 'Exact existing body.',
+        attachmentPaths: [fs.realpathSync(file)],
+      },
+    }]);
+    expect(createCalls).toEqual([]);
+  });
+
+  it('requires draft_id and complete content', async () => {
+    insertGmail();
+    const { draft_id: _id, ...missingId } = full;
+    const noId = await update(missingId);
+    expect(noId.status).toBe(400);
+    expect(noId.json.error).toContain('draft_id');
+    const { body: _body, ...missingBody } = full;
+    expect((await update(missingBody)).status).toBe(400);
+    expect(updateCalls).toEqual([]);
+  });
+
+  it('applies the agent gate and the same attachment ACL', async () => {
+    insertGmail();
+    const outside = path.join(root, 'outside.png');
+    fs.writeFileSync(outside, 'outside');
+    fs.writeFileSync(path.join(workspace, '.env'), 'SECRET=nope');
+
+    expect((await update({ ...full, attachments: [outside] }, false)).status).toBe(403);
+    expect((await update({ ...full, attachments: [outside] })).json.error).toContain('outside this chat');
+    expect((await update({ ...full, attachments: ['.env'] })).json.error).toContain('Sensitive files');
+    expect(updateCalls).toEqual([]);
+  });
+
+  it('refuses read-only Gmail connections that cannot update drafts', async () => {
+    db.prepare(
+      `INSERT INTO user_connectors
+         (user_id, connector_slug, label, status, sharing, config_json, access_mode, access_version)
+       VALUES (?, 'gmail', 'Read only', 'connected', 'personal', ?, 'read_only', 2)`,
+    ).run(USER.id, JSON.stringify({ sessionId: 'session-ro', connectedAccountId: 'acct-ro' }));
+    fs.writeFileSync(path.join(workspace, 'proof.png'), 'png-bytes');
+
+    const result = await update(full);
+    expect(result.status).toBe(400);
+    expect(result.json.error).toContain('no writable Gmail connection');
+    expect(updateCalls).toEqual([]);
   });
 });

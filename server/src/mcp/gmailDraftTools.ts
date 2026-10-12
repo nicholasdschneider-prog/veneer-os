@@ -30,6 +30,34 @@ export const GMAIL_DRAFT_TOOL: GmailDraftToolDefinition = {
   },
 };
 
+export const GMAIL_DRAFT_UPDATE_TOOL: GmailDraftToolDefinition = {
+  name: 'update_gmail_draft_attachments',
+  description:
+    'Attach local files to an EXISTING unsent Gmail draft in place, keeping the same draft id and thread. Use this instead of a Gmail connector update-draft action whenever attachments are local paths, because the connector needs staged file keys agents cannot produce. Gmail replaces the whole draft on update, so read the draft first and pass its complete current to/cc/bcc/subject/body/isHtml exactly, plus EVERY file the draft should carry (existing attachments not listed are dropped). It refuses a message that is no longer a draft, keeps the current thread when thread_id is omitted, and never sends. Read the draft back afterward to confirm attachment, thread, body and recipients.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      draft_id: { type: 'string', description: 'Existing Gmail draft id, for example r-8451018495283794918.' },
+      thread_id: { type: 'string', description: 'Optional Gmail thread id; defaults to the draft\'s current thread.' },
+      account: { type: 'string', description: 'Optional exact Gmail connection label.' },
+      to: { type: 'array', items: { type: 'string' }, description: 'Complete To recipients; the first becomes the primary recipient.' },
+      cc: { type: 'array', items: { type: 'string' }, description: 'Complete Cc list (omitting it clears Cc).' },
+      bcc: { type: 'array', items: { type: 'string' }, description: 'Complete Bcc list (omitting it clears Bcc).' },
+      subject: { type: 'string', description: 'Exact subject.' },
+      body: { type: 'string', description: 'Exact complete body.' },
+      isHtml: { type: 'boolean', description: 'True only when body contains HTML.' },
+      attachments: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Every local file the draft should carry: absolute paths, or paths relative to this chat workspace.',
+      },
+    },
+    required: ['draft_id', 'to', 'subject', 'body', 'attachments'],
+  },
+};
+
+export const GMAIL_DRAFT_TOOLS = [GMAIL_DRAFT_TOOL, GMAIL_DRAFT_UPDATE_TOOL];
+
 export async function callGmailDraftTool({
   name,
   args,
@@ -39,6 +67,22 @@ export async function callGmailDraftTool({
   args: Record<string, unknown>;
   callApi: CallApi;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> } | null> {
+  if (name === GMAIL_DRAFT_UPDATE_TOOL.name) {
+    const result = await callApi('/api/connectors/gmail/drafts/update-attachments', {
+      method: 'POST',
+      body: JSON.stringify(args),
+    });
+    const draft = result.draft as {
+      draft_id?: string; thread_id?: string | null; attached?: number; gmailUrl?: string | null;
+    } | undefined;
+    const lines = [
+      `Gmail draft ${draft?.draft_id ?? String(args.draft_id ?? '')} updated in place with ${Number(draft?.attached ?? 0)} attachment(s).`,
+      ...(draft?.thread_id ? [`Thread: ${draft.thread_id}`] : []),
+      'Status: unsent',
+    ];
+    if (draft?.gmailUrl) lines.push(`Open draft: ${draft.gmailUrl}`);
+    return { content: [{ type: 'text', text: lines.join('\n') }] };
+  }
   if (name !== GMAIL_DRAFT_TOOL.name) return null;
   const result = await callApi('/api/connectors/gmail/drafts-with-attachments', {
     method: 'POST',

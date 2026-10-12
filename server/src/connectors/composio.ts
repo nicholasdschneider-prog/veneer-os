@@ -58,6 +58,16 @@ export interface ComposioGmailDraftResult {
   gmailUrl: string | null;
 }
 
+export interface ComposioGmailDraftUpdateInput extends ComposioGmailDraftInput {
+  draftId: string;
+  threadId?: string;
+}
+
+export interface ComposioGmailDraftUpdateResult extends ComposioGmailDraftResult {
+  draftId: string;
+  threadId: string | null;
+}
+
 export interface SlackDirectMessageOption {
   id: string;
   label: string;
@@ -180,6 +190,36 @@ const ATTACHMENT_MIME_TYPES: Record<string, string> = {
   '.zip': 'application/zip',
 };
 
+async function stageGmailAttachments(
+  composio: Composio,
+  toolSlug: 'GMAIL_CREATE_EMAIL_DRAFT' | 'GMAIL_UPDATE_DRAFT',
+  files: string[],
+) {
+  return Promise.all(files.map(async (file) => {
+    const uploaded = await composio.files.upload({ file, toolSlug, toolkitSlug: 'gmail' });
+    return {
+      ...uploaded,
+      // Composio's staging response uses a generated object name and may use
+      // octet-stream for CSV/text. Gmail should show the deliverable's name.
+      name: path.basename(file),
+      mimetype: ATTACHMENT_MIME_TYPES[path.extname(file).toLowerCase()] ?? uploaded.mimetype,
+    };
+  }));
+}
+
+/** Find the Gmail message object (labelIds/threadId) inside a GET_DRAFT payload. */
+function gmailDraftMessage(value: unknown, depth = 0): Record<string, unknown> | null {
+  if (depth > 6) return null;
+  const item = record(value);
+  if (!item) return null;
+  if (Array.isArray(item.labelIds) || typeof item.threadId === 'string') return item;
+  for (const key of ['message', 'data', 'result', 'response', 'response_data', 'draft']) {
+    const found = gmailDraftMessage(item[key], depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
 /**
  * Stage local files through Composio, then create an unsent Gmail draft using
  * the connector's raw {name,mimetype,s3key} attachment contract. The hosted
@@ -191,20 +231,7 @@ export async function createComposioGmailDraft(
   input: ComposioGmailDraftInput,
 ): Promise<ComposioGmailDraftResult> {
   const composio = client(apiKey);
-  const attachments = await Promise.all(input.attachmentPaths.map(async (file) => {
-    const uploaded = await composio.files.upload({
-      file,
-      toolSlug: 'GMAIL_CREATE_EMAIL_DRAFT',
-      toolkitSlug: 'gmail',
-    });
-    return {
-      ...uploaded,
-      // Composio's staging response uses a generated object name and may use
-      // octet-stream for CSV/text. Gmail should show the deliverable's name.
-      name: path.basename(file),
-      mimetype: ATTACHMENT_MIME_TYPES[path.extname(file).toLowerCase()] ?? uploaded.mimetype,
-    };
-  }));
+  const attachments = await stageGmailAttachments(composio, 'GMAIL_CREATE_EMAIL_DRAFT', input.attachmentPaths);
   const session = await composio.sessions.use(sessionId);
   const result = await session.execute('GMAIL_CREATE_EMAIL_DRAFT', {
     recipient_email: input.to.join(', '),
@@ -220,6 +247,47 @@ export async function createComposioGmailDraft(
     throw new Error(detail);
   }
   return { gmailUrl: gmailDisplayUrl(result.data) };
+}
+
+/**
+ * Replace an existing unsent draft in place, keeping its draft id and thread,
+ * with the caller's complete content plus freshly staged local attachments.
+ * GMAIL_UPDATE_DRAFT replaces the whole draft, so every field is sent. Never sends.
+ */
+export async function updateComposioGmailDraft(
+  apiKey: string,
+  sessionId: string,
+  input: ComposioGmailDraftUpdateInput,
+): Promise<ComposioGmailDraftUpdateResult> {
+  const composio = client(apiKey);
+  const session = await composio.sessions.use(sessionId);
+  const current = await session.execute('GMAIL_GET_DRAFT', { draft_id: input.draftId, format: 'metadata' });
+  const message = current.error ? null : gmailDraftMessage(current.data);
+  if (!message) throw new Error(`Gmail draft ${input.draftId} was not found in the selected account.`);
+  const labels = Array.isArray(message.labelIds) ? message.labelIds.map(String) : [];
+  if (labels.length && !labels.includes('DRAFT')) {
+    throw new Error(`Gmail message ${input.draftId} is no longer an unsent draft.`);
+  }
+  const threadId = input.threadId ?? shortString(message.threadId, 64) ?? undefined;
+  const attachments = await stageGmailAttachments(composio, 'GMAIL_UPDATE_DRAFT', input.attachmentPaths);
+  const [first, ...extra] = input.to;
+  const result = await session.execute('GMAIL_UPDATE_DRAFT', {
+    draft_id: input.draftId,
+    ...(threadId ? { thread_id: threadId } : {}),
+    recipient_email: first,
+    extra_recipients: extra,
+    cc: input.cc ?? [],
+    bcc: input.bcc ?? [],
+    subject: input.subject,
+    body: input.body,
+    is_html: input.isHtml ?? false,
+    attachment: attachments,
+  });
+  if (result.error) {
+    const detail = typeof result.error === 'string' ? result.error : 'Gmail draft update failed';
+    throw new Error(detail);
+  }
+  return { draftId: input.draftId, threadId: threadId ?? null, gmailUrl: gmailDisplayUrl(result.data) };
 }
 
 function firstString(source: Record<string, unknown>, keys: string[]): string | null {

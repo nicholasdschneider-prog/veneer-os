@@ -16,7 +16,7 @@ import { callProjectSettingsTool, PROJECT_SETTINGS_TOOL } from './projectSetting
 import { callRenameConversationTool, RENAME_CONVERSATION_TOOL } from './renameConversationTool.js';
 import { callChatLinkTool, CHAT_LINK_TOOL } from './chatLinkTool.js';
 import { callTodoTool, TODO_TOOL_DEFINITIONS } from './todoTools.js';
-import { callGmailDraftTool, GMAIL_DRAFT_TOOL } from './gmailDraftTools.js';
+import { callGmailDraftTool, GMAIL_DRAFT_TOOLS } from './gmailDraftTools.js';
 
 /**
  * Built-in MCP server: gives every agent native Veneer operations such as
@@ -91,7 +91,7 @@ const TOOLS: ToolDef[] = [
   ...HUDDLE_TOOL_DEFINITIONS,
   ...ROOM_TOOL_DEFINITIONS,
   ...TODO_TOOL_DEFINITIONS,
-  GMAIL_DRAFT_TOOL,
+  ...GMAIL_DRAFT_TOOLS,
   {
     name: 'list_skills',
     description: `List every skill placement across all scopes: name, scope key, original/link relationship, enabled/off, per-provider state, and any issues. ${SCOPE_GRAMMAR} Call this first to learn which scopes/projects exist and their exact keys before using the other skill tools.`,

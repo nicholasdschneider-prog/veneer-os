@@ -11,6 +11,7 @@ import { connectorAccessModeProfile } from '../connectors/accessModes.js';
 import {
   composioErrorMessage,
   createComposioGmailDraft,
+  updateComposioGmailDraft,
   type ComposioGmailDraftResult,
 } from '../connectors/composio.js';
 import { effectiveApiKey } from '../secrets/apiKeys.js';
@@ -34,8 +35,15 @@ const DraftSchema = z.object({
   attachments: z.array(z.string().trim().min(1).max(4096)).min(1).max(10),
 });
 
+/** GMAIL_UPDATE_DRAFT replaces the whole draft, so the caller supplies complete content. */
+const DraftUpdateSchema = DraftSchema.extend({
+  draft_id: z.string().trim().min(1).max(200),
+  thread_id: z.string().trim().min(1).max(200).optional(),
+});
+
 export interface GmailDraftsRouterDependencies {
   createDraft?: typeof createComposioGmailDraft;
+  updateDraft?: typeof updateComposioGmailDraft;
 }
 
 function inside(parent: string, child: string): boolean {
@@ -50,12 +58,18 @@ function sensitivePath(candidate: string): boolean {
     DENIED_NAMES.has(name) || DENIED_EXTS.has(path.extname(name));
 }
 
-function eligibleGmailRows(ctx: AppContext, conversationId: string, actorUserId: number): UserConnectorRow[] {
+function eligibleGmailRows(
+  ctx: AppContext,
+  conversationId: string,
+  actorUserId: number,
+  requiredSlugs: readonly string[] = ['GMAIL_CREATE_EMAIL_DRAFT'],
+): UserConnectorRow[] {
   const def = connectorDef('gmail');
   return connectedConnectorRowsForConversation(ctx.db, conversationId, actorUserId).filter((row) => {
     if (row.connector_slug !== 'gmail') return false;
     const profile = connectorAccessModeProfile(def?.accessModes, row.access_mode, row.access_version);
-    return profile?.composio?.toolSlugs.includes('GMAIL_CREATE_EMAIL_DRAFT') ?? false;
+    const slugs = profile?.composio?.toolSlugs ?? [];
+    return requiredSlugs.every((slug) => slugs.includes(slug));
   });
 }
 
@@ -131,6 +145,7 @@ export function createGmailDraftsRouter(
 ): Router {
   const router = express.Router();
   const createDraft = deps.createDraft ?? createComposioGmailDraft;
+  const updateDraft = deps.updateDraft ?? updateComposioGmailDraft;
 
   router.post('/drafts-with-attachments', (req: Request, res) => {
     if (!req.agentConversationId) {
@@ -164,6 +179,56 @@ export function createGmailDraftsRouter(
         ok: true,
         draft: {
           attached: parsed.data.attachments.length,
+          gmailUrl: result.gmailUrl,
+          sent: false,
+        },
+      }))
+      .catch((err) => res.status(400).json({ ok: false, error: composioErrorMessage(err) }));
+  });
+
+  router.post('/drafts/update-attachments', (req: Request, res) => {
+    if (!req.agentConversationId) {
+      res.status(403).json({ ok: false, error: 'Local Gmail attachments are available only to an authenticated agent chat.' });
+      return;
+    }
+    const parsed = DraftUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const field = issue?.path.join('.');
+      res.status(400).json({ ok: false, error: field ? `${field}: ${issue?.message}` : 'Invalid draft update.' });
+      return;
+    }
+    const conversation = ctx.db.prepare(
+      'SELECT * FROM conversations WHERE id = ?',
+    ).get(req.agentConversationId) as ConversationRow | undefined;
+    if (!conversation) {
+      res.status(404).json({ ok: false, error: 'Authenticated agent conversation not found.' });
+      return;
+    }
+
+    void (async () => {
+      const rows = eligibleGmailRows(ctx, conversation.id, req.user!.id, ['GMAIL_GET_DRAFT', 'GMAIL_UPDATE_DRAFT']);
+      const row = selectGmailRow(rows, parsed.data.account);
+      const apiKey = effectiveApiKey('composio', ctx.secrets, ctx.config, ctx.doppler).value;
+      if (!apiKey) throw new Error('Composio is not configured.');
+      const config = JSON.parse(row.config_json) as ComposioInstallConfig;
+      if (!config.sessionId) throw new Error('The selected Gmail connection must be reconnected.');
+      const attachmentPaths = resolveAttachments(ctx, conversation, parsed.data.attachments);
+      const {
+        account: _account, attachments: _attachments, draft_id: draftId, thread_id: threadId, ...draft
+      } = parsed.data;
+      const result = await updateDraft(apiKey, config.sessionId, {
+        ...draft, attachmentPaths, draftId, ...(threadId ? { threadId } : {}),
+      });
+      return { result, attached: attachmentPaths.length };
+    })()
+      .then(({ result, attached }) => res.json({
+        ok: true,
+        draft: {
+          updated: true,
+          draft_id: result.draftId,
+          thread_id: result.threadId,
+          attached,
           gmailUrl: result.gmailUrl,
           sent: false,
         },
