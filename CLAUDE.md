@@ -71,6 +71,12 @@ faster. Package scripts share a host-wide development lock; if refused, finish
 or coordinate with its owner rather than bypassing it. Coordinate with other
 active build owners before heavy validation.
 
+For command-line OAuth, use the provider-supported no-auto-browser mode and open
+the generated sign-in URL in a managed Veneer Browser. Do not let CLI sign-ins
+launch the Mac default browser: it can route into the legacy shared headless
+Chrome and leave a stuck browser consuming CPU. Never stop an occupied browser
+to recover an idle one.
+
 Use a dedicated temporary directory for build/test copies and clean it in a
 `finally` block or shell `trap` when finished. Retain useful reports in the project,
 not full copied repositories, node_modules, or production-database test copies.
