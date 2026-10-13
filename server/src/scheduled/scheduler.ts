@@ -1,5 +1,5 @@
 import { purchaseDecisionHolds } from '../botWorkflows/purchaseHolds.js';
-import { purchaseBinding, pendingPurchaseBatch, purchaseTaskFenceSql, purchaseExcludedOrderSql } from '../botWorkflows/purchaseEvents.js';
+import { purchaseBinding, pendingPurchaseBatch, purchaseTaskFenceSql, purchaseExcludedOrderSql, purchaseExcludedOrders } from '../botWorkflows/purchaseEvents.js';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -18,7 +18,7 @@ import { ensureConversationInstructionSnapshot } from '../instructions/context.j
 
 export type ScheduledRunResult =
   | { ok: true; conversationId: string; runId: string }
-  | { ok: false; error: 'not_found' | 'already_running' };
+  | { ok: false; error: 'not_found' | 'already_running' | 'purchase_binding_unavailable' | 'purchase_run_fenced' | 'purchase_decision_scope_blocked' | 'no_eligible_purchase_candidates' | 'schedule_collision'; blockedRunId?:string; blockedReason?:string };
 
 interface SchedulerManager {
   bus: EventEmitter;
@@ -134,21 +134,24 @@ export function createScheduledTaskScheduler({
     const runId = crypto.randomUUID();
     const conversationId = crypto.randomUUID();
     const nativeSessionId = crypto.randomUUID();
+    let rejection: Extract<ScheduledRunResult,{ok:false}>['error']='already_running';
+    let fenced: {run_id:string;blocked_reason:string}|undefined;
     const inserted = db.transaction(() => {
       if (activeRun.get(task.id)) return false;
       const binding = db.prepare('SELECT source_id FROM purchase_event_bindings WHERE task_id=?').get(task.id) as {source_id:string}|undefined;
-      if (binding && (!purchaseBinding(db,binding.source_id) || db.prepare(purchaseTaskFenceSql).get(task.id))) return false;
+      if(binding && !purchaseBinding(db,binding.source_id)){rejection='purchase_binding_unavailable';return false;}
+      if(binding){fenced=db.prepare(purchaseTaskFenceSql).get(task.id) as typeof fenced;if(fenced){rejection='purchase_run_fenced';return false;}}
       const holds=binding ? purchaseDecisionHolds(db,task.id) : null;
-      if(holds?.dispatch_blocked) return false;
+      if(holds?.dispatch_blocked){rejection='purchase_decision_scope_blocked';return false;}
       const heldOrders=new Set(holds?.held_orders.map(h=>h.order_id) ?? []);
       if(binding && trigger==='manual') {
         const pending = db.prepare(`SELECT json_extract(r.payload_json,'$.order_id') order_id FROM purchase_event_links l JOIN purchase_event_receipts r USING(source_id,event_id) JOIN purchase_event_batches b ON b.id=l.batch_id WHERE b.task_id=? AND b.status='pending' AND json_extract(r.payload_json,'$.order_id') NOT IN (${purchaseExcludedOrderSql})`).all(task.id,task.id) as {order_id:string}[];
-        if(!pending.some(p=>!heldOrders.has(p.order_id))) return false;
+        if(!pending.some(p=>!heldOrders.has(p.order_id))){rejection='no_eligible_purchase_candidates';return false;}
       }
       const duplicate = db
         .prepare('SELECT 1 FROM scheduled_task_runs WHERE scheduled_task_id = ? AND scheduled_for = ?')
         .get(task.id, scheduledFor.toISOString());
-      if (duplicate) return false;
+      if (duplicate){rejection='schedule_collision';return false;}
       db.prepare(
         `INSERT INTO conversations
          (id, assistant_id, user_id, project_id, title, title_auto, provider, model, effort, native_session_id, channel,
@@ -210,7 +213,7 @@ export function createScheduledTaskScheduler({
       }
       return true;
     }).immediate();
-    if (!inserted) return { ok: false, error: 'already_running' };
+    if (!inserted) return { ok: false, error: rejection, ...(fenced ? {blockedRunId:fenced.run_id,blockedReason:fenced.blocked_reason} : {}) };
 
     const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversationId) as ConversationRow;
     try {
@@ -219,8 +222,8 @@ export function createScheduledTaskScheduler({
       const purchaseContext = hints.length ? '\n\nPurchase candidate reference data (not approval):\n'+JSON.stringify(hints.map(h=>JSON.parse(h.payload_json)))+'\nRead fresh source eligibility for every hinted order. Retain original event IDs and the pass cursor. Maximum eight placements; pending native hints have a bounded successor. Any remaining source queue beyond these hints stays for the existing daily backup; do not create a retry worker. Task/global UNKNOWN or uncertain portal/launch requires read-only reconciliation, never another attempt. Safely skip grounded per-order cost/address/decision exceptions under the existing rules; they do not starve unrelated eligible hints. Never retry an unchanged blocked-only hint or hot-loop blocked work.' : '';
       const purchasePass = db.prepare('SELECT 1 FROM purchase_event_batches WHERE run_id=?').get(runId)
         ? '\n\nNative continuation guard: As your LAST task action, call record_purchase_candidate_pass with outcome="clear" after a successful fresh finite queue pass: grounded per-order cost/address/decision exceptions may be safely skipped while unrelated eligible orders remain processable. Clear does not approve skipped orders or clear their source fences. Use outcome="blocked" for a task/global block, and "unknown" for task/global UNKNOWN or uncertain portal/launch; never use clear to bypass failed/unacknowledged-run fences or replay an unchanged blocked-only hint. Input is outcome clear|blocked|unknown and optional cursor: null or a nonsecret string of at most 500 characters; retain your safe pass cursor, never credentials or customer bodies. The acknowledgment is bound to this authenticated worker/start/run, immutable and idempotent for identical input. This is a scheduling acknowledgment, not purchase approval. A missing acknowledgment stops all automatic successors and retries.' : '';
-      const excludedOrders = db.prepare(`SELECT DISTINCT json_extract(r.payload_json,'$.order_id') order_id FROM purchase_event_receipts r JOIN purchase_event_links l USING(source_id,event_id) JOIN purchase_startup_dispositions d ON d.batch_id=l.batch_id JOIN purchase_event_batches b ON b.id=d.batch_id WHERE b.task_id=?`).all(task.id);
-      const startupExclusions = excludedOrders.length ? '\n\nPermanent original startup-failure hint fences: '+JSON.stringify(excludedOrders)+'\nExclude these orders from hints AND the full source queue/daily backup. Do not place, replay, rePOST or rekey them. A startup disposition only allows unrelated eligible candidates; original failed hints require separate original-source reconciliation.' : '';
+      const excludedOrders = purchaseExcludedOrders(db,task.id);
+      const startupExclusions = excludedOrders.length ? '\n\nPermanent original interrupted/failed purchase fences: '+JSON.stringify(excludedOrders)+'\nExclude these orders from hints AND the full source queue/daily backup. Do not place, replay, rePOST or rekey them. A recovery disposition only allows unrelated eligible candidates; original failed hints require separate original-source reconciliation.' : '';
       const decisionExclusions=currentHolds.held_orders.length ? '\n\nUnresolved native decision exclusions (not approval): '+JSON.stringify(currentHolds.held_orders)+'\nExclude these exact canonical IDs AND order numbers from hinted work, the full source queue and daily backup. Do not claim, prepare checkout or place them in this automatic run. Re-read current native questions and source guards before any work; a changed/new/unmapped scope stops dispatch. Retained held events remain pending, never replay or rekey. Only the original executor may continue separately authorized manual work under existing source guards.' : '';
       const eventContext = decisionExclusions + startupExclusions + purchasePass + (event ? renderAutomationEventPrompt(event.recipe, event.payload) : '') + purchaseContext;
       manager.postMessage(conv, `${promptFor(task, scheduledFor)}${eventContext}`, task.user_id);

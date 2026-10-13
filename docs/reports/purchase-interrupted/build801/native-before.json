@@ -1,0 +1,93 @@
+{
+  "as_of": "2026-10-13T19:58:15.101Z",
+  "read_only": true,
+  "run": {
+    "id": "7056b7cc-80d7-4504-b630-b11226b86eb3",
+    "scheduled_task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "conversation_id": "79fd0a41-d395-4901-a9c8-24f0e1b446c7",
+    "status": "failed",
+    "error": "Purchase runner interrupted; no automatic retry",
+    "started_at": "2026-10-12 13:15:00",
+    "finished_at": "2026-10-12 13:15:43"
+  },
+  "batch": {
+    "id": "551a9f86-fbde-412d-80e2-ae3230a61390",
+    "source_id": "90ef6920-4bbd-4bb9-852d-02868dd8b05b",
+    "task_id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "status": "blocked",
+    "run_id": "7056b7cc-80d7-4504-b630-b11226b86eb3",
+    "blocked_reason": "UNKNOWN_RUNNER_RESTART",
+    "created_at": "2026-10-12T13:15:00.065Z"
+  },
+  "start": {
+    "run_id": "7056b7cc-80d7-4504-b630-b11226b86eb3",
+    "conversation_id": "79fd0a41-d395-4901-a9c8-24f0e1b446c7",
+    "turn_id": "b5914b51-41ce-4406-bd31-a3300a33ac4b",
+    "started_at": "2026-10-12T13:15:00.103Z"
+  },
+  "pass": null,
+  "pending_turn_schema": [
+    "conversation_id",
+    "prompt",
+    "attempts",
+    "created_at",
+    "status",
+    "error",
+    "actor_user_id",
+    "origin_json",
+    "discussion_message_id"
+  ],
+  "pending": {
+    "conversation_id": "79fd0a41-d395-4901-a9c8-24f0e1b446c7",
+    "status": "failed",
+    "error": "Purchase runner interrupted; read-only reconciliation required",
+    "attempts": 0
+  },
+  "task": {
+    "id": "9c72a42a-40df-4477-9ba6-07f74ac08bf3",
+    "enabled": 1,
+    "next_run_at": "2026-10-12T13:30:00.000Z",
+    "schedule_json": "{\"type\":\"cron\",\"expression\":\"*/15 7-21 * * *\"}",
+    "timezone": "America/New_York"
+  },
+  "pending_batches": [
+    {
+      "id": "338264c7-2083-4595-bf21-91ac2b4142f0",
+      "created_at": "2026-10-12T16:13:16.529Z",
+      "run_id": null
+    }
+  ],
+  "native_archive_sha256": "1976640c81bb461644aeaa47ee86ce8f0716bc70236a0e87f3593f004345fb66",
+  "native_tools": [
+    "Bash"
+  ],
+  "prior_startup_exclusions": [
+    {
+      "order_id": "2080773d-b311-44a3-9b58-3e2eaa43664a"
+    },
+    {
+      "order_id": "ae219af0-50ce-4ed8-95e7-f7e43fa3fbe3"
+    }
+  ],
+  "authorization": {
+    "id": "0e03bf9a-a5ff-477c-9194-b50714dcecfb",
+    "conversation_id": "a6a9b2d4-384c-423a-a2fa-4f623aaeeb98",
+    "actor_id": 1,
+    "created_at": "2026-10-13T19:08:47.720Z"
+  },
+  "runtime_readback": {
+    "checked_at": "2026-10-13T19:57:20Z",
+    "original_live": false,
+    "custodian_live": false,
+    "not_proof_of_no_external_effect": true
+  },
+  "runtime_mutations": false,
+  "current_native_matches_archive": true,
+  "human_context_counts": {
+    "direct": 63,
+    "replies": 48,
+    "discussion": 56,
+    "voice": 44,
+    "human_decision_events": 67
+  }
+}

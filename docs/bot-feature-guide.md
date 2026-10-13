@@ -535,3 +535,32 @@ The script attaches to the out-of-process frame only for that step (`DOM.getFram
 only a node id; no new read surface). Owner, recovery and secret-readback fences are unchanged.
 Agents receive it through the injected prompt and the script tool description on their next turn
 after the runner restarts.
+
+## Interrupted purchasing successor recovery — October 13, 2026 (staged)
+
+Build #801 adds `recover_interrupted_purchase` and the `purchase-interrupted-recovery`
+guide entry. A tool-using interrupted run cannot use the failed-before-model startup
+path. The exact original custodian reviews full native human context, matching complete
+retained/current native transcript, fresh original source and attempt census, no unscoped
+UNKNOWN, preserved source purchase fences, and coordinated portal release. Owner/Platform
+Dev may then record a separate immutable successor disposition and advance the existing
+cron schedule. Native runtime reachability/quiescence, current owner/binding, current
+mapped decision scope and every other unresolved run fence remain mandatory.
+
+Original failed run, blocked batch, worker start, pending/queued continuation, audit and
+pass history remain unchanged. Original hints, census attempted/UNKNOWN IDs and numbers,
+and prior startup exclusions remain fenced in hints and full source scans/daily backup.
+No forged pass, replay, rePOST, rekey, parallel task or purchase authority is supplied.
+Run-now reports the concrete guard and, for a run fence, the exact run ID/reason.
+
+Employees can ask: “Recover unrelated purchasing after this interruption and retain
+UNKNOWN orders.” The staged single-custodian entry has no global injected prompt; full
+employee guide and next-turn fresh/resumed MCP tool discovery supply its usage contract
+after installation. A disposition and future schedule are not recovery proof: the original
+owner must verify a distinct production successor and persisted actual worker turn, then
+apply existing eligibility, cost, date and submission gates.
+
+Deployment requires an explicit maintenance window with active turns drained; no standing
+ERVP grant is treated as authority to restart. Source census and portal clearance remain
+unsatisfied at the latest original-custodian readback. See the
+[implementation, evidence and validation](./reports/purchase-interrupted/build801/report.md).

@@ -1,3 +1,4 @@
+import type { ScheduledRunResult } from '../scheduled/scheduler.js';
 import type {HistoryPage} from '../runtime/historyPages.js';
 import type { ModelSelection, SwitchProviderResult } from '../runtime/providerSwitch.js';
 import { EventEmitter } from 'node:events';
@@ -105,7 +106,7 @@ export interface RunnerClient {
   /** Start an immediate run of a user-authorized scheduled task. */
   runScheduledTask(
     taskId: string,
-  ): Promise<{ ok: true; conversationId: string; runId: string } | { ok: false; error: 'not_found' | 'already_running' }>;
+  ): Promise<ScheduledRunResult>;
   scheduleWakeup(
     convId: string,
     actorUserId: number,

@@ -321,3 +321,127 @@ it('uses the exact original source custodian rather than other bots sharing the 
  acceptPurchaseEvent(db,source,event());scheduler.tick();expect(posts).toHaveLength(1);
  expect(readPurchaseEvent(db,source,held.id).decision_holds.dispatch_blocked).toBe(true);
 });
+
+import { recoverInterruptedPurchase } from '../src/botWorkflows/purchaseInterrupted.js';
+import { botFeatureCatalog, botFeatureInstructions } from '../src/featureGuide/catalog.js';
+import { coreVeneerRules } from '../src/instructions/context.js';
+describe('exact interrupted purchasing successor recovery',()=>{
+ let dir:string,oldHome:string|undefined,run:string,id:string,session:string,custodian:string,now:Date;
+ let original:ReturnType<typeof event>,attempted:ReturnType<typeof event>,reviewInput:Record<string,unknown>;
+ const authorize='Fix the existing interrupted purchasing task. Preserve UNKNOWN work and process unrelated eligible candidates.';
+ const inspect=(caller:string|undefined=undefined)=>recoverInterruptedPurchase(db,dir,1,caller,{run_id:run,mode:'inspect'},now);
+ const review=()=>recoverInterruptedPurchase(db,dir,1,custodian,{run_id:run,mode:'review',expected_hash:inspect().evidence_hash,review:reviewInput},now);
+ const resume=(reviewId:string,hash=inspect().evidence_hash)=>recoverInterruptedPurchase(db,dir,1,undefined,{run_id:run,mode:'resume',expected_hash:hash,review_id:reviewId},now);
+ beforeEach(()=>{
+  dir=fs.mkdtempSync(path.join(os.tmpdir(),'purchase-interrupted-'));oldHome=process.env.VP_SERVICE_HOME;process.env.VP_SERVICE_HOME=dir;
+  custodian=crypto.randomUUID();
+  db.prepare("INSERT INTO conversations(id,assistant_id,user_id,project_id,title,provider,model,native_session_id) VALUES(?,1,1,?,'Original purchasing custodian','claude','fixture',?)").run(custodian,project,crypto.randomUUID());
+  db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,'Fixture',1)").run(custodian);
+  db.prepare('INSERT INTO purchase_task_decision_owners VALUES(?,?,?,?)').run(task,source,custodian,'Synthetic original custodian binding');
+  db.prepare(`UPDATE scheduled_tasks SET schedule_json='{"type":"cron","expression":"*/15 7-21 * * *"}',timezone='America/New_York' WHERE id=?`).run(task);
+  original=event();acceptPurchaseEvent(db,source,original);scheduler.tick();id=posts[0]!.id;
+  run=(db.prepare('SELECT id FROM scheduled_task_runs WHERE conversation_id=?').get(id) as {id:string}).id;
+  session=(db.prepare('SELECT native_session_id FROM conversations WHERE id=?').get(id) as {native_session_id:string}).native_session_id;
+  bus.emit('event',id,{type:'turn_started',turnId:crypto.randomUUID(),at:new Date().toISOString()});
+  db.prepare("INSERT INTO pending_turns(conversation_id,prompt,status) VALUES(?,'Original interrupted native prompt','pending')").run(id);
+  db.prepare("INSERT INTO queued_messages(conversation_id,prompt,actor_user_id) VALUES(?,'Retain unconsumed original continuation',1)").run(id);
+  scheduler.stop();scheduler=createScheduledTaskScheduler({db,manager:{bus,postMessage:(conv,text)=>posts.push({id:conv.id,text})}});
+  db.prepare("UPDATE scheduled_tasks SET next_run_at='2026-10-12T13:30:00.000Z' WHERE id=?").run(task);
+  const rows=[{type:'user',sessionId:session,timestamp:new Date().toISOString(),cwd:'/tmp',message:{content:[{type:'text',text:posts[0]!.text}]}},
+   {type:'assistant',sessionId:session,message:{content:[{type:'tool_use',name:'Bash',id:'native-tool',input:{command:'synthetic read'}}]}},
+   {type:'user',sessionId:session,message:{content:[{type:'tool_result',tool_use_id:'native-tool',content:'Synthetic result'}]}}];
+  for(const file of [transcriptArchivePath(dir,'claude',session),claudeSessionFilePath('/tmp',session)]){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,rows.map(row=>JSON.stringify(row)).join('\n')+'\n');}
+  now=new Date(Date.now()+2000);
+  db.prepare('INSERT INTO bot_human_messages VALUES(?,?,?,?,?,?)').run('human-repair',custodian,1,authorize,'[]',new Date(now.getTime()-1000).toISOString());
+  attempted=event();
+  reviewInput={authorization_message_id:'human-repair',authorization_text:authorize,reviewed_full_human_context:true,recovery_only_no_replay:true,
+   later_context_assessment:'Reviewed all native owner messages; no superseding purchase or replay instruction.',observed_at:now.toISOString(),
+   source_reference:'Synthetic original source snapshot reference',source_evidence:'Original source guards and attempt records freshly read; old effects remain UNKNOWN.',
+   attempt_census_reference:'Synthetic original source attempt census reference',attempt_census_complete:true,unscoped_unknown_present:false,source_purchase_fences_preserved:true,potentially_attempted_orders:[{order_id:attempted.order_id,order_number:'100122597'}],
+   full_scan_exclusions_complete:true,portal_owner_conversation_id:custodian,portal_clearance_reference:'Synthetic shared portal release coordinated with the original purchasing custodian',portal_is_idle_and_released:true};
+ });
+ afterEach(()=>{if(oldHome===undefined)delete process.env.VP_SERVICE_HOME;else process.env.VP_SERVICE_HOME=oldHome;fs.rmSync(dir,{recursive:true,force:true});});
+ it('preserves UNKNOWN originals and restores only unrelated successor cadence with real turn proof',()=>{
+  const other=event();acceptPurchaseEvent(db,source,other);acceptPurchaseEvent(db,source,attempted);const duplicate=event(original.order_id);acceptPurchaseEvent(db,source,duplicate);
+  const originalTables=()=>['scheduled_task_runs','purchase_event_batches','purchase_worker_starts','purchase_worker_passes','pending_turns','queued_messages'].map(table=>db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all());
+  const before=originalTables();const inspected=inspect();expect(inspected.tool_names).toEqual(['Bash']);expect(inspected.original_work_remains_unknown).toBe(true);
+  expect(scheduler.runNow(task)).toMatchObject({ok:false,error:'purchase_run_fenced',blockedRunId:run,blockedReason:'UNKNOWN_RUNNER_RESTART'});
+  const reviewed=review() as {review_id:string};const result=resume(reviewed.review_id);
+  expect(result).toMatchObject({resumed:true,execute:false,purchase_authority:false,retained_queued_messages:1});expect(Date.parse(result.next_run_at!)).toBeGreaterThan(now.getTime());
+  expect(originalTables()).toEqual(before);expect(resume(reviewed.review_id,result.evidence_hash)).toMatchObject({idempotent:true});
+  expect(()=>db.prepare('DELETE FROM purchase_interrupted_dispositions').run()).toThrow('Immutable');expect(()=>db.prepare('UPDATE purchase_interrupted_reviews SET evidence_hash=?').run('bad')).toThrow('Immutable');
+  scheduler.tick();expect(posts).toHaveLength(2);expect(posts[1]!.id).not.toBe(id);expect(posts[1]!.text).toContain(other.id);
+  expect(posts[1]!.text).not.toContain(attempted.id);expect(posts[1]!.text).not.toContain(duplicate.id);expect(posts[1]!.text).toContain(original.order_id);expect(posts[1]!.text).toContain(attempted.order_id);expect(posts[1]!.text).toContain('100122597');expect(posts[1]!.text).toContain('full source queue/daily backup');
+  bus.emit('event',posts[1]!.id,{type:'turn_started',turnId:crypto.randomUUID(),at:new Date().toISOString()});expect(readPurchaseEvent(db,source,other.id).delivery.worker_started).toBe(true);
+  expect(readPurchaseEvent(db,source,original.id)).toMatchObject({interrupted_disposition:{review_id:reviewed.review_id},delivery:{status:'blocked',blocked_reason:'UNKNOWN_RUNNER_RESTART'}});
+  expect(()=>acceptPurchaseEvent(db,source,event(original.order_id))).toThrow('FENCED');expect(()=>acceptPurchaseEvent(db,source,event(attempted.order_id))).toThrow('FENCED');
+ });
+ it('requires original custodian review and authentic exact post-interruption human text',()=>{
+  expect(()=>recoverInterruptedPurchase(db,dir,1,id,{run_id:run,mode:'review',expected_hash:inspect().evidence_hash,review:reviewInput},now)).toThrow('CUSTODIAN');
+  expect(()=>resume(crypto.randomUUID())).toThrow('ORIGINAL_SOURCE_REVIEW');reviewInput.authorization_text=authorize+' altered';expect(()=>review()).toThrow('AUTHENTIC');
+  expect(db.prepare('SELECT 1 FROM purchase_interrupted_dispositions').get()).toBeUndefined();
+ });
+ it.each(['human','archive','task','binding','pending','start','pass','scope'])('fails closed on changed %s evidence or guards',kind=>{
+  const reviewed=review() as {review_id:string};const hash=inspect().evidence_hash;
+  if(kind==='human')db.prepare('INSERT INTO bot_human_messages VALUES(?,?,?,?,?,?)').run('later',custodian,1,'Pause unrelated work pending my review.','[]',now.toISOString());
+  if(kind==='archive')fs.appendFileSync(claudeSessionFilePath('/tmp',session),'{}\n');
+  if(kind==='task')db.prepare("UPDATE scheduled_tasks SET prompt='Changed task instruction' WHERE id=?").run(task);
+  if(kind==='binding')db.prepare('UPDATE scheduled_tasks SET enabled=0 WHERE id=?').run(task);
+  if(kind==='pending')db.prepare("UPDATE pending_turns SET status='pending' WHERE conversation_id=?").run(id);
+  if(kind==='start'){db.exec('DROP TRIGGER purchase_start_no_delete');db.prepare('DELETE FROM purchase_worker_starts WHERE run_id=?').run(run);}
+  if(kind==='pass')db.prepare('INSERT INTO purchase_worker_passes VALUES(?,?,?,?,?)').run(run,id,'unknown',null,now.toISOString());
+  if(kind==='scope')db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES(?,?,'fixture','fixture','{}',1)").run(crypto.randomUUID(),custodian);
+  expect(()=>resume(reviewed.review_id,hash)).toThrow();expect(db.prepare('SELECT 1 FROM purchase_interrupted_dispositions').get()).toBeUndefined();
+ });
+ it('blocks unscoped UNKNOWN, unreleased portal and additional unresolved purchase fences',()=>{
+  reviewInput.unscoped_unknown_present=true;expect(()=>review()).toThrow();reviewInput.unscoped_unknown_present=false;
+  reviewInput.portal_is_idle_and_released=false;expect(()=>review()).toThrow();reviewInput.portal_is_idle_and_released=true;
+  const reviewed=review() as {review_id:string};const otherRun=crypto.randomUUID();
+  db.prepare("INSERT INTO scheduled_task_runs(id,scheduled_task_id,scheduled_for,trigger,status) VALUES(?,?,'2000-01-01','manual','failed')").run(otherRun,task);
+  db.prepare("INSERT INTO purchase_event_batches(id,source_id,task_id,status,run_id,blocked_reason,created_at) VALUES(?,?,?,'blocked',?,'UNKNOWN_LAUNCH','2000-01-01')").run(crypto.randomUUID(),source,task,otherRun);
+  expect(()=>resume(reviewed.review_id)).toThrow('OTHER_PURCHASE_RUN_FENCED');expect(db.prepare('SELECT 1 FROM purchase_interrupted_dispositions').get()).toBeUndefined();
+ });
+ it('pins shared voice and decision corrections alongside direct human messages',()=>{
+  const reviewed=review() as {review_id:string};const hash=inspect().evidence_hash;
+  db.prepare('INSERT INTO voice_dispatches(user_id,instruction_id,conversation_id,text) VALUES(1,?,?,?)').run('voice-correction',custodian,'Pause the existing task until source scope is checked again.');
+  expect(()=>resume(reviewed.review_id,hash)).toThrow('FRESH_INTERRUPTED_REVIEW');
+ });
+ it('expires stale source/portal census and rejects missing full-scope assertions',()=>{
+  reviewInput.attempt_census_complete=false;expect(()=>review()).toThrow();reviewInput.attempt_census_complete=true;
+  const reviewed=review() as {review_id:string};now=new Date(now.getTime()+16*60_000);expect(()=>resume(reviewed.review_id)).toThrow('FRESH_SOURCE');
+ });
+ it('retains prior startup exclusions in hints, full scans and intake',()=>{
+  const prior=event();acceptPurchaseEvent(db,source,prior);const oldRun=crypto.randomUUID(),oldBatch=crypto.randomUUID();
+  db.prepare("INSERT INTO scheduled_task_runs(id,scheduled_task_id,scheduled_for,trigger,status) VALUES(?,?,'2000-01-01','manual','failed')").run(oldRun,task);
+  db.prepare("INSERT INTO purchase_event_batches(id,source_id,task_id,status,run_id,blocked_reason,created_at) VALUES(?,?,?,'blocked',?,'WORKER_FAILED','2000-01-01')").run(oldBatch,source,task,oldRun);
+  db.prepare('UPDATE purchase_event_links SET batch_id=? WHERE event_id=?').run(oldBatch,prior.id);
+  db.prepare('INSERT INTO purchase_startup_dispositions VALUES(?,?,?,?,?,?,?,?)').run(oldRun,oldBatch,id,'a'.repeat(64),1,null,'Prior exact startup reconciliation',now.toISOString());
+  const other=event();acceptPurchaseEvent(db,source,other);const reviewed=review() as {review_id:string};resume(reviewed.review_id);scheduler.tick();
+  expect(posts[1]!.text).toContain(prior.order_id);expect(posts[1]!.text).not.toContain(prior.id);expect(()=>acceptPurchaseEvent(db,source,event(prior.order_id))).toThrow('FENCED');
+ });
+ it('keeps disposition order exclusions permanent independently of batch labels',()=>{
+  const reviewed=review() as {review_id:string};resume(reviewed.review_id);
+  // A label is mutable scheduling metadata, never evidence permitting another order attempt.
+  db.prepare("UPDATE purchase_event_batches SET status='linked' WHERE run_id=?").run(run);
+  expect(()=>acceptPurchaseEvent(db,source,event(original.order_id))).toThrow('FENCED');
+  expect(()=>acceptPurchaseEvent(db,source,event(attempted.order_id))).toThrow('FENCED');
+  const other=event();acceptPurchaseEvent(db,source,other);scheduler.tick();expect(posts[1]!.text).toContain(original.order_id);expect(posts[1]!.text).toContain(attempted.order_id);
+ });
+ it('does not dispatch attempted-only hints or clear a different interrupted run fence',()=>{
+  acceptPurchaseEvent(db,source,attempted);const reviewed=review() as {review_id:string};resume(reviewed.review_id);for(let i=0;i<4;i++)scheduler.tick();expect(posts).toHaveLength(1);
+  expect(scheduler.runNow(task)).toMatchObject({ok:false,error:'no_eligible_purchase_candidates'});
+ });
+ it('checks actual runner liveness and fails closed when native runtime is unavailable',async()=>{
+  let live=true,unavailable=false;const app=express();app.use(express.json());app.use((req,_res,next)=>{req.user=db.prepare('SELECT * FROM users WHERE id=1').get() as typeof req.user;next();});
+  app.use('/api/scheduled-tasks',createScheduledTasksRouter({db,config:{dataDir:dir},manager:{isLive:async()=>{if(unavailable)throw Error('native runner unavailable');return live;}}} as unknown as AppContext));
+  const server=app.listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));const url=`http://127.0.0.1:${(server.address() as {port:number}).port}/api/scheduled-tasks/purchase-interrupted-recovery`;
+  const post=()=>fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({run_id:run,mode:'inspect'})});
+  try{expect((await post()).status).toBe(409);live=false;expect((await post()).status).toBe(200);unavailable=true;expect((await post()).status).toBe(503);}
+  finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+ });
+ it('publishes employee and resumed-agent setup limits without claiming staged activation',()=>{
+  const f=botFeatureCatalog(Date.parse('2026-10-13')).features.find(f=>f.id==='purchase-interrupted-recovery')!;
+  expect(f.steps.join(' ')).toContain('shared portal');expect(f.agent).toContain('recover_interrupted_purchase');expect(f.agent).toContain('persisted worker-start turn');expect(f.limits).toContain('Staged');
+  expect(f.prompt).toBeUndefined();for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).not.toContain(f.agent);expect(botFeatureInstructions()).not.toContain(f.agent);
+ });
+});
