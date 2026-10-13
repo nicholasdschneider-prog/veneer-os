@@ -299,6 +299,12 @@ describe('bot lane API', () => {
       const urgent = await t.call('POST', '/api/conversations/clara/steer', { text: '[TEST] urgent: vendor payment due today', priority: 'urgent', request_key: 'u1' });
       expect(urgent.body.surfacedToHuman).toBe(true);
       const retry = await t.call('POST', '/api/conversations/clara/steer', { text: '[TEST] urgent: vendor payment due today', priority: 'urgent', request_key: 'u1' });
+      // A reused queue row id must not collide with an earlier urgent line.
+      db.prepare('DELETE FROM coordination_deliveries').run();
+      const reused = await t.call('POST', '/api/conversations/clara/steer', { text: '[TEST] second urgent item', priority: 'urgent', request_key: 'u1b' });
+      expect(reused.status).toBe(200);
+      db.prepare("DELETE FROM bot_lane_surfaced WHERE summary='[TEST] second urgent item'").run();
+      t.shown.pop();
       expect(retry.body.disposition).toBe('duplicate');
       expect(retry.body.coordinationThreadId).toBe(urgent.body.coordinationThreadId);
       expect(surfacedRows(db, 'clara').map((r) => r.summary)).toEqual(['[TEST] urgent: vendor payment due today']);

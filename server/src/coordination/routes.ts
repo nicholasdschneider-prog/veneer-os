@@ -282,12 +282,13 @@ export async function sendCoordination(
       .prepare('SELECT name FROM assistants WHERE id=?')
       .get(target.assistant_id) as { name: string }
   ).name;
+  const deliveryKey: string = requestKey ?? crypto.randomUUID();
   const posted = await ctx.manager.queueMessage(
     lane.conversation_id,
     text,
     req.user!.id,
     { kind: 'agent', from, to, sourceConversationId: source.id, ...(urgent ? { priority: 'urgent' as const } : {}) },
-    requestKey ?? crypto.randomUUID(),
+    deliveryKey,
   );
   ctx.db
     .prepare(
@@ -297,7 +298,7 @@ export async function sendCoordination(
   // Informational messages stay in the thread. An urgent one also shows the
   // enrolled bot's human one line that links to the thread.
   let surfaced = false;
-  if (urgent && botLaneEnabled(ctx.db, target.id) && posted.messageId) {
+  if (urgent && botLaneEnabled(ctx.db, target.id)) {
     const result = surfaceToHuman(ctx.db, {
       ownerId: target.id,
       laneConversationId: lane.conversation_id,
@@ -305,7 +306,8 @@ export async function sendCoordination(
       kind: 'urgent',
       sourceLabel: botLabel(ctx.db, source.id),
       summary: text,
-      requestKey: `message:${lane.conversation_id}:${posted.messageId}`,
+      // Queue row ids are reused once a turn starts; the delivery key is not.
+      requestKey: `message:${lane.conversation_id}:${deliveryKey}`,
     });
     if (!result.duplicate) ctx.manager.bus.emit('event', target.id, surfacedNotice(result.row));
     surfaced = true;
