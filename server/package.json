@@ -25,6 +25,7 @@
     "jose": "^5.9.6",
     "livekit-server-sdk": "^2.19.0",
     "marked": "^15.0.12",
+    "mcp-remote": "0.14.3",
     "node-pty": "^1.1.0",
     "parse5": "7.3.0",
     "undici": "^7.29.0",

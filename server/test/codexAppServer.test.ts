@@ -162,9 +162,14 @@ describe('AppServerClient cleanup (BUG 5)', () => {
     });
     expect(browser.tool_timeout_sec).toBe(960);
     expect(JSON.stringify(browser)).not.toContain('mcp-remote');
-    // Other headered remote servers keep the mcp-remote wrapper.
-    expect(servers.other_headered?.command).toBe('npx');
-    expect(servers.other_headered?.args).toEqual(['-y', 'mcp-remote', 'http://example.test/mcp', '--header', 'Authorization:${MCP_HEADER_0}']);
+    // Other headered remote servers keep the mcp-remote wrapper (pinned, via the bridge).
+    expect(servers.other_headered?.command).toBe(process.execPath);
+    expect((servers.other_headered?.args as string[]).map((a, i) => (i === 0 ? path.basename(a) : a))).toEqual([
+      'mcpRemoteBridge.js',
+      'http://example.test/mcp',
+      '--header',
+      'Authorization:${MCP_HEADER_0}',
+    ]);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });

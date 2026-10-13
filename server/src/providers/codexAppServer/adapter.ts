@@ -22,7 +22,7 @@ import type {
   TurnKillReason,
   TurnSpec,
 } from '../types.js';
-import { codexMcpServers } from '../agentsMcp.js';
+import { codexThreadConfig } from '../agentsMcp.js';
 import { createTurnWatchdog, isPollingToolName, turnTimeoutMessage } from '../turnWatchdog.js';
 import { appendShadowFiles, appendShadowTranscript, findRolloutFile, readCodexModel } from '../codex/transcript.js';
 import { readCodexHistory, readCodexHistoryFiles, recordCodexFork } from '../codex/history.js';
@@ -1485,9 +1485,9 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         // (config.toml-shaped). Passed on both start and resume so the agent
         // token — and any connector installed mid-conversation — is current
         // every turn. Shaping (tool_timeout_sec for agents, mcp-remote
-        // wrapping for headered remote servers) lives in codexMcpServers.
-        const mcpServers = codexMcpServers(spec.mcpConfigPath);
-        const config = Object.keys(mcpServers).length ? { mcp_servers: mcpServers } : undefined;
+        // wrapping for headered remote servers, startup waiting) lives in
+        // codexThreadConfig.
+        const config = codexThreadConfig(spec.mcpConfigPath);
         let threadId: string;
         // History is retained across a fork; the chat just gets a new native id.
         const fork = async (): Promise<string> => {

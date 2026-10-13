@@ -20,6 +20,31 @@ export const VENEER_BROWSER_PROXY_PATH = path.join(
   'veneerBrowserProxy.js',
 );
 
+/** Built stdio wrapper that runs the pinned mcp-remote and opts the server out
+ * of Codex's tool-catalog cache (see mcp/mcpRemoteBridge.ts). */
+export const MCP_REMOTE_BRIDGE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'mcp',
+  'mcpRemoteBridge.js',
+);
+
+/** Seconds Codex waits for a bridged remote server to finish startup. The
+ * Codex default (30 s) expired when several lanes started bridges together. */
+export const MCP_REMOTE_STARTUP_TIMEOUT_SEC = 60;
+
+/** Node races each resolved address for 250 ms by default; on a loaded host
+ * all four Composio addresses timed out (fetch failed / ETIMEDOUT). */
+const BRIDGE_NODE_OPTION = '--network-family-autoselection-attempt-timeout=2000';
+
+/** NODE_OPTIONS for a bridge: the runner's own options plus the longer
+ * per-address connect attempt. */
+export function bridgeNodeOptions(existing: string | undefined = process.env.NODE_OPTIONS): string {
+  const current = (existing ?? '').trim();
+  if (current.split(/\s+/).some((opt) => opt.startsWith('--network-family-autoselection-attempt-timeout'))) return current;
+  return current ? `${current} ${BRIDGE_NODE_OPTION}` : BRIDGE_NODE_OPTION;
+}
+
 export type LiftedMcpServer =
   | { name: string; kind: 'stdio'; command: string; args: string[]; env: Record<string, string> }
   | { name: string; kind: 'remote'; url: string; headers: Record<string, string> };
@@ -60,7 +85,9 @@ export function readAllMcpServers(mcpConfigPath: string | null | undefined): Lif
  * `http_headers` support (verified 0.144.4: the key is silently ignored; only
  * bearer_token_env_var exists) — so servers that need headers are wrapped in
  * an `mcp-remote` stdio proxy, with header VALUES riding in env (mcp-remote
- * interpolates ${VAR}) so secrets stay out of argv. The built-in
+ * interpolates ${VAR}) so secrets stay out of argv. That proxy runs from the
+ * pinned local install through mcpRemoteBridge, which also keeps Codex from
+ * binding cached tools before the bridge has a live client. The built-in
  * `veneer_browser` server is the exception: it goes through our own stdio
  * proxy so the agent token is re-read per request instead of frozen with the
  * thread.
@@ -121,16 +148,34 @@ export function codexMcpServers(mcpConfigPath: string | null | undefined): Recor
       };
     } else {
       const env: Record<string, string> = {};
-      const args = ['-y', 'mcp-remote', s.url];
+      const args = [MCP_REMOTE_BRIDGE_PATH, s.url];
       Object.entries(s.headers).forEach(([key, value], i) => {
         const envVar = `MCP_HEADER_${i}`;
         env[envVar] = value;
         args.push('--header', `${key}:\${${envVar}}`);
       });
-      out[s.name] = { command: 'npx', args, env };
+      env.NODE_OPTIONS = bridgeNodeOptions();
+      out[s.name] = { command: process.execPath, args, env, startup_timeout_sec: MCP_REMOTE_STARTUP_TIMEOUT_SEC };
     }
   }
   return out;
+}
+
+/**
+ * The per-thread Codex config override: the shaped servers, plus — when any
+ * server goes through the mcp-remote bridge — `mcp_optional_startup_grace_ms
+ * = 0`, so the first tool binding waits up to each server's
+ * `startup_timeout_sec` instead of omitting a server still starting after the
+ * shared 1 s grace. With the bridge's cache opt-out a server's tools are then
+ * either bound to a live client or left out, never shown without one.
+ */
+export function codexThreadConfig(mcpConfigPath: string | null | undefined): Record<string, unknown> | undefined {
+  const mcpServers = codexMcpServers(mcpConfigPath);
+  if (!Object.keys(mcpServers).length) return undefined;
+  const bridged = Object.values(mcpServers).some(
+    (s) => Array.isArray(s.args) && s.args[0] === MCP_REMOTE_BRIDGE_PATH,
+  );
+  return { mcp_servers: mcpServers, ...(bridged ? { mcp_optional_startup_grace_ms: 0 } : {}) };
 }
 
 /**
