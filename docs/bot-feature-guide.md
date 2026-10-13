@@ -564,3 +564,15 @@ Deployment requires an explicit maintenance window with active turns drained; no
 ERVP grant is treated as authority to restart. Source census and portal clearance remain
 unsatisfied at the latest original-custodian readback. See the
 [implementation, evidence and validation](./reports/purchase-interrupted/build801/report.md).
+
+## QBO phase evidence and helper transport — October 13, 2026 (staged)
+
+BUILD804 adds versioned phase evidence and native private-process transport behind the
+existing unavailable production facts adapter. Original executors retain the same
+job/accounting authority; no new approval or grant is implied. A separately authorized
+Bill read can produce an immutable short-lived observation, not write authority.
+Uncertain refresh/persistence fences the shared grant; historical receipt reconciliation
+never permits a refresh or dispatch. Old v1 evidence remains historical without phases.
+Canonical helper adaptation, runtime custody, authoritative facts and Clara acceptance
+are still missing. Do not invoke source helpers or infer readiness from this staged guide.
+See [exact v2 contract](./reports/qbo-boundary/build804/contract.md).

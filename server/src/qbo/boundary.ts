@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { assertGrantClear } from './phaseBoundary.js';
 import type Database from 'better-sqlite3';
 import { BotError } from '../bots/service.js';
 import { canonicalSha256 } from '../bots/canonical.js';
@@ -58,6 +59,7 @@ export function qboBoundary(db: Database.Database, resolver: QboFactResolver = u
         const c = authenticate(), old = existing(c, p.requestKey);
         if (old) { own(c, old); if (old.request_hash !== requestHash) deny('QBO_REQUEST_CONFLICT'); return response(old); }
         const f = facts(c, p), digest = effectDigest(f), scopeHash = H('qbo/operation/v1', p.operation);
+        assertGrantClear(db, f);
         if (db.prepare('SELECT 1 FROM qbo_operation_reservations WHERE effect_digest=?').get(digest)) deny('QBO_OPERATION_PERMANENTLY_RESERVED');
         const observed = now(), id = crypto.randomUUID();
         const reservation = reservationSchema.parse({ schemaVersion: 'qbo-admission/v1', reservationId: id, requestKey: p.requestKey,

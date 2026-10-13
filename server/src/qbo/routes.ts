@@ -1,4 +1,6 @@
 import express from 'express';
+import { phaseBoundary, unavailablePhaseResolver, type PhaseResolver, type HelperTransport } from './phaseBoundary.js';
+import { readV2Schema } from './phaseContract.js';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { resolveAgentTokenContext } from '../runtime/agentTokens.js';
@@ -20,8 +22,13 @@ export function authenticatedQboCaller(ctx: Pick<AppContext, 'db'>, req: express
   if (!user || !conversation || !canSendToConversation(user, conversation, ctx.db) || !ctx.db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(conversation.id)) throw new BotError(403, 'QBO_NATIVE_CALLER_REVOKED');
   return { userId: user.id, conversationId: conversation.id, executionConversationId: session.executionConversationId ?? null, sessionExpiresAt: new Date(tokenRow.expires_at).toISOString() };
 }
-export function qboRoutes(ctx: AppContext, resolver: QboFactResolver = unavailableFacts) {
+export function qboRoutes(ctx: AppContext, resolver: QboFactResolver = unavailableFacts, phaseResolver:PhaseResolver=unavailablePhaseResolver, transport?:HelperTransport) {
   const router = express.Router(), boundary = qboBoundary(ctx.db, resolver);
+  const phases=phaseBoundary(ctx.db,phaseResolver,transport);
+  for(const operation of ['invoke','read','reconcile'] as const) router.post('/qbo/v2/'+operation,express.json({limit:'40mb'}),(req,res,next)=>{
+    void Promise.resolve().then(()=>{z.object({}).strict().parse(req.query);return phases[operation](()=>authenticatedQboCaller(ctx,req),req.body);})
+      .then(value=>res.set('Cache-Control','no-store').json(readV2Schema.parse(value))).catch(next);
+  });
   router.use(express.json({ limit: '16kb' }));
   router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   const schemas = { inspect: inspectResponseSchema, admit: responseSchema, read: readResponseSchema, reconcile: reconcileResponseSchema };

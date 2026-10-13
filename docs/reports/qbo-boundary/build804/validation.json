@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "qbo-validation/v2",
+  "recordedAt": "2026-10-13T20:44:19.051558+00:00",
+  "nodeMajor": 24,
+  "focusedTestsPassed": 104,
+  "typecheck": "passed",
+  "fullTests": {
+    "serverPassed": 4043,
+    "serverSkipped": 16,
+    "webPassed": 1015,
+    "installerPassed": 32,
+    "browserManagerPassed": 52
+  },
+  "build": "passed",
+  "buildWarning": "Vite large chunk advisory",
+  "logSha256": {
+    "focused": "53b9e3ed02a61805f597a2420236b9213cee92a40d6cf82d20d8af84085c9269",
+    "typecheck": "4ca67bebf7daea32b1a0373ed9306da25cb312be7f5817dac5cc87417d2a8420",
+    "full": "cd905936dcca80b724aae201d5dde42400d0af0c1564fa83e1620e253e2687a1",
+    "build": "16b46b6ac9fb0a99566618eb9a5db9966ad13279bbe961668004fd77df1ab1fe"
+  },
+  "compiledSha256": {
+    "server/dist/qbo/phaseContract.js": "1837a7ca7736d7ad69e7fac5b30a24e388fb3a3b86e2df47e38bd55b6760c131",
+    "server/dist/qbo/phaseBoundary.js": "7f0b9a4993f23213c85e26c0e397e5fb3028d7a5f90ca17b8424d8bae639ecad",
+    "server/dist/qbo/helperProcess.js": "5c83ba42f818d7e43bb9d5c4f139dc51ea9f0a4e9cf596d5594a2b838104ef43",
+    "server/dist/db/migrations/0179_qbo_phase_transport.sql": "ec134af0060f5172723d00c8de2f71263be537e683b3a891ed137e3905ef0e5f"
+  },
+  "deployment": "pending_human_approved_maintenance_and_drained_turns",
+  "restartPerformed": false,
+  "productionMigrationApplied": false,
+  "sourceAcceptance": false,
+  "accountingAcceptance": false,
+  "liveQboOrCredentialCalls": false,
+  "realCanonicalHelperInvoked": false,
+  "syntheticProcessFixture": "compiled isolated fake runtime; actual runtime closure remains unaccepted"
+}
