@@ -89,18 +89,29 @@ After:
 - #801 purchasing recovery readback stays with the original BUILD801 owner. UNKNOWN purchases are excluded and never replayed by this deployment.
 - Report the SHA and new pids in thread 9d6d01d1.
 
-## 7. Blockers and window readiness
+## 7. Status and readiness (corrected 2026-10-13, read-only; supersedes the earlier 6:00–6:15 PM readiness text)
 
-- **Armed overnight waiter will refuse.** `/tmp/veneer-790/overnight2.sh` (pid 19919, owner 852806d0, 02:00–05:00 ET 10/14) checks `ARM_HEAD=db8b7f0` against `git rev-parse --short=7 HEAD`. HEAD became `7a74def` at 17:11:45 ET, 88 s after it was armed (17:10:17). It will log "NOT restarting" even though the source is identical. Only its owner can re-arm it or adjust the guard. Not touched here.
-- **Active turns:** 6 pending turns at 21:30Z. Any window needs a drain.
-- **Not mine:** Sage's source review and the human/James approval for a specific window are outside this preparation.
+**This packet is not deployment-ready, and no window is claimed.** The earlier statement that it was "ready for 6:00–6:15 PM ET today" is withdrawn. Do not relay it as meeting any gate. This section asks for no approval and proposes no window.
 
-Readiness: from the BUILD806 side, artifacts, validation, provenance, backup and plans are **ready for 6:00–6:15 PM ET today**. That window is executable only if, in time:
-- the approval names it,
-- Sage's review is complete,
-- turns drain (`restart.mjs` will refuse otherwise, and must not be forced).
+What is closed:
+- Final combined validation at source-equivalent `7a74def` (section 3): typecheck plus full `npm test`.
+- The isolated reproducibility build (section 2).
+- Queue clearance and no-mutation evidence (section 9).
 
-Otherwise the bounded fallback is the existing 02:00–05:00 ET 10/14 window, which needs its owner to re-arm the waiter against the current HEAD or, better, a source-diff guard against db8b7f0, since report-only commits (including this report's) keep moving HEAD.
+Scope is the full cumulative set `f9c59dd`, `ebf83cf`, `ef04461`, `10cb103`, `1653378`, `274e669`, `db8b7f0` (table in section 12). HEAD advances only with report-only commits (e28ab7e, then 6555d91 and this correction). The shipped source still equals `db8b7f0`.
+
+Open items, any of which blocks a "ready" claim:
+1. **Verified prior artifact gate is not met.** The exact prior healthy bytes do not exist. The reconstructed `1b8561a` DB open/forward/rollback/re-forward check does not prove web or runner runtime rollback (sections 4 and 12).
+2. **Restart order is unreconciled.** The packet and the BUILD801 plan say web first (`veneer-pro veneer-pro-runner`). The only armed executor, overnight3.sh (pid 42176, owner 852806d0), still runs runner first. One deployment owner has to reconcile the full cumulative plan. This packet does not edit scripts, source or the waiter.
+3. **Probes not yet resolved:**
+   - an authenticated native QBO pure-read caller (section 11);
+   - an authenticated end-to-end chat probe (`restart.mjs --health-check` proves neither).
+4. **Backup.** The 21:39:53Z backup is verified (section 5), but it must be retaken within 15 minutes before any restart that is actually approved.
+5. **Separate from installation:**
+   - Sage's original source review.
+   - BUILD801 purchasing recovery. The UNKNOWN exclusions are not released.
+   - No recovery or review writes are used as installation smoke. Post-install checks are the read-only `postcheck.sh` only.
+6. **Active turns:** any restart has to wait for them to drain and must never be forced.
 
 ## 8. Addendum 21:50Z: exact postchecks, record pins, disposable rollback runtime check
 
