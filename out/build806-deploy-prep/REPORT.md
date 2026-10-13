@@ -3,18 +3,16 @@
 Owner: Platform Dev a6e39d6e (original BUILD806 owner). Prepared 21:26–21:45Z (17:26–17:45 ET).
 No restart, recovery, credential change, source edit or queue change was made. No deploy approval is requested.
 
-> **Status 2026-10-13 22:41Z: historical packet. Not ready, and not valid for the current tree.**
+> **Status 2026-10-13 22:48Z: re-pinned to cumulative source `155b497` (#812). Not ready; no restart is approved or armed.** See section 13.
 >
-> - The validation and pins below are for source `db8b7f0` / `7a74def` only. The shared tree now carries uncommitted #812 QBO edits:
->   - `server/src/qbo/helperProcess.ts`
->   - `server/src/qbo/phaseBoundary.ts`
->   - `server/test/qboPhases.test.ts`
->   - `server/src/featureGuide/catalog.ts`
->   - `docs/bot-feature-guide.md`
-> - No restart executor is armed. overnight3 (42176) and overnight4 (53120) are absent; the #790 owner stopped overnight4 at 22:00:05Z after the web-first reconciliation. The runner-first finding in section 12 is therefore obsolete.
-> - The prior-artifact gate is still not met.
-> - The 21:39:53Z backup is now more than 60 minutes old. Retake it within 15 minutes before any actually approved restart.
-> - After #812 finishes, scope, pins, validation and evidence are to be re-established for the new cumulative set under the existing owner queue.
+> - Source `155b49718ccfe5179fc25650d124cdaa1b91acc4` = `db8b7f0` + #812. Live `server/dist` is byte-identical to a clean rebuild; `web/dist` is unchanged from the 7a74def pin.
+> - Source validation evidence is the #812 cumulative full-suite receipt at `155b497`; the full suite was not re-run.
+> - The disposable forward/rollback/re-forward check passed again with the new live artifact.
+> - Still open: the prior-runtime gate (1b8561a is a reconstruction; empty-ledger bound only), the registered-caller v2 read probe, end-to-end probes, timeout persistence, frozen runtime/parent custody and authoritative adapters.
+> - The 21:39:53Z backup is stale. Retake it within 15 minutes before any approved restart. Order stays web then runner.
+> - Sections 1–12 are the historical `db8b7f0` / `7a74def` record and are kept as evidence for #801/#804/#806.
+>
+> Earlier banner (22:41Z, superseded by section 13): the packet was historical while #812 edited the shared tree; no restart executor was armed (overnight3/overnight4 absent; #790 owner stopped overnight4 at 22:00:05Z), so the runner-first finding in section 12 is obsolete.
 
 ## 1. Cumulative source pin
 
@@ -257,3 +255,66 @@ An independent review re-verified all 577 `server/dist` and 2529 `web/dist` mani
 0178 and 0179 are both pending and are both applied by this one restart. The original Sage recovery review and the UNKNOWN exclusions (`2080773d…`, `ae219af0…`) are outside this deployment. They stay with Sage and the BUILD801 owner and are not approved, released or replayed by it.
 
 **The verified-prior-artifact gate is not met.** The executables now running (web pid 89325, runner pid 34641) were never retained and cannot be proven. `1b8561a` is a reconstruction rebuilt from source. Its only proof is that it opens and migrates a disposable DB copy with every new and legacy ledger empty (section 8, sections 10–11). It has not booted, its full suite was not re-run, and it is not the prior healthy artifact. This is a **material limitation** that the approver must accept knowingly; it is not fulfillment of the gate. Nothing in this packet should be read as rollback assurance beyond that.
+
+## 13. Re-pin for cumulative source 155b497 (#812), 22:44–22:48Z (read-only)
+
+Build queue #813, requested by the BUILD812 owner (chat 732adce5). No restart, recovery, QBO/provider call, source edit or queue move was made. The live DB was not opened; only a hash-verified temporary copy of the backup was used and then deleted.
+
+**Source pin.**
+
+| | |
+|---|---|
+| main / origin/main | `155b49718ccfe5179fc25650d124cdaa1b91acc4`; tracked tree clean; development lock free at start |
+| `git diff 155b497 HEAD -- server web browser-manager installer scripts package*.json` | empty |
+| `git diff db8b7f0 155b497` | only `server/src/featureGuide/catalog.ts`, `server/src/qbo/helperProcess.ts`, `server/src/qbo/phaseBoundary.ts`, `server/test/qboPhases.test.ts`. No migration, route, contract or production-wiring change |
+| Pending migrations | unchanged: 0178 `a6205c95…0877`, 0179 `ec134af0060f5172723d00c8de2f71263be537e683b3a891ed137e3905ef0e5f` (source and dist identical) |
+
+**Artifact pin (live dist, rebuilt by #812 at 18:43:11 ET server / 18:43:25 ET web).**
+
+| Artifact | Files | Manifest sha256 |
+|---|---|---|
+| `server/dist` | 577 | `48a578124daf6b2af4547b2b6a4726d71775f48c259013989911a849ebbcef1a` → [manifest-server-dist-155b497.sha256](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/manifest-server-dist-155b497.sha256) |
+| `web/dist` | 2529 | `02d52cae934a7d5293545b63a310232f93d6d12263bb44a8a6d0abaee9565983` (same as the 7a74def pin) → [manifest-web-dist-155b497.sha256](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/manifest-web-dist-155b497.sha256) |
+
+- Versus the 7a74def manifest, exactly three server files changed: `featureGuide/catalog.js`, `qbo/helperProcess.js`, `qbo/phaseBoundary.js`. The db8b7f0 manifests are kept as historical.
+- Clean rebuild of `155b497` in a trap-cleaned `/tmp` worktree ([build-repro-155b497.log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/build-repro-155b497.log)): build exit 0. `server/dist` is **byte-identical** to live (577/577, same manifest sha). All 505 rebuilt `web/dist` files are present and identical in live.
+- Recorded hashes (rebuild = live):
+  - `qbo/phaseBoundary.js` `687ac2096717ee659b828adb681e05a5f3340388f579bb1ddc667d3cd021fd48`
+  - `qbo/phaseContract.js` `1837a7ca7736d7ad69e7fac5b30a24e388fb3a3b86e2df47e38bd55b6760c131`
+  - `qbo/helperProcess.js` `cfd4b8d4e35e81e8af15b57e6fc60dd0f7fe9b9dc01c72de26f9e60f02ac72c7`
+  - `db/migrations/0179_qbo_phase_transport.sql` `ec134af0060f5172723d00c8de2f71263be537e683b3a891ed137e3905ef0e5f`
+- New forward bundle: `~/.local/share/veneer-pro-predeploy/build806-20261013/forward-155b497-live-dist.tgz`, sha256 `8b0041897066a7951421c9c6285e8d99b83a0f352a41d402db57ca16643588fb` (0600), [forward-bundle-155b497.sha256](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/forward-bundle-155b497.sha256). Extracted and verified against both 155b497 manifests. The old `forward-7a74def-live-dist.tgz` (`a85fc0ff…3cae`) and the rollback bundle (`df45cfd5…ca18`) are kept and re-verified OK.
+
+**Source validation evidence (reused, not re-run).** The #812 receipt [validation.json](/Users/archerclawdington/veneer-os/docs/reports/qbo-boundary/build812/validation.json) is the cumulative-source full suite at `155b497`, sequential single worker under the host lock: typecheck pass; `npm test` installer 32, server 4056 passed / 16 skipped (299 files), web 1015 (146 files), browser-manager 52; `npm run build` pass; `git diff --check` pass. The source has not moved since, so the suite was not repeated. This turn ran only one isolated build under the host lock, with nothing overlapping.
+
+**Disposable rollback runtime check** ([disposable-rollback-check-155b497.sh](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disposable-rollback-check-155b497.sh), [log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disposable-rollback-check-155b497.log)), 22:47:31–22:47:37Z, on a fresh temp copy of the 21:39:53Z backup that matched sha256 `168bddce709f7075b220e323916b433dbd5866475ed06379275eeef0f6ed11b7`:
+- Live `server/dist` matched the 155b497 manifest before the run.
+- A: live 155b497 artifact `openDb` ok (wal, fk=1); 0178/0179 applied with the pinned hashes.
+- B: rollback 1b8561a (bundle hash and manifests verified) `openDb` ok twice on the migrated copy.
+- C: re-forward `openDb` ok.
+- A = B = C on every postcheck hash line; all five new ledgers 0 rows; fk-violations 0. All four hash files are identical to the db8b7f0 run (section 8). The temp copy was deleted by the script's trap.
+
+**Approval scope is now eight commits `1b8561a..155b497`.** The section 12 table plus:
+
+| commit | build | change |
+|---|---|---|
+| `f9c59dd` | #790 | Give every registered bot a bot lane by default |
+| `ebf83cf` | held #790-era | Preserve exact QBO receipt replay after terminal reconciliation |
+| `ef04461` | held #790-era | Deliver human decision answers ahead of background admission |
+| `10cb103` | held #790-era | Keep the redacted receiver error body on failed James webhook pushes |
+| `1653378` | #801 | Recover unrelated purchasing after interrupted runs (+ migration 0178) |
+| `274e669` | #804 | Track QBO phases and bind private helper invocations to native scope (+ migration 0179) |
+| `db8b7f0` | #806 | Track nonfinancial custom directions in the custom-direction tracker |
+| `155b497` | #812 | Bind QBO helper execution identity and phase chronology (helper UID checks, monotonic phase chronology, immutable dispatch-start bound, guide) |
+
+An approval naming only `db8b7f0` or any subset does not cover this restart.
+
+**Still unmet or open.**
+- The prior-runtime gate is still unmet. `1b8561a` is reconstructed from source; its only proof is the empty-ledger bound above. It has not booted and is not the prior healthy artifact. The approver must accept this limitation knowingly.
+- Still open: the registered-caller v2 read probe (section 11), end-to-end probes, timeout persistence, frozen runtime/parent custody, and authoritative adapters. #812's UID, clock and dispatch-bound tests do not establish timeout persistence or runtime/parent custody.
+
+**Before any approved restart.**
+- Retake the backup within 15 minutes before the restart (section 5 method, new timestamped file). The 21:39:53Z backup is only the disposable-check source.
+- Recheck that `git diff 155b497 HEAD -- server web browser-manager installer scripts package*.json` is empty and both dist manifests match the 155b497 manifests above. Any difference means stop and re-validate.
+- Order stays web then runner: `npm run restart -- --maintenance-approved veneer-pro veneer-pro-runner`, run once by a single executor, with section 6 UNKNOWN handling.
+
