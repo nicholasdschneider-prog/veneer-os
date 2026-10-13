@@ -1,8 +1,8 @@
 # Watchdog ownership and command-line OAuth browser finding
 
 Status: guidance prevention recorded; investigator reports idle Chrome recovery
-complete. Build #782 has a reported approved runner/web maintenance window;
-deployment outcome is pending. Code enforcement is an open proposal.
+complete. Build #782 deployment is held pending Nick's direct confirmation;
+the relayed approval quote cannot be verified. Code enforcement is an open proposal.
 
 ## Durable repair owner
 
@@ -118,3 +118,20 @@ It neither grants this repair owner a separate restart nor approves the OAuth
 code-enforcement proposal. This repair owner has not started, stopped or changed
 the waiter or any service. Await the investigator's result before recording
 deployment or verified post-restart health.
+
+## Approval correction: deployment held again
+
+The investigator's next relay supersedes the preceding approval and execution
+plan. James's turn 30 says the turn 28 quote attributed to Nick cannot be
+verified. It must not be treated as established restart authorization.
+
+The investigator reports that the one-shot waiter was stopped at 17:18:38Z,
+before firing, and its follow-up check was canceled. No restart occurred:
+web PID 95340 and runner PID 34641 remained unchanged. These are relayed
+results, not independent runtime checks by this repair owner.
+
+`49ee656` remains built on disk only. Build #782 deployment is held and may
+proceed only after Nick confirms himself. The preceding sections preserve the
+sequence of reports; their approval and pending-waiter claims are superseded
+by this correction. This repair owner has not restarted services or changed
+the waiter, schedules or business jobs.
