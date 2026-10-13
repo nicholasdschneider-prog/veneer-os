@@ -135,6 +135,7 @@ export function createIpcServer({
       to,
       ...(sourceConversationId ? { sourceConversationId } : {}),
       ...(sourceConversationTitle ? { sourceConversationTitle } : {}),
+      ...(origin.kind === 'agent' && origin.priority === 'urgent' ? { priority: 'urgent' as const } : {}),
     };
   };
   const server = http.createServer((req, res) => {

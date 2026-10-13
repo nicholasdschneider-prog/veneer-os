@@ -32,15 +32,15 @@ export interface SurfacedRow {
   context_delivered_at: string | null;
 }
 
-/** How a bot is named to a human: its registration, then its chat title.
- * Many business bots share a generic agent, so the agent name comes last. */
+/** How a bot is named to a human: its registration (business bots often
+ * share a generic agent), then its agent, then its chat title. */
 export function botLabel(db: Database.Database, conversationId: string): string {
   const row = db
     .prepare(
       'SELECT r.name AS registered, c.title, a.name AS agent FROM conversations c JOIN assistants a ON a.id=c.assistant_id LEFT JOIN bot_registrations r ON r.conversation_id=c.id AND r.active=1 WHERE c.id=?',
     )
     .get(conversationId) as { registered: string | null; title: string | null; agent: string } | undefined;
-  return row?.registered || row?.title || row?.agent || 'Bot';
+  return row?.registered || row?.agent || row?.title || 'Bot';
 }
 
 export function botLaneSetting(db: Database.Database, ownerId: string): BotLaneSetting | undefined {

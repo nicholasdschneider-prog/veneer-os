@@ -188,6 +188,17 @@ describe('human priority and lane parity', () => {
     await tick();
   });
 
+  it('keeps a bot message’s urgent class through the durable queue', () => {
+    const { adapter } = fakeProvider();
+    const { manager } = managerWith(adapter);
+    const { lane } = ensureCoordination(db, row('anna'), row('clara'));
+    manager.postMessage(row('clara'), 'Human busy');
+    manager.queueMessage(row(lane.conversation_id), 'Urgent', 1, { kind: 'agent', from: 'Anna', to: 'Clara', sourceConversationId: 'anna', priority: 'urgent' }, 'u');
+    const stored = db.prepare('SELECT origin_json FROM queued_messages WHERE conversation_id=?').get(lane.conversation_id) as { origin_json: string };
+    expect(JSON.parse(stored.origin_json)).toMatchObject({ priority: 'urgent' });
+    expect(manager.queueSnapshot(lane.conversation_id).messages[0]!.origin).toMatchObject({ priority: 'urgent' });
+  });
+
   it('keeps the old one-at-a-time order for a bot without a lane', async () => {
     const { turns, adapter } = fakeProvider();
     const { manager } = managerWith(adapter);
@@ -292,9 +303,15 @@ describe('bot lane API', () => {
       expect(retry.body.coordinationThreadId).toBe(urgent.body.coordinationThreadId);
       expect(surfacedRows(db, 'clara').map((r) => r.summary)).toEqual(['[TEST] urgent: vendor payment due today']);
       expect(t.shown).toEqual([['clara', expect.objectContaining({ type: 'notice', message: 'Urgent from Anna: [TEST] urgent: vendor payment due today', coordinationThreadId: urgent.body.coordinationThreadId })]]);
+      expect(t.shown).toHaveLength(1);
       // The urgent class rides on the message itself and is part of its key.
       expect(t.queueMessage.mock.calls[2]![3]).toMatchObject({ priority: 'urgent' });
       expect(t.queueMessage.mock.calls[1]![3]).not.toHaveProperty('priority');
+      // An unregistered sender is named by its agent, never its long chat title.
+      db.prepare("UPDATE bot_registrations SET active=0 WHERE conversation_id='anna'").run();
+      db.prepare("UPDATE conversations SET title='Queue this long request and ship it' WHERE id='anna'").run();
+      await t.call('POST', '/api/conversations/clara/steer', { text: '[TEST] urgent from an unregistered chat', priority: 'urgent', request_key: 'u2' });
+      expect(t.shown.at(-1)![1]).toMatchObject({ message: expect.stringMatching(/^Urgent from Assistant: /) });
       expect((await t.call('POST', '/api/conversations/clara/steer', { text: 'x', priority: 'loud' })).status).toBe(400);
     } finally {
       await t.close();

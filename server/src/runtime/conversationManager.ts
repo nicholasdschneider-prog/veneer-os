@@ -107,6 +107,7 @@ function parseMessageOrigin(value: unknown): MessageOrigin | undefined {
       to,
       ...(sourceConversationId ? { sourceConversationId } : {}),
       ...(sourceConversationTitle ? { sourceConversationTitle } : {}),
+      ...(candidate.kind === 'agent' && candidate.priority === 'urgent' ? { priority: 'urgent' as const } : {}),
     };
   } catch {
     return undefined;
