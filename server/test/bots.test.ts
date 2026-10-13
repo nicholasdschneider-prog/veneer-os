@@ -1238,7 +1238,7 @@ describe('VeneerBots', () => {
           evidence: 'Checked',
           material_evidence_unchanged: true,
         }),
-      ).toThrow('transition');
+      ).toThrow('already closed');
     }
   });
   it('filters by assigned human and existing team visibility and preserves blocked delivery', async () => {

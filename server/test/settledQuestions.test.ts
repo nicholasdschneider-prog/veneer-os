@@ -108,6 +108,27 @@ describe('questions settled elsewhere', () => {
     expect(BOT_TOOL_DEFINITIONS.some((t) => t.name === 'withdraw_decision')).toBe(true);
   });
 
+  it('refuses execution results on withdrawn, rejected or deferred decisions and keeps the approve path', () => {
+    const blocked = { state: 'blocked', evidence: 'Check-only question; nothing to execute.' };
+    const withdrawn = s.raise(bot, { source_key: 'o1', proposal_key: 'withdrawn', proposal: proposal() });
+    s.withdraw(bot, withdrawn.id, 1, 'w', { reason: 'Shipped.', evidence: 'Fulfillment recorded.' });
+    let err: unknown;
+    try { s.result(bot, withdrawn.id, 1, 'r', blocked); } catch (e) { err = e; }
+    expect(err).toMatchObject({ status: 409, message: expect.stringContaining('answered withdraw; it is already closed') });
+    for (const choice of ['reject', 'defer'] as const) {
+      const d = s.raise(bot, { source_key: 'o1', proposal_key: choice, proposal: proposal() });
+      s.answer(human, d.id, 1, 'answer', { action: choice, text: 'This case only', scope: 'this_case' });
+      expect(() => s.result(bot, d.id, 1, 'r', { state: 'failed', evidence: 'x' })).toThrow(`answered ${choice}`);
+    }
+    expect(state(withdrawn.id)).toMatchObject({ state: 'decided' });
+    expect(db.prepare("SELECT count(*) n FROM bot_decision_events WHERE kind='result'").get()).toEqual({ n: 0 });
+
+    const approved = s.raise(bot, { source_key: 'o1', proposal_key: 'approved', proposal: proposal() });
+    s.choose(human, approved.id, 1, 'click', 'a', '', 'this_case');
+    expect(s.result(bot, approved.id, 1, 'r', blocked).state).toBe('blocked');
+    expect(s.result(bot, approved.id, 1, 'r', blocked).state).toBe('blocked');
+  });
+
   it('asks each bot once per interval to re-check its order-bound questions, and only those old enough', () => {
     const old = s.raise(bot, { source_key: 'o1', proposal_key: 'dims', proposal: proposal({ as_of: asOf(['#100122051']) }) });
     s.raise(bot, { source_key: 'T1', proposal_key: 'dims', proposal: proposal({ as_of: { captured_at: '2026-10-01T14:00:00Z', ticket_id: 'T1', last_inbound: [] } }) });

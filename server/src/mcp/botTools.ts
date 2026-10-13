@@ -267,7 +267,7 @@ export const BOT_TOOL_DEFINITIONS = [
   ),
   definition(
     'record_decision_result',
-    'Record running before executing an approved current version, with material_evidence_unchanged=true after checking evidence. Then record verified_completed, blocked or failed with concrete evidence. Existing money, policy and tool approval gates remain required; a standing rule answer does not broaden authority.',
+    'Record running before executing an approved current version, with material_evidence_unchanged=true after checking evidence. Then record verified_completed, blocked or failed with concrete evidence. Existing money, policy and tool approval gates remain required; a standing rule answer does not broaden authority. Only approved decisions take results: a withdrawn, rejected or deferred decision is already closed, so record nothing on it and carry any remaining work on its own task.',
     {
       ...mutation,
       state: {

@@ -1,5 +1,5 @@
 // Reviewed native source manifest. Regenerate only in the native build queue after changes.
-export const CUSTOMER_EMAIL_NATIVE_ARTIFACT_HASH="5a2c3cf99a206daf9afe3a2dab49ec56ed98b082b979b4491caeb7c24dba0a08";
+export const CUSTOMER_EMAIL_NATIVE_ARTIFACT_HASH="e2a04101603eedfbdb7e059a1df6952df4e8dda32ac31841ea7db91e315a10d0";
 export const CUSTOMER_EMAIL_NATIVE_ARTIFACT_FILES=[
   "server/src/bots/communicationRoutes.ts",
   "server/src/bots/customerEmail.ts",

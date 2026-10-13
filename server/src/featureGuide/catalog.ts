@@ -603,8 +603,8 @@ export const BOT_FEATURES: BotFeature[] = [
   },
 
   {
-    id:'raised-hands',title:'One queue for raised hands',category:'Daily work',updated:'2026-09-25',
-    prompt: "Close the loop on an answered decision with record_decision_result (running, verified_completed, or blocked with a concrete blocker and one named repair owner). A technical failure is a repair to route, not a reason to ask the human again. Guide: /#/bot-guide?feature=raised-hands.",
+    id:'raised-hands',title:'One queue for raised hands',category:'Daily work',updated:'2026-10-13',
+    prompt: "Close the loop on an answered decision with record_decision_result (running, verified_completed, or blocked with a concrete blocker and one named repair owner). A technical failure is a repair to route, not a reason to ask the human again. Withdrawn, rejected or deferred decisions are already closed; do not record results on them. Guide: /#/bot-guide?feature=raised-hands.",
     announcement:'Bot work overview now has one Needs your input queue. Answered work moves out of your way into Progress & history.',
     audience:'People with access to bot decisions, including assigned employees',
     summary:'A bot raises its hand for a concrete question, lowers it after your answer, and returns only when it needs new input.',

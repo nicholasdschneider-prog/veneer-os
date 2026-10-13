@@ -1204,6 +1204,13 @@ export function createBotService(source: Database.Database) {
         if (replay(actor, d, key, 'result', payload)) return view(actor, d);
         cas(d, version);
         const action = d.answer_json ? JSON.parse(d.answer_json).action : null;
+        // Withdrawn, rejected and deferred answers close the decision; a
+        // result here would reopen it as a blocker nobody can complete.
+        if (['withdraw', 'reject', 'defer'].includes(action))
+          throw new BotError(
+            409,
+            `This decision was answered ${action}; it is already closed and takes no execution result. Record nothing further; carry any remaining work on its own task.`,
+          );
         if (payload.state === 'running') {
           validateProposal(
             actor,
