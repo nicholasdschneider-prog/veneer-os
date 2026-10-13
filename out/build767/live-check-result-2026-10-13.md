@@ -29,3 +29,15 @@ Run with `node out/build767/live-check.mjs <platform-dev mcp-config.json> 3`.
   - Runway `whoami` returned authenticated:true.
 - Nothing was written or generated.
 - This was a single session. It is not final acceptance, and it does not prove the intermittent startup omissions are gone. Acceptance still belongs to Miles.
+
+## Clara 20:46Z "dedicated accounting connector missing" report
+
+- **Chat and turn:** Clara chat 7f83ff8e, Codex thread 01a13647, turn 01a13703.
+- **Diagnosis:** the connector was not missing. Clara's tool search simply failed to match the tool names.
+  - The accounting connector (user_connectors id 3) is shared and scoped to Clara's project e8e0efc6.
+  - logs_2 has no "omitting MCP server", "cached MCP catalog" or "not available to the model" line for this thread. It also has none from any process between 20:45:30Z and 20:52Z.
+  - Clara never called a dedicated tool in that turn. The turn only filtered `ALL_TOOLS` with case-sensitive lowercase regexes: `/gmail.*profile/`, `/gmail_get_profile|gmail.*message|…/` and `/profile|…/`.
+  - The dedicated tools have upper-case names, such as `mcp__gmail_accounting_elkhartrvpart_everyone_3__GMAIL_GET_PROFILE`, so none of those patterns could match them. Only the lowercase `mcp__codex_apps__gmail_*` tools matched, which produced "only generic Gmail".
+  - Earlier the same day, the same thread called the dedicated tools by exact name and they worked, for example `GET_PROFILE` at 17:22Z and 17:56Z.
+- **Repair:** none needed on the source side. On its next turn, Clara should call the exact tool name directly or search with `/i`.
+- **Not yet proven:** this only becomes recovery once Clara's own `GET_PROFILE` call in chat 7f83ff8e succeeds.
