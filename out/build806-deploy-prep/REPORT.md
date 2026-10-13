@@ -341,3 +341,16 @@ State at 23:09Z: HEAD `e4fe077`, report-only since `155b497`; tracked tree clean
 - QBO operational acceptance stays open: unavailable resolver, no helper transport, timeout persistence, runtime/parent custody, authoritative adapters.
 
 **Before any human permission question:** gate 1 decision recorded by the BUILD801 reviewer, a named caller for gate 4 (or an explicit acceptance of *unverified*), and 852806d0's no-re-arm confirmation. Readiness stays withdrawn until then.
+
+## 15. Gate 4 status from the QBO contract owner (732adce5 #804/#812), recorded 2026-10-13 (read-only)
+
+- **Registered native lookup caller: UNASSIGNED. Runtime lookup: UNVERIFIED.** 732adce5 reports that it cannot name a willing, eligible caller. Its owner readback and workspace search found no acceptance by any existing registered bot, and being eligible for registration does not show that a bot is willing. No bot is assigned, and no acceptance is claimed.
+- **Gate 4 stays unresolved in this packet.** This is a concrete statement that no caller is available, not a readiness claim. Any maintenance question must show it as open. Approving the restart must not be taken as accepting *unverified*, unless the approver says so explicitly.
+- **The deferred plan is unchanged (sections 11 and 14).** It runs only after an explicitly approved installation, the schema verification and `postcheck.sh`:
+  1. 806 reads the counts of the three QBO v2 tables.
+  2. One existing active registered bot that has explicitly accepted runs `POST /api/qbo/v2/read` once, in its own session, with its own credential and a fresh requestKey.
+  3. Required result: ABSENT/ABSENT, `phases:[]`, `observation:null`, and all four entitlement fields false.
+  4. 806 re-reads the counts; they must be unchanged.
+- **What does not substitute for it:** an HTTP health check replaces neither this probe nor gate 2. No minted or borrowed credential, registration, grant, provider request, invoke, reconcile, recovery or restart.
+- **Owners:** 806 (a6e39d6e) owns deployment and postcheck; 804/812 (732adce5) owns the QBO contract.
+- **Pending regardless of the lookup:** timeout persistence, sanctioned-parent and frozen-runtime custody, and authoritative adapters.
