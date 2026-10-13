@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-13T19:05:31.580428+00:00",
+  "nodeMajor": 24,
+  "focusedTestsPassed": 38,
+  "typecheck": "passed",
+  "fullTests": {
+    "serverPassed": 3997,
+    "serverSkipped": 16,
+    "webPassed": 1015,
+    "installerPassed": 32,
+    "browserManagerPassed": 52
+  },
+  "build": "passed",
+  "buildWarning": "Vite large chunk advisory",
+  "logSha256": {
+    "focused": "d6590046643b12e049f68b0566ecd2d7af49f83d82f12a1b12ae765247ee2ff2",
+    "typecheck": "4ca67bebf7daea32b1a0373ed9306da25cb312be7f5817dac5cc87417d2a8420",
+    "full": "2f403f862d599043853eb84b1c9e3a0c03a0b1b4f2e1154e50069fb93976dfdb",
+    "build": "1a46b916d36244b5f01f5e49a8b44008817de9af4c41fa85ad68dc94123a9d14"
+  },
+  "fileSha256": {
+    "server/src/qbo/boundary.ts": "8d3b692e63ec31018dcda458e1921c4d34b4374e66aaed4093b1f0d210a2824b",
+    "server/test/qboBoundary.test.ts": "3ffe140d1a93566a15aad734d7567ff5fde3e3e82593cc5a3f8dad47a016d5ff",
+    "server/dist/qbo/boundary.js": "110171b76718f5f58480d8c36f59b81f2372b7d44bc0aea54f5e71fe784ba78d"
+  },
+  "deployment": "pending_approved_maintenance",
+  "restartPerformed": false,
+  "liveQboCalls": false,
+  "operationalAcceptance": false
+}

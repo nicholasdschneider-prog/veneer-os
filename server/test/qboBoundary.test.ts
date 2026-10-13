@@ -87,6 +87,28 @@ describe('native QBO caller/job/independent authority boundary (offline)', () =>
     resolver.receipt=async()=>terminal;expect((await service.reconcile(()=>caller,{requestKey:p.requestKey})).receipt.outcome).toBe('SUCCESS');
     resolver.receipt=async()=>({...terminal,receiptId:id(),outcome:'FAILED_NO_RETRY'});await expect(service.reconcile(()=>caller,{requestKey:p.requestKey})).rejects.toThrow('TERMINAL_RECEIPT_CONFLICT');expect(refreshes).toBe(1);
   });
+  it.each(['SUCCESS', 'FAILED_NO_RETRY'])('replays stored UNKNOWN after %s without changing history or entitlement', async outcome => {
+    helper();
+    const lookup = { requestKey: p.requestKey };
+    const unknown = (await service.reconcile(() => caller, lookup)).receipt;
+    const terminal = { ...unknown, receiptId: id(), outcome,
+      providerEvidence: outcome === 'SUCCESS' ? { requestId: 'fixture-provider', responseHash: h, entityId: '42' } : null };
+    resolver.receipt = async () => terminal;
+    await service.reconcile(() => caller, lookup);
+    const before = db.prepare('SELECT * FROM qbo_operation_receipts ORDER BY rowid').all();
+    resolver.receipt = async () => unknown;
+    expect(await service.reconcile(() => caller, lookup)).toMatchObject({
+      execute: false, refreshEntitlement: false, operationEntitlement: false, retryAllowed: false, receipt: unknown,
+    });
+    expect(db.prepare('SELECT * FROM qbo_operation_receipts ORDER BY rowid').all()).toEqual(before);
+    expect(service.read(() => caller, lookup)).toMatchObject({ receipts: [unknown, terminal] });
+    resolver.receipt = async () => ({ ...unknown, evidenceHash: 'b'.repeat(64) });
+    await expect(service.reconcile(() => caller, lookup)).rejects.toThrow('QBO_RECEIPT_CONFLICT');
+    resolver.receipt = async () => ({ ...terminal, receiptId: id(), evidenceHash: 'b'.repeat(64) });
+    await expect(service.reconcile(() => caller, lookup)).rejects.toThrow('QBO_TERMINAL_RECEIPT_CONFLICT');
+    expect(db.prepare('SELECT * FROM qbo_operation_receipts ORDER BY rowid').all()).toEqual(before);
+    expect(refreshes).toBe(1); // Synthetic helper counter; no real refresh occurs.
+  });
   it.each([['SUCCESS','UNKNOWN'],['FAILED_NO_RETRY','SUCCESS']])('rejects terminal %s to %s with different audit IDs',async(before,after)=>{
     const first=helper();const value={schemaVersion:'qbo-helper-receipt/v1',reservationId:first.reservation.reservationId,effectDigest:first.reservation.effectDigest,scopeHash:first.reservation.scopeHash,receiptId:id(),outcome:before,providerEvidence:{requestId:'fixture-provider',responseHash:h,entityId:'42'},evidenceHash:h,recordedAt:new Date(time).toISOString()};
     resolver.receipt=async()=>value;await service.reconcile(()=>caller,{requestKey:p.requestKey});resolver.receipt=async()=>({...value,receiptId:id(),outcome:after});await expect(service.reconcile(()=>caller,{requestKey:p.requestKey})).rejects.toThrow('TERMINAL_RECEIPT_CONFLICT');

@@ -90,6 +90,9 @@ export function qboBoundary(db: Database.Database, resolver: QboFactResolver = u
         if (!same(authenticate(), c)) deny('QBO_CALLER_CHANGED');
         const receiptHash = H('qbo/receipt/v1', receipt), old = db.prepare('SELECT receipt_hash FROM qbo_operation_receipts WHERE id=?').get(receipt.receiptId) as { receipt_hash: string } | undefined;
         if (old && old.receipt_hash !== receiptHash) deny('QBO_RECEIPT_CONFLICT');
+        // An immutable receipt replay acknowledges history, not a new outcome.
+        // Authentication and exact reservation correlation still precede this return.
+        if (old) return { ...response(row), receipt };
         const history = db.prepare('SELECT receipt_json FROM qbo_operation_receipts WHERE reservation_id=? ORDER BY rowid LIMIT 101').all(row.id) as {receipt_json:string}[];
         if (!old && history.length >= 100) deny('QBO_RECEIPT_HISTORY_EXCEEDS_BOUND');
         for (const previous of history) {
