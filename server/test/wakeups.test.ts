@@ -1,4 +1,5 @@
 import { saveRoutine, tickRoutines, type Routine } from '../src/botWorkflows/routines.js';
+import { humanDecisionAnswerWake } from '../src/bots/delivery.js';
 import { coalescePeriodicChecks, routineReason } from '../src/botWorkflows/periodicChecks.js';
 import type { UserRow } from '../src/db/db.js';
 import { EventEmitter } from 'node:events';
@@ -130,6 +131,29 @@ describe('conversation wake-up scheduler', () => {
     scheduler.tick();
     expect(canDispatch.mock.calls[0]?.[0]).toMatchObject({id:'reply'});
     expect(scheduler.listPending(conv.id)).toHaveLength(52);
+  });
+
+  it('delivers human decision answers first and leaves bot-recorded or non-answer events in line', () => {
+    const canDispatch = vi.fn((row: ConversationWakeupRow) => humanDecisionAnswerWake(db, row.id));
+    scheduler.stop();
+    scheduler = createConversationWakeupScheduler({db,manager,now:()=>new Date(current),log,canDispatch});
+    db.pragma('foreign_keys = OFF');
+    db.prepare("INSERT INTO bot_decisions(id,conversation_id,source_key,proposal_key,proposal_json,assignee_id) VALUES('d1',?,'s','p','{}',1)").run(conv.id);
+    const event = db.prepare("INSERT INTO bot_decision_events(id,decision_id,version,kind,actor_id,actor_conversation_id,payload_json,request_key) VALUES(?,'d1',1,?,1,?,'{}',?)");
+    event.run('human-answer','answered',null,'k1');
+    event.run('bot-answer','answered',conv.id,'k2');
+    event.run('claim','handling',null,'k3');
+    const insert = db.prepare("INSERT INTO conversation_wakeups(id,conversation_id,wake_key,reason,scheduled_for,actor_user_id) VALUES(?,?,?,'Check',?,1)");
+    for (let i=0;i<51;i++) insert.run(`ordinary-${i}`,conv.id,`ordinary-${i}`,new Date(BASE.getTime()-3000).toISOString());
+    for (const id of ['bot-answer','claim','human-answer']) insert.run(id,conv.id,`bot-decision:${id}`,new Date(BASE.getTime()-1000).toISOString());
+    expect(humanDecisionAnswerWake(db,'human-answer')).toBe(true);
+    expect(humanDecisionAnswerWake(db,'bot-answer')).toBe(false);
+    expect(humanDecisionAnswerWake(db,'claim')).toBe(false);
+    expect(humanDecisionAnswerWake(db,'ordinary-0')).toBe(false);
+    scheduler.tick();
+    expect(canDispatch.mock.calls[0]?.[0]).toMatchObject({id:'human-answer'});
+    expect(canDispatch.mock.calls.map(([row])=>row.id)).not.toContain('bot-answer');
+    expect(db.prepare("SELECT status FROM conversation_wakeups WHERE id='human-answer'").get()).toEqual({status:'cancelled'});
   });
 
   function periodic() {

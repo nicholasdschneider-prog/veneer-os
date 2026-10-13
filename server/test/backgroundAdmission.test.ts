@@ -32,3 +32,16 @@ it('counts active work across providers, ignores failures, and reopens capacity 
     expect(() => createBackgroundAdmission(db, NaN)).toThrow();
   } finally { db.close(); }
 });
+
+it('admits a human reply past the turn limit but never below the disk floor', () => {
+  const db = new Database(':memory:');
+  try {
+    db.exec("CREATE TABLE pending_turns (status TEXT); INSERT INTO pending_turns VALUES ('pending'),('pending')");
+    let free = 20;
+    const admit = createBackgroundAdmission(db, 2, () => free * 1024 ** 3);
+    expect(admit()).toBe(false);
+    expect(admit({ ignoreActiveLimit: true })).toBe(true);
+    free = 5;
+    expect(admit({ ignoreActiveLimit: true })).toBe(false);
+  } finally { db.close(); }
+});
