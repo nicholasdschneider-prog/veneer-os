@@ -1,7 +1,8 @@
 # Watchdog ownership and command-line OAuth browser finding
 
 Status: guidance prevention recorded; investigator reports idle Chrome recovery
-complete. Core deployment remains held. Code enforcement is an open proposal.
+complete. Build #782 has a reported approved runner/web maintenance window;
+deployment outcome is pending. Code enforcement is an open proposal.
 
 ## Durable repair owner
 
@@ -90,3 +91,30 @@ launches, such as a scoped `BROWSER` guard. It requires an approved plan and a
 queued build before source changes; this documentation handoff neither queues
 that repair nor authorizes a restart. The plan above remains relevant to that
 work, with provider-supported no-auto-browser guidance already in place.
+
+## Corrected maintenance approval and pending deployment
+
+A subsequent relay from the investigator supersedes the earlier core-deployment
+hold for one build #782 runner/web restart. James's turn 28 in thread
+`852806d0-80aa-40ca-9130-d3d561fdead5` corrected his turn 26 retraction and
+provided the approval's words, time and channel: in the Grok Bot chat with James
+at 1:08 PM ET on October 13, Nick replied "You've got my OK if you need it" to
+the request for one runner/web restart. This is recorded as relayed evidence;
+this repair owner has not independently checked that source chat.
+
+The investigator reports the following execution plan:
+
+- One runner and web restart using `--maintenance-approved`, after pending
+  turns reach zero on two consecutive checks.
+- A one-shot waiter, PID 12439, started at 17:16Z. It never forces a restart;
+  without an idle point by 19:16Z it stops without restarting.
+- Deploy the already-built `49ee656`, with no rebuild or heavy validation.
+  The `guidance.ts` text from `aae1c74` is absent from this build.
+- No business turns are canceled. The investigator will report the deployment
+  result and health afterward.
+
+This updates the reported authorization and plan, not the deployment outcome.
+It neither grants this repair owner a separate restart nor approves the OAuth
+code-enforcement proposal. This repair owner has not started, stopped or changed
+the waiter or any service. Await the investigator's result before recording
+deployment or verified post-restart health.
