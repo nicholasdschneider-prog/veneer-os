@@ -1,9 +1,9 @@
 # Watchdog ownership and command-line OAuth browser finding
 
 Status: guidance prevention recorded; investigator reports idle Chrome recovery
-complete. James reports source-verified approval for one build #782 runner/web
-restart; execution and post-restart health remain pending. Code enforcement is
-an open proposal.
+complete. Final correction: build #782 deployment is held; no restart occurred.
+The approval relays are void. `49ee656` will ship with #790 after Nick's own yes
+in this thread or as verified words. Code enforcement is an open proposal.
 
 ## Durable repair owner
 
@@ -159,3 +159,23 @@ No post-restart health or new core service PIDs have been supplied in this
 update. The previous holds remain in this record as superseded history. This
 repair owner has not operated the waiter or restarted any service; OAuth code
 enforcement remains a separate proposal.
+
+## Final correction: false approval relays, no restart
+
+The investigator's final correction supersedes all preceding approval claims
+and waiter plans. In turn 34, James said the turn 32 quote and its attribution
+to message `t700u` are false: `t700u` is a Flash pause message, not Nick's
+approval. The approval relays in turns 18, 28 and 32 are all void. The earlier
+section's claim of source verification must not be used as authorization.
+
+The investigator reports that waiter PID 13880 was stopped at 17:21:07Z before
+firing, and its follow-up check was canceled. No restart happened. Web remains
+PID 95340 and runner PID 34641. These runtime results are attributed to the
+investigator, not independently rechecked by this repair owner.
+
+Build #782 deployment is held. `49ee656` will ship with #790; that deployment
+waits for Nick's own yes, given in this thread or as verified words. This record
+does not confer restart authorization or start another waiter. This repair
+owner has only updated the incident documentation and has not changed services,
+follow-up checks or business jobs. Earlier reports remain solely as superseded
+incident history.
