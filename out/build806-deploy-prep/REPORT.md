@@ -51,7 +51,7 @@ What is prepared instead is a **reconstructed rollback candidate**, not proof of
 - Applying it (only under the same approved window and owner, if post-restart readback fails):
   1. Extract to a new temp directory and verify the manifests.
   2. Replace `server/dist` wholesale. Copy `web/dist` files in without deleting the retained assets.
-  3. Restart `veneer-pro-runner` and `veneer-pro` once.
+  3. Restart `veneer-pro` then `veneer-pro-runner` once (same order as section 12).
   - No source reset, no DB restore. 0178/0179 tables stay; old code ignores them.
 
 ## 5. Database backup
@@ -73,7 +73,7 @@ Before:
 - Confirm `git diff db8b7f0 HEAD -- server web browser-manager installer scripts package*.json` is empty and both dist manifests match this report. HEAD itself advances with report-only commits, including this report's (0e554c2). Any difference means stop and re-validate.
 - Confirm zero pending turns. `restart.mjs` refuses otherwise; there were 6 pending at 21:30Z.
 
-Run once: `npm run restart -- --maintenance-approved veneer-pro-runner veneer-pro`.
+Run once: `npm run restart -- --maintenance-approved veneer-pro veneer-pro-runner` (web first, then runner; see section 12).
 
 If the result is uncertain (timeout, lost output, exit ≠ 0), do **not** re-run. First read:
 1. `DATA_DIR/run/veneer-pro.pid` and `veneer-pro-runner.pid`, plus `ps -o lstart` for those pids. New pids with a start after the window opened mean the restart happened.
@@ -202,3 +202,34 @@ The code was checked, and `phaseBoundary.read` (`server/src/qbo/phaseBoundary.ts
 **QBO operational acceptance stays pending:**
 - Production `qboRoutes(ctx)` uses `unavailablePhaseResolver` and has no helper transport.
 - Authoritative adapters, a runnable accepted closure, and sanctioned-parent/source acceptance are still missing.
+
+## 12. Review reconciliation, 22:05Z (read-only; incorporates the BUILD801 coordination review)
+
+An independent review re-verified all 577 `server/dist` and 2529 `web/dist` manifest entries and the empty `db8b7f0..HEAD` source diff. Its three findings are adopted here.
+
+**Final command and order.** `scripts/restart.mjs` restarts `targets` in the order given (`for (const service of targets)`, line 449). Each `restart()` waits for `/health` before the next one starts, but a failed service does not stop the loop. Sections 4 and 6 previously listed runner then web, and the BUILD801 report (`docs/reports/purchase-interrupted/build801/report.md:53`) lists web then runner. The final order is the BUILD801 one:
+
+`npm run restart -- --maintenance-approved veneer-pro veneer-pro-runner`
+
+- Web (`server/src/index.ts:81`) and runner (`server/src/runner/index.ts:62`) both call `openDb`, which migrates before anything else starts, so either order applies 0178/0179 before new code uses them.
+- Web first means the migrations are applied by a process with no schedulers, and the new runner (purchasing recovery, QBO and custom-direction consumers) starts last against a schema that is already in place and verified healthy. The old runner tolerates the extra tables for the short gap because the change is additive.
+- If web fails `/health`, the loop still restarts the runner. Treat that as an uncertain result under section 6: read, do not re-run.
+- Rollback (section 4, step 3) uses the same order.
+
+**One deployment owner.** Exactly one executor may run this command. At 21:56Z the only armed executor is `/tmp/veneer-790/overnight3.sh` (pid 42176, owner 852806d0, 02:00–05:00 ET 10/14). Its guard compares source against `db8b7f0`, so report-only commits do not block it. **It still calls `restart.mjs --maintenance-approved veneer-pro-runner veneer-pro` (runner first).** Only its owner can change it; this packet does not touch it. Until the owner re-arms it with `veneer-pro veneer-pro-runner` or records that runner-first is accepted, the order is unreconciled. Any earlier window must be run by that same owner, after stopping the waiter, so that two executors never exist.
+
+**Approval scope is the whole cumulative set.** An approval for BUILD801 alone does not cover this restart. The restart installs all seven commits `1b8561a..db8b7f0`, and the approval must name them:
+
+| commit | build | change |
+|---|---|---|
+| `f9c59dd` | #790 | Give every registered bot a bot lane by default |
+| `ebf83cf` | held #790-era | Preserve exact QBO receipt replay after terminal reconciliation |
+| `ef04461` | held #790-era | Deliver human decision answers ahead of background admission |
+| `10cb103` | held #790-era | Keep the redacted receiver error body on failed James webhook pushes |
+| `1653378` | #801 | Recover unrelated purchasing after interrupted runs (+ migration 0178 `a6205c95…0877`) |
+| `274e669` | #804 | Track QBO phases and bind private helper invocations to native scope (+ migration 0179 `ec134af0…ef5f`) |
+| `db8b7f0` | #806 | Track nonfinancial custom directions in the custom-direction tracker |
+
+0178 and 0179 are both pending and are both applied by this one restart. The original Sage recovery review and the UNKNOWN exclusions (`2080773d…`, `ae219af0…`) are outside this deployment. They stay with Sage and the BUILD801 owner and are not approved, released or replayed by it.
+
+**The verified-prior-artifact gate is not met.** The executables now running (web pid 89325, runner pid 34641) were never retained and cannot be proven. `1b8561a` is a reconstruction rebuilt from source. Its only proof is that it opens and migrates a disposable DB copy with every new and legacy ledger empty (section 8, sections 10–11). It has not booted, its full suite was not re-run, and it is not the prior healthy artifact. This is a **material limitation** that the approver must accept knowingly; it is not fulfillment of the gate. Nothing in this packet should be read as rollback assurance beyond that.
