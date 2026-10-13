@@ -13,9 +13,9 @@
   },
   "scripts": {
     "build": "npm run build -w @veneer-pro/server && npm run build -w @veneer-pro/web",
-    "typecheck": "tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p web/tsconfig.json",
+    "typecheck": "node scripts/development-lock.mjs /bin/sh -c 'tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p web/tsconfig.json' --",
     "test": "npm run test:installer && npm run test -w @veneer-pro/server && npm run test -w @veneer-pro/web && npm test -w veneer-browser-manager",
-    "test:installer": "node --test installer/*.test.mjs",
+    "test:installer": "node scripts/development-lock.mjs node --test --test-concurrency=1 installer/*.test.mjs",
     "dev": "npm run dev -w @veneer-pro/server",
     "start": "node server/dist/index.js",
     "start:runner": "node server/dist/runner/index.js",

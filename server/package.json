@@ -8,9 +8,9 @@
   },
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/",
+    "build": "node ../scripts/development-lock.mjs /bin/sh -c 'tsc -p tsconfig.json && mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/' --",
     "dev": "tsx watch src/index.ts",
-    "test": "vitest run"
+    "test": "node ../scripts/development-lock.mjs vitest run"
   },
   "dependencies": {
     "@breezystack/lamejs": "1.2.7",

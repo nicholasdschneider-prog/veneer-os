@@ -15,6 +15,10 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
+    // This checkout shares a 16 GB Mac with production business services.
+    // Reserve resources for them instead of forking one worker per CPU.
+    maxWorkers: 1,
+    minWorkers: 1,
     testTimeout: 20_000,
     hookTimeout: 20_000,
   },

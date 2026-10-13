@@ -7,9 +7,9 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit && vite build && node ../scripts/prune-web-assets.mjs",
+    "build": "node ../scripts/development-lock.mjs /bin/sh -c 'tsc -p tsconfig.json --noEmit && vite build && node ../scripts/prune-web-assets.mjs' --",
     "dev": "vite",
-    "test": "vitest run"
+    "test": "node ../scripts/development-lock.mjs vitest run"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

@@ -60,7 +60,8 @@ const args = process.argv.slice(2);
 const checkOnly = args.includes('--check');
 const healthOnly = args.includes('--health-check');
 const allowActive = args.includes('--allow-active-turns');
-const requested = args.filter((arg) => !['--check', '--health-check', '--allow-active-turns'].includes(arg));
+const maintenanceApproved = args.includes('--maintenance-approved');
+const requested = args.filter((arg) => !['--check', '--health-check', '--allow-active-turns', '--maintenance-approved'].includes(arg));
 const unknown = requested.filter((name) => !ALL_SERVICES.includes(name));
 if (unknown.length) {
   console.error(`unknown service(s): ${unknown.join(', ')}`);
@@ -309,8 +310,8 @@ async function restartLaunchdService(service) {
 }
 
 async function restart(service) {
-  if (service === 'veneer-pro-runner') {
-    try { assertRunnerRestartSafe({ targets: [service], dataDir, serverPackage, allowActive }); }
+  {
+    try { assertRunnerRestartSafe({ targets: [service], dataDir, serverPackage, allowActive, maintenanceApproved }); }
     catch (error) { console.error(`[restart] blocked: ${error.message}`); return false; }
   }
   if (service in LAUNCHD_SERVICES) return restartLaunchdService(service);
@@ -439,9 +440,9 @@ if (!checkServiceRuntime()) process.exit(1);
 warnForeignCodexHome();
 if (checkOnly) process.exit(0);
 
-// Check the entire plan before restarting even the web service. Recheck the
-// runner immediately before signaling it, since new work can arrive meanwhile.
-try { assertRunnerRestartSafe({ targets, dataDir, serverPackage, allowActive }); }
+// Check the entire plan before restarting even the web service. Recheck
+// each service immediately before signaling it, since new work can arrive meanwhile.
+try { assertRunnerRestartSafe({ targets, dataDir, serverPackage, allowActive, maintenanceApproved }); }
 catch (error) { console.error(`[restart] blocked: ${error.message}`); process.exit(1); }
 
 let failed = false;

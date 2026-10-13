@@ -40,7 +40,7 @@ npm test -w veneer-browser-manager     # node --test
 npm run test:installer                 # node --test installer/*.test.mjs
 npm test                               # all four, in that order
 npm run build                          # server tsc (+ copies migrations) then web tsc + vite
-npm run restart                        # SIGTERM by pid file; supervisors respawn
+npm run restart -- --maintenance-approved <affected-service> # approved window only
 ```
 
 Scope tests while iterating; run the full set before building. Dev loop: `VP_IDENTITY=dev npm run dev`
@@ -49,12 +49,27 @@ Scope tests while iterating; run the full set before building. Dev loop: `VP_IDE
 `DATA_DIR/run/<service>.pid` files and kickstarts `com.veneer.browser-manager`; never call
 `launchctl` directly for these.
 
-Restart only services affected by the change. A routine runner restart must wait
-for active turns to finish; `scripts/restart.mjs` refuses it while turns are active.
+This machine also runs live businesses. Do not restart production as the automatic
+last step of a build. Commit validated work and report deployment pending; batch
+changes for an explicit human-approved maintenance window. Only inside that window
+use `npm run restart -- --maintenance-approved <affected-service>`.
+An instruction to fix performance without disrupting businesses is not permission
+for an interrupting restart. Never bypass this gate with direct signals or launchctl.
+
+Restart only services affected by the change. Every production restart, including
+web-only, must wait for active turns to finish; `scripts/restart.mjs` refuses it
+while turns are active. Web restarts disconnect public chats even if the runner lives.
 Never launch a detached watcher that eventually forces a restart on timeout.
 `--allow-active-turns` is for a human-authorized interruption/emergency recovery,
 not a way to finish a normal deployment. If work cannot drain, report the pending
 deployment and coordinate a maintenance window.
+
+Keep the configured single Vitest worker on this 16 GB production Mac. Run focused
+tests while editing and the required full validation once for the finished change.
+Do not overlap full suites, typechecks or builds, or raise worker counts to finish
+faster. Package scripts share a host-wide development lock; if refused, finish
+or coordinate with its owner rather than bypassing it. Coordinate with other
+active build owners before heavy validation.
 
 Use a dedicated temporary directory for build/test copies and clean it in a
 `finally` block or shell `trap` when finished. Retain useful reports in the project,
