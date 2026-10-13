@@ -43,7 +43,14 @@ export interface JamesLinkDeps {
   log?(message: string): void;
 }
 
-export type PushReason = 'reply' | 'question_unanswered' | 'quiet' | 'heartbeat' | 'status_changed' | 'test';
+export type PushReason = 'reply' | 'question_unanswered' | 'quiet' | 'heartbeat' | 'status_changed' | 'test' | 'notify';
+
+/** How long a human's "tell James" direction stays usable for notify_james. */
+export const NOTIFY_AUTHORITY_MS = 24 * 3_600_000;
+
+export type NotifyResult =
+  | { ok: true; replay: boolean; idempotency_key: string; thread_id: string; authority_turn: number; ledger_turn: number | null; push_id: number | null; status: string; attempts: number; emailed_to: string | null; last_error: string | null }
+  | { ok: false; status: number; error: string; detail?: string };
 
 export function etClock(ms: number): { date: string; hour: number; minute: number } {
   const parts = Object.fromEntries(
@@ -347,6 +354,93 @@ export class JamesLink {
       this.db.prepare('INSERT OR IGNORE INTO james_email_commands (message_id, conversation_id, command, sender, result) VALUES (?, ?, ?, ?, ?)')
         .run(msg.messageId, id, parsed?.command ?? null, sender, result);
     }
+  }
+
+  // ── Bot-to-James notification (notify_james) ─────────────────────────────
+  /** Readback of a notify_james key for the calling chat only. */
+  notification(conversationId: string, key: string): NotifyResult {
+    const row = this.db.prepare('SELECT * FROM james_notifications WHERE idempotency_key = ?').get(key) as
+      { conversation_id: string; authority_turn: number; ledger_turn: number | null; push_id: number | null } | undefined;
+    if (!row || row.conversation_id !== conversationId) return { ok: false, status: 404, error: 'notification_not_found' };
+    const push = row.push_id === null ? undefined : this.db.prepare('SELECT status, attempts, emailed_to, last_error FROM james_pushes WHERE id = ?').get(row.push_id) as
+      { status: string; attempts: number; emailed_to: string | null; last_error: string | null } | undefined;
+    return {
+      ok: true, replay: true, idempotency_key: key, thread_id: conversationId, authority_turn: row.authority_turn, ledger_turn: row.ledger_turn, push_id: row.push_id,
+      status: push?.status ?? 'not_started', attempts: push?.attempts ?? 0, emailed_to: push?.emailed_to ?? null, last_error: push?.last_error ?? null,
+    };
+  }
+
+  /**
+   * Tell James something from a chat that he does not follow (a bot's standing
+   * chat), once, because that chat's own human said to. The cited turn must be
+   * a recent human message in this same chat that names James. Delivery is
+   * immediate through the normal push path (webhook, then email fallback);
+   * James is not made a follower. A repeated key returns the first result.
+   */
+  async notifyJames(input: { conversationId: string; text: string; authorityTurn?: number; idempotencyKey: string }): Promise<NotifyResult> {
+    const { conversationId, idempotencyKey: key } = input;
+    const text = input.text.trim();
+    const textHash = crypto.createHash('sha256').update(text).digest('hex');
+    const existing = this.db.prepare('SELECT conversation_id, text_hash FROM james_notifications WHERE idempotency_key = ?').get(key) as
+      { conversation_id: string; text_hash: string } | undefined;
+    if (existing) {
+      if (existing.conversation_id !== conversationId || existing.text_hash !== textHash) {
+        return { ok: false, status: 409, error: 'idempotency_conflict', detail: 'This idempotency_key was already used with a different message or chat.' };
+      }
+      return this.notification(conversationId, key);
+    }
+    // Without an explicit turn, the latest recent human message in this chat that names James.
+    const authorityTurn = input.authorityTurn ?? (this.db.prepare(
+      `SELECT turn, excerpt FROM james_thread_messages
+        WHERE conversation_id = ? AND direction = 'to_veneer' AND author = 'human' AND at >= ?
+        ORDER BY turn DESC LIMIT 50`,
+    ).all(conversationId, iso(this.deps.now() - NOTIFY_AUTHORITY_MS)) as { turn: number; excerpt: string }[])
+      .find((row) => /\bjames\b/i.test(row.excerpt))?.turn;
+    if (authorityTurn === undefined) {
+      return { ok: false, status: 403, error: 'authority_not_found', detail: 'No human message in this chat from the last 24 hours names James.' };
+    }
+    const authority = this.db.prepare(
+      'SELECT direction, author, excerpt, at FROM james_thread_messages WHERE conversation_id = ? AND turn = ?',
+    ).get(conversationId, authorityTurn) as { direction: string; author: string; excerpt: string; at: string } | undefined;
+    if (!authority) return { ok: false, status: 403, error: 'authority_not_found', detail: `Turn ${authorityTurn} is not a message in this chat.` };
+    if (authority.direction !== 'to_veneer' || authority.author !== 'human') {
+      return { ok: false, status: 403, error: 'authority_not_human', detail: `Turn ${authorityTurn} was written by ${authority.author}; only a human message in this chat can direct telling James.` };
+    }
+    if (Date.parse(authority.at) < this.deps.now() - NOTIFY_AUTHORITY_MS) {
+      return { ok: false, status: 403, error: 'authority_stale', detail: `Turn ${authorityTurn} is older than 24 hours.` };
+    }
+    if (!/\bjames\b/i.test(authority.excerpt)) {
+      return { ok: false, status: 403, error: 'authority_does_not_name_james', detail: `Turn ${authorityTurn} does not mention James.` };
+    }
+    const now = iso(this.deps.now());
+    // Claim the key before any external effect, so a concurrent retry cannot send twice.
+    const claimed = this.db.prepare(
+      'INSERT OR IGNORE INTO james_notifications (idempotency_key, conversation_id, text_hash, authority_turn, created_at) VALUES (?, ?, ?, ?, ?)',
+    ).run(key, conversationId, textHash, authorityTurn, now).changes > 0;
+    if (!claimed) return this.notifyJames(input);
+    const followedBefore = getThread(this.db, conversationId)?.followed ?? 0;
+    const stamped = stampMessage(this.db, {
+      conversationId, direction: 'from_veneer', author: 'veneer', via: 'notify_james', sourceRef: `notify:${key}`, text,
+    }, this.deps.now());
+    if (!stamped) return { ok: false, status: 404, error: 'thread_not_found' };
+    // Never widen following as a side effect.
+    this.db.prepare('UPDATE james_threads SET followed = ? WHERE conversation_id = ?').run(followedBefore, conversationId);
+    const event = { reason: 'notify' as const, turn: stamped.turn, created_at: now,
+      detail_json: JSON.stringify({ author: 'veneer', excerpt: excerpt(text), authority_turn: authorityTurn, idempotency_key: key }) };
+    const payload = this.threadPayload(conversationId, [event])!;
+    const pushId = Number(this.db.prepare(
+      "INSERT INTO james_pushes (conversation_id, kind, payload_json, status, created_at) VALUES (?, 'thread', '{}', 'sending', ?)",
+    ).run(conversationId, now).lastInsertRowid);
+    payload.push_id = pushId;
+    this.db.transaction(() => {
+      this.db.prepare('UPDATE james_pushes SET payload_json = ? WHERE id = ?').run(JSON.stringify(payload), pushId);
+      this.db.prepare('INSERT INTO james_push_events (conversation_id, reason, turn, detail_json, push_id, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(conversationId, 'notify', stamped.turn, event.detail_json, pushId, now);
+      this.db.prepare('UPDATE james_notifications SET ledger_turn = ?, push_id = ? WHERE idempotency_key = ?').run(stamped.turn, pushId, key);
+    })();
+    await this.deliver(pushId, payload, {});
+    const result = this.notification(conversationId, key);
+    return result.ok ? { ...result, replay: false } : result;
   }
 
   // ── Delivery ──────────────────────────────────────────────────────────────

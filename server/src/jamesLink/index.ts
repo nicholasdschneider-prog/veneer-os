@@ -7,6 +7,10 @@ import { JamesLink } from './service.js';
 
 const TICK_MS = 60_000;
 
+let current: JamesLink | null = null;
+/** The running link in this web process, for the agent notify routes. */
+export const currentJamesLink = () => current;
+
 /** Wire the James link into the web service: registry backfill, bus stamping, the minute tick, and the API router. */
 export function startJamesLink(ctx: AppContext) {
   const db = ctx.db;
@@ -31,6 +35,7 @@ export function startJamesLink(ctx: AppContext) {
     statusOf: (conversationId) => ctx.manager.statusOf(conversationId),
     log: (message) => console.warn(message),
   });
+  current = link;
   const onEvent = (conversationId: string, event: ConversationEvent) => link.onEvent(conversationId, event);
   ctx.manager.bus.on('event', onEvent);
   let running = false;
@@ -47,6 +52,6 @@ export function startJamesLink(ctx: AppContext) {
       move: (jobId, target, actor) => ctx.manager.moveBuild(jobId, target, actor),
       ownerId,
     }),
-    stop() { clearInterval(timer); ctx.manager.bus.off('event', onEvent); },
+    stop() { clearInterval(timer); ctx.manager.bus.off('event', onEvent); if (current === link) current = null; },
   };
 }

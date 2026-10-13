@@ -309,6 +309,29 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'notify_james',
+    description:
+      'Tell James (Nick\'s operator, reached through his Grok Bot) something from THIS chat, once, only because this chat\'s own human explicitly told you to tell James. The server checks that a human message in this chat from the last 24 hours names James and uses the latest one (or the authority_turn you give); bot, wake-up, handoff and James messages are never authority, and without such a human message the send is refused. Send the exact text the human\'s direction calls for, with a stable idempotency_key: a retry with the same key and text returns the first result and sends nothing; never call again with a new key to resend. The result reports push_id, status (sent, emailed or failed), attempts, emailed_to and last_error. If it failed or you are unsure, read it back with read_james_notification instead of sending again. This does not make James follow the chat; his own messages to you are answered as usual by replying.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'The exact message for James.' },
+        authority_turn: { type: 'number', description: 'Optional James-link turn number of the directing human message; omit to use the latest recent human message here that names James.' },
+        idempotency_key: { type: 'string', description: 'Stable key, 8-200 printable characters, for example piper-nda-irvine-20261013-nick1911.' },
+      },
+      required: ['text', 'idempotency_key'],
+    },
+  },
+  {
+    name: 'read_james_notification',
+    description: 'Read back a notify_james send from this chat by its idempotency_key: push_id, status (sending, sent, emailed or failed), attempts, emailed_to and last_error. Never sends.',
+    inputSchema: {
+      type: 'object',
+      properties: { idempotency_key: { type: 'string' } },
+      required: ['idempotency_key'],
+    },
+  },
+  {
     name: 'resolve_build_queue',
     description:
       'Retry or skip a failed/queued workspace build. You may retry or skip THIS chat\'s own failed or stopped build on your own judgment (for example after list_build_queue shows it blocking the queue). Only touch another chat\'s queue item when the user explicitly asks.',
@@ -1211,6 +1234,17 @@ async function callTool(
         ? `Moved build #${jobId} from position ${result.oldPosition} to ${result.newPosition}.`
         : `Build #${jobId} already sits at position ${result.newPosition}; nothing changed.`;
       return { content: [{ type: 'text', text: `${head}\nWorkspace queue now:\n${order}` }] };
+    }
+    if (name === 'notify_james') {
+      const result = await callApi('/api/james-notify', {
+        method: 'POST',
+        body: JSON.stringify({ text: args.text, ...(args.authority_turn === undefined ? {} : { authority_turn: Number(args.authority_turn) }), idempotency_key: args.idempotency_key }),
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+    if (name === 'read_james_notification') {
+      const result = await callApi(`/api/james-notify/${encodeURIComponent(String(args.idempotency_key ?? ''))}`);
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
     if (name === 'resolve_build_queue') {
       const jobId = Number(args.job_id);

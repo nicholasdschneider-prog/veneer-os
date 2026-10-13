@@ -52,6 +52,17 @@ different body is 409 `idempotency_conflict`; 5xx responses are not stored.
 James writing in a bot's standing chat does not make him follow it. The turn that starts with his marked message is
 recorded in `james_threads.james_answer_turn_id`, and only that turn's reply is pushed (`answers_james: true`).
 
+## Bot-to-James notification (build #778, 2026-10-13)
+
+Bots have `notify_james {text, idempotency_key, authority_turn?}` and `read_james_notification {idempotency_key}`
+(MCP tools, `/api/james-notify` on the agent API, `server/src/jamesLink/notifyRoutes.ts`). A bot may tell James
+something from its own chat only when a human message in that same chat, from the last 24 hours, names James: the
+cited `authority_turn`, else the latest such message. Bot, wake-up, handoff and James turns are refused. The message is
+stamped `from_veneer` (`via notify_james`) and delivered at once as reason `notify` through the normal webhook path,
+email fallback and `james_pushes` log; the thread's follow state does not change. `james_notifications` holds one row
+per key: the same key and text returns the first readback (`push_id`, `status`, `attempts`, `emailed_to`,
+`last_error`) without sending, and a different text or chat is 409 `idempotency_conflict`. Failed sends are not retried.
+
 Messages carry `turn`, `role`, `direction`, `via`, `at`, `text` (up to 20,000 characters) and `source`. Stamped `ledger` rows (since go-live) have a turn and role james, human, bot or veneer. Older messages come from the search index as `history`, with no turn and role user or assistant, only from before the first stamped row.
 
 James's replies reach the chat as `[James link · thread <id> · turn <n>]` followed by his text. Done threads archive

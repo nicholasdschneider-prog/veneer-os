@@ -1,4 +1,6 @@
 import { purchaseTimingSetupRoutes } from '../bots/purchaseTimingRoutes.js';
+import { createJamesNotifyRouter } from '../jamesLink/notifyRoutes.js';
+import { currentJamesLink } from '../jamesLink/index.js';
 import { captureHumanMessage } from '../bots/humanMessages.js';
 import { coordinationLane } from '../coordination/store.js';
 import { createCoordinationRouter, sendCoordination } from '../coordination/routes.js';
@@ -905,6 +907,7 @@ export function createApiRouter(ctx: AppContext): Router {
   router.use('/bots', createBotsRouter(ctx));
   router.use('/bot-communication', createCommunicationRouter(ctx));
   router.use('/team-rooms', createRoomsRouter(ctx));
+  router.use('/james-notify', createJamesNotifyRouter(currentJamesLink));
   router.use('/huddles', createHuddlesRouter(ctx));
 
   router.get('/system/usage', (_req, res) => {

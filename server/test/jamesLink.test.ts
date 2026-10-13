@@ -457,3 +457,73 @@ describe('API v3: build queue', () => {
     expect(docs.endpoints.map((e: { method: string; path: string }) => `${e.method} ${e.path}`)).toEqual(expect.arrayContaining(['GET /builds', 'POST /builds/{id}/move']));
   });
 });
+
+describe('notify_james: a human-directed bot message to James', () => {
+  const H = '88888888-8888-4888-8888-888888888888';
+  const OTHER = '99999999-9999-4999-8999-999999999999';
+  let notifyBase: string;
+  let notifyServer: Server;
+  beforeAll(async () => {
+    addConversation(H, 'Piper standing chat');
+    addConversation(OTHER, 'Other chat');
+    db.prepare('INSERT INTO bot_registrations (conversation_id, name, registered_by) VALUES (?, ?, 1)').run(H, 'Piper');
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => { req.agentConversationId = req.get('x-test-agent') ?? undefined; next(); });
+    const { createJamesNotifyRouter } = await import('../src/jamesLink/notifyRoutes.js');
+    app.use('/api/james-notify', createJamesNotifyRouter(() => link));
+    await new Promise<void>((resolve) => { notifyServer = app.listen(0, '127.0.0.1', resolve); });
+    notifyBase = `http://127.0.0.1:${(notifyServer.address() as AddressInfo).port}`;
+  });
+  afterAll(() => { notifyServer?.close(); });
+  const turnOf = (id: string) => getThread(db, id)!.turn;
+  const notify = (agent: string | null, body: Record<string, unknown>) => fetch(`${notifyBase}/api/james-notify`, {
+    method: 'POST', headers: { 'content-type': 'application/json', ...(agent ? { 'x-test-agent': agent } : {}) }, body: JSON.stringify(body),
+  });
+
+  it('refuses without a recent human message in this chat that names James', async () => {
+    userTurn(H, 'h-bot', 'Wake: tell James the job finished', { kind: 'agent', from: 'x', to: 'y' });
+    const botTurn = turnOf(H);
+    expect((await (await notify(H, { text: 'hi', authority_turn: botTurn, idempotency_key: 'k-bot-0001' })).json()).error).toBe('authority_not_human');
+    userTurn(H, 'h-james', 'From James: are you good?');
+    expect((await (await notify(H, { text: 'hi', authority_turn: turnOf(H), idempotency_key: 'k-james-0001' })).json()).error).toBe('authority_not_human');
+    expect((await (await notify(H, { text: 'hi', idempotency_key: 'k-none-0001' })).json()).error).toBe('authority_not_found');
+    userTurn(H, 'h-plain', 'thanks for fixing it');
+    expect((await (await notify(H, { text: 'hi', authority_turn: turnOf(H), idempotency_key: 'k-plain-0001' })).json()).error).toBe('authority_does_not_name_james');
+    userTurn(OTHER, 'o-1', 'tell James we are done');
+    expect((await (await notify(H, { text: 'hi', authority_turn: 99_999, idempotency_key: 'k-other-0001' })).json()).error).toBe('authority_not_found');
+    expect((await notify(null, { text: 'hi', idempotency_key: 'k-noagent-01' })).status).toBe(403);
+  });
+
+  it('sends once on a human direction, replays by key, conflicts on new text, and never follows', async () => {
+    fetchMock.mockClear();
+    userTurn(H, 'h-nick', 'i fixed the setting. tell James you are good now');
+    const nickTurn = turnOf(H);
+    const first = await (await notify(H, { text: 'James: rates are good now.', idempotency_key: 'piper-test-0001' })).json();
+    expect(first).toMatchObject({ ok: true, replay: false, thread_id: H, authority_turn: nickTurn, ledger_turn: nickTurn + 1, status: 'sent', attempts: 1, emailed_to: null });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(fetchMock.mock.calls[0]![1].body);
+    expect(payload).toMatchObject({ reasons: ['notify'], push_id: first.push_id, thread: { thread_id: H, followed: false } });
+    expect(payload.events[0]).toMatchObject({ reason: 'notify', author: 'veneer', excerpt: 'James: rates are good now.', authority_turn: nickTurn });
+    expect(fetchMock.mock.calls[0]![1].headers['idempotency-key']).toBe(`veneer-james-push-${first.push_id}`);
+    const replay = await (await notify(H, { text: 'James: rates are good now.', idempotency_key: 'piper-test-0001' })).json();
+    expect(replay).toMatchObject({ ok: true, replay: true, push_id: first.push_id, status: 'sent' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((await notify(H, { text: 'different', idempotency_key: 'piper-test-0001' })).status).toBe(409);
+    expect((await notify(OTHER, { text: 'James: rates are good now.', idempotency_key: 'piper-test-0001' })).status).toBe(409);
+    const read = await (await fetch(`${notifyBase}/api/james-notify/piper-test-0001`, { headers: { 'x-test-agent': H } })).json();
+    expect(read).toMatchObject({ push_id: first.push_id, status: 'sent' });
+    expect((await fetch(`${notifyBase}/api/james-notify/piper-test-0001`, { headers: { 'x-test-agent': OTHER } })).status).toBe(404);
+    expect(getThread(db, H)).toMatchObject({ followed: 0 });
+    const ledger = db.prepare('SELECT direction, author, via, excerpt FROM james_thread_messages WHERE conversation_id = ? AND turn = ?').get(H, nickTurn + 1);
+    expect(ledger).toEqual({ direction: 'from_veneer', author: 'veneer', via: 'notify_james', excerpt: 'James: rates are good now.' });
+  });
+
+  it('reports the email fallback and failure in the readback without resending', async () => {
+    fetchMock.mockResolvedValue(new Response('bad', { status: 400 }));
+    failEmailTo = null;
+    const emailed = await (await notify(H, { text: 'second note', idempotency_key: 'piper-test-0002' })).json();
+    expect(emailed).toMatchObject({ status: 'emailed', attempts: 2, emailed_to: 'nicks@mail.grokbot.com' });
+    expect(emailed.last_error).toContain('HTTP 400');
+  });
+});
