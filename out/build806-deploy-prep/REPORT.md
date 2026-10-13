@@ -329,7 +329,7 @@ State at 23:09Z: HEAD `e4fe077`, report-only since `155b497`; tracked tree clean
 
 **Gate 2. End-to-end installation probe: authenticated read-only only.** Section 6's "#806 readback via `record_custom_direction_review`" is withdrawn as installation smoke. That write stays with Archer's normal business work after deployment and is not evidence of installation. The installation probe after `restart.mjs --health-check` and `postcheck.sh`:
 1. a6e39d6e starts one fresh turn on the new runner. In that turn it calls read-only tools only: `list_build_queue` and `inspect_custom_direction` for decision 0f24e56b, which reads the #806 code path without writing.
-2. Record the turn id, the runner pid that served it, and that both tool results returned. Read `custom_direction` row counts before and after; they must be unchanged.
+2. Record the turn id, the runner pid that served it, and that both tool results returned. Read row counts of `bot_custom_direction_reviews`, `_amendments`, `_progress` and `_fences` before and after; they must be unchanged (`inspect` runs `collect()` in `server/src/bots/customDirection.ts:106`, which has no INSERT/UPDATE/DELETE).
 - Owner: a6e39d6e.
 
 **Gate 3. Executor and order.** One executor: a6e39d6e, inside a window approved in Nick's own words. Command: `npm run restart -- --maintenance-approved veneer-pro veneer-pro-runner` (web then runner), run once, with section 6 UNKNOWN handling. No waiter may be armed by anyone for this set. If 852806d0 re-arms one, executor ownership is unresolved again, and this packet stops until it is settled.
