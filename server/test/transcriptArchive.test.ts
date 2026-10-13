@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { ConversationRow } from '../src/db/db.js';
 import { createConversationManager } from '../src/runtime/conversationManager.js';
@@ -72,6 +72,14 @@ function makeArchive(adapters: Record<string, ProviderAdapter> = { claude: fakeA
 }
 
 describe('transcript archive', () => {
+  it.skipIf(process.platform !== 'darwin')('uses native macOS cloning rather than the unsupported libuv copy flag', async () => {
+    writeNative('native-clone',['original']);
+    const copy = vi.spyOn(fsp,'copyFile');
+    try {
+      expect(await makeArchive().archive('claude',{cwd:'/tmp',nativeSessionId:'native-clone'})).toBe('archived');
+      expect(copy).not.toHaveBeenCalled();
+    } finally {copy.mockRestore();}
+  });
   it('keeps archive and restored files independent when copies share disk blocks', async () => {
     const native = writeNative('clone', ['original']);
     const archive = makeArchive();

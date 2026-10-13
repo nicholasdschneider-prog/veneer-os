@@ -138,6 +138,13 @@ prerequisites; see [the exact contract and setup flow](docs/purchase-timing-veri
 | `VP_TERM_PORT` | `3103` | loopback IPC for the terminal service |
 | `VP_CLAUDE_BIN` / `VP_CODEX_BIN` / `VP_GROK_BIN` | `claude` / `codex` / `grok` | the installer pins these to the service home's `.local/bin` |
 
+Automatic dispatch also pauses below 10 GiB of available data-volume space (or
+when the measurement fails), and resumes with at least 12 GiB available. Existing
+turns and direct user actions continue. This protects headroom; it is not a disk
+quota and does not delete data. Routine runner restarts are refused while any
+turn is active. Use a scoped web restart for web-only changes; an active-turn
+override requires an explicitly authorized interruption.
+
 ### Turn limits
 
 | var | default | notes |

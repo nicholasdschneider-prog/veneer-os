@@ -18,6 +18,7 @@
 
 import fs from 'node:fs';
 import { inspectTunnel, inspectPublicEdge } from './tunnel-health.mjs';
+import { assertRunnerRestartSafe } from './restart-safety.mjs';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -58,7 +59,8 @@ const dataDir = rawDataDir.startsWith('~') ? path.join(os.homedir(), rawDataDir.
 const args = process.argv.slice(2);
 const checkOnly = args.includes('--check');
 const healthOnly = args.includes('--health-check');
-const requested = args.filter((arg) => arg !== '--check' && arg !== '--health-check');
+const allowActive = args.includes('--allow-active-turns');
+const requested = args.filter((arg) => !['--check', '--health-check', '--allow-active-turns'].includes(arg));
 const unknown = requested.filter((name) => !ALL_SERVICES.includes(name));
 if (unknown.length) {
   console.error(`unknown service(s): ${unknown.join(', ')}`);
@@ -307,6 +309,10 @@ async function restartLaunchdService(service) {
 }
 
 async function restart(service) {
+  if (service === 'veneer-pro-runner') {
+    try { assertRunnerRestartSafe({ targets: [service], dataDir, serverPackage, allowActive }); }
+    catch (error) { console.error(`[restart] blocked: ${error.message}`); return false; }
+  }
   if (service in LAUNCHD_SERVICES) return restartLaunchdService(service);
   const oldPid = livePid(service);
   if (oldPid === null) {
@@ -432,6 +438,11 @@ if (healthOnly) process.exit(await verifyConnectivity() ? 0 : 1);
 if (!checkServiceRuntime()) process.exit(1);
 warnForeignCodexHome();
 if (checkOnly) process.exit(0);
+
+// Check the entire plan before restarting even the web service. Recheck the
+// runner immediately before signaling it, since new work can arrive meanwhile.
+try { assertRunnerRestartSafe({ targets, dataDir, serverPackage, allowActive }); }
+catch (error) { console.error(`[restart] blocked: ${error.message}`); process.exit(1); }
 
 let failed = false;
 for (const service of targets) {

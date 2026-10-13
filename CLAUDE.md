@@ -49,6 +49,20 @@ Scope tests while iterating; run the full set before building. Dev loop: `VP_IDE
 `DATA_DIR/run/<service>.pid` files and kickstarts `com.veneer.browser-manager`; never call
 `launchctl` directly for these.
 
+Restart only services affected by the change. A routine runner restart must wait
+for active turns to finish; `scripts/restart.mjs` refuses it while turns are active.
+Never launch a detached watcher that eventually forces a restart on timeout.
+`--allow-active-turns` is for a human-authorized interruption/emergency recovery,
+not a way to finish a normal deployment. If work cannot drain, report the pending
+deployment and coordinate a maintenance window.
+
+Use a dedicated temporary directory for build/test copies and clean it in a
+`finally` block or shell `trap` when finished. Retain useful reports in the project,
+not full copied repositories, node_modules, or production-database test copies.
+Before removing old worktrees, check ownership, active processes, uncommitted
+changes, and that their commits are retained. Never prune business artifacts,
+conversation history, credentials, or backups as generic cache cleanup.
+
 ## launchd services
 
 | label | runs |

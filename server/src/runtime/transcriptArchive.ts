@@ -1,9 +1,14 @@
 import fs from 'node:fs/promises';
 import { constants, type Stats } from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { ConversationRow } from '../db/db.js';
 import { proClaudeConfigDir } from '../homes.js';
+import { isMacOS } from '../platform.js';
 import type { ProviderAdapter } from '../providers/types.js';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * Veneer-owned copies of provider-native transcript files.
@@ -58,8 +63,10 @@ async function copyAtomic(from: string, to: string, mtime: Date, atime: Date): P
   await fs.mkdir(dir, { recursive: true });
   const tmp = path.join(dir, `.${path.basename(to)}.${process.pid}.${Date.now()}.tmp`);
   try {
-    // Share blocks on APFS while keeping independent files; fall back elsewhere.
-    await fs.copyFile(from, tmp, constants.COPYFILE_FICLONE);
+    // libuv's FICLONE flag silently falls back to a full copy on this Mac.
+    // macOS cp -c uses clonefile(2), preserving independent files on APFS.
+    if (isMacOS()) await execFileAsync('/bin/cp', ['-c', from, tmp]);
+    else await fs.copyFile(from, tmp, constants.COPYFILE_FICLONE);
     await fs.utimes(tmp, atime, mtime);
     await fs.rename(tmp, to);
   } catch (err) {

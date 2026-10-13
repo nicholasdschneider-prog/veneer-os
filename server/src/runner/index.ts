@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { statfsSync } from 'node:fs';
 import { loadEnvFile } from '../envFile.js';
 import { loadConfig } from '../config.js';
 import { migrateClaudeConfigFile } from '../homes.js';
@@ -137,7 +138,10 @@ manager.bus.on('status', (conversationId: string, status: string) => {
 });
 // Two seconds keeps provider-triggered automations responsive; schedule checks
 // are cheap and share the same durable tick.
-const canDispatchBackground = createBackgroundAdmission(db, Number(process.env.VP_BACKGROUND_ACTIVE_LIMIT ?? 4));
+const canDispatchBackground = createBackgroundAdmission(db, Number(process.env.VP_BACKGROUND_ACTIVE_LIMIT ?? 4), () => {
+  const disk = statfsSync(config.dataDir);
+  return disk.bavail * disk.bsize;
+});
 const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000, canDispatch: canDispatchBackground });
 const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bus, tickMs: 2_000,
   // A dependency reply must still reach its parent at capacity. Ordinary
