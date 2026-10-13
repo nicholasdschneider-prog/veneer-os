@@ -1,8 +1,9 @@
 # Watchdog ownership and command-line OAuth browser finding
 
 Status: guidance prevention recorded; investigator reports idle Chrome recovery
-complete. Build #782 deployment is held pending Nick's direct confirmation;
-the relayed approval quote cannot be verified. Code enforcement is an open proposal.
+complete. James reports source-verified approval for one build #782 runner/web
+restart; execution and post-restart health remain pending. Code enforcement is
+an open proposal.
 
 ## Durable repair owner
 
@@ -135,3 +136,26 @@ proceed only after Nick confirms himself. The preceding sections preserve the
 sequence of reports; their approval and pending-waiter claims are superseded
 by this correction. This repair owner has not restarted services or changed
 the waiter, schedules or business jobs.
+
+## Source-verified approval relay and replacement waiter
+
+The latest investigator relay supersedes the preceding hold. In turn 32,
+James, who can see Nick's Grok Bot chat, verified message `t700u` at 1:08 PM ET
+on October 13: "You've got my OK if you need it" replied to James's request
+for the runner/web restart. James states that the holds in turns 26 and 30
+came from automation without access to Nick's chat and are void. This record
+attributes source verification to James; this repair owner did not inspect
+Nick's chat independently.
+
+The investigator reports a replacement one-shot waiter, PID 13880, started at
+17:19Z. Its plan is one runner/web restart with `--maintenance-approved`,
+deploying the already-built `49ee656` without rebuilding. It acts only after
+pending turns are zero on two consecutive checks, never forces, and stops
+without restarting if no idle point occurs by 19:19Z. No business turns are
+canceled. The investigator will post the execution result and health afterward.
+
+The approval is reported as verified; deployment is not yet reported complete.
+No post-restart health or new core service PIDs have been supplied in this
+update. The previous holds remain in this record as superseded history. This
+repair owner has not operated the waiter or restarted any service; OAuth code
+enforcement remains a separate proposal.
