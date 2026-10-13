@@ -134,6 +134,34 @@ describe('business fleet enrollment and permissions', () => {
       'immutable',
     );
   });
+  it('enrolls a flat subteam with no lead and keeps the reporting rules', () => {
+    const flat = [
+      bots[0],
+      { conversation_id: 'grant', name: 'Grant', role: 'bot' },
+      { conversation_id: 'nora', name: 'Nora', role: 'bot', subteam: 'CS' },
+    ];
+    expect(() =>
+      s.bulk(bot, {
+        mode: 'preview', team_id: teamId, request_key: 'orphan',
+        bots: [bots[0], { ...flat[2], reports_to: 'grant' }],
+      }),
+    ).toThrow('Reporting parent must be a lead');
+    expect(() =>
+      s.bulk(bot, {
+        mode: 'preview', team_id: teamId, request_key: 'two-leads',
+        bots: [bots[0], bots[1], { ...bots[1], conversation_id: 'nora', name: 'Nora' }],
+      }),
+    ).toThrow('Subteam already has a lead');
+    const p = s.bulk(bot, { mode: 'preview', team_id: teamId, request_key: 'flat', bots: flat });
+    apply(p.preview_id);
+    expect(
+      db.prepare('SELECT conversation_id,role,subteam,reports_to FROM business_bot_members ORDER BY conversation_id').all(),
+    ).toEqual([
+      { conversation_id: 'grant', role: 'bot', subteam: '', reports_to: null },
+      { conversation_id: 'henry', role: 'coordinator', subteam: '', reports_to: null },
+      { conversation_id: 'nora', role: 'bot', subteam: 'CS', reports_to: null },
+    ]);
+  });
   it('rejects duplicate, foreign, unapproved and changed enrollment without partial writes', () => {
     expect(() =>
       s.bulk(bot, {

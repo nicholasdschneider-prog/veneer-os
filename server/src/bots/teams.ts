@@ -165,8 +165,7 @@ export function createTeamService(db: Database.Database) {
       if (b.role === 'coordinator' && (b.reports_to || b.subteam))
         throw new BotError(400, 'Coordinator is outside reporting subteams');
       if (b.role === 'lead' && !b.subteam) throw new BotError(400, 'Lead requires a subteam');
-      if (b.role === 'bot' && b.subteam && !b.reports_to)
-        throw new BotError(400, 'Subteam bots require their lead');
+      // A subteam may be flat: its bots carry the subteam with no lead above them.
       if (
         b.role === 'lead' &&
         all.filter((p) => p.role === 'lead' && p.subteam === b.subteam).length > 1
