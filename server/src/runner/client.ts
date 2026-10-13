@@ -199,6 +199,26 @@ export interface RunnerClient {
 }
 
 const RECONNECT_MIN_MS = 500;
+const READ_RETRY_DELAY_MS = 200;
+/** RPCs that only read runner state; one retry after a socket failure cannot repeat an effect. */
+export const READ_ONLY_RPCS: ReadonlySet<string> = new Set([
+  '/rpc/status', '/rpc/activity', '/rpc/isLive', '/rpc/queueSnapshot', '/rpc/snapshot',
+  '/rpc/historyPage', '/rpc/historyRecord', '/rpc/listSessionFiles', '/rpc/listModels',
+  '/rpc/listWakeups', '/rpc/listBuildQueue', '/rpc/buildQueueHistory', '/rpc/getQuestion',
+]);
+
+/** Socket failure text with its cause; effectful calls say whether the runner may have acted. */
+export function runnerUnreachableMessage(path: string, err: unknown): string {
+  const error = err as Error & { cause?: { code?: unknown } };
+  const code = typeof error?.cause?.code === 'string' ? error.cause.code : null;
+  const base = `runner unreachable (${path}): ${error?.message ?? String(err)}${code ? ` (${code})` : ''}`;
+  if (READ_ONLY_RPCS.has(path)) return base;
+  // A refused connection never reached the runner. Any other socket failure may
+  // have happened after the request was received, so the outcome is unknown.
+  return code === 'ECONNREFUSED'
+    ? `${base}; not delivered`
+    : `${base}; outcome unknown, read the current state before any retry`;
+}
 const RECONNECT_MAX_MS = 10_000;
 
 export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; dataDir: string }): RunnerClient {
@@ -212,15 +232,22 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
 
   async function rpc<T>(path: string, body: Record<string, unknown>): Promise<T> {
     let res: Response;
+    const send = () => fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', [IPC_SECRET_HEADER]: secret() },
+      body: JSON.stringify(body),
+    });
     try {
-      res = await fetch(`${baseUrl}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', [IPC_SECRET_HEADER]: secret() },
-        body: JSON.stringify(body),
-      });
+      try {
+        res = await send();
+      } catch (err) {
+        // A reset or refused socket on a pure read is safe to ask once more.
+        if (!READ_ONLY_RPCS.has(path)) throw err;
+        await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS));
+        res = await send();
+      }
     } catch (err) {
-      // Connection refused / DNS / socket error — runner is down or restarting.
-      throw new Error(`runner unreachable (${path}): ${(err as Error).message}`);
+      throw new Error(runnerUnreachableMessage(path, err));
     }
     if (!res.ok) {
       // The IPC server puts the real failure in the body ({error: message});

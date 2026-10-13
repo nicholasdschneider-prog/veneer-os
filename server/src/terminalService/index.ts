@@ -1,4 +1,5 @@
 import { loadEnvFile } from '../envFile.js';
+import { installTypeOfServiceGuard } from '../net/typeOfServiceGuard.js';
 import { loadConfig } from '../config.js';
 import { openDb } from '../db/db.js';
 import { createTerminalServer } from './server.js';
@@ -6,6 +7,8 @@ import { createShutdown } from '../shutdown.js';
 import { writePidFile } from '../servicePid.js';
 
 // Before config: launchd cannot inject an env file, so the service reads it.
+// Before anything opens a socket: an undici TOS EINVAL must fail one request, not the process.
+installTypeOfServiceGuard();
 loadEnvFile();
 const config = loadConfig();
 const db = openDb(config.dataDir);

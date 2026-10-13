@@ -19,6 +19,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { loadEnvFile } from './envFile.js';
+import { installTypeOfServiceGuard } from './net/typeOfServiceGuard.js';
+import { probeRunnerRpc } from './runner/rpcProbe.js';
 import { loadConfig, warnIfDevIdentity } from './config.js';
 import { migrateClaudeConfigFile } from './homes.js';
 import { openDb } from './db/db.js';
@@ -67,6 +69,8 @@ import { createSupermemoryProvisioner } from './memory/provision.js';
 import { LiveVoiceService } from './voice/service.js';
 
 // Before config: launchd cannot inject an env file, so the service reads it.
+// Before anything opens a socket: an undici TOS EINVAL must fail one request, not the process.
+installTypeOfServiceGuard();
 loadEnvFile();
 // Web hosts the provider sign-in flows, which also pin CLAUDE_CONFIG_DIR, so it
 // carries an existing install's `.claude.json` forward too. Race-safe and
@@ -208,6 +212,12 @@ app.get('/healthz', async (_req, res) => {
   } catch (error) {
     res.status(503).json({ ok: false, web: 'healthy', runner: 'unavailable', error: (error as Error).message });
   }
+});
+// Separate from /healthz on purpose: this exercises the authenticated POST
+// /rpc/* path web depends on, which the runner's open GET /healthz does not.
+app.get('/healthz/runner-rpc', async (_req, res) => {
+  const result = await probeRunnerRpc((convId) => manager.statusOf(convId));
+  res.status(result.ok ? 200 : 503).json(result);
 });
 // Provider ingress is public by design and authenticates with Composio's HMAC
 // signature, not a human Cloudflare Access identity.

@@ -2,6 +2,7 @@ import { coordinationOwner } from '../coordination/store.js';
 import { EventEmitter } from 'node:events';
 import { statfsSync } from 'node:fs';
 import { loadEnvFile } from '../envFile.js';
+import { installTypeOfServiceGuard } from '../net/typeOfServiceGuard.js';
 import { loadConfig } from '../config.js';
 import { migrateClaudeConfigFile } from '../homes.js';
 import { openDb } from '../db/db.js';
@@ -44,6 +45,8 @@ import type { SpareAccount } from '../spareAllowance/policy.js';
  * so in-flight turns survive a ship. Web talks to it over runner/client.ts.
  */
 // Before config: launchd cannot inject an env file, so the service reads it.
+// Before anything opens a socket: an undici TOS EINVAL must fail one request, not the process.
+installTypeOfServiceGuard();
 loadEnvFile();
 // The runner owns every agent spawn, so it is the one process that pins
 // CLAUDE_CONFIG_DIR. Carry an existing install's `.claude.json` into that
