@@ -426,3 +426,57 @@ Either of these would do:
 - Explicit reviewer acceptance of an unflagged boot against a DB copy whose dispatchable rows (pending turns, wakeups, scheduled tasks, build queue, routines, call and notification queues) are neutralized first, under a sandbox that denies non-loopback network and writes outside the temp tree. That proves less than "exactly as live".
 
 The decision belongs to the BUILD801 reviewer. Gate 1 remains UNMET either way.
+
+## 17. Build #815: web crash repair (undici `setTypeOfService` EINVAL), commit `929ae3e`, 23:35–00:05Z. Source only; live dist NOT rebuilt
+
+Requested by the BUILD801 owner (6a752161, thread 73489c19); owner a6e39d6e. Not done: restart, rollback, restore, recovery or queue change. Sage's UNKNOWN custody and the BUILD801 exclusions are untouched. Readiness stays withdrawn.
+
+**Root cause.**
+- Node v24.21.0's bundled undici, in `writeH1` (`undici:8020-8021`), calls `socket.setTypeOfService(request.typeOfService)` on the first write of every HTTP/1 request. That runs inside the socket `connect` handler (`undici:3337-3342`).
+- `net.Socket.prototype.setTypeOfService` throws on any non-Windows error, and undici does not catch it.
+- On macOS, `setsockopt(IP_TOS)` returns EINVAL when the peer has already reset the connection. That happens when the reset lands while this process's event loop is stalled between the handshake and the `connect` callback.
+- Web has such stalls: synchronous SQLite busy waits (`database is locked` from james-link 23:06–23:19Z) and other synchronous work.
+- **Reproduced.** A peer that resets on accept, running out of process, plus a client that stalls 20 ms between requests, gives `UNCAUGHT EINVAL setTypeOfService`. This is now a regression test.
+- **History.** 88 web crashes since 2026-09-29, 33 of them since 2026-10-12. Each one respawned web through launchd from the dist on disk. The runner log has none.
+
+**Relation to the RPC failures.** They share a mechanism: outbound loopback sockets failing while web stalls. They do not provably share a trigger.
+- 2030 of the 2092 `runner unreachable` lines are `/rpc/status` and 60 are `/rpc/listSessionFiles`. The old message dropped the cause code, so the specific socket error (refused, reset or connect timeout) cannot be recovered from the log.
+- Most of these lines are older. Only 0–20 appear between each crash and the next respawn.
+- Which peer reset the socket that crashed web is not recorded either; the crash path is in shared undici code used by every fetch.
+- A green runner `GET /healthz` does not exercise the authenticated `POST /rpc/*` path.
+
+**Fix (`929ae3e`).**
+- `server/src/net/typeOfServiceGuard.ts` wraps `net.Socket.prototype.setTypeOfService` and ignores only `EINVAL` from `syscall:'setTypeOfService'`. Type of service is best effort, and Node already ignores it on Windows.
+  - The reset socket then fails its write, and that one request rejects normally (ECONNRESET or EPIPE).
+  - Every other error still throws. It logs at most once a minute, with a running count.
+  - It is installed first in web, runner, app-runner and terminal entry points.
+- Runner RPC client (`server/src/runner/client.ts`):
+  - Failures carry the cause code.
+  - Only the 13 read-only RPCs in `READ_ONLY_RPCS` retry, once after 200 ms.
+  - Effectful RPCs are never re-sent. A refused connection says `not delivered`; any other socket failure says `outcome unknown, read the current state before any retry`.
+- New `GET /healthz/runner-rpc` in web runs an authenticated read-only `/rpc/status` probe for an id that matches no chat. It returns 200/503 with `runner_rpc` and latency.
+  - `/healthz` itself is unchanged, so `restart.mjs`, `boot-probe` and `boot-smoke` keep their semantics.
+- `CUSTOMER_EMAIL_NATIVE_ARTIFACT_HASH` was regenerated (`index.ts` is pinned). `VP_CUSTOMER_EMAIL_REGISTRY_FILE` is unset, so no live registration depends on it.
+
+**Validation, under the host lock with a single worker, nothing overlapping.**
+- `npm run typecheck` passed.
+- `npm test`: installer 32/32, server 4063 passed / 16 skipped (300 files), web 1015 (146 files), browser-manager 52/52.
+- `npm run build` ran **only in a trap-cleaned temp worktree at `929ae3e`**: exit 0 ([build-815-isolated.log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/build-815-isolated.log)). The guard is present in all four compiled entry points.
+- Live `server/dist` manifest before and after: `48a578124daf6b2af4547b2b6a4726d71775f48c259013989911a849ebbcef1a`, the 155b497 pin, unchanged.
+- **Why live dist was not rebuilt:** any rebuild of the shared `server/dist` is an unapproved web deploy at the next crash.
+
+**Effect on the deployment packet.**
+- Cumulative source scope is now **`1b8561a..929ae3e`**, nine shipped commits. The 155b497 table in section 13 plus:
+
+| commit | build | change |
+|---|---|---|
+| `929ae3e` | #815 | Keep services alive when undici's setTypeOfService hits a reset socket (+ runner RPC cause/retry/UNKNOWN reporting, `/healthz/runner-rpc`) |
+
+- Live dist is still the 155b497 artifact, and web pid 98183 runs it. **The crash is not fixed in production.** Web can still crash, and it will keep respawning from that same 155b497 dist until an approved window.
+- Before any approved restart, the packet must:
+  1. Rebuild `server/dist` and `web/dist` at the then-current source.
+  2. Re-pin both manifests and replace the 155b497 guard/source comparisons with the new SHA.
+  3. Name all nine commits in the approval.
+- Web and runner are the affected services for the crash. App-runner and terminal pick up the guard only when they next restart; they are not in this restart scope.
+- After the restart, add `GET /healthz/runner-rpc` = 200 to the readback in section 6. It is a reachability check only; it does not replace gates 2 and 4.
+- Gate 1 stays UNMET. No maintenance or window question is asked here.
