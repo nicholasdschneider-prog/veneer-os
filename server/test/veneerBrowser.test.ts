@@ -168,13 +168,56 @@ describe('Veneer Browser manager', () => {
     expect(JSON.stringify(db.prepare('SELECT * FROM browser_controller_recovery').all())).not.toContain('secret-bearing');
   });
 
+  it('lets the original owner settle an UNKNOWN recovery after its Chrome process was replaced, without replay or audit rewrite',async()=>{
+    const req=await recoveryFixture();
+    reconnectController.mockRejectedValueOnce(new Error('fixture uncertainty'));
+    await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('UNKNOWN');
+    const current='c'.repeat(64);
+    remote.status.mockResolvedValue({active:true,runtimeId:req.runtime_id,processGeneration:current});
+    const next={...req,process_generation:current,request_key:'7d1f0c1e-2b8a-4f43-9b0e-1f7a3c2d9e10'};
+    // Still fenced: generic commands, a foreign owner, drifted scope, a stale process claim, a live controller.
+    await expect(manager.runCommand(1,'conv-1',['snapshot'])).rejects.toThrow('unresolved');
+    await expect(manager.reconnectAutomationController(2,'conv-1',next)).rejects.toThrow();
+    await expect(manager.reconnectAutomationController(1,'conv-1',{...next,source_generation:99})).rejects.toThrow();
+    await expect(manager.reconnectAutomationController(1,'conv-1',{...next,runtime_id:'other-runtime'})).rejects.toThrow();
+    await expect(manager.reconnectAutomationController(1,'conv-1',{...next,process_generation:req.process_generation,request_key:'8e2a1d2f-3c9b-4a54-8c1f-2a8b4d3eaf21'})).rejects.toThrow('runtime');
+    await expect(manager.reconnectAutomationController(1,'conv-1',next)).rejects.toThrow('still present');
+    expect(db.prepare('SELECT outcome FROM browser_controller_recovery ORDER BY id').all()).toEqual([{outcome:'started'},{outcome:'unknown'}]);
+    settleController.mockResolvedValue(true);
+    runBrowser.mockClear();
+    expect(await manager.reconnectAutomationController(1,'conv-1',next)).toMatchObject({outcome:'detached',resolvedUnknown:true,processReplaced:true,earlierOperation:'UNKNOWN',retryPriorOperation:false});
+    expect(reconnectController).toHaveBeenCalledOnce();
+    expect(remote.stop).not.toHaveBeenCalled();
+    expect(runBrowser).not.toHaveBeenCalled();
+    const rows=db.prepare('SELECT request_key,process_generation,outcome FROM browser_controller_recovery ORDER BY id').all();
+    expect(rows).toEqual([
+      {request_key:req.request_key,process_generation:req.process_generation,outcome:'started'},
+      {request_key:req.request_key,process_generation:req.process_generation,outcome:'unknown'},
+      {request_key:req.request_key,process_generation:req.process_generation,outcome:'detached'},
+      {request_key:next.request_key,process_generation:current,outcome:'started'},
+      {request_key:next.request_key,process_generation:current,outcome:'detached'}]);
+    expect(db.prepare('SELECT original_request_key,resolving_request_key,original_process_generation,current_process_generation FROM browser_controller_recovery_process_replaced').all())
+      .toEqual([{original_request_key:req.request_key,resolving_request_key:next.request_key,original_process_generation:req.process_generation,current_process_generation:current}]);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM browser_controller_recovery_resolution').get()).toEqual({n:0});
+    expect(()=>db.prepare('DELETE FROM browser_controller_recovery_process_replaced').run()).toThrow('immutable');
+    expect(await manager.reconnectAutomationController(1,'conv-1',next)).toMatchObject({replay:true,outcome:'detached'});
+    // Only the original owner's tab list and snapshot come next; effectful commands stay blocked.
+    await expect(manager.runCommand(1,'conv-1',['click','@e1'])).rejects.toThrow('fresh snapshot');
+    await expect(manager.runCommand(2,'conv-1',['snapshot'])).rejects.toThrow();
+    expect(runBrowser).not.toHaveBeenCalled();
+    // A further process change after settlement is refused, never auto-restarted.
+    remote.status.mockResolvedValue({active:true,runtimeId:req.runtime_id,processGeneration:'d'.repeat(64)});
+    await expect(manager.runCommand(1,'conv-1',['snapshot'])).rejects.toThrow('process changed');
+    expect(remote.stop).not.toHaveBeenCalled();
+  });
+
   it('lets the original owner settle an UNKNOWN recovery with a new key only once the controller is gone on the same process',async()=>{
     const req=await recoveryFixture();
     reconnectController.mockRejectedValueOnce(new Error('fixture uncertainty'));
     await expect(manager.reconnectAutomationController(1,'conv-1',req)).rejects.toThrow('UNKNOWN');
     const next={...req,request_key:'5179c156-35cb-4c52-97ec-504f77f55b96'};
     await expect(manager.reconnectAutomationController(1,'conv-1',next)).rejects.toThrow('still present');
-    await expect(manager.reconnectAutomationController(1,'conv-1',{...next,process_generation:'b'.repeat(64)})).rejects.toThrow('unresolved');
+    await expect(manager.reconnectAutomationController(1,'conv-1',{...next,process_generation:'b'.repeat(64)})).rejects.toThrow('runtime');
     await expect(manager.reconnectAutomationController(2,'conv-1',next)).rejects.toThrow();
     remote.status.mockResolvedValueOnce({active:true,runtimeId:req.runtime_id,processGeneration:'b'.repeat(64)});
     settleController.mockResolvedValue(true);

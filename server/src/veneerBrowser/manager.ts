@@ -1537,12 +1537,15 @@ export class VeneerBrowserManager {
           request.source_generation,request.runtime_id,request.process_generation,request.request_key,digest,outcome);
       if (held) {
         // An earlier recovery ended UNKNOWN. Its original owner may settle it with
-        // a new key, on the very same Chrome process, once the controller is
-        // provably gone. Chrome is never stopped and nothing is replayed.
+        // a new key once the controller is provably gone: on the very same Chrome
+        // process, or on the same runtime after the process it ran against was
+        // replaced (the request must then name the current process, which
+        // checkRuntime verifies). Chrome is never stopped and nothing is replayed.
         const latest = this.db.prepare('SELECT request_key,outcome FROM browser_controller_recovery WHERE conversation_id=? AND clone_id=? ORDER BY id DESC LIMIT 1').get(conversationId,row.clone_profile_id) as {request_key:string;outcome:string};
+        const replaced = held.process_generation !== request.process_generation;
         const sameScope = latest.request_key === held.request_key && latest.outcome === 'unknown' && held.actor_user_id === userId
           && held.source_profile_id === request.source_profile_id && held.source_generation === request.source_generation
-          && held.runtime_id === request.runtime_id && held.process_generation === request.process_generation;
+          && held.runtime_id === request.runtime_id;
         if (!sameScope) throw new Error('Earlier controller recovery is unresolved; no new recovery or operation permitted.');
         await checkRuntime();
         if (!await this.settleController({conversationId,remoteSessionId:row.clone_profile_id})) {
@@ -1557,7 +1560,10 @@ export class VeneerBrowserManager {
             (conversation_id,actor_user_id,clone_id,source_profile_id,source_generation,runtime_id,process_generation,request_key,request_hash,outcome)
             VALUES (?,?,?,?,?,?,?,?,?,'detached')`).run(conversationId,userId,row.clone_profile_id,held.source_profile_id,held.source_generation,
               held.runtime_id,held.process_generation,held.request_key,held.request_hash);
-          this.db.prepare(`INSERT INTO browser_controller_recovery_resolution
+          if (replaced) this.db.prepare(`INSERT INTO browser_controller_recovery_process_replaced
+            (conversation_id,actor_user_id,clone_id,original_request_key,resolving_request_key,original_process_generation,current_process_generation)
+            VALUES (?,?,?,?,?,?,?)`).run(conversationId,userId,row.clone_profile_id,held.request_key,request.request_key,held.process_generation,request.process_generation);
+          else this.db.prepare(`INSERT INTO browser_controller_recovery_resolution
             (conversation_id,actor_user_id,clone_id,original_request_key,resolving_request_key,reason) VALUES (?,?,?,?,?,'controller_gone_same_process')`)
             .run(conversationId,userId,row.clone_profile_id,held.request_key,request.request_key);
           audit('started');
@@ -1565,7 +1571,7 @@ export class VeneerBrowserManager {
         }).immediate();
         this.runtimeCache.delete(conversationId);
         this.probeAddresses.delete(conversationId);
-        return {execute:false,replay:false,outcome:'detached',resolvedUnknown:true,reconnectPending:true,earlierOperation:'UNKNOWN',retryPriorOperation:false};
+        return {execute:false,replay:false,outcome:'detached',resolvedUnknown:true,processReplaced:replaced,reconnectPending:true,earlierOperation:'UNKNOWN',retryPriorOperation:false};
       }
       await checkRuntime();
       this.db.transaction(() => {
