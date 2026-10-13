@@ -3,6 +3,19 @@
 Owner: Platform Dev a6e39d6e (original BUILD806 owner). Prepared 21:26–21:45Z (17:26–17:45 ET).
 No restart, recovery, credential change, source edit or queue change was made. No deploy approval is requested.
 
+> **Status 2026-10-13 22:41Z: historical packet. Not ready, and not valid for the current tree.**
+>
+> - The validation and pins below are for source `db8b7f0` / `7a74def` only. The shared tree now carries uncommitted #812 QBO edits:
+>   - `server/src/qbo/helperProcess.ts`
+>   - `server/src/qbo/phaseBoundary.ts`
+>   - `server/test/qboPhases.test.ts`
+>   - `server/src/featureGuide/catalog.ts`
+>   - `docs/bot-feature-guide.md`
+> - No restart executor is armed. overnight3 (42176) and overnight4 (53120) are absent; the #790 owner stopped overnight4 at 22:00:05Z after the web-first reconciliation. The runner-first finding in section 12 is therefore obsolete.
+> - The prior-artifact gate is still not met.
+> - The 21:39:53Z backup is now more than 60 minutes old. Retake it within 15 minutes before any actually approved restart.
+> - After #812 finishes, scope, pins, validation and evidence are to be re-established for the new cumulative set under the existing owner queue.
+
 ## 1. Cumulative source pin
 
 | | |
