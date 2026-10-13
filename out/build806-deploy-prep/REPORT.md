@@ -507,3 +507,41 @@ Requested by the BUILD801 owner (6a752161, thread 73489c19); owner a6e39d6e. Not
 **Precision correction to section 11.** `phaseBoundary.read` is SELECT-only **for the QBO ledgers**. The shared `resolveAgentTokenContext` (`runtime/agentTokens.ts:52`) runs `DELETE FROM agent_tokens WHERE expires_at < now` on every authenticated call. The HTTP path is therefore not "zero DB writes" overall; the probe's no-change proof covers only the three QBO ledgers.
 
 **Not installation evidence.** Section 17 records that #815 owns the crash repair. The web respawn onto the 155b497 dist, with 0178/0179 recorded live at 22:54:59Z and 22:55:01Z, does not satisfy the approved-installation, postcheck or caller-acceptance constraints. The #812 receipt stays historical. Still pending: timeout persistence, parent/runtime custody, adapters and runtime acceptance.
+
+## 19. Gate 3 and gate 4 owner replies, and #815 closeout state, 23:50Z (read-only)
+
+**State after #815.**
+- The build queue has no Veneer build, running or queued. The host development lock is absent. The tracked tree is clean at `e2e2b98`.
+- `git diff 929ae3e HEAD` over the shipped source paths is empty.
+- Live `server/dist` is still `48a57812…cef1a` and `web/dist` is still `02d52cae…5983`: the 155b497 artifact. #815 was not installed.
+- Runtime:
+  - web pid 98183 started 23:19:52Z. It is a launchd respawn after a crash, running the 155b497 dist. `/healthz` returns 200.
+  - runner pid 34641 started 16:05:13Z and runs the old, unretained pre-0176 artifact.
+- **Correction to section 17's header:** #815 actually ran 23:35–23:48Z (commits `929ae3e` at 23:46:16Z, `99d90b0` at 23:47:13Z, `e2e2b98` at 23:48:27Z). "00:05Z" was wrong.
+- The source is stable at `929ae3e`, but a re-pin of the deployable artifact has to wait for an approved window. Rebuilding the shared dist now would make the next web crash respawn into an unapproved deploy (section 17). The 155b497 evidence in section 13 stays as historical record.
+
+**Gate 3. Reply from 852806d0, thread 9d6d01d1, 23:20:32Z, verbatim:**
+> (a): I will not re-arm or run any waiter or restart for 1b8561a..155b497 (no waiter is running now). a6e39d6e is the single executor, web then runner, only in a window Nick approves in his own words.
+
+- Closed for the 155b497 scope.
+- The cumulative scope is now `..929ae3e`. The commitment does not name it, but it covers any waiter or restart "for this cumulative set". No waiter process is running at 23:50Z.
+- Treat it as closed unless 852806d0 says otherwise. I will not send a re-ask just to widen the SHA wording.
+
+**Gate 4. Reply from Clara (7f83ff8e), thread 0ad0e4a8, 23:21:17Z, verbatim:**
+> Willing. I don't yet know whether this session can make an authenticated local API call with its own agent token. I'll make no call before the future approved restart and won't print, share, or borrow a token.
+
+- Supersedes section 18's "Clara proposed, not accepted".
+- Caller: **Clara, willing**.
+- Eligibility: active `bot_registrations` row present.
+- Transport feasibility, i.e. a permitted exec path and the location of her own token file, is **UNVERIFIED**.
+- Runtime lookup: **UNVERIFIED**.
+- Section 18's transport is the only allowed path. If at probe time Clara cannot establish her own token location through permitted tools, record *transport infeasible with current tools*.
+- Owner of the transport answer: 732adce5. Owner of the read in her own session: Clara.
+
+**Still open:**
+- Gate 1, the prior-runtime rollback gate: UNMET. The decision belongs to the BUILD801 owner 6a752161 and its reviewer.
+- Gate 4 transport and the runtime lookup: unverified.
+- The QBO operational acceptance gaps in section 18.
+- The rebuild and re-pin at the then-current source inside any approved window (section 17).
+
+Readiness stays withdrawn.
