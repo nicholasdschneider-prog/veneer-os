@@ -1,0 +1,63 @@
+copy matches backup hash
+integrity: ok
+/Users/archerclawdington/.local/share/veneer-pro-predeploy/build806-20261013/rollback-1b8561a-dist.tgz: OK
+rollback bundle matches its manifests
+bundle newest migrations: 0176_bot_lanes.sql 0177_qbo_operation_boundary.sql 
+--- B: reconstructed 1b8561a openDb on fresh live-state copy
+openDb ok journal=wal fk=1 migrations=181
+exit 0
+--- B2: again
+openDb ok journal=wal fk=1 migrations=181
+exit 0
+integrity after: ok
+--- fresh vs B (hash lines):
+identical
+--- fresh vs live pin after respawn (23:21:45Z):
+identical
+--- fresh vs 155b497 disposable forward (A):
+identical
+--- B migrations/new objects/counts/fk
+## migrations-0176+ sha256=8670573196113f4f02e5a151eb741303da062a44bb9536a31aecff8aaf3317ad
+[{"name":"0176_bot_lanes.sql","content_hash":"2b3978f73e9d50842a1fe06504d8279d70ef981e15cadcf5c0c0e64b1a9436cb"},
+{"name":"0177_qbo_operation_boundary.sql","content_hash":"abd48ba5abb5e575b78faf8c4845075e69dc257d6e8bc85b62f0e17720b720ee"},
+{"name":"0178_purchase_interrupted_recovery.sql","content_hash":"a6205c95c21865e2d2b11314d18fe4f4954c417c0e796ed6ded5c99f0ff60877"},
+{"name":"0179_qbo_phase_transport.sql","content_hash":"ec134af0060f5172723d00c8de2f71263be537e683b3a891ed137e3905ef0e5f"}]
+## new-schema-objects sha256=25b764068500507b65488b39922aa47e564a8a831eb96138ebc9b1e596963344
+[{"type":"index","name":"sqlite_autoindex_purchase_interrupted_dispositions_1","tbl_name":"purchase_interrupted_dispositions"},
+{"type":"index","name":"sqlite_autoindex_purchase_interrupted_dispositions_2","tbl_name":"purchase_interrupted_dispositions"},
+{"type":"index","name":"sqlite_autoindex_purchase_interrupted_dispositions_3","tbl_name":"purchase_interrupted_dispositions"},
+{"type":"table","name":"purchase_interrupted_dispositions","tbl_name":"purchase_interrupted_dispositions"},
+{"type":"trigger","name":"purchase_interrupted_disposition_no_delete","tbl_name":"purchase_interrupted_dispositions"},
+{"type":"trigger","name":"purchase_interrupted_disposition_no_update","tbl_name":"purchase_interrupted_dispositions"},
+{"type":"index","name":"sqlite_autoindex_purchase_interrupted_reviews_1","tbl_name":"purchase_interrupted_reviews"},
+{"type":"table","name":"purchase_interrupted_reviews","tbl_name":"purchase_interrupted_reviews"},
+{"type":"trigger","name":"purchase_interrupted_review_no_delete","tbl_name":"purchase_interrupted_reviews"},
+{"type":"trigger","name":"purchase_interrupted_review_no_update","tbl_name":"purchase_interrupted_reviews"},
+{"type":"index","name":"sqlite_autoindex_qbo_bill_observations_1","tbl_name":"qbo_bill_observations"},
+{"type":"index","name":"sqlite_autoindex_qbo_bill_observations_2","tbl_name":"qbo_bill_observations"},
+{"type":"table","name":"qbo_bill_observations","tbl_name":"qbo_bill_observations"},
+{"type":"trigger","name":"qbo_observations_no_delete","tbl_name":"qbo_bill_observations"},
+{"type":"trigger","name":"qbo_observations_no_update","tbl_name":"qbo_bill_observations"},
+{"type":"index","name":"sqlite_autoindex_qbo_v2_invocations_1","tbl_name":"qbo_v2_invocations"},
+{"type":"table","name":"qbo_v2_invocations","tbl_name":"qbo_v2_invocations"},
+{"type":"trigger","name":"qbo_v2_invocations_no_delete","tbl_name":"qbo_v2_invocations"},
+{"type":"trigger","name":"qbo_v2_invocations_no_update","tbl_name":"qbo_v2_invocations"},
+{"type":"index","name":"sqlite_autoindex_qbo_v2_phases_1","tbl_name":"qbo_v2_phases"},
+{"type":"index","name":"sqlite_autoindex_qbo_v2_phases_2","tbl_name":"qbo_v2_phases"},
+{"type":"index","name":"sqlite_autoindex_qbo_v2_phases_3","tbl_name":"qbo_v2_phases"},
+{"type":"table","name":"qbo_v2_phases","tbl_name":"qbo_v2_phases"},
+{"type":"trigger","name":"qbo_v2_phases_no_delete","tbl_name":"qbo_v2_phases"},
+{"type":"trigger","name":"qbo_v2_phases_no_update","tbl_name":"qbo_v2_phases"}]
+## count:purchase_interrupted_reviews sha256=46a21487af985df26b91f3d537f81017fe2cb048c3c86387cb98378f979e3dd0
+[{"n":0}]
+## count:purchase_interrupted_dispositions sha256=46a21487af985df26b91f3d537f81017fe2cb048c3c86387cb98378f979e3dd0
+[{"n":0}]
+## count:qbo_v2_invocations sha256=46a21487af985df26b91f3d537f81017fe2cb048c3c86387cb98378f979e3dd0
+[{"n":0}]
+## count:qbo_v2_phases sha256=46a21487af985df26b91f3d537f81017fe2cb048c3c86387cb98378f979e3dd0
+[{"n":0}]
+## count:qbo_bill_observations sha256=46a21487af985df26b91f3d537f81017fe2cb048c3c86387cb98378f979e3dd0
+[{"n":0}]
+## fk-violations sha256=46a21487af985df26b91f3d537f81017fe2cb048c3c86387cb98378f979e3dd0
+[{"n":0}]
+cleanup: removed /tmp/b814-disp.kzVP

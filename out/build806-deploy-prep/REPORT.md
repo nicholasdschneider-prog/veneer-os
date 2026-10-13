@@ -354,3 +354,75 @@ State at 23:09Z: HEAD `e4fe077`, report-only since `155b497`; tracked tree clean
 - **What does not substitute for it:** an HTTP health check replaces neither this probe nor gate 2. No minted or borrowed credential, registration, grant, provider request, invoke, reconcile, recovery or restart.
 - **Owners:** 806 (a6e39d6e) owns deployment and postcheck; 804/812 (732adce5) owns the QBO contract.
 - **Pending regardless of the lookup:** timeout persistence, sanctioned-parent and frozen-runtime custody, and authoritative adapters.
+
+## 16. Build #814: isolated boot of reconstructed 1b8561a. STOPPED at the isolation gate (no boot), with a non-boot fallback on a fresh live-state copy, 23:22–23:30Z
+
+Requested by the BUILD801 reviewer; owner a6e39d6e. This is validation only. Not done: source change, live dist change, restart, deploy, registration, token use or queue reordering. Production services, pid files, launchd and the live DB were not touched; the live DB was only read through the SQLite backup API on a read-only connection. At slot start the development lock was free and no other Veneer build was active (#811 in the separate ERVP queue was failed). Web pid 98183 and runner on 3101 answered `/healthz` healthy before the work.
+
+**Labeling.** `1b8561a` is a reconstruction rebuilt from source. It is not the prior healthy runtime, and nothing here verifies a prior-runtime rollback. **Gate 1 stays UNMET.** At most, this evidence can support a later explicit human acceptance of that limitation. Readiness stays withdrawn.
+
+### 16.1 Isolation design (read-only, from `git show 1b8561a:…`): blocker found, boot not performed
+
+The brief requires disabling every boot-time consumer through existing config flags only, and stopping if that is impossible. `server/src/config.ts` at 1b8561a has **no flag to disable any scheduler or consumer**. The only relevant inputs are ports, `DATA_DIR`, `HOME`/`VP_ENV_FILE` (env file), identity and credentials. Every consumer below starts unconditionally:
+
+| process | started at boot (1b8561a) | effect against a copy of live data |
+|---|---|---|
+| web | `index.ts:88-89` Doppler refresh + periodic start | Doppler fetch if a token store exists in DATA_DIR |
+| web | `index.ts:136` Supermemory provisioner | Provisioning / loopback calls |
+| web | `index.ts:177` page expiry | R2 deletes when Pages is configured |
+| web | `index.ts:194` generated-file backfill (10 s) | Workspace scans at absolute live paths |
+| web | `index.ts:199` `startBotWorkflows`: routines, stale-question withdraw, question rechecks, decision escalation, bot calls (`startPhoneCall`), notifications/push, search, calendar reminder worker | DB writes, Twilio calls, web push, Composio calendar reads |
+| web | `index.ts:200` `startJamesLink` | Webhook pushes to James |
+| runner | `runner/index.ts:69` Doppler refresh | as above |
+| runner | `runner/index.ts:133` `veneerBrowser.reconcile()` | Calls the browser manager (loopback 7301, live) |
+| runner | `runner/index.ts:205` spare scheduler | Claude/Codex usage reads with stored accounts |
+| runner | `runner/index.ts:206` `resumeInterruptedTurns()` | Re-runs copied pending turns, spawning provider CLIs with cwd at live workspace paths |
+| runner | `runner/index.ts:210-211` transcript sweep / retention | Writes under HOME |
+| runner | `runner/index.ts:212-215` scheduled tasks, conversation wakeups, **build queue**, huddles | Dispatches copied tasks, wakes and queued builds as agent turns |
+
+Mitigations that need no source change were considered and are feasible in part:
+- An empty temp `HOME`/`VP_SERVICE_HOME`/`DATA_DIR` holding only the DB copy.
+- `VP_ENV_FILE` pointing at a missing file.
+- Unused loopback ports.
+- `sandbox-exec` (present at `/usr/bin/sandbox-exec`), with network-outbound denied except named loopback ports and file-write denied outside the temp tree.
+
+They do **not** satisfy the brief's condition, for two reasons:
+1. The consumers are not disabled. They would run against copied business state: pending turns, wakeups, scheduled tasks, build-queue rows, routines and decisions. Those rows carry absolute paths into live workspaces, and the runner would spawn agent CLIs from them.
+2. An empty `HOME` does not prove the absence of credentials. macOS login-keychain items are per user, not per `HOME`, so a spawned provider CLI may still find a credential. The sandbox then becomes the only barrier against outbound effects.
+
+Disabling these consumers would mean a source change, such as a boot flag or a stripped-down entry point, or mutating the DB copy so it no longer matches live. Both are outside this build. **Per the brief, the boot was not run.** This is the blocker to report.
+
+### 16.2 Non-boot fallback actually run: DB open/migrate path only, against a DB that already holds 0178/0179 exactly as live
+
+- **Fresh online backup** at slot start: `~/.local/share/veneer-pro-predeploy/build806-20261013/veneer-pro-online-20261013T232347Z.db`.
+  - Method: better-sqlite3 backup API, read-only source connection, new file.
+  - File mode 0600 in the 0700 predeploy directory; it is not in `veneer-pro-backups`.
+  - Size 1,108,135,936 bytes; sha256 `601a8c18cdc235f05e0b5a01227eabf5c3e264a1c5bda9a74362e12bbf049b9a`. The hash was re-verified unchanged after the check.
+- **Check:** [disposable-rollback-check-814.sh](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disposable-rollback-check-814.sh), [log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disposable-rollback-check-814.log). It ran on a temp copy (hash-matched to the backup) that a trap deleted afterwards.
+  - Fresh copy before the check:
+    - `integrity_check` ok.
+    - Migrations through 0179, with 0178 `a6205c95…0877` and 0179 `ec134af0…ef5f`.
+    - 5 new tables and 10 triggers present.
+    - All five new ledgers 0 rows; legacy `qbo_operation_reservations` 0 and `qbo_operation_receipts` 0.
+    - FK violations 0.
+  - Postcheck hash lines on the fresh copy are identical to the live pin taken after the respawn ([pin-live-after-respawn-20261013T232145Z.hashes.txt](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/pin-live-after-respawn-20261013T232145Z.hashes.txt)). They are also identical to the 155b497 disposable forward run (`disp-A-forward-155b497`). So the BUILD801 run/task/batch/worker-start/exclusion pins are unchanged.
+  - Rollback bundle: sha256 `df45cfd5…ca18` OK, and it matches both rollback manifests. The newest migration it carries is 0177.
+  - **B / B2:** the reconstructed 1b8561a `openDb` on the live-state copy, run twice: `openDb ok journal=wal fk=1 migrations=181`, exit 0, no DRIFT and nothing pending.
+  - Afterwards `integrity_check` was ok, and the postcheck hash lines are **identical** to the before-run ([disp-814-0-fresh.hashes.txt](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disp-814-0-fresh.hashes.txt) = [disp-814-B-rollback.hashes.txt](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disp-814-B-rollback.hashes.txt)). No writes reached recovery, review or QBO tables.
+- **Not measured, because there was no boot:** `/healthz` for 1b8561a web or runner, boot logs, scheduler or consumer start, outbound attempts.
+
+**Limit of this proof (unchanged in kind from section 8).** It exercises the reconstructed candidate's DB open and migrate path against the DB state that live now has. It does not boot the old web or runner, and it is not the running bytes.
+
+### 16.3 Cleanup proof
+
+- The temp tree `/tmp/b814-disp.*` was removed by the trap; a later `ls` finds no match.
+- No process was started apart from the two short-lived `node` openDb invocations and `sqlite3`/`shasum`. Nothing was left running.
+- Retained: the fresh backup and its `.sha256` (predeploy dir, 0600), the raw `disp-814-*.txt` (predeploy dir, 0600), plus the hash-only files, script and log committed here.
+
+### 16.4 What would unblock a real isolated boot (not started; needs its own decision and queue slot)
+
+Either of these would do:
+- A source change adding an explicit isolated-boot mode that skips every consumer in 16.1. It would have to be reviewed and then built into a separate copy of 1b8561a, which makes the result no longer the reconstructed bundle byte for byte.
+- Explicit reviewer acceptance of an unflagged boot against a DB copy whose dispatchable rows (pending turns, wakeups, scheduled tasks, build queue, routines, call and notification queues) are neutralized first, under a sandbox that denies non-loopback network and writes outside the temp tree. That proves less than "exactly as live".
+
+The decision belongs to the BUILD801 reviewer. Gate 1 remains UNMET either way.
