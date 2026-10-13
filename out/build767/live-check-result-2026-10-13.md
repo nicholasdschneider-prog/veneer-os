@@ -20,3 +20,12 @@ Run with `node out/build767/live-check.mjs <platform-dev mcp-config.json> 3`.
   - runway: 33 lines across 14 threads (loopback relay; this predates #767)
   - gmail-help: 6 lines across 3 threads
   - Codex keeps too little launcher stderr to show why.
+
+## Independent read-only smoke pass (coordination thread d6001ff6, 2026-10-13)
+
+- All three catalogs were present in one Codex session, and every call succeeded:
+  - gmail-help `GMAIL_GET_PROFILE` returned help@elkhartrvparts.com (log_vNZ0KQP0h5A6).
+  - ERVP Calendar `GET_CURRENT_USER` returned nick@elkhartrvparts.com (log_5rgnwTqhfBcn).
+  - Runway `whoami` returned authenticated:true.
+- Nothing was written or generated.
+- This was a single session. It is not final acceptance, and it does not prove the intermittent startup omissions are gone. Acceptance still belongs to Miles.
