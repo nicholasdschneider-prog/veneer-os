@@ -255,6 +255,30 @@ describe('materializer', () => {
     expect(result.developerInstructions).toBe(before);
   });
 
+  it('gives a bot lane the same connectors as its human chat, in its own spawn and token files', () => {
+    db.prepare("INSERT INTO projects (id, slug, name, instructions) VALUES ('ervp', 'ervp', 'ERVP', '')").run();
+    addConversation('clara', 'codex', 'ervp');
+    addConversation('clara-lane', 'codex', 'ervp');
+    const id = Number(db.prepare(
+      `INSERT INTO user_connectors (user_id, connector_slug, label, status, sharing, scope_mode, config_json)
+       VALUES (1, 'gmail', 'accounting@example.com', 'connected', 'shared', 'projects', ?)`,
+    ).run(JSON.stringify({ sessionId: 's', connectedAccountId: 'a', mcp: { type: 'http', url: 'https://gmail.example/mcp' } })).lastInsertRowid);
+    db.prepare("INSERT INTO user_connector_projects (connector_id, project_id) VALUES (?, 'ervp')").run(id);
+
+    const main = materializer().prepare(target(), 'main-token', 'clara', 1);
+    const lane = materializer().prepare(target(), 'lane-token', 'clara', 1, null, 'clara-lane');
+    const servers = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8')).mcpServers as Record<string, { env?: Record<string, string> }>;
+    expect(lane.mcpConfigPath).not.toBe(main.mcpConfigPath);
+    expect(lane.mcpConfigPath).toContain('clara-lane');
+    expect(Object.keys(servers(lane.mcpConfigPath!)).sort()).toEqual(Object.keys(servers(main.mcpConfigPath!)).sort());
+    expect(Object.keys(servers(lane.mcpConfigPath!)).some((name) => name.startsWith('gmail-accounting'))).toBe(true);
+    const agents = servers(lane.mcpConfigPath!).agents!.env!;
+    expect(agents.VP_CONVERSATION_ID).toBe('clara');
+    expect(agents.VP_AGENT_TOKEN_FILE).toContain('clara-lane');
+    expect(fs.readFileSync(agents.VP_AGENT_TOKEN_FILE!, 'utf8')).toBe('lane-token');
+    expect(fs.readFileSync(servers(main.mcpConfigPath!).agents!.env!.VP_AGENT_TOKEN_FILE!, 'utf8')).toBe('main-token');
+  });
+
   it('materializes personal connectors for the turn actor and shared connectors for collaborators', () => {
     db.prepare(
       "INSERT INTO users (id, email, display_name, role) VALUES (2, 'member@example.com', 'Member', 'member')",

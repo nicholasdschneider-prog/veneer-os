@@ -40,6 +40,37 @@ export function coordinationFamily(
   ];
 }
 
+/** Internal execution session for an original bot chat: same agent, project,
+ * business, model and instruction snapshot, with its own native session. */
+export function insertLaneConversation(
+  db: Database.Database,
+  target: ConversationRow,
+  title: string,
+): string {
+  const id = crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO conversations(id,assistant_id,user_id,visibility,business_team_id,project_id,title,title_auto,provider,model,effort,approval_mode,native_session_id,channel,side_chat_of,instruction_snapshot_json,instruction_snapshot_at)
+    VALUES(?,?,?,?,?,?,?,0,?,?,?,?,?,'web',?,?,?)`,
+  ).run(
+    id,
+    target.assistant_id,
+    target.user_id,
+    'private',
+    target.business_team_id ?? null,
+    target.project_id,
+    title,
+    target.provider,
+    target.model,
+    target.effort,
+    target.approval_mode,
+    crypto.randomUUID(),
+    target.id,
+    target.instruction_snapshot_json,
+    target.instruction_snapshot_at,
+  );
+  return id;
+}
+
 /** Only called after both canonical conversations pass current send/view checks.
  * Workers are internal execution records, never new bot registrations or grants. */
 export function ensureCoordination(
@@ -69,27 +100,7 @@ export function ensureCoordination(
       )
       .get(thread.id, target.id) as CoordinationLane | undefined;
     if (!lane) {
-      const id = crypto.randomUUID();
-      db.prepare(
-        `INSERT INTO conversations(id,assistant_id,user_id,visibility,business_team_id,project_id,title,title_auto,provider,model,effort,approval_mode,native_session_id,channel,side_chat_of,instruction_snapshot_json,instruction_snapshot_at)
-        VALUES(?,?,?,?,?,?,?,0,?,?,?,?,?,'web',?,?,?)`,
-      ).run(
-        id,
-        target.assistant_id,
-        target.user_id,
-        'private',
-        target.business_team_id ?? null,
-        target.project_id,
-        'Bot coordination',
-        target.provider,
-        target.model,
-        target.effort,
-        target.approval_mode,
-        crypto.randomUUID(),
-        target.id,
-        target.instruction_snapshot_json,
-        target.instruction_snapshot_at,
-      );
+      const id = insertLaneConversation(db, target, 'Bot coordination');
       db.prepare(
         'INSERT INTO coordination_lanes(conversation_id,thread_id,owner_id) VALUES(?,?,?)',
       ).run(id, thread.id, target.id);

@@ -4032,6 +4032,19 @@ const ChatRow = memo(function ChatRow({
     return (
       <Marker className="text-muted-foreground">
         <MarkerContent>{item.message}</MarkerContent>
+        {item.coordinationThreadId ? (
+          // A bot lane line: the details stay in the lane, one tap away.
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto shrink-0"
+            onClick={() => {
+              window.location.hash = withSideParam(window.location.hash, `coordination:${item.coordinationThreadId}`);
+            }}
+          >
+            View
+          </Button>
+        ) : null}
       </Marker>
     );
   }

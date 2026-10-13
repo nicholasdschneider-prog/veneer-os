@@ -55,6 +55,7 @@ export interface Materializer {
     conversationId: string,
     actorUserId: number | null,
     memoryBlock?: string | null,
+    executionConversationId?: string,
   ): SpawnMaterialization;
   /** Durable context already supplied to this exact chat, used to reject duplicate memories. */
   memoryKnownContext(target: WorkspaceTarget, conversationId: string): string;
@@ -130,14 +131,18 @@ export function createMaterializer({
       conversationId: string,
       actorUserId: number | null,
       memoryBlock: string | null = null,
+      executionConversationId?: string,
     ): SpawnMaterialization {
-      const spawnDir = path.join(dataDir, 'spawn', target.assistantSlug, conversationId || 'boot');
+      // A separate execution session can run beside its original chat; its
+      // config and current-token file must never overwrite that chat's.
+      const fileKey = executionConversationId || conversationId;
+      const spawnDir = path.join(dataDir, 'spawn', target.assistantSlug, fileKey || 'boot');
       const mcpConfigPath = path.join(spawnDir, 'mcp-config.json');
       const settingsPath = path.join(spawnDir, 'settings.json');
       let agentTokenFile: string | null = null;
       if (conversationId) {
         try {
-          agentTokenFile = writeCurrentAgentToken(conversationId, agentToken);
+          agentTokenFile = writeCurrentAgentToken(fileKey, agentToken);
         } catch (err) {
           log.warn(`[materialize] could not refresh agent token file: ${(err as Error).message}`);
         }

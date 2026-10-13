@@ -6,6 +6,7 @@ import type { AppContext } from '../context.js';
 import { canManageConversation, canTrainBusinessBot, canViewConversation, sameBusiness } from '../conversations/access.js';
 import { createConversationReactivator } from './conversationActivity.js';
 import { coordinationLane } from '../coordination/store.js';
+import { botLaneEnabled } from '../coordination/botLane.js';
 import { ensureConversationInstructionSnapshot } from '../instructions/context.js';
 import type { ConversationRow } from '../db/db.js';
 import type { MoveBuildActor } from '../buildQueue/coordinator.js';
@@ -82,6 +83,15 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     if (!thread) return null;
     const requesterId = thread.left_id === ownerId ? thread.right_id : thread.left_id;
     return (ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(requesterId) as ConversationRow | undefined) ?? null;
+  }
+
+  function enrolledLaneOf(req: express.Request, ownerId: string): ConversationRow | null {
+    if (!req.agentExecutionConversationId || !botLaneEnabled(ctx.db, ownerId)) return null;
+    const lane = coordinationLane(ctx.db, req.agentExecutionConversationId);
+    if (!lane || lane.owner_id !== ownerId) return null;
+    const laneChat = ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(lane.conversation_id) as ConversationRow | undefined;
+    // The queue re-checks this actor against the lane at dispatch.
+    return laneChat && canManageConversation(req.user!, laneChat, ctx.db) ? laneChat : null;
   }
 
   function createBuildChat(owner: ConversationRow, requester: ConversationRow, title: string): ConversationRow {
@@ -174,8 +184,11 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     }
     // enqueue_build is fresh activity just like a prompt. Reactivate first so
     // the coordinator's active-conversation guard can reserve the workspace.
-    const requester = body.data.continuesThisChat ? null : requesterOfCoordinatedBuild(req, conv.id);
-    const buildChat = requester ? createBuildChat(conv, requester, body.data.title) : conv;
+    // An enrolled bot keeps builds that bot traffic asked for in the session
+    // that received it (its bot lane or coordination thread), never the human chat.
+    const laneChat = enrolledLaneOf(req, conv.id);
+    const requester = laneChat || body.data.continuesThisChat ? null : requesterOfCoordinatedBuild(req, conv.id);
+    const buildChat = laneChat ?? (requester ? createBuildChat(conv, requester, body.data.title) : conv);
     const brief = requester
       ? `[Requested by another chat] Chat ${requester.id} “${requester.title ?? 'Untitled'}” asked for this build through coordination with chat ${conv.id} “${conv.title ?? 'Untitled'}”. It runs here, in its own chat, so it stays out of that chat's human thread. Call read_conversation("${requester.id}") for the context behind the request, and report the result to that chat with send_message.\n\n${body.data.brief}`
       : body.data.brief;

@@ -180,6 +180,33 @@ describe('conversation wake-up scheduler', () => {
     expect(adapter.runs).toHaveLength(2);
   });
 
+  it('runs routine wakes of a bot with a bot lane in the lane, keeps one backup there, and never delays the human', async () => {
+    db.prepare("INSERT INTO bot_lanes(owner_id,enabled,updated_by) VALUES('wake-conv',1,1)").run();
+    periodic();
+    for (let minute = 0; minute < 6; minute++) {
+      current = new Date(BASE.getTime() + minute * 60_000);
+      tickRoutines(db, current);
+      scheduler.tick();
+      await flush();
+    }
+    const lane = (db.prepare("SELECT conversation_id FROM coordination_lanes WHERE owner_id='wake-conv'").get() as {conversation_id:string}).conversation_id;
+    expect(adapter.runs).toHaveLength(1);
+    // Same backlog bound as a chat without a lane: one running, at most two behind it.
+    expect(db.prepare('SELECT conversation_id, count(*) n FROM queued_messages GROUP BY 1').all()).toEqual([{conversation_id:lane,n:2}]);
+    expect(db.prepare('SELECT count(*) n FROM bot_routine_deliveries').get()).toEqual({n:6});
+    expect((db.prepare('SELECT count(*) n FROM conversation_wakeups').get() as {n:number}).n).toBeLessThan(6);
+    expect(db.prepare("SELECT count(*) n FROM turn_origins WHERE conversation_id='wake-conv'").get()).toEqual({n:0});
+    expect(manager.postMessage(conv, 'Human ask').disposition).toBe('running');
+    await flush();
+    expect(adapter.runs).toHaveLength(2);
+    expect(adapter.runs[1]!.prompt).toContain('Human ask');
+    adapter.runs[0]!.finish(); adapter.runs[1]!.finish();
+    await flush();
+    expect(adapter.runs).toHaveLength(3);
+    expect(adapter.runs[2]!.prompt).toContain('Run your routine');
+    adapter.runs[2]!.finish(); await flush();
+  });
+
   it('coalesces proven legacy backlog at startup without replaying it or losing receipts', async () => {
     const r = periodic();
     const keep = legacyCheck(r, 'old-1', 0);

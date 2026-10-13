@@ -27,6 +27,8 @@ export interface MessageOrigin {
   /** Send-time title paired with the internal source id. It follows the same
    * privacy rule and is stripped unless the viewer can access that source. */
   sourceConversationTitle?: string;
+  /** Sender's class for a bot message; absent means informational. */
+  priority?: 'urgent';
   /** Viewer-authorized source metadata. Never persist this presentation view. */
   sourceChat?: {
     id: string;
@@ -386,7 +388,7 @@ export type ConversationEvent =
   | { type: 'context_compacted'; contextTokens: number | null; notice?: string }
   // A neutral, non-failure notice (e.g. "you stopped this turn"). Rendered muted;
   // error rows are red, while turn_done remains authoritative for final status.
-  | { type: 'notice'; message: string; at?: string }
+  | { type: 'notice'; message: string; at?: string; /** Bot lane item this line summarizes. */ coordinationThreadId?: string }
   | { type: 'error'; message: string; fatal: boolean; turnId?: string };
 
 export type ConversationStatus = 'working' | 'needs_you' | 'idle' | 'failed';

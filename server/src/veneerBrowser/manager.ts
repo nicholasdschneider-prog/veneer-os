@@ -2197,7 +2197,8 @@ export class VeneerBrowserManager {
    * idle backstop so a copy between two quick turns is not bounced.
    */
   private idleBlockReason(row: VeneerBrowserCloneSessionRow, immediate = false): string | null {
-    if (this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id = ?').get(row.conversation_id)) return 'active_turn';
+    // The chat's bot sessions (coordination threads, bot lane) share its browser.
+    if (this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id = ? OR conversation_id IN (SELECT conversation_id FROM coordination_lanes WHERE owner_id = ?)').get(row.conversation_id, row.conversation_id)) return 'active_turn';
     if (this.captureGrantActive(row.conversation_id)) return 'capture';
     if (hasLiveSecretField(row.conversation_id)) return 'sign_in';
     if (this.holdState(row).active) return 'keep_open';

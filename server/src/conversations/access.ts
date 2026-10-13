@@ -72,6 +72,13 @@ export function canViewConversation(
   if (db) {
     const lane = c.id ? db.prepare('SELECT thread_id FROM coordination_lanes WHERE conversation_id=?').get(c.id) as {thread_id:string} | undefined : undefined;
     if (lane) {
+      // A bot lane pairs a chat with its own session: it is visible exactly
+      // where that original chat is.
+      const botLane = db.prepare('SELECT owner_id FROM bot_lanes WHERE thread_id=?').get(lane.thread_id) as {owner_id:string} | undefined;
+      if (botLane) {
+        const owner = db.prepare('SELECT * FROM conversations WHERE id=?').get(botLane.owner_id) as ConversationRow | undefined;
+        return Boolean(owner && canViewConversation(user, owner, db));
+      }
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string} | undefined;
       return Boolean(thread && canViewCoordinationPair(user, [thread.left_id, thread.right_id], db));
     }

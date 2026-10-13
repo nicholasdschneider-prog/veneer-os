@@ -210,6 +210,12 @@ const TOOLS: ToolDef[] = [
         conversationId: { type: 'string', description: 'The chat id.' },
         text: { type: 'string', description: 'The message to send.' },
         request_key: { type: 'string', description: 'Stable key for this exact message. Reuse on retry; never reuse for changed text.' },
+        priority: {
+          type: 'string',
+          enum: ['informational', 'urgent'],
+          description:
+            "Default informational: it stays in the coordination thread. Use urgent only when the receiving bot's human must act soon; a bot with a bot lane then shows its human one short line linking to the thread.",
+        },
         interrupt: {
           type: 'boolean',
           description:
@@ -217,6 +223,34 @@ const TOOLS: ToolDef[] = [
         },
       },
       required: ['conversationId', 'text'],
+    },
+  },
+  {
+    name: 'surface_to_human',
+    description:
+      "Only from a bot lane or coordination thread of a bot with a bot lane: show your human chat one short line linking back here. Use it once, only when the human must act (a blocker, money, policy, a deadline) or must see a finished result. Routine progress and informational bot traffic stay in the lane. Not approval and not a question card; raise decisions with raise_decision.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        summary: { type: 'string', description: 'One short plain line (up to about 200 characters).' },
+        kind: { type: 'string', enum: ['urgent', 'result'] },
+        request_key: { type: 'string', description: 'Stable key for this exact line. Reuse on retry.' },
+      },
+      required: ['summary', 'kind', 'request_key'],
+    },
+  },
+  {
+    name: 'set_bot_lane',
+    description:
+      "Turn a registered bot's bot lane on or off. With it on, routine runs, huddle wakes, question re-checks and builds that bot traffic asks for run in a separate session beside the bot's human chat, and only urgent items or results reach the human as one short line. History is not moved. Only on an explicit human direction, named in authority_note; requires permission to manage that bot's chat.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        conversationId: { type: 'string', description: "The bot's original human chat id." },
+        enabled: { type: 'boolean' },
+        authority_note: { type: 'string', description: 'The human direction this change follows.' },
+      },
+      required: ['conversationId', 'enabled', 'authority_note'],
     },
   },
   { name: 'read_coordination', description: 'Read a bot coordination thread returned by send_message. Requires current access to both original conversations.', inputSchema: {type:'object',properties:{threadId:{type:'string'}},required:['threadId']} },
@@ -1062,6 +1096,20 @@ async function callTool(
       ]);
       return { content: [{ type: 'text', text: summarizeConversation(conversation, events) }] };
     }
+    if (name === 'surface_to_human') {
+      const result = await callApi('/api/bot-lane/surface', {
+        method: 'POST',
+        body: JSON.stringify({ summary: String(args.summary ?? ''), kind: String(args.kind ?? ''), request_key: String(args.request_key ?? '') }),
+      });
+      return { content: [{ type: 'text', text: result.duplicate ? `Already shown: ${String(result.shown)}` : `Shown in the human chat: ${String(result.shown)}` }] };
+    }
+    if (name === 'set_bot_lane') {
+      const result = await callApi(`/api/conversations/${encodeURIComponent(String(args.conversationId ?? ''))}/bot-lane`, {
+        method: 'PUT',
+        body: JSON.stringify({ enabled: args.enabled === true, authority_note: String(args.authority_note ?? '') }),
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
     if (name === 'read_coordination') {
       const result = await callApi(`/api/coordination/${encodeURIComponent(String(args.threadId ?? ''))}`);
       return {content:[{type:'text',text:JSON.stringify(result)}]};
@@ -1070,7 +1118,7 @@ async function callTool(
       const conversationId = String(args.conversationId ?? '');
       const result = await callApi(`/api/conversations/${encodeURIComponent(conversationId)}/steer`, {
         method: 'POST',
-        body: JSON.stringify({ text: String(args.text ?? ''), ...(args.request_key ? {request_key:String(args.request_key)} : {}) }),
+        body: JSON.stringify({ text: String(args.text ?? ''), ...(args.request_key ? {request_key:String(args.request_key)} : {}), ...(args.priority === 'urgent' || args.priority === 'informational' ? {priority:args.priority} : {}) }),
       });
       if (result.coordinationThreadId) return {content:[{type:'text',text: `Message ${String(result.disposition)} in coordination thread ${String(result.coordinationThreadId)}. Use read_coordination with this thread id to read responses. The human conversation was not interrupted.`}]};
       const disposition = String(result.disposition ?? 'queued');

@@ -92,7 +92,7 @@ export type ChatItem =
       status: 'pending' | 'answered' | 'expired' | 'dismissed';
       answers: QuestionAnswers;
     }
-  | { kind: 'notice'; key: string; message: string }
+  | { kind: 'notice'; key: string; message: string; coordinationThreadId?: string }
   | { kind: 'error'; key: string; message: string };
 
 export interface TranscriptState {
@@ -573,7 +573,12 @@ export function reduceEvents(state: TranscriptState, events: ConversationEvent[]
         break;
       }
       case 'notice':
-        items.push({ kind: 'notice', key: `n${seq++}`, message: String(event.message ?? '') });
+        items.push({
+          kind: 'notice',
+          key: `n${seq++}`,
+          message: String(event.message ?? ''),
+          ...(typeof event.coordinationThreadId === 'string' ? { coordinationThreadId: event.coordinationThreadId } : {}),
+        });
         break;
       case 'context_compacted': {
         const message = typeof event.notice === 'string' ? event.notice.trim() : '';

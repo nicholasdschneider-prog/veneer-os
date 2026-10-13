@@ -19,6 +19,7 @@ interface Check {
   created_by: number;
   message_id: number | null;
   receipt_id: number | null;
+  receipt_conversation_id: string | null;
   prompt: string | null;
   origin_json: string | null;
   queue_actor: number | null;
@@ -49,20 +50,23 @@ function isPeriodic(db: Database.Database, row: Check): boolean {
 /** Only undispatched backups qualify. A receipt without a queue row is already
  * dispatched (possibly UNKNOWN), and is never reclaimed or replayed here. */
 function pendingChecks(db: Database.Database, conversationId: string): Check[] {
+  // A bot lane runs its owner's routine wakes; the routine and wake stay with the owner.
+  const owner = (db.prepare('SELECT owner_id FROM coordination_lanes WHERE conversation_id=?').get(conversationId) as {owner_id:string}|undefined)?.owner_id ?? conversationId;
   const rows = db.prepare(`
     SELECT d.routine_id,d.wakeup_id,d.trigger_kind,d.event_id,r.kind,r.source,
       r.schedule_json,r.name,r.instructions,r.created_by,w.conversation_id,
-      w.reason,w.status,w.wake_key,w.actor_user_id,h.message_id AS receipt_id,
+      w.reason,w.status,w.wake_key,w.actor_user_id,h.message_id AS receipt_id,h.conversation_id AS receipt_conversation_id,
       q.id AS message_id,q.prompt,q.origin_json,q.actor_user_id AS queue_actor,q.discussion_message_id
     FROM bot_routine_deliveries d JOIN bot_routines r ON r.id=d.routine_id
     JOIN conversation_wakeups w ON w.id=d.wakeup_id AND w.conversation_id=r.conversation_id
     LEFT JOIN hub_inbound_messages h ON h.idempotency_key='wakeup:'||w.id
-      AND h.source_kind='wakeup' AND h.conversation_id=w.conversation_id
-    LEFT JOIN queued_messages q ON q.id=h.message_id AND q.conversation_id=w.conversation_id
+      AND h.source_kind='wakeup' AND (h.conversation_id=w.conversation_id
+        OR h.conversation_id IN (SELECT conversation_id FROM coordination_lanes WHERE owner_id=w.conversation_id))
+    LEFT JOIN queued_messages q ON q.id=h.message_id AND q.conversation_id=h.conversation_id
     WHERE w.conversation_id=? AND w.status IN ('pending','delivered')
       AND (q.id IS NOT NULL OR (w.status='pending' AND h.message_id IS NULL))
     ORDER BY CASE WHEN q.id IS NOT NULL THEN 0 ELSE 1 END,q.sort_order,q.id,w.scheduled_for,w.created_at,w.id
-  `).all(conversationId) as Check[];
+  `).all(owner) as Check[];
   const seen = new Set<string>();
   return rows.filter(row => {
     if (seen.has(row.wakeup_id) || !isPeriodic(db, row)) return false;
@@ -72,7 +76,7 @@ function pendingChecks(db: Database.Database, conversationId: string): Check[] {
       if (row.discussion_message_id || row.queue_actor !== row.actor_user_id ||
           row.prompt !== `Hey, can you pick this back up for me?\n\n${row.reason}\n\nPlease check what changed while you were away before you continue.`) return false;
       try { if (JSON.parse(row.origin_json ?? 'null')?.kind !== 'wakeup') return false; } catch { return false; }
-      if (db.prepare('SELECT 1 FROM turn_origins WHERE conversation_id=? AND message_id=?').get(conversationId, row.message_id)) return false;
+      if (db.prepare('SELECT 1 FROM turn_origins WHERE conversation_id=? AND message_id=?').get(row.receipt_conversation_id, row.message_id)) return false;
     }
     seen.add(row.wakeup_id);
     return true;
@@ -97,7 +101,7 @@ export function coalescePeriodicChecks(db: Database.Database, conversationId: st
       const queued = row.message_id === null ? null : db.prepare('SELECT * FROM queued_messages WHERE id=?').get(row.message_id);
       db.prepare(`INSERT INTO bot_routine_coalescing(wakeup_id,retained_wakeup_id,queued_message_id,queued_message_json) VALUES(?,?,?,?)`).run(row.wakeup_id, keeper.wakeup_id, row.message_id, queued ? JSON.stringify(queued) : null);
       if (row.message_id !== null) {
-        db.prepare('DELETE FROM queued_messages WHERE id=? AND conversation_id=?').run(row.message_id, conversationId);
+        db.prepare('DELETE FROM queued_messages WHERE id=? AND conversation_id=?').run(row.message_id, row.receipt_conversation_id);
         removed.push(row.message_id);
       }
       // Delivered means handed to the queue, not executed; retain that history.

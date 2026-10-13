@@ -1,3 +1,4 @@
+import { coordinationOwner } from '../coordination/store.js';
 import { EventEmitter } from 'node:events';
 import { statfsSync } from 'node:fs';
 import { loadEnvFile } from '../envFile.js';
@@ -134,7 +135,8 @@ await veneerBrowser.reconcile();
 // are the two states a finished turn lands in; the release re-checks the
 // pending turn row itself, so a spurious status event costs one lookup.
 manager.bus.on('status', (conversationId: string, status: string) => {
-  if (status === 'idle' || status === 'failed') void veneerBrowser.releaseAtTurnEnd(conversationId).catch(() => undefined);
+  // A bot session uses its original chat's browser.
+  if (status === 'idle' || status === 'failed') void veneerBrowser.releaseAtTurnEnd(coordinationOwner(db, conversationId)).catch(() => undefined);
 });
 // Two seconds keeps provider-triggered automations responsive; schedule checks
 // are cheap and share the same durable tick.

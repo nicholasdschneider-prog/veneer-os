@@ -1,3 +1,4 @@
+import { wakeTarget } from '../coordination/botLane.js';
 import { browserCapacityWakeAllowed } from '../veneerBrowser/capacityWait.js';
 import { botWakeAllowed, botWakeDelivered, botWakeCancelled } from '../bots/delivery.js';
 import crypto from 'node:crypto';
@@ -215,7 +216,9 @@ export function createConversationWakeupScheduler({
     }
     const deliveredAt = now();
     try {
-      const posted = manager.deliverWakeup(conv, wakeupPrompt(row), row.id, row.actor_user_id);
+      // Routine, huddle and re-check wakes for an enrolled bot run in its bot lane.
+      const target = wakeTarget(db, conv, row.id, row.wake_key);
+      const posted = manager.deliverWakeup(target, wakeupPrompt(row), row.id, row.actor_user_id);
       db.transaction(() => {
         db.prepare(
           `UPDATE conversation_wakeups SET status = 'delivered', delivered_at = ?

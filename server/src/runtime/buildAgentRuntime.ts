@@ -331,8 +331,8 @@ export function buildAgentRuntime({
       });
       await memoryCuratorQueue;
     },
-    materialize: (target, agentToken, conversationId, actorUserId, memoryBlock) =>
-      materializer.prepare(target, agentToken, conversationId, actorUserId, memoryBlock),
+    materialize: (target, agentToken, conversationId, actorUserId, memoryBlock, executionConversationId) =>
+      materializer.prepare(target, agentToken, conversationId, actorUserId, memoryBlock, executionConversationId),
     approvalTimeoutMs: config.approvalTimeoutMs,
   });
 
