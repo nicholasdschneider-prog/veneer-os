@@ -554,7 +554,13 @@ export class JamesLink {
       body,
       signal: AbortSignal.timeout(15_000),
     });
-    if (!response.ok) throw new Error(`webhook returned HTTP ${response.status}`);
+    if (!response.ok) {
+      // Keep the receiver's own reason (e.g. its rate limit) so last_error explains the failure.
+      let detail = '';
+      try { detail = (await response.text()).split(key).join('[REDACTED]').replace(/\s+/g, ' ').trim().slice(0, 300); } catch { /* body unreadable */ }
+      const requestId = response.headers.get('x-request-id');
+      throw new Error(`webhook returned HTTP ${response.status}${requestId ? ` (x-request-id ${requestId})` : ''}${detail ? `: ${detail}` : ''}`);
+    }
   }
 
   private async deliver(pushId: number, payload: Record<string, unknown>, opts: { simulateFailure?: boolean }) {

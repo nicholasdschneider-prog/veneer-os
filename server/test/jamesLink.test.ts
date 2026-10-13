@@ -222,6 +222,18 @@ describe('push', () => {
     expect((await res2.json()).push).toMatchObject({ status: 'emailed', emailed_to: 'nick@elkhartrvparts.com' });
   });
 
+  it('keeps the receiver error body and request id in last_error with the key redacted', async () => {
+    const reason = '{"success":false,"error":"Automation run rate limit exceeded: grok bot limit 10000 per minute, current_count=10001","echo":"Bearer hook-key"}';
+    fetchMock.mockImplementation(async () => new Response(reason, { status: 400, headers: { 'x-request-id': 'req-123' } }));
+    const res = await api('/api/james/test-push', { method: 'POST', body: JSON.stringify({ thread_id: A }) });
+    const push = (await res.json()).push;
+    expect(push).toMatchObject({ status: 'emailed', attempts: 2 });
+    const row = db.prepare('SELECT last_error FROM james_pushes ORDER BY id DESC LIMIT 1').get() as { last_error: string };
+    expect(row.last_error).toContain('webhook returned HTTP 400 (x-request-id req-123): {"success":false,"error":"Automation run rate limit exceeded');
+    expect(row.last_error).toContain('Bearer [REDACTED]');
+    expect(row.last_error).not.toContain('hook-key');
+  });
+
   it('pushes quiet James threads once per quiet period', async () => {
     clock += 3 * 3_600_000;
     await link.tick();
