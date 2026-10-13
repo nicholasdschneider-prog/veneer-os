@@ -318,3 +318,26 @@ An approval naming only `db8b7f0` or any subset does not cover this restart.
 - Recheck that `git diff 155b497 HEAD -- server web browser-manager installer scripts package*.json` is empty and both dist manifests match the 155b497 manifests above. Any difference means stop and re-validate.
 - Order stays web then runner: `npm run restart -- --maintenance-approved veneer-pro veneer-pro-runner`, run once by a single executor, with section 6 UNKNOWN handling.
 
+
+## 14. Gate resolution and owners, 23:10Z (read-only; supersedes conflicting text in sections 6, 7 and 12)
+
+State at 23:09Z: HEAD `e4fe077`, report-only since `155b497`; tracked tree clean; no host development lock; no Veneer build running or queued. No `overnight*`/`wait-and-restart` process is running; the scripts in `/tmp/veneer-790/` are inert files. **No executor is armed.**
+
+**Gate 1. Verified prior-runtime rollback: impossible, not satisfiable.** The bytes loaded by web pid 89325 and runner pid 34641 were overwritten in place before any copy was kept. They cannot be read back from disk, rebuilt to a provable match (the exact commits are unknown), or captured from a live process. No sanctioned check can turn `1b8561a` into "the prior healthy artifact." The strongest feasible extra evidence would be booting `1b8561a` web and runner in an isolated DATA_DIR on a disposable DB copy with no credentials and with schedulers disabled. That is new technical work: it needs its own queue slot, and even then it proves only the reconstruction. It is **not** being started. Acceptance of the limitation must be recorded as *accepted limitation*, never as *verified*.
+- Owner of the gap statement: a6e39d6e (this packet).
+- Owner of the decision whether the gap blocks: the BUILD801 reviewer (BUILD801 owner 6a752161 and its reviewer). If they require the isolated boot anyway, a6e39d6e queues it through the normal queue.
+
+**Gate 2. End-to-end installation probe: authenticated read-only only.** Section 6's "#806 readback via `record_custom_direction_review`" is withdrawn as installation smoke. That write stays with Archer's normal business work after deployment and is not evidence of installation. The installation probe after `restart.mjs --health-check` and `postcheck.sh`:
+1. a6e39d6e starts one fresh turn on the new runner. In that turn it calls read-only tools only: `list_build_queue` and `inspect_custom_direction` for decision 0f24e56b, which reads the #806 code path without writing.
+2. Record the turn id, the runner pid that served it, and that both tool results returned. Read `custom_direction` row counts before and after; they must be unchanged.
+- Owner: a6e39d6e.
+
+**Gate 3. Executor and order.** One executor: a6e39d6e, inside a window approved in Nick's own words. Command: `npm run restart -- --maintenance-approved veneer-pro veneer-pro-runner` (web then runner), run once, with section 6 UNKNOWN handling. No waiter may be armed by anyone for this set. If 852806d0 re-arms one, executor ownership is unresolved again, and this packet stops until it is settled.
+- Owner: a6e39d6e. Confirmation needed from 852806d0 that it will not re-arm.
+
+**Gate 4. Registered native pure-read caller (QBO v2).** Plan is unchanged from section 11. One active registered bot, in its own session and with its own token, POSTs `/api/qbo/v2/read` once after the restart. No minted or borrowed token.
+- Owner who names the bot and its session: 732adce5 (#804/#812).
+- If none runs, record *runtime lookup: unverified*.
+- QBO operational acceptance stays open: unavailable resolver, no helper transport, timeout persistence, runtime/parent custody, authoritative adapters.
+
+**Before any human permission question:** gate 1 decision recorded by the BUILD801 reviewer, a named caller for gate 4 (or an explicit acceptance of *unverified*), and 852806d0's no-re-arm confirmation. Readiness stays withdrawn until then.
