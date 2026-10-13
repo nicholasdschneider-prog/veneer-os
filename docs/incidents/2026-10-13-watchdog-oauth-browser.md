@@ -1,6 +1,7 @@
 # Watchdog ownership and command-line OAuth browser finding
 
-Status: tracked; prevention plan proposed, implementation awaiting approval.
+Status: guidance prevention recorded; investigator reports idle Chrome recovery
+complete. Core deployment remains held. Code enforcement is an open proposal.
 
 ## Durable repair owner
 
@@ -44,14 +45,48 @@ page content, collect OAuth URLs, or independently reproduce the Chrome spin.
    Commit and push verified work. Report deployment pending unless Nick
    explicitly approves a maintenance window for the affected services.
 
-Shared Chrome remains untouched; browser recovery belongs to the separate
-recovery owner. Do not cancel business turns or change business jobs. Every
+This repair owner has left shared Chrome untouched; browser recovery belongs to
+the separate recovery owner. Do not cancel business turns or change business jobs. Every
 production restart requires an explicit Nick-approved window and the supported
 `npm run restart -- --maintenance-approved <affected-service>` command, after
 turns drain. Do not use signals, `launchctl`, unauthorized `--allow-active-turns`,
 or a watcher that forces a restart on timeout. A lock refusal requires waiting
 or coordination, never bypassing the development lock.
 
-No implementation, deployment, restart or recovery action was performed for
-this finding. The existing watchdog supplies incident follow-up; this record
+No implementation, deployment, restart or recovery action was performed by this
+repair owner. The existing watchdog supplies incident follow-up; this record
 does not create a replacement binding, schedule or grant.
+
+## October 13 investigation handoff
+
+The host-overload investigator relayed the following results for this incident
+record. These are attributed reports, not fresh runtime verification by this
+repair owner:
+
+- Pushed `aae1c74`: explicit maintenance approval required for production
+  restarts, active-turn refusal for every restart including web-only, a
+  host-wide fail-closed development lock, and one Vitest worker.
+- Pushed `7330db2`: command-line OAuth guidance in `CLAUDE.md` requires the
+  provider-supported no-auto-browser mode and opening the generated URL in a
+  managed Veneer Browser. The replacement repository instructions also contain
+  this rule. Guidance is complete; code enforcement is not claimed.
+- Reported validation: typecheck, 32 installer tests, 52 browser-manager tests,
+  25 focused buildQueue tests and 17 focused web tests passed. An unapproved web
+  restart was correctly refused. This report does not establish a full-suite
+  validation or a core deployment.
+- After confirming legacy shared Chrome was idle with no connected clients,
+  the investigator gracefully refreshed only that Chrome. PID 606 exited with
+  status 0; launchd reopened it as PID 10947, listening on port 9223. This does
+  not prove the suspected OAuth trigger caused the original CPU spin.
+- Core service PIDs remained web 95340 and runner 34641. Local health was OK,
+  the tunnel had four edges, and the public front door returned HTTP 302.
+  That redirect is not evidence of an authenticated chat working.
+- The core deployment hold remains. Build #782's runner/web deployment of
+  `49ee656` is not running: its waiter was stopped before firing. No business
+  jobs were canceled.
+
+The remaining prevention proposal is code enforcement for agent-shell browser
+launches, such as a scoped `BROWSER` guard. It requires an approved plan and a
+queued build before source changes; this documentation handoff neither queues
+that repair nor authorizes a restart. The plan above remains relevant to that
+work, with provider-supported no-auto-browser guidance already in place.
