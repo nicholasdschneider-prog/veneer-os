@@ -480,3 +480,30 @@ Requested by the BUILD801 owner (6a752161, thread 73489c19); owner a6e39d6e. Not
 - Web and runner are the affected services for the crash. App-runner and terminal pick up the guard only when they next restart; they are not in this restart scope.
 - After the restart, add `GET /healthz/runner-rpc` = 200 to the readback in section 6. It is a reachability check only; it does not replace gates 2 and 4.
 - Gate 1 stays UNMET. No maintenance or window question is asked here.
+
+## 18. Gate 4 transport answer from the QBO contract owner (732adce5 #804/#812), recorded 2026-10-14 (read-only)
+
+**Status unchanged: caller UNASSIGNED (Clara proposed, not accepted), runtime lookup UNVERIFIED.**
+
+**Transport.**
+- No native QBO MCP tool exists, and no generic `callApi` agent tool exists either. MCP-only access cannot make the call.
+- An eligible bot can make the read only through its normal, permitted local shell/exec tool. It sends a raw loopback HTTP request using its own current session token:
+  - That is the token file `toolbox/materialize.ts:139-147` keys by `executionConversationId || conversationId`. It is resolved at call time per `runtime/agentTokenFile.ts`, with the same header as `mcp/agentToolsServer.ts:800-807`.
+  - The token is read at request time and kept only in process memory.
+  - Server authentication (`qbo/routes.ts:13-23`) is preserved, not bypassed.
+- Do not assume the shell inherits MCP environment variables.
+- The caller uses only its own exact execution context's token. Never another chat's config or token, a coordination session's use of the main chat token, a minted or copied token, or a database lookup of one. The token never goes on argv, in printed output or in logs.
+- Preferred caller: Clara's original registered session. If Clara has no permitted exec path, or cannot establish her own token location, record **transport infeasible with current tools**.
+- Clara's eligibility, tool availability and acceptance are all **unverified**.
+
+**Probe (unchanged sequence, now with the transport fixed):**
+1. Only after the installation and postcheck constraints are confirmed and Clara has explicitly accepted.
+2. 806 reads the three QBO v2 ledger counts.
+3. Clara runs one in-memory HTTP client: `POST http://127.0.0.1:3100/api/qbo/v2/read`, a fresh requestKey, redirects disabled, no debug or secret output. It emits only the HTTP status and the sanitized response.
+4. Required result: ABSENT/ABSENT, `[]`, `null`, all flags false.
+5. 806 re-reads the counts; they must be unchanged.
+6. No provider connector, browser cookies, invoke, reconcile, recovery or refresh.
+
+**Precision correction to section 11.** `phaseBoundary.read` is SELECT-only **for the QBO ledgers**. The shared `resolveAgentTokenContext` (`runtime/agentTokens.ts:52`) runs `DELETE FROM agent_tokens WHERE expires_at < now` on every authenticated call. The HTTP path is therefore not "zero DB writes" overall; the probe's no-change proof covers only the three QBO ledgers.
+
+**Not installation evidence.** Section 17 records that #815 owns the crash repair. The web respawn onto the 155b497 dist, with 0178/0179 recorded live at 22:54:59Z and 22:55:01Z, does not satisfy the approved-installation, postcheck or caller-acceptance constraints. The #812 receipt stays historical. Still pending: timeout persistence, parent/runtime custody, adapters and runtime acceptance.
