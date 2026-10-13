@@ -158,3 +158,27 @@ No-mutation evidence for /Users/archerclawdington/veneer-os:
 - Live `server/dist/index.js` (17:03:56 ET) and `web/dist/index.html` (17:04:11 ET) are unchanged, and no file under those source paths is newer than the dist.
 
 Gap, stated plainly: I did **not** message other build owners before starting. Clearance rests on the queue record above (no active Veneer-scope build) plus the host lock, not on explicit owner acknowledgement. The only concurrent build, ERVP #803, works in a different tree. No other owner edited the shared veneer-os tree during the run, so no stop/re-pin was needed. If an owner reports otherwise, the run must be treated as invalid and repeated after re-pinning.
+
+## 10. BUILD804 reconciliation, 21:48Z (read-only)
+
+Input: the BUILD804 packet (`docs/reports/qbo-boundary/build804/validation.json`, validated at 274e669). Nothing was built, tested, restarted or invoked for this section.
+
+- **Final combined suite.** Section 3 is the full-suite receipt for db8b7f0's source: HEAD 7a74def, empty source diff from db8b7f0. #804's 274e669 receipt is superseded by it, not needed on top of it.
+- **Artifact pins match #804's.** Live `server/dist` and the pinned forward manifest have the same hashes:
+  - `qbo/phaseBoundary.js` `7f0b9a49…ecad`
+  - `qbo/phaseContract.js` `1837a7ca…c131`
+  - `qbo/helperProcess.js` `5c83ba42…ef43`
+  - `db/migrations/0179_qbo_phase_transport.sql` `ec134af0…ef5f`
+- **Production wiring.** `bots/routes.ts:58` calls `qboRoutes(ctx)` with no resolver or transport, so it defaults to `unavailableFacts`/`unavailablePhaseResolver` (503 `QBO_ASSIGNMENT_AND_ACCOUNTING_BINDING_UNAVAILABLE`). The rollback candidate 1b8561a has the same v1 wiring (`qboRoutes(ctx)`, default `unavailableFacts`) and no v2 routes. QBO stays unavailable on both sides of a rollback.
+- **Legacy QBO ledger baseline.** Live DB, read-only: `qbo_operation_reservations` 0 rows, `qbo_operation_receipts` 0 rows. No payloads were read.
+- **Drift check.** `migrate.ts` `checkDrift` logs DRIFT but does not throw. Section 6 step 3 and section 8 already compare the recorded hashes explicitly; a successful boot is never taken as proof.
+
+**Rollback assumption, explicitly bounded to empty ledgers.** The section 8 disposable check proves 1b8561a opens and migrates cleanly over 0178+0179 **with all five new ledgers empty and both legacy QBO ledgers empty**. It does not prove compatibility with populated v2 or recovery ledgers. Rule for the window:
+- Code rollback to 1b8561a is permitted only if the post-restart counts for all five new tables and both legacy QBO tables are still 0.
+- If any of them is non-zero: no code rollback without the owning build (#804 for QBO, #801 for purchasing).
+- Never a down migration, row deletion or DB restore.
+
+**#804's exact 0179 postchecks to run after the restart (read-only, in addition to `postcheck.sh`):**
+- `SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name IN (3 tables + 6 triggers) ORDER BY type,name`: compare to the pinned 0179 SQL.
+- `PRAGMA foreign_key_check` per QBO table.
+- Counts for invocations, phases and observations, plus the legacy reservations and receipts counts.
