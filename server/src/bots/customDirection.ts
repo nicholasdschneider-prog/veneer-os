@@ -13,23 +13,41 @@ export const customDirectionInput = z.object({
   executor_conversation_id: id,
 }).strict();
 const citation = z.object({kind:z.enum(['direct_message','result_reply','decision_discussion','voice_dispatch','decision_event']),id,text:z.string().min(1).max(120000)}).strict();
-export const customDirectionScope = z.object({
+const purchasingScope = z.object({
   kind:z.literal('purchasing_unit_cost_correction'), source_account:id, source_message_id:id,
   source_document_sha256:hash, confirmation_number:id, order_number:id,
   supplier_id:id, autopo_id:id, autopo_line_id:id, inventory_item_id:id, sku:id,
   quantity:z.number().int().positive().safe(), currency:z.literal('USD'),
   previous_unit_cents:z.number().int().nonnegative().safe(), unit_cents:z.number().int().nonnegative().safe(),
   total_cents:z.number().int().nonnegative().safe(), unchanged_retail_cents:z.number().int().nonnegative().safe(),
-}).strict().refine(s=>Number.isSafeInteger(s.quantity*s.unit_cents)&&s.total_cents===s.quantity*s.unit_cents,'Exact quantity × unit price total required');
-export const customDirectionReview = customDirectionInput.extend({
+}).strict();
+// Nonfinancial directions (queue or delegate existing work) carry no money fields; any money effect must use the purchasing scope.
+const nonfinancialScope = z.object({
+  kind:z.literal('nonfinancial_direction'), summary:text,
+  targets:z.array(z.object({id,description:text}).strict()).min(1).max(50),
+  excluded:z.array(z.object({id,reason:text}).strict()).max(50),
+}).strict();
+export const customDirectionScope = z.discriminatedUnion('kind',[purchasingScope,nonfinancialScope]);
+type Scope = z.infer<typeof customDirectionScope>;
+const operationsFor = (kind:Scope['kind']) => kind==='nonfinancial_direction' ? ['native_delegation'] : ['autopo','shopify'];
+const reviewBase = customDirectionInput.extend({
   inspection_hash:hash, request_key:id, reviewed_full_context:z.literal(true), answer_text:text,
   interpretation:z.enum(['unconditional_direction','identity_only','status_only','conditional','quoted_or_reported','ambiguous']),
   explanation:z.string().trim().min(20).max(3000), scope:customDirectionScope,
   scope_review:z.array(z.object({field:id,assessment:z.enum(['supported','unsupported','ambiguous']),citations:z.array(citation).min(1).max(20),explanation:text}).strict()).max(50).default([]),
-  operations:z.array(z.enum(['autopo','shopify'])).min(1).max(2).refine(v=>new Set(v).size===v.length,'Unique operations required').default(['autopo','shopify']),
+  operations:z.array(z.enum(['autopo','shopify','native_delegation'])).min(1).max(2).refine(v=>new Set(v).size===v.length,'Unique operations required').optional(),
   later_context:z.array(z.object({citation,classification:z.enum(['status_only','substantive_supersession','ambiguous']),explanation:text}).strict()).max(2500),
   observation:z.object({observed_at:z.string().datetime(),source_identity:text,existing_business_authority:text,ownership_and_duplicates:text,evidence:text}).strict(),
 }).strict();
+function checkScope<T extends {scope:Scope;operations?:string[]|undefined}>(r:T,ctx:z.RefinementCtx) {
+  const s=r.scope;
+  if(s.kind==='purchasing_unit_cost_correction'&&!(Number.isSafeInteger(s.quantity*s.unit_cents)&&s.total_cents===s.quantity*s.unit_cents))ctx.addIssue({code:'custom',path:['scope','total_cents'],message:'Exact quantity × unit price total required'});
+  if(s.kind==='nonfinancial_direction'&&new Set(s.targets.map(t=>t.id)).size!==s.targets.length)ctx.addIssue({code:'custom',path:['scope','targets'],message:'Unique target ids required'});
+  const allowed=operationsFor(s.kind);
+  if(r.operations?.some(o=>!allowed.includes(o)))ctx.addIssue({code:'custom',path:['operations'],message:`Operations must match scope kind ${s.kind}: ${allowed.join(', ')}`});
+}
+const withOperations=<T extends {scope:Scope;operations?:string[]|undefined}>(r:T)=>({...r,operations:r.operations??operationsFor(r.scope.kind)});
+export const customDirectionReview = reviewBase.superRefine(checkScope).transform(withOperations);
 export const customDirectionRead = z.object({decision_id:id}).strict();
 export const customDirectionFence = customDirectionRead.extend({request_key:id,state:z.enum(['inflight','unknown']),evidence:text}).strict();
 type Message = {kind:string;id:string;text:string;actor_id:number;actor_conversation_id?:string|null;created_at:string};
@@ -38,11 +56,14 @@ type Stored = {id:string;decision_id:string;owner_id:string;request_key:string;r
 const stamp=(s:string)=>Date.parse(/^\d{4}-\d\d-\d\d /.test(s)?s.replace(' ','T')+'Z':s);
 const limits = {execute:false,ready:false,authority:false,dispatchEntitlement:false} as const;
 // This tracker supplies no authority, but ordinary existing source permissions need no new verifier enrollment.
-export const customDirectionRenew = customDirectionReview.extend({expected_review_hash:hash}).strict();
+export const customDirectionRenew = reviewBase.extend({expected_review_hash:hash}).strict().superRefine(checkScope).transform(withOperations);
 const checks=z.object({material_unchanged:z.literal(true),source_identity_checked:z.literal(true),existing_authority_checked:z.literal(true),ownership_and_duplicates_checked:z.literal(true),tool_permissions_checked:z.literal(true),observed_at:z.string().datetime(),evidence:text}).strict();
 export const customDirectionResult = customDirectionRead.extend({request_key:id,attempt_key:id,expected_review_hash:hash,
   state:z.enum(['running','blocked','unknown','verified_completed']),evidence:text,inspection_hash:hash.optional(),checks:checks.optional(),
-  readbacks:z.array(z.object({system:z.enum(['autopo','shopify']),record_id:id,unit_cents:z.number().int().nonnegative().safe(),quantity:z.number().int().positive().safe().optional(),total_cents:z.number().int().nonnegative().safe().optional(),retail_cents:z.number().int().nonnegative().safe().optional(),protected_fields_unchanged:z.literal(true),observed_at:z.string().datetime(),receipt:text}).strict()).max(2).default([]),
+  readbacks:z.array(z.discriminatedUnion('system',[
+    z.object({system:z.enum(['autopo','shopify']),record_id:id,unit_cents:z.number().int().nonnegative().safe(),quantity:z.number().int().positive().safe().optional(),total_cents:z.number().int().nonnegative().safe().optional(),retail_cents:z.number().int().nonnegative().safe().optional(),protected_fields_unchanged:z.literal(true),observed_at:z.string().datetime(),receipt:text}).strict(),
+    z.object({system:z.literal('native_delegation'),record_id:id,protected_fields_unchanged:z.literal(true),observed_at:z.string().datetime(),receipt:text}).strict(),
+  ])).max(50).default([]),
 }).strict();
 type Progress={id:string;review_id:string;request_key:string;request_hash:string;state:string;attempt_key:string;payload_json:string};
 
@@ -160,8 +181,8 @@ export function customDirections(db:Database.Database) {
       if(prior){if(prior.request_hash!==requestHash)throw new BotError(409,'Conflicting renewal replay');return response(row);}
       if(db.prepare("SELECT 1 FROM bot_custom_direction_progress WHERE review_id=? AND state IN ('running','unknown','verified_completed')").get(row.id)||db.prepare('SELECT 1 FROM bot_custom_direction_fences WHERE review_id=?').get(row.id))throw new BotError(409,'Attempted or uncertain action cannot be renewed or rekeyed');
       const old=latest(row);if(canonicalSha256(old)!==r.expected_review_hash)throw new BotError(409,'Review changed; read original record');
-      const p=old.review,operations=p.operations??['autopo','shopify'];
-      if(canonicalSha256(p.scope)!==canonicalSha256(r.scope)||p.answer_event_id!==r.answer_event_id||p.executor_conversation_id!==r.executor_conversation_id||p.expected_version!==r.expected_version||r.operations.some(x=>!operations.includes(x)))throw new BotError(409,'Renewal may only narrow operations and refresh unchanged source observations');
+      const p=old.review,operations:string[]=p.operations??operationsFor(p.scope.kind);
+      if(canonicalSha256(p.scope)!==canonicalSha256(r.scope)||p.answer_event_id!==r.answer_event_id||p.executor_conversation_id!==r.executor_conversation_id||p.expected_version!==r.expected_version||(r.operations??[]).some(x=>!operations.includes(x)))throw new BotError(409,'Renewal may only narrow operations and refresh unchanged source observations');
       const snapshot=reviewSnapshot(a,r);
       db.prepare('INSERT INTO bot_custom_direction_amendments(id,review_id,request_key,request_hash,snapshot_json) VALUES(?,?,?,?,?)').run(crypto.randomUUID(),row.id,r.request_key,requestHash,JSON.stringify(snapshot));
       return response(row);
@@ -184,9 +205,16 @@ export function customDirections(db:Database.Database) {
       } else {
         if((!running&&p.state!=='blocked')||(running&&running.attempt_key!==p.attempt_key))throw new BotError(409,'Exact original running attempt required');
         if(p.state==='verified_completed') {
-          const scope=snapshot.review.scope,operations:string[]=snapshot.review.operations??['autopo','shopify'];
+          const scope:Scope=snapshot.review.scope,operations:string[]=snapshot.review.operations??operationsFor(scope.kind);
+          if(scope.kind==='nonfinancial_direction') {
+            // One actual readback per original target; excluded (already done) items are never completed here.
+            const targets=scope.targets.map(t=>t.id);
+            if(p.readbacks.length!==targets.length||new Set(p.readbacks.map(r=>r.record_id)).size!==targets.length)throw new BotError(409,'Actual readbacks for every original target required');
+            for(const r of p.readbacks){fresh(r.observed_at);if(r.system!=='native_delegation'||!operations.includes(r.system)||!targets.includes(r.record_id))throw new BotError(409,'Readback differs from original nonfinancial targets');}
+          } else {
           if(p.readbacks.length!==operations.length||new Set(p.readbacks.map(r=>r.system)).size!==operations.length)throw new BotError(409,'Actual readbacks for every original operation required');
-          for(const r of p.readbacks){fresh(r.observed_at);if(!operations.includes(r.system)||r.unit_cents!==scope.unit_cents||r.record_id!==(r.system==='autopo'?scope.autopo_line_id:scope.inventory_item_id)|| (r.system==='autopo'&&(r.quantity!==scope.quantity||r.total_cents!==scope.total_cents))||(r.system==='shopify'&&r.retail_cents!==scope.unchanged_retail_cents))throw new BotError(409,'Readback differs from original correction or protected fields');}
+          for(const r of p.readbacks){fresh(r.observed_at);if(r.system==='native_delegation'||!operations.includes(r.system)||r.unit_cents!==scope.unit_cents||r.record_id!==(r.system==='autopo'?scope.autopo_line_id:scope.inventory_item_id)|| (r.system==='autopo'&&(r.quantity!==scope.quantity||r.total_cents!==scope.total_cents))||(r.system==='shopify'&&r.retail_cents!==scope.unchanged_retail_cents))throw new BotError(409,'Readback differs from original correction or protected fields');}
+          }
         }
       }
       db.prepare('INSERT INTO bot_custom_direction_progress(id,review_id,request_key,request_hash,state,attempt_key,payload_json) VALUES(?,?,?,?,?,?,?)').run(crypto.randomUUID(),row.id,p.request_key,requestHash,p.state,p.attempt_key,JSON.stringify(p));

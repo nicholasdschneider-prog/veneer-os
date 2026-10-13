@@ -123,7 +123,7 @@ it('routes all MCP calls with exact payloads and announces truthful limits to em
   const api=vi.fn(async()=>({execute:false}));await callBotTool({name,args:{decision_id:decision},callApi:api});
   expect(api).toHaveBeenCalledWith('/api/bots/custom-directions/'+path,{method:'POST',body:JSON.stringify({decision_id:decision})});
  }
- const feature=botFeatureCatalog(Date.parse('2026-10-08')).features.find(f=>f.id==='custom-direction-review')!;
+ const feature=botFeatureCatalog(Date.parse('2026-10-13')).features.find(f=>f.id==='custom-direction-review')!;
  expect(feature.isNew).toBe(true);expect(feature.limits).toContain('No blanket verifier enrollment requirement');expect(botFeatureInstructions()).toContain(`- ${feature.title}: ${feature.prompt}`);
  expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
  for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(feature.prompt!);
@@ -197,4 +197,32 @@ it('UNKNOWN permits only read-only original receipt reconciliation, never renewa
  expect(directions.result(bot,completion(p))).toMatchObject({progress:{state:'verified_completed'},fences:[{state:'unknown'}]});
  expect(()=>directions.result(bot,{...p,request_key:'again',attempt_key:'again'})).toThrow('Completed');
  expect(()=>db.prepare('DELETE FROM bot_custom_direction_progress').run()).toThrow('immutable');
+});
+const nonfinancial={kind:'nonfinancial_direction' as const,summary:'Queue the not-yet-done intake and button edits; skip items already done.',targets:[{id:'T2',description:'Intake form edit'},{id:'T3',description:'Button edit'}],excluded:[{id:'T4',reason:'Already done'},{id:'T6',reason:'Already done'}]};
+function nonfinancialStart(){
+ const {scope_review,...base}=request(),p={...base,scope:nonfinancial},r=directions.record(bot,p);
+ return {p,r,run:{decision_id:decision,request_key:'nf',attempt_key:'nf',expected_review_hash:r.review!.review_hash,state:'running' as const,evidence:'Fresh source shows T2/T3 not done or queued.',inspection_hash:p.inspection_hash,checks:{material_unchanged:true as const,source_identity_checked:true as const,existing_authority_checked:true as const,ownership_and_duplicates_checked:true as const,tool_permissions_checked:true as const,observed_at:new Date().toISOString(),evidence:'Live queue and source checked; no duplicate of done items'}}};
+}
+it('tracks a nonfinancial queue-only direction from review through per-target verified completion',()=>{
+ const original=db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(decision),{r,run}=nonfinancialStart();
+ expect(r).toMatchObject({execute:false,authority:false,review:{snapshot:{assessment:'direction_retained',review:{operations:['native_delegation']}}}});
+ expect(directions.result(bot,run)).toMatchObject({first_recording:true,progress:{state:'running'}});
+ expect(()=>directions.result(bot,{...run,request_key:'again',attempt_key:'again'})).toThrow('never replay');
+ const readback=(record_id:string)=>({system:'native_delegation' as const,record_id,protected_fields_unchanged:true as const,observed_at:new Date().toISOString(),receipt:`Build queue item for ${record_id}`});
+ const done={decision_id:decision,request_key:'nf-done',attempt_key:'nf',expected_review_hash:run.expected_review_hash,state:'verified_completed' as const,evidence:'Both targets queued once and read back.',readbacks:[readback('T2'),readback('T3')]};
+ expect(()=>directions.result(bot,{...done,readbacks:[readback('T2')]})).toThrow('every original target');
+ expect(()=>directions.result(bot,{...done,readbacks:[readback('T2'),readback('T4')]})).toThrow('nonfinancial targets');
+ expect(()=>directions.result(bot,{...done,readbacks:[readback('T2'),{...readback('T3'),system:'autopo',unit_cents:1}]})).toThrow('nonfinancial targets');
+ expect(directions.result(bot,done).progress?.state).toBe('verified_completed');
+ expect(db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(decision)).toEqual(original);
+});
+it('rejects money fields, mismatched operations and duplicate targets on nonfinancial scope',()=>{
+ const {scope_review,...p}=request();
+ expect(()=>directions.record(bot,{...p,scope:{...nonfinancial,unit_cents:100}})).toThrow();
+ expect(()=>directions.record(bot,{...p,scope:nonfinancial,operations:['autopo']})).toThrow('must match scope kind');
+ expect(()=>directions.record(bot,{...p,operations:['native_delegation']})).toThrow('must match scope kind');
+ expect(()=>directions.record(bot,{...p,scope:{...nonfinancial,targets:[nonfinancial.targets[0],nonfinancial.targets[0]]}})).toThrow('Unique target');
+ expect(db.prepare('SELECT count(*) n FROM bot_custom_direction_reviews').get()).toEqual({n:0});
+ const {r}=nonfinancialStart();
+ expect(()=>directions.renew(bot,{...p,scope:{...nonfinancial,targets:[...nonfinancial.targets,{id:'T9',description:'Menu'}]},request_key:'broaden',expected_review_hash:r.review!.review_hash})).toThrow('only narrow');
 });
