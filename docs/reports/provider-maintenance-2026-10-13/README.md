@@ -20,7 +20,13 @@ Confirmed configured VP_SERVICE_HOME and absolute binaries under `/Users/archerc
 
 ## Validation and deployment
 
-Root typecheck passed. Focused runtime, model, approval and app-server tests passed all 93 tests after correcting a stale escaped version expectation in the existing mismatch test. Supported restart preflight passed with Node 24.21.0 and native modules loading. Full root `npm test` passed: 30 installer tests, 3,925 server tests (15 skipped), 1,014 web tests and 52 browser-manager tests. Root `npm run build` passed with only the existing nonfatal large-chunk warning. Deployment receipt pending. Pre-restart PIDs: web 2228, runner 52798, app-runner 73106, terminal 73121.
+Root typecheck passed. Focused runtime, model, approval and app-server tests passed all 93 tests after correcting a stale escaped version expectation in the existing mismatch test. Supported restart preflight passed with Node 24.21.0 and native modules loading. Full root `npm test` passed: 30 installer tests, 3,925 server tests (15 skipped), 1,014 web tests and 52 browser-manager tests. Root `npm run build` passed with only the existing nonfatal large-chunk warning. Runtime changes were committed and pushed to `origin main` as `19bc559` (`Update Claude Code and Codex maintenance runtimes`).
+
+Supported root `npm run restart` restarted app-runner, terminal, browser-manager, web and runner last. Runner shutdown interrupted this chat before the final command receipt; this same build resumed for reconciliation without repeating the restart. Fresh PIDs confirm all four Node services restarted: web 2228 → 16526 (initial restart receipt 16256), runner 52798 → 16298, app-runner 73106 → 16154, terminal 73121 → 16174. Browser-manager restart receipt reports healthy.
+
+Post-restart web, runner, app-runner and terminal `/healthz` and browser-manager `/health` returned HTTP 200. Supported `npm run restart -- --health-check` passed on recheck: local web/runner healthy, four active tunnel edge connections, public front door HTTP 302. Initial public-front-door verification failed transiently; no additional restart was performed. These checks do not certify authenticated end-to-end public chat.
+
+Post-restart runtime verification matches all three pins. Codex live model discovery returned its expected six eligible choices. Claude discovery initially returned an empty fallback; a diagnostic call through the unchanged compiled adapter identified a fetch `ETIMEDOUT`, while a direct authenticated catalog call returned HTTP 200 and 14 models. A subsequent live runner discovery returned all eight expected Claude choices. No source repair or credential change was needed. Build #765 work is complete; no owner blocker remains. Unrelated files were preserved. This documentation-only deployment receipt is committed separately.
 
 ## Rollback
 
