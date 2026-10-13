@@ -139,3 +139,22 @@ Limit of this proof: it exercises the reconstructed 1b8561a candidate's DB open 
    - The task row may differ only in scheduler bookkeeping fields. Inspect the raw diff before calling it a change.
 3. A non-zero count in purchase_interrupted_reviews/dispositions means something invoked recovery. Stop and route it to the BUILD801 owner; do not invoke recovery from here.
 4. Rollback never drops the newer immutable ledgers and never restores the backup over the live DB.
+
+## 9. Queue clearance and no-mutation proof for the 21:28–21:39Z validation
+
+Validation (typecheck + full `npm test`) ran 21:28:21–21:38:17Z. Isolated builds ran 21:38:47–21:39:26Z, in /tmp worktrees only.
+
+Queue state (`build_queue`, read 21:46Z):
+- **Veneer project (dc6e8855, root /Users/archerclawdington/veneer-os):** the last builds are #801 (6a752161, done 20:20:19Z), #804 (732adce5, done 20:44:46Z) and #806 (a6e39d6e, done 21:04:42Z). Nothing in this project was running or queued during the validation, and nothing is now.
+- **Other projects, separate trees:**
+  - ERVP (e8e0efc6, /Users/archerclawdington/Projects/ERVP): #802 done 21:26:35Z; #803 running since 21:30:37Z; #805, #808, #809 queued.
+  - MP Health (9c808d67): #807 done 21:24:01Z.
+- The host development lock was free before the run and free afterwards.
+
+No-mutation evidence for /Users/archerclawdington/veneer-os:
+- The reflog has no entries between 7a74def (21:11:45Z) and this packet's first commit, 0e554c2 (21:41:21Z), after validation ended.
+- The tracked tree is clean (`git status --untracked-files=no` is empty).
+- `git diff db8b7f0 HEAD` over server, web, browser-manager, installer, scripts and the package files is empty.
+- Live `server/dist/index.js` (17:03:56 ET) and `web/dist/index.html` (17:04:11 ET) are unchanged, and no file under those source paths is newer than the dist.
+
+Gap, stated plainly: I did **not** message other build owners before starting. Clearance rests on the queue record above (no active Veneer-scope build) plus the host lock, not on explicit owner acknowledgement. The only concurrent build, ERVP #803, works in a different tree. No other owner edited the shared veneer-os tree during the run, so no stop/re-pin was needed. If an owner reports otherwise, the run must be treated as invalid and repeated after re-pinning.
