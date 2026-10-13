@@ -101,3 +101,41 @@ Readiness: from the BUILD806 side, artifacts, validation, provenance, backup and
 - turns drain (`restart.mjs` will refuse otherwise, and must not be forced).
 
 Otherwise the bounded fallback is the existing 02:00–05:00 ET 10/14 window, which needs its owner to re-arm the waiter against the current HEAD or, better, a source-diff guard against db8b7f0, since report-only commits (including this report's) keep moving HEAD.
+
+## 8. Addendum 21:50Z: exact postchecks, record pins, disposable rollback runtime check
+
+Read-only postcheck script: [postcheck.sh](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/postcheck.sh).
+- It pins migrations ≥0176 (name/content_hash), the 0178/0179 schema objects, row counts of the five new tables, the original BUILD801 records and the FK check.
+- Raw row contents stay in the 0700 predeploy directory. Only hash lines are committed here.
+
+**Before-pin, live DB at 21:43:42Z** ([hashes](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/pin-before-20261013T214342Z.hashes.txt)). Each record was found:
+- run `7056b7cc…` (scheduled_task_runs)
+- task `9c72a42a…` (scheduled_tasks)
+- batch `551a9f86…` (purchase_event_batches)
+- worker start turn `b5914b51…` (purchase_worker_starts)
+- exclusions `2080773d…` and `ae219af0…` (purchase_event_receipts and autoship_candidate_events)
+
+The new tables do not exist yet, and there are 0 FK violations. These record hashes equal those taken on the 21:39:53Z backup.
+
+**Disposable DB check** ([log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disposable-rollback-check.log), [script](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/disposable-rollback-check.sh)). It ran on a temp copy of the backup, hash-verified before use and deleted afterwards; the live DB was not touched.
+- **A.** The live artifact's `openDb` applied 0178 `a6205c95…0877` and 0179 `ec134af0…ef5f`.
+  - Created `purchase_interrupted_reviews` and `purchase_interrupted_dispositions` with their 4 no_update/no_delete triggers.
+  - Created `qbo_v2_invocations`, `qbo_v2_phases` and `qbo_bill_observations` with their 6 no_update/no_delete triggers.
+  - All five tables have 0 rows; FK violations 0.
+  - Every original record hash is unchanged from the baseline.
+- **B.** The rollback candidate's (1b8561a) `openDb`, run twice on that migrated copy: exit 0, no DRIFT output, no pending application. State is identical to A.
+- **C.** Re-forward with the live artifact: identical again.
+
+Limit of this proof: it exercises the reconstructed 1b8561a candidate's DB open and migrate path only. It is not the exact executables now running, which were never retained. It also does not boot the old web or runner against the copy: booting them on a copy of production data could fire schedulers and sends. Do not claim more rollback proof than this.
+
+**Postcheck after the restart:**
+1. Run `postcheck.sh > $B/pin-after-<ts>.txt`, then diff its hash lines against the before-pin.
+2. Expected:
+   - Migrations show 0178/0179 with the hashes above.
+   - The new-schema-objects section lists the 5 tables and 10 triggers, plus autoindexes.
+   - All five counts are 0.
+   - FK violations 0.
+   - run/batch/worker-start/exclusion hashes are unchanged.
+   - The task row may differ only in scheduler bookkeeping fields. Inspect the raw diff before calling it a change.
+3. A non-zero count in purchase_interrupted_reviews/dispositions means something invoked recovery. Stop and route it to the BUILD801 owner; do not invoke recovery from here.
+4. Rollback never drops the newer immutable ledgers and never restores the backup over the live DB.
