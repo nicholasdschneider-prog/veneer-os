@@ -70,7 +70,7 @@ What is prepared instead is a **reconstructed rollback candidate**, not proof of
 
 Before:
 - Re-take the backup.
-- Re-pin HEAD and both dist manifests against this report. Any difference means stop and re-validate.
+- Confirm `git diff db8b7f0 HEAD -- server web browser-manager installer scripts package*.json` is empty and both dist manifests match this report. HEAD itself advances with report-only commits, including this report's (0e554c2). Any difference means stop and re-validate.
 - Confirm zero pending turns. `restart.mjs` refuses otherwise; there were 6 pending at 21:30Z.
 
 Run once: `npm run restart -- --maintenance-approved veneer-pro-runner veneer-pro`.
