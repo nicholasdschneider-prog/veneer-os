@@ -521,3 +521,17 @@ executor may use the eventual accepted path. Keep existing qbo.lock and the sing
 refresh grant, with verification before any credential access/refresh. UNKNOWN
 means same-key receipt-only reconciliation, not another attempt. No maintenance
 window is granted by implementation. [Contract](./reports/qbo-boundary/build785/contract.md).
+
+## Native drop-downs in embedded app frames — October 13, 2026 (build #787)
+
+The `browser-scripts` catalog entry (prompt and agent text) now tells bots to set native
+`<select>` controls with a script `select` step and to add `frame` for a control inside an
+iframe, including a cross-origin embedded app. Click plus arrow keys or typing on a native
+drop-down reported done but changed nothing in the ShipX case. `frame` is accepted on `select`,
+`text`, `attr` and `exists`; it names exactly one visible iframe in the tab's own document by
+exact title, then name, then CSS, and is resolved again for every step. A `select` now returns
+`{selected}` read back after the page's change handlers; `not_applied` means the page rejected it.
+The script attaches to the out-of-process frame only for that step (`DOM.getFrameOwner` returns
+only a node id; no new read surface). Owner, recovery and secret-readback fences are unchanged.
+Agents receive it through the injected prompt and the script tool description on their next turn
+after the runner restarts.

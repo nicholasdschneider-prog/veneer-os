@@ -26,6 +26,14 @@ describe('browser script request boundary', () => {
     ]) expect(valid([step]), JSON.stringify(step)).toBe(false);
   });
 
+  it('accepts a frame only on select and page-reading steps', () => {
+    expect(valid([{ op: 'select', frame: 'Rates app', label: 'Condition', option: 'SKU' }, { op: 'text', frame: 'iframe#app', selector: '#echo' },
+      { op: 'attr', frame: 'Rates app', selector: '#cond', name: 'aria-expanded' }, { op: 'exists', frame: 'Rates app', text: 'SKU' }])).toBe(true);
+    for (const step of [{ op: 'click', frame: 'Rates app', text: 'Save' }, { op: 'fill', frame: 'Rates app', label: 'x', value: 'y' },
+      { op: 'press', frame: 'Rates app', key: 'Enter' }, { op: 'wait', frame: 'Rates app', text: 'x' }, { op: 'select', frame: '', label: 'x', option: 'y' },
+      { op: 'select', frame: 'x'.repeat(301), label: 'x', option: 'y' }]) expect(valid([step]), JSON.stringify(step)).toBe(false);
+  });
+
   it('refuses non-web, credentialed and loopback addresses, and oversized scripts', () => {
     for (const url of ['file:///etc/passwd', 'chrome://settings', 'javascript:alert(1)', 'data:text/html,hi', 'view-source:https://example.com',
       'http://localhost:3100', 'http://127.0.0.1', 'http://[::1]', 'http://2130706433', 'https://user:pass@example.com']) {
@@ -113,6 +121,39 @@ describe.skipIf(!process.env.VENEER_BROWSER_TEST_CHROME)('browser scripts in Chr
           </script></main></body>`);
         return;
       }
+      if (req.url === '/frame-host') {
+        res.end(`<title>Frame host</title><body><main>
+          <iframe id="app" title="Rates app" src="http://frame.test:${port}/frame-app" width="600" height="300"></iframe>
+          <iframe title="Twin" src="http://frame.test:${port}/frame-app" width="50" height="50"></iframe>
+          <iframe title="Twin" src="http://frame.test:${port}/frame-app" width="50" height="50"></iframe>
+          <button id="close" onclick="document.getElementById('app').remove()">Close app</button>
+        </main></body>`);
+        return;
+      }
+      if (req.url === '/frame-app') {
+        // A framework-style controlled select: assignments through the page's own
+        // value property are tracked, and a change is honored only when the
+        // element's real value differs from the tracked one.
+        res.end(`<title>Rates app</title><body><div role="dialog" aria-label="Update condition">
+          <label for="cond">Condition</label><select id="cond"><option>Tag</option><option>SKU</option><option>Vendor</option></select>
+          <label for="locked">Locked</label><select id="locked"><option>Only</option><option>Other</option></select>
+          <div id="echo">Condition: Tag</div>
+          <script>
+            const real = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+            const cond = document.getElementById('cond');
+            let tracked = cond.value;
+            Object.defineProperty(cond, 'value', { get() { return real.get.call(this); }, set(v) { tracked = v; real.set.call(this, v); } });
+            cond.addEventListener('change', () => {
+              const now = real.get.call(cond);
+              if (now === tracked) return;
+              tracked = now;
+              document.getElementById('echo').textContent = 'Condition: ' + cond.selectedOptions[0].text;
+            });
+            const locked = document.getElementById('locked');
+            locked.addEventListener('change', () => setTimeout(() => { locked.selectedIndex = 0; }, 0));
+          </script></div></body>`);
+        return;
+      }
       if (req.url === '/details') { res.end('<title>Details</title><body><main>Detail page</main></body>'); return; }
       res.end(`<title>Orders</title><body>
         <div id="banner">Promo <button id="dismiss" onclick="this.parentNode.remove()">No thanks</button></div>
@@ -144,7 +185,7 @@ describe.skipIf(!process.env.VENEER_BROWSER_TEST_CHROME)('browser scripts in Chr
     browser = spawn(process.env.VENEER_BROWSER_TEST_CHROME!, [
       '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${directory}`,
       '--no-first-run', '--no-default-browser-check', '--no-proxy-server',
-      '--host-resolver-rules=MAP script.test 127.0.0.1', 'about:blank',
+      '--site-per-process', '--host-resolver-rules=MAP script.test 127.0.0.1, MAP frame.test 127.0.0.1', 'about:blank',
     ], { stdio: 'ignore' });
     const file = path.join(directory, 'DevToolsActivePort');
     const deadline = Date.now() + 15000;
@@ -307,6 +348,48 @@ describe.skipIf(!process.env.VENEER_BROWSER_TEST_CHROME)('browser scripts in Chr
     // The tab holding the dialog is left for the dialog tool, not discarded.
     expect(result.kept_tabs).toEqual([`${base}/dialog`]);
     expect(await pageTargets()).toEqual([...before, `${base}/dialog`].sort());
+  });
+
+  it('selects in a cross-origin iframe, confirms it by readback, and stays in that frame for the step only', async () => {
+    const frameUrl = `${base.replace('script.test', 'frame.test')}/frame-app`;
+    // The fixture really is out of process: the iframe has its own target.
+    const host = await run({ steps: [{ op: 'open', url: `${base}/frame-host`, keep: true }, { op: 'wait', ms: 800 }] });
+    expect(host.ok).toBe(true);
+    const iframes = ((await observer.send('Target.getTargets')).targetInfos as { type: string; url: string }[]).filter(item => item.type === 'iframe');
+    expect(iframes.map(item => item.url)).toContain(frameUrl);
+    // Without a frame the page's own document is searched, as before.
+    const parentOnly = await run({ steps: [{ op: 'tab', url_contains: '/frame-host' }, { op: 'select', label: 'Condition', option: 'SKU', timeout_ms: 300 }] });
+    expect(parentOnly.error).toMatchObject({ code: 'not_found', outcome_unknown: false });
+    sent.length = 0;
+    const result = await run({ steps: [
+      { op: 'tab', url_contains: '/frame-host' },
+      { op: 'attr', frame: 'Rates app', selector: '#cond', name: 'id', as: 'before' },
+      { op: 'select', frame: 'Rates app', label: 'Condition', option: 'SKU' },
+      { op: 'text', frame: 'Rates app', selector: '#echo', as: 'echo' },
+      { op: 'exists', frame: 'Rates app', selector: '#locked', as: 'inside' },
+      { op: 'exists', selector: '#locked', as: 'outside' },
+      { op: 'url' },
+    ] });
+    expect(result.error).toBeUndefined();
+    const values = Object.fromEntries(result.results.map(item => [item.as ?? item.op, item.value]));
+    expect(values).toMatchObject({ before: 'cond', select: { selected: 'SKU' }, echo: 'Condition: SKU', inside: true, outside: false });
+    expect(result.url).toBe(`${base}/frame-host`);
+    expect(sent).toContain('DOM.getFrameOwner');
+    expect(sent).toContain('Target.attachToTarget');
+    for (const method of sent) expect(SCRIPT_CDP_METHODS.has(method), method).toBe(true);
+    // A page that rejects the change is reported, with the outcome left to check.
+    const rejected = await run({ steps: [{ op: 'tab', url_contains: '/frame-host' }, { op: 'select', frame: 'Rates app', label: 'Locked', option: 'Other' }] });
+    expect(rejected.error).toMatchObject({ op: 'select', code: 'not_applied', outcome_unknown: true });
+    // Ambiguous, unknown and removed frames are refused before anything is changed.
+    const twin = await run({ steps: [{ op: 'tab', url_contains: '/frame-host' }, { op: 'select', frame: 'Twin', label: 'Condition', option: 'Vendor' }] });
+    expect(twin.error).toMatchObject({ code: 'ambiguous_frame', outcome_unknown: false });
+    const missing = await run({ steps: [{ op: 'tab', url_contains: '/frame-host' }, { op: 'text', frame: 'Nope', selector: '#echo' }] });
+    expect(missing.error).toMatchObject({ code: 'frame_not_found' });
+    const stale = await run({ steps: [{ op: 'tab', url_contains: '/frame-host' }, { op: 'click', text: 'Close app' },
+      { op: 'select', frame: 'Rates app', label: 'Condition', option: 'Vendor' }] });
+    expect(stale.error).toMatchObject({ step: 3, code: 'frame_not_found', outcome_unknown: false });
+    await observer.send('Target.closeTarget', { targetId: (((await observer.send('Target.getTargets')).targetInfos) as { targetId: string; url: string }[])
+      .find(item => item.url === `${base}/frame-host`)!.targetId });
   });
 
   it('honors the overall time limit', async () => {

@@ -38,6 +38,8 @@ const ATTRIBUTES = ['href', 'src', 'alt', 'title', 'aria-label', 'aria-checked',
   'aria-disabled', 'aria-current', 'role', 'id', 'class', 'name', 'type', 'checked', 'disabled'] as const;
 
 const elementWait = z.number().int().min(100).max(30_000).optional();
+// An iframe in the tab's own document, named by exact title, then name, then CSS.
+const frame = z.string().trim().min(1).max(300).optional();
 
 const locator = {
   selector: selector.optional(),
@@ -60,16 +62,16 @@ const StepSchema = z.discriminatedUnion('op', [
     nth: z.number().int().min(0).max(500).optional(), value: z.string().max(5000), submit: z.boolean().optional(), timeout_ms: elementWait }).strict(),
   z.object({ op: z.literal('press'), key: z.enum(KEYS) }).strict(),
   z.object({ op: z.literal('select'), selector: selector.optional(), label: words.optional(), exact: z.boolean().optional(),
-    nth: z.number().int().min(0).max(500).optional(), option: z.string().min(1).max(500), timeout_ms: elementWait }).strict(),
+    nth: z.number().int().min(0).max(500).optional(), option: z.string().min(1).max(500), frame, timeout_ms: elementWait }).strict(),
   z.object({ op: z.literal('scroll'), selector: selector.optional(), to: z.enum(['top', 'bottom']).optional(),
     by: z.number().int().min(-20_000).max(20_000).optional(), timeout_ms: elementWait }).strict(),
   z.object({ op: z.literal('text'), selector: selector.optional(), all: z.boolean().optional(),
-    max_chars: z.number().int().min(1).max(50_000).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
+    max_chars: z.number().int().min(1).max(50_000).optional(), frame, timeout_ms: elementWait, as: label.optional() }).strict(),
   z.object({ op: z.literal('table'), selector: selector.optional(), max_rows: z.number().int().min(1).max(1000).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
   z.object({ op: z.literal('links'), selector: selector.optional(), contains: words.optional(),
     max: z.number().int().min(1).max(200).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
-  z.object({ op: z.literal('attr'), selector, name: z.enum(ATTRIBUTES), nth: z.number().int().min(0).max(500).optional(), timeout_ms: elementWait, as: label.optional() }).strict(),
-  z.object({ op: z.literal('exists'), ...locator, as: label.optional() }).strict(),
+  z.object({ op: z.literal('attr'), selector, name: z.enum(ATTRIBUTES), nth: z.number().int().min(0).max(500).optional(), frame, timeout_ms: elementWait, as: label.optional() }).strict(),
+  z.object({ op: z.literal('exists'), ...locator, frame, as: label.optional() }).strict(),
   z.object({ op: z.literal('url'), as: label.optional() }).strict(),
 ]);
 
@@ -153,6 +155,8 @@ export const SCRIPT_CDP_METHODS: ReadonlySet<string> = new Set([
   'Fetch.enable', 'Fetch.continueRequest', 'Fetch.failRequest',
   'Runtime.callFunctionOn', 'Runtime.releaseObject',
   'DOM.scrollIntoViewIfNeeded', 'DOM.getContentQuads', 'DOM.focus', 'DOM.resolveNode',
+  // Returns only the node id of the iframe element that owns a frame.
+  'DOM.getFrameOwner',
   // Used only to find which element carries a name. Its nodes can hold field
   // values, so nothing from a reply but the element's identity is ever used.
   'Accessibility.queryAXTree',
@@ -300,6 +304,33 @@ const CHOOSE_OPTION = `function(wanted) {
   return { chosen: String(option.label || option.text).slice(0, 300) };
 }`;
 
+// The option the page shows as selected now; read again after the page's own change handlers ran.
+const SELECTED_OPTION = `function() {
+  if (!(this instanceof HTMLSelectElement) || !this.isConnected) return { gone: true };
+  const option = this.selectedOptions[0];
+  return { selected: option ? String(option.label || option.text).slice(0, 300) : null };
+}`;
+
+// Counts the iframes a frame spec names in this document: exact title, then name, then CSS.
+const FRAME_COUNT = `function(spec) {${HELPERS}
+  const frames = [...document.querySelectorAll('iframe,frame')];
+  let by = 'title', hits = frames.filter(f => f.title === spec);
+  if (!hits.length) { by = 'name'; hits = frames.filter(f => f.name === spec); }
+  if (!hits.length) { by = 'css'; try { hits = [...document.querySelectorAll(spec)]; } catch { return { by, invalid: true }; } }
+  return { by, matches: hits.length, frames: hits.filter(f => f instanceof HTMLIFrameElement || f instanceof HTMLFrameElement).length,
+    visible: hits.filter(visible).length };
+}`;
+
+const FRAME_ELEMENT = `function(spec) {
+  const frames = [...document.querySelectorAll('iframe,frame')];
+  let hits = frames.filter(f => f.title === spec);
+  if (!hits.length) hits = frames.filter(f => f.name === spec);
+  if (!hits.length) hits = [...document.querySelectorAll(spec)];
+  return hits.length === 1 ? hits[0] : null;
+}`;
+
+const SAME_NODE = 'function(other) { return this === other; }';
+
 const SCROLL_PAGE = `function(options) {
   if (options.to === 'top') scrollTo(0, 0);
   else if (options.to === 'bottom') scrollTo(0, document.documentElement.scrollHeight);
@@ -331,6 +362,7 @@ class StepFailure extends Error {
 }
 
 interface Page { targetId: string; sessionId: string; owned: boolean; keep: boolean }
+interface FrameTree { frame: { id: string }; childFrames?: FrameTree[] }
 
 const WORLD_GONE = /context.*(destroyed|not found)|Cannot find context|No frame|Execution context was destroyed|Cannot find object/i;
 
@@ -357,6 +389,9 @@ export async function runBrowserScript(
   let truncated = false;
   let cdp: CdpConnection | undefined;
   let page: Page | undefined;
+  // Set only while one step runs against an iframe; resolved fresh for every step.
+  let scope: { sessionId: string; frameId: string } | null = null;
+  const frameSessions: string[] = [];
   let stepsRun = 0;
   let dialogOpen = false;
   // A dialog freezes its page, so the call that raised it never answers. This
@@ -400,17 +435,27 @@ export async function runBrowserScript(
     throw new StepFailure('no_page', `${web.length} tabs are open (${names.join(', ')}${web.length > 6 ? ', …' : ''}). Start with a tab step naming part of the address you mean, or an open step.`);
   };
 
-  /** Call fixed platform code in a fresh isolated world of the current page. */
+  /** The session a step talks to: the step's iframe when it names one, else the page. */
+  const sessionFor = (): string => scope?.sessionId ?? current().sessionId;
+
+  /** A fresh isolated world in the step's frame (the page's main frame by default). */
+  const world = async (): Promise<{ executionContextId: number }> => {
+    const sessionId = sessionFor();
+    let frameId = scope?.frameId;
+    if (!frameId) frameId = (await send('Page.getFrameTree', {}, sessionId)).frameTree.frame.id as string;
+    return send('Page.createIsolatedWorld', { frameId, worldName: 'veneer-script' }, sessionId);
+  };
+
+  /** Call fixed platform code in a fresh isolated world of the current page or step frame. */
   const inPage = async (declaration: string, argument: unknown, byValue = true): Promise<any> => {
-    const target = current();
     for (let attempt = 0; ; attempt++) {
       try {
-        const tree = await send('Page.getFrameTree', {}, target.sessionId);
-        const world = await send('Page.createIsolatedWorld', { frameId: tree.frameTree.frame.id, worldName: 'veneer-script' }, target.sessionId);
+        const sessionId = sessionFor();
+        const isolated = await world();
         const evaluated = await send('Runtime.callFunctionOn', {
-          functionDeclaration: declaration, executionContextId: world.executionContextId,
+          functionDeclaration: declaration, executionContextId: isolated.executionContextId,
           arguments: [{ value: argument }], returnByValue: byValue,
-        }, target.sessionId);
+        }, sessionId);
         if (evaluated.exceptionDetails) {
           const text = String(evaluated.exceptionDetails.exception?.description ?? '');
           if (/SyntaxError|not a valid selector/i.test(text)) throw new StepFailure('invalid_selector', 'The selector is not valid CSS.');
@@ -475,11 +520,10 @@ export async function runBrowserScript(
    * when the page text does not. Only node identity leaves the reply.
    */
   const byAccessibleName = async (name: string, role: string | undefined, kind: LocateKind): Promise<string[]> => {
-    const target = current();
+    const target = { sessionId: sessionFor() };
     try {
-      const tree = await send('Page.getFrameTree', {}, target.sessionId);
-      const world = await send('Page.createIsolatedWorld', { frameId: tree.frameTree.frame.id, worldName: 'veneer-script' }, target.sessionId);
-      const root = await send('Runtime.callFunctionOn', { functionDeclaration: DOCUMENT, executionContextId: world.executionContextId, returnByValue: false }, target.sessionId);
+      const world_ = await world();
+      const root = await send('Runtime.callFunctionOn', { functionDeclaration: DOCUMENT, executionContextId: world_.executionContextId, returnByValue: false }, target.sessionId);
       if (!root.result?.objectId) return [];
       const reply = await send('Accessibility.queryAXTree', { objectId: root.result.objectId, accessibleName: name, ...(role ? { role } : {}) }, target.sessionId);
       const nodes = ((reply.nodes ?? []) as Array<{ ignored?: boolean; role?: { value?: string }; backendDOMNodeId?: number }>)
@@ -493,7 +537,7 @@ export async function runBrowserScript(
       const ordered = [...pool].sort((a, b) => rank(a) - rank(b)).slice(0, 30);
       const found: string[] = [];
       for (const node of ordered) {
-        const resolved = await send('DOM.resolveNode', { backendNodeId: node.backendDOMNodeId, executionContextId: world.executionContextId }, target.sessionId);
+        const resolved = await send('DOM.resolveNode', { backendNodeId: node.backendDOMNodeId, executionContextId: world_.executionContextId }, target.sessionId);
         if (!resolved.object?.objectId) continue;
         const element = await send('Runtime.callFunctionOn', { functionDeclaration: AS_ELEMENT, objectId: resolved.object.objectId,
           arguments: [{ value: kind }], returnByValue: false }, target.sessionId);
@@ -587,8 +631,56 @@ export async function runBrowserScript(
     results.push({ step: index + 1, op: step.op, ...(name ? { as: name } : {}), value });
   };
 
+  /**
+   * Point this step at exactly one visible iframe in the tab's own document.
+   *
+   * The iframe element is found in the page, then matched to its frame through
+   * the frame's owner node, never by address or position. A cross-origin frame
+   * runs in its own process, so its target is attached for this step only; a
+   * same-origin frame is reached through the page's session. Nothing is cached:
+   * a frame that reloaded or went away is resolved again or refused.
+   */
+  const enterFrame = async (spec: string): Promise<void> => {
+    const top = current().sessionId;
+    const counts = (await inPage(FRAME_COUNT, spec)).value as { by: string; invalid?: boolean; matches?: number; frames?: number; visible?: number };
+    if (counts.invalid) throw new StepFailure('frame_not_found', 'No iframe has that title or name, and it is not a valid CSS selector.');
+    if (!counts.matches) throw new StepFailure('frame_not_found', 'No iframe on this page has that title or name, or matches that selector. Take a fresh read; an iframe\'s title is the quoted name read shows for it.');
+    if (counts.matches !== 1) throw new StepFailure('ambiguous_frame', `That frame matches ${counts.matches} elements; it must name exactly one iframe.`);
+    if (counts.frames !== 1) throw new StepFailure('frame_not_found', 'That selector matches an element that is not an iframe.');
+    if (counts.visible !== 1) throw new StepFailure('frame_not_visible', 'That iframe is not visible on the page; open the dialog or scroll to it first.');
+    const isolated = await world();
+    const element = await send('Runtime.callFunctionOn', { functionDeclaration: FRAME_ELEMENT, executionContextId: isolated.executionContextId,
+      arguments: [{ value: spec }], returnByValue: false }, top);
+    if (element.result?.subtype !== 'node' || !element.result.objectId) throw new StepFailure('frame_not_found', 'That iframe went away; take a fresh read.');
+    const tree = (await send('Page.getFrameTree', {}, top)).frameTree as FrameTree;
+    const children: string[] = [];
+    const walk = (node: FrameTree): void => { for (const child of node.childFrames ?? []) { children.push(child.frame.id); walk(child); } };
+    walk(tree);
+    // An out-of-process frame is absent from the page's frame tree; its target id is its frame id.
+    const targets = ((await send('Target.getTargets')).targetInfos ?? []) as Array<{ targetId: string; type: string }>;
+    for (const item of targets) if (item.type === 'iframe' && !children.includes(item.targetId)) children.push(item.targetId);
+    let frameId: string | undefined;
+    for (const candidate of children) {
+      const owner = await send('DOM.getFrameOwner', { frameId: candidate }, top).catch(() => null);
+      if (typeof owner?.backendNodeId !== 'number') continue;
+      const resolved = await send('DOM.resolveNode', { backendNodeId: owner.backendNodeId, executionContextId: isolated.executionContextId }, top).catch(() => null);
+      if (!resolved?.object?.objectId) continue;
+      const same = await send('Runtime.callFunctionOn', { functionDeclaration: SAME_NODE, objectId: resolved.object.objectId,
+        arguments: [{ objectId: element.result.objectId }], returnByValue: true }, top);
+      if (same.result?.value === true) { frameId = candidate; break; }
+    }
+    if (!frameId) throw new StepFailure('frame_not_ready', 'That iframe has not loaded a page yet; wait for its content and try again.');
+    if (targets.some(item => item.targetId === frameId && item.type === 'iframe')) {
+      const attached = await send('Target.attachToTarget', { targetId: frameId, flatten: true });
+      frameSessions.push(attached.sessionId as string);
+      scope = { sessionId: attached.sessionId as string, frameId };
+    } else scope = { sessionId: top, frameId };
+  };
+
   const execute = async (step: ScriptStep, index: number): Promise<void> => {
     if (!page && step.op !== 'open' && step.op !== 'tab') await adoptOnlyPage();
+    scope = null;
+    if ('frame' in step && step.frame) await enterFrame(step.frame);
     switch (step.op) {
       case 'open': {
         const blank = `about:blank#veneer-script-${randomUUID()}`;
@@ -660,13 +752,26 @@ export async function runBrowserScript(
         await press(step.key);
         return;
       case 'select': {
-        const target = current();
+        const sessionId = sessionFor();
         const objectId = await locate({ selector: step.selector, label: step.label, exact: step.exact, nth: step.nth }, 'select', step.timeout_ms);
-        const chosen = (await send('Runtime.callFunctionOn', {
-          functionDeclaration: CHOOSE_OPTION, objectId, arguments: [{ value: step.option }], returnByValue: true,
-        }, target.sessionId)).result?.value;
+        let chosen: { notSelect?: boolean; missing?: boolean; chosen?: string } | undefined;
+        try {
+          chosen = (await send('Runtime.callFunctionOn', {
+            functionDeclaration: CHOOSE_OPTION, objectId, arguments: [{ value: step.option }], returnByValue: true,
+          }, sessionId)).result?.value;
+        } catch (error) {
+          throw new StepFailure(error instanceof StepFailure ? error.code : 'browser_error',
+            error instanceof StepFailure ? error.message : 'The selection could not be confirmed.', true);
+        }
         if (chosen?.notSelect) throw new StepFailure('not_a_select', 'That element is not a drop-down list. Click it and then click the option.');
         if (!chosen?.chosen) throw new StepFailure('not_found', 'The drop-down has no such option.');
+        // The page's own change handlers may re-render or reject the choice; report what it shows now.
+        await sleep(Math.min(300, remaining()));
+        const shown = (await send('Runtime.callFunctionOn', { functionDeclaration: SELECTED_OPTION, objectId, returnByValue: true }, sessionId)
+          .catch(() => ({ result: { value: { gone: true } } }))).result?.value as { gone?: boolean; selected?: string | null } | undefined;
+        if (!shown || shown.gone) throw new StepFailure('not_confirmed', 'The drop-down was replaced after the change; read it again before repeating.', true);
+        if (shown.selected !== chosen.chosen) throw new StepFailure('not_applied', `The page shows "${String(shown.selected ?? '').slice(0, 100)}" instead; read it again before repeating.`, true);
+        record(index, step, { selected: clip(shown.selected) });
         return;
       }
       case 'scroll': {
@@ -748,7 +853,7 @@ export async function runBrowserScript(
     for (let index = 0; index < request.steps.length; index++) {
       const step = request.steps[index]!;
       try {
-        await execute(step, index);
+        try { await execute(step, index); } finally { scope = null; }
         stepsRun = index + 1;
       } catch (error) {
         const known = error instanceof StepFailure ? error : null;
@@ -790,6 +895,7 @@ export async function runBrowserScript(
             } else if (mine?.owned) keptTabs.push(item.url.slice(0, 500));
             else if (!mine && !initialTargets.has(item.targetId) && readableUrl(item.url)) pageOpened.push(item.url.slice(0, 500));
           }
+          for (const sessionId of frameSessions) await cdp!.send('Target.detachFromTarget', { sessionId }).catch(() => undefined);
           for (const entry of pages) {
             if (entry.owned && !entry.keep) continue;
             await cdp!.send('Target.detachFromTarget', { sessionId: entry.sessionId }).catch(() => undefined);
