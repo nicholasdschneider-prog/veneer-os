@@ -80,6 +80,14 @@ describe('human decision review', () => {
     expect(legacy).toContain('Which archive should we inspect?');
     expect(legacy).not.toContain('Not established');
   });
+  it('shows a deliberately missing evidence file plainly on both card surfaces', () => {
+    const decision = {proposal:{question:'How should the insurer screenshot of the original email be provided?', recommendation:'Nick uploads the screenshot.', consequence:'No send authorized.', blocked_action:'Prepare the claim.', review_summary:{action_title:'Provide the original-email screenshot', request:'Choose how the screenshot is obtained.', background:[], evidence_gap:{kind:'image', description:'Screenshot of the original help@ email', reason:'requires_human_access', source_ref:'Gmail 1a1303c013f496f7'}}}} as unknown as BotDecision;
+    for (const desk of [false, true]) {
+      const html = renderToStaticMarkup(<BotProposalSummary decision={decision} desk={desk} />);
+      expect(html).toContain('Not attached: </dt><dd class="inline">Screenshot of the original help@ email — requires your access');
+      expect(html).toContain('Source: Gmail 1a1303c013f496f7');
+    }
+  });
   it('retains sourced refund history even on an operational legacy card', () => {
     const decision = {proposal:{question:'Reconcile ledger?',recommendation:'Review receipt.',consequence:'Read only.',blocked_action:'No effects.',review_summary:{action_title:'Review ledger',background:[],refund:{status:'partial',source:'Ledger',as_of:'2026-09-29T12:00:00Z',scope:'Order 1',evidence_kind:'completed_refund',receipt:'receipt-1',amount:12,currency:'USD'}}}} as unknown as BotDecision;
     const html = renderToStaticMarkup(<BotProposalSummary decision={decision} />);

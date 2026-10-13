@@ -43,15 +43,19 @@ const PHOTO_RE = /\b(photo|photos|picture|pictures|image|images|attachment|attac
 const REFUND_RE = /\b(refund|refunded|refunds|reimburse|credit back|money back|store credit|partial credit)\b/i;
 /**
  * A question must carry what the human needs to answer it. If it talks about
- * photos, the photos are on the card. If it mentions refunds or credits, the refund facts
+ * photos, the photos are on the card, or a typed evidence_gap says why they
+ * cannot be yet (never both). If it mentions refunds or credits, the refund facts
  * are verified and cited, never "not verified" next to a recommended refund.
  */
-export function validateDecisionEvidence(p: { question: string; recommendation: string; consequence: string; review_summary?: { request?: string; customer_request?: string; background?: string[]; refund?: { status: string } } | undefined; message_delivery?: { payload: { body: string } } | undefined; images?: unknown[] | undefined; evidence_items?: EvidenceItem[] | undefined }): void {
+export function validateDecisionEvidence(p: { question: string; recommendation: string; consequence: string; review_summary?: { request?: string; customer_request?: string; background?: string[]; refund?: { status: string }; evidence_gap?: EvidenceGap } | undefined; message_delivery?: { payload: { body: string } } | undefined; images?: unknown[] | undefined; evidence_items?: EvidenceItem[] | undefined }): void {
   const items = p.evidence_items ?? [];
   const humanText = [p.question, p.review_summary?.request, p.review_summary?.customer_request, ...(p.review_summary?.background ?? [])].filter(Boolean).join('\n');
   const files = (p.images?.length ?? 0) + items.filter(i => i.kind === 'image' || i.kind === 'document').length;
-  if (PHOTO_RE.test(humanText) && files === 0)
-    throw new BotError(400, 'This question refers to photos or attachments but attaches none. Add them as evidence_items (kind image/document from gmail, orderops or a chat file) so the human can see them on the card. If the right photos do not exist yet, ask the customer for them first and raise the question afterwards.');
+  const gap = p.review_summary?.evidence_gap;
+  if (gap && files > 0)
+    throw new BotError(400, 'review_summary.evidence_gap says a file is missing, but this question attaches images or documents. Remove evidence_gap when the evidence is attached, or remove the attachments if the needed file truly does not exist yet.');
+  if (PHOTO_RE.test(humanText) && files === 0 && !gap)
+    throw new BotError(400, 'This question refers to photos or attachments but attaches none. Add them as evidence_items (kind image/document from gmail, orderops or a chat file) so the human can see them on the card. If the right photos do not exist yet, ask the customer for them first and raise the question afterwards. If the question is how to obtain evidence that cannot exist yet or needs the human\'s own access (not something the customer can send), state it in review_summary.evidence_gap instead.');
   const refundText = [humanText, p.recommendation, p.consequence, p.message_delivery?.payload.body].filter(Boolean).join('\n');
   if (REFUND_RE.test(refundText) || p.review_summary?.refund) {
     const refund = p.review_summary?.refund;
@@ -154,6 +158,15 @@ export const decisionImageSchema = z.object({
   source: z.string().trim().min(1).max(300),
   sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict();
+/** Evidence the question is about but cannot attach yet: shown on the card as deliberately missing. */
+export const EVIDENCE_GAP_REASONS = ['not_yet_available', 'requires_human_access'] as const;
+export const evidenceGapSchema = z.object({
+  kind: z.enum(['image', 'document']),
+  description: z.string().trim().min(1).max(300),
+  reason: z.enum(EVIDENCE_GAP_REASONS),
+  source_ref: z.string().trim().min(1).max(300).optional(),
+}).strict();
+export type EvidenceGap = z.infer<typeof evidenceGapSchema>;
 export const reviewSummarySchema = z.object({
   action_title: z.string().trim().min(1).max(160),
   request: z.string().trim().min(1).max(600).optional(),
@@ -169,6 +182,7 @@ export const reviewSummarySchema = z.object({
       evidence_kind: z.literal('completed_refund'), receipt: z.string().trim().min(1).max(300),
       amount: z.number().positive().finite(), currency: z.string().regex(/^[A-Z]{3}$/) }).strict(),
   ]).optional(),
+  evidence_gap: evidenceGapSchema.optional(),
 }).strict();
 export const proposalSchema = z
   .object({

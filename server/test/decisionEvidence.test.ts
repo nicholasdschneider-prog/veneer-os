@@ -92,6 +92,50 @@ describe('decision evidence and staleness', () => {
     validateDecisionEvidence(proposalSchema.parse({ question: 'Which pack for 10 brackets?', recommendation: '27 oz', consequence: 'Teaches the pack only.', blocked_action: 'Record', assignee_id: 1, choices }));
   });
 
+  it('accepts a typed evidence gap only without files and keeps photo and refund checks otherwise', async () => {
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.user = bot.user; req.agentConversationId = bot.conversationId; next(); });
+    app.use('/api/bots', createBotsRouter(ctx, { evidenceFetchers: {} }));
+    const server = app.listen(0, '127.0.0.1'); servers.push(server);
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/bots`;
+    const post = (path: string, body: object) => fetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const evidence_gap = { kind: 'image', description: 'Screenshot of the original help@ email the insurer requires', reason: 'requires_human_access', source_ref: 'Gmail 1a1303c013f496f7' };
+    const summary = { action_title: 'Provide the original-email screenshot', request: 'Choose how the insurer screenshot is obtained.', background: ['The insurer rejects pasted text.'] };
+    const ask = proposal({
+      question: 'How should the insurer-required screenshot of the original email be provided?',
+      recommendation: 'Nick uploads the screenshot himself.', consequence: 'No customer contact or claim submission is authorized.', blocked_action: 'Attach the screenshot to the claim.',
+      choices: [{ id: 'upload', label: 'Nick uploads the screenshot', action: 'approve', recommended: true }, { id: 'signin', label: 'Sign help@ into an ERVP profile', action: 'approve' }, { id: 'delegate', label: 'Delegate help@', action: 'approve' }],
+      review_summary: { ...summary, evidence_gap }, evidence_items: [],
+      as_of: { captured_at: '2026-10-13T15:00:00Z', last_inbound: [] },
+    });
+    const raised = await post('/decisions', { source_key: 'claim', proposal_key: 'screenshot', proposal: ask });
+    expect(raised.status).toBe(200);
+    const { decision } = await raised.json();
+    expect(decision.proposal.review_summary.evidence_gap).toEqual(evidence_gap);
+    const revised = await post(`/decisions/${decision.id}/proposal`, { expected_version: 1, request_key: 'revise-gap', proposal: { ...ask, recommendation: 'Nick signs help@ into an ERVP profile.' } });
+    expect(revised.status).toBe(200);
+
+    const withFile = { ...ask, evidence_items: [{ kind: 'image', label: 'Unrelated', source: { system: 'chat_file', conversation_id: 'source', path: file } }] };
+    const withImage = { ...ask, images: [{ conversation_id: 'source', path: file, label: 'Unrelated', source: 'chat' }] };
+    const noGap = { ...ask, review_summary: summary };
+    const refundAsk = { ...ask, recommendation: 'Refund the customer instead.' };
+    const cases: [object, string][] = [[withFile, 'evidence_gap'], [withImage, 'evidence_gap'], [noGap, 'attaches none'], [refundAsk, 'not verified']];
+    for (const [index, [variant, error]] of cases.entries()) {
+      for (const revise of [false, true]) {
+        const response = revise
+          ? await post(`/decisions/${decision.id}/proposal`, { expected_version: 2, request_key: `gap-${index}`, proposal: variant })
+          : await post('/decisions', { source_key: 'claim', proposal_key: `gap-${index}`, proposal: variant });
+        expect(response.status).toBe(400);
+        expect((await response.json()).error).toContain(error);
+      }
+    }
+    expect(() => proposalSchema.parse({ ...ask, review_summary: { ...summary, evidence_gap: { ...evidence_gap, reason: 'customer_will_send' } } })).toThrow();
+    expect(() => proposalSchema.parse({ ...ask, review_summary: { ...summary, evidence_gap: { ...evidence_gap, description: 'x'.repeat(301) } } })).toThrow();
+    expect(s.read(bot, decision.id).version).toBe(2);
+    expect(db.prepare('SELECT count(*) n FROM bot_decisions').get()).toEqual({ n: 1 });
+  });
+
   it('raises and revises a no-order processor appeal while preserving refund and credit evidence checks', async () => {
     const app = express(); app.use(express.json());
     app.use((req, _res, next) => { req.user = bot.user; req.agentConversationId = bot.conversationId; next(); });

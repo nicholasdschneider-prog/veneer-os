@@ -56,9 +56,18 @@ describe('living bot guide release contract', () => {
   });
   it('explains processor evidence and refund requirements to employees and resumed bots', () => {
     const f = botFeatureCatalog(Date.parse('2026-10-06')).features.find(f => f.id === 'decisions')!;
-    expect(f.isNew).toBe(true);
     expect(f.agent).toContain('Chargeback-rate, processor statement, reversal and reserve topics alone do not require order refund history');
     expect(f.agent).toContain('Explicit refund summaries still require verification');
+    expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
+    for (const elevated of [false, true]) expectDelivery(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'bot', elevated }), f);
+  });
+  it('explains typed evidence gaps to employees and resumed bots', () => {
+    const f = botFeatureCatalog(Date.parse('2026-10-13')).features.find(f => f.id === 'decisions')!;
+    expect(f.isNew).toBe(true);
+    expect(f.announcement).toContain('Not attached');
+    expect(f.agent).toContain('review_summary.evidence_gap');
+    expect(f.agent).toContain('never use synonyms, unrelated attachments or fabricated files');
+    expect(f.prompt).toContain('review_summary.evidence_gap');
     expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
     for (const elevated of [false, true]) expectDelivery(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'bot', elevated }), f);
   });

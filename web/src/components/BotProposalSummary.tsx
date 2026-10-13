@@ -16,6 +16,8 @@ function Background({ bullets }: { bullets: string[] }) {
   </div>;
 }
 
+const GAP_REASONS = { not_yet_available: 'not yet available', requires_human_access: 'requires your access' } as const;
+
 /** Display only: raw scope and approval remain in the unchanged versioned proposal. */
 export function BotProposalSummary({ decision, showIdentifiers = false, compact = false, hideDetails = false, editingReply = false, inline = false, desk = false }: { decision: BotDecision; showIdentifiers?: boolean; compact?: boolean; hideDetails?: boolean; editingReply?: boolean; inline?: boolean; desk?: boolean }) {
   // Both surfaces expose the exact reply; compact affects the containing card, not evidence.
@@ -25,15 +27,17 @@ export function BotProposalSummary({ decision, showIdentifiers = false, compact 
   const copy = decisionCopy(proposal);
   const summary = proposal.review_summary;
   const refund = summary?.refund;
+  const gap = summary?.evidence_gap;
   const draft = delivery?.payload.body ?? copy.draft;
   // Legacy summaries required refund status even for operational work. Do not
   // turn that forced unknown into a refund concern; retain all sourced history.
   const showRefund = refund && (refund.status !== 'not_verified' || !!draft || !!summary?.request);
   const action = summary?.action_title || (copy.proposedAction.length <= 240 ? copy.proposedAction : 'Review the recommended action in Original details.');
   return <div className="space-y-4 text-base sm:text-sm [overflow-wrap:anywhere]">
-    {!inline && (!desk || summary?.customer_request || showRefund) && <dl className="space-y-2 rounded-xl bg-muted/40 p-3">
+    {!inline && (!desk || summary?.customer_request || showRefund || gap) && <dl className="space-y-2 rounded-xl bg-muted/40 p-3">
       {!desk && <div><dt className="font-medium">What the bot needs from you</dt><dd className="whitespace-pre-wrap text-muted-foreground">{summary?.request || proposal.question}</dd></div>}
       {summary?.customer_request && <div><dt className="font-medium">{draft || summary.request ? 'Customer request' : 'Context'}</dt><dd className="whitespace-pre-wrap text-muted-foreground">{summary.customer_request}</dd></div>}
+      {gap && <div><dt className="inline font-medium">Not attached: </dt><dd className="inline">{gap.description} — {GAP_REASONS[gap.reason]}</dd>{gap.source_ref && <p className="text-sm text-muted-foreground">Source: {gap.source_ref}</p>}</div>}
       {showRefund && <div><dt className="inline font-medium">Already refunded? </dt><dd className="inline font-semibold">{!refund || refund.status === 'not_verified' ? 'Not verified' : refund.status === 'none' ? 'NO' : refund.status === 'partial' ? 'PARTIAL' : 'YES'}</dd></div>}
       {refund && refund.status !== 'not_verified' && <div className="text-sm text-muted-foreground">
         {refund.status !== 'none' && <p>{refund.amount} {refund.currency} · Completed refund receipt: {refund.receipt}</p>}
