@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "qbo-native-artifacts/v2",
+  "build": 812,
+  "status": "staged_source_acceptance_pending",
+  "files": {
+    "server/src/qbo/phaseContract.ts": "98e4ec36b6899625163ea564e326ce098830db7a697543012382b939c18ca1d2",
+    "server/src/qbo/phaseBoundary.ts": "ec3e40270b5887518b7c5672f3a294887f1738fa18b3566b003ba780460b8dde",
+    "server/src/qbo/helperProcess.ts": "2de610eb661a1c24fc76bf42fe6a0e82d16ae424bfb8c3a883111a965d99101a",
+    "server/src/qbo/boundary.ts": "87ce004fc7548f64c5ea7e722ae76ac0f25767c927f5b686036a5718006aca17",
+    "server/src/qbo/routes.ts": "7f72b6f40ac0ddf0c45780991d4934e4cd412c1d474d22047a51ecee4bcbac4d",
+    "server/src/db/migrations/0179_qbo_phase_transport.sql": "ec134af0060f5172723d00c8de2f71263be537e683b3a891ed137e3905ef0e5f",
+    "server/test/qboPhases.test.ts": "885a8bcca53456b7b29cd0bc8dfb58f2284017f42113adf0a152bf650a1ca6c0",
+    "server/test/qboBoundary.test.ts": "3ffe140d1a93566a15aad734d7567ff5fde3e3e82593cc5a3f8dad47a016d5ff",
+    "server/src/featureGuide/catalog.ts": "6014245724fb1cf2a6cb37d6603681067792fe0d5cef959783768a29d231c1bb",
+    "docs/bot-feature-guide.md": "8410ea7d3d99e37a0aa0c10d73b659dee5883282700ba11d2671154159e2894e",
+    "docs/reports/qbo-boundary/build812/contract.md": "2294611c0693343bc472d42361d60aca04a6eaff527e88f2cafee3e80e056a68",
+    "docs/reports/qbo-boundary/build812/report.md": "6056f3015e9371433115998bf49391b41139b10bf74a2ce0d5d7bc13c366e5fa",
+    "docs/reports/qbo-boundary/build812/validation.json": "52d77bdfa6e9c0118c7a681825edea8831fedf0e90c32340a37c8467ece0a610"
+  }
+}

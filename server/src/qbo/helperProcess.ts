@@ -9,10 +9,15 @@ import type { HelperTransport } from './phaseBoundary.js';
 const fail=()=>new BotError(503,'QBO_HELPER_PROCESS_UNAVAILABLE');
 // Same local spawn/private-pipe facility as native providers. No shell, token,
 // inherited application environment, stderr logging or caller-selected executable.
-export function ownedHelperTransport(timeoutMs=30000):HelperTransport {
+export function ownedHelperTransport(timeoutMs=30000,effectiveUid:()=>number|undefined=()=>process.geteuid?.()):HelperTransport {
   return {async prepare(raw:HelperDescriptor){
     const descriptor=helperDescriptorSchema.parse(raw);
+    function verifyExecutionIdentity(){
+      let uid:number|undefined;try{uid=effectiveUid();}catch{throw fail();}
+      if(typeof uid!=='number'||!Number.isSafeInteger(uid)||uid<0||uid!==descriptor.uid)throw fail();
+    }
     async function freeze(){
+      verifyExecutionIdentity();
       const entries=[descriptor.executable,descriptor.script,...descriptor.dependencies];
       const data:Buffer[]=[];
       for(const entry of entries){
@@ -38,6 +43,7 @@ export function ownedHelperTransport(timeoutMs=30000):HelperTransport {
         // Runtime options are chosen by accepted runtime kind, never by a bot.
         const args=descriptor.runtime==='python'?['-I','-S','-B',path.join(dir,scriptName)]:['--no-addons',path.join(dir,scriptName)];
         await new Promise<void>((resolve,reject)=>{
+          verifyExecutionIdentity(); // No async gap before launch; never switch OS identity.
           const child=spawn(path.join(dir,'runtime'),args,{cwd:dir,env:{LANG:'C.UTF-8',TZ:'UTC'},stdio:['pipe','pipe','ignore'],shell:false});
           let pending='',count=0,failed=false;
           const abort=()=>{if(!failed){failed=true;child.kill('SIGKILL');}};

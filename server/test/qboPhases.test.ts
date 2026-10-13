@@ -106,6 +106,79 @@ describe('QBO v2 phases and private helper transport (offline)',()=>{
     script=async(v,e)=>{const emit=driver(v,e);expect(()=>emit('refresh-start')).toThrow('RECONCILIATION_ONLY');const result=emit('dispatch-accepted',{providerRequestHash:providerRequestHash(r,f),billResult:{billId:'42',companyRealm:'123',syncToken:'7',sourceRevision:h,resultDigest:h,capturedAt}});expect(result.result.operationEntitlement).toBe(false);};
     const out=await service.reconcile(()=>caller,{requestKey:r.requestKey});expect(out.phases.at(-1)?.dispatch).toBe('accepted');expect(Date.parse(out.observation!.expiresAt)).toBeLessThan(time);expect(refreshes).toBe(1);expect(first.phases.at(-1)?.dispatch).toBe('UNKNOWN');
   });
+
+  it.each([undefined,-1,NaN,502])('rejects unsupported or foreign execution UID %s before reservation',async(uid)=>{
+    service=phaseBoundary(db,resolver,ownedHelperTransport(30000,()=>uid),()=>time);
+    await expect(service.invoke(()=>caller,input)).rejects.toThrow('HELPER_PROCESS_UNAVAILABLE');
+    expect(db.prepare('SELECT count(*) n FROM qbo_operation_reservations').get()).toEqual({n:0});
+    expect(refreshes).toBe(0);
+  });
+  it('samples the phase clock once, never writes a second regressed reading',async()=>{
+    let samples=0,armed=false;
+    service=phaseBoundary(db,resolver,transport,()=>armed?(samples++===0?time:time-1):time);
+    script=async(v,e)=>{
+      const emit=driver(v,e);armed=true;
+      const first=emit('refresh-start');expect(samples).toBe(1);
+      expect(first.result.phase.recordedAt).toBe(new Date(time).toISOString());
+      expect(()=>emit('refresh-confirmed')).toThrow('CLOCK_REGRESSED');
+    };
+    const out=await service.invoke(()=>caller,input);
+    expect(out.phases).toHaveLength(2);
+    expect(out.phases.at(-1)).toMatchObject({closed:false,refresh:'started',persistence:'uncertain'});
+    expect(out.refreshEntitlement).toBe(false);
+    armed=false;f.logicalEffectId='another-effect';r.requestKey=id();
+    await expect(service.invoke(()=>caller,input)).rejects.toThrow('SHARED_GRANT');
+  });
+
+  it('does not close or continue a clock-faulted invocation even if the clock recovers',async()=>{
+    script=async(v,e)=>{const emit=driver(v,e);emit('refresh-start');time--;
+      expect(()=>emit('refresh-confirmed')).toThrow('CLOCK_REGRESSED');time++;
+      expect(()=>emit('refresh-confirmed')).toThrow('CLOCK_REGRESSED');
+    };
+    const out=await service.invoke(()=>caller,input);
+    expect(out.phases).toHaveLength(2);expect(out.phases.at(-1)?.closed).toBe(false);
+  });
+  it('rejects an observation if synthetic damaged history cannot prove the dispatch transition',async()=>{
+    script=async(v,e)=>{const emit=driver(v,e);emit('refresh-start');emit('refresh-confirmed');emit('persistence-confirmed');emit('dispatch-start',{providerRequestHash:providerRequestHash(r,f)});throw Error('lost');};
+    await service.invoke(()=>caller,input);
+    // Offline corruption fixture only: remove the dispatch-start row to prove no reservation fallback.
+    const triggers=db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name='qbo_v2_phases'").all() as {name:string}[];
+    for(const trigger of triggers)db.exec('DROP TRIGGER "'+trigger.name.replaceAll('"','""')+'"');
+    db.prepare('DELETE FROM qbo_v2_phases WHERE sequence=4').run();
+    script=async(v,e)=>{driver(v,e)('dispatch-accepted',{providerRequestHash:providerRequestHash(r,f),billResult:{billId:'42',companyRealm:'123',syncToken:'7',sourceRevision:h,resultDigest:h,capturedAt:new Date(time).toISOString()}});};
+    await expect(service.reconcile(()=>caller,{requestKey:r.requestKey})).rejects.toThrow('BILL_DISPATCH_PROOF_REQUIRED');
+    expect(service.read(()=>caller,{requestKey:r.requestKey}).observation).toBeNull();
+  });
+  it.each(['refresh-start','dispatch-start'])('retains open permanent fences when finalization clock regresses after %s',async(stage)=>{
+    script=async(v,e)=>{
+      const emit=driver(v,e);emit('refresh-start');
+      if(stage==='dispatch-start'){emit('refresh-confirmed');emit('persistence-confirmed');emit('dispatch-start',{providerRequestHash:providerRequestHash(r,f)});}
+      time--;throw Error('original private transport failure');
+    };
+    const out=await service.invoke(()=>caller,input);
+    expect(out.phases.at(-1)?.closed).toBe(false);
+    expect(out.phases).toHaveLength(stage==='refresh-start'?2:5);
+    expect(out.operationEntitlement).toBe(false);
+    const before=structuredClone(out.phases);time++;
+    expect((await service.invoke(()=>caller,input)).phases).toEqual(before);
+    r.requestKey=id();f.logicalEffectId='different';
+    await expect(service.invoke(()=>caller,input)).rejects.toThrow('SHARED_GRANT');
+  });
+  it.each(['before-dispatch','future'])('rejects %s Bill captures using dispatch time, including receipt-only reconciliation',async(kind)=>{
+    const reserved=time;
+    script=async(v,e)=>{
+      const emit=driver(v,e);emit('refresh-start');emit('refresh-confirmed');emit('persistence-confirmed');
+      time+=1000;emit('dispatch-start',{providerRequestHash:providerRequestHash(r,f)});
+      expect(()=>emit('dispatch-accepted',{providerRequestHash:providerRequestHash(r,f),billResult:{billId:'42',companyRealm:'123',syncToken:'7',sourceRevision:h,resultDigest:h,capturedAt:new Date(kind==='future'?time+1:reserved).toISOString()}})).toThrow('BILL_RESULT_MISMATCH');
+      throw Error('lost outcome');
+    };
+    const first=await service.invoke(()=>caller,input);expect(first.observation).toBeNull();
+    const before=structuredClone(first.phases);time+=1000;
+    script=async(v,e)=>{driver(v,e)('dispatch-accepted',{providerRequestHash:providerRequestHash(r,f),billResult:{billId:'42',companyRealm:'123',syncToken:'7',sourceRevision:h,resultDigest:h,capturedAt:new Date(kind==='future'?time+1:reserved).toISOString()}});};
+    await expect(service.reconcile(()=>caller,{requestKey:r.requestKey})).rejects.toThrow('BILL_RESULT_MISMATCH');
+    expect(service.read(()=>caller,{requestKey:r.requestKey}).phases).toEqual(before);
+    expect(refreshes).toBe(1);
+  });
   it('production cannot invoke helper without accepted facts',async()=>{await expect(phaseBoundary(db).invoke(()=>caller,input)).rejects.toThrow('UNAVAILABLE');expect(prepareCount).toBe(0);});
   it('uses the canonical existing grant fence across company/business labels',()=>{
     expect(grantDigest(f)).toBe(grantDigest({...f,businessId:id(),companyRealm:'456'}));
@@ -128,6 +201,11 @@ describe('QBO v2 phases and private helper transport (offline)',()=>{
       const code='// Synthetic runtime fixture, no provider functionality.';
       await fs.writeFile(file,code,{mode:0o600});const descriptor={...f.helper,uid:process.getuid!(),executable:{path:executable,sha256:sha(await fs.readFile(executable))},script:{path:file,sha256:sha(code)}};
       const run=await ownedHelperTransport().prepare(descriptor);let calls=0;await run({marker:'exact'},raw=>{expect(raw).toEqual({seen:'exact'});calls++;return {ack:true};});expect(calls).toBe(1);
+
+      let reads=0;const changedIdentity=await ownedHelperTransport(30000,()=>++reads<3?descriptor.uid:descriptor.uid+1).prepare(descriptor);
+      await expect(changedIdentity({marker:'exact'},()=>{throw Error('must not launch');})).rejects.toThrow('UNAVAILABLE');
+      expect(reads).toBe(3); // prepare, freeze, immediate pre-spawn check
+      await expect(ownedHelperTransport(30000,()=>{throw Error('OS identity unsupported');}).prepare(descriptor)).rejects.toThrow('UNAVAILABLE');
       await fs.writeFile(file,'tampered');await expect(run({marker:'exact'},()=>{})).rejects.toThrow('UNAVAILABLE');
     }finally{await fs.rm(dir,{recursive:true,force:true});}
   });

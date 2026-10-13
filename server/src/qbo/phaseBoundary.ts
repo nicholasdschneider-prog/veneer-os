@@ -29,21 +29,27 @@ export function assertGrantClear(db:Database.Database,f:Parameters<typeof grantD
   for(const row of rows){const p=phaseSchema.parse(JSON.parse(row.phase_json));if(!p.closed || p.persistence==='uncertain')deny('SHARED_GRANT_RECONCILIATION_REQUIRED');}
 }
 export function phaseBoundary(db:Database.Database,resolver:PhaseResolver=unavailablePhaseResolver,transport?:HelperTransport,now=Date.now){
+  const clockFaults=new Set<string>();
   const same=(a:unknown,b:unknown)=>canonicalSha256(a)===canonicalSha256(b);
-  function current(auth:()=>Caller,r:RequestV2){
+  function phaseTime(previous?:Phase){
+    const at=now();
+    if(!Number.isFinite(at)||!Number.isFinite(new Date(at).getTime())||(previous&&at<Date.parse(previous.recordedAt)))deny('CLOCK_REGRESSED');
+    return at;
+  }
+  function current(auth:()=>Caller,r:RequestV2,at=now()){
     const c=auth(), f=factsV2Schema.parse(resolver.current(c,r));
-    if(Date.parse(c.sessionExpiresAt)<=now())deny('NATIVE_SESSION_EXPIRED');
+    if(Date.parse(c.sessionExpiresAt)<=at)deny('NATIVE_SESSION_EXPIRED');
     if(f.bindingRef!==r.bindingRef || f.ownerUserId!==c.userId || f.executorConversationId!==c.conversationId)deny('FOREIGN_BINDING');
     if(f.assignmentState!=='assigned'||f.authorityState!=='current')deny('ASSIGNMENT_OR_AUTHORITY_REVOKED');
     if(f.assignmentRevision!==r.assignmentRevision || f.authorityRevision!==r.authorityRevision)deny('REVISION_CHANGED');
-    if(Math.min(Date.parse(f.expiresAt),Date.parse(f.integration.expiresAt))<=now())deny('SCOPE_EXPIRED');
+    if(Math.min(Date.parse(f.expiresAt),Date.parse(f.integration.expiresAt))<=at)deny('SCOPE_EXPIRED');
     if(!same(f.operation,r.operation)||f.authorityScopeHash!==authorityScopeV2(f)||f.integration.helperImplementationHash!==helperHash(f.helper)||f.integration.acceptanceReceiptHash!==f.helper.acceptanceHash)deny('OPERATION_OR_HELPER_SCOPE_MISMATCH');
     if(!db.prepare(`SELECT 1 FROM conversations c JOIN users u ON u.id=c.user_id JOIN bot_registrations b ON b.conversation_id=c.id JOIN business_bot_members m ON m.conversation_id=c.id AND m.team_id=c.business_team_id JOIN business_teams t ON t.id=c.business_team_id WHERE c.id=? AND c.user_id=? AND c.business_team_id=? AND c.archived=0 AND b.active=1 AND u.status='active' AND t.owner_id=u.id`).get(c.conversationId,c.userId,f.businessId))deny('EXECUTOR_ACCESS_REVOKED');
     if(r.operation.observationHash){
       const row=db.prepare('SELECT observation_json FROM qbo_bill_observations WHERE hash=?').get(r.operation.observationHash) as {observation_json:string}|undefined;
       if(!row)deny('BILL_OBSERVATION_REQUIRED');
       const o=observationSchema.parse(JSON.parse(row.observation_json));
-      if(o.businessId!==f.businessId||o.existingGrantRef!==f.existingGrantRef||o.companyRealm!==f.companyRealm||o.executorConversationId!==c.conversationId||o.billId!==r.operation.target.id||o.sourceRevision!==f.sourceRevision||Date.parse(o.expiresAt)<=now()||Date.parse(o.observedAt)>now()||(r.operation.kind==='update-bill'&&o.syncToken!==r.operation.target.syncToken))deny('BILL_OBSERVATION_STALE_OR_FOREIGN');
+      if(o.businessId!==f.businessId||o.existingGrantRef!==f.existingGrantRef||o.companyRealm!==f.companyRealm||o.executorConversationId!==c.conversationId||o.billId!==r.operation.target.id||o.sourceRevision!==f.sourceRevision||Date.parse(o.expiresAt)<=at||Date.parse(o.observedAt)>at||(r.operation.kind==='update-bill'&&o.syncToken!==r.operation.target.syncToken))deny('BILL_OBSERVATION_STALE_OR_FOREIGN');
     }
     return {c,f};
   }
@@ -67,11 +73,12 @@ export function phaseBoundary(db:Database.Database,resolver:PhaseResolver=unavai
       const all=history(row.id),last=all.at(-1)!;
       if(all.length>=99||(last.closed&&!reconciling)||e.sequence!==last.sequence+1||e.previousHash!==H('qbo/phase/v2',last))deny('PHASE_SEQUENCE_OR_CLOSED');
       if(reconciling&&['refresh-start','dispatch-start','stop','persistence-uncertain','dispatch-unknown'].includes(e.action))deny('RECONCILIATION_ONLY');
-      if(now()<Date.parse(last.recordedAt))deny('CLOCK_REGRESSED');
-      const p:Phase={...last,receiptId:e.receiptId,sequence:e.sequence,previousHash:e.previousHash,eventHash,recordedAt:new Date(now()).toISOString(),evidenceHash:e.evidenceHash};
+      if(clockFaults.has(row.id)&&!reconciling)deny('CLOCK_REGRESSED');
+      let at:number;try{at=phaseTime(last);}catch(error){clockFaults.add(row.id);throw error;}
+      const p:Phase={...last,receiptId:e.receiptId,sequence:e.sequence,previousHash:e.previousHash,eventHash,recordedAt:new Date(at).toISOString(),evidenceHash:e.evidenceHash};
       if(e.billResult && e.action!=='dispatch-accepted')deny('UNEXPECTED_BILL_RESULT');
       if(e.action==='refresh-start'||e.action==='dispatch-start'){
-        const fresh=current(auth,r);if(!same(fresh.f,saved)||Date.parse(reservation.expiresAt)<=now())deny('INVOCATION_DRIFT_OR_EXPIRED');
+        const fresh=current(auth,r,at);if(!same(fresh.f,saved)||Date.parse(reservation.expiresAt)<=at)deny('INVOCATION_DRIFT_OR_EXPIRED');
       }
       switch(e.action){
         case 'refresh-start': if(last.refresh!=='not-started')deny('REFRESH_ALREADY_STARTED');p.refresh='started';p.persistence='uncertain';p.persistenceReason='rotation-may-have-occurred';break;
@@ -83,7 +90,11 @@ export function phaseBoundary(db:Database.Database,resolver:PhaseResolver=unavai
           if((last.dispatch!=='started'&&!(reconciling&&last.dispatch==='UNKNOWN'))||!e.providerRequestHash||e.providerRequestHash!==last.providerRequestHash)deny('PROVIDER_CORRELATION');
           p.dispatch=e.action==='dispatch-accepted'?'accepted':'UNKNOWN';p.closed=true;
           if(e.action==='dispatch-accepted'&&r.operation.kind==='read-bill'){
-            const b=e.billResult;if(!b||b.billId!==r.operation.target.id||b.companyRealm!==saved.companyRealm||b.sourceRevision!==saved.sourceRevision||Date.parse(b.capturedAt)>now()||Date.parse(b.capturedAt)<Date.parse(reservation.reservedAt))deny('BILL_RESULT_MISMATCH');
+            // Only the immutable transition for this invocation/request proves dispatch began.
+            const starts=all.filter((phase,i)=>phase.dispatch==='started'&&all[i-1]?.dispatch==='not-started'
+              &&phase.invocationId===row.id&&phase.reservationId===row.id&&phase.providerRequestHash===e.providerRequestHash);
+            if(starts.length!==1)deny('BILL_DISPATCH_PROOF_REQUIRED');
+            const b=e.billResult;if(!b||b.billId!==r.operation.target.id||b.companyRealm!==saved.companyRealm||b.sourceRevision!==saved.sourceRevision||Date.parse(b.capturedAt)>at||Date.parse(b.capturedAt)<Date.parse(starts[0]!.recordedAt))deny('BILL_RESULT_MISMATCH');
             const o=observationSchema.parse({schemaVersion:'qbo-bill-observation/v1',reservationId:row.id,businessId:saved.businessId,existingGrantRef:saved.existingGrantRef,companyRealm:b.companyRealm,executorConversationId:saved.executorConversationId,billId:b.billId,syncToken:b.syncToken,sourceRevision:b.sourceRevision,resultDigest:b.resultDigest,observedAt:b.capturedAt,expiresAt:new Date(Math.min(Date.parse(b.capturedAt)+15000,Date.parse(reservation.expiresAt))).toISOString()});
             p.observationHash=H('qbo/bill-observation/v1',o);db.prepare('INSERT INTO qbo_bill_observations VALUES(?,?,?)').run(p.observationHash,row.id,JSON.stringify(o));
           }else if(e.billResult)deny('UNEXPECTED_BILL_RESULT');break;
@@ -117,7 +128,7 @@ export function phaseBoundary(db:Database.Database,resolver:PhaseResolver=unavai
       assertGrantClear(db,f,true);
       const effect=H('qbo/logical-effect/v1',{businessId:f.businessId,companyRealm:f.companyRealm,existingGrantRef:f.existingGrantRef,logicalEffectId:f.logicalEffectId});
       if(db.prepare('SELECT 1 FROM qbo_operation_reservations WHERE effect_digest=?').get(effect))deny('OPERATION_PERMANENTLY_RESERVED');
-      const id=crypto.randomUUID(),at=now(),scope=H('qbo/operation/v2',r.operation),fh=canonicalSha256(f);
+      const id=crypto.randomUUID(),at=phaseTime(),scope=H('qbo/operation/v2',r.operation),fh=canonicalSha256(f);
       const reservation=reservationSchema.parse({schemaVersion:'qbo-admission/v1',reservationId:id,requestKey:r.requestKey,authenticatedCaller:c,originalExecutor:c.conversationId,jobId:f.jobId,assignmentRevision:f.assignmentRevision,authorityRef:f.authorityRef,authorityRevision:f.authorityRevision,businessId:f.businessId,accountRef:f.accountRef,existingGrantRef:f.existingGrantRef,companyRealm:f.companyRealm,effectDigest:effect,scopeHash:scope,factsHash:fh,audience:r.audience,reservedAt:new Date(at).toISOString(),expiresAt:new Date(Math.min(at+15000,Date.parse(c.sessionExpiresAt),Date.parse(f.expiresAt),Date.parse(f.integration.expiresAt))).toISOString()});
       db.prepare('INSERT INTO qbo_operation_reservations VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,effect,c.userId,c.conversationId,r.requestKey,H('qbo/request/v2',r),f.jobId,scope,fh,JSON.stringify(reservation));
       db.prepare('INSERT INTO qbo_v2_invocations VALUES(?,?,?,?)').run(id,grantDigest(f),JSON.stringify(r),JSON.stringify(f));
@@ -127,7 +138,15 @@ export function phaseBoundary(db:Database.Database,resolver:PhaseResolver=unavai
     if(!row)return read(auth,{requestKey:r.requestKey});
     try{await run({schemaVersion:'qbo-invocation/v2',reservation:JSON.parse(row.reservation_json),request:r,bytes:input.bytes,phase:history(row.id)[0]},v=>record(row,auth,v));}
     catch{/* Raw helper errors/output are never retained or returned. */}
-    finally{db.transaction(()=>{const last=history(row.id).at(-1)!;if(!last.closed)append({...last,receiptId:crypto.randomUUID(),sequence:last.sequence+1,previousHash:H('qbo/phase/v2',last),eventHash:H('qbo/transport-ended/v2',{id:row.id,sequence:last.sequence+1}),recordedAt:new Date(now()).toISOString(),closed:true,refresh:last.refresh==='started'?'UNKNOWN':last.refresh,dispatch:last.dispatch==='started'?'UNKNOWN':last.dispatch});}).immediate();}
+    finally{db.transaction(()=>{const last=history(row.id).at(-1)!;if(last.closed||clockFaults.has(row.id))return;
+      let at:number;
+      try{at=phaseTime(last);}catch{
+        // A failed clock cannot manufacture a receipt or replace the original transport failure.
+        // Leave the durable open phase (and grant/effect fence) for receipt-only reconciliation.
+        return;
+      }
+      append({...last,receiptId:crypto.randomUUID(),sequence:last.sequence+1,previousHash:H('qbo/phase/v2',last),eventHash:H('qbo/transport-ended/v2',{id:row.id,sequence:last.sequence+1}),recordedAt:new Date(at).toISOString(),closed:true,refresh:last.refresh==='started'?'UNKNOWN':last.refresh,dispatch:last.dispatch==='started'?'UNKNOWN':last.dispatch});}).immediate();}
+    clockFaults.delete(row.id); // Persisted open phase fences future invocations; no command can resume.
     return read(auth,{requestKey:r.requestKey});
   }};
 }

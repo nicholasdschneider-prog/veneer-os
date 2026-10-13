@@ -576,3 +576,14 @@ never permits a refresh or dispatch. Old v1 evidence remains historical without 
 Canonical helper adaptation, runtime custody, authoritative facts and Clara acceptance
 are still missing. Do not invoke source helpers or infer readiness from this staged guide.
 See [exact v2 contract](./reports/qbo-boundary/build804/contract.md).
+
+
+BUILD812 narrows the staged implementation: accepted helper UID must equal the actual
+effective execution UID both before reservation and immediately before launch.
+Phase timestamps use one monotonic sample. Clock failure leaves an open grant/effect
+fence without inventing a receipt; exact replay never renews entitlement.
+Bill capture must follow the same invocation/request's immutable dispatch-start phase,
+including receipt-only reconciliation. This does not resolve the 30-second SIGKILL
+persistence risk, frozen runtime/dependency custody or independent parent verification.
+No helper integration or production activation is claimed.
+See [BUILD812 correction contract](./reports/qbo-boundary/build812/contract.md).

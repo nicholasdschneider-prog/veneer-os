@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "qbo-build-validation/v1",
+  "build": 812,
+  "verifiedAt": "2026-10-13T22:43:40.450131+00:00",
+  "node": "v24.21.0",
+  "baseCommit": "b364411baae1bbd565c8061fd9ad24333637d0a0",
+  "validationMode": "sequential-single-worker-host-lock",
+  "checks": [
+    {
+      "command": "npm test -w @veneer-pro/server -- test/qboPhases.test.ts test/qboBoundary.test.ts test/featureGuide.test.ts",
+      "result": "passed",
+      "tests": 73,
+      "note": "Two matching QBO files ran. The unmatched guide filter was corrected in the separate botFeatureGuide test run."
+    },
+    {
+      "command": "npm test -w @veneer-pro/server -- test/botFeatureGuide.test.ts",
+      "result": "passed",
+      "tests": 42
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "npm test",
+      "result": "passed",
+      "installer": {
+        "passed": 32
+      },
+      "server": {
+        "passed": 4056,
+        "skipped": 16,
+        "files": 299
+      },
+      "web": {
+        "passed": 1015,
+        "files": 146
+      },
+      "browserManager": {
+        "passed": 52
+      }
+    },
+    {
+      "command": "npm run build",
+      "result": "passed",
+      "warning": "Vite chunks larger than 500 kB"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "deployment": {
+    "status": "pending_human_approved_maintenance_and_drained_turns",
+    "restartPerformed": false,
+    "runtimeAcceptance": false
+  },
+  "liveQboOrHelperCalls": false,
+  "sourceAdaptationPerformed": false,
+  "notes": [
+    "No production QBO/provider/credential tests; process tests execute a compiled offline fixture only.",
+    "Historical 785/792/804 artifacts preserved.",
+    "UID, clock and dispatch-bound tests do not establish timeout persistence or runtime/parent custody acceptance."
+  ]
+}
