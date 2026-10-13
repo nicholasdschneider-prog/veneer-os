@@ -332,7 +332,10 @@ describe('huddles', () => {
       db.prepare("UPDATE conversation_wakeups SET scheduled_for=datetime('now','-1 minute')").run();
       scheduler.tick();
       await new Promise((r) => setTimeout(r, 50));
-      const woke = runs.map((r) => r.convId).sort();
+      // Registered bots take huddle wakes in their bot lane, never the human chat.
+      const owner = (id: string) => (db.prepare('SELECT owner_id FROM coordination_lanes WHERE conversation_id=?').get(id) as { owner_id: string } | undefined)?.owner_id;
+      expect(runs.map((r) => r.convId).sort()).not.toContain('bot-robin');
+      const woke = runs.map((r) => owner(r.convId)).sort();
       expect(woke).toEqual(['bot-robin', 'bot-sage']);
       expect(runs[0]!.prompt).toContain(`huddle_id ${huddle.id}`);
       expect(db.prepare("SELECT COUNT(*) AS n FROM conversation_wakeups WHERE status='delivered'").get()).toEqual({ n: 2 });

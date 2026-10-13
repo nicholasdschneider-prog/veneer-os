@@ -214,7 +214,7 @@ const TOOLS: ToolDef[] = [
           type: 'string',
           enum: ['informational', 'urgent'],
           description:
-            "Default informational: it stays in the coordination thread. Use urgent only when the receiving bot's human must act soon; a bot with a bot lane then shows its human one short line linking to the thread.",
+            "Default informational: it stays in the coordination thread. Use urgent only when the receiving bot's human must act soon; a registered bot then shows its human one short line linking to the thread.",
         },
         interrupt: {
           type: 'boolean',
@@ -228,7 +228,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'surface_to_human',
     description:
-      "Only from a bot lane or coordination thread of a bot with a bot lane: show your human chat one short line linking back here. Use it once, only when the human must act (a blocker, money, policy, a deadline) or must see a finished result. Routine progress and informational bot traffic stay in the lane. Not approval and not a question card; raise decisions with raise_decision.",
+      "Only from a registered bot's bot lane or coordination thread: show your human chat one short line linking back here. Use it once, only when the human must act (a blocker, money, policy, a deadline) or must see a finished result. Routine progress and informational bot traffic stay in the lane. Not approval and not a question card; raise decisions with raise_decision.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -237,20 +237,6 @@ const TOOLS: ToolDef[] = [
         request_key: { type: 'string', description: 'Stable key for this exact line. Reuse on retry.' },
       },
       required: ['summary', 'kind', 'request_key'],
-    },
-  },
-  {
-    name: 'set_bot_lane',
-    description:
-      "Turn a registered bot's bot lane on or off. With it on, routine runs, huddle wakes, question re-checks and builds that bot traffic asks for run in a separate session beside the bot's human chat, and only urgent items or results reach the human as one short line. History is not moved. Only on an explicit human direction, named in authority_note; requires permission to manage that bot's chat.",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        conversationId: { type: 'string', description: "The bot's original human chat id." },
-        enabled: { type: 'boolean' },
-        authority_note: { type: 'string', description: 'The human direction this change follows.' },
-      },
-      required: ['conversationId', 'enabled', 'authority_note'],
     },
   },
   { name: 'read_coordination', description: 'Read a bot coordination thread returned by send_message. Requires current access to both original conversations.', inputSchema: {type:'object',properties:{threadId:{type:'string'}},required:['threadId']} },
@@ -1102,13 +1088,6 @@ async function callTool(
         body: JSON.stringify({ summary: String(args.summary ?? ''), kind: String(args.kind ?? ''), request_key: String(args.request_key ?? '') }),
       });
       return { content: [{ type: 'text', text: result.duplicate ? `Already shown: ${String(result.shown)}` : `Shown in the human chat: ${String(result.shown)}` }] };
-    }
-    if (name === 'set_bot_lane') {
-      const result = await callApi(`/api/conversations/${encodeURIComponent(String(args.conversationId ?? ''))}/bot-lane`, {
-        method: 'PUT',
-        body: JSON.stringify({ enabled: args.enabled === true, authority_note: String(args.authority_note ?? '') }),
-      });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
     if (name === 'read_coordination') {
       const result = await callApi(`/api/coordination/${encodeURIComponent(String(args.threadId ?? ''))}`);

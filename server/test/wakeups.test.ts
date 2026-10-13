@@ -180,9 +180,8 @@ describe('conversation wake-up scheduler', () => {
     expect(adapter.runs).toHaveLength(2);
   });
 
-  it('runs routine wakes of a bot with a bot lane in the lane, keeps one backup there, and never delays the human', async () => {
-    db.prepare("INSERT INTO bot_lanes(owner_id,enabled,updated_by) VALUES('wake-conv',1,1)").run();
-    periodic();
+  it('runs routine wakes of a registered bot in its lane, keeps one backup there, and never delays the human', async () => {
+    periodic(); // registers wake-conv as a bot
     for (let minute = 0; minute < 6; minute++) {
       current = new Date(BASE.getTime() + minute * 60_000);
       tickRoutines(db, current);

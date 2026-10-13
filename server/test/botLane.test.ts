@@ -15,7 +15,7 @@ import {
   botLaneConversationId,
   botLaneOfConversation,
   ensureBotLane,
-  setBotLane,
+  hasBotLane,
   spliceSurfacedNotices,
   surfaceToHuman,
   surfacedRows,
@@ -52,15 +52,22 @@ afterEach(async () => {
   db.close();
 });
 
+const registered = (id: string, active: boolean) =>
+  db.prepare('UPDATE bot_registrations SET active=? WHERE conversation_id=?').run(active ? 1 : 0, id);
 function enable(id = 'clara') {
-  setBotLane(db, id, true, 1);
   return ensureBotLane(db, row(id));
 }
 
 describe('bot lane session', () => {
   it('is created once per enrolled bot, as an internal session with the bot identity and its own native session', () => {
-    expect(() => ensureBotLane(db, row('clara'))).toThrow('not enabled');
+    // Default for every active registered bot; no switch and no stored opt-in.
+    expect(hasBotLane(db, 'clara')).toBe(true);
+    expect(db.prepare('SELECT count(*) n FROM bot_lanes').get()).toEqual({ n: 0 });
+    registered('clara', false);
+    expect(() => ensureBotLane(db, row('clara'))).toThrow('registered bot');
+    registered('clara', true);
     const lane = enable();
+    expect(hasBotLane(db, lane.id)).toBe(false);
     expect(enable().id).toBe(lane.id);
     expect(lane.side_chat_of).toBe('clara');
     expect(lane.native_session_id).not.toBe(row('clara').native_session_id);
@@ -78,17 +85,23 @@ describe('bot lane session', () => {
     expect(context).toMatchObject({ conversationId: 'clara', executionConversationId: lane.id });
   });
 
-  it('routes routine, huddle and re-check wakes to the lane and keeps the human chat’s own wakes there', () => {
-    const wake = (key: string) => wakeTarget(db, row('clara'), crypto.randomUUID(), key).id;
-    expect(wake('bot-routine:r1:w1')).toBe('clara'); // not enrolled: unchanged
-    const lane = enable();
-    expect(wake('bot-routine:r1:w1')).toBe(lane.id);
-    expect(wake('huddle:h1')).toBe(lane.id);
-    expect(wake('question-recheck:2026-10-13T16')).toBe(lane.id);
-    for (const key of ['bot-decision:d1', 'message-thread:t1', 'clara-follow-up', 'browser-capacity:x'])
-      expect(wake(key), key).toBe('clara');
-    setBotLane(db, 'clara', false, 1);
-    expect(wake('bot-routine:r1:w2')).toBe('clara');
+  it('routes bot traffic to the lane for every registered bot and keeps human-started wakes in the human chat', () => {
+    const wake = (id: string, key: string) => wakeTarget(db, row(id), crypto.randomUUID(), key).id;
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,channel,visibility) VALUES('plain',1,1,'plain','claude','s-plain','web','team')").run();
+    expect(wake('plain', 'bot-routine:r1:w1')).toBe('plain'); // not a registered bot: unchanged
+    const lane = wake('clara', 'bot-routine:r1:w1');
+    expect(lane).not.toBe('clara');
+    expect(botLaneOfConversation(db, lane)?.owner_id).toBe('clara');
+    for (const key of ['huddle:h1', 'question-recheck:2026-10-13T16', 'decision-handoff:request:h1', 'autoship-candidate:c1'])
+      expect(wake('clara', key), key).toBe(lane);
+    // Every registered bot, not one: Anna gets her own lane.
+    const annaLane = wake('anna', 'huddle:h2');
+    expect(annaLane).not.toBe('anna');
+    expect(annaLane).not.toBe(lane);
+    for (const key of ['bot-decision:d1', 'message-draft:m1', 'message-revise:m1', 'message-thread:t1', 'clara-follow-up', 'browser-capacity:x'])
+      expect(wake('clara', key), key).toBe('clara');
+    registered('clara', false);
+    expect(wake('clara', 'bot-routine:r1:w2')).toBe('clara');
   });
 
   it('keeps a retried wake in the session its first delivery used', () => {
@@ -96,9 +109,9 @@ describe('bot lane session', () => {
     db.prepare(
       "INSERT INTO hub_inbound_messages(idempotency_key,conversation_id,message_id,source_kind) VALUES('wakeup:w-lane',?,1,'wakeup'),('wakeup:w-human','clara',2,'wakeup')",
     ).run(lane.id);
-    setBotLane(db, 'clara', false, 1);
+    registered('clara', false);
     expect(wakeTarget(db, row('clara'), 'w-lane', 'huddle:h').id).toBe(lane.id);
-    setBotLane(db, 'clara', true, 1);
+    registered('clara', true);
     expect(wakeTarget(db, row('clara'), 'w-human', 'huddle:h').id).toBe('clara');
   });
 
@@ -156,7 +169,8 @@ describe('human priority and lane parity', () => {
     const { turns, adapter } = fakeProvider();
     const { manager, materialize } = managerWith(adapter);
     const lane = enable();
-    expect(manager.deliverWakeup(lane, 'Run your routine', 'w-1', 1).disposition).toBe('running');
+    // Started by another user's routine: the lane still gets the bot owner's connectors.
+    expect(manager.deliverWakeup(lane, 'Run your routine', 'w-1', 2).disposition).toBe('running');
     await tick();
     expect(turns).toHaveLength(1);
     expect(turns[0]!.spec.nativeSessionId).toBe(lane.native_session_id);
@@ -164,6 +178,8 @@ describe('human priority and lane parity', () => {
     // in a separate execution session with its own spawn files.
     expect(materialize.mock.calls[0]![2]).toBe('clara');
     expect(materialize.mock.calls[0]![5]).toBe(lane.id);
+    expect(materialize.mock.calls[0]![3]).toBe(2);
+    expect(materialize.mock.calls[0]![6]).toBe(1);
     expect(turns[0]!.spec.developerInstructions).toContain('bot lane');
     expect(turns[0]!.spec.developerInstructions).toContain('surface_to_human');
 
@@ -173,6 +189,7 @@ describe('human priority and lane parity', () => {
     expect(turns).toHaveLength(2);
     expect(turns[1]!.spec.nativeSessionId).toBe('session-clara');
     expect(materialize.mock.calls[1]![5]).toBeUndefined();
+    expect(materialize.mock.calls[1]![6]).toBe(1); // the human chat keeps its turn actor
 
     // Lane work arriving while the human turn runs waits for it.
     const queued = manager.deliverWakeup(lane, 'Next routine', 'w-2', 1);
@@ -199,9 +216,10 @@ describe('human priority and lane parity', () => {
     expect(manager.queueSnapshot(lane.conversation_id).messages[0]!.origin).toMatchObject({ priority: 'urgent' });
   });
 
-  it('keeps the old one-at-a-time order for a bot without a lane', async () => {
+  it('keeps the old one-at-a-time order for a chat that is not a registered bot', async () => {
     const { turns, adapter } = fakeProvider();
     const { manager } = managerWith(adapter);
+    registered('clara', false);
     const { lane } = ensureCoordination(db, row('anna'), row('clara'));
     manager.queueMessage(row(lane.conversation_id), 'Anna lookup', 1, { kind: 'agent', from: 'Anna', to: 'Clara', sourceConversationId: 'anna' }, 'k1');
     await tick();
@@ -285,13 +303,14 @@ describe('bot lane API', () => {
     return { call, shown, queueMessage, close: () => new Promise<void>((r) => server.close(() => r())) };
   }
 
-  it('keeps informational bot messages in the thread and shows urgent ones once, only for an enrolled bot', async () => {
+  it('keeps informational bot messages in the thread and shows urgent ones once, only for a registered bot', async () => {
     const t = await api(() => ({ email: 'owner@example.com', agentConversationId: 'anna' }));
     try {
-      // Not enrolled: urgent is recorded on the message but nothing surfaces.
-      const before = await t.call('POST', '/api/conversations/clara/steer', { text: 'URGENT test before opt-in', priority: 'urgent', request_key: 'u0' });
+      // Not a registered bot: urgent is recorded on the message but nothing surfaces.
+      registered('clara', false);
+      const before = await t.call('POST', '/api/conversations/clara/steer', { text: 'URGENT test while unregistered', priority: 'urgent', request_key: 'u0' });
       expect(before.body.surfacedToHuman).toBe(false);
-      setBotLane(db, 'clara', true, 1);
+      registered('clara', true);
       const info = await t.call('POST', '/api/conversations/clara/steer', { text: '[TEST] informational: inbox count is 12', request_key: 'i1' });
       expect(info.status).toBe(200);
       expect(info.body.coordinationThreadId).toBeTruthy();
@@ -324,15 +343,12 @@ describe('bot lane API', () => {
     }
   });
 
-  it('lets only a lane of an enrolled bot surface a line, and only a manager turn the lane on', async () => {
+  it('lets only a registered bot’s lane surface a line, with no per-bot switch', async () => {
     let identity: Record<string, unknown> = { email: 'owner@example.com', agentConversationId: 'clara' };
     const t = await api(() => identity);
     try {
-      expect((await t.call('PUT', '/api/conversations/clara/bot-lane', { enabled: true })).status).toBe(400); // bot needs a named direction
-      db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,channel,visibility) VALUES('plain',1,1,'plain','claude','s-plain','web','team')").run();
-      expect((await t.call('PUT', '/api/conversations/plain/bot-lane', { enabled: true, authority_note: 'Nick, 2026-10-13' })).status).toBe(409);
-      const on = await t.call('PUT', '/api/conversations/clara/bot-lane', { enabled: true, authority_note: 'Nick approved 2026-10-13' });
-      expect(on.body.enabled).toBe(true);
+      // The opt-in route is gone.
+      expect((await t.call('PUT', '/api/conversations/clara/bot-lane', { enabled: false, authority_note: 'x' })).status).toBe(404);
       const lane = ensureBotLane(db, row('clara'));
       expect((await t.call('GET', '/api/conversations/clara/bot-lane')).body).toMatchObject({ enabled: true, laneConversationId: lane.id });
 
@@ -349,12 +365,8 @@ describe('bot lane API', () => {
       identity = { email: 'owner@example.com' };
       const threads = await t.call('GET', '/api/conversations/clara/coordination');
       expect(threads.body.threads).toContainEqual(expect.objectContaining({ label: expect.stringContaining('bot lane') }));
-      identity = { email: 'other@example.com' };
-      db.prepare("UPDATE conversations SET visibility='private' WHERE id='clara'").run();
-      expect((await t.call('PUT', '/api/conversations/clara/bot-lane', { enabled: false })).status).toBe(404);
-      db.prepare("UPDATE conversations SET visibility='team' WHERE id='clara'").run();
       identity = { email: 'owner@example.com', agentConversationId: 'clara', agentExecutionConversationId: lane.id };
-      setBotLane(db, 'clara', false, 1);
+      registered('clara', false);
       expect((await t.call('POST', '/api/bot-lane/surface', { summary: 'Later', kind: 'urgent', request_key: 'later' })).status).toBe(409);
       expect(botLaneConversationId(db, 'clara')).toBe(lane.id); // history kept
     } finally {

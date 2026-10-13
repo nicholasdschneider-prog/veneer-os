@@ -6,7 +6,7 @@ import type { AppContext } from '../context.js';
 import { canManageConversation, canTrainBusinessBot, canViewConversation, sameBusiness } from '../conversations/access.js';
 import { createConversationReactivator } from './conversationActivity.js';
 import { coordinationLane } from '../coordination/store.js';
-import { botLaneEnabled } from '../coordination/botLane.js';
+import { hasBotLane } from '../coordination/botLane.js';
 import { ensureConversationInstructionSnapshot } from '../instructions/context.js';
 import type { ConversationRow } from '../db/db.js';
 import type { MoveBuildActor } from '../buildQueue/coordinator.js';
@@ -85,8 +85,8 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     return (ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(requesterId) as ConversationRow | undefined) ?? null;
   }
 
-  function enrolledLaneOf(req: express.Request, ownerId: string): ConversationRow | null {
-    if (!req.agentExecutionConversationId || !botLaneEnabled(ctx.db, ownerId)) return null;
+  function receivingBotLaneOf(req: express.Request, ownerId: string): ConversationRow | null {
+    if (!req.agentExecutionConversationId || !hasBotLane(ctx.db, ownerId)) return null;
     const lane = coordinationLane(ctx.db, req.agentExecutionConversationId);
     if (!lane || lane.owner_id !== ownerId) return null;
     const laneChat = ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(lane.conversation_id) as ConversationRow | undefined;
@@ -184,9 +184,9 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     }
     // enqueue_build is fresh activity just like a prompt. Reactivate first so
     // the coordinator's active-conversation guard can reserve the workspace.
-    // An enrolled bot keeps builds that bot traffic asked for in the session
+    // A registered bot keeps builds that bot traffic asked for in the session
     // that received it (its bot lane or coordination thread), never the human chat.
-    const laneChat = enrolledLaneOf(req, conv.id);
+    const laneChat = receivingBotLaneOf(req, conv.id);
     const requester = laneChat || body.data.continuesThisChat ? null : requesterOfCoordinatedBuild(req, conv.id);
     const buildChat = laneChat ?? (requester ? createBuildChat(conv, requester, body.data.title) : conv);
     const brief = requester

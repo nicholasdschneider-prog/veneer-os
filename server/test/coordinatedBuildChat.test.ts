@@ -83,9 +83,8 @@ const enqueue = (source: string, headers: Record<string, string>, extra: Record<
 const chatCount = () => (db.prepare('SELECT count(*) AS n FROM conversations').get() as { n: number }).n;
 
 describe('builds requested by another bot', () => {
-  it('runs in the receiving session of a bot with a bot lane, never in its human chat', async () => {
-    db.prepare("INSERT INTO bot_lanes(owner_id,enabled,updated_by) VALUES('worker',1,1)").run();
-    try {
+  it('runs in the receiving session of a registered bot, never in its human chat', async () => {
+    {
       const before = chatCount();
       const { status, body } = await enqueue('worker', { 'x-agent': 'worker', 'x-lane': 'lane-worker' });
       expect(status).toBe(201);
@@ -95,8 +94,6 @@ describe('builds requested by another bot', () => {
       // The human's own request from the human chat stays there.
       await enqueue('worker', { 'x-agent': 'worker' });
       expect(enqueued.at(-1)!.conversationId).toBe('worker');
-    } finally {
-      db.prepare("DELETE FROM bot_lanes WHERE owner_id='worker'").run();
     }
   });
 
@@ -139,12 +136,13 @@ describe('builds requested by another bot', () => {
     expect(enqueued.at(-1)!.conversationId).toBe('voice-calls');
   });
 
-  it('keeps a registered bot’s build in its one standing chat', async () => {
+  it('keeps a registered bot’s build with its identity, without a new chat', async () => {
     const before = chatCount();
     const { body } = await enqueue('worker', { 'x-agent': 'worker', 'x-lane': 'lane-worker' });
     expect(body.buildConversation).toBeUndefined();
     expect(chatCount()).toBe(before);
-    expect(enqueued.at(-1)!.conversationId).toBe('worker');
+    // The coordination session that received the request runs it, not the human chat.
+    expect(enqueued.at(-1)!.conversationId).toBe('lane-worker');
   });
 
   it('ignores a lane that belongs to a different chat', async () => {

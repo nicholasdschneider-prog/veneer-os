@@ -216,7 +216,7 @@ export function createConversationWakeupScheduler({
     }
     const deliveredAt = now();
     try {
-      // Routine, huddle and re-check wakes for an enrolled bot run in its bot lane.
+      // Bot traffic for a registered bot (routines, huddles, re-checks, handoffs) runs in its bot lane.
       const target = wakeTarget(db, conv, row.id, row.wake_key);
       const posted = manager.deliverWakeup(target, wakeupPrompt(row), row.id, row.actor_user_id);
       db.transaction(() => {

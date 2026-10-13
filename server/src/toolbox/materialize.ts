@@ -56,6 +56,7 @@ export interface Materializer {
     actorUserId: number | null,
     memoryBlock?: string | null,
     executionConversationId?: string,
+    connectorUserId?: number | null,
   ): SpawnMaterialization;
   /** Durable context already supplied to this exact chat, used to reject duplicate memories. */
   memoryKnownContext(target: WorkspaceTarget, conversationId: string): string;
@@ -132,6 +133,7 @@ export function createMaterializer({
       actorUserId: number | null,
       memoryBlock: string | null = null,
       executionConversationId?: string,
+      connectorUserId?: number | null,
     ): SpawnMaterialization {
       // A separate execution session can run beside its original chat; its
       // config and current-token file must never overwrite that chat's.
@@ -188,7 +190,7 @@ export function createMaterializer({
 
       let userInstalls: Array<{ row: UserConnectorRow; def: ConnectorDef }> = [];
       if (conversation) {
-        userInstalls = connectedConnectorRowsForConversation(db, conversationId, actorUserId)
+        userInstalls = connectedConnectorRowsForConversation(db, conversationId, connectorUserId ?? actorUserId)
           .map((row) => ({ row, def: connectorDef(row.connector_slug) }))
           .filter((item): item is { row: UserConnectorRow; def: ConnectorDef } => Boolean(item.def));
       }

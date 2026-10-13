@@ -17,15 +17,12 @@ import {
 import {
   botLabel,
   botLaneConversationId,
-  botLaneEnabled,
+  hasBotLane,
   botLaneOfConversation,
   botLaneOwnerOfThread,
-  botLaneSetting,
-  setBotLane,
   surfaceToHuman,
   surfacedNotice,
 } from './botLane.js';
-import { canManageConversation } from '../conversations/access.js';
 
 export function createCoordinationRouter(ctx: AppContext): express.Router {
   const router = express.Router();
@@ -150,46 +147,14 @@ export function createCoordinationRouter(ctx: AppContext): express.Router {
       res.sendStatus(404);
       return;
     }
-    const setting = botLaneSetting(db, parent.id);
+    const laneConversationId = botLaneConversationId(db, parent.id) ?? null;
     res.json({
-      enabled: setting?.enabled === 1,
-      laneConversationId: botLaneConversationId(db, parent.id) ?? null,
-      threadId: setting?.thread_id ?? null,
-      updatedAt: setting?.updated_at ?? null,
+      enabled: hasBotLane(db, parent.id),
+      laneConversationId,
+      threadId: laneConversationId ? coordinationLane(db, laneConversationId)?.thread_id ?? null : null,
     });
   });
-  /** Per-bot opt-in. Only a registered bot's original chat can have a lane,
-   * and only someone who manages that chat can change it. A bot names the
-   * human direction it acts on. */
-  router.put('/conversations/:id/bot-lane', (req, res) => {
-    const parent = row(String(req.params.id));
-    const body = req.body as { enabled?: unknown; authority_note?: unknown };
-    if (!parent || coordinationLane(db, parent.id) || !canManageConversation(req.user!, parent, db) || !sameBusiness(db, req.agentConversationId, parent)) {
-      res.sendStatus(404);
-      return;
-    }
-    if (typeof body.enabled !== 'boolean') {
-      res.status(400).json({ error: 'enabled must be true or false' });
-      return;
-    }
-    const note = typeof body.authority_note === 'string' ? body.authority_note.trim().slice(0, 500) : '';
-    if (req.agentConversationId && !note) {
-      res.status(400).json({ error: 'authority_note is required: name the human direction this change follows' });
-      return;
-    }
-    if (body.enabled && !db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(parent.id)) {
-      res.status(409).json({ error: 'Only a registered bot chat can have a bot lane' });
-      return;
-    }
-    const setting = setBotLane(db, parent.id, body.enabled, req.user!.id);
-    if (parent.business_team_id)
-      db.prepare('INSERT INTO business_audit(team_id,actor_id,actor_chat,action,payload_json) VALUES(?,?,?,?,?)').run(
-        parent.business_team_id, req.user!.id, req.agentConversationId ?? null, 'bot_lane.updated',
-        JSON.stringify({ conversationId: parent.id, enabled: body.enabled, ...(note ? { authorityNote: note } : {}) }),
-      );
-    res.json({ enabled: setting.enabled === 1, laneConversationId: botLaneConversationId(db, parent.id) ?? null });
-  });
-  /** A bot session (bot lane or coordination thread) of an enrolled bot shows
+  /** A bot session (bot lane or coordination thread) of a registered bot shows
    * one short line in its human chat. The line links to the session; nothing
    * else from that session enters the human chat. */
   router.post('/bot-lane/surface', (req, res) => {
@@ -199,8 +164,8 @@ export function createCoordinationRouter(ctx: AppContext): express.Router {
       res.status(400).json({ error: 'surface_to_human is only for a bot lane or coordination thread; in the human chat just answer the human' });
       return;
     }
-    if (!botLaneEnabled(db, lane.owner_id)) {
-      res.status(409).json({ error: 'This bot has no bot lane enabled; your coordination result stays in this thread' });
+    if (!hasBotLane(db, lane.owner_id)) {
+      res.status(409).json({ error: 'Only a registered bot has a bot lane; your coordination result stays in this thread' });
       return;
     }
     const body = req.body as { summary?: unknown; kind?: unknown; request_key?: unknown };
@@ -296,9 +261,9 @@ export async function sendCoordination(
     )
     .run(source.id, target.id, posted.messageId, text, posted.disposition);
   // Informational messages stay in the thread. An urgent one also shows the
-  // enrolled bot's human one line that links to the thread.
+  // registered bot's human one line that links to the thread.
   let surfaced = false;
-  if (urgent && botLaneEnabled(ctx.db, target.id)) {
+  if (urgent && hasBotLane(ctx.db, target.id)) {
     const result = surfaceToHuman(ctx.db, {
       ownerId: target.id,
       laneConversationId: lane.conversation_id,
