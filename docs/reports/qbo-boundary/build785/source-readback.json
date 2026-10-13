@@ -1,0 +1,22 @@
+{
+  "readOnly": true,
+  "noHelperInvocation": true,
+  "noCredentialsRead": true,
+  "noProviderCalls": true,
+  "files": {
+    "/Users/archerclawdington/Projects/ERVP/.agents/skills/clara-quickbooks-payables/scripts/qbo_api.py": "c178141897ebabf1e16b051cff0844a106b8376cb0ce77635002713d3d40afe0",
+    "/Users/archerclawdington/Projects/ERVP/.agents/skills/clara-quickbooks-payables/scripts/qbo_runtime.py": "5f64181e50ced776ae5714b55ca5e14615e4757b84d115b7c53c3e62a40f5b3d"
+  },
+  "nativeAnnaDiscovery": {
+    "conversationId": "2f1814c6-a3a6-4e41-b1b6-2096071cacb5",
+    "tool": "list_conversations",
+    "status": "working",
+    "observedDate": "2026-10-13",
+    "notProofOfAccountingPermission": true
+  },
+  "deniedContext": {
+    "coordination": "d254c025-e786-4549-9da9-c2011e437332",
+    "result": 404,
+    "bypassed": false
+  }
+}

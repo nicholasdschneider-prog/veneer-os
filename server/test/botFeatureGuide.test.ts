@@ -11,6 +11,13 @@ function expectDelivery(text: string, feature: BotFeature) {
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 describe('living bot guide release contract', () => {
+  it('keeps staged QBO limits accessible without announcing live admission to resumed bots', () => {
+    const f=botFeatureCatalog(Date.parse('2026-10-13')).features.find(f=>f.id==='qbo-caller-boundary')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('No production assignment/permission resolver');
+    expect(f.agent).toContain('QBO_ASSIGNMENT_AND_ACCOUNTING_BINDING_UNAVAILABLE');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    for(const elevated of [false,true]) expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}),f);
+  });
   it('delivers startup reconciliation limits to full/restricted employees and resumed bots',()=>{
     const f=botFeatureCatalog(Date.parse('2026-10-08')).features.find(f=>f.id==='lippert-purchase-events')!;
     expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('shared portal owner');

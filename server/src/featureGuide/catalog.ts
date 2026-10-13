@@ -21,6 +21,16 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'qbo-caller-boundary', title: 'Keep accounting operations with their assigned executor', category: 'Daily work', updated: '2026-10-13',
+    announcement: 'A native QBO caller and operation boundary is staged. Production admission remains closed pending authoritative assignment, accounting-permission and canonical-helper integration.',
+    audience: 'Original assigned accounting executor, Clara and the existing helper owner',
+    summary: 'Bind an exact operation to an authenticated native caller and independent accounting authority before the canonical helper refreshes its existing grant.',
+    steps: ['Keep the exact existing job and original executor; assignment alone does not grant accounting permission.', 'Have the existing technical owners establish the authoritative assignment and standing-accounting-policy bindings plus native invocation delivery into the canonical helper. Do not request duplicate invoice approval.', 'After accepted integration, the canonical helper must validate exact bytes, acquire qbo.lock and obtain fresh online native admission before credential access or refresh.', 'After an uncertain outcome, reconcile the original reservation only. A new key, changed payload or owner cannot release the operation.'],
+    example: 'Check whether Anna’s exact assigned bill operation has native caller and accounting-authority proof before any QBO refresh.',
+    limits: 'Staged, not deployed or accounting-accepted. No production assignment/permission resolver or helper invocation adapter is installed. No new OAuth, grant, service, enrollment or business action. Native chat activity does not establish OrderOps or QBO permission.',
+    agent: 'The staged qbo-operation/v1 API derives caller identity from the existing server-verified per-turn agent session, never JSON/CLI/env caller labels, request IDs or borrowed Clara credentials. Production inspect/admit remains QBO_ASSIGNMENT_AND_ACCOUNTING_BINDING_UNAVAILABLE until authoritative one-owner assignment/revision, independent current accounting permission and existing grant mapping are implemented and accepted. Do not fabricate bindingRefs or convert policy files/Todos into authority. The canonical helper and qbo.lock remain the sole refresh path; its authenticated invocation integration is still missing. Only first online admission can entitle one refresh/operation; all reads/replays are false. UNKNOWN/lost reply/failure never frees the logical effect across keys, revisions, owners or payloads. Receipt reconciliation fetches authenticated helper evidence, never a bot success assertion. No builder refresh/provider test or actual posting; no duplicate business approval ceremony. Deployment requires an approved maintenance window and drained active turns.',
+  },
+  {
     id:'spare-allowance',title:'Use subscription allowance before it resets',category:'Automation',updated:'2026-10-09',
     audience:'The installation owner and their original project bots.',
     summary:'Queue finite optional deliverables for expiring Claude or Codex allowance. Normal work takes priority, and completed tasks stay complete.',

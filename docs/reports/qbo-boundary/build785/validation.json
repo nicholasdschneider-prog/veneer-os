@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "qbo-build-validation/v1",
+  "recordedAt": "2026-10-13T17:32:35.607357+00:00",
+  "nodeMajor": 24,
+  "focused": {
+    "qboTestsPassed": 36,
+    "guideTestsPassed": 42
+  },
+  "full": {
+    "serverPassed": 3993,
+    "serverSkipped": 15,
+    "webPassed": 1015,
+    "installerPassed": 32,
+    "browserManagerPassed": 52
+  },
+  "rootTypecheck": "passed",
+  "rootBuild": "passed",
+  "buildWarnings": [
+    "Vite existing large chunk advisory; build succeeded"
+  ],
+  "logCommitments": {
+    "scoped": {
+      "sha256": "07091cdf00ca248b3e1b1af0b5b83e0458faf85c0285b00f5f26e276a88af7d7",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "sha256": "4ca67bebf7daea32b1a0373ed9306da25cb312be7f5817dac5cc87417d2a8420",
+      "exitCode": 0
+    },
+    "full": {
+      "sha256": "cb7a990fb15c004b05c34b9b9f67db539a8699397dbd30fb67ece84b77bba853",
+      "exitCode": 0
+    },
+    "build": {
+      "sha256": "390c3bef0ab67a3321554fdf737a3e901e7c37c870d08b5222cd85ffc07ec542",
+      "exitCode": 0
+    }
+  },
+  "compiledArtifacts": {
+    "server/dist/qbo/contract.js": "1e4809852e94117a96a8c3ea6f64dd839c1bb4d252a5e8befe488864c3690f31",
+    "server/dist/qbo/boundary.js": "61b0e6a9e9a1cf901b43447b7a2f3ab79cac92ba0318878d1b2286cff768d94b",
+    "server/dist/qbo/routes.js": "bce69181b5d354efba0e4e1210fccf0eb41de8ea7de92b9fe01e574421e2bd5b",
+    "server/dist/db/migrations/0177_qbo_operation_boundary.sql": "abd48ba5abb5e575b78faf8c4845075e69dc257d6e8bc85b62f0e17720b720ee"
+  },
+  "deployment": {
+    "status": "pending_approved_maintenance",
+    "restartPerformed": false,
+    "productionMigrationApplied": false,
+    "liveQboRefreshOrProviderCalls": false,
+    "helperAcceptance": false,
+    "productionPositiveAdmissionAvailable": false
+  },
+  "remainingPrerequisites": [
+    "authoritative existing assignment and accounting permission adapters",
+    "verified existing business/account/grant mapping",
+    "accepted canonical helper invocation and authenticated receipt adapter",
+    "Clara accounting acceptance",
+    "approved drained maintenance window"
+  ]
+}

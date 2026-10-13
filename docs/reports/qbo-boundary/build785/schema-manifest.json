@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "qbo-native-artifacts/v1",
+  "status": "staged_unaccepted_for_source_activation",
+  "files": {
+    "server/src/qbo/contract.ts": "0d805662500dba35e153790ff11a038fa64229e7f46e287b2ff0d74beb5f179a",
+    "server/src/qbo/boundary.ts": "8be2c1be1805e248f27bbdaf51606bfa1cdfc95951bad42b24855f56ddee9ddf",
+    "server/src/qbo/routes.ts": "1d3daaba77f6c60a7e8566d4ed2fb17329f8d1622d1d3ee1d3fe29a7f38673b1",
+    "server/src/db/migrations/0177_qbo_operation_boundary.sql": "abd48ba5abb5e575b78faf8c4845075e69dc257d6e8bc85b62f0e17720b720ee"
+  }
+}

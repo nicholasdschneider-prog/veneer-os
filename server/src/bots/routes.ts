@@ -1,3 +1,4 @@
+import { qboRoutes } from '../qbo/routes.js';
 import { customDirections, customDirectionInput, customDirectionReview, customDirectionRead, customDirectionFence, customDirectionRenew, customDirectionResult } from './customDirection.js';
 import {exactRefundRoutes} from './exactRefundRoutes.js';
 import { requestOutboundCall } from './outboundCalls.js';
@@ -54,6 +55,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   const merges = mergeAuthorization(ctx.db, deps.mergeIO ?? mergeIO(ctx));
   router.use(contactVerificationRoutes(ctx));
   router.use(exactRefundRoutes(ctx));
+  router.use(qboRoutes(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
     (

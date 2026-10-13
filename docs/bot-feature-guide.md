@@ -504,3 +504,20 @@ separate; the tank rendering prerequisites are held by Piper Content.
 
 The full and restricted employee guide, mobile layout, search and fresh/resumed agent
 instructions are verified. See [implementation and validation](./reports/spare-allowance/report.md).
+
+
+## QBO caller/job boundary — October 13, 2026 (staged)
+
+The `qbo-caller-boundary` catalog entry reaches employees and resumed agents.
+Native `/api/bots/qbo/{inspect,admit,read,reconcile}` verifies the existing per-turn
+agent session and permanently fences exact logical operations. It creates no
+accounting grant. The production resolver deliberately refuses admission because
+an authoritative assignment/standing-policy binding and canonical-helper invocation
+adapter have not been established. Conversation/Todo/policy files are evidence,
+not atomic ownership or permission. No new service, OAuth, grant or enrollment.
+
+Boris owns helper integration; Clara owns accounting acceptance. Only the original
+executor may use the eventual accepted path. Keep existing qbo.lock and the single
+refresh grant, with verification before any credential access/refresh. UNKNOWN
+means same-key receipt-only reconciliation, not another attempt. No maintenance
+window is granted by implementation. [Contract](./reports/qbo-boundary/build785/contract.md).
