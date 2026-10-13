@@ -182,3 +182,23 @@ Input: the BUILD804 packet (`docs/reports/qbo-boundary/build804/validation.json`
 - `SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name IN (3 tables + 6 triggers) ORDER BY type,name`: compare to the pinned 0179 SQL.
 - `PRAGMA foreign_key_check` per QBO table.
 - Counts for invocations, phases and observations, plus the legacy reservations and receipts counts.
+
+## 11. Native v2 read probe after the restart (requirement from #804, recorded 2026-10-13)
+
+The code was checked, and `phaseBoundary.read` (`server/src/qbo/phaseBoundary.ts:52`) is a pure lookup:
+- It runs `authenticatedQboCaller`, then SELECTs on `qbo_operation_reservations`, `qbo_v2_phases` and `qbo_bill_observations`.
+- It does not call the resolver or the helper transport, and it makes no provider request.
+
+**The probe** (once, after the restart and after section 8's postcheck):
+1. Read the counts for `qbo_v2_invocations`, `qbo_v2_phases` and `qbo_bill_observations` (expected 0/0/0).
+2. Have an existing, active, registered-bot session POST `/api/qbo/v2/read` with `{"requestKey":"<fresh UUID>"}`, using its own `X-VP-Agent-Token`. Do not print the token.
+3. Require `status:"ABSENT"`, `phaseProof:"ABSENT"`, `phases:[]` and `observation:null`, with all `execute`/`refreshEntitlement`/`operationEntitlement`/`retryAllowed` fields false.
+4. Read the three counts again; they must be unchanged.
+
+**Caller constraint.** Neither the BUILD806 owner chat (a6e39d6e) nor the BUILD804 chat (732adce5) has an active `bot_registrations` row, so neither can make this call. The call needs `QBO_NATIVE_AGENT_SESSION_REQUIRED` and a registered caller. The probe may be run only by one of the 16 active registered bots, in its own session. Do not mint a token, registration or grant for it, and do not borrow a token. If no such bot runs it in the window, record **runtime lookup: unverified**; do not enable anything to make it pass.
+
+**Not postchecks:** `/qbo/v2/invoke`, `/qbo/v2/reconcile`, refresh, and any live QBO provider request.
+
+**QBO operational acceptance stays pending:**
+- Production `qboRoutes(ctx)` uses `unavailablePhaseResolver` and has no helper transport.
+- Authoritative adapters, a runnable accepted closure, and sanctioned-parent/source acceptance are still missing.
