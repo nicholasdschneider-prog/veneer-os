@@ -10,9 +10,15 @@ import {
 } from './registry.js';
 
 /**
- * Push side of the James link. Thread events become pending push reasons;
- * a flush batches them to at most one webhook POST per thread per 15 minutes.
- * Two failed POSTs send the same alert by email instead.
+ * Push side of the James link. Thread events become push reasons; only
+ * actionable ones (a question waiting on James, a decision needing Nick, the
+ * outcome of work James asked for, notify_james, James's test push) are POSTed,
+ * batched to at most one webhook POST per thread per 15 minutes. Everything
+ * else (quiet threads, progress replies in followed threads, email status
+ * changes) is recorded as suppressed and summarized in the 8:30 AM ET daily
+ * digest. A push whose two POSTs fail is held for that day's single digest
+ * email, except a test push or a notify_james flagged urgent_for_nick, which
+ * is emailed at once.
  */
 
 export const PUSH_GAP_MS = 15 * 60_000;
@@ -25,6 +31,14 @@ const QUIET_HORIZON_MS = 7 * 24 * 3_600_000;
 const WEBHOOK_ESCALATE_MS = 2 * 3_600_000;
 export const ALERT_EMAILS = ['nicks@mail.grokbot.com', 'nick@elkhartrvparts.com'] as const;
 export const NICK_EMAIL = 'nick@elkhartrvparts.com';
+/** notify_james matters that may bypass the daily digest when the webhook fails. */
+export const URGENT_FOR_NICK = ['money', 'customer'] as const;
+export type UrgentForNick = (typeof URGENT_FOR_NICK)[number];
+/** Why a thread event is POSTed; null means recorded as suppressed. */
+export type Actionable = 'waiting_on_james' | 'needs_nick' | 'answers_james' | 'james_thread';
+/** Per-event excerpt cap inside the digest, so a day of deferred pushes stays readable. */
+const DIGEST_EXCERPT_MAX = 600;
+const DIGEST_MAX_PUSHES = 150;
 export const EMAIL_COMMAND_SENDERS = ['nicks@mail.grokbot.com', 'nick@elkhartrvparts.com'];
 const MAX_LIST = 50;
 
@@ -137,19 +151,38 @@ export class JamesLink {
           sourceRef: `turn:${event.turnId}`, text: last.markdown,
         }, this.deps.now());
         if (!stamped?.inserted || !(isJamesThread(stamped.thread) || answersJames)) return;
+        const needsNick = this.newDecisionsNeedingNick(conversationId);
+        const actionable: Actionable | null = stamped.asked || getThread(this.db, conversationId)?.status === 'waiting_on_james' ? 'waiting_on_james'
+          : needsNick.length ? 'needs_nick'
+            : answersJames ? 'answers_james'
+              : stamped.thread.started_by === 'james' ? 'james_thread' : null;
+        // Progress and status-only replies in a followed thread are recorded, not POSTed.
         this.enqueue(conversationId, 'reply', stamped.turn, {
-          author: 'veneer', asks_question: stamped.asked, excerpt: excerpt(last.markdown), answers_james: answersJames,
-        });
-        void this.flush();
+          author: 'veneer', asks_question: stamped.asked, excerpt: excerpt(last.markdown), answers_james: answersJames, actionable,
+          ...(needsNick.length ? { needs_nick: needsNick } : {}),
+        }, { suppressed: !actionable });
+        if (actionable) void this.flush();
       }
     } catch (err) {
       this.log(`event handling failed for ${conversationId}: ${(err as Error).message}`);
     }
   }
 
-  enqueue(conversationId: string | null, reason: PushReason, turn: number | null, detail: Record<string, unknown> = {}) {
-    this.db.prepare('INSERT INTO james_push_events (conversation_id, reason, turn, detail_json, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(conversationId, reason, turn, JSON.stringify(detail), iso(this.deps.now()));
+  /** A suppressed event is recorded for the digest with push_id 0 and is never POSTed. */
+  enqueue(conversationId: string | null, reason: PushReason, turn: number | null, detail: Record<string, unknown> = {}, opts: { suppressed?: boolean } = {}) {
+    this.db.prepare('INSERT INTO james_push_events (conversation_id, reason, turn, detail_json, push_id, disposition, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(conversationId, reason, turn, JSON.stringify(detail), opts.suppressed ? 0 : null, opts.suppressed ? 'suppressed' : null, iso(this.deps.now()));
+  }
+
+  /** Decisions in this chat waiting on Nick that no POSTed reply has carried yet. */
+  private newDecisionsNeedingNick(conversationId: string): string[] {
+    const open = this.db.prepare("SELECT id FROM bot_decisions WHERE conversation_id = ? AND state = 'needs_input' ORDER BY created_at, id")
+      .all(conversationId) as { id: string }[];
+    const carried = this.db.prepare(
+      `SELECT 1 FROM james_push_events e, json_each(e.detail_json, '$.needs_nick') j
+        WHERE e.conversation_id = ? AND e.reason = 'reply' AND e.disposition IS NULL AND j.value = ? LIMIT 1`,
+    );
+    return open.map((d) => d.id).filter((id) => !carried.get(conversationId, id));
   }
 
   // ── James's actions ───────────────────────────────────────────────────────
@@ -259,6 +292,7 @@ export class JamesLink {
     if (this.ticks % 60 === 1) pruneIdempotency(this.db, now);
     if (this.ticks % 2 === 1) await this.pollEmailCommands().catch((err: Error) => this.log(`email poll failed: ${err.message}`));
     await this.flush();
+    await this.maybeSendDigestEmail(now);
   }
 
   /** Chats created since the last tick get a row even before their first event. */
@@ -302,7 +336,8 @@ export class JamesLink {
       iso(now - threshold), iso(now - QUIET_HORIZON_MS),
     );
     for (const t of due) {
-      this.enqueue(t.conversation_id, 'quiet', t.turn, { quiet_since: t.last_activity, quiet_hours: threshold / 3_600_000 });
+      // Quiet is status only: recorded for the digest, not POSTed.
+      this.enqueue(t.conversation_id, 'quiet', t.turn, { quiet_since: t.last_activity, quiet_hours: threshold / 3_600_000 }, { suppressed: true });
       this.db.prepare('UPDATE james_threads SET quiet_pushed_at = ? WHERE conversation_id = ?').run(iso(now), t.conversation_id);
     }
   }
@@ -343,7 +378,8 @@ export class JamesLink {
         else {
           const changed = await this.changeStatus(id, parsed.command === 'CLOSE' ? 'close' : 'archive');
           result = changed.ok ? (parsed.command === 'CLOSE' ? 'closed' : 'archived') : changed.error;
-          if (changed.ok) this.enqueue(id, 'status_changed', changed.thread.turn, { status: changed.thread.status, via: 'email', email_message_id: msg.messageId });
+          // James made this change himself; it is recorded, not POSTed back to him.
+          if (changed.ok) this.enqueue(id, 'status_changed', changed.thread.turn, { status: changed.thread.status, via: 'email', email_message_id: msg.messageId }, { suppressed: true });
         }
         await this.deps.mailer.send(
           sender,
@@ -374,10 +410,12 @@ export class JamesLink {
    * Tell James something from a chat that he does not follow (a bot's standing
    * chat), once, because that chat's own human said to. The cited turn must be
    * a recent human message in this same chat that names James. Delivery is
-   * immediate through the normal push path (webhook, then email fallback);
-   * James is not made a follower. A repeated key returns the first result.
+   * immediate through the webhook; if it fails the push waits for the daily
+   * digest email, unless the caller marked it urgent_for_nick (money or
+   * customer), which is emailed at once. James is not made a follower. A
+   * repeated key returns the first result.
    */
-  async notifyJames(input: { conversationId: string; text: string; authorityTurn?: number; idempotencyKey: string }): Promise<NotifyResult> {
+  async notifyJames(input: { conversationId: string; text: string; authorityTurn?: number; idempotencyKey: string; urgentForNick?: UrgentForNick }): Promise<NotifyResult> {
     const { conversationId, idempotencyKey: key } = input;
     const text = input.text.trim();
     const textHash = crypto.createHash('sha256').update(text).digest('hex');
@@ -426,7 +464,10 @@ export class JamesLink {
     // Never widen following as a side effect.
     this.db.prepare('UPDATE james_threads SET followed = ? WHERE conversation_id = ?').run(followedBefore, conversationId);
     const event = { reason: 'notify' as const, turn: stamped.turn, created_at: now,
-      detail_json: JSON.stringify({ author: 'veneer', excerpt: excerpt(text), authority_turn: authorityTurn, idempotency_key: key }) };
+      detail_json: JSON.stringify({
+        author: 'veneer', excerpt: excerpt(text), authority_turn: authorityTurn, idempotency_key: key,
+        ...(input.urgentForNick ? { urgent_for_nick: input.urgentForNick } : {}),
+      }) };
     const payload = this.threadPayload(conversationId, [event])!;
     const pushId = Number(this.db.prepare(
       "INSERT INTO james_pushes (conversation_id, kind, payload_json, status, created_at) VALUES (?, 'thread', '{}', 'sending', ?)",
@@ -438,7 +479,7 @@ export class JamesLink {
         .run(conversationId, 'notify', stamped.turn, event.detail_json, pushId, now);
       this.db.prepare('UPDATE james_notifications SET ledger_turn = ?, push_id = ? WHERE idempotency_key = ?').run(stamped.turn, pushId, key);
     })();
-    await this.deliver(pushId, payload, {});
+    await this.deliver(pushId, payload, { immediateEmail: !!input.urgentForNick });
     const result = this.notification(conversationId, key);
     return result.ok ? { ...result, replay: false } : result;
   }
@@ -471,7 +512,8 @@ export class JamesLink {
         'SELECT id, reason, turn, detail_json, created_at FROM james_push_events WHERE push_id IS NULL AND conversation_id IS ? ORDER BY id',
       ).all(id) as { id: number; reason: PushReason; turn: number | null; detail_json: string; created_at: string }[];
       if (!events.length) continue;
-      const payload = id === null ? this.heartbeatPayload(now) : this.threadPayload(id, events);
+      const since = getState(this.db, 'digest_since') ?? iso(now - 24 * 3_600_000);
+      const payload = id === null ? this.heartbeatPayload(now, since) : this.threadPayload(id, events);
       if (!payload) {
         this.db.prepare(`UPDATE james_push_events SET push_id = 0 WHERE id IN (${events.map(() => '?').join(',')})`).run(...events.map((e) => e.id));
         continue;
@@ -482,7 +524,13 @@ export class JamesLink {
       payload.push_id = pushId;
       this.db.prepare('UPDATE james_pushes SET payload_json = ? WHERE id = ?').run(JSON.stringify(payload), pushId);
       this.db.prepare(`UPDATE james_push_events SET push_id = ? WHERE id IN (${events.map(() => '?').join(',')})`).run(pushId, ...events.map((e) => e.id));
-      await this.deliver(pushId, payload, { simulateFailure: options.simulateWebhookFailure || events.some((e) => e.reason === 'test' && JSON.parse(e.detail_json).simulate_webhook_failure === true) });
+      if (id === null) setState(this.db, 'digest_since', String(payload.sent_at));
+      const test = events.some((e) => e.reason === 'test');
+      await this.deliver(pushId, payload, {
+        simulateFailure: options.simulateWebhookFailure || events.some((e) => e.reason === 'test' && JSON.parse(e.detail_json).simulate_webhook_failure === true),
+        // James's own test push exercises the email fallback at once.
+        immediateEmail: test,
+      });
     }
   }
 
@@ -508,7 +556,8 @@ export class JamesLink {
     } as Record<string, unknown> & { push_id: number };
   }
 
-  heartbeatPayload(now: number) {
+  /** The daily 8:30 AM ET heartbeat, which is also the digest of what was suppressed or undelivered since the last one. */
+  heartbeatPayload(now: number, since = iso(now - 24 * 3_600_000)) {
     const pick = (status: string) => listThreads(this.db, { james: true, statuses: [status as never], limit: MAX_LIST });
     const waitingJames = pick('waiting_on_james');
     const waitingVeneer = pick('waiting_on_veneer');
@@ -531,7 +580,44 @@ export class JamesLink {
       waiting_on_james: waitingJames.threads.map((t) => this.summary(t)),
       waiting_on_veneer: waitingVeneer.threads.map((t) => this.summary(t)),
       open: open.threads.map((t) => this.summary(t)),
+      since,
+      suppressed: this.suppressedSince(since),
+      undelivered: this.undeliveredPushes().map((p) => ({
+        push_id: p.id, thread_id: p.conversation_id, title: p.title, kind: p.kind, reasons: p.reasons, created_at: p.created_at, status: p.status, last_error: p.last_error,
+      })),
     } as Record<string, unknown> & { push_id: number };
+  }
+
+  /** Events recorded but not POSTed since the last digest: counts by reason and the threads they came from. */
+  suppressedSince(since: string) {
+    const byReason = Object.fromEntries((this.db.prepare(
+      "SELECT reason, COUNT(*) AS n FROM james_push_events WHERE disposition = 'suppressed' AND created_at > ? GROUP BY reason ORDER BY reason",
+    ).all(since) as { reason: string; n: number }[]).map((r) => [r.reason, r.n]));
+    const threads = this.db.prepare(
+      `SELECT e.conversation_id AS thread_id, COALESCE(c.title, '(untitled)') AS title, COUNT(*) AS events, MAX(e.turn) AS last_turn,
+              GROUP_CONCAT(DISTINCT e.reason) AS reasons
+         FROM james_push_events e LEFT JOIN conversations c ON c.id = e.conversation_id
+        WHERE e.disposition = 'suppressed' AND e.created_at > ?
+        GROUP BY e.conversation_id ORDER BY events DESC, thread_id LIMIT ?`,
+    ).all(since, MAX_LIST) as { thread_id: string; title: string; events: number; last_turn: number | null; reasons: string }[];
+    return {
+      total: Object.values(byReason).reduce((a, b) => a + b, 0),
+      by_reason: byReason,
+      threads: threads.map((t) => ({ ...t, reasons: t.reasons.split(','), url: this.threadUrl(t.thread_id) })),
+    };
+  }
+
+  /** Pushes held for the digest email (webhook failed), oldest first. */
+  private undeliveredPushes() {
+    return (this.db.prepare(
+      `SELECT p.id, p.conversation_id, COALESCE(c.title, '(untitled)') AS title, p.kind, p.status, p.payload_json, p.last_error, p.created_at
+         FROM james_pushes p LEFT JOIN conversations c ON c.id = p.conversation_id
+        WHERE p.status = 'deferred_digest' ORDER BY p.id`,
+    ).all() as { id: number; conversation_id: string | null; title: string; kind: string; status: string; payload_json: string; last_error: string | null; created_at: string }[])
+      .map((p) => {
+        const payload = JSON.parse(p.payload_json) as Record<string, unknown>;
+        return { ...p, payload, reasons: (payload.reasons as string[] | undefined) ?? [p.kind] };
+      });
   }
 
   private async postWebhook(body: string, pushId: number, simulateFailure: boolean): Promise<void> {
@@ -563,7 +649,12 @@ export class JamesLink {
     }
   }
 
-  private async deliver(pushId: number, payload: Record<string, unknown>, opts: { simulateFailure?: boolean }) {
+  /**
+   * Two webhook attempts. On failure the push is held as deferred_digest for
+   * the next daily digest email, or, with immediateEmail, emailed now (first
+   * address, then the second). Never retried after that.
+   */
+  private async deliver(pushId: number, payload: Record<string, unknown>, opts: { simulateFailure?: boolean; immediateEmail?: boolean }) {
     const body = JSON.stringify(payload);
     const errors: string[] = [];
     for (let attempt = 1; attempt <= 2; attempt += 1) {
@@ -581,6 +672,12 @@ export class JamesLink {
     }
     const lastError = errors.join(' | ').slice(0, 500);
     if (!opts.simulateFailure && !getState(this.db, 'webhook_failing_since')) setState(this.db, 'webhook_failing_since', iso(this.deps.now()));
+    if (!opts.immediateEmail) {
+      this.db.prepare("UPDATE james_pushes SET status = 'deferred_digest', last_error = ?, finished_at = ? WHERE id = ?")
+        .run(lastError, iso(this.deps.now()), pushId);
+      await this.maybeEscalate(lastError);
+      return;
+    }
     const { subject, text } = this.alertEmail(payload, lastError);
     for (const to of ALERT_EMAILS) {
       try {
@@ -607,8 +704,75 @@ export class JamesLink {
     await this.deps.mailer.send(
       NICK_EMAIL,
       '[VENEER] James webhook down for 2+ hours',
-      `Veneer has not been able to reach James's Grok Bot webhook since ${since}.\nLast error: ${lastError}\nPushes are going to nicks@mail.grokbot.com by email meanwhile. Check JAMES_WEBHOOK_URL / JAMES_WEBHOOK_KEY in Doppler (main/prd) or the Grok Bot side.`,
+      `Veneer has not been able to reach James's Grok Bot webhook since ${since}.\nLast error: ${lastError}\nUndelivered pushes are held for the 8:30 AM ET daily digest email to nicks@mail.grokbot.com (urgent money or customer notices are emailed at once). Check JAMES_WEBHOOK_URL / JAMES_WEBHOOK_KEY in Doppler (main/prd) or the Grok Bot side.`,
     ).catch((err: Error) => this.log(`escalation email failed: ${err.message}`));
+  }
+
+  /**
+   * The one daily email, after today's 8:30 AM ET heartbeat has finished. It is
+   * sent only when something was held back (pushes whose webhook failed,
+   * including the heartbeat itself); a day where the webhook delivered
+   * everything gets no email. The date is claimed in james_link_state before
+   * the send, so a date is emailed at most once and an unclear send is never
+   * repeated.
+   */
+  async maybeSendDigestEmail(now: number) {
+    const et = etClock(now);
+    if (getState(this.db, 'heartbeat_date') !== et.date || getState(this.db, 'digest_email_date') === et.date) return;
+    const heartbeat = this.db.prepare(
+      "SELECT id, status, payload_json FROM james_pushes WHERE kind = 'heartbeat' AND json_extract(payload_json, '$.date') = ? ORDER BY id DESC LIMIT 1",
+    ).get(et.date) as { id: number; status: string; payload_json: string } | undefined;
+    if (!heartbeat || heartbeat.status === 'sending') return;
+    setState(this.db, 'digest_email_date', et.date);
+    const held = this.undeliveredPushes();
+    if (!held.length) { setState(this.db, 'digest_email_result', `${et.date} not_needed`); return; }
+    const { subject, text } = this.digestEmail(JSON.parse(heartbeat.payload_json), held.filter((p) => p.id !== heartbeat.id));
+    const mark = this.db.prepare("UPDATE james_pushes SET status = ?, emailed_to = ?, digest_date = ?, last_error = COALESCE(?, last_error) WHERE id = ? AND status = 'deferred_digest'");
+    const errors: string[] = [];
+    for (const to of ALERT_EMAILS) {
+      try {
+        await this.deps.mailer.send(to, subject, text);
+        this.db.transaction(() => { for (const p of held) mark.run('emailed', to, et.date, null, p.id); })();
+        setState(this.db, 'digest_email_result', `${et.date} sent to ${to} (${held.length} pushes)`);
+        return;
+      } catch (err) {
+        errors.push(`digest email to ${to}: ${(err as Error).message}`);
+      }
+    }
+    const error = errors.join(' | ').slice(0, 1000);
+    this.db.transaction(() => { for (const p of held) mark.run('failed', null, et.date, error, p.id); })();
+    setState(this.db, 'digest_email_result', `${et.date} failed`);
+    this.log(`digest email for ${et.date} undeliverable: ${error}`);
+  }
+
+  digestEmail(heartbeat: Record<string, unknown>, held: ReturnType<JamesLink['undeliveredPushes']>) {
+    const date = String(heartbeat.date ?? '');
+    const lines: string[] = [`Veneer daily digest for ${date} (since ${String(heartbeat.since ?? '')}).`, '', `Counts: ${JSON.stringify(heartbeat.counts)}`, ''];
+    for (const key of ['waiting_on_james', 'waiting_on_veneer', 'open'] as const) {
+      const list = (heartbeat[key] as ReturnType<JamesLink['summary']>[]) ?? [];
+      lines.push(`${key} (${list.length}):`);
+      for (const t of list) lines.push(`  ${t.thread_id} · turn ${t.turn} · ${t.title}`);
+      lines.push('');
+    }
+    const suppressed = heartbeat.suppressed as ReturnType<JamesLink['suppressedSince']> | undefined;
+    if (suppressed) {
+      lines.push(`Recorded but not pushed (status only): ${suppressed.total} ${JSON.stringify(suppressed.by_reason)}`);
+      for (const t of suppressed.threads) lines.push(`  ${t.thread_id} · ${t.events} · ${t.reasons.join(', ')} · ${t.title}`);
+      lines.push('');
+    }
+    lines.push(`Not delivered to the webhook (${held.length}):`, '');
+    for (const p of held.slice(0, DIGEST_MAX_PUSHES)) {
+      const thread = p.payload.thread as ReturnType<JamesLink['summary']> | undefined;
+      lines.push(`— push ${p.id} · ${p.created_at} · ${p.reasons.join(', ')}${thread ? ` · thread ${thread.thread_id} turn ${thread.turn} · ${thread.title}` : ` · ${p.kind}`}`);
+      for (const e of (p.payload.events as Array<Record<string, unknown>> | undefined) ?? []) {
+        if (typeof e.excerpt === 'string') lines.push(e.excerpt.length > DIGEST_EXCERPT_MAX ? `${e.excerpt.slice(0, DIGEST_EXCERPT_MAX)}…` : e.excerpt);
+      }
+      if (p.last_error) lines.push(`(webhook: ${p.last_error})`);
+      lines.push('');
+    }
+    if (held.length > DIGEST_MAX_PUSHES) lines.push(`…and ${held.length - DIGEST_MAX_PUSHES} more; read them with GET /api/james/threads.`, '');
+    lines.push('Reply via the James API with each thread\'s expected_turn, or reply to this email with CLOSE <thread_id> or ARCHIVE <thread_id> as the first line.');
+    return { subject: `[VENEER] Daily digest ${date}`, text: lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n') };
   }
 
   alertEmail(payload: Record<string, unknown>, error: string) {

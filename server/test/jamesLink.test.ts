@@ -234,14 +234,16 @@ describe('push', () => {
     expect(row.last_error).not.toContain('hook-key');
   });
 
-  it('pushes quiet James threads once per quiet period', async () => {
+  it('records quiet James threads once per quiet period without pushing them', async () => {
+    const quietEvents = () => db.prepare("SELECT push_id, disposition FROM james_push_events WHERE conversation_id = ? AND reason = 'quiet'").all(A);
     clock += 3 * 3_600_000;
     await link.tick();
-    const quiet = fetchMock.mock.calls.filter((c) => JSON.parse(c[1].body).reasons.includes('quiet'));
-    expect(quiet).toHaveLength(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(quietEvents()).toEqual([{ push_id: 0, disposition: 'suppressed' }]);
     clock += PUSH_GAP_MS + 60_000;
     await link.tick();
-    expect(fetchMock.mock.calls.filter((c) => JSON.parse(c[1].body).reasons.includes('quiet'))).toHaveLength(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(quietEvents()).toHaveLength(1);
   });
 
   it('sends the 8:30 AM ET heartbeat once a day', async () => {
@@ -250,7 +252,12 @@ describe('push', () => {
     await link.tick();
     const beats = fetchMock.mock.calls.filter((c) => JSON.parse(c[1].body).type === 'veneer.heartbeat');
     expect(beats).toHaveLength(1);
-    expect(JSON.parse(beats[0]![1].body).waiting_on_james.map((t: { thread_id: string }) => t.thread_id)).toContain(A);
+    const beat = JSON.parse(beats[0]![1].body);
+    expect(beat.waiting_on_james.map((t: { thread_id: string }) => t.thread_id)).toContain(A);
+    expect(beat.suppressed).toMatchObject({ by_reason: { quiet: 1 }, threads: [{ thread_id: A, events: 1, reasons: ['quiet'] }] });
+    expect(beat.undelivered).toEqual([]);
+    // Nothing was held back, so the day gets no digest email.
+    expect(sent).toEqual([]);
   });
 });
 
@@ -531,11 +538,132 @@ describe('notify_james: a human-directed bot message to James', () => {
     expect(ledger).toEqual({ direction: 'from_veneer', author: 'veneer', via: 'notify_james', excerpt: 'James: rates are good now.' });
   });
 
-  it('reports the email fallback and failure in the readback without resending', async () => {
-    fetchMock.mockResolvedValue(new Response('bad', { status: 400 }));
-    failEmailTo = null;
-    const emailed = await (await notify(H, { text: 'second note', idempotency_key: 'piper-test-0002' })).json();
-    expect(emailed).toMatchObject({ status: 'emailed', attempts: 2, emailed_to: 'nicks@mail.grokbot.com' });
-    expect(emailed.last_error).toContain('HTTP 400');
+  it('holds a failed notify for the digest without emailing or resending, and reads it back', async () => {
+    fetchMock.mockImplementation(async () => new Response('bad', { status: 400 }));
+    const deferred = await (await notify(H, { text: 'second note', idempotency_key: 'piper-test-0002' })).json();
+    expect(deferred).toMatchObject({ status: 'deferred_digest', attempts: 2, emailed_to: null });
+    expect(deferred.last_error).toContain('HTTP 400');
+    expect(sent).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const again = await (await notify(H, { text: 'second note', idempotency_key: 'piper-test-0002' })).json();
+    expect(again).toMatchObject({ replay: true, push_id: deferred.push_id, status: 'deferred_digest' });
+    await link.tick();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('emails an urgent money or customer notice at once when the webhook fails', async () => {
+    fetchMock.mockImplementation(async () => new Response('bad', { status: 400 }));
+    expect((await notify(H, { text: 'x', idempotency_key: 'piper-test-0003', urgent_for_nick: 'maybe' })).status).toBe(400);
+    const urgent = await (await notify(H, { text: 'Refund of $412 needs Nick today.', idempotency_key: 'piper-test-0004', urgent_for_nick: 'money' })).json();
+    expect(urgent).toMatchObject({ status: 'emailed', attempts: 2, emailed_to: 'nicks@mail.grokbot.com' });
+    expect(sent.map((m) => m.to)).toEqual(['nicks@mail.grokbot.com']);
+    expect(sent[0]!.body).toContain('Refund of $412 needs Nick today.');
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).events[0]).toMatchObject({ urgent_for_nick: 'money' });
+  });
+});
+
+describe('usage reduction: only actionable pushes, one daily digest', () => {
+  const F = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; // followed by James, started by Nick
+  const G = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'; // a bot's standing chat James follows
+  const J = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'; // a bot's standing chat James does not follow
+  const posts = () => fetchMock.mock.calls.map((c) => JSON.parse(c[1].body));
+  beforeAll(async () => {
+    clock = Date.parse('2026-10-22T18:00:00Z'); // 14:00 ET, after the earlier tests' clock
+    for (const [id, title] of [[F, 'Nick shipping fix'], [G, 'Sage standing chat'], [J, 'Finn standing chat']] as const) {
+      addConversation(id, title);
+      await link.tick();
+    }
+    db.prepare('INSERT INTO bot_registrations (conversation_id, name, registered_by) VALUES (?, ?, 1), (?, ?, 1)').run(G, 'Sage', J, 'Finn');
+    expect((await api(`/api/james/threads/${F}/follow`, { method: 'POST', body: JSON.stringify({ follow: true }) })).status).toBe(200);
+    expect((await api(`/api/james/threads/${G}/follow`, { method: 'POST', body: JSON.stringify({ follow: true }) })).status).toBe(200);
+  });
+
+  it('records progress replies in a followed thread without a POST and pushes its question', async () => {
+    userTurn(F, 'f-1', 'Check the label printer');
+    veneerReply(F, 'f-2', 'Progress: 40 of 120 labels reprinted.');
+    await settle();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(db.prepare("SELECT push_id, disposition, json_extract(detail_json, '$.actionable') AS actionable FROM james_push_events WHERE conversation_id = ? AND reason = 'reply'").all(F))
+      .toEqual([{ push_id: 0, disposition: 'suppressed', actionable: null }]);
+    expect(getThread(db, F)).toMatchObject({ turn: 2, status: 'open' });
+    veneerReply(F, 'f-3', 'All reprinted.\n\nShould I void the old batch?');
+    await settle();
+    expect(posts()).toHaveLength(1);
+    expect(posts()[0]).toMatchObject({ reasons: ['reply'], thread: { thread_id: F, status: 'waiting_on_james' } });
+    expect(posts()[0].events).toHaveLength(1);
+    expect(posts()[0].events[0]).toMatchObject({ actionable: 'waiting_on_james', asks_question: true });
+  });
+
+  it('pushes a reply that carries a new decision for Nick once', async () => {
+    db.prepare(`INSERT INTO bot_decisions (id, conversation_id, source_key, proposal_key, proposal_json, assignee_id)
+                VALUES ('dec-1', ?, 'case-1', 'p-1', '{}', 1)`).run(G);
+    veneerReply(G, 'g-1', 'Raised a refund decision for Nick.');
+    await settle();
+    expect(posts()).toHaveLength(1);
+    expect(posts()[0].events[0]).toMatchObject({ actionable: 'needs_nick', needs_nick: ['dec-1'] });
+    clock += PUSH_GAP_MS + 1;
+    veneerReply(G, 'g-2', 'Still waiting on that decision.');
+    await settle();
+    expect(posts()).toHaveLength(1);
+  });
+
+  it('pushes the answer to James in a chat he does not follow', async () => {
+    const turn = getThread(db, J)!.turn;
+    const res = await api(`/api/james/bots/Finn/message`, { method: 'POST', body: JSON.stringify({ text: 'Is the feed fixed?', expected_turn: turn }) });
+    expect(res.status).toBe(200);
+    userTurn(J, 'j-1', posted.at(-1)!.text);
+    veneerReply(J, 'j-1', 'Yes, the feed is fixed and verified.');
+    await settle();
+    expect(posts()).toHaveLength(1);
+    expect(posts()[0].events[0]).toMatchObject({ actionable: 'answers_james', answers_james: true });
+    veneerReply(J, 'j-2', 'Routine sweep: nothing new.');
+    await settle();
+    expect(posts()).toHaveLength(1);
+  });
+
+  it('holds a failed push for one digest email per day and never resends it', async () => {
+    fetchMock.mockImplementation(async () => new Response('limit', { status: 400 }));
+    clock += PUSH_GAP_MS + 1;
+    veneerReply(F, 'f-4', 'Voided.\n\nAlso reprint the 24in batch?');
+    await settle();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const held = db.prepare("SELECT id, status, emailed_to FROM james_pushes WHERE conversation_id = ? ORDER BY id DESC LIMIT 1").get(F) as { id: number; status: string; emailed_to: string | null };
+    expect(held).toMatchObject({ status: 'deferred_digest', emailed_to: null });
+    expect(sent).toEqual([]);
+    clock += 3 * 3_600_000;
+    await link.tick();
+    // The unanswered question is a new nudge push; the held push itself is never POSTed again.
+    expect(posts().filter((p) => p.push_id === held.id)).toHaveLength(2);
+    expect(posts().at(-1)).toMatchObject({ reasons: ['question_unanswered'] });
+    // The webhook has been failing for 2+ hours: Nick is told once per outage.
+    veneerReply(F, 'f-5', 'Done.\n\nShall I close this?');
+    clock += PUSH_GAP_MS + 1;
+    await link.tick();
+    clock += PUSH_GAP_MS + 1;
+    veneerReply(F, 'f-6', 'Ready.\n\nClose now?');
+    await link.tick();
+    expect(sent.map((m) => [m.to, m.subject])).toEqual([['nick@elkhartrvparts.com', '[VENEER] James webhook down for 2+ hours']]);
+    sent.length = 0;
+
+    fetchMock.mockImplementation(async () => new Response('{}', { status: 200 }));
+    clock = Date.parse('2026-10-23T12:31:00Z'); // 8:31 ET
+    await link.tick();
+    const beat = posts().find((p) => p.type === 'veneer.heartbeat');
+    expect(beat.undelivered.map((p: { push_id: number }) => p.push_id)).toContain(held.id);
+    expect(beat.suppressed.by_reason).toMatchObject({ reply: 2 });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ to: 'nicks@mail.grokbot.com', subject: '[VENEER] Daily digest 2026-10-23' });
+    expect(sent[0]!.body).toContain(`push ${held.id}`);
+    expect(sent[0]!.body).toContain('Also reprint the 24in batch?');
+    expect(db.prepare('SELECT status, emailed_to, digest_date FROM james_pushes WHERE id = ?').get(held.id))
+      .toEqual({ status: 'emailed', emailed_to: 'nicks@mail.grokbot.com', digest_date: '2026-10-23' });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM james_pushes WHERE status = 'deferred_digest'").get()).toEqual({ n: 0 });
+    const beatsBefore = posts().filter((p) => p.type === 'veneer.heartbeat').length;
+    clock += 60_000;
+    await link.tick();
+    clock += 3_600_000;
+    await link.tick();
+    expect(sent).toHaveLength(1);
+    expect(posts().filter((p) => p.type === 'veneer.heartbeat')).toHaveLength(beatsBefore);
   });
 });
