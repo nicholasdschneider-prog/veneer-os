@@ -41,9 +41,7 @@ describe('scheduled-agent MCP tools', () => {
         const requestPath = req.url ?? '';
         requests.push({ method: req.method ?? 'GET', path: requestPath, body });
         res.setHeader('content-type', 'application/json');
-        if(req.method==='POST' && requestPath==='/api/scheduled-tasks/purchase-interrupted-recovery'){
-          res.end(JSON.stringify({run_id:body.run_id,original_work_remains_unknown:true,execute:false}));
-        } else if (req.method === 'POST' && requestPath === '/api/scheduled-tasks/purchase-candidate-pass') {
+        if (req.method === 'POST' && requestPath === '/api/scheduled-tasks/purchase-candidate-pass') {
           res.end(JSON.stringify({recorded:true,outcome:body.outcome,purchase_authority:false}));
         } else if (req.method === 'POST' && requestPath === '/api/scheduled-tasks') {
           res.end(JSON.stringify({ ok: true, scheduledTask: taskView(body) }));
@@ -169,12 +167,6 @@ describe('scheduled-agent MCP tools', () => {
     return rpc('tools/call', { name, arguments: args });
   }
 
-  it('routes exact interrupted-run inspection without changing its mode or run identity',async()=>{
-    const response=await callTool('recover_interrupted_purchase',{run_id:'original-run',mode:'inspect'});
-    expect(response.result.content?.[0]?.text).toContain('original_work_remains_unknown');
-    expect(requests.at(-1)).toMatchObject({method:'POST',path:'/api/scheduled-tasks/purchase-interrupted-recovery',body:{run_id:'original-run',mode:'inspect'}});
-  },SPAWN_HEAVY_TIMEOUT_MS);
-
   it('advertises every scheduled-agent action with explicit discovery and deletion guidance', async () => {
     const response = await rpc('tools/list');
     const tools = response.result.tools ?? [];
@@ -187,11 +179,11 @@ describe('scheduled-agent MCP tools', () => {
       'list_scheduled_task_runs',
       'update_scheduled_task_run',
       'record_purchase_candidate_pass',
-      'recover_interrupted_purchase',
       'run_scheduled_task_now',
       'delete_scheduled_task_run',
       'delete_scheduled_task',
     ]));
+    expect(names).not.toContain('recover_interrupted_purchase');
     expect(tools.find((tool) => tool.name === 'list_scheduled_tasks')?.description).toContain('inspect/delete past runs');
     expect(tools.find((tool) => tool.name === 'delete_scheduled_task_run')?.description).toContain('Archived chats');
     expect(tools.find((tool) => tool.name === 'delete_scheduled_task')?.description).toContain('clearly asks');

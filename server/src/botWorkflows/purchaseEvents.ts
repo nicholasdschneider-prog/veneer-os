@@ -4,10 +4,6 @@ import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { BotError } from '../bots/service.js';
 
-export const purchaseTaskFenceSql = `SELECT b.run_id,b.blocked_reason FROM purchase_event_batches b WHERE b.task_id=? AND b.status='blocked'
- AND NOT EXISTS(SELECT 1 FROM purchase_startup_dispositions d WHERE d.run_id=b.run_id AND d.batch_id=b.id)
- AND NOT EXISTS(SELECT 1 FROM purchase_interrupted_dispositions d WHERE d.run_id=b.run_id AND d.batch_id=b.id)`;
-
 export const purchaseExcludedOrderSql = `WITH scope AS (SELECT ? task_id)
  SELECT json_extract(r.payload_json,'$.order_id') FROM purchase_event_receipts r
  JOIN purchase_event_links l USING(source_id,event_id) JOIN purchase_event_batches b ON b.id=l.batch_id
@@ -85,16 +81,15 @@ export function readPurchaseEvent(db: Database.Database, sourceId: string, event
     LEFT JOIN purchase_worker_starts start ON start.run_id=b.run_id WHERE r.source_id=? AND r.event_id=?`).get(sourceId,eventId) as
     {receipt_json:string;batch_id:string;status:string;blocked_reason:string|null;run_id:string|null;conversation_id:string|null;run_status:string|null;turn_id:string|null;started_at:string|null}|undefined;
   if (!row) throw new BotError(404,'PURCHASE_EVENT_NOT_FOUND');
-  const fenced = db.prepare("SELECT b.blocked_reason FROM purchase_event_batches b WHERE b.task_id=(SELECT task_id FROM purchase_event_bindings WHERE source_id=?) AND b.status='blocked' AND NOT EXISTS(SELECT 1 FROM purchase_startup_dispositions d WHERE d.run_id=b.run_id AND d.batch_id=b.id) AND NOT EXISTS(SELECT 1 FROM purchase_interrupted_dispositions d WHERE d.run_id=b.run_id AND d.batch_id=b.id) LIMIT 1").get(sourceId) as {blocked_reason:string|null}|undefined;
   const receipt=JSON.parse(row.receipt_json);
   const excluded=db.prepare(`SELECT 1 WHERE ? IN (${purchaseExcludedOrderSql})`).get(receipt.order_id,receipt.task_id);
   const holds=purchaseDecisionHolds(db,receipt.task_id);
   const decisionHeld=row.status==='pending' && (holds.dispatch_blocked || holds.held_orders.some(h=>h.order_id===receipt.order_id));
   const disposition = row.run_id ? db.prepare('SELECT evidence_hash,recorded_at FROM purchase_startup_dispositions WHERE run_id=? AND batch_id=?').get(row.run_id,row.batch_id) ?? null : null;
   const interruptedDisposition=row.run_id ? db.prepare('SELECT review_id,evidence_hash,recorded_at FROM purchase_interrupted_dispositions WHERE run_id=? AND batch_id=?').get(row.run_id,row.batch_id) ?? null : null;
-  return {receipt:JSON.parse(row.receipt_json),interrupted_disposition:interruptedDisposition,startup_disposition:disposition,decision_holds:holds,delivery:{status:decisionHeld || excluded || (row.status==='pending' && fenced)?'blocked':row.status,batch_id:row.batch_id,run_id:row.run_id,conversation_id:row.conversation_id,run_status:row.run_status,worker_started:!!row.turn_id,worker_started_at:row.started_at,turn_id:row.turn_id,blocked_reason:row.blocked_reason ?? (decisionHeld?'NATIVE_DECISION_HOLD':null) ?? (excluded?'STARTUP_FAILURE_ORDER_FENCED':null) ?? (row.status==='pending' && fenced?fenced.blocked_reason:null),purchase_authority:false}};
+  return {receipt:JSON.parse(row.receipt_json),interrupted_disposition:interruptedDisposition,startup_disposition:disposition,decision_holds:holds,delivery:{status:decisionHeld || excluded?'blocked':row.status,batch_id:row.batch_id,run_id:row.run_id,conversation_id:row.conversation_id,run_status:row.run_status,worker_started:!!row.turn_id,worker_started_at:row.started_at,turn_id:row.turn_id,blocked_reason:row.blocked_reason ?? (decisionHeld?'NATIVE_DECISION_HOLD':null) ?? (excluded?'STARTUP_FAILURE_ORDER_FENCED':null),purchase_authority:false}};
 }
-/** Exact current worker's scheduling acknowledgment, never purchasing authorization. */
+/** Optional record of the current worker's pass; it never gates later runs or authorizes purchasing. */
 export function recordPurchasePass(db: Database.Database, conversationId: string, actorId: number, input: unknown) {
   const p=z.object({outcome:z.enum(['clear','blocked','unknown']),cursor:z.string().max(500).nullable().default(null)}).strict().parse(input);
   return db.transaction(()=>{

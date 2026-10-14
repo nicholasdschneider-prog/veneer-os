@@ -587,6 +587,20 @@ unsatisfied at the latest original-custodian readback. See the
 [implementation, evidence and validation](./reports/purchase-interrupted/build801/report.md).
 
 
+## Purchase-run fence removed — October 14, 2026 (build #852)
+
+Nick: "Simplify. Remove guards, add nothing." A failed, interrupted or unacknowledged
+purchase run no longer blocks its task: the scheduler no longer rejects scheduled runs or
+run-now with `purchase_run_fenced`, does not mark runner-restart or unacknowledged runs as
+blocking, and no longer injects the "missing acknowledgment stops successors" text. An
+interrupted purchase turn now follows ordinary scheduled-run recovery. The next run is the
+task's cron. `recover_interrupted_purchase`, its route and the `purchase-startup-reconciliation`
+route (whose only purpose was clearing the fence) are deleted;
+`record_purchase_candidate_pass` stays as an optional, non-gating record. Duplicate-purchase
+safety lives in OrderOps (vendor confirmation, attempt rows, cpu_pickup, claim tokens).
+Historical tables and migrations are retained. The `purchase-interrupted-recovery` guide
+entry now explains the retirement; `lippert-purchase-events` drops the fence language.
+
 ## Approved messages simplified — October 14, 2026 (build #840)
 
 Nick: "Simplify." The `approved-message-delegation` entry now teaches one rule: a

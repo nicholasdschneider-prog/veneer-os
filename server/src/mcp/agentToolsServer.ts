@@ -577,15 +577,8 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'recover_interrupted_purchase',
-    description: 'Inspect an exact UNKNOWN_RUNNER_RESTART purchase run. Only the original source custodian records mode review after inspecting full native human context and fresh original source/attempt census, with all potentially attempted order IDs/numbers excluded and current shared portal release. Owner/Platform Dev uses mode resume with unchanged expected_hash and review_id to restore ONLY unrelated successor scheduling on the existing task. Never replay the original run, forge a pass, rePOST/rekey UNKNOWN work, or infer no effects from idle. This requires installed server migration and current native runner reachability. It grants no business authority. Use run readback and persisted worker turn to prove a distinct successor; a resume receipt alone is not purchasing success. Nonsecret evidence only.',
-    inputSchema: {type:'object',properties:{run_id:{type:'string'},mode:{type:'string',enum:['inspect','review','resume']},expected_hash:{type:'string'},review_id:{type:'string'},review:{type:'object',properties:{
-      authorization_message_id:{type:'string'},authorization_text:{type:'string'},reviewed_full_human_context:{type:'boolean',const:true},recovery_only_no_replay:{type:'boolean',const:true},later_context_assessment:{type:'string'},observed_at:{type:'string'},source_reference:{type:'string'},source_evidence:{type:'string'},attempt_census_reference:{type:'string'},attempt_census_complete:{type:'boolean',const:true},unscoped_unknown_present:{type:'boolean',const:false},source_purchase_fences_preserved:{type:'boolean',const:true},potentially_attempted_orders:{type:'array',maxItems:256,items:{type:'object',properties:{order_id:{type:'string'},order_number:{type:'string'}},required:['order_id','order_number'],additionalProperties:false}},full_scan_exclusions_complete:{type:'boolean',const:true},portal_owner_conversation_id:{type:'string'},portal_clearance_reference:{type:'string'},portal_is_idle_and_released:{type:'boolean',const:true}
-    },required:['authorization_message_id','authorization_text','reviewed_full_human_context','recovery_only_no_replay','later_context_assessment','observed_at','source_reference','source_evidence','attempt_census_reference','attempt_census_complete','unscoped_unknown_present','source_purchase_fences_preserved','potentially_attempted_orders','full_scan_exclusions_complete','portal_owner_conversation_id','portal_clearance_reference','portal_is_idle_and_released'],additionalProperties:false}},required:['run_id','mode'],additionalProperties:false},
-  },
-  {
     name: 'record_purchase_candidate_pass',
-    description: 'Only the exact existing purchase task worker may record its current pass. Call as the last task action after fresh source checks: clear means a successful fresh finite queue pass that may safely skip grounded per-order cost/address/decision exceptions while unrelated eligible orders remain processable; it permits a bounded successor after successful turn completion, never approval of skipped orders. blocked is a task/global block; unknown is task/global UNKNOWN or uncertain portal/launch. Those outcomes and failed/unacknowledged runs permanently stop automatic continuation. Never replay an unchanged blocked-only hint. Input: outcome clear|blocked|unknown; optional cursor is null or a nonsecret string of at most 500 characters. The acknowledgment binds the authenticated exact worker/start/run and is immutable and idempotent for identical input. This records scheduling evidence only, never purchase approval; no credentials or customer data.',
+    description: 'Optional: the purchase task worker may record its pass outcome (clear|blocked|unknown) and an optional nonsecret cursor of at most 500 characters. It is a record only; it never blocks or permits later scheduled runs and never approves purchases.',
     inputSchema: { type: 'object', properties: { outcome: { type: 'string', enum: ['clear','blocked','unknown'] }, cursor: { type: ['string','null'], maxLength: 500 } }, required: ['outcome'], additionalProperties: false },
   },
   {
@@ -1618,10 +1611,6 @@ async function callTool(
             '\n\nUse the exact task id and run id with update_scheduled_task_run or delete_scheduled_task_run. Never guess a run id.',
         }],
       };
-    }
-    if (name === 'recover_interrupted_purchase') {
-      const result=await callApi('/api/scheduled-tasks/purchase-interrupted-recovery',{method:'POST',body:JSON.stringify(args)});
-      return {content:[{type:'text',text:JSON.stringify(result)}]};
     }
     if (name === 'record_purchase_candidate_pass') {
       const result=await callApi('/api/scheduled-tasks/purchase-candidate-pass',{method:'POST',body:JSON.stringify(args)});

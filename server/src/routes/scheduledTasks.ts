@@ -1,7 +1,3 @@
-import { canViewConversation } from '../conversations/access.js';
-import { BotError } from '../bots/service.js';
-import { recoverInterruptedPurchase, interruptedInputSchema } from '../botWorkflows/purchaseInterrupted.js';
-import { reconcilePurchaseStartup } from '../botWorkflows/purchaseStartup.js';
 import { recordPurchasePass } from '../botWorkflows/purchaseEvents.js';
 import crypto from 'node:crypto';
 import express, { type Request, type Response, type Router } from 'express';
@@ -802,7 +798,7 @@ export function createScheduledTasksRouter(
     ) {
       res.status(409).json({
         ok: false,
-        error: 'PURCHASE_RUN_RETAINED: purchase runs are audit records and cannot be deleted; inspect exact startup or interrupted successor recovery; original work stays fenced',
+        error: 'PURCHASE_RUN_RETAINED: purchase runs are audit records and cannot be deleted',
       });
       return;
     }
@@ -813,27 +809,6 @@ export function createScheduledTasksRouter(
       }
     })();
     res.json({ ok: true, archivedConversationId: run.conversation_id });
-  });
-
-  router.post('/purchase-startup-reconciliation', (req,res) => {
-    try { res.json(reconcilePurchaseStartup(db,ctx.config.dataDir,req.user!.id,req.agentConversationId,req.body)); }
-    catch(e) { const error=e as Error & {status?:number};res.status(error.status??400).json({error:error.message}); }
-  });
-
-  router.post('/purchase-interrupted-recovery', (req,res) => {
-    void (async()=>{
-      try {
-        const input=interruptedInputSchema.parse(req.body);
-        const run=db.prepare('SELECT conversation_id FROM scheduled_task_runs WHERE id=?').get(input.run_id) as {conversation_id:string}|undefined;
-        if(!run) return void res.status(404).json({error:'PURCHASE_RUN_NOT_FOUND'});
-        const original=db.prepare('SELECT * FROM conversations WHERE id=?').get(run.conversation_id) as ConversationRow;
-        if(!canViewConversation({id:req.user!.id,botSession:!!req.agentConversationId},original,db))throw new BotError(403,'PURCHASE_RECOVERY_ACCESS');
-        // Query the actual runner, never infer no effects from an idle DB flag.
-        let live:boolean;try{live=await manager.isLive(run.conversation_id);}catch{throw new BotError(503,'NATIVE_RUNNER_RECOVERY_CHECK_UNAVAILABLE');}
-        if(live) return void res.status(409).json({error:'ORIGINAL_RUN_STILL_LIVE'});
-        res.json(recoverInterruptedPurchase(db,ctx.config.dataDir,req.user!.id,req.agentConversationId,input));
-      }catch(e){const error=e as Error & {status?:number};res.status(error.status??400).json({error:error.message});}
-    })();
   });
 
   router.post('/purchase-candidate-pass', (req,res) => {

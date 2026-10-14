@@ -18,11 +18,10 @@ describe('living bot guide release contract', () => {
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true]) expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}),f);
   });
-  it('delivers startup reconciliation limits to full/restricted employees and resumed bots',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-10-08')).features.find(f=>f.id==='lippert-purchase-events')!;
-    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('shared portal owner');
-    expect(f.limits).toContain('Unknown evidence');expect(f.agent).toContain('mode:"reconcile"');
-    expect(f.agent).toContain('only unrelated eligible candidates');expect(f.announcement).toContain('Unmapped scopes');expect(f.agent).toContain('decision_holds');expect(f.agent).toContain('original pending batch/run-null lineage');
+  it('delivers the unfenced purchase-run contract to full/restricted employees and resumed bots',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-10-14')).features.find(f=>f.id==='lippert-purchase-events')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('never stops later runs');
+    expect(f.agent).toContain('never gates later runs');expect(f.agent).not.toContain('mode:"reconcile"');expect(f.agent).toContain('decision_holds');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true]) expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}), f);
   });
