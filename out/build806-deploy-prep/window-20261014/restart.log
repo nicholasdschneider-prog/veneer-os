@@ -1,0 +1,11 @@
+[restart] preflight: /opt/homebrew/opt/node@24/bin/node v24.21.0 ABI 137; native modules load
+[restart] veneer-pro: draining pid 80792
+[restart] veneer-pro: healthy as pid 82497
+[restart] veneer-pro-runner: draining pid 34641
+[restart] veneer-pro-runner: healthy as pid 82506
+[health] local web and runner: healthy
+[health] public front door: HTTP 302; public front door reachable, origin/authenticated chat unverified
+[health] Veneer tunnel: 4 active edge connections; authenticated public chat remains unverified
+[health] These checks do not prove authenticated end-to-end chat delivery.
+[restart] WARNING veneer-pro: its plist launches the checkout build in place; a crash after any rebuild deploys that build unapproved. Install release-mode plists in an approved window (installer --activate-release).
+[restart] WARNING veneer-pro-runner: its plist launches the checkout build in place; a crash after any rebuild deploys that build unapproved. Install release-mode plists in an approved window (installer --activate-release).

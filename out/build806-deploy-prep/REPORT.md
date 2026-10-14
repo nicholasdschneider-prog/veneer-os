@@ -1132,3 +1132,50 @@ Limits, as stated by the reviewer: this is not independent runtime certification
 - At the time of any window, the dist must be rebuilt and a release snapshot re-pinned inside that window. A fresh backup receipt is also required.
 
 Nothing was armed, activated, restarted or rebuilt. Readiness stays withdrawn.
+
+## 31. Approved window executed: web then runner on 9b6424e, 2026-10-14 11:15Z (owner a6e39d6e)
+
+**Approval.**
+- Nick, 07:05 ET 10-14, in his Grok Bot chat with James (msg t731u): "Yes run it now".
+- Relayed verbatim by James in this chat (James link, thread a6e39d6e turn 19). James's ask named the 10-commit scope `1b8561a..9b6424e`, web then runner after a fresh backup, and the rollback limitation (no verified copy of the old build).
+- The approval covers the window (now), that scope, and acceptance of the gate 1 limitation. a6e39d6e could not read Nick's Grok chat directly; the record is James's verbatim relay with its message id.
+- Gate 4 was not addressed and stays **unverified**. It was not accepted.
+
+**Pre-checks (11:06–11:09Z).**
+- `git diff 9b6424e HEAD` over server, web, browser-manager, the package files and the provider-runtime files was empty. Only `scripts/releases.mjs` (restart tooling, used only in release mode) differed.
+- An isolated 9b6424e build and the live `npm run build` were compared ([window-20261014](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/window-20261014/)):
+  - live `server/dist` byte-identical to the reference, manifest `33ff3f5d7bd6c92bf999e51a33e4f66989fb0c09cdfaa0f04c9ad0cc127802ba` (580 files);
+  - all 505 reference `web/dist` files present and identical.
+- No Veneer build or host lock was active. 11 GiB was free.
+
+**Execution.**
+- The executor's own turn was pending, so a one-shot launchd job (`com.veneer.pro.window-20261014`, [window-restart.mjs](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/window-20261014/window-restart.mjs), deadline 13:10Z) waited for 5 consecutive quiet reads: 0 pending turns and 0 running browser copies.
+- The job then ran, once:
+  1. re-checked the source and dist pins;
+  2. took a fresh read-only online backup `veneer-pro-online-20261014T111454Z.db` (sha256 `a5499bbc6c2dfec9e7f067b1d10fac8cca93b4d600d83556b621109e990ccb91`, 1,152,765,952 bytes, receipt `integrity_check` ok, FK 0);
+  3. took the before-pin;
+  4. ran `node scripts/restart.mjs --maintenance-approved veneer-pro veneer-pro-runner`.
+- Timeline ([status.json](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/window-20261014/status.json), [restart.log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/window-20261014/restart.log)):
+  - quiet at 11:14:54Z;
+  - restart 11:15:04–11:15:06Z, exit 0;
+  - **web 80792 → 82497, runner 34641 → 82506**.
+- Web was pid 80792, not 76507, at restart time: another crash respawn between 11:09Z and 11:15Z, onto the already-rebuilt approved 9b6424e dist.
+
+**Postcheck.**
+- Web `/healthz` 200 `{ok:true, runner:healthy, release:null}` (checkout mode, as planned). `/healthz/runner-rpc` 200 `runner_rpc: healthy`. Runner `/healthz` 200.
+- `restart.mjs --health-check` exit 0: tunnel 4 edge connections; front door 302. Authenticated end-to-end chat is unverified.
+- The after-pin is **identical** to the before-pin:
+  - migrations 0178/0179 only, at the pinned hashes;
+  - 5 new and 2 legacy QBO ledgers at 0;
+  - FK 0;
+  - the BUILD801 run/task/batch/worker-start/exclusion pins unchanged.
+- Re-read 13:55Z: unchanged.
+- Gate 2: `list_build_queue` served by the new runner (13:55Z). Archer was told the #806 scope is live; its own `inspect_custom_direction` and `record_custom_direction_review` remain its business work.
+- The one-shot job was booted out after completion.
+
+**Not done.** No release activation (plists stay in checkout mode, with warnings). No browser-manager, app-runner or term restart. No rollback, restore, recovery or UNKNOWN clearing. Sage custody is unchanged.
+
+**New hazard found at 13:54Z (not caused by this window).**
+- The live `server/dist` was rebuilt at 13:52Z (manifest `81b3c9b8dea637c99a463498a3fe5f04db367ffab85e7ed66f6bafd303d6dc83`). The rebuild includes the later, unapproved commits `7908c79`, `80630ff`, `2d9e479`, `bc21ed1` and `38b2bf2`, with four new migrations. The live DB is still at 0179.
+- The running web and runner carry the `929ae3e` TOS guard, which lowers the crash risk, but any crash or respawn would load that dist and apply those migrations without approval.
+- Reported to 9d6d01d1. The owners of those builds and their approvals are separate.

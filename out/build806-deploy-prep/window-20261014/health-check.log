@@ -1,0 +1,4 @@
+[health] local web and runner: healthy
+[health] Veneer tunnel: 4 active edge connections; authenticated public chat remains unverified
+[health] public front door: HTTP 302; public front door reachable, origin/authenticated chat unverified
+[health] These checks do not prove authenticated end-to-end chat delivery.

@@ -1,0 +1,68 @@
+{
+  "schema": "build806-window/v1",
+  "approval": "Nick 2026-10-14 07:05 ET, Grok Bot msg t731u, relayed verbatim by James (thread a6e39d6e turn 19): \"Yes run it now\"",
+  "scope": "1b8561a..9b6424e",
+  "deadline": "2026-10-14T13:10:00.000Z",
+  "state": "completed",
+  "started_at": "2026-10-14T11:09:18.992Z",
+  "steps": [
+    {
+      "at": "2026-10-14T11:09:19.004Z",
+      "name": "armed",
+      "pending": 2,
+      "consecutive": 5,
+      "interval_ms": 3000
+    },
+    {
+      "at": "2026-10-14T11:14:54.364Z",
+      "name": "quiet",
+      "reads": 5
+    },
+    {
+      "at": "2026-10-14T11:15:03.643Z",
+      "name": "backup",
+      "file": "/Users/archerclawdington/.local/share/veneer-pro-predeploy/build806-20261013/veneer-pro-online-20261014T111454Z.db",
+      "sha256": "a5499bbc6c2dfec9e7f067b1d10fac8cca93b4d600d83556b621109e990ccb91",
+      "size": 1152765952,
+      "integrity_check": "ok",
+      "foreign_key_violations": 0,
+      "taken_at": "2026-10-14T11:14:54.673Z"
+    },
+    {
+      "at": "2026-10-14T11:15:04.227Z",
+      "name": "before-pin",
+      "lines": 16
+    },
+    {
+      "at": "2026-10-14T11:15:04.238Z",
+      "name": "restarting",
+      "pids_before": "veneer-pro=80792 veneer-pro-runner=34641",
+      "command": "node scripts/restart.mjs --maintenance-approved veneer-pro veneer-pro-runner"
+    },
+    {
+      "at": "2026-10-14T11:15:06.905Z",
+      "name": "restart-exit",
+      "exit_code": 0,
+      "pids_after": "veneer-pro=82497 veneer-pro-runner=82506"
+    },
+    {
+      "at": "2026-10-14T11:15:06.949Z",
+      "name": "health",
+      "web_healthz": "200 {\"ok\":true,\"web\":\"healthy\",\"runner\":\"healthy\",\"release\":null}",
+      "web_runner_rpc": "200 {\"ok\":true,\"runner_rpc\":\"healthy\",\"latency_ms\":0}",
+      "runner_healthz": "200 {\"ok\":true,\"release\":null}"
+    },
+    {
+      "at": "2026-10-14T11:15:07.710Z",
+      "name": "after-pin",
+      "exit_code_health_check": 0,
+      "identical_to_before": true
+    },
+    {
+      "at": "2026-10-14T11:15:07.710Z",
+      "name": "completed",
+      "detail": "web then runner restarted and healthy"
+    }
+  ],
+  "ended_at": "2026-10-14T11:15:07.710Z"
+}

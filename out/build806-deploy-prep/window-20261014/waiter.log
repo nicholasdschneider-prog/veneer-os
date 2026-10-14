@@ -1,0 +1,9 @@
+[window] armed {"pending":2,"consecutive":5,"interval_ms":3000}
+[window] quiet {"reads":5}
+[window] backup {"file":"/Users/archerclawdington/.local/share/veneer-pro-predeploy/build806-20261013/veneer-pro-online-20261014T111454Z.db","sha256":"a5499bbc6c2dfec9e7f067b1d10fac8cca93b4d600d83556b621109e990ccb91","size":1152765952,"integrity_check":"ok","foreign_key_violations":0,"taken_at":"2026-10-14T11:14:54.673Z"}
+[window] before-pin {"lines":16}
+[window] restarting {"pids_before":"veneer-pro=80792 veneer-pro-runner=34641","command":"node scripts/restart.mjs --maintenance-approved veneer-pro veneer-pro-runner"}
+[window] restart-exit {"exit_code":0,"pids_after":"veneer-pro=82497 veneer-pro-runner=82506"}
+[window] health {"web_healthz":"200 {\"ok\":true,\"web\":\"healthy\",\"runner\":\"healthy\",\"release\":null}","web_runner_rpc":"200 {\"ok\":true,\"runner_rpc\":\"healthy\",\"latency_ms\":0}","runner_healthz":"200 {\"ok\":true,\"release\":null}"}
+[window] after-pin {"exit_code_health_check":0,"identical_to_before":true}
+[window] completed {"detail":"web then runner restarted and healthy"}
