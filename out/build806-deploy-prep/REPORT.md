@@ -545,3 +545,73 @@ Requested by the BUILD801 owner (6a752161, thread 73489c19); owner a6e39d6e. Not
 - The rebuild and re-pin at the then-current source inside any approved window (section 17).
 
 Readiness stays withdrawn.
+
+## 20. Build #816: respawn artifact pinning and browser-manager guard, commit `9b6424e`. Source only; nothing activated, live dist NOT rebuilt
+
+Requested in BUILD801 coordination thread 60a12836 (fce19860); owner a6e39d6e. Not done: restart, rollback, DB restore, recovery, runner restart, live dist rebuild or queue change. Migration hashes (0178 `a6205c95…0877`, 0179 `ec134af0…ef5f`), the empty new and legacy QBO ledgers and the BUILD801 exclusions (`2080773d…`, `ae219af0…`) were not touched; this build did not open the live DB.
+
+**Incident adopted** (BUILD801 coordination): an unapproved, crash-induced partial deployment.
+- Web crashed on undici `setTypeOfService` EINVAL, and launchd respawned it from the rebuilt-in-place 155b497 `server/dist`.
+- The 22:54:59Z / 22:55:01Z respawn recorded 0178/0179 live; the hashes match the pins.
+- Web pid 98183 has run 155b497 since 23:19:52Z. Runner pid 34641 still runs the old, unretained artifact.
+
+**Root cause of the unapproved activation, which is also gate 1's root cause.**
+- The web, runner, app-runner, term and web-watchdog plists launched `__CODE_DIR__/server/dist/*.js` under `KeepAlive`, and `npm run build` rewrites that directory in place.
+- So every crash after a build deployed it, and the prior executable was overwritten.
+
+**Fix (`9b6424e`, design in [docs/releases.md](/Users/archerclawdington/veneer-os/docs/releases.md)).**
+- `scripts/releases.mjs`:
+  - `snapshotRelease` copies the build (`server/dist`, `web/dist`, the package.json files and the provider-runtime files that dist reaches) into the read-only `DATA_DIR/releases/<git12>-<manifest12>/`, with `release.json` and `MANIFEST.sha256`. `node_modules` is linked and the lockfile hash recorded. A snapshot activates nothing.
+  - `activateRelease` refuses without `maintenanceApproved` and verifies the release first. It atomically swaps `releases/active/<service>`, keeps the replaced target as `releases/previous/<service>`, and logs to `activations.jsonl`.
+  - The CLI (`snapshot | status | list | verify`) cannot activate.
+- Plist templates for web, runner, app-runner, term and web-watchdog now launch `__SERVICE_ROOT__/server/dist/...`. The installer renders a service's verified active pointer, and otherwise the checkout path with a WARNING. A release that fails verification is never rendered.
+  - `--activate-release --maintenance-approved` is the only installer path that activates; without approval it refuses with exit 2.
+  - `--dry-run` renders the same decisions without writing.
+  - The watchdog follows web's release.
+- `scripts/restart.mjs` (approved restarts only):
+  - Snapshots the build, or verifies `--release=<id>` for a rollback.
+  - Moves each release-mode service's pointer immediately before signalling that service, after its own safety recheck, so a refused or skipped service never respawns onto an unrestarted release.
+  - After health, requires web and runner to report the activated release id; a mismatch is a failed, unverified deployment.
+  - Prints the rollback command.
+  - Warns loudly for every checkout-mode target, including under `--check`.
+- Each service logs `[release] <service> running release <id>` at boot, or a warning that it runs the checkout build in place. Web and runner `/healthz` add `release`; `ok` and status codes are unchanged.
+- Crash behavior is unchanged: uncaught errors still exit non-zero, log and respawn. There is no silent refusal; the fallback is the existing checkout behavior, with warnings.
+- **Browser manager:** `browser-manager/type-of-service-guard.mjs` is the same narrow guard as `929ae3e` (only `EINVAL` from `syscall:'setTypeOfService'`, everything else rethrown). It is installed first in `manager.mjs`, with a `node --test` regression covering the reset peer plus event-loop stall. Its log holds 758 of these crashes.
+
+**Remaining limits, documented.**
+- `node_modules` is not snapshotted; a dependency change still needs a window.
+- The browser manager and boot probe run plain checkout source, not part of a build.
+- `boot-smoke` still boots the checkout dist in a temp data dir.
+- The installer's job reload remains a restart of every job; drain first, as for any restart.
+- The repository-guidance file at the repo root (`CLAUDE.md`/`AGENTS.md`, user-owned, not edited) still describes the update flow as `git pull → npm install → npm run build → npm run restart`. Its owner should add: after the first approved `--activate-release`, `npm run build` no longer changes what a crash loads, and the approved restart activates the build. `README.md` was updated.
+
+**Validation, under the host lock with a single worker, nothing overlapping.**
+- `npm run typecheck` passed.
+- `npm test`: installer 38/38 (6 new release tests, including "a respawn after npm run build still loads the activated bytes" and pointer verification), server 4065 passed / 16 skipped (301 files), web 1015, browser-manager 55/55.
+- Read-only production checks:
+  - `install-darwin.mjs --dry-run` renders the checkout paths for all five plists, with a WARNING per service.
+  - `restart.mjs --check veneer-pro veneer-pro-runner` warns about checkout mode.
+  - `releases.mjs status` shows `checkout; active none` for all four.
+  - `~/.local/share/veneer-pro/releases` does not exist: nothing was snapshotted or activated in production.
+- `npm run build` ran only in a trap-cleaned temp worktree at `9b6424e`: exit 0 ([build-816-isolated.log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/build-816-isolated.log)).
+  - Snapshot plus approved-flag activation into a **temp** DATA_DIR gave release `9b6424e9ecb6-15b376c1e71c` (1089 files, verified).
+  - Through `releases/active/veneer-pro`, `release.js` reports that id, and `openDb` loads native better-sqlite3 via the module link on an empty temp dir (181 migrations).
+  - Writes into the release are refused. No service was booted. The temp tree was removed.
+- Live `server/dist` is still `48a57812…cef1a` (155b497). Live services are unchanged: web pid 98183 `/healthz` 200, runner on 3101.
+
+**Cumulative scope is now `1b8561a..9b6424e`.** Shipped commits: the section 13 table, `929ae3e` (#815) and:
+
+| commit | build | change |
+|---|---|---|
+| `9b6424e` | #816 | Respawn services from immutable approved releases, and guard the browser manager (plists, installer, restart.mjs, releases.mjs, release id on /healthz, browser-manager TOS guard) |
+
+**Effect on any future window.**
+- This change alters the launchd templates, so the first deployment of it is `install-darwin.mjs --activate-release --maintenance-approved`, which reloads every job, not only web and runner. That widens the restart scope to all launchd jobs, including browser manager, Chrome, tunnel, backup and boot probe, and the approval must say so.
+- Alternatively the approver can deploy the earlier commits with plain `restart.mjs`, leaving release mode inactive (checkout mode, with warnings) and accepting the old respawn hazard for that window.
+- After first activation, `releases/previous/<service>` exists only from the second approved activation onward. The first activation still has no verified prior artifact for the currently running bytes:
+  - web's 155b497 bytes are retained in `forward-155b497-live-dist.tgz` (`8b004189…`);
+  - runner 34641's bytes are not retained.
+- Gate 1 stays UNMET for this deployment. The fix only prevents the same gap next time.
+- Re-pin at the then-current source inside the window (section 17); approval must enumerate all 10 commits `f9c59dd..9b6424e`.
+
+Readiness stays withdrawn. The human disposition is in [DISPOSITION.md](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/DISPOSITION.md).
