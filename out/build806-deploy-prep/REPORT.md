@@ -902,7 +902,7 @@ Then **end the turn**; the job cannot pass while that turn is pending. The execu
 
 Then decide:
 - `refused_deadline` or `refused_changed`: nothing happened. Re-planning needs a fresh approval decision.
-- Helper `refused` mid-sequence: a partial deployment. Report exactly which jobs run which release. Any completion of the remaining jobs is a single `npm run restart -- --maintenance-approved <service>` per remaining release service, inside the same approval, never automatic.
+- Helper `refused` mid-sequence: a partial deployment. Report exactly which jobs run which release. ~~Any completion of the remaining jobs is a single `npm run restart -- --maintenance-approved <service>` per remaining release service~~ **Withdrawn (section 26):** `restart.mjs` cannot complete a first activation. The exact continuation is pending #819.
 - `failed`: diagnose from the logs. Never retry blindly.
 
 **Postcheck** (after `completed`):
@@ -923,3 +923,21 @@ Then decide:
 **Rollback:** unchanged from 23.1. There is no `releases/previous` for this first activation; **gate 1 stays UNMET**. Any later rollback is a separately approved activation of a release built from a retained artifact. The DB is never restored.
 
 Readiness stays withdrawn and gate 4 is unverified. Nick is not asked until 25.1 has been reviewed.
+
+## 26. Review of c846932/7c9185c/140164d (§25.1), 2026-10-14 (read-only; owner a6e39d6e)
+
+The previous blockers (the per-job gate, partial-write restore and the executor's own pending turn) are addressed in source. Three new findings were confirmed read-only and are queued as **#819** (owner a6e39d6e). No source was edited outside that slot.
+
+1. **Revalidation at commit time is missing.**
+   - `installer/activation-job.mjs` `runArmedActivation` checks the arm state, deadline and binding only at the top of its loop (lines 139–144).
+   - The last `await readOccupancy()` can cross the deadline or race a disarm or binding change, and line 154 then writes `running` without checking again.
+   - The helper manifest has no deadline, so the later bootouts can run past the window.
+   - #819 adds a re-check of arm id, state, deadline and binding immediately before an atomic `running` commit, and propagates the deadline to the installer and to a check before each helper bootout.
+2. **Backup freshness is not enforced at activation.** Section 25.1 takes the backup before arming, but the wait can last up to 12 h. #819 binds the verified backup evidence into the arm and refuses when the backup is stale (older than 15 min at commit, and again in the installer), mismatched or missing. Alternatively, it bounds the deadline to `taken_at` + 15 min. It never backs up, retries or recovers on its own.
+3. **The section 25.1 continuation was wrong** and is withdrawn above.
+   - After a partial first activation, the helper restores not-started jobs to checkout mode. `restart.mjs` then warns and cannot install a release plist or pointer.
+   - The installer has no flag to activate an existing release id or to assert the exact job set.
+   - #819 adds `--release <id>` and `--expect-jobs <list>` to the guarded installer, operable through the armed executor, covering the remainder, web-watchdog and runner-only cases. It also documents the exact continuation command and its UNKNOWN readback.
+   - The continuation needs explicit coverage in the approval or its own bounded approval.
+
+**Status.** The section 25.1 plan is not executable until #819 lands and is reviewed. Gate 1: UNMET, and only Nick can accept the limitation. Gate 4: unverified. Readiness stays withdrawn. No question goes to Nick.
