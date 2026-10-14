@@ -56,9 +56,8 @@ Until something is deployed in an approved window, web can still crash and come 
 3. **A checkout-mode restart (web and runner only, without the locked-copy fix).** This also needs
    its own exact, bounded approval: the commits, the two services and the window. It keeps the
    hazard that caused this incident: after it, any later build goes live the next time a service
-   crashes, without approval. It also has none of the new checks: `restart.mjs` refuses while bots
-   are working, but nothing re-checks between the web and runner restarts. It is listed for
-   completeness, not recommended.
+   crashes, without approval. `restart.mjs` does refuse, before each service, while bots are
+   working, but it does not check browsers. It is listed for completeness, not recommended.
 
 No option is deployment-ready today.
 
