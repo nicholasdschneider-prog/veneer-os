@@ -660,3 +660,121 @@ Prompted by a coordination observation that `read_conversation` for the BUILD806
 - No window, hold acceptance or deployment approval is inferred.
 - Nick will not be asked until #817's plan is reviewable.
 - Readiness stays withdrawn.
+
+## 23. Build #817: guarded, bounded first activation, commit `63d0ddb`. Source only; nothing activated, nothing installed
+
+Review finding from BUILD801 coordination thread 60a12836 (fce19860); see section 22, item 2. Owner a6e39d6e. Not done: activation, install run, restart, rollback, DB restore, recovery, live dist rebuild or queue change. 0178/0179 hashes, the empty new and legacy ledgers and the BUILD801 exclusions are untouched. Sage custody is unchanged.
+
+**Repair (`installer/activation-guard.mjs`, `installer/install-darwin.mjs`, `scripts/releases.mjs`).**
+
+1. **Plan first, then a whole-plan refusal before any write.** Every installer run first renders all plists in memory and prints:
+   - the exact jobs to reload and why;
+   - the jobs it leaves alone although their rendered plists differ;
+   - the pending-turn count (read-only);
+   - the Veneer Browser occupancy.
+
+   On an installed machine, and always with `--activate-release`, it then calls the shared `assertRunnerRestartSafe` (`scripts/restart-safety.mjs`, not copied) over the whole job list, plus the browser check. It does this **before** any snapshot, pointer move, env or provisioning write, or plist write. A refusal exits 1 with a REFUSED line and "nothing was written, snapshotted or activated". It is not retried.
+2. **Final and pre-reload checks, and ordering.** The write phase is `guardedReload`, in this order:
+   1. final check;
+   2. write the planned plists;
+   3. move the pointers (`capturePointers` → `activateRelease`);
+   4. pre-reload check;
+   5. bootstrap the one-shot reload helper.
+
+   - A crash respawn before step 3 loads the old bytes. Before activation, the loaded jobs still launch the checkout path, and launchd does not re-read a rewritten plist until a reload.
+   - If step 4 refuses, or the helper bootstrap fails, plists and active/previous pointers are restored exactly (`restorePointers`). A service with no prior release loses its link again (checkout fallback), and the restoration is logged to `activations.jsonl`.
+   - The snapshot is taken after the pre-check. It is inert, and it is refused if the build changed since planning.
+3. **Browser occupancy.**
+   - Source: the manager's existing authenticated, read-only, loopback `GET /v1/capacity` (`active` excludes warm pool copies). No new endpoint.
+   - The bearer token is read from `browser.env` at use time, sent only to that request, and never logged or returned (tested).
+   - Any running copy (occupied, held with `keep_open`, or not yet paused), any waiting admission, or an unreadable state refuses.
+   - Browser occupancy has no override.
+4. **Bounded scope.** `--release-services-only` reloads only release jobs whose plist text changed or whose pointer moves, and skips all provisioning (provider runtimes, env upsert, Doppler, shell profile, browser-manager TLS/identity, agent-browser, update-job removal). Chrome, browser-manager, cloudflared, backup, Supermemory and boot-probe stay loaded and untouched.
+5. **Overrides and fallbacks.** `--allow-active-turns` is honored only when given explicitly, and it is documented as human-authorized interruption only. There is no delayed or forced fallback and no watcher. A dry run needs no approval flag and writes nothing.
+6. **Template scope of `9b6424e`.**
+   - Changed (`git diff --stat 9b6424e^ 9b6424e -- deploy/launchd`): exactly the five release-job templates, `com.veneer.pro`, `.pro.runner`, `.pro.app-runner`, `.pro.term` and `.web-watchdog`, one line each.
+   - None of the untouched jobs' templates changed.
+   - The production dry run reports `com.veneer.chrome` and `com.veneer.pro.backup` as rendering differently from their installed files. The differences are pre-existing formatting only: blank lines, and a `plutil`-reformatted backup plist that still parses. The bounded plan leaves both out; reloading them would need a separately approved full install.
+
+**Validation**, under the host lock, single worker, nothing overlapping:
+- `npm run typecheck` passed.
+- `npm test`: installer 46/46 (8 new). The new tests cover:
+  - pending-turn refusal at the pre-check and at the final check;
+  - no write on an early refusal;
+  - exact pointer and plist restoration when a turn arrives after activation;
+  - restoration on a helper bootstrap failure;
+  - occupied, unknown and 401 browser refusals with no token leakage;
+  - the bounded job list;
+  - the dry-run plan lines;
+  - source ordering.
+- Other suites: server 4065 passed / 16 skipped (301 files), web 1015, browser-manager 55.
+- `npm run build` ran only in a trap-cleaned temp worktree at `63d0ddb`: exit 0 ([build-817-isolated.log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/build-817-isolated.log)).
+- Live `server/dist` is still `48a57812…cef1a` and web `/healthz` 200. `~/.local/share/veneer-pro/releases` still does not exist.
+
+**Production dry run, read-only, 2026-10-14:** `node installer/install-darwin.mjs --activate-release --release-services-only --dry-run`, exit 0.
+- `reload`: `com.veneer.web-watchdog`, `com.veneer.pro`, `com.veneer.pro.app-runner`, `com.veneer.pro.term`, `com.veneer.pro.runner`, each with "plist changed, release pointer moves". This is the helper's order: web first, runner last.
+- `NOT reloaded`: `com.veneer.chrome`, `com.veneer.pro.backup` (formatting drift above). Supermemory is skipped (not installed).
+- `pending turns 3`, so a real run at that moment would have refused at the pre-check.
+- `browsers 0 running working copies, 0 waiting`.
+- The rendered paths are `…/releases/active/<service>/server/dist/…`.
+- The would-be release id was `d013b61848cb-dirty-…` because the #817 edits were uncommitted at that moment. A real run must show a non-dirty id at the approved HEAD.
+
+### 23.1 Guarded first-activation plan (reviewable; NOT ready, and NOT a request for a window)
+
+**Scope.**
+- Jobs: exactly five, `com.veneer.web-watchdog`, `com.veneer.pro` (web), `com.veneer.pro.app-runner`, `com.veneer.pro.term`, `com.veneer.pro.runner`, reloaded in that order by the one-shot helper.
+- This is wider than the earlier web+runner plan. App-runner restarts local Mini Apps, and term drops open terminal sessions. The approval must name both, or the activation must first be narrowed by a separately reviewed change (not built).
+- Chrome, browser-manager, cloudflared, backup, boot-probe and Supermemory are not touched.
+- Commits: the 11 commits `f9c59dd..63d0ddb` (the section 13 table plus `929ae3e`, `9b6424e`, `63d0ddb`).
+
+**Pre-checks, in the window, in order. Any failure means stop; nothing is retried.**
+1. Nick's own-words approval, recorded verbatim. It must name the 11 commits, the five jobs, the window, and the accepted gate 1 limitation (no verified prior runtime; see rollback below). Gate 4 is either cleared or explicitly accepted as *unverified*.
+2. Source pin: `git status` is clean, and `git diff 63d0ddb HEAD -- server web browser-manager installer scripts deploy package*.json provider-runtimes.json` is empty (or names the approved later SHA).
+3. Build at that HEAD under the host lock: `npm run build`. From that moment until activation the checkout-mode hazard applies: a crash loads this, the approved build. Keep the gap short.
+4. Re-pin both dist manifests at that HEAD and record them here. The forward bundle is optional; the release snapshot itself becomes the retained artifact.
+5. Fresh online backup within 15 minutes, using the section 5 method: `integrity_check` ok, FK 0, sha256 recorded.
+6. `postcheck.sh > pin-before-<ts>.txt`. It must show 0178/0179 at the pinned hashes, the 5 new and 2 legacy QBO tables at 0 rows, FK 0, and the BUILD801 pins unchanged.
+7. `node installer/install-darwin.mjs --activate-release --release-services-only --dry-run` must show:
+   - exactly the five jobs above;
+   - a **non-dirty** release id `<HEAD12>-<manifest12>`;
+   - `pending turns 0`;
+   - `browsers 0 running working copies, 0 waiting`;
+   - `NOT reloaded` limited to the known chrome/backup formatting drift.
+
+**Execute once:** `node installer/install-darwin.mjs --activate-release --release-services-only --maintenance-approved`
+- It repeats the pre-check, final check and pre-reload check itself. A refusal at any of them is final for that attempt: report it, do not re-run blindly, and re-plan.
+- The executor's own turn runs under the runner, so its installer process may be killed when the runner job reloads. The detached helper finishes regardless.
+
+**UNKNOWN handling.** If the result is uncertain (killed, timeout, lost output, exit ≠ 0), do **not** re-run. Read, in order:
+1. `node scripts/releases.mjs status` and the tail of `DATA_DIR/releases/activations.jsonl`: which pointers moved, or were restored.
+2. `~/Library/Logs/veneer-pro/.launchd-install/status.json` (if present) and the tail of `veneer-install.log`: the helper's per-job outcome.
+3. `launchctl print gui/$UID/<label>` for the five jobs (read-only), plus `ps -o pid,lstart,command` against `DATA_DIR/run/*.pid`.
+4. `restart.mjs --health-check`, then web and runner `/healthz` `release`.
+5. `select name, content_hash from migrations where name >= '0178'` and `pragma foreign_key_check` (read-only).
+6. The last 200 log lines of web, runner, app-runner and term: `[release]`, `[migrate]`, DRIFT, boot errors.
+
+Then decide one of: done; a single `npm run restart -- --maintenance-approved <one service>` for exactly the job that did not come back; or rollback (below).
+
+**Postcheck.**
+- Web `/healthz` is `ok:true`, and `release` equals the activated id. Runner `/healthz` `release` is the same id. `GET /healthz/runner-rpc` is 200 with `runner_rpc:"healthy"`.
+- `releases.mjs status`: all four services are `release` with that active id, and `previous none`.
+- Boot logs show `[release] <service> running release <id>` for web, runner, app-runner and term. The web-watchdog runs from `active/veneer-pro`.
+- `postcheck.sh` diffed against the before-pin:
+  - migrations unchanged;
+  - `purchase_interrupted_reviews`/`_dispositions` and `qbo_v2_invocations`/`_phases`/`qbo_bill_observations` at 0;
+  - legacy `qbo_operation_reservations`/`_receipts` at 0;
+  - FK 0;
+  - BUILD801 run/batch/worker-start/exclusion pins unchanged.
+
+  A non-zero recovery or review count means stop and route it to the BUILD801 owner.
+- Browser-manager, cloudflared and Chrome pids are unchanged from before the run.
+- Then gate 2's read-only probe (section 14), and gate 4 per sections 15, 18 and 19 (Clara, own session) or recorded as *unverified*.
+- Report the SHA, release id and new pids in thread 9d6d01d1.
+
+**Rollback.**
+- `releases/previous/<service>` does **not** exist after this first activation; it appears only from the second approved activation on. **Gate 1 remains UNMET.**
+- Web's current 155b497 bytes are retained only as `forward-155b497-live-dist.tgz` (`8b004189…`). Runner pid 34641's bytes are not retained anywhere, and `1b8561a` is only a reconstruction.
+- Any rollback after this activation is therefore a new, separately approved activation of a release built from one of those artifacts, via `restart.mjs --maintenance-approved --release=<id>`. It is not a verified prior-runtime rollback.
+- Rolling back never restores the DB and never drops the 0178/0179 ledgers.
+
+Readiness stays withdrawn. Gate 1 is UNMET, and gate 4 transport and runtime lookup are unverified. Nick is not asked until this plan has been reviewed (BUILD801 owner 6a752161 and its reviewer).

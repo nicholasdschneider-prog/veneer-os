@@ -23,7 +23,10 @@ Status 2026-10-14. **No option below is deployment-ready.** No window is request
   - The same crash fix for the browser manager.
   - Once activated, services restart from a locked copy of the approved build. A later build can
     no longer slip in on a crash, and the previous copy is kept for rollback.
-  - Activating it reloads every Veneer background job, not only web and runner.
+- `63d0ddb`: the activation step now refuses while any bot is mid-task or any browser is in use.
+  It checks again right before reloading and undoes itself if that check fails. It can be limited
+  to the five Veneer service jobs (web, runner, mini-app runner, terminal, web watchdog), leaving
+  the browsers and the tunnel alone.
 
 Until something is deployed in an approved window, web can still crash and come back on the same
 10-13 build.
@@ -32,12 +35,20 @@ Until something is deployed in an approved window, web can still crash and come 
 
 1. **Hold.** Keep the current mix (web 10-13 build, old runner) while the repair evidence is
    reviewed. Nothing changes; the crash risk stays as it is now.
-2. **Plan a separately bounded maintenance or recovery window** after the open gates are reviewed.
-   - Gate 1: no verified way back to the old runner. The BUILD801 owner must decide whether to
-     accept that limitation.
+2. **A separately bounded maintenance window using the guarded activation**, after the open gates
+   are reviewed. The plan is REPORT.md section 23.1.
+   - It restarts five jobs: web, runner, mini-app runner, terminal and web watchdog. Open
+     terminal sessions and local mini apps restart too.
+   - It needs your own-words approval naming all 11 commits `f9c59dd..63d0ddb`, those five jobs,
+     the window, and the accepted limitation.
+   - Gate 1: there is still no verified way back to the old runner. The BUILD801 owner must
+     decide whether that limitation is acceptable.
    - Gate 4: the QBO read check caller's transport is unverified.
-   - That window would need your own-words approval naming all 10 commits `f9c59dd..9b6424e`, the
-     services restarted (all Veneer jobs if the release fix is activated), and the accepted
-     limitation.
+3. **A checkout-mode restart (web and runner only, without the locked-copy fix).** This also needs
+   its own exact, bounded approval: the commits, the two services and the window. It keeps the
+   hazard that caused this incident: after it, any later build goes live the next time a service
+   crashes, without approval. It is listed for completeness, not recommended.
 
-Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–20.
+No option is deployment-ready today.
+
+Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–23.
