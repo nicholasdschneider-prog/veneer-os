@@ -1,3 +1,5 @@
+import {approvedGmailResolver,type ApprovedGmailReader} from './approvedGmail.js';
+import {gmailBindingTargetSchema,gmailBindSchema} from './approvedGmailContract.js';
 import {customerEmailRoutes} from './customerEmailRoutes.js';
 import {vendorEmailService} from './vendorEmail.js';
 import {loadConversationFile,documentType} from './decisionImages.js';
@@ -32,7 +34,7 @@ const decisionFields = {
   decision_id: key.optional(),
   decision_version: version.optional(),
 };
-export function createCommunicationRouter(ctx: AppContext) {
+export function createCommunicationRouter(ctx: AppContext, gmailReader?:ApprovedGmailReader) {
   const r = express.Router();
   r.use(messageAudioRoutes(ctx, text =>
     synthesizeSpeech(speechKey(), text, 'Read clearly, preserving amounts and qualifications.')));
@@ -45,8 +47,10 @@ export function createCommunicationRouter(ctx: AppContext) {
   });
   const delegations = messageDelegationService(ctx.db);
   const resolver = approvedCaseResolver(ctx);
+  const gmailResolver=approvedGmailResolver(ctx.db,gmailReader);
   const mapped = async (a:Actor,id:string,v:number,receipt=false) => {
-    const check=await resolver.prepare(a,id,v,receipt);
+    const gmail=ctx.db.prepare('SELECT target_json FROM approved_gmail_draft_bindings WHERE decision_id=?').get(id) as {target_json:string}|undefined;
+    const check=gmail?await gmailResolver.prepare(a,JSON.parse(gmail.target_json),receipt):await resolver.prepare(a,id,v,receipt);
     return {delegations:messageDelegationService(ctx.db,check),messages:communicationService(ctx.db,check)};
   };
   const mappedDraft = async (a:Actor,id:string,receipt=false) => {
@@ -164,6 +168,17 @@ export function createCommunicationRouter(ctx: AppContext) {
     '/chats/:chat',
     run((req, res) => res.json(s.list(actor(req), current(req)))),
   );
+  r.post('/approved-messages/gmail/inspect',run(async(req,res)=>{
+    const p=gmailBindingTargetSchema.parse(req.body),a=actor(req);
+    const check=await gmailResolver.prepare(a,p);
+    res.json(messageDelegationService(ctx.db,check).inspectExisting(a,p.decision_id,p.expected_version,p.draft_id,p.draft_version));
+  }));
+  r.post('/approved-messages/gmail/bind',run(async(req,res)=>{
+    const p=gmailBindSchema.parse(req.body),a=actor(req);
+    const {inspection_hash,review,request_key,...target}=p;
+    const check=await gmailResolver.prepare(a,target);
+    res.json(messageDelegationService(ctx.db,check).bindExisting(a,p));
+  }));
   r.post('/approved-messages/inspect', run(async(req,res) => {
     const p=z.object({decision_id:key,expected_version:version}).strict().parse(req.body);
     try{const m=await mapped(actor(req),p.decision_id,p.expected_version);res.json(m.delegations.inspect(actor(req),p.decision_id,p.expected_version));}

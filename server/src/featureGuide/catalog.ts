@@ -21,6 +21,17 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id:'approved-gmail-existing-draft',title:'Keep an approved vendor reply with its existing Gmail draft',category:'Daily work',updated:'2026-10-14',
+    announcement:'A staged Gmail-specific existing-draft binding preserves exact approved send material and separately reviewed operational context. Authenticated Gmail reader integration is still required.',
+    audience:'Original registered decision owner who is also its named executor',
+    summary:'Prospectively bind one existing draft to unchanged human approval without rewriting its payload, version or literal ticket.',
+    steps:['Use inspect_approved_gmail_draft with exact decision/version, existing draft/version and Gmail thread/reply anchors under your own identity.','If native own-account reader custody is unavailable, route that integration prerequisite to Platform and the original connector custodian; do not borrow a connection or seek another business approval.','Review the full approved and draft context with complete contiguous citations. Use bind_approved_gmail_draft only for operational provenance without conflicting or broader authority, retaining both hashes.','The binding creates no draft and sends nothing. Complete fresh source/material/duplicates checks, the existing RUNNING transition and claim_message_draft before a later authorized send. UNKNOWN means receipt-only reconciliation.'],
+    example:'Inspect the unchanged approved vendor reply against its existing draft and authenticated Gmail thread, preserving its literal ticket and signature.',
+    limits:'Staged, not deployed or operationally accepted. Native authenticated own-account Gmail reader is not installed. Original owner must equal named executor. Empty approved context and a nonempty operational draft context are the only supported difference; all other payload fields must match exactly. No alias inference, new draft fallback, approval rewrite, borrowed identity, send or financial effect. Restricted employees can read this guide but cannot use these original-bot endpoints.',
+    agent:'Use inspect_approved_gmail_draft then bind_approved_gmail_draft only as the authenticated original owner/executor. Supply exact IDs and complete context citations, never labels as account proof or a blanket ignore-context assertion. Both approved and existing payload hashes remain distinct. Missing native Gmail reader blocks binding and claim; do not retry unchanged or use the OrderOps UUID resolver/vendor direct source as a workaround. After actual integration and binding, preserve RUNNING, current source, duplicate and claim guards; no automatic send. Staged features have no global turn prompt.',
+  },
+
+  {
     id: 'qbo-caller-boundary', title: 'Keep accounting operations with their assigned executor', category: 'Daily work', updated: '2026-10-13',
     announcement: 'Versioned QBO phase receipts, bounded Bill observations and private helper transport are staged. Production admission remains closed pending authoritative facts and accepted helper integration.',
     audience: 'Original assigned accounting executor, Clara and the existing helper owner',

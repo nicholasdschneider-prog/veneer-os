@@ -1,0 +1,51 @@
+{
+  "schema_version": "build826-validation/v1",
+  "verified_at": "2026-10-14T13:31:38.177605+00:00",
+  "base_commit": "2d9e479308fe79bdc5c39795929ec996bd7f5acc",
+  "node": "24.21.0",
+  "mode": "sequential single-worker host-lock",
+  "checks": [
+    {
+      "command": "npm test -w @veneer-pro/server -- test/approvedGmail.test.ts test/messageDelegation.test.ts test/approvedCaseResolver.test.ts test/vendorEmail.test.ts test/botFeatureGuide.test.ts test/customerEmail.test.ts",
+      "result": "passed",
+      "tests": 376
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "npm test",
+      "result": "passed",
+      "installer_passed": 93,
+      "server_passed": 4106,
+      "server_skipped": 16,
+      "web_passed": 1015,
+      "browser_manager_passed": 55
+    },
+    {
+      "command": "npm run build",
+      "result": "passed",
+      "warning": "Vite chunks larger than 500 kB"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "iteration_notes": [
+    "Initial fixtures corrected for required proposal fields and valid database status/thread provenance.",
+    "Initial full run exposed customer-email artifact pin drift from shared route/tool changes; stopped only the owned test runner, regenerated ordered source digest and added prior-acceptance rejection test; final full run passed."
+  ],
+  "deployment": {
+    "status": "staged_pending_human_approved_maintenance_and_drained_turns",
+    "restart_performed": false,
+    "production_migration_applied": false,
+    "gmail_reader_installed": false,
+    "operational_acceptance": false
+  },
+  "production_business_mutations": false,
+  "gmail_or_provider_calls": false,
+  "credential_reads": false,
+  "native_record_read_only": true
+}

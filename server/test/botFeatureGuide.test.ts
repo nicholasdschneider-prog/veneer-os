@@ -11,6 +11,14 @@ function expectDelivery(text: string, feature: BotFeature) {
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 describe('living bot guide release contract', () => {
+  it('keeps staged Gmail binding accessible with original-owner and missing-reader limits',()=>{
+    const f=botFeatureCatalog(Date.parse('2026-10-14')).features.find(f=>f.id==='approved-gmail-existing-draft')!;
+    expect(f.limits).toContain('reader is not installed');expect(f.agent).toContain('Both');
+    expect(f.steps.join(' ')).toContain('both hashes');
+    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
+    expect(employeeRouteAllowed('POST','/bot-communication/approved-messages/gmail/bind')).toBe(false);
+    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}),f);
+  });
   it('keeps staged QBO limits accessible without announcing live admission to resumed bots', () => {
     const f=botFeatureCatalog(Date.parse('2026-10-13')).features.find(f=>f.id==='qbo-caller-boundary')!;
     expect(f.isNew).toBe(true);expect(f.limits).toContain('No production assignment/permission resolver');

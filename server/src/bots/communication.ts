@@ -328,6 +328,9 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
           guardVendorEmailDraft(db,d.conversation_id,JSON.parse(d.payload_json));
           if(JSON.parse(d.payload_json).channel==='sms' && db.prepare("SELECT 1 FROM bot_composed_sms_authorities WHERE draft_id=? OR (executor_id=? AND json_extract(snapshot_json,'$.binding.payload_hash')=?) LIMIT 1").get(d.id,d.conversation_id,canonicalSha256(JSON.parse(d.payload_json))))throw new BotError(409,'This SMS has a separate derived authority; reconcile its exact action, never use an ordinary claim');
           if (routineExecutionService(db).authorization(d.id)) throw new BotError(409, 'Use claim_routine_message with a fresh trusted source proof; ordinary send checks cannot authorize a routine draft');
+          const {context:ignoredGmailContext,...gmailMaterial}=JSON.parse(d.payload_json);
+          const gmailBinding=db.prepare('SELECT b.draft_id FROM approved_gmail_draft_bindings b JOIN bot_message_drafts original ON original.id=b.draft_id WHERE b.decision_id=? OR (b.send_material_hash=? AND original.conversation_id=?)').get(d.decision_id,canonicalSha256(gmailMaterial),d.conversation_id) as {draft_id:string}|undefined;
+          if(gmailBinding&&gmailBinding.draft_id!==d.id)throw new BotError(409,'Decision Gmail action is permanently bound to its original draft');
           const bridge = d.delegation_id ? delegated.bound(a, d, true) : null;
           if (!bridge) binding(a, d.conversation_id, d.decision_id, d.decision_version);
           if (a.conversationId !== d.conversation_id)

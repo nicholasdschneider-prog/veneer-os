@@ -1,0 +1,39 @@
+{
+  "schema_version": "build826-native-readback/v1",
+  "observed_at": "2026-10-14T13:14:24.265Z",
+  "read_only": true,
+  "decision_id": "12c9587b-4320-471e-abba-8e0a0b9616e6",
+  "version": 2,
+  "state": "blocked",
+  "owner": "7f83ff8e-43a3-4c16-b2bd-c304dd946d11",
+  "executor": "7f83ff8e-43a3-4c16-b2bd-c304dd946d11",
+  "approval_event_id": "0f60bf79-3215-479d-8eb6-9746cd44aaee",
+  "approval_actor_id": 1,
+  "approval_actor_conversation_id": null,
+  "approval_created_at": "2026-10-14 12:26:43",
+  "approval_hash": "aa87dac032ead7246b6ddc4a5ff3894e2af0249fa269dd0edffbeded2f3f7abb",
+  "proposal_hash": "2d46e9e5f88aa175e9c588085d6580ca0d5599287d3fbdcc07bb06f6300e80c5",
+  "snapshot_matches": true,
+  "native_context_hash": "8ac8c4acf282215c1bc235d41798422172a366bc99b33f483e16a1c076e3e43e",
+  "scope_hash": "13e46695164f2d94a2b6d88009e4f2f186a1163e59a99eb9d7a41c2f4da3168b",
+  "approved_payload_hash": "808bd64d379124331608b1d090f295184e1f5e498d9dc885b8f76c4953dd0531",
+  "draft_payload_hash": "033a1cc6cc81c5287cb4f6b9a0ac2ae5b51aed92cb58361bf21d54d9c0d9267f",
+  "approved_context_hash": "12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126",
+  "draft_context_hash": "39db73688631c336171403b031085dfb04f202643a48a923ae21870d21c8e88f",
+  "different_payload_fields": [
+    "context"
+  ],
+  "draft_id": "1ee267de-5df2-4daf-b8ce-17e2d434558c",
+  "draft_version": 1,
+  "draft_state": "draft",
+  "authorized_by": null,
+  "claim_key": null,
+  "receipt": null,
+  "delegation_id": null,
+  "thread": "1a137074c3784567",
+  "ticket": "100122604 / original 100121511 / PEMVKF",
+  "account": "accounting@elkhartrvparts.com",
+  "recipients": [
+    "recept.irvineshade@outlook.com"
+  ]
+}

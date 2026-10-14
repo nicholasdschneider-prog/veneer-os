@@ -1,0 +1,23 @@
+{
+  "schema_version": "build826-artifacts/v1",
+  "status": "staged_reader_and_deployment_pending",
+  "files": {
+    "server/src/bots/approvedGmail.ts": "498b81612a39a49a8520ddf593c282b54d576477973b246020f612cefb0abe47",
+    "server/src/bots/approvedGmailContract.ts": "5f1ce1295d945c4e5aa6357a3fb3e4289ad8221e062e5bfabac29163687f5878",
+    "server/src/bots/messageDelegation.ts": "0a240a222b871bf0efdb73fe5e426f79d6ef8c90158feba508ae046214ed884d",
+    "server/src/bots/communication.ts": "f2005926bc31d8a8b04d12f80427da716a3064446624d7485d8d370dbb9357a7",
+    "server/src/bots/communicationRoutes.ts": "66089d4081984968c8e29f254fdcf007266f93c6f9b718284d57d45fe5b88346",
+    "server/src/bots/customerEmailArtifact.ts": "995560286b7c5a3c7e2330d843ed2a29b9015361b9cf912708cf1115feb125cc",
+    "server/src/mcp/botTools.ts": "be8629500d701a79bb03bd2acd3e56fa76050b90cc175c56fcd6e0982a6e8762",
+    "server/src/featureGuide/catalog.ts": "5c0e195e9e095454e119ee1b3b5059572b8bd4b7f3c4d6794569c52ac3294486",
+    "server/src/db/migrations/0181_approved_gmail_existing_draft.sql": "ea195aa595bce864032ae2f18b9c9f735c99cedc211f29de12e46f87dd90e448",
+    "server/test/approvedGmail.test.ts": "7c787d74b5096e9ff0111cd121a1971ece7c93051bec3b27530c9ca79dd93e24",
+    "server/test/customerEmail.test.ts": "8b488b9757f07adb914476285a3160a41df25b98afa3cbe4d0b78404efc9c617",
+    "server/test/botFeatureGuide.test.ts": "7d8532dce6843d403f3f0a22203093910dd09130773b050365f68a63be8578f8",
+    "docs/bot-feature-guide.md": "8219ef10ffde018c8bee4b91c3e21e9a3aeef3e1f672888c8bbad48752df1cc3",
+    "docs/reports/approved-gmail/build826/contract.md": "28a93b319db963c6626c24a58a91f5c4d20012cd15f51734460874a8daf2f9bb",
+    "docs/reports/approved-gmail/build826/native-readback.json": "5a729f540660a0d5acf22fb811c7aac5a76eefac38733c233eff39546341a633",
+    "docs/reports/approved-gmail/build826/report.md": "a52b425da27e47fc06476e5b084614875ea52cc79423eadecdc6d9643cbac3ac",
+    "docs/reports/approved-gmail/build826/validation.json": "8e916ba6c8c92f2d8f381b985a9f2e11b4b3e054dc742d5b9e4b12d2e6c2e27c"
+  }
+}
