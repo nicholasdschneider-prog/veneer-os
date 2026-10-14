@@ -4,13 +4,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { reloadLaunchdServices } from './launchd-reload.mjs';
+import { plistRoots } from '../scripts/releases.mjs';
 
 export const WATCHDOG_LABEL = 'com.veneer.web-watchdog';
-export function renderWatchdog({ node, codeDir, dataDir, port, logDir, serviceHome }) {
+export function renderWatchdog({ node, codeDir, dataDir, port, logDir, serviceHome, serviceRoot }) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid loopback web port');
+  // The observer follows the web service's verified release, else the checkout.
+  serviceRoot ??= plistRoots({ dataDir, codeDir }).roots['web-watchdog'];
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   const template = fs.readFileSync(new URL('../deploy/launchd/com.veneer.web-watchdog.plist', import.meta.url), 'utf8');
-  const values = { NODE: node, CODE_DIR: codeDir, DATA_DIR: dataDir, WEB_PORT: port, LOG_DIR: logDir, HOME: serviceHome, PATH: `${path.dirname(node)}:/usr/bin:/bin:/usr/sbin:/sbin` };
+  const values = { NODE: node, CODE_DIR: codeDir, SERVICE_ROOT: serviceRoot, DATA_DIR: dataDir, WEB_PORT: port, LOG_DIR: logDir, HOME: serviceHome, PATH: `${path.dirname(node)}:/usr/bin:/bin:/usr/sbin:/sbin` };
   return Object.entries(values).reduce((xml, [key, value]) => xml.replaceAll(`__${key}__`, escape(value)), template);
 }
 /** Targeted installation never reloads web, runner, browsers or terminals. */

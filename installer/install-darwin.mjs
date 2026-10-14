@@ -9,6 +9,14 @@
 // Node, not shell, so the same checkout installs identically everywhere.
 //
 //   node installer/install-darwin.mjs [--code-dir DIR] [--dry-run]
+//   node installer/install-darwin.mjs --activate-release --maintenance-approved
+//
+// The web, runner, app-runner, term and web-watchdog plists launch a service's
+// immutable release (DATA_DIR/releases/active/<service>, scripts/releases.mjs)
+// when it has a verified one, and otherwise the checkout build in place, with a
+// warning. --activate-release snapshots the current build and points all four
+// services at it; reloading the jobs then starts them on it. That is a
+// deployment, so it requires --maintenance-approved inside an approved window.
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -20,6 +28,7 @@ import { browserManagerPaths, provisionLocalBrowserManager } from './browser-man
 import { loadEnvFile, readEnvFile, upsertEnvValues, validateInstallEnv } from './env.mjs';
 import { renderReloadJobPlist, waitForReloadStatus } from './launchd-reload.mjs';
 import { provisionNodeShellProfile } from './node-shell-profile.mjs';
+import { activateRelease, activeLink, plistRoots, RELEASE_SERVICES, snapshotRelease } from '../scripts/releases.mjs';
 
 const SERVICES = [
   { label: 'com.veneer.web-watchdog', plist: 'com.veneer.web-watchdog.plist' },
@@ -55,6 +64,11 @@ const flag = (name, fallback) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
 const dryRun = args.includes('--dry-run');
+const activateReleaseFlag = args.includes('--activate-release');
+if (activateReleaseFlag && !args.includes('--maintenance-approved')) {
+  console.error('--activate-release deploys the current build to every service on reload; it requires --maintenance-approved inside an approved window.');
+  process.exit(2);
+}
 const skipProviderRuntimes = args.includes('--skip-provider-runtimes');
 
 if (process.platform !== 'darwin') {
@@ -285,9 +299,19 @@ function watchdogSetting(key, fallback) {
     return value?.replace(/^(['"])([\s\S]*)\1$/, '$2') || process.env[key] || fallback;
   } catch { return process.env[key] || fallback; }
 }
-function render(templateFile) {
+const LABEL_SERVICE = {
+  'com.veneer.pro': 'veneer-pro',
+  'com.veneer.pro.runner': 'veneer-pro-runner',
+  'com.veneer.pro.app-runner': 'veneer-pro-app-runner',
+  'com.veneer.pro.term': 'veneer-pro-term',
+  'com.veneer.web-watchdog': 'web-watchdog',
+};
+const releaseDataDir = watchdogSetting('DATA_DIR', path.join(home, '.local/share/veneer-pro'));
+let serviceRoots = {};
+function render(templateFile, label) {
   return fs
     .readFileSync(path.join(appRoot, 'deploy', 'launchd', templateFile), 'utf8')
+    .replaceAll('__SERVICE_ROOT__', serviceRoots[LABEL_SERVICE[label]] ?? codeDir)
     .replaceAll('__NODE__', nodeBin)
     .replaceAll('__DATA_DIR__', watchdogSetting('DATA_DIR', path.join(home, '.local/share/veneer-pro')).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'))
     .replaceAll('__WEB_PORT__', watchdogSetting('PORT', '3100'))
@@ -328,9 +352,28 @@ console.log(`[install] logs   ${logDir}`);
 console.log(`[install] home   ${serviceHome}`);
 console.log(`[install] browser agent-browser ${AGENT_BROWSER_VERSION}`);
 
+// Which bytes each service will launch. Activation only with the approved flag;
+// otherwise existing pointers are kept and missing ones fall back loudly.
+if (activateReleaseFlag && !dryRun) {
+  const release = snapshotRelease({ appRoot: codeDir, dataDir: releaseDataDir });
+  activateRelease({ dataDir: releaseDataDir, id: release.id, services: RELEASE_SERVICES, maintenanceApproved: true, reason: 'install-darwin.mjs --activate-release' });
+  console.log(`[install] release ${release.id} activated for ${RELEASE_SERVICES.join(', ')}; the reload below starts them on it`);
+}
+{
+  const { roots, warnings } = plistRoots({ dataDir: releaseDataDir, codeDir });
+  serviceRoots = roots;
+  if (activateReleaseFlag && dryRun) {
+    for (const service of RELEASE_SERVICES) serviceRoots[service] = activeLink(releaseDataDir, service);
+    serviceRoots['web-watchdog'] = serviceRoots['veneer-pro'];
+    console.log('[install] dry run: would snapshot the current build and activate it for every service');
+  } else {
+    for (const warning of warnings) console.warn(`[install] WARNING — ${warning}`);
+  }
+}
+
 if (dryRun) {
   for (const service of SERVICES) {
-    console.log(`\n----- ${service.label} -----\n${render(service.plist)}`);
+    console.log(`\n----- ${service.label} -----\n${render(service.plist, service.label)}`);
   }
   process.exit(0);
 }
@@ -419,7 +462,7 @@ for (const service of SERVICES) {
   // The Supermemory plist carries its model-provider key, so it is not world
   // readable like the others.
   const mode = service.secret ? 0o600 : 0o644;
-  fs.writeFileSync(target, render(service.plist), { mode });
+  fs.writeFileSync(target, render(service.plist, service.label), { mode });
   // writeFileSync only applies mode when it creates the file, so a re-install
   // over an existing plist would silently keep the old, wider permissions.
   fs.chmodSync(target, mode);

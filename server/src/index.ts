@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { loadEnvFile } from './envFile.js';
 import { installTypeOfServiceGuard } from './net/typeOfServiceGuard.js';
+import { logRunningRelease, runningRelease } from './release.js';
 import { probeRunnerRpc } from './runner/rpcProbe.js';
 import { loadConfig, warnIfDevIdentity } from './config.js';
 import { migrateClaudeConfigFile } from './homes.js';
@@ -72,6 +73,7 @@ import { LiveVoiceService } from './voice/service.js';
 // Before anything opens a socket: an undici TOS EINVAL must fail one request, not the process.
 installTypeOfServiceGuard();
 loadEnvFile();
+logRunningRelease('veneer-pro');
 // Web hosts the provider sign-in flows, which also pin CLAUDE_CONFIG_DIR, so it
 // carries an existing install's `.claude.json` forward too. Race-safe and
 // idempotent, so it does not matter which service boots first.
@@ -208,9 +210,9 @@ app.get('/healthz', async (_req, res) => {
       signal: AbortSignal.timeout(2_000),
     });
     if (!response.ok) throw new Error(`runner returned ${response.status}`);
-    res.json({ ok: true, web: 'healthy', runner: 'healthy' });
+    res.json({ ok: true, web: 'healthy', runner: 'healthy', release: runningRelease().id });
   } catch (error) {
-    res.status(503).json({ ok: false, web: 'healthy', runner: 'unavailable', error: (error as Error).message });
+    res.status(503).json({ ok: false, web: 'healthy', runner: 'unavailable', release: runningRelease().id, error: (error as Error).message });
   }
 });
 // Separate from /healthz on purpose: this exercises the authenticated POST

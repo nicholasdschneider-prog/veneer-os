@@ -15,6 +15,10 @@ import { relayCdp } from './cdp-relay.mjs';
 import { blockPasskeys, browserSocketUrl, passkeysAllowed } from './webauthn.mjs';
 import { createDockerBackend } from './backends/docker.mjs';
 import { createNativeBackend } from './backends/native.mjs';
+import { installTypeOfServiceGuard } from './type-of-service-guard.mjs';
+
+// Before any request: an undici TOS EINVAL must fail one request, not the manager.
+installTypeOfServiceGuard();
 
 const exec = promisify(execFile);
 const DARWIN = process.platform === 'darwin';

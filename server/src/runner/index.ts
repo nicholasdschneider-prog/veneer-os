@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import { statfsSync } from 'node:fs';
 import { loadEnvFile } from '../envFile.js';
 import { installTypeOfServiceGuard } from '../net/typeOfServiceGuard.js';
+import { logRunningRelease } from '../release.js';
 import { loadConfig } from '../config.js';
 import { migrateClaudeConfigFile } from '../homes.js';
 import { openDb } from '../db/db.js';
@@ -48,6 +49,7 @@ import type { SpareAccount } from '../spareAllowance/policy.js';
 // Before anything opens a socket: an undici TOS EINVAL must fail one request, not the process.
 installTypeOfServiceGuard();
 loadEnvFile();
+logRunningRelease('veneer-pro-runner');
 // The runner owns every agent spawn, so it is the one process that pins
 // CLAUDE_CONFIG_DIR. Carry an existing install's `.claude.json` into that
 // directory first (copy, idempotent) so pinning it does not read as a brand-new

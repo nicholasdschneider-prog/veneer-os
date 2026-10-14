@@ -98,6 +98,12 @@ npm run restart
 Re-run `node installer/install-darwin.mjs` too if the launchd templates or the provisioned tools
 changed.
 
+The node services run from immutable release snapshots once a release has been activated (see
+[docs/releases.md](docs/releases.md)). `npm run build` then changes nothing a crash respawn loads;
+the approved `npm run restart -- --maintenance-approved <services>` snapshots the build and moves
+each restarted service onto it. `node scripts/releases.mjs status` shows which bytes each service
+would respawn from.
+
 ## Environment
 
 All keys live in `~/.config/veneer-pro/env` (0600), which each service loads for itself — launchd

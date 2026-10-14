@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { runningRelease } from '../release.js';
 import http from 'node:http';
 import type { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -141,7 +142,7 @@ export function createIpcServer({
   const server = http.createServer((req, res) => {
     const path = (req.url ?? '').split('?')[0];
     if (req.method === 'GET' && path === '/healthz') {
-      sendJson(res, 200, { ok: true });
+      sendJson(res, 200, { ok: true, release: runningRelease().id });
       return;
     }
     // Every legitimate client here is a Node process, which sends no Origin.

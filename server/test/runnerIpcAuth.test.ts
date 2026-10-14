@@ -162,7 +162,7 @@ describe('runner IPC /rpc auth', () => {
   it('leaves /healthz open for the boot probes', async () => {
     const res = await fetch(`${base}/healthz`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, release: null });
   });
 
   it('transports bounded source-chat provenance to the runner manager', async () => {

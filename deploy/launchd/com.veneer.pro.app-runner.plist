@@ -20,7 +20,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>__NODE__</string>
-    <string>__CODE_DIR__/server/dist/appRunner/index.js</string>
+    <string>__SERVICE_ROOT__/server/dist/appRunner/index.js</string>
   </array>
 
   <key>WorkingDirectory</key>

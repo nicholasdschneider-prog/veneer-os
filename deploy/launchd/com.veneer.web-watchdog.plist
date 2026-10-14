@@ -3,7 +3,7 @@
 <plist version="1.0"><dict>
   <key>Label</key><string>com.veneer.web-watchdog</string>
   <key>ProgramArguments</key><array>
-    <string>__NODE__</string><string>__CODE_DIR__/server/dist/ops/webWatchdogMain.js</string>
+    <string>__NODE__</string><string>__SERVICE_ROOT__/server/dist/ops/webWatchdogMain.js</string>
     <string>--data-dir</string><string>__DATA_DIR__</string><string>--port</string><string>__WEB_PORT__</string>
   </array>
   <key>WorkingDirectory</key><string>__CODE_DIR__</string>

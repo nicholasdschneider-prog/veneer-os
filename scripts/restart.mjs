@@ -15,10 +15,17 @@
 //   node scripts/restart.mjs                  # all services
 //   node scripts/restart.mjs veneer-pro-runner
 //   npm run restart -- veneer-pro-runner
+//
+// Release mode (plists that launch DATA_DIR/releases/active/<service>, see
+// scripts/releases.mjs): an approved restart snapshots the current build (or
+// uses --release=<id>, e.g. the recorded previous release to roll back) and
+// moves each service's active pointer immediately before restarting that same
+// service. Nothing else moves a pointer, so a crash respawns the approved bytes.
 
 import fs from 'node:fs';
 import { inspectTunnel, inspectPublicEdge } from './tunnel-health.mjs';
 import { assertRunnerRestartSafe } from './restart-safety.mjs';
+import { activateRelease, activeEntry, activeRelease, launchdEntry, readRelease, SERVICE_LABEL, snapshotRelease, verifyRelease } from './releases.mjs';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -61,7 +68,8 @@ const checkOnly = args.includes('--check');
 const healthOnly = args.includes('--health-check');
 const allowActive = args.includes('--allow-active-turns');
 const maintenanceApproved = args.includes('--maintenance-approved');
-const requested = args.filter((arg) => !['--check', '--health-check', '--allow-active-turns', '--maintenance-approved'].includes(arg));
+const releaseArg = args.find((arg) => arg.startsWith('--release='))?.slice('--release='.length) ?? null;
+const requested = args.filter((arg) => !['--check', '--health-check', '--allow-active-turns', '--maintenance-approved'].includes(arg) && !arg.startsWith('--release='));
 const unknown = requested.filter((name) => !ALL_SERVICES.includes(name));
 if (unknown.length) {
   console.error(`unknown service(s): ${unknown.join(', ')}`);
@@ -156,12 +164,17 @@ function isRunning(pid) {
 // service before signalling it. A pid file can go stale while the real process
 // lives on (seen 2026-08-13: a doomed manual start overwrote run/veneer-pro.pid,
 // so ship restarts signalled nothing and the old web kept serving old code).
-const serviceEntries = {
+const checkoutEntries = {
   'veneer-pro': path.join(appRoot, 'server', 'dist', 'index.js'),
   'veneer-pro-runner': path.join(appRoot, 'server', 'dist', 'runner', 'index.js'),
   'veneer-pro-app-runner': path.join(appRoot, 'server', 'dist', 'appRunner', 'index.js'),
   'veneer-pro-term': path.join(appRoot, 'server', 'dist', 'terminalService', 'index.js'),
 };
+// A service runs either the checkout build or its release pointer.
+const serviceEntries = Object.fromEntries(
+  Object.entries(checkoutEntries).map(([service, entry]) => [service, [entry, activeEntry(dataDir, service)]]),
+);
+const runsEntry = (service, command) => serviceEntries[service].some((entry) => command.includes(entry));
 
 function pidCommand(pid) {
   try {
@@ -181,7 +194,7 @@ function findServicePid(service) {
       const pid = Number(match[1]);
       // Require a node invocation of the entry script, so a stray editor or
       // tail holding the path in its arguments is never signalled.
-      if (pid === process.pid || !match[2].includes(entry) || !/\bnode(\d*|\.exe)?\b/.test(match[2])) continue;
+      if (pid === process.pid || !entry.some((e) => match[2].includes(e)) || !/\bnode(\d*|\.exe)?\b/.test(match[2])) continue;
       return pid;
     }
   } catch {
@@ -201,7 +214,7 @@ function livePid(service) {
     const command = pidCommand(filed);
     // A pid we cannot inspect is assumed valid — EPERM etc. should not turn a
     // working restart into a manual hunt.
-    if (command === null || command.includes(serviceEntries[service])) return filed;
+    if (command === null || runsEntry(service, command)) return filed;
     console.error(`[restart] ${service}: pid file ${filed} is a different program (${command}); ignoring it`);
   }
   const discovered = findServicePid(service);
@@ -315,6 +328,18 @@ async function restart(service) {
     catch (error) { console.error(`[restart] blocked: ${error.message}`); return false; }
   }
   if (service in LAUNCHD_SERVICES) return restartLaunchdService(service);
+  if (releaseMode.has(service)) {
+    // Move this service's pointer only now, right before its own restart, so a
+    // refused or skipped service never respawns onto a release nobody restarted.
+    try {
+      const [change] = activateRelease({ dataDir, id: release.id, services: [service], maintenanceApproved, reason: `restart.mjs ${args.join(' ')}` });
+      console.log(`[restart] ${service}: active release ${change.to}${change.changed ? ` (was ${change.from ?? 'none'})` : ' (unchanged)'}`);
+      if (change.changed && change.from) console.log(`[restart] ${service}: roll back with: npm run restart -- --maintenance-approved --release=${change.from} ${service}`);
+    } catch (error) {
+      console.error(`[restart] ${service}: release activation failed, not restarted: ${error.message}`);
+      return false;
+    }
+  }
   const oldPid = livePid(service);
   if (oldPid === null) {
     if (startMissingLinuxService(service)) {
@@ -370,7 +395,15 @@ async function restart(service) {
     console.error(`[restart] ${service}: replacement did not become healthy within ${RESPAWN_TIMEOUT_MS}ms`);
     return false;
   }
-  console.log(`[restart] ${service}: healthy as pid ${readPid(service)}`);
+  if (releaseMode.has(service) && ports[service] && ['veneer-pro', 'veneer-pro-runner'].includes(service)) {
+    let running = null;
+    try { running = (await (await fetch(`http://127.0.0.1:${ports[service]}/healthz`, { signal: AbortSignal.timeout(2_000) })).json()).release ?? null; } catch { /* reported below */ }
+    if (running !== release.id) {
+      console.error(`[restart] ${service}: healthy, but it reports release ${running ?? 'none'} instead of ${release.id}; treat the deployment as unverified`);
+      return false;
+    }
+  }
+  console.log(`[restart] ${service}: healthy as pid ${readPid(service)}${releaseMode.has(service) ? ` on release ${release.id}` : ''}`);
   return true;
 }
 
@@ -436,14 +469,43 @@ async function verifyConnectivity() {
 }
 
 if (healthOnly) process.exit(await verifyConnectivity() ? 0 : 1);
+// Which bytes each target respawns from. Checkout-mode plists load the build in
+// place, so any later npm run build is deployed by the next crash; say so loudly.
+const releaseMode = new Set();
+for (const service of targets) {
+  if (!SERVICE_LABEL[service] || process.platform !== 'darwin') continue;
+  const entry = launchdEntry(SERVICE_LABEL[service]);
+  if (entry === activeEntry(dataDir, service)) releaseMode.add(service);
+  else if (entry === checkoutEntries[service]) console.warn(`[restart] WARNING ${service}: its plist launches the checkout build in place; a crash after any rebuild deploys that build unapproved. Install release-mode plists in an approved window (installer --activate-release).`);
+}
+if (releaseArg && !releaseMode.size) {
+  console.error('[restart] --release=<id> needs targets whose plists launch a release pointer; none of the requested services do');
+  process.exit(2);
+}
 if (!checkServiceRuntime()) process.exit(1);
 warnForeignCodexHome();
-if (checkOnly) process.exit(0);
+if (checkOnly) {
+  for (const service of releaseMode) console.log(`[restart] ${service}: release mode, active ${activeRelease(dataDir, service) ?? 'none'}`);
+  process.exit(0);
+}
 
 // Check the entire plan before restarting even the web service. Recheck
 // each service immediately before signaling it, since new work can arrive meanwhile.
 try { assertRunnerRestartSafe({ targets, dataDir, serverPackage, allowActive, maintenanceApproved }); }
 catch (error) { console.error(`[restart] blocked: ${error.message}`); process.exit(1); }
+// The release to activate: a named one (rollback) or a fresh snapshot of the
+// current build. Snapshotting activates nothing; pointers move per service below.
+let release = null;
+if (releaseMode.size) {
+  try {
+    release = releaseArg ? { id: releaseArg, meta: verifyRelease(dataDir, releaseArg) } : snapshotRelease({ appRoot, dataDir });
+    readRelease(dataDir, release.id);
+    console.log(`[restart] release ${release.id}${release.reused ? ' (existing snapshot)' : ''} verified; git ${release.meta.git_sha ?? 'none'}${release.meta.git_dirty ? ' with uncommitted changes' : ''}`);
+  } catch (error) {
+    console.error(`[restart] blocked: no verified release to activate: ${error.message}`);
+    process.exit(1);
+  }
+}
 
 let failed = false;
 for (const service of targets) {

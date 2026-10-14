@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnvFile } from '../envFile.js';
 import { installTypeOfServiceGuard } from '../net/typeOfServiceGuard.js';
+import { logRunningRelease } from '../release.js';
 import { loadConfig } from '../config.js';
 import { openDb } from '../db/db.js';
 import { createAppRunnerIpcServer } from './ipcServer.js';
@@ -13,6 +14,7 @@ import { writePidFile } from '../servicePid.js';
 // Before anything opens a socket: an undici TOS EINVAL must fail one request, not the process.
 installTypeOfServiceGuard();
 loadEnvFile();
+logRunningRelease('veneer-pro-app-runner');
 const config = loadConfig();
 const db = openDb(config.dataDir);
 const manager = config.appPublicOrigin
