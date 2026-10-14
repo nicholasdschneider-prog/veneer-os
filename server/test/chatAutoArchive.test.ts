@@ -9,6 +9,7 @@ import { migrate } from '../src/db/migrate.js';
 import type { AppContext } from '../src/context.js';
 import { createApiRouter } from '../src/routes/api.js';
 import { DEFAULT_TODO_PLANNING_PROMPT } from '../src/routes/todoPlanningSettings.js';
+import { autoArchiveInactiveConversations } from '../src/routes/chatAutoArchive.js';
 
 const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
 
@@ -115,6 +116,35 @@ describe('chat auto-archive', () => {
         ).value_json,
       ),
     ).toEqual({ enabled: false, inactivityDays: 90 });
+  });
+
+  it('keeps stale chats that still own live work open', () => {
+    const assistant = db.prepare("SELECT id FROM assistants WHERE slug = 'assistant'").get() as { id: number };
+    const live = ['live-wake', 'live-queue', 'live-turn', 'live-question', 'live-build', 'quiet'];
+    for (const id of live) {
+      db.prepare(
+        `INSERT INTO conversations (id, assistant_id, user_id, title, provider, native_session_id, last_active_at, last_user_activity_at)
+         VALUES (?, ?, 1, ?, 'claude', ?, datetime('now', '-20 days'), datetime('now', '-20 days'))`,
+      ).run(id, assistant.id, id, `${id}-native`);
+    }
+    db.prepare(
+      "INSERT INTO conversation_wakeups (id, conversation_id, wake_key, reason, scheduled_for) VALUES ('w1', 'live-wake', 'k', 'later', '2099-01-01T00:00:00Z')",
+    ).run();
+    db.prepare("INSERT INTO queued_messages (conversation_id, prompt) VALUES ('live-queue', 'waiting')").run();
+    db.prepare("INSERT INTO pending_turns (conversation_id, prompt) VALUES ('live-turn', 'resume me')").run();
+    db.prepare(
+      "INSERT INTO questions (request_id, conversation_id, turn_id, response_mode, questions_json) VALUES ('q1', 'live-question', 't', 'poll', '[]')",
+    ).run();
+    db.prepare(
+      "INSERT INTO build_queue (user_id, conversation_id, title, brief, status) VALUES (1, 'live-build', 't', 'b', 'queued')",
+    ).run();
+
+    const archivedIds = autoArchiveInactiveConversations(db, 1, { enabled: true, inactivityDays: 7 });
+    expect(archivedIds).toContain('quiet');
+    for (const id of live.filter((id) => id !== 'quiet')) {
+      expect(archivedIds).not.toContain(id);
+      expect(db.prepare('SELECT archived FROM conversations WHERE id = ?').get(id)).toEqual({ archived: 0 });
+    }
   });
 
   it('stops a chat browser on manual archive and delete', async () => {

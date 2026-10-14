@@ -165,8 +165,24 @@ import {
   type SecretAccessDeps,
   type SecretTargetResolution,
 } from '../secrets/readSecret.js';
+import {
+  archiveClosedChat,
+  closeChatBlockers,
+  closeChatIneligibility,
+  readChatClosure,
+} from '../conversations/closeChat.js';
 
 const SetupSchema = z.object({ displayName: z.string().trim().min(1).max(120) });
+const CloseChatSchema = z.object({
+  report: z.string().trim().min(1).max(20_000),
+  report_to: z.string().trim().min(1).max(200).nullable().optional(),
+  deployment: z
+    .object({
+      status: z.enum(['live', 'pending', 'none']),
+      notified_conversation_ids: z.array(z.string().trim().min(1).max(200)).max(20).optional(),
+    })
+    .optional(),
+});
 const ApprovalModeSchema = z.enum(['ask', 'auto']);
 const CreateConversationSchema = z.object({
   // The web app supplies this UUID so its temporary sidebar row can reconcile
@@ -3206,6 +3222,82 @@ export function createApiRouter(ctx: AppContext): Router {
   // Agent-owned continuation timers. These differ from scheduled tasks: a wake
   // always resumes THIS chat and never creates a new automation conversation.
   // Agent-token binding prevents one chat from scheduling another chat.
+  // close_chat: a bot reports and archives its OWN chat once nothing it owns is
+  // still live. Archive only; the closure row makes repeats return one result.
+  router.post('/conversations/:id/close', (req, res) => {
+    const row = conversationFor(req, res, true);
+    if (!row) return;
+    if (!req.agentConversationId || req.agentConversationId !== row.id) {
+      res.status(403).json({ ok: false, error: 'close_chat can only close the chat making the call.' });
+      return;
+    }
+    if (req.agentExecutionConversationId && req.agentExecutionConversationId !== row.id) {
+      res.status(409).json({ ok: false, error: 'close_chat runs only in the chat’s own turn, not in a coordination lane.' });
+      return;
+    }
+    const existing = readChatClosure(db, row.id);
+    if (existing && row.archived) {
+      res.json({ ok: true, alreadyClosed: true, closure: existing });
+      return;
+    }
+    const ineligible = closeChatIneligibility(db, row);
+    if (ineligible) {
+      res.status(409).json({ ok: false, error: ineligible, refused: 'not_closable' });
+      return;
+    }
+    const body = CloseChatSchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ ok: false, error: body.error.issues[0]?.message ?? 'Invalid close_chat request' });
+      return;
+    }
+    const reportTo =
+      body.data.report_to === undefined
+        ? row.origin_conversation_id && row.origin_conversation_id !== row.id
+          ? row.origin_conversation_id
+          : null
+        : body.data.report_to;
+    if (reportTo === row.id) {
+      res.status(400).json({ ok: false, error: 'report_to must be another chat; omit it or pass null to record the report here.' });
+      return;
+    }
+    const target = reportTo
+      ? (db.prepare('SELECT * FROM conversations WHERE id = ?').get(reportTo) as ConversationRow | undefined)
+      : undefined;
+    if (reportTo && !target) {
+      res.status(404).json({ ok: false, error: `report_to chat ${reportTo} was not found.` });
+      return;
+    }
+    const deployment = body.data.deployment
+      ? { status: body.data.deployment.status, notifiedConversationIds: body.data.deployment.notified_conversation_ids ?? [] }
+      : null;
+    const blockers = closeChatBlockers(db, row.id, { deployment, reportTo });
+    if (blockers.length) {
+      // The error text carries every blocker: agent tools surface only `error`.
+      const listed = blockers.map((b) => `${b.kind} [${b.ids.join(', ')}]: ${b.detail}`).join(' | ');
+      res.status(409).json({ ok: false, error: `This chat still owns live work. ${listed}`, refused: 'blocked', blockers });
+      return;
+    }
+    void (async () => {
+      let threadId: string | null = null;
+      if (target) {
+        // Stable key: a retried close never sends the report twice.
+        // A chat reopened after an earlier close gets a new key for its new report.
+        req.body = { request_key: `close_chat:${row.id}:${existing?.closed_at ?? 'first'}` };
+        const sent = (await sendCoordination(ctx, req, target, body.data.report)) as { coordinationThreadId?: string };
+        threadId = sent.coordinationThreadId ?? null;
+      }
+      const closure = archiveClosedChat(db, {
+        conversation_id: row.id,
+        actor_user_id: req.user!.id,
+        report: body.data.report,
+        report_to: target?.id ?? null,
+        report_thread_id: threadId,
+        deployment_json: deployment ? JSON.stringify(deployment) : null,
+      });
+      res.json({ ok: true, alreadyClosed: false, closure });
+    })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+  });
+
   router.post('/conversations/:id/wakeups', (req, res) => {
     const row = conversationFor(req, res, true);
     if (!row) return;

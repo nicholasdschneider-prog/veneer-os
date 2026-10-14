@@ -75,6 +75,12 @@ The `vibe-connector` guide entry delivers these limits to employees and fresh/re
 
 See the [verification report](./reports/vibe-connector/report.md).
 
+## Close a finished chat (October 14, 2026)
+
+Build #832 adds the `close-chat` catalog entry and the `close_chat` tool: a bot reports and
+archives its own one-issue chat once nothing it owns is still live. Standing bot chats are
+never closed and nothing is deleted. Rules and blockers are in [close-chat.md](./close-chat.md).
+
 ## Verification and changed files
 
 Root typecheck, the full test suite, and the production build passed: 2,166 server tests (5 skipped), 850 web tests, 40 browser-manager tests, and 21 installer tests. Isolated browser checks covered desktop and mobile, full and restricted employees, keyboard navigation, new-feature discovery, search, copying examples and links, feature permalinks, overflow, refresh after a catalog update, announcement aging, and failure/retry. Browser fixtures never accessed production business data.

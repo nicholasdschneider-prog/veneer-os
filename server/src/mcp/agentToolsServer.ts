@@ -14,6 +14,7 @@ import { summarizeConversation } from './conversationSummary.js';
 import { callProjectTool, PROJECT_TOOL_DEFINITIONS } from './projectTools.js';
 import { callProjectSettingsTool, PROJECT_SETTINGS_TOOL } from './projectSettingsTool.js';
 import { callRenameConversationTool, RENAME_CONVERSATION_TOOL } from './renameConversationTool.js';
+import { callCloseChatTool, CLOSE_CHAT_TOOL } from './closeChatTool.js';
 import { callChatLinkTool, CHAT_LINK_TOOL } from './chatLinkTool.js';
 import { callTodoTool, TODO_TOOL_DEFINITIONS } from './todoTools.js';
 import { callGmailDraftTool, GMAIL_DRAFT_TOOLS } from './gmailDraftTools.js';
@@ -241,6 +242,7 @@ const TOOLS: ToolDef[] = [
   },
   { name: 'read_coordination', description: 'Read a bot coordination thread returned by send_message. Requires current access to both original conversations.', inputSchema: {type:'object',properties:{threadId:{type:'string'}},required:['threadId']} },
   RENAME_CONVERSATION_TOOL,
+  CLOSE_CHAT_TOOL,
   {
     name: 'save_memory',
     description:
@@ -1023,6 +1025,8 @@ async function callTool(
       sourceConversationId: spawnConversationId,
     });
     if (renameConversationResult) return renameConversationResult;
+    const closeChatResult = await callCloseChatTool({ name, args, callApi, sourceConversationId: spawnConversationId });
+    if (closeChatResult) return closeChatResult;
     const todoResult = await callTodoTool({ name, args, callApi });
     if (todoResult) return todoResult;
     const roomResult = await callRoomTool({ name, args, callApi });

@@ -85,7 +85,15 @@ export function autoArchiveInactiveConversations(
           AND NOT EXISTS (SELECT 1 FROM bot_registrations b WHERE b.conversation_id=conversations.id AND b.active=1)
           AND pin_order IS NULL
           AND channel <> 'automation'
-          AND COALESCE(last_user_activity_at, last_active_at, created_at) < datetime('now', ?)`,
+          AND COALESCE(last_user_activity_at, last_active_at, created_at) < datetime('now', ?)
+          -- Archiving cancels pending wake-ups and drops queued work, so a chat
+          -- that still owns live work stays open however quiet its human is.
+          AND NOT EXISTS (SELECT 1 FROM conversation_wakeups w WHERE w.conversation_id=conversations.id AND w.status='pending')
+          AND NOT EXISTS (SELECT 1 FROM queued_messages q WHERE q.conversation_id=conversations.id)
+          AND NOT EXISTS (SELECT 1 FROM pending_turns p WHERE p.conversation_id=conversations.id)
+          AND NOT EXISTS (SELECT 1 FROM questions q WHERE q.conversation_id=conversations.id AND q.status='pending')
+          AND NOT EXISTS (SELECT 1 FROM build_queue b WHERE b.conversation_id=conversations.id AND b.status IN ('queued','running','failed','stopped'))
+          AND NOT EXISTS (SELECT 1 FROM bot_decisions d WHERE d.conversation_id=conversations.id AND d.state IN ('needs_input','action_pending','running','blocked'))`,
     )
     .all(userId, cutoffModifier) as { id: string }[];
   if (rows.length === 0) return [];
