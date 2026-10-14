@@ -11,7 +11,7 @@ import { createJamesRouter } from '../src/jamesLink/routes.js';
 import { createBuildQueueCoordinator, type BuildQueueCoordinator } from '../src/buildQueue/coordinator.js';
 import { EventEmitter } from 'node:events';
 import { JamesLink, parseEmailCommand, PUSH_GAP_MS, quietThresholdMs } from '../src/jamesLink/service.js';
-import { MailNotSentError, type MailMessage } from '../src/jamesLink/mail.js';
+import type { MailMessage } from '../src/jamesLink/mail.js';
 
 const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
 const KEY = 'test-james-key';
@@ -22,11 +22,7 @@ const secrets: Record<string, string | null> = {};
 const fetchMock = vi.fn();
 const sent: Array<{ to: string; subject: string; body: string }> = [];
 let failEmailTo: string | null = null;
-/** 'throw': the send errors after possibly leaving; 'no_id': it returns no message id. Both are unclear. */
-let unclearSend: 'throw' | 'no_id' | null = null;
 let inbox: MailMessage[] = [];
-let sentBox: MailMessage[] = [];
-let sentSearchFails = false;
 const posted: Array<{ id: string; text: string }> = [];
 let liveStatus = 'idle';
 let link: JamesLink;
@@ -79,17 +75,11 @@ beforeAll(async () => {
     fetch: fetchMock as unknown as typeof fetch,
     mailer: {
       async send(to, subject, body) {
-        if (to === failEmailTo) throw new MailNotSentError('smtp down');
+        if (to === failEmailTo) throw new Error('smtp down');
         sent.push({ to, subject, body });
-        if (unclearSend === 'throw') throw new Error('socket hang up');
-        if (unclearSend === 'no_id') return { messageId: null };
         return { messageId: `m${sent.length}` };
       },
-      async search(query) {
-        if (!query.startsWith('in:sent')) return inbox;
-        if (sentSearchFails) throw new Error('search unavailable');
-        return sentBox;
-      },
+      async search() { return inbox; },
     },
     now: () => clock,
     publicOrigin: 'https://veneer.example.com',
@@ -118,9 +108,6 @@ beforeEach(() => {
   fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
   sent.length = 0;
   failEmailTo = null;
-  unclearSend = null;
-  sentBox = [];
-  sentSearchFails = false;
   secrets.JAMES_WEBHOOK_URL = 'https://grok.example.com/hook';
   secrets.JAMES_WEBHOOK_KEY = 'hook-key';
   secrets.VENEER_JAMES_API_KEY = KEY;
@@ -224,12 +211,15 @@ describe('push', () => {
     expect(getThread(db, B)!.turn).toBe(2);
   });
 
-  it('holds a test push whose two webhook attempts fail for the digest, with no email', async () => {
+  it('emails the alert after two webhook failures, falling back to the second address', async () => {
     fetchMock.mockResolvedValue(new Response('no', { status: 500 }));
     const res = await api('/api/james/test-push', { method: 'POST', body: JSON.stringify({ thread_id: A }) });
-    expect((await res.json()).push).toMatchObject({ status: 'deferred_digest', attempts: 2, emailed_to: null });
+    expect((await res.json()).push).toMatchObject({ status: 'emailed', attempts: 2, emailed_to: 'nicks@mail.grokbot.com' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(sent).toEqual([]);
+    expect(sent[0]!.subject).toBe(`[VENEER thread ${A}] James REM costs`);
+    failEmailTo = 'nicks@mail.grokbot.com';
+    const res2 = await api('/api/james/test-push', { method: 'POST', body: JSON.stringify({ thread_id: A, simulate_webhook_failure: true }) });
+    expect((await res2.json()).push).toMatchObject({ status: 'emailed', emailed_to: 'nick@elkhartrvparts.com' });
   });
 
   it('keeps the receiver error body and request id in last_error with the key redacted', async () => {
@@ -237,7 +227,7 @@ describe('push', () => {
     fetchMock.mockImplementation(async () => new Response(reason, { status: 400, headers: { 'x-request-id': 'req-123' } }));
     const res = await api('/api/james/test-push', { method: 'POST', body: JSON.stringify({ thread_id: A }) });
     const push = (await res.json()).push;
-    expect(push).toMatchObject({ status: 'deferred_digest', attempts: 2 });
+    expect(push).toMatchObject({ status: 'emailed', attempts: 2 });
     const row = db.prepare('SELECT last_error FROM james_pushes ORDER BY id DESC LIMIT 1').get() as { last_error: string };
     expect(row.last_error).toContain('webhook returned HTTP 400 (x-request-id req-123): {"success":false,"error":"Automation run rate limit exceeded');
     expect(row.last_error).toContain('Bearer [REDACTED]');
@@ -265,10 +255,9 @@ describe('push', () => {
     const beat = JSON.parse(beats[0]![1].body);
     expect(beat.waiting_on_james.map((t: { thread_id: string }) => t.thread_id)).toContain(A);
     expect(beat.suppressed).toMatchObject({ by_reason: { quiet: 1 }, threads: [{ thread_id: A, events: 1, reasons: ['quiet'] }] });
-    // Before the ERVP cutover the day's one email goes only because something was held back: the two failed test pushes.
-    expect(beat.undelivered.map((p: { reasons: string[] }) => p.reasons)).toEqual([['test'], ['test']]);
-    expect(sent.map((m) => [m.to, m.subject])).toEqual([['nicks@mail.grokbot.com', '[VENEER] Daily digest 2026-10-13']]);
-    expect(db.prepare("SELECT COUNT(*) AS n FROM james_pushes WHERE status = 'emailed' AND digest_date = '2026-10-13'").get()).toEqual({ n: 2 });
+    expect(beat.undelivered).toEqual([]);
+    // Nothing was held back, so the day gets no digest email.
+    expect(sent).toEqual([]);
   });
 });
 
@@ -300,7 +289,7 @@ describe('close, archive and email commands', () => {
     await link.pollEmailCommands();
     expect(getThread(db, C)!.status).toBe('done');
     expect(getThread(db, A)!.status).toBe('open');
-    expect(sent).toEqual([]); // no confirmation email: native emails only the digest
+    expect(sent.some((m) => m.to === 'nicks@mail.grokbot.com' && m.subject.includes('CLOSE done'))).toBe(true);
     await link.pollEmailCommands();
     expect(db.prepare('SELECT COUNT(*) AS n FROM james_email_commands').get()).toEqual({ n: 2 });
   });
@@ -564,35 +553,12 @@ describe('notify_james: a human-directed bot message to James', () => {
 
   it('emails an urgent money or customer notice at once when the webhook fails', async () => {
     fetchMock.mockImplementation(async () => new Response('bad', { status: 400 }));
-    const fields = { needs_nick_today: true, reason: 'Customer refund is due today', evidence: ['order 100122602'], needed_on: '2026-10-21' };
-    expect((await notify(H, { text: 'x', idempotency_key: 'piper-test-0003', urgent_for_nick: 'maybe', ...fields })).status).toBe(400);
-    expect((await notify(H, { text: 'x', idempotency_key: 'piper-test-0005', urgent_for_nick: 'money' })).status).toBe(400);
-    expect((await notify(H, { text: 'x', idempotency_key: 'piper-test-0006', reason: 'not urgent' })).status).toBe(400);
-    expect(fetchMock).not.toHaveBeenCalled();
-    const urgent = await (await notify(H, { text: 'Refund of $412 needs Nick today.', idempotency_key: 'piper-test-0004', urgent_for_nick: 'money', ...fields })).json();
+    expect((await notify(H, { text: 'x', idempotency_key: 'piper-test-0003', urgent_for_nick: 'maybe' })).status).toBe(400);
+    const urgent = await (await notify(H, { text: 'Refund of $412 needs Nick today.', idempotency_key: 'piper-test-0004', urgent_for_nick: 'money' })).json();
     expect(urgent).toMatchObject({ status: 'emailed', attempts: 2, emailed_to: 'nicks@mail.grokbot.com' });
     expect(sent.map((m) => m.to)).toEqual(['nicks@mail.grokbot.com']);
     expect(sent[0]!.body).toContain('Refund of $412 needs Nick today.');
-    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).events[0]).toMatchObject({
-      urgent_for_nick: 'money', needs_nick_today: true, urgent_reason: 'Customer refund is due today', urgent_evidence: ['order 100122602'], needed_on: '2026-10-21',
-    });
-  });
-
-  it('marks an unclear urgent email unknown without a fallback send, and never resends it', async () => {
-    fetchMock.mockImplementation(async () => new Response('bad', { status: 400 }));
-    unclearSend = 'throw';
-    const fields = { urgent_for_nick: 'customer', needs_nick_today: true, reason: 'Customer is waiting on a replacement', evidence: 'ticket 5', needed_on: '2026-10-21' };
-    const first = await (await notify(H, { text: 'Replacement ships today?', idempotency_key: 'piper-test-0007', ...fields })).json();
-    expect(first).toMatchObject({ status: 'email_unknown', emailed_to: null });
-    expect(first.last_error).toContain('no exact Sent match');
-    expect(sent.map((m) => m.to)).toEqual(['nicks@mail.grokbot.com']);
-    const again = await (await notify(H, { text: 'Replacement ships today?', idempotency_key: 'piper-test-0007', ...fields })).json();
-    expect(again).toMatchObject({ replay: true, status: 'email_unknown' });
-    expect(sent).toHaveLength(1);
-    // A send that errored but shows up in Sent is proven.
-    sentBox = [{ messageId: 'sent-77', sender: 'me', subject: `[VENEER thread ${H}] Piper standing chat`, text: '' }];
-    const proven = await (await notify(H, { text: 'Second replacement?', idempotency_key: 'piper-test-0008', ...fields })).json();
-    expect(proven).toMatchObject({ status: 'emailed', emailed_to: 'nicks@mail.grokbot.com' });
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).events[0]).toMatchObject({ urgent_for_nick: 'money' });
   });
 });
 
@@ -669,14 +635,15 @@ describe('usage reduction: only actionable pushes, one daily digest', () => {
     // The unanswered question is a new nudge push; the held push itself is never POSTed again.
     expect(posts().filter((p) => p.push_id === held.id)).toHaveLength(2);
     expect(posts().at(-1)).toMatchObject({ reasons: ['question_unanswered'] });
-    // A webhook down for hours sends no separate email; its state goes in the digest.
+    // The webhook has been failing for 2+ hours: Nick is told once per outage.
     veneerReply(F, 'f-5', 'Done.\n\nShall I close this?');
     clock += PUSH_GAP_MS + 1;
     await link.tick();
     clock += PUSH_GAP_MS + 1;
     veneerReply(F, 'f-6', 'Ready.\n\nClose now?');
     await link.tick();
-    expect(sent).toEqual([]);
+    expect(sent.map((m) => [m.to, m.subject])).toEqual([['nick@elkhartrvparts.com', '[VENEER] James webhook down for 2+ hours']]);
+    sent.length = 0;
 
     fetchMock.mockImplementation(async () => new Response('{}', { status: 200 }));
     clock = Date.parse('2026-10-23T12:31:00Z'); // 8:31 ET

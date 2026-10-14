@@ -1,6 +1,3 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { AppContext } from '../context.js';
 import type { ConversationEvent } from '../runtime/events.js';
 import { createConnectorMailer } from './mail.js';
@@ -9,14 +6,6 @@ import { createJamesRouter } from './routes.js';
 import { JamesLink } from './service.js';
 
 const TICK_MS = 60_000;
-
-/** The checkout's HEAD for NATIVE_READY; dist/jamesLink is three levels below the repo root. */
-function sourceCommit(): string | null {
-  try {
-    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-    return execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8', timeout: 5_000 }).trim() || null;
-  } catch { return null; }
-}
 
 let current: JamesLink | null = null;
 /** The running link in this web process, for the agent notify routes. */
@@ -45,8 +34,6 @@ export function startJamesLink(ctx: AppContext) {
     postToChat: async (conversationId, text) => ctx.manager.postMessage(conversationId, text, ownerId()),
     statusOf: (conversationId) => ctx.manager.statusOf(conversationId),
     log: (message) => console.warn(message),
-    spoolDir: path.join(ctx.config.dataDir, 'james-digest'),
-    commit: sourceCommit(),
   });
   current = link;
   const onEvent = (conversationId: string, event: ConversationEvent) => link.onEvent(conversationId, event);

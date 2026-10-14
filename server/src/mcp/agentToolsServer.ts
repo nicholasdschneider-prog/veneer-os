@@ -333,7 +333,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'notify_james',
     description:
-      'Tell James (Nick\'s operator, reached through his Grok Bot) something from THIS chat, once, only because this chat\'s own human explicitly told you to tell James. The server checks that a human message in this chat from the last 24 hours names James and uses the latest one (or the authority_turn you give); bot, wake-up, handoff and James messages are never authority, and without such a human message the send is refused. Send the exact text the human\'s direction calls for, with a stable idempotency_key: a retry with the same key and text returns the first result and sends nothing; never call again with a new key to resend. The result reports push_id, status (sent; deferred_digest when James\'s webhook failed and the message waits for his 8:30 AM ET daily digest email; emailed; email_unknown, which is never re-sent; or failed), attempts, emailed_to and last_error. Set urgent_for_nick only when the message is a money-moving or customer-facing matter Nick must see today, and then also needs_nick_today true, reason, evidence and needed_on; a failed webhook then emails it at once instead of waiting for the digest. Never infer urgency. If it failed or you are unsure, read it back with read_james_notification instead of sending again. This does not make James follow the chat; his own messages to you are answered as usual by replying.',
+      'Tell James (Nick\'s operator, reached through his Grok Bot) something from THIS chat, once, only because this chat\'s own human explicitly told you to tell James. The server checks that a human message in this chat from the last 24 hours names James and uses the latest one (or the authority_turn you give); bot, wake-up, handoff and James messages are never authority, and without such a human message the send is refused. Send the exact text the human\'s direction calls for, with a stable idempotency_key: a retry with the same key and text returns the first result and sends nothing; never call again with a new key to resend. The result reports push_id, status (sent; deferred_digest when James\'s webhook failed and the message waits for his 8:30 AM ET daily digest email; emailed; or failed), attempts, emailed_to and last_error. Set urgent_for_nick only when the message is a money-moving or customer-facing matter Nick must see today; then a failed webhook emails it at once instead of waiting for the digest. If it failed or you are unsure, read it back with read_james_notification instead of sending again. This does not make James follow the chat; his own messages to you are answered as usual by replying.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -341,17 +341,13 @@ const TOOLS: ToolDef[] = [
         authority_turn: { type: 'number', description: 'Optional James-link turn number of the directing human message; omit to use the latest recent human message here that names James.' },
         idempotency_key: { type: 'string', description: 'Stable key, 8-200 printable characters, for example piper-nda-irvine-20261013-nick1911.' },
         urgent_for_nick: { type: 'string', enum: ['money', 'customer'], description: 'Only for a money-moving or customer-facing matter Nick must see today; omit otherwise.' },
-        needs_nick_today: { type: 'boolean', description: 'Required as true with urgent_for_nick; omit otherwise.' },
-        reason: { type: 'string', description: 'With urgent_for_nick: why Nick must act today (up to 500 characters).' },
-        evidence: { type: 'array', items: { type: 'string' }, description: 'With urgent_for_nick: ids or references that show it (order, ticket, refund ids).' },
-        needed_on: { type: 'string', description: 'With urgent_for_nick: the ET date it is needed, YYYY-MM-DD.' },
       },
       required: ['text', 'idempotency_key'],
     },
   },
   {
     name: 'read_james_notification',
-    description: 'Read back a notify_james send from this chat by its idempotency_key: push_id, status (sending, sent, deferred_digest, emailed, email_unknown or failed), attempts, emailed_to and last_error. Never sends.',
+    description: 'Read back a notify_james send from this chat by its idempotency_key: push_id, status (sending, sent, deferred_digest, emailed or failed), attempts, emailed_to and last_error. Never sends.',
     inputSchema: {
       type: 'object',
       properties: { idempotency_key: { type: 'string' } },
@@ -1281,7 +1277,7 @@ async function callTool(
     if (name === 'notify_james') {
       const result = await callApi('/api/james-notify', {
         method: 'POST',
-        body: JSON.stringify({ text: args.text, ...(args.authority_turn === undefined ? {} : { authority_turn: Number(args.authority_turn) }), idempotency_key: args.idempotency_key, ...Object.fromEntries(['urgent_for_nick', 'needs_nick_today', 'reason', 'evidence', 'needed_on'].filter((k) => args[k] !== undefined).map((k) => [k, args[k]])) }),
+        body: JSON.stringify({ text: args.text, ...(args.authority_turn === undefined ? {} : { authority_turn: Number(args.authority_turn) }), idempotency_key: args.idempotency_key, ...(args.urgent_for_nick === undefined ? {} : { urgent_for_nick: args.urgent_for_nick }) }),
       });
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }

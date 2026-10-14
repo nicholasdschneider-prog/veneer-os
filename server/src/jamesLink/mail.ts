@@ -5,7 +5,7 @@ import { effectiveApiKey } from '../secrets/apiKeys.js';
 
 /**
  * The James link's only mail path: the owner's existing Gmail connector
- * (Composio session), used to send the daily digest (and an urgent notify_james) and to read CLOSE/ARCHIVE
+ * (Composio session), used to send failover alerts and to read CLOSE/ARCHIVE
  * email commands. Which connector is a james_link_state setting
  * ('gmail_connector_id'); the default is the owner's unlabeled Gmail.
  */
@@ -16,9 +16,6 @@ export interface MailMessage {
   subject: string;
   text: string;
 }
-/** The message certainly did not leave: setup failed, or Gmail answered with an explicit error. Any other throw is unclear. */
-export class MailNotSentError extends Error {}
-
 export interface Mailer {
   send(to: string, subject: string, body: string): Promise<{ messageId: string | null }>;
   /** Recent inbox messages matching a Gmail query. */
@@ -57,14 +54,10 @@ function htmlToText(value: string): string {
 
 export function createConnectorMailer(ctx: AppContext, preferredId: () => number | null): Mailer {
   const session = async () => {
-    try {
-      const apiKey = effectiveApiKey('composio', ctx.secrets, ctx.config, ctx.doppler).value;
-      if (!apiKey) throw new Error('Composio is not configured.');
-      const { config } = connectorRow(ctx, preferredId());
-      return await new Composio({ apiKey, allowTracking: false }).sessions.use(config.sessionId);
-    } catch (err) {
-      throw new MailNotSentError((err as Error).message);
-    }
+    const apiKey = effectiveApiKey('composio', ctx.secrets, ctx.config, ctx.doppler).value;
+    if (!apiKey) throw new Error('Composio is not configured.');
+    const { config } = connectorRow(ctx, preferredId());
+    return new Composio({ apiKey, allowTracking: false }).sessions.use(config.sessionId);
   };
   return {
     async send(to, subject, body) {
@@ -74,7 +67,7 @@ export function createConnectorMailer(ctx: AppContext, preferredId: () => number
         body,
         is_html: false,
       });
-      if (result.error) throw new MailNotSentError(typeof result.error === 'string' ? result.error : 'Gmail send failed.');
+      if (result.error) throw new Error(typeof result.error === 'string' ? result.error : 'Gmail send failed.');
       const data = (result.data ?? {}) as Record<string, unknown>;
       const id = typeof data.id === 'string' ? data.id : typeof data.messageId === 'string' ? data.messageId : null;
       return { messageId: id };
