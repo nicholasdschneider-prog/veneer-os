@@ -595,28 +595,19 @@ No helper integration or production activation is claimed.
 See [BUILD812 correction contract](./reports/qbo-boundary/build812/contract.md).
 
 
-## Approved Gmail existing-draft binding — October 14, 2026 (staged)
+## Approved messages simplified — October 14, 2026 (build #840)
 
-The original decision owner must also be the named executor. Use
-inspect_approved_gmail_draft with the exact decision/version, draft/version,
-thread ID, Gmail reply message ID and RFC reply ID. A server-owned reader must
-authenticate that caller's actual account and source thread; it is not installed
-by this release. Missing reader/custody is a Platform and original connector
-custodian prerequisite, not a request for another business approval.
-
-After authenticated inspection, review the entire context difference with exact
-contiguous citations and both context hashes. bind_approved_gmail_draft supports
-only operational provenance without changed authority. Conflict or ambiguity stops.
-The approved context must be empty; all other payload fields remain exactly equal.
-The audit retains both payload hashes; it never labels different contexts equal.
-The existing draft payload and version are preserved. No replacement draft,
-approval rewrite, UUID alias or direct-vendor authority fallback is allowed.
-
-Binding returns execute:false. Later original-owner RUNNING, fresh source checks,
-claim and receipt rules still apply. One permanent decision/draft action prevents
-alternate drafts or new keys from escaping a sent/UNKNOWN outcome. No live send
-or operational acceptance was performed. Restricted employees may read the guide;
-the action belongs only to the authenticated original registered bot.
+Nick: "Simplify." The `approved-message-delegation` entry now teaches one rule: a
+human-approved message is sendable when its send fields (channel, account,
+recipients, subject, body, attachments) match the approval; `context`, `customer`
+and `ticket` labels may differ. `canonical_case` may be any string, including a
+Gmail thread ID, with no source resolver. The decision's own bot, when named as
+executor, claims its existing linked draft directly (`claim_message_draft`); no new
+draft or second approval. One send per decision, the idempotency key and
+never-resend-uncertain remain. Build #826's staged Gmail binding
+(`inspect_approved_gmail_draft`, `bind_approved_gmail_draft`, reader interface,
+`approved-gmail-existing-draft` entry) was removed. Migration 0181 is kept
+unchanged because the approved BUILD823 web window applies it; its table is unused.
 
 ## Hidden duplicate iframes — October 14, 2026 (build #830)
 

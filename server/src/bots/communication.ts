@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { csDraftState } from './csDraftState.js';
 import { approvedMessageSchema } from './draftPayload.js';
 import { routineExecutionService } from './routineExecution.js';
-import { messageDelegationService, type CaseMappingCheck } from './messageDelegation.js';
+import { messageDelegationService } from './messageDelegation.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { BotError, createBotService, type Actor } from './service.js';
@@ -36,9 +36,9 @@ export type Briefing = {
   transcript: string;
   request_key: string;
 };
-export function communicationService(db: Database.Database, mappingCheck?: CaseMappingCheck) {
+export function communicationService(db: Database.Database) {
   const bots = createBotService(db);
-  const delegated = messageDelegationService(db,mappingCheck);
+  const delegated = messageDelegationService(db);
   const standing = csStandingPolicy(db);
   function access(a: Actor, c: string, write = false) {
     const chat = bots.chat(a, c);
@@ -323,14 +323,13 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
     claim(a: Actor, id: string, key: string, sendCheck?: unknown) {
       return db
         .transaction(() => {
+          const original = readDraft(a, id);
+          if (a.conversationId === original.conversation_id && !standing.authorization(id)) delegated.approveExisting(a, original);
           const d = readDraft(a, id);
           access(a, d.conversation_id, true);
           guardVendorEmailDraft(db,d.conversation_id,JSON.parse(d.payload_json));
           if(JSON.parse(d.payload_json).channel==='sms' && db.prepare("SELECT 1 FROM bot_composed_sms_authorities WHERE draft_id=? OR (executor_id=? AND json_extract(snapshot_json,'$.binding.payload_hash')=?) LIMIT 1").get(d.id,d.conversation_id,canonicalSha256(JSON.parse(d.payload_json))))throw new BotError(409,'This SMS has a separate derived authority; reconcile its exact action, never use an ordinary claim');
           if (routineExecutionService(db).authorization(d.id)) throw new BotError(409, 'Use claim_routine_message with a fresh trusted source proof; ordinary send checks cannot authorize a routine draft');
-          const {context:ignoredGmailContext,...gmailMaterial}=JSON.parse(d.payload_json);
-          const gmailBinding=db.prepare('SELECT b.draft_id FROM approved_gmail_draft_bindings b JOIN bot_message_drafts original ON original.id=b.draft_id WHERE b.decision_id=? OR (b.send_material_hash=? AND original.conversation_id=?)').get(d.decision_id,canonicalSha256(gmailMaterial),d.conversation_id) as {draft_id:string}|undefined;
-          if(gmailBinding&&gmailBinding.draft_id!==d.id)throw new BotError(409,'Decision Gmail action is permanently bound to its original draft');
           const bridge = d.delegation_id ? delegated.bound(a, d, true) : null;
           if (!bridge) binding(a, d.conversation_id, d.decision_id, d.decision_version);
           if (a.conversationId !== d.conversation_id)
@@ -359,7 +358,7 @@ export function communicationService(db: Database.Database, mappingCheck?: CaseM
             );
           if (bridge) {
             delegated.checkSend(a, d, sendCheck);
-            delegated.record(a, bridge.g, 'claimed', key, {draft_id:id, send_check:sendCheck,...(bridge.mapping?{case_mapping:bridge.mapping}:{})});
+            delegated.record(a, bridge.g, 'claimed', key, {draft_id:id, send_check:sendCheck});
           }
           db.prepare(
             "UPDATE bot_message_drafts SET state='sending',claim_key=?,updated_at=datetime('now') WHERE id=?",

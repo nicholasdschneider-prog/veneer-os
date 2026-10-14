@@ -97,7 +97,7 @@ describe('exact approved message delegation',()=>{
    expect(db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(id)).toEqual(original);
    expect(db.prepare('SELECT * FROM bot_decision_events WHERE decision_id=? ORDER BY rowid').all(id)).toEqual(events);
    expect(db.prepare('SELECT * FROM bot_message_drafts WHERE id=?').get(unbound.id)).toEqual(unboundBefore);
-   expect(()=>s.claim(owner,unbound.id,'claim')).toThrow('authorization');
+   expect(()=>s.claim(owner,unbound.id,'claim')).toThrow('never send twice');
    expect(()=>s.claim(owner,d.id,'claim',checks(g.payload_hash))).toThrow('RUNNING');running(id);
    expect(s.claim(owner,d.id,'claim',checks(g.payload_hash)).execute).toBe(true);
    expect(s.claim(owner,d.id,'claim').execute).toBe(false);
@@ -134,12 +134,40 @@ describe('exact approved message delegation',()=>{
    expect(()=>s.claim(owner,d.id,'claim',checks(g.payload_hash))).toThrow();
    expect(()=>s.receipt(owner,d.id,'claim','sent','fake',proof(d.id,g.payload_hash))).toThrow();
   });
-  it('retains the canonical-case equality requirement for the same owner',()=>{
-   const p=scope();p.payload.ticket='different';
-   const d=bots.raise(owner,{source_key:'mismatch',proposal_key:'v1',proposal:proposalSchema.parse({question:'Fixture?',recommendation:'One message',consequence:'No finance',blocked_action:'Fixture email only',assignee_id:2,message_delivery:p})});
+  function gmailApproval(){
+   const p=scope();p.canonical_case='1a137074c3784567';p.payload.ticket='100122604 / original 100121511 / PEMVKF';p.payload.context='';
+   const d=bots.raise(owner,{source_key:'gmail',proposal_key:'v1',proposal:proposalSchema.parse({question:'Send this vendor reply?',recommendation:'One message',consequence:'No finance',blocked_action:'Fixture email only',assignee_id:2,message_delivery:p})});
    bots.answer(human,d.id,1,'approve',{action:'approve',text:'Fixture approve',scope:'this_case'});
-   expect(bridge.inspect(owner,d.id,1)).toMatchObject({ready:false});
-   expect(()=>bridge.delegate(owner,d.id,1,'grant','bad',p)).toThrow('canonical_case');
+   return {id:d.id,p};
+  }
+  it('accepts a Gmail thread ID as the case without any source resolver',()=>{
+   const {id,p}=gmailApproval();
+   expect(bridge.inspect(owner,id,1)).toMatchObject({ready:true,scope:{canonical_case:'1a137074c3784567'}});
+   const g=bridge.delegate(owner,id,1,'grant','gmail',p);expect(bridge.accept(owner,g.id,'gmail',p).authorized_by).toBe(2);
+  });
+  it('sends the existing approved draft directly when only context and customer notes differ',()=>{
+   const {id,p}=gmailApproval();
+   const draft=s.saveDraft(owner,'grant','existing',{...p.payload,context:'Internal provenance note',customer:'Vendor label'},id,1);
+   const claimed=s.claim(owner,draft.id,'claim');
+   expect(claimed).toMatchObject({execute:true,idempotency_key:`veneer-message:${draft.id}`});
+   expect(s.readDraft(owner,draft.id)).toMatchObject({authorized_by:2,state:'sending'});
+   expect(s.claim(owner,draft.id,'claim').execute).toBe(false);
+   expect(()=>s.claim(owner,draft.id,'other')).toThrow('do not resend');
+   const second=s.saveDraft(owner,'grant','second',p.payload,id,1);
+   expect(()=>s.claim(owner,second.id,'claim')).toThrow('never send twice');
+   expect(db.prepare('SELECT count(*) n FROM bot_message_drafts').get()).toEqual({n:2});
+   expect(db.prepare('SELECT count(*) n FROM bot_message_delegations').get()).toEqual({n:0});
+  });
+  it.each([['recipients',['other@example.test']],['body','Different body.'],['account','other-account']] as const)('blocks an existing draft whose %s differs from the approval',(field,value)=>{
+   const {id,p}=gmailApproval();
+   const draft=s.saveDraft(owner,'grant','existing',{...p.payload,[field]:value},id,1);
+   expect(()=>s.claim(owner,draft.id,'claim')).toThrow('differ');
+   expect(s.readDraft(owner,draft.id)).toMatchObject({authorized_by:null,state:'draft'});
+  });
+  it('does not let another bot send the owner\'s approved message directly',()=>{
+   namedExecutor='nora';const {id,p}=gmailApproval();
+   const draft=s.saveDraft(owner,'grant','existing',p.payload,id,1);
+   expect(()=>s.claim(owner,draft.id,'claim')).toThrow('named as executor');
   });
  });
  describe('receipt-only reconciliation after decision completion',()=>{
