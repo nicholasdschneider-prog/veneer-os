@@ -6,8 +6,8 @@ q() { sqlite3 -readonly -json "$D" "$1" 2>&1; }
 pin() { local out; out=$(q "$2"); echo "## $1 sha256=$(print -r -- "$out" | shasum -a 256 | cut -c1-64)"; print -r -- "$out"; }
 echo "# postcheck $(date -u +%FT%TZ) db=$D"
 pin migrations-0176+ "select name, content_hash from migrations where name >= '0176' order by name"
-pin new-schema-objects "select type, name, tbl_name from sqlite_master where tbl_name in ('purchase_interrupted_reviews','purchase_interrupted_dispositions','qbo_v2_invocations','qbo_v2_phases','qbo_bill_observations') order by tbl_name, type, name"
-for t in purchase_interrupted_reviews purchase_interrupted_dispositions qbo_v2_invocations qbo_v2_phases qbo_bill_observations; do pin "count:$t" "select count(*) n from $t"; done
+pin new-schema-objects "select type, name, tbl_name from sqlite_master where tbl_name in ('purchase_interrupted_reviews','purchase_interrupted_dispositions') order by tbl_name, type, name"
+for t in purchase_interrupted_reviews purchase_interrupted_dispositions; do pin "count:$t" "select count(*) n from $t"; done
 pin run:7056b7cc "select * from scheduled_task_runs where id='7056b7cc-80d7-4504-b630-b11226b86eb3'"
 pin task:9c72a42a "select * from scheduled_tasks where id='9c72a42a-40df-4477-9ba6-07f74ac08bf3'"
 pin batch:551a9f86 "select * from purchase_event_batches where id='551a9f86-fbde-412d-80e2-ae3230a61390'"

@@ -1,4 +1,3 @@
-import { qboRoutes } from '../qbo/routes.js';
 import { requestOutboundCall } from './outboundCalls.js';
 import { proposalDiagnostics } from './proposalDiagnostics.js';
 import { mergeAuthorizationRoutes, mergeIO } from './mergeAuthorizationRoutes.js';
@@ -38,7 +37,6 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   router.use(createDecisionHandoffRouter(ctx));
   router.use(mergeAuthorizationRoutes(ctx, deps.mergeIO));
   const merges = mergeAuthorization(ctx.db, deps.mergeIO ?? mergeIO(ctx));
-  router.use(qboRoutes(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
     (

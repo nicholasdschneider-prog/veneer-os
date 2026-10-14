@@ -532,21 +532,16 @@ The full and restricted employee guide, mobile layout, search and fresh/resumed 
 instructions are verified. See [implementation and validation](./reports/spare-allowance/report.md).
 
 
-## QBO caller/job boundary — October 13, 2026 (staged)
+## QBO caller boundary retired — October 14, 2026
 
-The `qbo-caller-boundary` catalog entry reaches employees and resumed agents.
-Native `/api/bots/qbo/{inspect,admit,read,reconcile}` verifies the existing per-turn
-agent session and permanently fences exact logical operations. It creates no
-accounting grant. The production resolver deliberately refuses admission because
-an authoritative assignment/standing-policy binding and canonical-helper invocation
-adapter have not been established. Conversation/Todo/policy files are evidence,
-not atomic ownership or permission. No new service, OAuth, grant or enrollment.
-
-Boris owns helper integration; Clara owns accounting acceptance. Only the original
-executor may use the eventual accepted path. Keep existing qbo.lock and the single
-refresh grant, with verification before any credential access/refresh. UNKNOWN
-means same-key receipt-only reconciliation, not another attempt. No maintenance
-window is granted by implementation. [Contract](./reports/qbo-boundary/build785/contract.md).
+The native BUILD785/792/804/812 caller, phase, helper identity and receipt layers
+are removed. Anna and Clara use the same existing canonical QBO helper, existing
+grant and shared qbo.lock. No added bot attribution, enrollment, replacement
+helper or native admission/postcheck is needed. Existing accounting instructions
+and the helper's refresh/token-write serialization remain unchanged.
+Historical migrations and audit evidence are retained, not active capabilities.
+The catalog explains this retirement to employees and resumed agents without
+advertising a new native tool.
 
 ## Native drop-downs in embedded app frames — October 13, 2026 (build #787)
 
@@ -590,29 +585,6 @@ Deployment requires an explicit maintenance window with active turns drained; no
 ERVP grant is treated as authority to restart. Source census and portal clearance remain
 unsatisfied at the latest original-custodian readback. See the
 [implementation, evidence and validation](./reports/purchase-interrupted/build801/report.md).
-
-## QBO phase evidence and helper transport — October 13, 2026 (staged)
-
-BUILD804 adds versioned phase evidence and native private-process transport behind the
-existing unavailable production facts adapter. Original executors retain the same
-job/accounting authority; no new approval or grant is implied. A separately authorized
-Bill read can produce an immutable short-lived observation, not write authority.
-Uncertain refresh/persistence fences the shared grant; historical receipt reconciliation
-never permits a refresh or dispatch. Old v1 evidence remains historical without phases.
-Canonical helper adaptation, runtime custody, authoritative facts and Clara acceptance
-are still missing. Do not invoke source helpers or infer readiness from this staged guide.
-See [exact v2 contract](./reports/qbo-boundary/build804/contract.md).
-
-
-BUILD812 narrows the staged implementation: accepted helper UID must equal the actual
-effective execution UID both before reservation and immediately before launch.
-Phase timestamps use one monotonic sample. Clock failure leaves an open grant/effect
-fence without inventing a receipt; exact replay never renews entitlement.
-Bill capture must follow the same invocation/request's immutable dispatch-start phase,
-including receipt-only reconciliation. This does not resolve the 30-second SIGKILL
-persistence risk, frozen runtime/dependency custody or independent parent verification.
-No helper integration or production activation is claimed.
-See [BUILD812 correction contract](./reports/qbo-boundary/build812/contract.md).
 
 
 ## Approved messages simplified — October 14, 2026 (build #840)

@@ -11,10 +11,10 @@ function expectDelivery(text: string, feature: BotFeature) {
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 describe('living bot guide release contract', () => {
-  it('keeps staged QBO limits accessible without announcing live admission to resumed bots', () => {
-    const f=botFeatureCatalog(Date.parse('2026-10-13')).features.find(f=>f.id==='qbo-caller-boundary')!;
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('No production assignment/permission resolver');
-    expect(f.agent).toContain('QBO_ASSIGNMENT_AND_ACCOUNTING_BINDING_UNAVAILABLE');
+  it('describes retired QBO layers without requiring native admission', () => {
+    const f=botFeatureCatalog(Date.parse('2026-10-14')).features.find(f=>f.id==='qbo-caller-boundary')!;
+    expect(f.isNew).toBe(true);expect(f.limits).toContain('No new grant');
+    expect(f.agent).toContain('retired');expect(f.agent).toContain('same existing canonical helper, grant and qbo.lock');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true]) expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}),f);
   });

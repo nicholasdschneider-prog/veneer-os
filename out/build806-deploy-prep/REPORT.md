@@ -1,3 +1,5 @@
+> BUILD846 retirement (2026-10-14): all QBO native admission/read/phase/helper acceptance and postcheck items below are historical and no longer required. The QBO routes were removed; do not run the old native QBO probe. Existing canonical helper/grant/qbo.lock remain unchanged. Other deployment history and checks below are preserved.
+
 # BUILD806 combined deployment preparation (2026-10-13)
 
 Owner: Platform Dev a6e39d6e (original BUILD806 owner). Prepared 21:26–21:45Z (17:26–17:45 ET).

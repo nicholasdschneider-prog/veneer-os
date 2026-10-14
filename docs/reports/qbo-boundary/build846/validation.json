@@ -1,0 +1,32 @@
+{
+  "baseCommit": "3cd9067",
+  "sequential": true,
+  "singleWorker": true,
+  "checks": {
+    "focused": {
+      "sha256": "62b33dfd81b32b0b3225e8846a6a5af48a468451c2a5d9ba43a365a93dec85a1",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "sha256": "4ca67bebf7daea32b1a0373ed9306da25cb312be7f5817dac5cc87417d2a8420",
+      "exitCode": 0
+    },
+    "full": {
+      "sha256": "e8c1583f8f1eae343a7507c893cd69d544af4a740b90f4af1f7b05327237464c",
+      "exitCode": 0
+    },
+    "build": {
+      "exitCode": 0,
+      "sha256": "1c848cf27f2e4a38432025ce0d05fdc59c8afcdbe54ffa3132cacabbfbc14987"
+    }
+  },
+  "tests": {
+    "focused": 32,
+    "installer": 93,
+    "serverPassed": 3253,
+    "serverSkipped": 17,
+    "web": 1013,
+    "browserManager": 55
+  },
+  "productionQboCheck": "not_run"
+}
