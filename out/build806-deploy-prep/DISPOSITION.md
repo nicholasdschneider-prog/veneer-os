@@ -7,8 +7,9 @@ Status 2026-10-14. **No option below is deployment-ready.** No window is request
 - On the evening of 10-13, web crashed on a network-library bug (88 times since 09-29) and launchd
   restarted it automatically.
 - The restart loaded a newer build than the one approved for deployment, because building
-  overwrites the files a restart loads. That build also added two database tables (empty, verified
-  unchanged since).
+  overwrites the files a restart loads. That build also added five database tables: two for purchasing recovery
+  (migration 0178) and three for QBO (migration 0179). All are empty, verified
+  unchanged since.
 - Web now runs the 10-13 build (`155b497`, pid 98183) and the runner still runs older code
   (pid 34641). Nobody approved this mix.
 - The exact code the services ran before is gone and cannot be rebuilt with certainty, so there is

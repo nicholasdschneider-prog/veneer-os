@@ -636,3 +636,27 @@ Prompted by a coordination observation that `read_conversation` for the BUILD806
   - After that window, readback adds `GET /healthz/runner-rpc` = 200 (section 17). It does not replace gates 2 and 4.
 - **Not re-verified here.** The run/batch/worker-start/exclusion pins and FK 0 rest on section 16.2 and the live pin taken after the respawn. This section did not re-run `postcheck.sh`.
 - **No restart, rollback, restore, recovery or UNKNOWN clearing was done. No window or approval is implied. Sage custody is unchanged.**
+
+## 22. Review findings on 9b6424e/130ab32, 2026-10-14 (read-only; owner a6e39d6e)
+
+1. **DISPOSITION.md table count corrected.** It said the partial deployment "added two database tables". Migrations 0178 and 0179 add **five**: `purchase_interrupted_reviews` and `purchase_interrupted_dispositions` (0178), plus `qbo_v2_invocations`, `qbo_v2_phases` and `qbo_bill_observations` (0179). Fixed in this commit.
+2. **The first-activation command has no active-turn guard. Confirmed.**
+   - `installer/install-darwin.mjs` checks only for the `--maintenance-approved` flag (lines 67–69).
+   - It snapshots and activates every pointer (356–360), then bootstraps a helper that reloads **every** launchd job (447–535): web, runner, app-runner, term, web-watchdog, chrome, browser-manager, cloudflared, backup, supermemory and boot-probe.
+   - It never calls `assertRunnerRestartSafe`. It therefore does not inherit `restart.mjs`'s whole-plan and per-service refusal while turns are pending.
+   - The all-job reload also disrupts occupied browsers/Chrome and the tunnel.
+   - The guidance to "drain first" in section 20 is withdrawn as evidence of safe activation.
+   - **Repair queued as #817** (owner a6e39d6e):
+     - whole-plan refusal before any snapshot or pointer change, and a re-check right before the reload, with pointer restoration if that late check refuses;
+     - refusal while any browser is occupied;
+     - a bounded reload limited to the release services, plus an exact dry-run listing;
+     - #817 will also return the concrete guarded first-activation plan.
+   - No source was edited outside that slot.
+3. **The checkout-mode restart alternative** (`restart.mjs` without activating a release) still carries the unapproved-respawn hazard: any later `npm run build` goes live at the next crash. It needs its own exact, bounded approval. #817 updates DISPOSITION.md to say so.
+
+**Status.**
+- Gate 1: UNMET.
+- Gate 4: transport and runtime lookup unverified.
+- No window, hold acceptance or deployment approval is inferred.
+- Nick will not be asked until #817's plan is reviewable.
+- Readiness stays withdrawn.
