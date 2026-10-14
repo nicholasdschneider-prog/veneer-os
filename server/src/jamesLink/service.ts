@@ -1,13 +1,18 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import type Database from 'better-sqlite3';
 import type { ConversationEvent } from '../runtime/events.js';
-import type { Mailer } from './mail.js';
+import { MailNotSentError, type Mailer } from './mail.js';
 import { createJamesConversation, UnknownProjectError } from './create.js';
 import { pruneIdempotency } from './idempotency.js';
 import {
   JAMES_MARKER, ensureThread, excerpt, getState, getThread, iso, isJamesThread, listThreads, resolveThreadId, setState, setStatus,
   stampMessage, StaleTurnError, type ThreadRow,
 } from './registry.js';
+import {
+  CONTRACT_CHECK_SOURCE, ensureSpoolDirs, importSpool, maybeActivate, readActive, spoolSelfCheck, writeNativeReady, writeReceipt,
+} from './spool.js';
 
 /**
  * Push side of the James link. Thread events become push reasons; only
@@ -16,9 +21,15 @@ import {
  * batched to at most one webhook POST per thread per 15 minutes. Everything
  * else (quiet threads, progress replies in followed threads, email status
  * changes) is recorded as suppressed and summarized in the 8:30 AM ET daily
- * digest. A push whose two POSTs fail is held for that day's single digest
- * email, except a test push or a notify_james flagged urgent_for_nick, which
- * is emailed at once.
+ * digest. A push whose two POSTs fail is held for the daily digest email;
+ * the only email outside it is a notify_james whose caller states an urgent
+ * money or customer matter Nick needs today.
+ *
+ * Daily email: once the ERVP cutover has written $DATA_DIR/james-digest/ACTIVE
+ * (contract out/build823/digest-contract.md), one digest goes every ET date at
+ * or after 8:30, even when empty, with the James heartbeat, held pushes, the
+ * imported ERVP items and the webhook state. Before cutover, an email goes only
+ * on a day when something was held back.
  */
 
 export const PUSH_GAP_MS = 15 * 60_000;
@@ -28,9 +39,12 @@ export const QUIET_NIGHT_MS = 12 * 3_600_000;
 export const AUTO_ARCHIVE_MS = 7 * 24 * 3_600_000;
 /** Quiet pushes only for threads active in the last week, so old threads never storm. */
 const QUIET_HORIZON_MS = 7 * 24 * 3_600_000;
-const WEBHOOK_ESCALATE_MS = 2 * 3_600_000;
+/** The digest goes to the first address; the second only after the first certainly failed. */
 export const ALERT_EMAILS = ['nicks@mail.grokbot.com', 'nick@elkhartrvparts.com'] as const;
-export const NICK_EMAIL = 'nick@elkhartrvparts.com';
+/** About how much item text a digest carries in full; past it, items are listed by subject, source and key. */
+export const DIGEST_BODY_BUDGET = 60_000;
+/** A digest still 'sending' this long after its claim (the process died mid-send) is unknown, never re-sent. */
+const DIGEST_STUCK_MS = 15 * 60_000;
 /** notify_james matters that may bypass the daily digest when the webhook fails. */
 export const URGENT_FOR_NICK = ['money', 'customer'] as const;
 export type UrgentForNick = (typeof URGENT_FOR_NICK)[number];
@@ -41,6 +55,17 @@ const DIGEST_EXCERPT_MAX = 600;
 const DIGEST_MAX_PUSHES = 150;
 export const EMAIL_COMMAND_SENDERS = ['nicks@mail.grokbot.com', 'nick@elkhartrvparts.com'];
 const MAX_LIST = 50;
+
+/** The caller's explicit statement that a notify_james is an urgent matter Nick needs today. */
+export interface UrgentNotice {
+  kind: UrgentForNick;
+  needsNickToday: true;
+  reason: string;
+  evidence: string | string[];
+  neededOn: string;
+}
+
+type SendOutcome = { outcome: 'sent'; messageId: string } | { outcome: 'failed'; error: string } | { outcome: 'unknown'; error: string };
 
 export interface JamesLinkDeps {
   db: Database.Database;
@@ -55,6 +80,10 @@ export interface JamesLinkDeps {
   statusOf(conversationId: string): Promise<string>;
   sleep?(ms: number): Promise<void>;
   log?(message: string): void;
+  /** $DATA_DIR/james-digest; null disables the ERVP spool and the cutover digest. */
+  spoolDir?: string | null;
+  /** Source commit recorded in NATIVE_READY. */
+  commit?: string | null;
 }
 
 export type PushReason = 'reply' | 'question_unanswered' | 'quiet' | 'heartbeat' | 'status_changed' | 'test' | 'notify';
@@ -95,6 +124,7 @@ export class JamesLink {
   private flushing: Promise<void> | null = null;
   private lastText = new Map<string, { turnId: string; markdown: string }>();
   private ticks = 0;
+  private spoolReady = false;
 
   constructor(private readonly deps: JamesLinkDeps) {}
 
@@ -291,8 +321,40 @@ export class JamesLink {
     await this.autoArchive(now);
     if (this.ticks % 60 === 1) pruneIdempotency(this.db, now);
     if (this.ticks % 2 === 1) await this.pollEmailCommands().catch((err: Error) => this.log(`email poll failed: ${err.message}`));
+    this.runSpool(now);
     await this.flush();
-    await this.maybeSendDigestEmail(now);
+    if (this.spoolDir && readActive(this.spoolDir)) await this.maybeSendActiveDigest(now);
+    else await this.maybeSendDigestEmail(now);
+  }
+
+  private get spoolDir() { return this.deps.spoolDir ?? null; }
+
+  /**
+   * ERVP spool: the self-check and NATIVE_READY once per process, then the
+   * importer every tick, then the cutover gate. Failures are logged and retried
+   * next tick; nothing here sends anything.
+   */
+  runSpool(now: number) {
+    const dir = this.spoolDir;
+    if (!dir) return;
+    const nowIso = iso(now);
+    try {
+      if (!this.spoolReady) {
+        ensureSpoolDirs(dir);
+        const check = spoolSelfCheck(this.db, nowIso);
+        if (!check.ok) { this.log(`digest spool self-check failed: ${check.error}`); return; }
+        writeNativeReady(dir, this.deps.commit ?? null, nowIso);
+        this.spoolReady = true;
+      }
+      const counts = importSpool(this.db, dir, nowIso);
+      if (counts.ingested || counts.rejected) this.log(`digest spool: ingested ${counts.ingested}, rejected ${counts.rejected}, duplicate ${counts.duplicate}`);
+      const et = etClock(now);
+      const firstDate = et.hour * 60 + et.minute < 8 * 60 + 30 ? et.date : etClock(now + 24 * 3_600_000).date;
+      const gate = maybeActivate(dir, this.spoolReady, firstDate, nowIso);
+      if (gate.activated) this.log(`digest cutover: ACTIVE written, first digest ${firstDate}`);
+    } catch (err) {
+      this.log(`digest spool failed: ${(err as Error).message}`);
+    }
   }
 
   /** Chats created since the last tick get a row even before their first event. */
@@ -381,11 +443,7 @@ export class JamesLink {
           // James made this change himself; it is recorded, not POSTed back to him.
           if (changed.ok) this.enqueue(id, 'status_changed', changed.thread.turn, { status: changed.thread.status, via: 'email', email_message_id: msg.messageId }, { suppressed: true });
         }
-        await this.deps.mailer.send(
-          sender,
-          `[VENEER thread ${id ?? 'unknown'}] ${parsed.command} ${result === 'closed' || result === 'archived' ? 'done' : 'not applied'}`,
-          `Your email command ${parsed.command} was ${result === 'closed' || result === 'archived' ? 'applied' : `not applied (${result})`}${id ? ` to thread ${id}` : ''}.`,
-        ).catch((err: Error) => this.log(`email command confirmation failed: ${err.message}`));
+        // No confirmation email: native sends nothing outside the digest. The result is in james_email_commands and the thread status.
       }
       this.db.prepare('INSERT OR IGNORE INTO james_email_commands (message_id, conversation_id, command, sender, result) VALUES (?, ?, ?, ?, ?)')
         .run(msg.messageId, id, parsed?.command ?? null, sender, result);
@@ -411,11 +469,11 @@ export class JamesLink {
    * chat), once, because that chat's own human said to. The cited turn must be
    * a recent human message in this same chat that names James. Delivery is
    * immediate through the webhook; if it fails the push waits for the daily
-   * digest email, unless the caller marked it urgent_for_nick (money or
-   * customer), which is emailed at once. James is not made a follower. A
-   * repeated key returns the first result.
+   * digest email, unless the caller stated an urgent money or customer matter
+   * Nick needs today (kind, reason, evidence, needed_on), which is emailed at
+   * once. James is not made a follower. A repeated key returns the first result.
    */
-  async notifyJames(input: { conversationId: string; text: string; authorityTurn?: number; idempotencyKey: string; urgentForNick?: UrgentForNick }): Promise<NotifyResult> {
+  async notifyJames(input: { conversationId: string; text: string; authorityTurn?: number; idempotencyKey: string; urgent?: UrgentNotice }): Promise<NotifyResult> {
     const { conversationId, idempotencyKey: key } = input;
     const text = input.text.trim();
     const textHash = crypto.createHash('sha256').update(text).digest('hex');
@@ -466,7 +524,10 @@ export class JamesLink {
     const event = { reason: 'notify' as const, turn: stamped.turn, created_at: now,
       detail_json: JSON.stringify({
         author: 'veneer', excerpt: excerpt(text), authority_turn: authorityTurn, idempotency_key: key,
-        ...(input.urgentForNick ? { urgent_for_nick: input.urgentForNick } : {}),
+        ...(input.urgent ? {
+          urgent_for_nick: input.urgent.kind, needs_nick_today: true, urgent_reason: input.urgent.reason,
+          urgent_evidence: input.urgent.evidence, needed_on: input.urgent.neededOn,
+        } : {}),
       }) };
     const payload = this.threadPayload(conversationId, [event])!;
     const pushId = Number(this.db.prepare(
@@ -479,7 +540,7 @@ export class JamesLink {
         .run(conversationId, 'notify', stamped.turn, event.detail_json, pushId, now);
       this.db.prepare('UPDATE james_notifications SET ledger_turn = ?, push_id = ? WHERE idempotency_key = ?').run(stamped.turn, pushId, key);
     })();
-    await this.deliver(pushId, payload, { immediateEmail: !!input.urgentForNick });
+    await this.deliver(pushId, payload, { immediateEmail: !!input.urgent });
     const result = this.notification(conversationId, key);
     return result.ok ? { ...result, replay: false } : result;
   }
@@ -525,11 +586,8 @@ export class JamesLink {
       this.db.prepare('UPDATE james_pushes SET payload_json = ? WHERE id = ?').run(JSON.stringify(payload), pushId);
       this.db.prepare(`UPDATE james_push_events SET push_id = ? WHERE id IN (${events.map(() => '?').join(',')})`).run(pushId, ...events.map((e) => e.id));
       if (id === null) setState(this.db, 'digest_since', String(payload.sent_at));
-      const test = events.some((e) => e.reason === 'test');
       await this.deliver(pushId, payload, {
         simulateFailure: options.simulateWebhookFailure || events.some((e) => e.reason === 'test' && JSON.parse(e.detail_json).simulate_webhook_failure === true),
-        // James's own test push exercises the email fallback at once.
-        immediateEmail: test,
       });
     }
   }
@@ -612,7 +670,7 @@ export class JamesLink {
     return (this.db.prepare(
       `SELECT p.id, p.conversation_id, COALESCE(c.title, '(untitled)') AS title, p.kind, p.status, p.payload_json, p.last_error, p.created_at
          FROM james_pushes p LEFT JOIN conversations c ON c.id = p.conversation_id
-        WHERE p.status = 'deferred_digest' ORDER BY p.id`,
+        WHERE p.status = 'deferred_digest' AND p.digest_date IS NULL ORDER BY p.id`,
     ).all() as { id: number; conversation_id: string | null; title: string; kind: string; status: string; payload_json: string; last_error: string | null; created_at: string }[])
       .map((p) => {
         const payload = JSON.parse(p.payload_json) as Record<string, unknown>;
@@ -675,43 +733,51 @@ export class JamesLink {
     if (!opts.immediateEmail) {
       this.db.prepare("UPDATE james_pushes SET status = 'deferred_digest', last_error = ?, finished_at = ? WHERE id = ?")
         .run(lastError, iso(this.deps.now()), pushId);
-      await this.maybeEscalate(lastError);
       return;
     }
     const { subject, text } = this.alertEmail(payload, lastError);
-    for (const to of ALERT_EMAILS) {
-      try {
-        await this.deps.mailer.send(to, subject, text);
-        this.db.prepare("UPDATE james_pushes SET status = 'emailed', last_error = ?, emailed_to = ?, finished_at = ? WHERE id = ?")
-          .run(lastError, to, iso(this.deps.now()), pushId);
-        await this.maybeEscalate(lastError);
-        return;
-      } catch (err) {
-        errors.push(`email to ${to}: ${(err as Error).message}`);
-      }
-    }
-    this.db.prepare("UPDATE james_pushes SET status = 'failed', last_error = ?, finished_at = ? WHERE id = ?")
-      .run(errors.join(' | ').slice(0, 1000), iso(this.deps.now()), pushId);
-    this.log(`push ${pushId} undeliverable: webhook and both alert emails failed`);
-  }
-
-  /** A webhook down for two hours is a real blocker: tell Nick once. */
-  private async maybeEscalate(lastError: string) {
-    const since = getState(this.db, 'webhook_failing_since');
-    if (!since || getState(this.db, 'webhook_escalated_at')) return;
-    if (Date.parse(since) > this.deps.now() - WEBHOOK_ESCALATE_MS) return;
-    setState(this.db, 'webhook_escalated_at', iso(this.deps.now()));
-    await this.deps.mailer.send(
-      NICK_EMAIL,
-      '[VENEER] James webhook down for 2+ hours',
-      `Veneer has not been able to reach James's Grok Bot webhook since ${since}.\nLast error: ${lastError}\nUndelivered pushes are held for the 8:30 AM ET daily digest email to nicks@mail.grokbot.com (urgent money or customer notices are emailed at once). Check JAMES_WEBHOOK_URL / JAMES_WEBHOOK_KEY in Doppler (main/prd) or the Grok Bot side.`,
-    ).catch((err: Error) => this.log(`escalation email failed: ${err.message}`));
+    const sent = await this.sendVerified(subject, text);
+    const status = sent.outcome === 'sent' ? 'emailed' : sent.outcome === 'unknown' ? 'email_unknown' : 'failed';
+    this.db.prepare('UPDATE james_pushes SET status = ?, last_error = ?, emailed_to = ?, finished_at = ? WHERE id = ?').run(
+      status, sent.outcome === 'sent' ? lastError : `${lastError} | ${sent.error}`.slice(0, 1000), sent.outcome === 'sent' ? sent.to : null, iso(this.deps.now()), pushId,
+    );
+    if (sent.outcome !== 'sent') this.log(`push ${pushId} urgent email ${sent.outcome}: ${sent.error}`);
   }
 
   /**
-   * The one daily email, after today's 8:30 AM ET heartbeat has finished. It is
-   * sent only when something was held back (pushes whose webhook failed,
-   * including the heartbeat itself); a day where the webhook delivered
+   * Send one email to the first alert address, then the second only if the
+   * first certainly did not go. An unclear result (an unexpected error or no
+   * message id) is checked against Sent; without an exact Sent match it is
+   * unknown and nothing more is sent.
+   */
+  private async sendVerified(subject: string, text: string): Promise<SendOutcome & { to: string | null }> {
+    const errors: string[] = [];
+    for (const to of ALERT_EMAILS) {
+      let unclear: string;
+      try {
+        const result = await this.deps.mailer.send(to, subject, text);
+        if (result.messageId) return { outcome: 'sent', messageId: result.messageId, to };
+        unclear = `email to ${to}: no message id`;
+      } catch (err) {
+        if (err instanceof MailNotSentError) { errors.push(`email to ${to}: ${err.message}`); continue; }
+        unclear = `email to ${to}: ${(err as Error).message}`;
+      }
+      try {
+        const hits = await this.deps.mailer.search(`in:sent to:${to} subject:"${subject.replace(/"/g, '')}" newer_than:2d`, 10);
+        const hit = hits.find((m) => m.subject.trim() === subject.trim());
+        if (hit) return { outcome: 'sent', messageId: hit.messageId, to };
+        return { outcome: 'unknown', error: `${unclear}; no exact Sent match`, to };
+      } catch (err) {
+        return { outcome: 'unknown', error: `${unclear}; Sent check failed: ${(err as Error).message}`, to };
+      }
+    }
+    return { outcome: 'failed', error: errors.join(' | ').slice(0, 1000), to: null };
+  }
+
+  /**
+   * Before the cutover: the one daily email, after today's 8:30 AM ET heartbeat
+   * has finished, sent only when something was held back (pushes whose webhook
+   * failed, including the heartbeat itself); a day where the webhook delivered
    * everything gets no email. The date is claimed in james_link_state before
    * the send, so a date is emailed at most once and an unclear send is never
    * repeated.
@@ -719,30 +785,196 @@ export class JamesLink {
   async maybeSendDigestEmail(now: number) {
     const et = etClock(now);
     if (getState(this.db, 'heartbeat_date') !== et.date || getState(this.db, 'digest_email_date') === et.date) return;
-    const heartbeat = this.db.prepare(
-      "SELECT id, status, payload_json FROM james_pushes WHERE kind = 'heartbeat' AND json_extract(payload_json, '$.date') = ? ORDER BY id DESC LIMIT 1",
-    ).get(et.date) as { id: number; status: string; payload_json: string } | undefined;
+    const heartbeat = this.todaysHeartbeat(et.date);
     if (!heartbeat || heartbeat.status === 'sending') return;
     setState(this.db, 'digest_email_date', et.date);
     const held = this.undeliveredPushes();
     if (!held.length) { setState(this.db, 'digest_email_result', `${et.date} not_needed`); return; }
     const { subject, text } = this.digestEmail(JSON.parse(heartbeat.payload_json), held.filter((p) => p.id !== heartbeat.id));
     const mark = this.db.prepare("UPDATE james_pushes SET status = ?, emailed_to = ?, digest_date = ?, last_error = COALESCE(?, last_error) WHERE id = ? AND status = 'deferred_digest'");
-    const errors: string[] = [];
-    for (const to of ALERT_EMAILS) {
-      try {
-        await this.deps.mailer.send(to, subject, text);
-        this.db.transaction(() => { for (const p of held) mark.run('emailed', to, et.date, null, p.id); })();
-        setState(this.db, 'digest_email_result', `${et.date} sent to ${to} (${held.length} pushes)`);
-        return;
-      } catch (err) {
-        errors.push(`digest email to ${to}: ${(err as Error).message}`);
+    const sent = await this.sendVerified(subject, text);
+    const status = sent.outcome === 'sent' ? 'emailed' : sent.outcome === 'unknown' ? 'email_unknown' : 'failed';
+    const error = sent.outcome === 'sent' ? null : sent.error;
+    this.db.transaction(() => { for (const p of held) mark.run(status, sent.to, et.date, error, p.id); })();
+    setState(this.db, 'digest_email_result', `${et.date} ${sent.outcome}${sent.to ? ` to ${sent.to}` : ''} (${held.length} pushes)`);
+    if (error) this.log(`digest email for ${et.date} ${sent.outcome}: ${error}`);
+  }
+
+  private todaysHeartbeat(date: string) {
+    return this.db.prepare(
+      "SELECT id, status, payload_json FROM james_pushes WHERE kind = 'heartbeat' AND json_extract(payload_json, '$.date') = ? ORDER BY id DESC LIMIT 1",
+    ).get(date) as { id: number; status: string; payload_json: string } | undefined;
+  }
+
+  /**
+   * After the cutover (ACTIVE): exactly one digest per ET date from
+   * first_digest_date on, at or after 8:30 AM ET, even when empty. The date is
+   * claimed and every waiting item, rejection and held push is assigned to it in
+   * one transaction before the send. Sent: receipts become digested. Unknown:
+   * never re-sent; its items become digest_unknown and the next digest names it.
+   * Both addresses certainly failed: everything is released to the next day.
+   */
+  async maybeSendActiveDigest(now: number) {
+    const dir = this.spoolDir!;
+    const active = readActive(dir)!;
+    const et = etClock(now);
+    const nowIso = iso(now);
+    this.settleStuckDigests(now);
+    if (et.date < active.first_digest_date || et.hour * 60 + et.minute < 8 * 60 + 30) return;
+    if (this.db.prepare('SELECT 1 FROM james_digests WHERE date = ?').get(et.date)) return;
+    // Use today's heartbeat (and its suppressed summary) once it has finished; if the heartbeat window passed without one, build it now.
+    const heartbeatPush = this.todaysHeartbeat(et.date);
+    if (heartbeatPush?.status === 'sending') return;
+    if (!heartbeatPush && getState(this.db, 'heartbeat_date') === et.date) return;
+    const previous = this.db.prepare('SELECT claimed_at FROM james_digests ORDER BY date DESC LIMIT 1').get() as { claimed_at: string } | undefined;
+    const heartbeat = heartbeatPush
+      ? JSON.parse(heartbeatPush.payload_json) as Record<string, unknown>
+      : this.heartbeatPayload(now, getState(this.db, 'digest_since') ?? previous?.claimed_at ?? iso(now - 24 * 3_600_000));
+    const webhook = {
+      failing_since: getState(this.db, 'webhook_failing_since'),
+      last_error: getState(this.db, 'webhook_failing_since')
+        ? (this.db.prepare("SELECT last_error FROM james_pushes WHERE last_error IS NOT NULL ORDER BY id DESC LIMIT 1").get() as { last_error: string } | undefined)?.last_error ?? null
+        : null,
+      deferred: (this.db.prepare("SELECT COUNT(*) AS n FROM james_pushes WHERE status = 'deferred_digest' AND digest_date IS NULL").get() as { n: number }).n,
+    };
+    const claimed = this.db.transaction(() => {
+      if (this.db.prepare('SELECT 1 FROM james_digests WHERE date = ?').get(et.date)) return false;
+      this.db.prepare("INSERT INTO james_digests (date, status, claimed_at) VALUES (?, 'sending', ?)").run(et.date, nowIso);
+      const items = this.db.prepare(
+        `UPDATE james_digest_items SET digest_date = ? WHERE digest_date IS NULL AND state = 'ingested' AND source <> ?`,
+      ).run(et.date, CONTRACT_CHECK_SOURCE).changes;
+      const pushes = this.db.prepare("UPDATE james_pushes SET digest_date = ? WHERE status = 'deferred_digest' AND digest_date IS NULL").run(et.date).changes;
+      const rejected = this.db.prepare('UPDATE james_digest_rejections SET digest_date = ? WHERE digest_date IS NULL').run(et.date).changes;
+      this.db.prepare("UPDATE james_digests SET reported_in = ? WHERE status = 'unknown' AND reported_in IS NULL AND date <> ?").run(et.date, et.date);
+      this.db.prepare('UPDATE james_digests SET item_count = ?, push_count = ?, rejected_count = ? WHERE date = ?').run(items, pushes, rejected, et.date);
+      return true;
+    })();
+    if (!claimed) return;
+    const { subject, text } = this.activeDigestEmail(et.date, heartbeat, webhook, heartbeatPush?.id ?? null);
+    const sent = await this.sendVerified(subject, text);
+    const finished = iso(this.deps.now());
+    const items = this.db.prepare('SELECT key FROM james_digest_items WHERE digest_date = ?').all(et.date) as { key: string }[];
+    if (sent.outcome === 'failed') {
+      this.db.transaction(() => {
+        this.db.prepare("UPDATE james_digests SET status = 'failed', error = ?, finished_at = ? WHERE date = ?").run(sent.error, finished, et.date);
+        this.db.prepare("UPDATE james_digest_items SET digest_date = NULL WHERE digest_date = ? AND state = 'ingested'").run(et.date);
+        this.db.prepare("UPDATE james_pushes SET digest_date = NULL WHERE digest_date = ? AND status = 'deferred_digest'").run(et.date);
+        this.db.prepare('UPDATE james_digest_rejections SET digest_date = NULL WHERE digest_date = ?').run(et.date);
+        this.db.prepare('UPDATE james_digests SET reported_in = NULL WHERE reported_in = ?').run(et.date);
+      })();
+      this.log(`digest ${et.date} failed on both addresses; its items wait for the next digest: ${sent.error}`);
+      return;
+    }
+    const ok = sent.outcome === 'sent';
+    const status = ok ? (sent.to === ALERT_EMAILS[0] ? 'sent' : 'fallback') : 'unknown';
+    const messageId = ok ? sent.messageId : null;
+    this.db.transaction(() => {
+      this.db.prepare('UPDATE james_digests SET status = ?, to_address = ?, message_id = ?, error = ?, finished_at = ? WHERE date = ?')
+        .run(status, sent.to, messageId, ok ? null : sent.error, finished, et.date);
+      this.db.prepare('UPDATE james_digest_items SET state = ?, message_id = ? WHERE digest_date = ?').run(ok ? 'digested' : 'digest_unknown', messageId, et.date);
+      this.db.prepare("UPDATE james_pushes SET status = ?, emailed_to = ? WHERE digest_date = ? AND status = 'deferred_digest'")
+        .run(ok ? 'emailed' : 'email_unknown', sent.to, et.date);
+    })();
+    for (const { key } of items) {
+      try { writeReceipt(dir, key, { state: ok ? 'digested' : 'digest_unknown', digest_date: et.date, message_id: messageId }, finished); } catch (err) {
+        this.log(`digest receipt ${key} not written: ${(err as Error).message}`);
       }
     }
-    const error = errors.join(' | ').slice(0, 1000);
-    this.db.transaction(() => { for (const p of held) mark.run('failed', null, et.date, error, p.id); })();
-    setState(this.db, 'digest_email_result', `${et.date} failed`);
-    this.log(`digest email for ${et.date} undeliverable: ${error}`);
+    if (!ok) this.log(`digest ${et.date} outcome unknown; it will not be re-sent: ${sent.error}`);
+  }
+
+  /** A claim left 'sending' by a process that died mid-send is unknown: it may have gone, so it is never re-sent. */
+  private settleStuckDigests(now: number) {
+    const stuck = this.db.prepare("SELECT date FROM james_digests WHERE status = 'sending' AND claimed_at < ?").all(iso(now - DIGEST_STUCK_MS)) as { date: string }[];
+    for (const { date } of stuck) {
+      const keys = this.db.prepare('SELECT key FROM james_digest_items WHERE digest_date = ?').all(date) as { key: string }[];
+      this.db.transaction(() => {
+        this.db.prepare("UPDATE james_digests SET status = 'unknown', error = 'process ended during the send', finished_at = ? WHERE date = ?").run(iso(now), date);
+        this.db.prepare("UPDATE james_digest_items SET state = 'digest_unknown' WHERE digest_date = ?").run(date);
+        this.db.prepare("UPDATE james_pushes SET status = 'email_unknown' WHERE digest_date = ? AND status = 'deferred_digest'").run(date);
+      })();
+      for (const { key } of keys) {
+        try { writeReceipt(this.spoolDir!, key, { state: 'digest_unknown', digest_date: date }, iso(now)); } catch { /* the next digest still names it */ }
+      }
+      this.log(`digest ${date} was interrupted mid-send; marked unknown`);
+    }
+  }
+
+  activeDigestEmail(date: string, heartbeat: Record<string, unknown>, webhook: { failing_since: string | null; last_error: string | null; deferred: number }, heartbeatPushId: number | null) {
+    type ItemRow = { key: string; source: string; idempotency_key: string; created_at: string; category: string; subject: string; body: string;
+      urgent: string | null; needed_on: string | null; reason: string | null; evidence_json: string | null; immediate_json: string | null };
+    const items = this.db.prepare(
+      `SELECT key, source, idempotency_key, created_at, category, subject, body, urgent, needed_on, reason, evidence_json, immediate_json
+         FROM james_digest_items WHERE digest_date = ? ORDER BY created_at, id`,
+    ).all(date) as ItemRow[];
+    const immediateStatus = (i: ItemRow) => i.immediate_json ? (JSON.parse(i.immediate_json) as { status: string }).status : null;
+    const needsCheck = (i: ItemRow) => !!i.urgent && ['failed', 'unknown'].includes(immediateStatus(i) ?? '');
+    const ordered = [...items.filter(needsCheck), ...items.filter((i) => i.urgent && !needsCheck(i)), ...items.filter((i) => !i.urgent)];
+    const pushes = (this.db.prepare(
+      `SELECT p.id, p.kind, p.payload_json, p.last_error, p.created_at FROM james_pushes p WHERE p.digest_date = ? AND p.status = 'deferred_digest' ORDER BY p.id`,
+    ).all(date) as { id: number; kind: string; payload_json: string; last_error: string | null; created_at: string }[]).filter((p) => p.id !== heartbeatPushId);
+    const rejected = this.db.prepare('SELECT key, reason FROM james_digest_rejections WHERE digest_date = ? ORDER BY rejected_at, key').all(date) as { key: string; reason: string }[];
+    const unknown = (this.db.prepare("SELECT date, item_count FROM james_digests WHERE status = 'unknown' AND reported_in = ? ORDER BY date").all(date) as { date: string; item_count: number }[])
+      .map((d) => ({ ...d, keys: (this.db.prepare('SELECT key FROM james_digest_items WHERE digest_date = ? ORDER BY id').all(d.date) as { key: string }[]).map((k) => k.key) }));
+    const plain = (subject: string) => subject.replace(/^\s*\[VENEER\]\s*/i, '');
+    let budget = DIGEST_BODY_BUDGET;
+    const full = (text: string) => { if (budget <= 0) return false; budget -= text.length; return true; };
+
+    const lines: string[] = [`Veneer daily digest for ${date} (since ${String(heartbeat.since ?? '')}).`, ''];
+    const urgentChecks = ordered.filter(needsCheck);
+    if (urgentChecks.length) {
+      lines.push(`NEEDS A MANUAL SENT CHECK: ${urgentChecks.length} urgent item(s) whose immediate email failed or is unknown (listed first below).`, '');
+    }
+    if (unknown.length) {
+      lines.push('Earlier digests with an unknown send (never re-sent; please check Sent):');
+      for (const d of unknown) lines.push(`  ${d.date}: ${d.item_count} item(s)${d.keys.length ? `, keys ${d.keys.join(', ')}` : ''}`);
+      lines.push('');
+    }
+    lines.push(
+      `James webhook: ${webhook.failing_since ? `failing since ${webhook.failing_since}` : 'healthy'}; ${webhook.deferred} push(es) held for this digest${webhook.last_error ? `; last error: ${webhook.last_error}` : ''}`,
+      '', `James threads: ${JSON.stringify(heartbeat.counts)}`, '',
+    );
+    for (const key of ['waiting_on_james', 'waiting_on_veneer', 'open'] as const) {
+      const list = (heartbeat[key] as ReturnType<JamesLink['summary']>[]) ?? [];
+      lines.push(`${key} (${list.length}):`);
+      for (const t of list) lines.push(`  ${t.thread_id} · turn ${t.turn} · ${t.title}`);
+      lines.push('');
+    }
+    const suppressed = heartbeat.suppressed as ReturnType<JamesLink['suppressedSince']> | undefined;
+    if (suppressed) {
+      lines.push(`Recorded but not pushed (status only): ${suppressed.total} ${JSON.stringify(suppressed.by_reason)}`);
+      for (const t of suppressed.threads) lines.push(`  ${t.thread_id} · ${t.events} · ${t.reasons.join(', ')} · ${t.title}`);
+      lines.push('');
+    }
+    lines.push(`ERVP items (${ordered.length}):`, '');
+    for (const i of ordered) {
+      const immediate = i.immediate_json ? JSON.parse(i.immediate_json) as { status: string; to: string; message_id: string | null } : null;
+      const head = `— ${plain(i.subject)} · ${i.source} · key ${i.key}`;
+      if (!full(i.body + head)) { lines.push(head); continue; }
+      lines.push(head, `  ${i.category} · ${i.created_at}${i.urgent ? ` · URGENT ${i.urgent} needed on ${i.needed_on}` : ''}`);
+      if (i.urgent) {
+        lines.push(`  reason: ${i.reason}`, `  evidence: ${i.evidence_json}`);
+        if (immediate) lines.push(`  immediate email: ${immediate.status} to ${immediate.to}${immediate.message_id ? ` (message ${immediate.message_id})` : ''}${needsCheck(i) ? ' — check Sent; do not resend blindly' : ''}`);
+      }
+      if (i.body) lines.push(i.body);
+      lines.push('');
+    }
+    if (ordered.length) lines.push('');
+    lines.push(`James pushes the webhook did not take (${pushes.length}):`, '');
+    for (const p of pushes) {
+      const payload = JSON.parse(p.payload_json) as Record<string, unknown>;
+      const thread = payload.thread as ReturnType<JamesLink['summary']> | undefined;
+      const head = `— push ${p.id} · ${p.created_at} · ${((payload.reasons as string[] | undefined) ?? [p.kind]).join(', ')}${thread ? ` · thread ${thread.thread_id} turn ${thread.turn} · ${thread.title}` : ` · ${p.kind}`}`;
+      const excerpts = ((payload.events as Array<Record<string, unknown>> | undefined) ?? []).flatMap((e) => typeof e.excerpt === 'string' ? [e.excerpt] : []);
+      if (!full(head + excerpts.join(''))) { lines.push(head); continue; }
+      lines.push(head, ...excerpts.map((e) => (e.length > DIGEST_EXCERPT_MAX ? `${e.slice(0, DIGEST_EXCERPT_MAX)}…` : e)), '');
+    }
+    if (rejected.length) {
+      lines.push('', `Rejected spool items (${rejected.length}; not retried, ERVP to correct with a new key):`);
+      for (const r of rejected) lines.push(`  ${r.key}: ${r.reason}`);
+    }
+    lines.push('', 'Reply via the James API with each thread\'s expected_turn, or reply to this email with CLOSE <thread_id> or ARCHIVE <thread_id> as the first line.');
+    return { subject: `[VENEER] Daily digest ${date}`, text: lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n') };
   }
 
   digestEmail(heartbeat: Record<string, unknown>, held: ReturnType<JamesLink['undeliveredPushes']>) {
