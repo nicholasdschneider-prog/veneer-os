@@ -1072,3 +1072,41 @@ Backup-receipt enforcement, the exact remainder continuation and the CAS/arm loc
 #820 adds a fresh-clock window check after every awaited or expensive check and immediately before each pointer move, helper bootstrap, bootout and `running` CAS. Backup age is measured after the hash. The tests advance the clock *during* the final occupancy/idle check, the binding verification and the hash, not only between jobs.
 
 **Status.** Plan 27.1 is not executable until #820 lands and is reviewed. Gate 1: UNMET, and only Nick can accept the limitation. Gate 4: unverified. Readiness stays withdrawn. No window question goes to Nick.
+
+## 29. Build #820: approved-window recheck after every slow check and before each irreversible step, commit `e4e5066`. Source only; nothing armed, activated or installed
+
+This addresses the deadline-boundary gap from the #819 review (BUILD801 coordination thread 60a12836, fce19860); owner a6e39d6e. Not done: arming, activation, install run, restart, rollback, restore, recovery, live dist rebuild or queue change. 0178/0179 hashes, the empty ledgers and the BUILD801 exclusions are untouched. Sage custody is unchanged.
+
+**One rule.** `installer/window.mjs` `assertWithinWindow(deadline, now, phase)` reads the clock when it is called and throws `refused_deadline` unless `now < deadline`. It is used at every site:
+
+| Site | Fresh window checks |
+|---|---|
+| installer guard (`windowedGuard`) | before the backup check; after the backup hash; after the awaited pending-turn and browser checks |
+| installer write phase (`guardedReload`) | immediately before the plist write, the pointer move and the reload-helper bootstrap (in addition to the final and pre-reload guards) |
+| reload helper | before each job's idle check, after it, and immediately before each bootout; an expiry stops the sequence (per-job `code: refused_deadline`, `refusal` in status.json), restores jobs not started, exits non-zero |
+| armed commit | after the binding verification and the backup hash, immediately before the CAS write of `running` |
+
+- **Backup age.** It is computed from `clock()` read **after** the hash (`assertFreshBackup(…, { clock })`), never from a time captured before it.
+- **On expiry.** Restoration is exactly as for the other refusals. Nothing is retried, forced or overridden.
+
+**Tests.** The fake clocks advance during the operation itself:
+- the deadline crossing during the final-check occupancy await: no write, no pointer move, no bootstrap;
+- the deadline crossing during the backup hash at the final check: no write;
+- the deadline crossing during the pre-reload occupancy await: pointers and plists restored, no bootstrap;
+- the deadline crossing during a job's idle check: no bootout of that job, later jobs restored;
+- the deadline crossing during the commit's binding verification, and during its backup hash: no `running`;
+- a backup that ages past 15 min during its own hash: `refused_stale_backup`;
+- the existing between-jobs case, now asserting `refusal: refused_deadline`.
+
+**Validation**, under the host lock, single worker, nothing overlapping:
+- `npm run typecheck`: 0 errors.
+- `npm test` (run detached with a log): installer 93/93 (8 new), server 4065 passed / 16 skipped (301 files), web 1015, browser-manager 55.
+- `npm run build` ran only in a trap-cleaned temp worktree at `e4e5066`: exit 0 ([build-820-isolated.log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/build-820-isolated.log)).
+- Live `server/dist` is still `48a57812…cef1a`, web `/healthz` is 200, there is no releases directory, and `activation-job.mjs status` = `none`.
+
+**Plan 27.1, changes only.**
+- Scope is now the 14 commits `f9c59dd..e4e5066` (adds `e4e5066`). The approval must name them.
+- UNKNOWN handling: in status.json, a helper per-job `code` is `refused_deadline` (window end) or `refused_idle` (turn or browser). The arm state set adds no new values: commit-time expiry is still `refused_deadline`.
+- Everything else in 27.1 is unchanged.
+
+Gate 1 is UNMET and only Nick can accept it. Gate 4 is unverified. Readiness stays withdrawn. No window question goes to Nick.

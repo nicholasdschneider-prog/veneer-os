@@ -35,6 +35,8 @@ Status 2026-10-14. **No option below is deployment-ready.** No window is request
   or deadline always wins. Nothing reloads after the window ends. It refuses to start unless the
   database backup is verified and at most 15 minutes old. If a run stops partway, the rest can be
   finished exactly, on the same build, by the same guarded path.
+- `e4e5066`: the window end is re-checked after every slow check and right before every step
+  that cannot be undone, so nothing starts after the window closes.
 
 Until something is deployed in an approved window, web can still crash and come back on the same
 10-13 build.
@@ -47,7 +49,7 @@ Until something is deployed in an approved window, web can still crash and come 
    are reviewed. The plan is REPORT.md section 27.1.
    - It restarts five jobs: web, runner, mini-app runner, terminal and web watchdog. Open
      terminal sessions and local mini apps restart too.
-   - It needs your own-words approval naming all 13 commits `f9c59dd..5379083`, those five jobs,
+   - It needs your own-words approval naming all 14 commits `f9c59dd..e4e5066`, those five jobs,
      the window and its end, and the accepted limitation.
    - If a bot starts work during the reload, or the window ends, it stops partway. Some services
      would then run the new build and others the old one, and that would be reported exactly.
@@ -68,4 +70,4 @@ Until something is deployed in an approved window, web can still crash and come 
 
 No option is deployment-ready today.
 
-Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–27.
+Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–29.
