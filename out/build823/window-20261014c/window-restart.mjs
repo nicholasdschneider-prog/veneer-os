@@ -2,6 +2,7 @@
 // BUILD823 web-only window (Nick 10:11 ET 10-14 via James, 36e73759 t11 / a6e39d6e t25:
 // "Yes restart the web with the extra changes"): scope 9b6424e..38b2bf2, web only, runner stays.
 // Armed once by a6e39d6e after the sibling waiter (window-20261014b) refused on committed source.
+// Backup: reuse the verified 11:14Z backup (Nick 12:23 PM ET 10-14, option b); no fresh backup.
 // Pinned to the BYTES a restart loads: server/dist must equal the isolated 38b2bf2 build.
 // One-shot launchd job so the executor's own turn can end. Acts at most once:
 // waits for N consecutive quiet reads (0 pending turns, 0 running browser copies),
@@ -63,18 +64,18 @@ const pinProblem = pinsHold();
 if (pinProblem) end('refused_changed', { detail: `${pinProblem}; nothing was done` });
 if (!inWindow()) end('refused_deadline', { detail: 'window ended after the quiet reads; nothing was done' });
 
-// 3. Fresh read-only online backup and verified receipt.
+// 3. Backup: Nick 12:23 PM ET 10-14 ("Reuse this morning's 7:14 backup and restart the web")
+// chose the verified 11:14Z backup instead of a fresh one. Verify it is unchanged; take none.
 const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-const backup = path.join(predeploy, `veneer-pro-online-${ts}.db`);
+const backup = path.join(predeploy, 'veneer-pro-online-20261014T111454Z.db');
 try {
-  const Database = createRequire(path.join(codeDir, 'server', 'package.json'))('better-sqlite3');
-  const src = new Database(db, { readonly: true, fileMustExist: true });
-  try { await src.backup(backup); } finally { src.close(); }
-  fs.chmodSync(backup, 0o600);
-  const receipt = createReceipt(backup);
-  fs.writeFileSync(`${backup}.receipt.json`, JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
-  if (receipt.integrity_check !== 'ok' || receipt.foreign_key_violations !== 0) end('backup_failed', { detail: 'backup did not verify; no restart', receipt });
-  step('backup', { file: backup, sha256: receipt.sha256, size: receipt.size, integrity_check: receipt.integrity_check, foreign_key_violations: receipt.foreign_key_violations, taken_at: receipt.taken_at });
+  const receipt = JSON.parse(fs.readFileSync(`${backup}.receipt.json`, 'utf8'));
+  const { sha256File } = await import(path.join(codeDir, 'installer', 'backup-receipt.mjs'));
+  const ok = receipt.sha256 === 'a5499bbc6c2dfec9e7f067b1d10fac8cca93b4d600d83556b621109e990ccb91'
+    && receipt.integrity_check === 'ok' && receipt.foreign_key_violations === 0
+    && fs.statSync(backup).size === receipt.size && sha256File(backup) === receipt.sha256;
+  if (!ok) end('backup_failed', { detail: 'the approved 11:14Z backup no longer matches its receipt; no restart' });
+  step('backup-reused', { file: backup, sha256: receipt.sha256, size: receipt.size, integrity_check: receipt.integrity_check, foreign_key_violations: receipt.foreign_key_violations, taken_at: receipt.taken_at, approval: 'Nick 12:23 PM ET 10-14 option (b)' });
 } catch (error) {
   end('backup_failed', { detail: `${error.message}; no restart` });
 }
