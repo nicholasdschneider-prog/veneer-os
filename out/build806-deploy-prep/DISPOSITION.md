@@ -31,6 +31,10 @@ Status 2026-10-14. **No option below is deployment-ready.** No window is request
   bot started working or a browser opened, leaving the rest exactly as they were. A failure at
   any step puts every file back exactly. The activation can be scheduled to run by itself once
   nothing is busy. It never acts after its deadline or if anything changed since it was set up.
+- `5379083`: the scheduled activation re-checks everything at the last moment, so a cancellation
+  or deadline always wins. Nothing reloads after the window ends. It refuses to start unless the
+  database backup is verified and at most 15 minutes old. If a run stops partway, the rest can be
+  finished exactly, on the same build, by the same guarded path.
 
 Until something is deployed in an approved window, web can still crash and come back on the same
 10-13 build.
@@ -40,13 +44,16 @@ Until something is deployed in an approved window, web can still crash and come 
 1. **Hold.** Keep the current mix (web 10-13 build, old runner) while the repair evidence is
    reviewed. Nothing changes; the crash risk stays as it is now.
 2. **A separately bounded maintenance window using the guarded activation**, after the open gates
-   are reviewed. The plan is REPORT.md section 25.1.
+   are reviewed. The plan is REPORT.md section 27.1.
    - It restarts five jobs: web, runner, mini-app runner, terminal and web watchdog. Open
      terminal sessions and local mini apps restart too.
-   - It needs your own-words approval naming all 12 commits `f9c59dd..c846932`, those five jobs,
-     the window and its deadline, and the accepted limitation.
-   - If a bot starts work during the reload, it stops partway. Some services would then run the
-     new build and others the old one, and that would be reported exactly.
+   - It needs your own-words approval naming all 13 commits `f9c59dd..5379083`, those five jobs,
+     the window and its end, and the accepted limitation.
+   - If a bot starts work during the reload, or the window ends, it stops partway. Some services
+     would then run the new build and others the old one, and that would be reported exactly.
+     Finishing the rest is a separate guarded step on the same build. Your approval should say
+     whether it covers that step in the same window; otherwise it needs its own approval.
+     (A plain service restart cannot finish it.)
    - Gate 1 is still UNMET: there is no verified way back to the old runner, because its bytes
      were never kept. Only you (or someone you verifiably authorize) can accept that
      limitation, in your own words. No bot can waive it. The BUILD801 owner assesses only the
@@ -61,4 +68,4 @@ Until something is deployed in an approved window, web can still crash and come 
 
 No option is deployment-ready today.
 
-Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–25.
+Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–27.

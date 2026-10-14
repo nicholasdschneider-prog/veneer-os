@@ -941,3 +941,122 @@ The previous blockers (the per-job gate, partial-write restore and the executor'
    - The continuation needs explicit coverage in the approval or its own bounded approval.
 
 **Status.** The section 25.1 plan is not executable until #819 lands and is reviewed. Gate 1: UNMET, and only Nick can accept the limitation. Gate 4: unverified. Readiness stays withdrawn. No question goes to Nick.
+
+## 27. Build #819: commit-time revalidation, window-bounded helper, fresh-backup binding, exact continuation, commit `5379083`. Source only; nothing armed, activated or installed
+
+These are the three findings from section 26, raised in BUILD801 coordination thread 60a12836 (fce19860); owner a6e39d6e. Not done: arming, activation, install run, restart, rollback, restore, recovery, live dist rebuild or queue change. 0178/0179 hashes, the empty ledgers and the BUILD801 exclusions are untouched. Sage custody is unchanged.
+
+**1. Commit-time revalidation and a window-bounded helper.**
+- `installer/activation-job.mjs` serializes every arm-file read-modify-write (arm, commit, finish, disarm) under `releases/arm/arm.lock`.
+  - A lock left by a dead process is taken over once.
+  - A live holder makes the caller fail loudly; it never waits or forces.
+- Immediately before committing `running`, inside the lock, it re-checks:
+  - the arm id equals the one the job started with;
+  - `state === 'armed'`;
+  - `now < deadline`;
+  - every binding field;
+  - the backup (item 2).
+
+  `running` is then written by compare-and-set on (arm id, state). Terminal states are compare-and-set too, so a concurrent disarm is never overwritten. A lost compare-and-set does nothing and exits 0 ("no action").
+- The arm's deadline goes to the installer as `--deadline`, which is required with `--activate-release`. The installer checks it at the pre-check, final and pre-reload guards and writes it into the helper manifest.
+- `installer/launchd-reload.mjs` checks `now < deadline` before **each** bootout, with the idle gate. On expiry it stops exactly as for an idle refusal: per-job status, not-started jobs restored, exit non-zero, no later bootout.
+- Tests:
+  - the deadline crossing, a disarm, a binding change, the backup going stale and the backup file changing, each landing during the last occupancy read;
+  - the compare-and-set losing to a disarm at the last moment;
+  - a held lock refusing a concurrent writer;
+  - the deadline expiring between helper jobs.
+
+**2. Fresh backup bound at activation.**
+- `installer/backup-receipt.mjs <backup.db>` records a receipt. It is verified with the system `sqlite3` opening the copy `immutable=1` (no writes beside it) and contains `integrity_check`, the FK count, sha256, size and `taken_at`, which is the file's birth time, i.e. the backup's start.
+- The arm binds the receipt's path and hash, the backup's sha256 and `taken_at`. Arming already refuses a stale or unverified backup.
+- The job immediately before the `running` commit, and the installer before any write (full re-hash; age-only at the later guards), refuse with `refused_stale_backup` when:
+  - the receipt is missing or has changed;
+  - the backup did not verify;
+  - the size or hash differs;
+  - the backup is more than 15 min old, or from the future.
+- Nothing is backed up, retried or recovered automatically; the operator takes a fresh backup and re-arms.
+- **Why this option, not capping the deadline at `taken_at`+15 min:** quiet reads start only after the arming turn ends, so a 15-minute window would routinely expire unacted. Checking age at commit enforces the property itself.
+- Tests: stale, future-dated, size mismatch, hash mismatch, missing receipt, missing binding, changed receipt and an unverified receipt all refuse. Source-order checks place the window and backup checks before `assertReloadSafe` and before every write.
+
+**3. Exact continuation after a partial first activation.**
+- `--release <id>` (an existing verified snapshot) and `--expect-jobs` already existed in `c846932`. Section 26's statement that they were missing was stale. What was missing is now added:
+  - `--source-sha` and `--expect-manifest` refuse a release not built from that clean SHA, or with a different manifest;
+  - `releasePointerMoves` makes the remainder computation shared and testable;
+  - the armed job passes all six bindings (`--release`, `--source-sha`, `--expect-manifest`, `--expect-jobs`, `--deadline`, `--backup-receipt`).
+- `installer/continuation.test.mjs` runs a real partial first activation: the real capture, writes, activation and helper, refused mid-sequence. It then checks the continuation plan on the same release:
+
+| Stopped before | Continuation `--expect-jobs` |
+|---|---|
+| app-runner | app-runner, term, runner |
+| runner | runner |
+| web-watchdog | web-watchdog, app-runner, term, runner (web's pointer stays) |
+
+- The test also asserts that `restart.mjs` only acts on release-mode plists. **`restart.mjs` cannot complete a first activation; that claim stays withdrawn.**
+
+**Validation**, under the host lock, single worker, nothing overlapping:
+- `npm run typecheck`: 0 errors.
+- `npm test`: installer 85/85 (14 new), server 4065 passed / 16 skipped (301 files), web 1015, browser-manager 55. The first combined run hit this tool's 10-minute limit; it was re-run once, detached with a log, and completed. The host lock and orphan check were clean in between.
+- `npm run build` ran only in a trap-cleaned temp worktree at `5379083`: exit 0 ([build-819-isolated.log](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/build-819-isolated.log)).
+- Live `server/dist` is still `48a57812…cef1a`, web `/healthz` is 200, there is no releases directory, and `activation-job.mjs status` = `none`.
+- Read-only dry run: 5 jobs in helper order; pending turns 1 (this turn); browsers 0.
+
+### 27.1 Guarded first-activation plan (supersedes 25.1; reviewable, NOT ready, NOT a window request)
+
+**Scope.**
+- Jobs: `com.veneer.pro` → `com.veneer.web-watchdog` → `com.veneer.pro.app-runner` → `com.veneer.pro.term` → `com.veneer.pro.runner`.
+- Chrome, browser-manager, cloudflared, backup, boot-probe and Supermemory are untouched.
+- Commits: the 13 commits `f9c59dd..5379083` (the section 13 table plus `929ae3e`, `9b6424e`, `63d0ddb`, `c846932`, `5379083`).
+
+**Approval content (Nick's own words, location recorded as `--approval-ref`):**
+- the 13 commits and the five jobs;
+- the window end, which becomes the `--deadline`;
+- whether a continuation of a partial run is covered within the same window. If not, a continuation needs its own bounded approval;
+- Nick's own acceptance of the gate 1 limitation;
+- gate 4 either cleared or explicitly accepted as *unverified*.
+
+**Pre-checks.** Any failure means stop; nothing is retried.
+1. A clean tree, and an empty `git diff 5379083 HEAD` over the shipped paths (or the approved later SHA).
+2. `npm run build` under the host lock. The checkout-mode hazard applies until activation.
+3. `node scripts/releases.mjs snapshot` gives `<id>`, which must not be `-dirty`. Record the id and manifest.
+4. `postcheck.sh` before-pin: 0178/0179 hashes; 5 new and 2 legacy QBO tables at 0; FK 0; BUILD801 pins.
+5. `node installer/install-darwin.mjs --activate-release --release-services-only --release <id> --dry-run`: the five jobs in the order above, browsers 0, `NOT reloaded` limited to the chrome/backup drift.
+6. Record the browser-manager, cloudflared and Chrome pids.
+7. **Last, immediately before arming:** the online backup (section 5 method), then `node installer/backup-receipt.mjs <backup.db>`, which must report integrity `ok` and FK `0`. The activation must commit within 15 min of the backup's start, or it refuses `refused_stale_backup` and needs a fresh backup and a re-arm.
+
+**Execute (executor a6e39d6e, once):**
+```
+node installer/activation-job.mjs arm --maintenance-approved --approval-ref "<location of Nick's words>" \
+  --release <id> --source-sha <SHA> \
+  --jobs com.veneer.pro,com.veneer.web-watchdog,com.veneer.pro.app-runner,com.veneer.pro.term,com.veneer.pro.runner \
+  --deadline <window end, ISO> --backup-receipt <backup.db>.receipt.json --consecutive 5 --interval-ms 2000
+```
+Schedule a wake inside the window, then **end the turn**. The non-turn alternative is a human in macOS Terminal or SSH (not the Veneer web terminal) running the same installer command with all six bindings and `--maintenance-approved`.
+
+**UNKNOWN handling.** On any state other than `completed`, or on uncertainty: do **not** re-arm or re-run. Read, in order:
+1. `activation-job.mjs status`;
+2. `.launchd-install/status.json` (per-job outcome and `restored`), plus the `veneer-activation.log` and `veneer-install.log` tails;
+3. `releases.mjs status` and the `activations.jsonl` tail;
+4. `shasum -a 256` of the five LaunchAgents plists;
+5. `launchctl print` and `ps -o pid,lstart,command` for each job;
+6. web and runner `/healthz` `release`, and `/healthz/runner-rpc`;
+7. migrations ≥ 0178, FK, and the `[release]`/`[migrate]` log lines.
+
+Then classify:
+- `refused_deadline`, `refused_changed` or `refused_stale_backup`: nothing was activated.
+- `failed` with a helper per-job `refused`/`not_started` list: a partial first activation. Report exactly which jobs run the release. Then, only if the approval covers it, the continuation (below). Otherwise stop with the mixed state reported.
+- `failed` otherwise: diagnose. Never retry blindly.
+
+**Continuation (only under explicit approval coverage).** Through the armed executor, on the **same** `--release <id>` and `--source-sha`, with `--jobs` set to exactly the remaining jobs from status.json (see the table in item 3), a fresh backup receipt and the window's `--deadline`. It goes through the same guarded installer path: the per-job idle and window gates, the exact restore and no override. Readback is the same list as UNKNOWN handling.
+
+**Postcheck** (after `completed`):
+- Web and runner `/healthz` `release == <id>`; `/healthz/runner-rpc` is 200.
+- `releases.mjs status`: all four services `release` with active `<id>`.
+- The `[release]` boot lines.
+- `postcheck.sh` diff against the before-pin: 5 new and 2 legacy QBO counts at 0, FK 0, pins unchanged. A non-zero recovery or review count means stop and route it to the BUILD801 owner.
+- Browser-manager, cloudflared and Chrome pids unchanged.
+- Gate 2's read-only probe; gate 4 per sections 15/18/19 or recorded *unverified*.
+- Report in thread 9d6d01d1, then `activation-job.mjs disarm`.
+
+**Rollback:** no `releases/previous` exists for this first activation. **Gate 1 stays UNMET**, and only Nick can accept it. The DB is never restored.
+
+Readiness stays withdrawn and gate 4 is unverified. Nick is not asked until 27.1 has been reviewed.
