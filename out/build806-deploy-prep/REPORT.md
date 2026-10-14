@@ -1060,3 +1060,15 @@ Then classify:
 **Rollback:** no `releases/previous` exists for this first activation. **Gate 1 stays UNMET**, and only Nick can accept it. The DB is never restored.
 
 Readiness stays withdrawn and gate 4 is unverified. Nick is not asked until 27.1 has been reviewed.
+
+## 28. Review of 5379083/feb92dd (§27.1), 2026-10-14 (read-only; owner a6e39d6e)
+
+Backup-receipt enforcement, the exact remainder continuation and the CAS/arm lock are accepted for the paths inspected. One gap remains, confirmed read-only: **the deadline is checked before the expensive or awaited checks and not after them.** It is queued as **#820** (owner a6e39d6e). No source was edited outside that slot.
+
+- `installer/install-darwin.mjs:467-483`: `windowCheck`, then `await assertReloadSafe` (browser capacity/occupancy), then pointer activation or helper bootstrap, with no re-check after the await.
+- `installer/launchd-reload.mjs:109-111`: a deadline check, then `await idleCheck`, then the caller's `bootout` at line 141.
+- `installer/activation-job.mjs` commit (around 206–239): the deadline refusal comes before the binding verification and the ~1 GB backup hash. Backup age uses a time read before hashing.
+
+#820 adds a fresh-clock window check after every awaited or expensive check and immediately before each pointer move, helper bootstrap, bootout and `running` CAS. Backup age is measured after the hash. The tests advance the clock *during* the final occupancy/idle check, the binding verification and the hash, not only between jobs.
+
+**Status.** Plan 27.1 is not executable until #820 lands and is reviewed. Gate 1: UNMET, and only Nick can accept the limitation. Gate 4: unverified. Readiness stays withdrawn. No window question goes to Nick.
