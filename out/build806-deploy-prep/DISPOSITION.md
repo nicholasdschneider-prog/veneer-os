@@ -41,9 +41,12 @@ Until something is deployed in an approved window, web can still crash and come 
      terminal sessions and local mini apps restart too.
    - It needs your own-words approval naming all 11 commits `f9c59dd..63d0ddb`, those five jobs,
      the window, and the accepted limitation.
-   - Gate 1: there is still no verified way back to the old runner. The BUILD801 owner must
-     decide whether that limitation is acceptable.
-   - Gate 4: the QBO read check caller's transport is unverified.
+   - Gate 1 is still UNMET: there is no verified way back to the old runner, because its bytes
+     were never kept. Only you (or someone you verifiably authorize) can accept that
+     limitation, in your own words. No bot can waive it. The BUILD801 owner assesses only the
+     purchasing and UNKNOWN fences; the existing deployment owner (a6e39d6e) executes only the
+     bounded plan you approve.
+   - Gate 4 is also open: the QBO read check's own-session caller lookup is unverified.
 3. **A checkout-mode restart (web and runner only, without the locked-copy fix).** This also needs
    its own exact, bounded approval: the commits, the two services and the window. It keeps the
    hazard that caused this incident: after it, any later build goes live the next time a service
