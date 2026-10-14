@@ -96,7 +96,9 @@ npm run restart
 ```
 
 Re-run `node installer/install-darwin.mjs` too if the launchd templates or the provisioned tools
-changed.
+changed. On an installed machine it reloads jobs, so it needs `--maintenance-approved` inside an
+approved window. It refuses while turns are pending or browsers are in use; run `--dry-run` first
+to see the plan.
 
 The node services run from immutable release snapshots once a release has been activated (see
 [docs/releases.md](docs/releases.md)). `npm run build` then changes nothing a crash respawn loads;

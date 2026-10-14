@@ -37,10 +37,46 @@ Only an approved deployment:
   4. Prints the rollback command for every service that moved.
 - **`--release=<id>`** activates a named release instead of a new snapshot, for example the
   recorded previous release to roll back.
-- **`node installer/install-darwin.mjs --activate-release --maintenance-approved`** is the
-  first-activation path. It snapshots the build, points all four services at it, and renders
-  release-mode plists; its job reload starts the services on the release. Without
-  `--maintenance-approved` it refuses with exit 2.
+- **`node installer/install-darwin.mjs --activate-release --release-services-only --maintenance-approved`**
+  is the first-activation path. It snapshots the build, points all four services at it, and
+  reloads only the release jobs (web, runner, app-runner, term, web-watchdog) whose plist or
+  pointer changes. Chrome, the browser manager, cloudflared, backup, Supermemory and the boot
+  probe stay loaded and untouched, and nothing is provisioned. Without `--maintenance-approved`
+  it refuses with exit 2, except under `--dry-run`, which writes nothing.
+
+## Installer guard
+
+Every installer run that reloads jobs on an installed machine prints its plan first: the exact
+jobs to reload and why, the jobs it leaves alone even though their rendered plists differ, the
+pending-turn count, and the Veneer Browser occupancy. `--dry-run` stops there.
+
+The run then refuses, loudly and with a non-zero exit, before any snapshot, pointer move,
+env/provisioning write or plist write, if any of these holds:
+
+- `--maintenance-approved` is missing;
+- `pending_turns` has pending rows (the same `scripts/restart-safety.mjs` check as `restart.mjs`);
+- any Veneer Browser working copy is running, or the manager's state cannot be read:
+  - running means occupied, held with `keep_open`, or not yet paused;
+  - occupancy comes from the manager's authenticated, read-only, loopback `GET /v1/capacity`,
+    which excludes warm pool copies.
+
+The write phase runs in a fixed order:
+
+1. The final check.
+2. Write the planned plists.
+3. Move the release pointers.
+4. A pre-reload check.
+5. Bootstrap the one-shot reload helper.
+
+A crash respawn before step 3 still loads the old bytes. If step 4 refuses, or the helper
+cannot be bootstrapped, the plists and the active/previous pointers are restored exactly. A
+service that had no release loses its link again and falls back to the checkout. No job is
+reloaded. Nothing is retried, delayed or forced.
+
+`--allow-active-turns` skips only the pending-turn check, and only when given explicitly, for a
+human-authorized interruption. Browser occupancy is never skipped. Once the helper is
+bootstrapped, its result is the deployment outcome. Failures are reported from its status file,
+not rolled back automatically. Read state before doing anything else.
 
 `node scripts/releases.mjs snapshot | status | list | verify <id>` never activates anything.
 
@@ -70,8 +106,9 @@ service in that mode. The first activation is a deployment and happens only in a
 window:
 
 1. Build and validate the exact source to deploy.
-2. `node installer/install-darwin.mjs --activate-release --maintenance-approved`. It reloads every
-   job, so active turns must be drained first, exactly as for a restart.
+2. `node installer/install-darwin.mjs --activate-release --release-services-only --maintenance-approved`.
+   It refuses unless no turn is pending and no browser is running, and it reloads only the release
+   jobs. Run it with `--dry-run` first to see the exact job list.
 3. Check `node scripts/releases.mjs status`: every service shows `release` mode.
 4. Check `/healthz`: web and runner report the release id.
 

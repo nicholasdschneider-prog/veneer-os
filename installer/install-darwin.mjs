@@ -9,7 +9,16 @@
 // Node, not shell, so the same checkout installs identically everywhere.
 //
 //   node installer/install-darwin.mjs [--code-dir DIR] [--dry-run]
-//   node installer/install-darwin.mjs --activate-release --maintenance-approved
+//   node installer/install-darwin.mjs --activate-release --release-services-only --maintenance-approved [--dry-run]
+//
+// Every run that reloads jobs on an installed machine first prints its plan
+// (jobs to reload, pending turns, browser occupancy) and then refuses, before
+// writing or activating anything, unless --maintenance-approved is given, no
+// turn is pending and no Veneer Browser working copy is running. It checks
+// again right before the reload helper starts and restores plists and release
+// pointers if that check refuses. --release-services-only reloads only the
+// release jobs whose plist or pointer changes and skips provisioning.
+// --allow-active-turns is for a human-authorized interruption only.
 //
 // The web, runner, app-runner, term and web-watchdog plists launch a service's
 // immutable release (DATA_DIR/releases/active/<service>, scripts/releases.mjs)
@@ -28,7 +37,8 @@ import { browserManagerPaths, provisionLocalBrowserManager } from './browser-man
 import { loadEnvFile, readEnvFile, upsertEnvValues, validateInstallEnv } from './env.mjs';
 import { renderReloadJobPlist, waitForReloadStatus } from './launchd-reload.mjs';
 import { provisionNodeShellProfile } from './node-shell-profile.mjs';
-import { activateRelease, activeLink, plistRoots, RELEASE_SERVICES, snapshotRelease } from '../scripts/releases.mjs';
+import { activateRelease, activeLink, activeRelease, capturePointers, plistRoots, RELEASE_SERVICES, releaseIdFor, restorePointers, snapshotRelease } from '../scripts/releases.mjs';
+import { assertReloadSafe, browserOccupancy, describePlan, guardedReload, LABEL_SERVICE, pendingTurnCount, planReload } from './activation-guard.mjs';
 
 const SERVICES = [
   { label: 'com.veneer.web-watchdog', plist: 'com.veneer.web-watchdog.plist' },
@@ -65,7 +75,16 @@ const flag = (name, fallback) => {
 };
 const dryRun = args.includes('--dry-run');
 const activateReleaseFlag = args.includes('--activate-release');
-if (activateReleaseFlag && !args.includes('--maintenance-approved')) {
+const maintenanceApproved = args.includes('--maintenance-approved');
+// Bounded reload: only the release jobs (web, runner, app-runner, term, web
+// watchdog) whose plist or release pointer changes, and no provisioning. Chrome,
+// the browser manager, cloudflared, backup, Supermemory and the boot probe stay
+// loaded and untouched.
+const releaseServicesOnly = args.includes('--release-services-only');
+// Explicit only, for a human-authorized interruption. Never implied.
+const allowActiveTurns = args.includes('--allow-active-turns');
+// A dry run writes nothing, so it may show the activation plan without approval.
+if (activateReleaseFlag && !maintenanceApproved && !dryRun) {
   console.error('--activate-release deploys the current build to every service on reload; it requires --maintenance-approved inside an approved window.');
   process.exit(2);
 }
@@ -299,13 +318,6 @@ function watchdogSetting(key, fallback) {
     return value?.replace(/^(['"])([\s\S]*)\1$/, '$2') || process.env[key] || fallback;
   } catch { return process.env[key] || fallback; }
 }
-const LABEL_SERVICE = {
-  'com.veneer.pro': 'veneer-pro',
-  'com.veneer.pro.runner': 'veneer-pro-runner',
-  'com.veneer.pro.app-runner': 'veneer-pro-app-runner',
-  'com.veneer.pro.term': 'veneer-pro-term',
-  'com.veneer.web-watchdog': 'web-watchdog',
-};
 const releaseDataDir = watchdogSetting('DATA_DIR', path.join(home, '.local/share/veneer-pro'));
 let serviceRoots = {};
 function render(templateFile, label) {
@@ -352,32 +364,75 @@ console.log(`[install] logs   ${logDir}`);
 console.log(`[install] home   ${serviceHome}`);
 console.log(`[install] browser agent-browser ${AGENT_BROWSER_VERSION}`);
 
-// Which bytes each service will launch. Activation only with the approved flag;
-// otherwise existing pointers are kept and missing ones fall back loudly.
-if (activateReleaseFlag && !dryRun) {
-  const release = snapshotRelease({ appRoot: codeDir, dataDir: releaseDataDir });
-  activateRelease({ dataDir: releaseDataDir, id: release.id, services: RELEASE_SERVICES, maintenanceApproved: true, reason: 'install-darwin.mjs --activate-release' });
-  console.log(`[install] release ${release.id} activated for ${RELEASE_SERVICES.join(', ')}; the reload below starts them on it`);
-}
+// ── Plan (reads only) ───────────────────────────────────────────────────────
+// Which bytes each job will launch, which jobs actually need a reload, and the
+// two conditions that make a reload unsafe right now. Nothing is written,
+// snapshotted or activated until the whole plan has passed the guard.
+const releaseId = activateReleaseFlag ? releaseIdFor(codeDir) : null;
+const pointerMoves = new Set();
 {
   const { roots, warnings } = plistRoots({ dataDir: releaseDataDir, codeDir });
   serviceRoots = roots;
-  if (activateReleaseFlag && dryRun) {
-    for (const service of RELEASE_SERVICES) serviceRoots[service] = activeLink(releaseDataDir, service);
+  if (activateReleaseFlag) {
+    for (const service of RELEASE_SERVICES) {
+      serviceRoots[service] = activeLink(releaseDataDir, service);
+      if (activeRelease(releaseDataDir, service) !== releaseId) pointerMoves.add(Object.keys(LABEL_SERVICE).find((label) => LABEL_SERVICE[label] === service));
+    }
     serviceRoots['web-watchdog'] = serviceRoots['veneer-pro'];
-    console.log('[install] dry run: would snapshot the current build and activate it for every service');
+    if (pointerMoves.has('com.veneer.pro')) pointerMoves.add('com.veneer.web-watchdog');
   } else {
     for (const warning of warnings) console.warn(`[install] WARNING — ${warning}`);
   }
 }
+function installable(service) {
+  if (service.optional && !fs.existsSync(supermemoryBin)) return `skipped ${service.label} (supermemory-server not installed)`;
+  if (service.needsChrome && !chromeBin) return `skipped ${service.label} (no Chrome or Chromium found)`;
+  if (service.needsTunnel && (!cloudflaredBin || !fs.existsSync(tunnelTokenFile))) return `skipped ${service.label} (cloudflared or its token file is missing)`;
+  return null;
+}
+const renderJobs = () => SERVICES.filter((service) => !installable(service)).map((service) => {
+  const target = path.join(agentsDir, `${service.label}.plist`);
+  let current = null;
+  try { current = fs.readFileSync(target, 'utf8'); } catch { /* not installed yet */ }
+  return { label: service.label, target, mode: service.secret ? 0o600 : 0o644, text: render(service.plist, service.label), current };
+});
+const plan = planReload({ rendered: renderJobs(), bounded: releaseServicesOnly, pointerMoves });
+const serverPackage = path.join(codeDir, 'server', 'package.json');
+const occupancy = () => browserOccupancy({ browserEnvFile: browserPaths.browserEnvFile, port: Number(process.env.VENEER_BROWSER_MANAGER_PORT || 7300) });
+const pendingNow = pendingTurnCount({ dataDir: releaseDataDir, serverPackage });
+for (const service of SERVICES) if (installable(service)) console.log(`[install] ${installable(service)}`);
+for (const line of describePlan({ bounded: releaseServicesOnly, releaseId, releaseServices: RELEASE_SERVICES, plan, pending: pendingNow, occupancy: await occupancy(), allowActive: allowActiveTurns })) {
+  (line.includes('NOT reloaded') || line.includes('--allow-active-turns') ? console.warn : console.log)(line);
+}
 
 if (dryRun) {
+  const shown = releaseServicesOnly ? plan.reload.map((job) => job.label) : SERVICES.map((service) => service.label);
   for (const service of SERVICES) {
+    if (!shown.includes(service.label)) continue;
     console.log(`\n----- ${service.label} -----\n${render(service.plist, service.label)}`);
   }
   process.exit(0);
 }
+if (!plan.reload.length) {
+  console.log('[install] nothing changes what any service loads; no job reloaded');
+  process.exit(0);
+}
 
+// A reload that changes what services load needs the same whole-plan refusal
+// as restart.mjs. A fresh machine has no database and nothing running.
+const guardRequired = activateReleaseFlag || pendingNow !== null;
+const guard = (phase) => guardRequired
+  ? assertReloadSafe({ phase, jobs: plan.reload.map((job) => job.label), dataDir: releaseDataDir, serverPackage, maintenanceApproved, allowActive: allowActiveTurns, occupancy })
+  : Promise.resolve();
+try {
+  await guard('pre-check');
+} catch (error) {
+  console.error(`[install] REFUSED — ${error.message}`);
+  console.error('[install] nothing was written, snapshotted or activated. This is not retried automatically.');
+  process.exit(1);
+}
+
+if (!releaseServicesOnly) {
 if (!skipProviderRuntimes) {
   const serviceNpm = path.join(path.dirname(nodeBin), 'npm');
   try {
@@ -432,47 +487,35 @@ try {
   console.error(`Cannot install: ${err?.message ?? err}`);
   process.exit(1);
 }
+}
 
 const uid = process.getuid();
-// Git tags are updated only by the manual Studio command. Remove the former
-// launchd poller on every install so an old archive client cannot overwrite a
-// manual Git checkout.
-try {
-  execFileSync('launchctl', ['bootout', `gui/${uid}/com.veneer.pro.update`], { stdio: 'ignore' });
-} catch {
-  /* not loaded */
+if (!releaseServicesOnly) {
+  // Git tags are updated only by the manual Studio command. Remove the former
+  // launchd poller on every install so an old archive client cannot overwrite a
+  // manual Git checkout.
+  try {
+    execFileSync('launchctl', ['bootout', `gui/${uid}/com.veneer.pro.update`], { stdio: 'ignore' });
+  } catch {
+    /* not loaded */
+  }
+  fs.rmSync(path.join(agentsDir, 'com.veneer.pro.update.plist'), { force: true });
 }
-fs.rmSync(path.join(agentsDir, 'com.veneer.pro.update.plist'), { force: true });
 
-const renderedServices = [];
-for (const service of SERVICES) {
-  if (service.optional && !fs.existsSync(supermemoryBin)) {
-    console.log(`[install] skipped ${service.label} (supermemory-server not installed)`);
-    continue;
+// Inert until activated: a snapshot changes nothing any service loads.
+if (activateReleaseFlag) {
+  const release = snapshotRelease({ appRoot: codeDir, dataDir: releaseDataDir });
+  if (release.id !== releaseId) {
+    console.error(`[install] REFUSED — the build changed after planning (${releaseId} became ${release.id}); nothing was activated. Re-run the dry run.`);
+    process.exit(1);
   }
-  if (service.needsChrome && !chromeBin) {
-    console.log(`[install] skipped ${service.label} (no Chrome or Chromium found)`);
-    continue;
-  }
-  if (service.needsTunnel && (!cloudflaredBin || !fs.existsSync(tunnelTokenFile))) {
-    console.log(`[install] skipped ${service.label} (cloudflared or its token file is missing)`);
-    continue;
-  }
-  const target = path.join(agentsDir, `${service.label}.plist`);
-  // The Supermemory plist carries its model-provider key, so it is not world
-  // readable like the others.
-  const mode = service.secret ? 0o600 : 0o644;
-  fs.writeFileSync(target, render(service.plist, service.label), { mode });
-  // writeFileSync only applies mode when it creates the file, so a re-install
-  // over an existing plist would silently keep the old, wider permissions.
-  fs.chmodSync(target, mode);
-  renderedServices.push({ label: service.label, plist: target });
+  console.log(`[install] release ${release.id} snapshotted (not active yet)`);
 }
 
 // Never reload these jobs inline. This installer is commonly run by a Veneer
 // Pro Platform Dev agent, and booting out the runner kills that entire process
 // tree. A separate one-shot launchd job survives the runner restart, reloads
-// every remaining service even if one fails, and records a durable result.
+// the planned services even if one fails, and records a durable result.
 const reloadLabel = 'com.veneer.pro.installer-reload';
 const reloadTarget = `gui/${uid}/${reloadLabel}`;
 const reloadDir = path.join(logDir, '.launchd-install');
@@ -483,6 +526,7 @@ const helperLog = path.join(logDir, 'veneer-install.log');
 const helperPath = path.join(here, 'launchd-reload.mjs');
 const runId = `${Date.now()}-${process.pid}`;
 fs.mkdirSync(reloadDir, { recursive: true, mode: 0o700 });
+fs.mkdirSync(agentsDir, { recursive: true });
 
 // An install started inside Pro may have been killed after the helper finished,
 // leaving its inactive one-shot job registered. Refuse to interrupt a genuinely
@@ -498,28 +542,68 @@ try {
   /* no prior helper is loaded */
 }
 
-fs.rmSync(statusPath, { force: true });
-fs.writeFileSync(manifestPath, `${JSON.stringify({
-  runId,
-  uid,
-  services: renderedServices,
-  healthChecks: [{
-    name: 'Veneer Pro web and runner',
-    url: `http://127.0.0.1:${process.env.PORT || 3100}/healthz`,
-    attempts: 150,
-    intervalMs: 200,
-  }],
-}, null, 2)}\n`, { mode: 0o600 });
-fs.writeFileSync(helperPlist, renderReloadJobPlist({
-  label: reloadLabel,
-  nodeBin,
-  helperPath,
-  manifestPath,
-  statusPath,
-  logPath: helperLog,
-}), { mode: 0o600 });
-
-execFileSync('launchctl', ['bootstrap', `gui/${uid}`, helperPlist], { stdio: 'inherit' });
+// Written-phase order (installer/activation-guard.mjs guardedReload): final
+// guard, write plists, move pointers, guard again, bootstrap the helper. Any
+// refusal before the helper starts restores plists and pointers exactly.
+const reloadLabels = new Set(plan.reload.map((job) => job.label));
+try {
+  await guardedReload({
+    finalCheck: guard,
+    writePlists: () => {
+      const undo = [];
+      // Re-rendered after provisioning, which may have moved the browser certificate.
+      for (const job of renderJobs().filter((entry) => reloadLabels.has(entry.label))) {
+        undo.push({ target: job.target, previous: job.current, mode: job.mode });
+        fs.writeFileSync(job.target, job.text, { mode: job.mode });
+        // writeFileSync only applies mode when it creates the file, so a re-install
+        // over an existing plist would silently keep the old, wider permissions.
+        fs.chmodSync(job.target, job.mode);
+      }
+      return undo;
+    },
+    restorePlists: (undo) => {
+      for (const { target, previous, mode } of undo) {
+        if (previous === null) fs.rmSync(target, { force: true });
+        else fs.writeFileSync(target, previous, { mode });
+      }
+    },
+    activate: () => {
+      if (!activateReleaseFlag) return null;
+      const captured = capturePointers(releaseDataDir, RELEASE_SERVICES);
+      activateRelease({ dataDir: releaseDataDir, id: releaseId, services: RELEASE_SERVICES, maintenanceApproved, reason: 'install-darwin.mjs --activate-release' });
+      console.log(`[install] release ${releaseId} activated for ${RELEASE_SERVICES.join(', ')}; the reload starts them on it`);
+      return captured;
+    },
+    restorePointers: (captured) => restorePointers(releaseDataDir, captured, { reason: 'install-darwin.mjs refused before reload' }),
+    bootstrapHelper: () => {
+      fs.rmSync(statusPath, { force: true });
+      fs.writeFileSync(manifestPath, `${JSON.stringify({
+        runId,
+        uid,
+        services: plan.reload.map((job) => ({ label: job.label, plist: path.join(agentsDir, `${job.label}.plist`) })),
+        healthChecks: [{
+          name: 'Veneer Pro web and runner',
+          url: `http://127.0.0.1:${process.env.PORT || 3100}/healthz`,
+          attempts: 150,
+          intervalMs: 200,
+        }],
+      }, null, 2)}\n`, { mode: 0o600 });
+      fs.writeFileSync(helperPlist, renderReloadJobPlist({
+        label: reloadLabel,
+        nodeBin,
+        helperPath,
+        manifestPath,
+        statusPath,
+        logPath: helperLog,
+      }), { mode: 0o600 });
+      execFileSync('launchctl', ['bootstrap', `gui/${uid}`, helperPlist], { stdio: 'inherit' });
+    },
+  });
+} catch (error) {
+  console.error(`[install] REFUSED — ${error.message}`);
+  console.error('[install] This is not retried automatically.');
+  process.exit(1);
+}
 const reloadStatus = await waitForReloadStatus(statusPath, runId);
 if (!reloadStatus) {
   console.error(`Cannot install: launchd reload did not finish; check ${helperLog}`);

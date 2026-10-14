@@ -133,10 +133,15 @@ export function verifyRelease(dataDir, id) {
  * nothing: no pointer moves and no running or respawning service changes. An
  * identical build already snapshotted is reused.
  */
+/** The id a snapshot of the current build would get. Reads only. */
+export function releaseIdFor(appRoot, manifest = contentManifest(appRoot), git = gitIdentity(appRoot)) {
+  return git.sha ? `${git.sha.slice(0, 12)}${git.dirty ? '-dirty' : ''}-${manifest.sha256.slice(0, 12)}` : `nogit-${manifest.sha256.slice(0, 12)}`;
+}
+
 export function snapshotRelease({ appRoot, dataDir, now = new Date() }) {
   const manifest = contentManifest(appRoot);
   const git = gitIdentity(appRoot);
-  const id = git.sha ? `${git.sha.slice(0, 12)}${git.dirty ? '-dirty' : ''}-${manifest.sha256.slice(0, 12)}` : `nogit-${manifest.sha256.slice(0, 12)}`;
+  const id = releaseIdFor(appRoot, manifest, git);
   const root = releasesDir(dataDir);
   const dir = path.join(root, id);
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
@@ -233,6 +238,34 @@ export function activateRelease({ dataDir, id, services, maintenanceApproved, re
   const log = path.join(releasesDir(dataDir), 'activations.jsonl');
   for (const change of changes) fs.appendFileSync(log, JSON.stringify({ at: now.toISOString(), ...change, git_sha: meta.git_sha, reason }) + '\n', { mode: 0o600 });
   return changes;
+}
+
+function rawLink(link) {
+  try { return fs.readlinkSync(link); } catch { return null; }
+}
+
+/** Exact active/previous link targets, so a refused activation can put them back. */
+export function capturePointers(dataDir, services) {
+  return services.map((service) => ({
+    service,
+    active: rawLink(activeLink(dataDir, service)),
+    previous: rawLink(previousLink(dataDir, service)),
+  }));
+}
+
+/**
+ * Puts active/previous links back exactly as captured. A service that had no
+ * active release loses its link again, so its plist's checkout fallback applies.
+ */
+export function restorePointers(dataDir, captured, { reason = 'restore', now = new Date() } = {}) {
+  fs.mkdirSync(releasesDir(dataDir), { recursive: true, mode: 0o700 });
+  for (const { service, active, previous } of captured) {
+    for (const [link, target] of [[activeLink(dataDir, service), active], [previousLink(dataDir, service), previous]]) {
+      if (target) swapLink(link, target);
+      else fs.rmSync(link, { force: true });
+    }
+    fs.appendFileSync(path.join(releasesDir(dataDir), 'activations.jsonl'), JSON.stringify({ at: now.toISOString(), service, restored_to: active ? path.basename(active) : null, reason }) + '\n', { mode: 0o600 });
+  }
 }
 
 /** Which bytes each service would respawn from right now. */
