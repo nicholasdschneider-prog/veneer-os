@@ -1,0 +1,23 @@
+{
+  "schema": "build823-window/v1",
+  "approval": "Nick 2026-10-14 10:11 ET, Grok Bot, relayed verbatim by James (36e73759 t11; a6e39d6e t25): \"Yes restart the web with the extra changes\"",
+  "scope": "9b6424e..38b2bf2 web only (7908c79, 2d9e479, 80630ff, bc21ed1, 38b2bf2; migrations 0180-0182)",
+  "deadline": "2026-10-14T19:25:00.000Z",
+  "state": "refused_deadline",
+  "started_at": "2026-10-14T16:23:50.374Z",
+  "steps": [
+    {
+      "at": "2026-10-14T16:23:50.393Z",
+      "name": "armed",
+      "pending": 3,
+      "consecutive": 5,
+      "interval_ms": 3000
+    },
+    {
+      "at": "2026-10-14T19:25:02.857Z",
+      "name": "refused_deadline",
+      "detail": "no 5 consecutive quiet reads before the deadline; nothing was done"
+    }
+  ],
+  "ended_at": "2026-10-14T19:25:02.856Z"
+}

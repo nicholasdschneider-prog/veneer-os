@@ -1,0 +1,2 @@
+[window] armed {"pending":3,"consecutive":5,"interval_ms":3000}
+[window] refused_deadline {"detail":"no 5 consecutive quiet reads before the deadline; nothing was done"}
