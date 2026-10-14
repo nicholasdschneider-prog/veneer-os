@@ -130,7 +130,22 @@ describe.skipIf(!process.env.VENEER_BROWSER_TEST_CHROME)('browser scripts in Chr
         </main></body>`);
         return;
       }
-      if (req.url === '/frame-app') {
+      if (req.url === '/hidden-twin') {
+        // Shopify-style: the visible app plus same-titled copies that are not shown.
+        const title = 'ShipX - Shipping Rates &amp; Rules';
+        res.end(`<title>Hidden twin</title><body><main>
+          <iframe title="${title}" src="http://frame.test:${port}/frame-app?copy=hidden" style="display:none"></iframe>
+          <iframe title="${title}" src="http://frame.test:${port}/frame-app?copy=zero" width="0" height="0" style="border:0"></iframe>
+          <iframe title="${title}" src="http://frame.test:${port}/frame-app?copy=shown" width="600" height="300"></iframe>
+          <iframe title="Ghost" src="http://frame.test:${port}/frame-app?copy=ghost" style="display:none"></iframe>
+          <iframe title="Pair" src="http://frame.test:${port}/frame-app?copy=pair1" width="80" height="80"></iframe>
+          <iframe title="Pair" src="http://frame.test:${port}/frame-app?copy=pair2" width="80" height="80" style="display:none"></iframe>
+          <iframe title="Pair" src="http://frame.test:${port}/frame-app?copy=pair3" width="80" height="80"></iframe>
+          <div title="Not a frame">x</div>
+        </main></body>`);
+        return;
+      }
+      if (req.url?.startsWith('/frame-app')) {
         // A framework-style controlled select: assignments through the page's own
         // value property are tracked, and a change is honored only when the
         // element's real value differs from the tracked one.
@@ -390,6 +405,45 @@ describe.skipIf(!process.env.VENEER_BROWSER_TEST_CHROME)('browser scripts in Chr
     expect(stale.error).toMatchObject({ step: 3, code: 'frame_not_found', outcome_unknown: false });
     await observer.send('Target.closeTarget', { targetId: (((await observer.send('Target.getTargets')).targetInfos) as { targetId: string; url: string }[])
       .find(item => item.url === `${base}/frame-host`)!.targetId });
+  });
+
+  it('targets the one shown iframe when hidden copies share its title, and still refuses real ambiguity', async () => {
+    const host = await run({ steps: [{ op: 'open', url: `${base}/hidden-twin`, keep: true }, { op: 'wait', ms: 800 }] });
+    expect(host.ok).toBe(true);
+    const shipx = 'ShipX - Shipping Rates & Rules';
+    sent.length = 0;
+    const result = await run({ steps: [
+      { op: 'tab', url_contains: '/hidden-twin' },
+      { op: 'text', frame: shipx, selector: 'body', as: 'body' },
+      { op: 'select', frame: shipx, label: 'Condition', option: 'SKU' },
+      { op: 'text', frame: shipx, selector: '#echo', as: 'echo' },
+    ] });
+    expect(result.error).toBeUndefined();
+    const values = Object.fromEntries(result.results.map(item => [item.as ?? item.op, item.value]));
+    expect(String(values.body)).toContain('Condition');
+    expect(values).toMatchObject({ select: { selected: 'SKU' }, echo: 'Condition: SKU' });
+    for (const method of sent) expect(SCRIPT_CDP_METHODS.has(method), method).toBe(true);
+    // Only the shown copy changed: read each copy's own state out of band.
+    const echoes: Record<string, string> = {};
+    for (const target of ((await observer.send('Target.getTargets')).targetInfos as { targetId: string; type: string; url: string }[])) {
+      const copy = target.type === 'iframe' ? new URL(target.url).searchParams.get('copy') : null;
+      if (!copy || !['hidden', 'zero', 'shown'].includes(copy)) continue;
+      const { sessionId } = await observer.send('Target.attachToTarget', { targetId: target.targetId, flatten: true });
+      echoes[copy] = (await observer.send('Runtime.evaluate', { expression: "document.getElementById('echo').textContent", returnByValue: true }, sessionId)).result.value;
+      await observer.send('Target.detachFromTarget', { sessionId });
+    }
+    expect(echoes).toEqual({ hidden: 'Condition: Tag', zero: 'Condition: Tag', shown: 'Condition: SKU' });
+    // Two shown copies, only hidden copies, or a non-iframe match change nothing.
+    const pair = await run({ steps: [{ op: 'tab', url_contains: '/hidden-twin' }, { op: 'select', frame: 'Pair', label: 'Condition', option: 'SKU' }] });
+    expect(pair.error).toMatchObject({ code: 'ambiguous_frame', outcome_unknown: false });
+    const ghost = await run({ steps: [{ op: 'tab', url_contains: '/hidden-twin' }, { op: 'select', frame: 'Ghost', label: 'Condition', option: 'SKU' }] });
+    expect(ghost.error).toMatchObject({ code: 'frame_not_visible', outcome_unknown: false });
+    const div = await run({ steps: [{ op: 'tab', url_contains: '/hidden-twin' }, { op: 'text', frame: 'div[title="Not a frame"]', selector: 'body' }] });
+    expect(div.error).toMatchObject({ code: 'frame_not_found' });
+    const mixed = await run({ steps: [{ op: 'tab', url_contains: '/hidden-twin' }, { op: 'text', frame: 'main > *', selector: 'body' }] });
+    expect(mixed.error).toMatchObject({ code: 'frame_not_found' });
+    await observer.send('Target.closeTarget', { targetId: (((await observer.send('Target.getTargets')).targetInfos) as { targetId: string; url: string }[])
+      .find(item => item.url === `${base}/hidden-twin`)!.targetId });
   });
 
   it('honors the overall time limit', async () => {

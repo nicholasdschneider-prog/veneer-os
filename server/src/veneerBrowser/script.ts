@@ -311,22 +311,32 @@ const SELECTED_OPTION = `function() {
   return { selected: option ? String(option.label || option.text).slice(0, 300) : null };
 }`;
 
-// Counts the iframes a frame spec names in this document: exact title, then name, then CSS.
-const FRAME_COUNT = `function(spec) {${HELPERS}
-  const frames = [...document.querySelectorAll('iframe,frame')];
-  let by = 'title', hits = frames.filter(f => f.title === spec);
-  if (!hits.length) { by = 'name'; hits = frames.filter(f => f.name === spec); }
-  if (!hits.length) { by = 'css'; try { hits = [...document.querySelectorAll(spec)]; } catch { return { by, invalid: true }; } }
-  return { by, matches: hits.length, frames: hits.filter(f => f instanceof HTMLIFrameElement || f instanceof HTMLFrameElement).length,
-    visible: hits.filter(visible).length };
+// The iframes a frame spec names in this document: exact title, then name, then CSS.
+// Only a shown frame (rendered with a non-zero area) can be the target, so a
+// hidden duplicate with the same title never makes a single visible app ambiguous.
+const FRAME_HITS = `
+  const hitsFor = spec => {
+    const frames = [...document.querySelectorAll('iframe,frame')];
+    let by = 'title', hits = frames.filter(f => f.title === spec);
+    if (!hits.length) { by = 'name'; hits = frames.filter(f => f.name === spec); }
+    if (!hits.length) { by = 'css'; try { hits = [...document.querySelectorAll(spec)]; } catch { return { by, invalid: true, hits: [] }; } }
+    return { by, hits };
+  };
+  const isFrame = f => f instanceof HTMLIFrameElement || f instanceof HTMLFrameElement;
+  const shown = f => { if (!visible(f)) return false; const box = f.getBoundingClientRect(); return box.width > 0 && box.height > 0; };
+`;
+
+const FRAME_COUNT = `function(spec) {${HELPERS}${FRAME_HITS}
+  const { by, invalid, hits } = hitsFor(spec);
+  if (invalid) return { by, invalid: true };
+  return { by, matches: hits.length, frames: hits.filter(isFrame).length, visible: hits.filter(f => isFrame(f) && shown(f)).length };
 }`;
 
-const FRAME_ELEMENT = `function(spec) {
-  const frames = [...document.querySelectorAll('iframe,frame')];
-  let hits = frames.filter(f => f.title === spec);
-  if (!hits.length) hits = frames.filter(f => f.name === spec);
-  if (!hits.length) hits = [...document.querySelectorAll(spec)];
-  return hits.length === 1 ? hits[0] : null;
+const FRAME_ELEMENT = `function(spec) {${HELPERS}${FRAME_HITS}
+  const { invalid, hits } = hitsFor(spec);
+  if (invalid || !hits.length || !hits.every(isFrame)) return null;
+  const targets = hits.filter(shown);
+  return targets.length === 1 ? targets[0] : null;
 }`;
 
 const SAME_NODE = 'function(other) { return this === other; }';
@@ -645,9 +655,9 @@ export async function runBrowserScript(
     const counts = (await inPage(FRAME_COUNT, spec)).value as { by: string; invalid?: boolean; matches?: number; frames?: number; visible?: number };
     if (counts.invalid) throw new StepFailure('frame_not_found', 'No iframe has that title or name, and it is not a valid CSS selector.');
     if (!counts.matches) throw new StepFailure('frame_not_found', 'No iframe on this page has that title or name, or matches that selector. Take a fresh read; an iframe\'s title is the quoted name read shows for it.');
-    if (counts.matches !== 1) throw new StepFailure('ambiguous_frame', `That frame matches ${counts.matches} elements; it must name exactly one iframe.`);
-    if (counts.frames !== 1) throw new StepFailure('frame_not_found', 'That selector matches an element that is not an iframe.');
-    if (counts.visible !== 1) throw new StepFailure('frame_not_visible', 'That iframe is not visible on the page; open the dialog or scroll to it first.');
+    if (counts.frames !== counts.matches) throw new StepFailure('frame_not_found', 'That selector matches an element that is not an iframe.');
+    if (!counts.visible) throw new StepFailure('frame_not_visible', 'That iframe is not visible on the page; open the dialog or scroll to it first.');
+    if (counts.visible !== 1) throw new StepFailure('ambiguous_frame', `${counts.visible} visible iframes match that frame; it must name exactly one. Use a more specific CSS selector.`);
     const isolated = await world();
     const element = await send('Runtime.callFunctionOn', { functionDeclaration: FRAME_ELEMENT, executionContextId: isolated.executionContextId,
       arguments: [{ value: spec }], returnByValue: false }, top);

@@ -611,3 +611,11 @@ claim and receipt rules still apply. One permanent decision/draft action prevent
 alternate drafts or new keys from escaping a sent/UNKNOWN outcome. No live send
 or operational acceptance was performed. Restricted employees may read the guide;
 the action belongs only to the authenticated original registered bot.
+
+## Hidden duplicate iframes — October 14, 2026 (build #830)
+
+Shopify keeps hidden copies of an embedded app's iframe with the same title, so a ShipX `frame`
+naming the visible app failed `ambiguous_frame`. A frame spec now targets the one *shown* match
+(rendered, non-zero size) and ignores hidden or zero-size copies. Two visible matches still fail
+`ambiguous_frame`; only hidden matches fail `frame_not_visible`; any non-iframe match fails
+`frame_not_found`. The `browser-scripts` catalog agent text and the script tool description say so.
