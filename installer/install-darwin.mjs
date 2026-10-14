@@ -37,8 +37,9 @@ import { browserManagerPaths, provisionLocalBrowserManager } from './browser-man
 import { loadEnvFile, readEnvFile, upsertEnvValues, validateInstallEnv } from './env.mjs';
 import { reloadOrder, renderReloadJobPlist, waitForReloadStatus } from './launchd-reload.mjs';
 import { provisionNodeShellProfile } from './node-shell-profile.mjs';
-import { activateRelease, activeLink, activeRelease, capturePointers, plistRoots, RELEASE_SERVICES, releaseIdFor, restorePointers, snapshotRelease, verifyRelease } from '../scripts/releases.mjs';
-import { assertReloadSafe, browserOccupancy, captureState, describePlan, guardedReload, restorePlistFiles, writePlistFiles, LABEL_SERVICE, pendingTurnCount, planReload } from './activation-guard.mjs';
+import { activateRelease, activeLink, activeRelease, capturePointers, plistRoots, readRelease, RELEASE_SERVICES, releaseIdFor, restorePointers, snapshotRelease, verifyRelease } from '../scripts/releases.mjs';
+import { assertFreshBackup, bindReceipt } from './backup-receipt.mjs';
+import { assertReloadSafe, browserOccupancy, captureState, describePlan, guardedReload, releasePointerMoves, restorePlistFiles, writePlistFiles, LABEL_SERVICE, pendingTurnCount, planReload } from './activation-guard.mjs';
 
 const SERVICES = [
   { label: 'com.veneer.web-watchdog', plist: 'com.veneer.web-watchdog.plist' },
@@ -379,6 +380,14 @@ let releaseId = null;
 if (activateReleaseFlag) {
   try {
     releaseId = namedRelease ? (verifyRelease(releaseDataDir, namedRelease), namedRelease) : releaseIdFor(codeDir);
+    // Bind an existing release to exactly the approved source and bytes.
+    if (namedRelease) {
+      const { meta } = readRelease(releaseDataDir, namedRelease);
+      const wantSha = flag('source-sha', null);
+      const wantManifest = flag('expect-manifest', null);
+      if (wantSha && (!meta.git_sha?.startsWith(wantSha) || meta.git_dirty)) throw new Error(`release ${namedRelease} was built from ${meta.git_sha}${meta.git_dirty ? ' (dirty)' : ''}, not a clean ${wantSha}`);
+      if (wantManifest && meta.manifest_sha256 !== wantManifest) throw new Error(`release ${namedRelease} has manifest ${meta.manifest_sha256}, not the approved ${wantManifest}`);
+    }
   } catch (error) {
     console.error(`[install] REFUSED — ${error.message}; nothing was written.`);
     process.exit(1);
@@ -389,12 +398,9 @@ const pointerMoves = new Set();
   const { roots, warnings } = plistRoots({ dataDir: releaseDataDir, codeDir });
   serviceRoots = roots;
   if (activateReleaseFlag) {
-    for (const service of RELEASE_SERVICES) {
-      serviceRoots[service] = activeLink(releaseDataDir, service);
-      if (activeRelease(releaseDataDir, service) !== releaseId) pointerMoves.add(Object.keys(LABEL_SERVICE).find((label) => LABEL_SERVICE[label] === service));
-    }
+    for (const service of RELEASE_SERVICES) serviceRoots[service] = activeLink(releaseDataDir, service);
     serviceRoots['web-watchdog'] = serviceRoots['veneer-pro'];
-    if (pointerMoves.has('com.veneer.pro')) pointerMoves.add('com.veneer.web-watchdog');
+    for (const label of releasePointerMoves({ dataDir: releaseDataDir, releaseId })) pointerMoves.add(label);
   } else {
     for (const warning of warnings) console.warn(`[install] WARNING — ${warning}`);
   }
@@ -447,9 +453,35 @@ if (!plan.reload.length) {
 // A reload that changes what services load needs the same whole-plan refusal
 // as restart.mjs. A fresh machine has no database and nothing running.
 const guardRequired = activateReleaseFlag || pendingNow !== null;
-const guard = (phase) => guardRequired
-  ? assertReloadSafe({ phase, jobs: plan.reload.map((job) => job.label), dataDir: releaseDataDir, serverPackage, maintenanceApproved, allowActive: allowActiveTurns, occupancy })
-  : Promise.resolve();
+// An activation is bounded by the approved window and depends on a verified
+// backup at most 15 minutes old. Both are required and re-checked at every
+// guard; the deadline also travels to the helper, which checks it per job.
+const deadlineArg = flag('deadline', null);
+const deadline = deadlineArg ? Date.parse(deadlineArg) : null;
+const receiptArg = flag('backup-receipt', null);
+let boundBackup = null;
+if (activateReleaseFlag && (!Number.isFinite(deadline) || !receiptArg)) {
+  console.error('[install] REFUSED — --activate-release needs --deadline <approved window end, ISO> and --backup-receipt <file> (installer/backup-receipt.mjs); nothing was written.');
+  process.exit(1);
+}
+const windowCheck = (phase) => {
+  if (deadline !== null && Date.now() >= deadline) throw new Error(`${phase}: the approved window ended at ${new Date(deadline).toISOString()}`);
+};
+const backupCheck = (phase) => {
+  if (!receiptArg) return;
+  try {
+    // Full verification (hash included) once, before any write; age only afterwards.
+    if (!boundBackup) { boundBackup = bindReceipt(receiptArg); assertFreshBackup(boundBackup); }
+    else assertFreshBackup(boundBackup, { rehash: false });
+  } catch (error) {
+    throw new Error(`${phase}: ${error.code ?? 'refused_stale_backup'}: ${error.message}`);
+  }
+};
+const guard = async (phase) => {
+  windowCheck(phase);
+  backupCheck(phase);
+  if (guardRequired) await assertReloadSafe({ phase, jobs: plan.reload.map((job) => job.label), dataDir: releaseDataDir, serverPackage, maintenanceApproved, allowActive: allowActiveTurns, occupancy });
+};
 try {
   await guard('pre-check');
 } catch (error) {
@@ -605,6 +637,8 @@ try {
           maintenanceApproved,
           allowActive: allowActiveTurns,
         } : null,
+        // No bootout after the approved window ends (checked before each job).
+        deadline: deadline === null ? null : new Date(deadline).toISOString(),
         // What a job that is never reloaded goes back to (see launchd-reload.mjs).
         restore: { dataDir: releaseDataDir, plists: state.plists, pointers: state.pointers, labelService: LABEL_SERVICE },
         healthChecks: [{

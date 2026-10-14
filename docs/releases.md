@@ -148,7 +148,8 @@ node installer/activation-job.mjs arm --maintenance-approved \
   --approval-ref "<where the human approval is recorded>" \
   --release <existing release id> --source-sha <sha it was built from> \
   --jobs com.veneer.pro,com.veneer.web-watchdog,com.veneer.pro.app-runner,com.veneer.pro.term,com.veneer.pro.runner \
-  --deadline <ISO time, at most 12 h ahead> [--consecutive 5] [--interval-ms 2000]
+  --deadline <approved window end, ISO, at most 12 h ahead> \
+  --backup-receipt <backup.db.receipt.json> [--consecutive 5] [--interval-ms 2000]
 ```
 
 **Arming** refuses in any of these cases:
@@ -176,9 +177,92 @@ Re-arming the identical request is a no-op. The release must already exist; crea
 `disarm` works only while it is still waiting. Logs are in
 `~/Library/Logs/veneer-pro/veneer-activation.log`.
 
+**Commit-time revalidation.** Every check is repeated under the arm-file lock immediately before
+`running` is written:
+- the arm id;
+- `state == armed`;
+- `now < deadline`;
+- every binding field (release, dist, source content);
+- the backup receipt.
+
+`running` is then written by compare-and-set on (arm id, state). A disarm, re-arm, deadline,
+binding change or stale backup that lands during the last read therefore always wins. Terminal
+states are compare-and-set too, so a concurrent disarm is never overwritten. A lock held by a live
+process makes the other writer fail loudly, never wait.
+
+**The approved window bounds every bootout.** The arm's deadline is passed to the installer
+(`--deadline`, required with `--activate-release`). The installer checks it at every guard and
+writes it into the helper manifest. The helper checks `now < deadline` before each bootout,
+alongside the idle gate. On expiry it stops, exactly like an idle refusal: per-job status, the
+not-started jobs restored, exit non-zero.
+
+**Fresh backup at activation.** The operator takes the online backup (REPORT section 5 method) and
+then records a verified receipt:
+
+```sh
+node installer/backup-receipt.mjs <backup.db>   # immutable read-only integrity_check + FK check + sha256
+```
+
+The arm binds that receipt. The job, immediately before committing `running`, and the installer,
+before any write, refuse with `refused_stale_backup` when:
+- the receipt is missing, or changed since it was bound;
+- the backup did not verify;
+- the file's size or sha256 differs;
+- the backup started more than 15 minutes ago (`taken_at` is the file's birth time).
+
+Nothing is backed up, retried or recovered automatically. The operator takes a fresh backup and
+re-arms.
+
+This was chosen over capping the deadline at `taken_at + 15 min`. The wait only starts counting
+quiet reads after the arming turn ends, so a 15-minute window would often expire before any
+attempt. Checking the age at the commit enforces exactly the property required: the backup is at
+most 15 minutes old when activation starts.
+
 **Non-turn alternative:** a human runs the guarded install command from a shell that is not a
 Veneer turn, such as macOS Terminal or SSH. The Veneer web terminal is served by `term`, which is
 in the reload set, so do not use it.
+
+## Continuing after a partial first activation
+
+If the helper stops partway through a first activation (idle refusal or window end), the jobs it
+reached run the release. The rest are restored to checkout mode: checkout plists, no pointer.
+`restart.mjs` cannot complete them. It moves pointers only for services whose plist already
+launches a release, and it warns about checkout-mode services.
+
+The continuation is the same guarded installer, on the **same** release id, bounded to exactly
+the remaining jobs. It needs the original approval's explicit coverage of a continuation, or its
+own bounded approval. Run it through the armed executor so the executor's turn is not pending:
+
+```sh
+node installer/activation-job.mjs arm --maintenance-approved --approval-ref "<approval covering the continuation>" \
+  --release <same id> --source-sha <same sha> --jobs <exactly the remaining jobs> \
+  --deadline <window end> --backup-receipt <fresh receipt>
+```
+
+The armed job runs `install-darwin.mjs --activate-release --release-services-only --release <id>
+--source-sha <sha> --expect-manifest <manifest> --expect-jobs <jobs> --deadline <end>
+--backup-receipt <receipt>`. The installer computes the remainder itself: release jobs whose
+plist differs or whose pointer would move. It refuses unless that set equals `--expect-jobs`.
+
+| Stopped before | Continuation reloads |
+|---|---|
+| app-runner | app-runner, term, runner |
+| runner | runner |
+| web watchdog | web watchdog, app-runner, term, runner (web's pointer stays) |
+
+The same gates apply as for the first run:
+- the whole-plan check and the per-job idle and window gates;
+- the fresh backup;
+- the exact restore;
+- no override.
+
+**Readback after a partial run or its continuation:**
+- `releases.mjs status` (pointer targets);
+- `shasum -a 256 ~/Library/LaunchAgents/com.veneer.{pro,web-watchdog,pro.app-runner,pro.term,pro.runner}.plist`;
+- `.launchd-install/status.json` (per job);
+- `launchctl print` and the pids per job;
+- web and runner `/healthz` `release`;
+- the `[release]` boot line of each service.
 
 ## Migration from checkout mode
 

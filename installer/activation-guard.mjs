@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { assertRunnerRestartSafe } from '../scripts/restart-safety.mjs';
 import { readEnvFile } from './env.mjs';
+import { activeRelease } from '../scripts/releases.mjs';
 
 /** Jobs that start release bytes. A bounded reload touches only these. */
 export const RELEASE_JOB_LABELS = ['com.veneer.pro', 'com.veneer.pro.runner', 'com.veneer.pro.app-runner', 'com.veneer.pro.term', 'com.veneer.web-watchdog'];
@@ -36,6 +37,21 @@ export function planReload({ rendered, bounded, pointerMoves = new Set() }) {
   const reload = rendered.filter((job) => RELEASE_JOB_LABELS.includes(job.label) && (changed(job) || pointerMoves.has(job.label)));
   const untouchedChanged = rendered.filter((job) => !RELEASE_JOB_LABELS.includes(job.label) && changed(job)).map((job) => job.label);
   return { reload: reload.map((job) => ({ label: job.label, reason: reason(job) })), untouchedChanged };
+}
+
+/**
+ * Release jobs whose pointer would move to `releaseId`. The web watchdog has no
+ * pointer of its own; it moves with web. A continuation after a partial first
+ * activation therefore lists only the jobs not yet on the release.
+ */
+export function releasePointerMoves({ dataDir, releaseId }) {
+  const moves = new Set();
+  for (const [label, service] of Object.entries(LABEL_SERVICE)) {
+    if (service === 'web-watchdog') continue;
+    if (activeRelease(dataDir, service) !== releaseId) moves.add(label);
+  }
+  if (moves.has('com.veneer.pro')) moves.add('com.veneer.web-watchdog');
+  return moves;
 }
 
 /** Pending turns, read-only. null when there is no database yet (fresh install). */

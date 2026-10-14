@@ -20,7 +20,7 @@
 // --allow-active-turns.
 //
 //   node installer/activation-job.mjs arm --maintenance-approved --approval-ref TEXT \
-//        --release ID --source-sha SHA --jobs a,b,c --deadline ISO [--consecutive 5] [--interval-ms 2000]
+//        --release ID --source-sha SHA --jobs a,b,c --deadline ISO --backup-receipt FILE [--consecutive 5] [--interval-ms 2000]
 //   node installer/activation-job.mjs status
 //   node installer/activation-job.mjs disarm      # only while still waiting
 //   node installer/activation-job.mjs run --arm FILE   (what launchd runs)
@@ -34,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { browserOccupancy, pendingTurnCount, RELEASE_JOB_LABELS } from './activation-guard.mjs';
 import { contentManifest, readRelease, releasesDir, verifyRelease } from '../scripts/releases.mjs';
 import { readEnvFile } from './env.mjs';
+import { assertFreshBackup, bindReceipt } from './backup-receipt.mjs';
 
 export const ACTIVATION_LABEL = 'com.veneer.pro.activation';
 export const SHIPPED_PATHS = ['server', 'web', 'browser-manager', 'installer', 'scripts', 'deploy', 'package.json', 'package-lock.json', 'provider-runtimes.json'];
@@ -78,6 +79,52 @@ export function readArm(dataDir) {
   try { return JSON.parse(fs.readFileSync(armFile(dataDir), 'utf8')); } catch { return null; }
 }
 
+function alive(pid) {
+  try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; }
+}
+
+/**
+ * Serializes every read-modify-write of the arm file (arm, commit, finish,
+ * disarm). A lock left by a dead process is taken over; a live holder means
+ * the caller loses, never waits or forces.
+ */
+export function withArmLock(dataDir, fn) {
+  const lock = path.join(armDir(dataDir), 'arm.lock');
+  fs.mkdirSync(armDir(dataDir), { recursive: true, mode: 0o700 });
+  for (let attempt = 0; ; attempt += 1) {
+    try { fs.mkdirSync(lock, { mode: 0o700 }); break; }
+    catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      let owner = null;
+      try { owner = Number(fs.readFileSync(path.join(lock, 'pid'), 'utf8')); } catch { /* being created */ }
+      if (attempt === 0 && owner && !alive(owner)) { fs.rmSync(lock, { recursive: true, force: true }); continue; }
+      throw new Error(`the arm file is locked by pid ${owner ?? 'unknown'}; nothing was changed`);
+    }
+  }
+  try {
+    fs.writeFileSync(path.join(lock, 'pid'), String(process.pid));
+    return fn();
+  } finally {
+    fs.rmSync(lock, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Compare-and-set on (arm_id, state): applies `mutate` only when the arm is
+ * still exactly the expected one in the expected state. Returns
+ * { ok:false, current } when something else (a disarm, a re-arm) won.
+ */
+export function casArm(dataDir, { armId, state }, mutate) {
+  return withArmLock(dataDir, () => {
+    const current = readArm(dataDir);
+    if (!current || current.arm_id !== armId || current.state !== state) return { ok: false, current };
+    const next = mutate(current);
+    if (next === null) return { ok: false, current };
+    writeJson(armFile(dataDir), next);
+    return { ok: true, arm: next };
+  });
+}
+
 /** What must not have changed between arming and acting. */
 export function bindingNow({ dataDir, codeDir, releaseId }) {
   const meta = verifyRelease(dataDir, releaseId);
@@ -92,6 +139,7 @@ export function bindingNow({ dataDir, codeDir, releaseId }) {
 export function armActivation({
   dataDir, codeDir, approvalRef, releaseId, sourceSha, jobs, deadline, consecutive = 5, intervalMs = 2000,
   maintenanceApproved, now = new Date(), binding = bindingNow, matches = matchesCommit, bootstrap,
+  backupReceipt, backupCheck = assertFreshBackup,
 }) {
   if (!maintenanceApproved) throw new Error('Arming refused: it schedules a deployment, so it needs --maintenance-approved inside an approved window.');
   if (!approvalRef?.trim()) throw new Error('Arming refused: --approval-ref naming the human approval is required.');
@@ -99,7 +147,9 @@ export function armActivation({
   if (!Number.isFinite(due) || due <= now.getTime() || due - now.getTime() > MAX_DEADLINE_MS) throw new Error('Arming refused: --deadline must be an absolute time in the future, at most 12 hours away.');
   if (!jobs.length || jobs.some((job) => !RELEASE_JOB_LABELS.includes(job))) throw new Error(`Arming refused: jobs must be release jobs (${RELEASE_JOB_LABELS.join(', ')}).`);
   if (!Number.isInteger(consecutive) || consecutive < 3 || !Number.isInteger(intervalMs) || intervalMs < 500) throw new Error('Arming refused: at least 3 consecutive reads, at least 500 ms apart.');
-  const key = crypto.createHash('sha256').update(JSON.stringify([approvalRef, releaseId, sourceSha, [...jobs].sort(), deadline, consecutive, intervalMs])).digest('hex');
+  const key = crypto.createHash('sha256').update(JSON.stringify([approvalRef, releaseId, sourceSha, [...jobs].sort(), deadline, consecutive, intervalMs, backupReceipt ? path.resolve(backupReceipt) : null])).digest('hex');
+  return withArmLock(dataDir, () => armLocked());
+  function armLocked() {
   const existing = readArm(dataDir);
   if (existing && LIVE_STATES.has(existing.state)) {
     if (existing.key === key) return { ...existing, reused: true };
@@ -110,11 +160,15 @@ export function armActivation({
   if (!matches(codeDir, sourceSha)) throw new Error(`Arming refused: the shipped source differs from ${sourceSha}.`);
   const bound = binding({ dataDir, codeDir, releaseId });
   if (bound.release_manifest !== bound.dist_manifest) throw new Error('Arming refused: the checkout dist is not the build this release snapshotted.');
+  // The verified backup the activation will depend on. A stale or unverified one refuses now.
+  let backup;
+  try { backup = bindReceipt(backupReceipt); backupCheck(backup, { now }); }
+  catch (error) { throw new Error(`Arming refused (${error.code ?? 'backup'}): ${error.message}`); }
   if (existing) writeJson(path.join(armDir(dataDir), 'history', `${existing.arm_id}.json`), existing);
   const arm = {
     schema: 'veneer-activation-arm/v1', arm_id: crypto.randomUUID(), key, state: 'armed', armed_at: now.toISOString(),
     approval_ref: approvalRef, release_id: releaseId, source_sha: sourceSha, jobs, deadline: new Date(due).toISOString(),
-    consecutive, interval_ms: intervalMs, binding: bound, observations: [],
+    consecutive, interval_ms: intervalMs, binding: bound, backup, observations: [],
   };
   writeJson(armFile(dataDir), arm);
   try {
@@ -124,25 +178,48 @@ export function armActivation({
     throw new Error(`Arming failed; nothing will run: ${error.message}`);
   }
   return arm;
+  }
 }
 
 /**
  * The armed job's body. Acts at most once; every exit leaves an exact state.
+ * Every check is repeated, under the arm lock, immediately before committing
+ * `running` with a compare-and-set, so a deadline, disarm, re-arm, binding
+ * change or stale backup that lands during the last read always wins.
  * Returns the process exit code.
  */
-export async function runArmedActivation({ dataDir, codeDir, now = () => new Date(), sleep, readPending, readOccupancy, binding = bindingNow, runInstaller, log = console.log }) {
+export async function runArmedActivation({
+  dataDir, codeDir, now = () => new Date(), sleep, readPending, readOccupancy, binding = bindingNow, backupCheck = assertFreshBackup,
+  runInstaller, beforeCommit, log = console.log,
+}) {
   const arm = readArm(dataDir);
   if (!arm || arm.state !== 'armed') { log(`[activation] nothing armed (state ${arm?.state ?? 'none'}); no action`); return 0; }
-  const finish = (state, extra) => { writeJson(armFile(dataDir), { ...readArm(dataDir), state, ended_at: now().toISOString(), ...extra }); log(`[activation] ${state}${extra.detail ? `: ${extra.detail}` : ''}`); };
+  const expect = { armId: arm.arm_id, state: 'armed' };
+  // Terminal states are compare-and-set too: a concurrent disarm is never overwritten.
+  const finish = (from, state, extra) => {
+    const result = casArm(dataDir, { armId: arm.arm_id, state: from }, (current) => ({ ...current, state, ended_at: now().toISOString(), ...extra }));
+    log(result.ok ? `[activation] ${state}${extra.detail ? `: ${extra.detail}` : ''}` : `[activation] ${state} not recorded: the arm is now ${result.current?.state ?? 'gone'}`);
+  };
+  /** Everything that must still hold to act. Returns [state, detail] for a refusal, or null. */
+  const refusal = (current) => {
+    if (!current || current.arm_id !== arm.arm_id || current.state !== 'armed') return ['lost', `the arm is now ${current?.state ?? 'gone'}${current && current.arm_id !== arm.arm_id ? ` (${current.arm_id})` : ''}`];
+    if (now().getTime() >= Date.parse(arm.deadline)) return ['refused_deadline', `zero pending and idle browsers were not seen ${arm.consecutive} times in a row before ${arm.deadline}; nothing was activated`];
+    let latest;
+    try { latest = binding({ dataDir, codeDir, releaseId: arm.release_id }); }
+    catch (error) { return ['refused_changed', `release no longer verifies: ${error.message}; nothing was activated`]; }
+    const changed = Object.keys(arm.binding).filter((field) => arm.binding[field] !== latest[field]);
+    if (changed.length) return ['refused_changed', `${changed.join(', ')} changed since arming; nothing was activated`];
+    return null;
+  };
+  const stopFor = ([state, detail]) => {
+    if (state === 'lost') { log(`[activation] no action: ${detail}`); return 0; }
+    finish('armed', state, { detail });
+    return 1;
+  };
   let streak = 0;
   for (;;) {
-    if (readArm(dataDir)?.state !== 'armed') { log('[activation] disarmed while waiting; no action'); return 0; }
-    if (now().getTime() >= Date.parse(arm.deadline)) { finish('refused_deadline', { detail: `zero pending and idle browsers were not seen ${arm.consecutive} times in a row before ${arm.deadline}; nothing was activated` }); return 1; }
-    let current;
-    try { current = binding({ dataDir, codeDir, releaseId: arm.release_id }); }
-    catch (error) { finish('refused_changed', { detail: `release no longer verifies: ${error.message}; nothing was activated` }); return 1; }
-    const changed = Object.keys(arm.binding).filter((field) => arm.binding[field] !== current[field]);
-    if (changed.length) { finish('refused_changed', { detail: `${changed.join(', ')} changed since arming; nothing was activated` }); return 1; }
+    const before = refusal(readArm(dataDir));
+    if (before) return stopFor(before);
     const pending = readPending();
     const browsers = await readOccupancy();
     const idle = browsers.installed ? !browsers.error && browsers.active === 0 && browsers.waiting === 0 : true;
@@ -150,14 +227,29 @@ export async function runArmedActivation({ dataDir, codeDir, now = () => new Dat
     if (streak >= arm.consecutive) break;
     await sleep(arm.interval_ms);
   }
-  // From here on nothing is retried: a failure is reported, never re-attempted.
-  writeJson(armFile(dataDir), { ...readArm(dataDir), state: 'running', started_at: now().toISOString() });
+  await beforeCommit?.();
+  // Commit point. Re-validated under the lock; from here on nothing is retried.
+  let refused = null;
+  const commit = casArm(dataDir, expect, (current) => {
+    refused = refusal(current);
+    if (!refused) {
+      try { backupCheck(current.backup, { now: now() }); }
+      catch (error) { refused = [error.code === 'refused_stale_backup' ? 'refused_stale_backup' : 'refused_changed', `${error.message}; nothing was activated`]; }
+    }
+    return refused ? null : { ...current, state: 'running', started_at: now().toISOString() };
+  });
+  if (!commit.ok) return stopFor(refused ?? ['lost', `the arm is now ${commit.current?.state ?? 'gone'}`]);
   log(`[activation] starting guarded activation of ${arm.release_id} for ${arm.jobs.join(', ')}`);
   let exitCode;
-  try { exitCode = runInstaller(['--activate-release', '--release-services-only', '--maintenance-approved', '--release', arm.release_id, '--expect-jobs', arm.jobs.join(',')]); }
-  catch (error) { finish('failed', { detail: `installer could not be started: ${error.message}` }); return 1; }
-  if (exitCode === 0) { finish('completed', { exit_code: 0 }); return 0; }
-  finish('failed', { exit_code: exitCode, detail: 'the guarded installer refused or failed; read its log and the reload status before anything else' });
+  try {
+    exitCode = runInstaller([
+      '--activate-release', '--release-services-only', '--maintenance-approved',
+      '--release', arm.release_id, '--source-sha', arm.source_sha, '--expect-manifest', arm.binding.release_manifest,
+      '--expect-jobs', arm.jobs.join(','), '--deadline', arm.deadline, '--backup-receipt', arm.backup.receipt_path,
+    ]);
+  } catch (error) { finish('running', 'failed', { detail: `installer could not be started: ${error.message}` }); return 1; }
+  if (exitCode === 0) { finish('running', 'completed', { exit_code: 0 }); return 0; }
+  finish('running', 'failed', { exit_code: exitCode, detail: 'the guarded installer refused or failed; read its log and the reload status before anything else' });
   return 1;
 }
 
@@ -201,6 +293,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         jobs: (opt('jobs') ?? '').split(',').filter(Boolean), deadline: opt('deadline'),
         consecutive: opt('consecutive') ? Number(opt('consecutive')) : undefined, intervalMs: opt('interval-ms') ? Number(opt('interval-ms')) : undefined,
         maintenanceApproved: args.includes('--maintenance-approved'),
+        backupReceipt: opt('backup-receipt'),
         bootstrap: () => {
           try { if (/\bstate = running\b/.test(execFileSync('launchctl', ['print', target], { encoding: 'utf8' }))) throw new Error('an activation job is already running'); execFileSync('launchctl', ['bootout', target], { stdio: 'ignore' }); }
           catch (error) { if (/already running/.test(error.message)) throw error; }
@@ -214,9 +307,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     } else if (args[0] === 'disarm') {
       const arm = readArm(dataDir);
       if (arm?.state === 'running') throw new Error('Disarm refused: the activation already started; read its status instead.');
-      if (arm?.state === 'armed') writeJson(armFile(dataDir), { ...arm, state: 'disarmed', ended_at: new Date().toISOString() });
+      const result = arm?.state === 'armed' ? casArm(dataDir, { armId: arm.arm_id, state: 'armed' }, (current) => ({ ...current, state: 'disarmed', ended_at: new Date().toISOString() })) : { ok: false, current: arm };
       try { execFileSync('launchctl', ['bootout', target], { stdio: 'ignore' }); } catch { /* not loaded */ }
-      console.log(`[activation] ${arm?.state === 'armed' ? 'disarmed' : `nothing to disarm (state ${arm?.state ?? 'none'})`}`);
+      console.log(`[activation] ${result.ok ? 'disarmed' : `nothing to disarm (state ${result.current?.state ?? 'none'})`}`);
     } else if (args[0] === 'run') {
       const serverPackage = path.join(codeDir, 'server', 'package.json');
       // Same location the installer provisions: beside the env file.

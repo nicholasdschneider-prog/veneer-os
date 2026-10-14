@@ -93,7 +93,9 @@ export async function reloadLaunchdServices({
   healthChecks = [],
   gate = null,
   restore = null,
-  check = gateFromManifest(gate),
+  deadline = null,
+  now = () => Date.now(),
+  check: idleCheck = gateFromManifest(gate),
   launchctl = defaultLaunchctl,
   fetchImpl = globalThis.fetch,
   wait = sleep,
@@ -103,6 +105,11 @@ export async function reloadLaunchdServices({
   const errors = [];
 
   const ordered = reloadOrder(services);
+  // The approved window bounds every bootout, alongside the idle gate.
+  const check = deadline || idleCheck ? async (phase, labels) => {
+    if (deadline && now() >= Date.parse(deadline)) throw new Error(`the approved window ended at ${deadline}`);
+    if (idleCheck) await idleCheck(phase, labels);
+  } : null;
   const jobs = ordered.map((service) => ({ label: service.label, outcome: 'not_started' }));
 
   // Stop at the first refusal: nothing after it is booted out, nothing is
