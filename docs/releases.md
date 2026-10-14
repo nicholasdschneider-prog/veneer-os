@@ -196,6 +196,17 @@ writes it into the helper manifest. The helper checks `now < deadline` before ea
 alongside the idle gate. On expiry it stops, exactly like an idle refusal: per-job status, the
 not-started jobs restored, exit non-zero.
 
+**One window rule.** `installer/window.mjs` `assertWithinWindow(deadline, now, phase)` is called
+with a fresh clock read at these points:
+- after every awaited or expensive check: the backup hash, the pending-turn and browser checks,
+  and the binding verification;
+- immediately before every irreversible step: the plist write, the pointer move, the
+  reload-helper bootstrap, each bootout, and the CAS write of `running`.
+
+An expiry refuses with `refused_deadline`: plists and pointers are restored, jobs not started are
+restored, the per-job `code` is recorded, and the exit is non-zero. Backup age is computed from a
+clock read taken after the hash completes.
+
 **Fresh backup at activation.** The operator takes the online backup (REPORT section 5 method) and
 then records a verified receipt:
 

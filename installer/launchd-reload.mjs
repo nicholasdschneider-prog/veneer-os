@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertReloadSafe, browserOccupancy, restorePlistFiles } from './activation-guard.mjs';
 import { restorePointers } from '../scripts/releases.mjs';
+import { assertWithinWindow } from './window.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -107,22 +108,25 @@ export async function reloadLaunchdServices({
   const ordered = reloadOrder(services);
   // The approved window bounds every bootout, alongside the idle gate.
   const check = deadline || idleCheck ? async (phase, labels) => {
-    if (deadline && now() >= Date.parse(deadline)) throw new Error(`the approved window ended at ${deadline}`);
+    assertWithinWindow(deadline, now, phase);
     if (idleCheck) await idleCheck(phase, labels);
+    // A late idle answer must not carry a bootout past the window.
+    assertWithinWindow(deadline, now, phase);
   } : null;
   const jobs = ordered.map((service) => ({ label: service.label, outcome: 'not_started' }));
 
   // Stop at the first refusal: nothing after it is booted out, nothing is
   // retried or forced, and jobs never reached go back to their prior state.
   const stop = (index, phase, error) => {
-    jobs[index] = { ...jobs[index], outcome: 'refused', detail: error.message };
+    const code = error.code === 'refused_deadline' ? 'refused_deadline' : 'refused_idle';
+    jobs[index] = { ...jobs[index], outcome: 'refused', code, detail: error.message };
     const untouched = ordered.slice(index);
     const problems = restoreNotReloaded(restore, untouched, restoreOptions);
     for (const job of jobs.slice(index)) job.restored = problems.length === 0 && Boolean(restore);
     errors.push(`${phase}: ${error.message}`);
     for (const problem of problems) errors.push(problem);
     log(`[install] REFUSED ${phase}; stopped. Reloaded: ${jobs.filter((job) => job.outcome === 'reloaded').map((job) => job.label).join(', ') || 'none'}. Restored and not reloaded: ${untouched.map((service) => service.label).join(', ')}${problems.length ? ' (RESTORE INCOMPLETE)' : ''}`);
-    return { ok: false, refused: true, errors, jobs };
+    return { ok: false, refused: true, refusal: code, errors, jobs };
   };
 
   if (check) {
@@ -135,6 +139,10 @@ export async function reloadLaunchdServices({
       try { await check(`before ${service.label}`, [service.label]); }
       catch (error) { return stop(index, `before ${service.label}`, error); }
     }
+    // Immediately before the irreversible bootout, with a fresh clock read; an
+    // expiry here stops and restores exactly like any other refusal.
+    try { assertWithinWindow(deadline, now, `bootout ${service.label}`); }
+    catch (error) { return stop(index, `bootout ${service.label}`, error); }
     const target = serviceTarget(uid, service.label);
     try {
       try {

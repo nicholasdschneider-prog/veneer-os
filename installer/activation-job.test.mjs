@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { armActivation, casArm, readArm, renderActivationPlist, runArmedActivation } from './activation-job.mjs';
-import { createReceipt } from './backup-receipt.mjs';
+import { assertFreshBackup, createReceipt, sha256File } from './backup-receipt.mjs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
@@ -199,4 +199,47 @@ test('the activation job is a one-shot launchd job', () => {
   assert.doesNotMatch(xml, /KeepAlive/);
   assert.match(xml, /<string>run<\/string><string>--arm<\/string><string>\/data\/arm.json<\/string>/);
   void activateRelease;
+});
+
+// Fake clocks that move DURING the commit's own checks.
+for (const [name, slow, state] of [
+  ['the binding verification', 'binding', 'refused_deadline'],
+  ['the backup hash', 'hash', 'refused_deadline'],
+]) {
+  test(`the deadline crossing during ${name} at commit writes no running`, async (t) => {
+    const s = setup(t);
+    s.arm({ deadline: iso(T0 + 60_000) });
+    const c = clock(T0 + 1000, 1);
+    let commitPhase = false;
+    let installs = 0;
+    const result = await runArmedActivation({
+      dataDir: s.data, codeDir: s.app, ...c, ...quiet,
+      beforeCommit: () => { commitPhase = true; },
+      binding: (args) => { const b = s.binding(args); if (commitPhase && slow === 'binding') c.advance(120_000); return b; },
+      backupCheck: (bound, options) => assertFreshBackup(bound, { ...options, hashFile: (f) => { if (commitPhase && slow === 'hash') c.advance(120_000); return sha256File(f); } }),
+      runInstaller: () => { installs += 1; return 0; },
+    });
+    assert.equal(result, 1);
+    assert.equal(installs, 0);
+    assert.equal(readArm(s.data).state, state);
+    assert.equal(readArm(s.data).started_at, undefined);
+  });
+}
+
+test('a backup that ages past 15 min during its own hash refuses refused_stale_backup', async (t) => {
+  const s = setup(t);
+  s.arm();
+  const c = clock(T0 + 1000, 1);
+  let commitPhase = false;
+  let installs = 0;
+  const result = await runArmedActivation({
+    dataDir: s.data, codeDir: s.app, ...c, binding: s.binding, ...quiet,
+    beforeCommit: () => { commitPhase = true; },
+    // The age is read after the hash, so a slow hash cannot hide a stale backup.
+    backupCheck: (bound, options) => assertFreshBackup(bound, { ...options, hashFile: (f) => { if (commitPhase) c.advance(15 * 60_000); return sha256File(f); } }),
+    runInstaller: () => { installs += 1; return 0; },
+  });
+  assert.equal(result, 1);
+  assert.equal(installs, 0);
+  assert.equal(readArm(s.data).state, 'refused_stale_backup');
 });

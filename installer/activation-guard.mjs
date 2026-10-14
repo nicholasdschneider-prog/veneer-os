@@ -13,6 +13,7 @@ import path from 'node:path';
 import { assertRunnerRestartSafe } from '../scripts/restart-safety.mjs';
 import { readEnvFile } from './env.mjs';
 import { activeRelease } from '../scripts/releases.mjs';
+import { assertWithinWindow } from './window.mjs';
 
 /** Jobs that start release bytes. A bounded reload touches only these. */
 export const RELEASE_JOB_LABELS = ['com.veneer.pro', 'com.veneer.pro.runner', 'com.veneer.pro.app-runner', 'com.veneer.pro.term', 'com.veneer.web-watchdog'];
@@ -37,6 +38,25 @@ export function planReload({ rendered, bounded, pointerMoves = new Set() }) {
   const reload = rendered.filter((job) => RELEASE_JOB_LABELS.includes(job.label) && (changed(job) || pointerMoves.has(job.label)));
   const untouchedChanged = rendered.filter((job) => !RELEASE_JOB_LABELS.includes(job.label) && changed(job)).map((job) => job.label);
   return { reload: reload.map((job) => ({ label: job.label, reason: reason(job) })), untouchedChanged };
+}
+
+/**
+ * The installer's guard for one phase: window, backup, window again (the hash
+ * can be slow), the awaited idle checks, and the window once more after them.
+ * Every window read is fresh.
+ */
+export function windowedGuard({ deadline, now = () => Date.now(), backupCheck, idleCheck }) {
+  return async (phase) => {
+    assertWithinWindow(deadline, now, phase);
+    if (backupCheck) {
+      backupCheck(phase);
+      assertWithinWindow(deadline, now, phase);
+    }
+    if (idleCheck) {
+      await idleCheck(phase);
+      assertWithinWindow(deadline, now, phase);
+    }
+  };
 }
 
 /**
@@ -162,14 +182,18 @@ export function restorePlistFiles(plists) {
  * the helper is bootstrapped, including the middle of a write or pointer loop,
  * restores plists and pointers from the capture taken before the first write.
  */
-export async function guardedReload({ capture, finalCheck, writePlists, activate, restorePlists, restorePointers, bootstrapHelper, log = console }) {
+export async function guardedReload({ capture, finalCheck, withinWindow = () => {}, writePlists, activate, restorePlists, restorePointers, bootstrapHelper, log = console }) {
   const state = capture();
   await finalCheck('final check');
   let bootstrapped = false;
   try {
+    // A fresh window check immediately before each irreversible step.
+    withinWindow('plist write');
     writePlists(state);
+    withinWindow('pointer activation');
     activate(state);
     await finalCheck('pre-reload check');
+    withinWindow('reload-helper bootstrap');
     bootstrapHelper(state);
     bootstrapped = true;
   } finally {

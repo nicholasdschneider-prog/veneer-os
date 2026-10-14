@@ -68,9 +68,10 @@ export function bindReceipt(receiptPath) {
 /**
  * Throws StaleBackupError unless the bound receipt is unchanged, verified ok,
  * still describes the file on disk byte-for-byte, and is at most 15 min old.
- * `rehash:false` skips re-hashing a large file when it was just verified.
+ * `rehash:false` skips re-hashing a large file when it was just verified. The
+ * age uses `clock()` read after the hash, never a time captured before it.
  */
-export function assertFreshBackup(bound, { now = new Date(), rehash = true, hashFile = sha256File } = {}) {
+export function assertFreshBackup(bound, { clock = () => new Date(), rehash = true, hashFile = sha256File } = {}) {
   if (!bound) throw new StaleBackupError('no backup receipt is bound');
   const current = bindReceipt(bound.receipt_path);
   if (current.receipt_sha256 !== bound.receipt_sha256) throw new StaleBackupError('the backup receipt changed since it was bound');
@@ -79,7 +80,9 @@ export function assertFreshBackup(bound, { now = new Date(), rehash = true, hash
   if (!fs.existsSync(receipt.path)) throw new StaleBackupError(`backup file ${receipt.path} is missing`);
   if (fs.statSync(receipt.path).size !== receipt.size) throw new StaleBackupError('the backup file size differs from its receipt');
   if (rehash && hashFile(receipt.path) !== receipt.sha256) throw new StaleBackupError('the backup file hash differs from its receipt');
-  const age = now.getTime() - Date.parse(receipt.taken_at);
+  // Read the clock only now, after the (possibly long) hash: age is never understated.
+  const at = clock();
+  const age = (at instanceof Date ? at.getTime() : at) - Date.parse(receipt.taken_at);
   if (!(age >= 0) || age > MAX_BACKUP_AGE_MS) throw new StaleBackupError(`the backup taken at ${receipt.taken_at} is ${Math.round(age / 60000)} min old; at most 15 min is allowed. Take a fresh backup and re-arm.`);
   return receipt;
 }

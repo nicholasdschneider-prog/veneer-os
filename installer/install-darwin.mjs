@@ -39,7 +39,8 @@ import { reloadOrder, renderReloadJobPlist, waitForReloadStatus } from './launch
 import { provisionNodeShellProfile } from './node-shell-profile.mjs';
 import { activateRelease, activeLink, activeRelease, capturePointers, plistRoots, readRelease, RELEASE_SERVICES, releaseIdFor, restorePointers, snapshotRelease, verifyRelease } from '../scripts/releases.mjs';
 import { assertFreshBackup, bindReceipt } from './backup-receipt.mjs';
-import { assertReloadSafe, browserOccupancy, captureState, describePlan, guardedReload, releasePointerMoves, restorePlistFiles, writePlistFiles, LABEL_SERVICE, pendingTurnCount, planReload } from './activation-guard.mjs';
+import { assertWithinWindow } from './window.mjs';
+import { assertReloadSafe, browserOccupancy, captureState, describePlan, guardedReload, releasePointerMoves, windowedGuard, restorePlistFiles, writePlistFiles, LABEL_SERVICE, pendingTurnCount, planReload } from './activation-guard.mjs';
 
 const SERVICES = [
   { label: 'com.veneer.web-watchdog', plist: 'com.veneer.web-watchdog.plist' },
@@ -464,24 +465,23 @@ if (activateReleaseFlag && (!Number.isFinite(deadline) || !receiptArg)) {
   console.error('[install] REFUSED — --activate-release needs --deadline <approved window end, ISO> and --backup-receipt <file> (installer/backup-receipt.mjs); nothing was written.');
   process.exit(1);
 }
-const windowCheck = (phase) => {
-  if (deadline !== null && Date.now() >= deadline) throw new Error(`${phase}: the approved window ended at ${new Date(deadline).toISOString()}`);
-};
+const windowCheck = (phase) => assertWithinWindow(deadline, () => Date.now(), phase);
 const backupCheck = (phase) => {
   if (!receiptArg) return;
   try {
     // Full verification (hash included) once, before any write; age only afterwards.
-    if (!boundBackup) { boundBackup = bindReceipt(receiptArg); assertFreshBackup(boundBackup); }
-    else assertFreshBackup(boundBackup, { rehash: false });
+    if (!boundBackup) { boundBackup = bindReceipt(receiptArg); assertFreshBackup(boundBackup, { clock: () => new Date() }); }
+    else assertFreshBackup(boundBackup, { rehash: false, clock: () => new Date() });
   } catch (error) {
     throw new Error(`${phase}: ${error.code ?? 'refused_stale_backup'}: ${error.message}`);
   }
 };
-const guard = async (phase) => {
-  windowCheck(phase);
-  backupCheck(phase);
-  if (guardRequired) await assertReloadSafe({ phase, jobs: plan.reload.map((job) => job.label), dataDir: releaseDataDir, serverPackage, maintenanceApproved, allowActive: allowActiveTurns, occupancy });
-};
+// Window, backup, window, awaited idle checks, window: every read fresh.
+const guard = windowedGuard({
+  deadline,
+  backupCheck,
+  idleCheck: guardRequired ? (phase) => assertReloadSafe({ phase, jobs: plan.reload.map((job) => job.label), dataDir: releaseDataDir, serverPackage, maintenanceApproved, allowActive: allowActiveTurns, occupancy }) : null,
+});
 try {
   await guard('pre-check');
 } catch (error) {
@@ -613,6 +613,7 @@ try {
       capturePointers: activateReleaseFlag ? () => capturePointers(releaseDataDir, RELEASE_SERVICES) : null,
     }),
     finalCheck: guard,
+    withinWindow: windowCheck,
     writePlists: () => writePlistFiles(writeJobs()),
     activate: () => {
       if (!activateReleaseFlag) return;

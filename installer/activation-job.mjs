@@ -35,6 +35,7 @@ import { browserOccupancy, pendingTurnCount, RELEASE_JOB_LABELS } from './activa
 import { contentManifest, readRelease, releasesDir, verifyRelease } from '../scripts/releases.mjs';
 import { readEnvFile } from './env.mjs';
 import { assertFreshBackup, bindReceipt } from './backup-receipt.mjs';
+import { assertWithinWindow } from './window.mjs';
 
 export const ACTIVATION_LABEL = 'com.veneer.pro.activation';
 export const SHIPPED_PATHS = ['server', 'web', 'browser-manager', 'installer', 'scripts', 'deploy', 'package.json', 'package-lock.json', 'provider-runtimes.json'];
@@ -162,7 +163,7 @@ export function armActivation({
   if (bound.release_manifest !== bound.dist_manifest) throw new Error('Arming refused: the checkout dist is not the build this release snapshotted.');
   // The verified backup the activation will depend on. A stale or unverified one refuses now.
   let backup;
-  try { backup = bindReceipt(backupReceipt); backupCheck(backup, { now }); }
+  try { backup = bindReceipt(backupReceipt); backupCheck(backup, { clock: () => now }); }
   catch (error) { throw new Error(`Arming refused (${error.code ?? 'backup'}): ${error.message}`); }
   if (existing) writeJson(path.join(armDir(dataDir), 'history', `${existing.arm_id}.json`), existing);
   const arm = {
@@ -233,8 +234,15 @@ export async function runArmedActivation({
   const commit = casArm(dataDir, expect, (current) => {
     refused = refusal(current);
     if (!refused) {
-      try { backupCheck(current.backup, { now: now() }); }
+      // The backup age is computed from a clock read after its (long) hash.
+      try { backupCheck(current.backup, { clock: now }); }
       catch (error) { refused = [error.code === 'refused_stale_backup' ? 'refused_stale_backup' : 'refused_changed', `${error.message}; nothing was activated`]; }
+    }
+    if (!refused) {
+      // After the binding verification and the backup hash, immediately before
+      // the compare-and-set write of `running`: a fresh window check.
+      try { assertWithinWindow(arm.deadline, now, 'commit'); }
+      catch (error) { refused = ['refused_deadline', `${error.message}; nothing was activated`]; }
     }
     return refused ? null : { ...current, state: 'running', started_at: now().toISOString() };
   });
