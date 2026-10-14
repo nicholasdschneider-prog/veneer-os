@@ -1218,3 +1218,20 @@ Nothing was armed, activated, restarted or rebuilt. Readiness stays withdrawn.
 - Those tools call the web on `9b6424e`, which has none of their routes or tables. The expected effect is errors rather than writes, but this has not been verified.
 - This is a de facto unapproved partial deploy. It continues for every new turn until the dist and web match again.
 - It is reported, not changed here: a further dist rebuild or a restart would itself be an unapproved deploy. The decision belongs with the 13:52Z rebuild owner and Nick.
+
+## 33. Owner split from 732adce5, 2026-10-14 (read-only; owner a6e39d6e)
+
+732adce5's ownership is now split between two successors:
+
+| scope | successor |
+|---|---|
+| QBO contract #804/#812 (gate 4 caller naming; sections 11, 15, 18) | `ea6bde21-068b-4658-9cef-d940a32684fa` |
+| Gmail #826 (80630ff compatibility conditions; section 32) | `b3550307-5470-47a8-9dc4-eddc019c4545` |
+
+- Deployment and postcheck ownership stays with a6e39d6e.
+- Gate 4 is still open: the caller is UNASSIGNED and the runtime lookup is UNVERIFIED. The move authorizes no probe.
+- The 80630ff conditions are unchanged:
+  - normal 0181 migration before the new web serves requests;
+  - Gmail reader uninstalled;
+  - binding and operational use unavailable pending source-custody acceptance;
+  - no carry-over of the earlier customer-email acceptance.
