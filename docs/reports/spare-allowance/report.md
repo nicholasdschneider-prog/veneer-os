@@ -1,5 +1,10 @@
 # Use expiring subscription allowance — build 677
 
+**Current status — October 14, 2026: enrolled and verified.** Piper task
+`0ecf3a0c-1954-45e6-a147-2cea2d4d0d35` is ready in its original chat, using
+Codex / gpt-6.1-sol and the approved drmark@mphealth.net account. Earlier routing-blocker
+conclusions below were incorrect and are superseded by the correction at the end.
+
 October 9, 2026. The owner authorized useful optional work across projects before
 included Claude/Codex subscription allowance expires. Settings → Usage → Use spare
 allowance provides finite task enrollment, selected account lists, priorities, expected
@@ -184,3 +189,30 @@ enrollment ID or account binding exists. The original-chat delivery restriction
 recorded above remains unresolved; enrollment is not complete. This final check
 made no sends, enrollment attempts, source changes, rendering, publication or paid
 actions. Polling ends here as requested.
+
+## Enrollment completed and prior diagnosis corrected — October 14, 2026
+
+Platform Dev's earlier diagnosis conflated the restriction on steering a human chat
+with the authority scope of task tools. Native task tools use the original authority
+conversation even when execution is in a coordination lane. Current source inspection
+confirmed this; supported `list_spare_tasks`, `save_spare_task` and subsequent list
+readback then succeeded without changing software, impersonating a token or bypassing
+a guard. The previous assertions that coordination could not enroll were incorrect.
+
+Piper completed the handoff in coordination turn
+`bf554a75-cb96-4afd-ae45-b8890ed903ad`. Native list readback and an independent
+read-only database check verify:
+
+- Task: `0ecf3a0c-1954-45e6-a147-2cea2d4d0d35`.
+- Stable key: `piper-alpha-207001cd-source-reconciliation-v1`.
+- Original chat: `06f163cc-8061-4559-b8f7-167d8ec34631`.
+- Provider/model: Codex / `gpt-6.1-sol`.
+- Approved account: drmark@mphealth.net, `2ac39740-6cb9-4b0a-9a2d-89ef9f88f3a1`.
+- State: ready, priority 0, maximum 1 batch, completed batches 0.
+
+This completes enrollment, not an optional execution or current account eligibility
+claim. The scheduler owns off-hours, fresh usage, reserve and normal-work priority
+checks. The enrolled task performs only source reconciliation and a draft response;
+geometry, Blender and CPU/GPU rendering prerequisites remain separate. No production
+restart, shared-source edit, rendering, installation, publication or paid generation
+was performed to complete enrollment.
