@@ -22,3 +22,18 @@ Read the script independently: it acquires the existing exclusive lane, refreshe
 Sequential host-lock validation passed: focused guide 32; root typecheck; full installer 93, server 3253 passed/17 skipped (277 files), web 1013 (145 files), browser manager 55; root build and diff check. Standard Vite chunk-size warning only. See [validation receipt](./validation.json). Full/restricted employee and resumed-agent guide coverage passed. No QBO/provider/helper execution was used as a test.
 
 Deployment and the one Clara check are separate from these offline results; see the final runtime receipt.
+
+## Runtime disposition
+
+Removal commit **8f01f0637cc99f2cf669468eb7c517fce621706b** is pushed to origin main.
+The sanctioned web-only restart under Nick's approved window exited 1: **four active turns**.
+No service was signaled or restarted, and no force flag/watcher was used.
+The preflight also reported the existing web plist serves checkout dist in place; no installer
+or deployment configuration was changed. A build is not a verified runtime deployment.
+
+[Runtime receipt](./runtime.json) records the refusal. Existing maintenance owner
+615e0081-3142-4333-adda-d177c1709608 received the exact commit and drain blocker.
+Boris issue d35f83ea-2120-44ef-94c2-21a0358c4ea6 received the staged receipt and must
+wait for actual deployment before coordinating the one Clara check. No QBO probe
+has run. Completion of the requested deployment/check remains pending; removal
+and offline validation are complete.

@@ -1,0 +1,14 @@
+{
+  "commit": "8f01f0637cc99f2cf669468eb7c517fce621706b",
+  "pushed": true,
+  "recordedAt": "2026-10-14T21:13:45.472910+00:00",
+  "command": "npm run restart -- --maintenance-approved veneer-pro",
+  "exitCode": 1,
+  "status": "deployment_blocked_active_turns",
+  "activeTurns": 4,
+  "serviceRestarted": false,
+  "forcedInterruption": false,
+  "readOnlyClaraCheck": "not_run_pending_deployment",
+  "maintenanceOwner": "615e0081-3142-4333-adda-d177c1709608",
+  "probeCoordinator": "d35f83ea-2120-44ef-94c2-21a0358c4ea6"
+}
