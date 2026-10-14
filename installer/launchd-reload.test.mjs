@@ -49,7 +49,8 @@ test('reloads the runner after persistent services and before the boot probe', a
     wait: async () => {},
     log: () => {},
   });
-  assert.deepEqual(result, { ok: true, errors: [] });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.errors, []);
   const bootouts = fake.calls.filter(([command]) => command === 'bootout').map(([, target]) => target);
   assert.deepEqual(bootouts, [
     'gui/501/com.veneer.pro',

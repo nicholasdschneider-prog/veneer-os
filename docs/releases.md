@@ -98,6 +98,88 @@ not rolled back automatically. Read state before doing anything else.
 - **`scripts/boot-smoke.mjs`:** still smoke-boots the checkout's `server/dist` in a temporary data
   directory.
 
+## The reload helper re-checks before every job
+
+The installer hands the reload to a one-shot launchd helper (`installer/launchd-reload.mjs`), so
+the helper survives the runner reload. It re-applies the same gate (pending turns via
+`scripts/restart-safety.mjs`, plus Veneer Browser occupancy):
+
+- once over the whole plan when it starts;
+- again immediately before each job's bootout.
+
+Jobs reload in this order: web, web watchdog (it follows web's pointer), app-runner, term, runner.
+
+On a refusal the helper stops:
+- Jobs already reloaded stay as they are; they run the new release.
+- The refused job and every job after it are not booted out. Their plist files and their own
+  release pointers go back to their pre-install bytes, modes and targets, so none of them can
+  later respawn or reboot onto a release it is not running.
+- `status.json` records each job as `reloaded`, `failed`, `refused` or `not_started`, with
+  `restored`. The installer exits non-zero.
+- Nothing is retried or forced, and the helper never adds `--allow-active-turns`.
+
+A mid-sequence refusal is a partial deployment. Treat it as UNKNOWN: read the per-job status,
+then decide.
+
+A durable admission hold (web and runner refusing new turns until the helper finishes) was
+considered and not built. The hold would have to be honored by the running web and runner, but
+the code they run now cannot honor a flag that does not exist yet. It could only protect a later
+deployment, never the one that installs it.
+
+## Exact restore
+
+The write phase captures everything it may change before the first write:
+- plist bytes and modes, with absent files recorded as absent;
+- every active/previous pointer target, absent ones included.
+
+A throw at any point restores from that capture: any plist write or chmod (first, middle or
+last), any pointer move, the activation log write, the pre-reload check, or the helper bootstrap.
+`activateRelease` itself also restores every pointer it moved on any throw, which covers
+`restart.mjs` as well. If a restore step fails, the error says `RESTORE INCOMPLETE`: read state
+before doing anything else.
+
+## Reaching zero pending turns: the armed activation job
+
+A guarded command run from a Veneer turn always refuses, because that turn is a pending row and
+nothing excludes it. The executor therefore arms a one-shot launchd job and then ends its turn:
+
+```sh
+node installer/activation-job.mjs arm --maintenance-approved \
+  --approval-ref "<where the human approval is recorded>" \
+  --release <existing release id> --source-sha <sha it was built from> \
+  --jobs com.veneer.pro,com.veneer.web-watchdog,com.veneer.pro.app-runner,com.veneer.pro.term,com.veneer.pro.runner \
+  --deadline <ISO time, at most 12 h ahead> [--consecutive 5] [--interval-ms 2000]
+```
+
+**Arming** refuses in any of these cases:
+- `--maintenance-approved` or the reference is missing;
+- the release was not built from a clean `--source-sha`;
+- the shipped source differs from that SHA;
+- the checkout dist is not the release's build;
+- another activation is armed or running.
+
+Re-arming the identical request is a no-op. The release must already exist; create it first with
+`node scripts/releases.mjs snapshot`, which is inert.
+
+**The job:**
+1. Waits for `pending_turns == 0` and no running browser copy, `--consecutive` times in a row.
+   This includes after the arming turn ends.
+2. Refuses without acting if the shipped source (a content fingerprint, not HEAD), the checkout
+   dist or the release changed since arming.
+3. At the deadline, exits without acting.
+4. Otherwise records `running`, which is the point after which nothing is retried, and runs
+   `install-darwin.mjs --activate-release --release-services-only --maintenance-approved --release <id> --expect-jobs <jobs>`.
+   That command repeats every installer check, and its helper re-checks before each job.
+
+`node installer/activation-job.mjs status` shows the exact state: `armed`, `running`,
+`completed`, `failed`, `refused_deadline`, `refused_changed`, `disarmed` or `arm_failed`.
+`disarm` works only while it is still waiting. Logs are in
+`~/Library/Logs/veneer-pro/veneer-activation.log`.
+
+**Non-turn alternative:** a human runs the guarded install command from a shell that is not a
+Veneer turn, such as macOS Terminal or SSH. The Veneer web terminal is served by `term`, which is
+in the reload set, so do not use it.
+
 ## Migration from checkout mode
 
 Until a release is activated, every plist keeps launching the checkout build. The installer, its
@@ -106,9 +188,10 @@ service in that mode. The first activation is a deployment and happens only in a
 window:
 
 1. Build and validate the exact source to deploy.
-2. `node installer/install-darwin.mjs --activate-release --release-services-only --maintenance-approved`.
-   It refuses unless no turn is pending and no browser is running, and it reloads only the release
-   jobs. Run it with `--dry-run` first to see the exact job list.
+2. `node scripts/releases.mjs snapshot`, then arm the activation job (above) from the executor's
+   turn and end that turn, or have a human run the guarded install command from a non-Veneer
+   shell. Run `install-darwin.mjs --activate-release --release-services-only --dry-run` first to
+   see the exact job list.
 3. Check `node scripts/releases.mjs status`: every service shows `release` mode.
 4. Check `/healthz`: web and runner report the release id.
 

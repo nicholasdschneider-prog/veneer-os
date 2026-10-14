@@ -95,25 +95,77 @@ export async function assertReloadSafe({ phase, jobs, dataDir, serverPackage, ma
 }
 
 /**
- * The write phase, in a fixed order: final guard, write plists, move pointers,
- * guard again, bootstrap the reload helper. Nothing changes what a respawn
- * loads before the final guard passes. Any refusal or failure before the
- * helper is bootstrapped restores the plist files and pointers exactly.
+ * Exact prior state of everything the write phase may change, taken before the
+ * first write: plist bytes and modes (absent files recorded as absent) and every
+ * release pointer target (absent ones too).
  */
-export async function guardedReload({ finalCheck, writePlists, restorePlists, activate, restorePointers, bootstrapHelper, log = console }) {
-  await finalCheck('final check');
-  const plistUndo = writePlists();
-  let pointerUndo = null;
-  try {
-    pointerUndo = activate();
-    await finalCheck('pre-reload check');
-    bootstrapHelper();
-  } catch (error) {
-    if (pointerUndo) restorePointers(pointerUndo);
-    restorePlists(plistUndo);
-    log.error(`[install] restored the previous plists${pointerUndo ? ' and release pointers' : ''}; no job was reloaded`);
-    throw error;
+export function captureState({ plistTargets, capturePointers }) {
+  return {
+    plists: plistTargets.map((target) => {
+      try {
+        return { target, bytes: fs.readFileSync(target).toString('base64'), mode: fs.statSync(target).mode & 0o777 };
+      } catch (error) {
+        if (error.code === 'ENOENT') return { target, bytes: null, mode: null };
+        throw error;
+      }
+    }),
+    pointers: capturePointers ? capturePointers() : null,
+  };
+}
+
+/** Writes each planned plist and sets its mode; hooks exist for failure-injection tests. */
+export function writePlistFiles(jobs, hooks = {}) {
+  for (const job of jobs) {
+    hooks.beforeWrite?.(job);
+    fs.writeFileSync(job.target, job.text, { mode: job.mode });
+    hooks.beforeChmod?.(job);
+    // writeFileSync only applies mode when it creates the file.
+    fs.chmodSync(job.target, job.mode);
   }
+}
+
+/** Puts plist files back byte-for-byte with their exact modes, or removes ones that did not exist. */
+export function restorePlistFiles(plists) {
+  const failures = [];
+  for (const { target, bytes, mode } of plists) {
+    try {
+      if (bytes === null) { fs.rmSync(target, { force: true }); continue; }
+      fs.writeFileSync(target, Buffer.from(bytes, 'base64'));
+      fs.chmodSync(target, mode);
+    } catch (error) {
+      failures.push(`${target}: ${error.message}`);
+    }
+  }
+  if (failures.length) throw new Error(`PLIST RESTORE INCOMPLETE, inspect before anything else: ${failures.join('; ')}`);
+}
+
+/**
+ * The write phase, in a fixed order: capture, final guard, write plists, move
+ * pointers, guard again, bootstrap the reload helper. Nothing changes what a
+ * respawn loads before the final guard passes. Any throw at any point before
+ * the helper is bootstrapped, including the middle of a write or pointer loop,
+ * restores plists and pointers from the capture taken before the first write.
+ */
+export async function guardedReload({ capture, finalCheck, writePlists, activate, restorePlists, restorePointers, bootstrapHelper, log = console }) {
+  const state = capture();
+  await finalCheck('final check');
+  let bootstrapped = false;
+  try {
+    writePlists(state);
+    activate(state);
+    await finalCheck('pre-reload check');
+    bootstrapHelper(state);
+    bootstrapped = true;
+  } finally {
+    if (!bootstrapped) {
+      const problems = [];
+      if (state.pointers) { try { restorePointers(state.pointers); } catch (error) { problems.push(error.message); } }
+      try { restorePlists(state.plists); } catch (error) { problems.push(error.message); }
+      if (problems.length) log.error(`[install] RESTORE INCOMPLETE: ${problems.join('; ')}`);
+      else log.error('[install] restored the previous plists and release pointers exactly; no job was reloaded');
+    }
+  }
+  return state;
 }
 
 /** The plan lines every run prints first, including --dry-run. */

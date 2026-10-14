@@ -213,7 +213,12 @@ function swapLink(link, target) {
   fs.mkdirSync(path.dirname(link), { recursive: true, mode: 0o700 });
   const tmp = `${link}.tmp-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
   fs.symlinkSync(target, tmp);
-  fs.renameSync(tmp, link); // atomic replace: a respawn sees old or new, never neither
+  try {
+    fs.renameSync(tmp, link); // atomic replace: a respawn sees old or new, never neither
+  } catch (error) {
+    fs.rmSync(tmp, { force: true });
+    throw error;
+  }
 }
 
 /**
@@ -221,22 +226,34 @@ function swapLink(link, target) {
  * one replaced. Only restart.mjs calls this, inside --maintenance-approved, right
  * before restarting exactly these services; it refuses anything else.
  */
-export function activateRelease({ dataDir, id, services, maintenanceApproved, reason = 'restart.mjs', now = new Date() }) {
+export function activateRelease({ dataDir, id, services, maintenanceApproved, reason = 'restart.mjs', now = new Date(), hooks = {} }) {
   if (!maintenanceApproved) throw new Error('Release activation refused: it changes what a respawn loads, so it needs --maintenance-approved inside an approved window.');
   const unknown = services.filter((s) => !RELEASE_SERVICES.includes(s));
   if (unknown.length) throw new Error(`no release entry for: ${unknown.join(', ')}`);
   const meta = verifyRelease(dataDir, id);
-  const changes = [];
   for (const service of services) {
     if (!fs.existsSync(path.join(releasesDir(dataDir), id, SERVICE_ENTRY[service]))) throw new Error(`release ${id} has no ${SERVICE_ENTRY[service]}`);
-    const from = activeRelease(dataDir, service);
-    if (from === id) { changes.push({ service, from, to: id, changed: false }); continue; }
-    if (from) swapLink(previousLink(dataDir, service), path.join('..', from));
-    swapLink(activeLink(dataDir, service), path.join('..', id));
-    changes.push({ service, from, to: id, changed: true });
   }
-  const log = path.join(releasesDir(dataDir), 'activations.jsonl');
-  for (const change of changes) fs.appendFileSync(log, JSON.stringify({ at: now.toISOString(), ...change, git_sha: meta.git_sha, reason }) + '\n', { mode: 0o600 });
+  // Captured before the first move, so a throw anywhere below (any link, the
+  // log write) puts every pointer back exactly, absent ones included.
+  const captured = capturePointers(dataDir, services);
+  const changes = [];
+  try {
+    for (const service of services) {
+      const from = activeRelease(dataDir, service);
+      if (from === id) { changes.push({ service, from, to: id, changed: false }); continue; }
+      if (from) { hooks.beforeLink?.(previousLink(dataDir, service)); swapLink(previousLink(dataDir, service), path.join('..', from)); }
+      hooks.beforeLink?.(activeLink(dataDir, service));
+      swapLink(activeLink(dataDir, service), path.join('..', id));
+      changes.push({ service, from, to: id, changed: true });
+    }
+    const log = path.join(releasesDir(dataDir), 'activations.jsonl');
+    hooks.beforeLog?.();
+    fs.appendFileSync(log, changes.map((change) => JSON.stringify({ at: now.toISOString(), ...change, git_sha: meta.git_sha, reason }) + '\n').join(''), { mode: 0o600 });
+  } catch (error) {
+    restorePointersExact(dataDir, captured);
+    throw new Error(`release activation failed and every pointer was restored: ${error.message}`);
+  }
   return changes;
 }
 
@@ -253,19 +270,30 @@ export function capturePointers(dataDir, services) {
   }));
 }
 
+/** Puts links back exactly as captured, without touching the activation log. */
+export function restorePointersExact(dataDir, captured) {
+  const failures = [];
+  for (const { service, active, previous } of captured) {
+    for (const [link, target] of [[activeLink(dataDir, service), active], [previousLink(dataDir, service), previous]]) {
+      try {
+        if (target) swapLink(link, target);
+        else fs.rmSync(link, { force: true });
+      } catch (error) {
+        failures.push(`${service} ${path.basename(path.dirname(link))}: ${error.message}`);
+      }
+    }
+  }
+  if (failures.length) throw new Error(`RESTORE INCOMPLETE, read releases status before anything else: ${failures.join('; ')}`);
+}
+
 /**
  * Puts active/previous links back exactly as captured. A service that had no
  * active release loses its link again, so its plist's checkout fallback applies.
  */
 export function restorePointers(dataDir, captured, { reason = 'restore', now = new Date() } = {}) {
   fs.mkdirSync(releasesDir(dataDir), { recursive: true, mode: 0o700 });
-  for (const { service, active, previous } of captured) {
-    for (const [link, target] of [[activeLink(dataDir, service), active], [previousLink(dataDir, service), previous]]) {
-      if (target) swapLink(link, target);
-      else fs.rmSync(link, { force: true });
-    }
-    fs.appendFileSync(path.join(releasesDir(dataDir), 'activations.jsonl'), JSON.stringify({ at: now.toISOString(), service, restored_to: active ? path.basename(active) : null, reason }) + '\n', { mode: 0o600 });
-  }
+  restorePointersExact(dataDir, captured);
+  fs.appendFileSync(path.join(releasesDir(dataDir), 'activations.jsonl'), captured.map(({ service, active }) => JSON.stringify({ at: now.toISOString(), service, restored_to: active ? path.basename(active) : null, reason }) + '\n').join(''), { mode: 0o600 });
 }
 
 /** Which bytes each service would respawn from right now. */

@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-  assertReloadSafe, browserOccupancy, describePlan, guardedReload, planReload, RELEASE_JOB_LABELS,
+  assertReloadSafe, browserOccupancy, captureState, describePlan, guardedReload, planReload, RELEASE_JOB_LABELS, restorePlistFiles, writePlistFiles,
 } from './activation-guard.mjs';
 import {
   activateRelease, activeRelease, capturePointers, previousRelease, RELEASE_SERVICES, restorePointers, SERVICE_ENTRY, snapshotRelease,
@@ -57,81 +57,104 @@ test('the whole-plan pre-check refuses pending turns, a missing approval, and al
   await check(data)('pre-check');
 });
 
-test('a refusal at the final check leaves plists and pointers untouched', async (t) => {
+// The installer's write phase, built from the real pieces, with failure hooks.
+function writePhase({ data, release, jobs, fault = {} }) {
+  const bootstrapped = [];
+  return {
+    bootstrapped,
+    args: {
+      capture: () => captureState({ plistTargets: jobs.map((j) => j.target), capturePointers: () => capturePointers(data, RELEASE_SERVICES) }),
+      finalCheck: async (phase) => { fault.check?.(phase); await check(data)(phase); },
+      writePlists: () => writePlistFiles(jobs, { beforeWrite: fault.beforeWrite, beforeChmod: fault.beforeChmod }),
+      activate: () => activateRelease({ dataDir: data, id: release, services: RELEASE_SERVICES, maintenanceApproved: true, hooks: { beforeLink: fault.beforeLink, beforeLog: fault.beforeLog } }),
+      restorePlists: (plists) => restorePlistFiles(plists),
+      restorePointers: (pointers) => restorePointers(data, pointers, { reason: 'test refusal' }),
+      bootstrapHelper: () => { fault.bootstrap?.(); bootstrapped.push('helper'); },
+      log: { error() {} },
+    },
+  };
+}
+
+function prior(t) {
   const { root, data, setPending } = sandbox(t);
-  const calls = [];
+  const dir = app(root, 'A');
+  const a = snapshotRelease({ appRoot: dir, dataDir: data });
+  activateRelease({ dataDir: data, id: a.id, services: ['veneer-pro'], maintenanceApproved: true }); // web on A; others have none
+  fs.writeFileSync(path.join(dir, SERVICE_ENTRY['veneer-pro']), '// B\n');
+  const b = snapshotRelease({ appRoot: dir, dataDir: data });
+  const agents = path.join(root, 'agents');
+  fs.mkdirSync(agents);
+  const jobs = ['com.veneer.pro', 'com.veneer.pro.app-runner', 'com.veneer.pro.term', 'com.veneer.web-watchdog', 'com.veneer.pro.runner'].map((label, i) => {
+    const target = path.join(agents, `${label}.plist`);
+    if (i !== 2) { fs.writeFileSync(target, `OLD ${label}`); fs.chmodSync(target, i === 1 ? 0o600 : 0o644); } // term absent before
+    return { label, target, text: `NEW ${label}`, mode: 0o644 };
+  });
+  const snapshot = () => ({
+    plists: jobs.map((j) => (fs.existsSync(j.target) ? [fs.readFileSync(j.target, 'utf8'), fs.statSync(j.target).mode & 0o777] : null)),
+    pointers: capturePointers(data, RELEASE_SERVICES),
+  });
+  return { data, setPending, a, b, jobs, snapshot };
+}
+
+test('a refusal at the final check writes nothing', async (t) => {
+  const { data, setPending, b, jobs, snapshot } = prior(t);
+  const before = snapshot();
   setPending(1);
-  await assert.rejects(guardedReload({
-    finalCheck: async (phase) => { calls.push(phase); await check(data)(phase); },
-    writePlists: () => { calls.push('write'); return []; },
-    restorePlists: () => calls.push('restore-plists'),
-    activate: () => { calls.push('activate'); return null; },
-    restorePointers: () => calls.push('restore-pointers'),
-    bootstrapHelper: () => calls.push('bootstrap'),
-    log: { error() {} },
-  }), /final check: 1 active turns/);
-  assert.deepEqual(calls, ['final check']);
-  assert.equal(fs.existsSync(path.join(data, 'releases')), false);
-  void root;
+  const phase = writePhase({ data, release: b.id, jobs });
+  await assert.rejects(guardedReload(phase.args), /final check: 1 active turns/);
+  assert.deepEqual(snapshot(), before);
+  assert.deepEqual(phase.bootstrapped, []);
 });
 
 test('a turn arriving after activation restores the exact prior pointers and plists; nothing reloads', async (t) => {
-  const { root, data, setPending } = sandbox(t);
-  const dir = app(root, 'A');
-  const a = snapshotRelease({ appRoot: dir, dataDir: data });
-  activateRelease({ dataDir: data, id: a.id, services: ['veneer-pro'], maintenanceApproved: true }); // web already on A; others none
-  fs.writeFileSync(path.join(dir, SERVICE_ENTRY['veneer-pro']), '// B\n');
-  const b = snapshotRelease({ appRoot: dir, dataDir: data });
-  const plist = path.join(root, 'com.veneer.pro.plist');
-  fs.writeFileSync(plist, 'OLD');
-  const before = capturePointers(data, RELEASE_SERVICES);
+  const { data, setPending, a, b, jobs, snapshot } = prior(t);
+  const before = snapshot();
   const order = [];
-  await assert.rejects(guardedReload({
-    finalCheck: async (phase) => {
-      order.push(`${phase}:${activeRelease(data, 'veneer-pro')}`);
-      if (phase === 'pre-reload check') setPending(1); // new work arrives during activation
-      await check(data)(phase);
-    },
-    writePlists: () => { const undo = [{ target: plist, previous: fs.readFileSync(plist, 'utf8') }]; fs.writeFileSync(plist, 'NEW'); return undo; },
-    restorePlists: (undo) => { for (const u of undo) fs.writeFileSync(u.target, u.previous); },
-    activate: () => {
-      const captured = capturePointers(data, RELEASE_SERVICES);
-      activateRelease({ dataDir: data, id: b.id, services: RELEASE_SERVICES, maintenanceApproved: true });
-      order.push('activated');
-      return captured;
-    },
-    restorePointers: (captured) => restorePointers(data, captured, { reason: 'test refusal' }),
-    bootstrapHelper: () => order.push('bootstrap'),
-    log: { error() {} },
-  }), /pre-reload check: 1 active turns/);
+  const phase = writePhase({ data, release: b.id, jobs, fault: { check: (p) => {
+    order.push(`${p}:${activeRelease(data, 'veneer-pro')}`);
+    if (p === 'pre-reload check') setPending(1); // new work arrives during activation
+  } } });
+  await assert.rejects(guardedReload(phase.args), /pre-reload check: 1 active turns/);
   // The new release became active only after the final check had passed.
-  assert.deepEqual(order, [`final check:${a.id}`, 'activated', `pre-reload check:${b.id}`]);
-  assert.deepEqual(capturePointers(data, RELEASE_SERVICES), before);
+  assert.deepEqual(order, [`final check:${a.id}`, `pre-reload check:${b.id}`]);
+  assert.deepEqual(snapshot(), before);
   assert.equal(activeRelease(data, 'veneer-pro'), a.id);
-  assert.equal(previousRelease(data, 'veneer-pro'), null);
-  // Services with no prior release fall back to the checkout again.
   for (const service of RELEASE_SERVICES.filter((s) => s !== 'veneer-pro')) assert.equal(activeRelease(data, service), null);
-  assert.equal(fs.readFileSync(plist, 'utf8'), 'OLD');
-  const log = fs.readFileSync(path.join(data, 'releases', 'activations.jsonl'), 'utf8');
-  assert.match(log, /"reason":"test refusal"/);
+  assert.deepEqual(phase.bootstrapped, []);
 });
 
-test('a failed helper bootstrap also restores pointers and plists', async (t) => {
-  const { root, data } = sandbox(t);
-  const dir = app(root, 'A');
-  const a = snapshotRelease({ appRoot: dir, dataDir: data });
-  const restored = [];
-  await assert.rejects(guardedReload({
-    finalCheck: check(data),
-    writePlists: () => ['undo'],
-    restorePlists: (undo) => restored.push(...undo),
-    activate: () => { const c = capturePointers(data, RELEASE_SERVICES); activateRelease({ dataDir: data, id: a.id, services: RELEASE_SERVICES, maintenanceApproved: true }); return c; },
-    restorePointers: (c) => restorePointers(data, c),
-    bootstrapHelper: () => { throw new Error('launchctl bootstrap failed'); },
-    log: { error() {} },
-  }), /launchctl bootstrap failed/);
-  assert.deepEqual(restored, ['undo']);
-  for (const service of RELEASE_SERVICES) assert.equal(activeRelease(data, service), null);
+// Every step that can fail, at every position: first/middle/last plist write
+// and chmod, each pointer move, the activation log, the helper bootstrap.
+const boom = () => { throw new Error('injected failure'); };
+const nth = (n, key) => { let i = 0; return (arg) => { if (i++ === n) boom(arg); void key; }; };
+for (const [name, fault] of [
+  ['first plist write', { beforeWrite: nth(0) }],
+  ['middle plist write', { beforeWrite: nth(2) }],
+  ['last plist write', { beforeWrite: nth(4) }],
+  ['first chmod', { beforeChmod: nth(0) }],
+  ['middle chmod', { beforeChmod: nth(2) }],
+  ['last chmod', { beforeChmod: nth(4) }],
+  ...[0, 1, 2, 3, 4].map((n) => [`pointer move ${n + 1}`, { beforeLink: nth(n) }]),
+  ['activation log write', { beforeLog: boom }],
+  ['helper bootstrap', { bootstrap: boom }],
+]) {
+  test(`a failure at the ${name} restores plists, modes and pointers byte-exactly and bootstraps nothing`, async (t) => {
+    const { data, b, jobs, snapshot } = prior(t);
+    const before = snapshot();
+    const phase = writePhase({ data, release: b.id, jobs, fault });
+    await assert.rejects(guardedReload(phase.args), /injected failure/);
+    assert.deepEqual(snapshot(), before);
+    assert.deepEqual(phase.bootstrapped, []);
+    for (const entry of fs.readdirSync(path.join(data, 'releases', 'active'))) assert.doesNotMatch(entry, /\.tmp-/);
+  });
+}
+
+test('restart.mjs activation of one service also restores its pointers on a partial failure', (t) => {
+  const { data, a, b } = prior(t);
+  activateRelease({ dataDir: data, id: a.id, services: ['veneer-pro-runner'], maintenanceApproved: true });
+  const before = capturePointers(data, RELEASE_SERVICES);
+  assert.throws(() => activateRelease({ dataDir: data, id: b.id, services: ['veneer-pro-runner'], maintenanceApproved: true, hooks: { beforeLink: nth(1) } }), /every pointer was restored: injected failure/);
+  assert.deepEqual(capturePointers(data, RELEASE_SERVICES), before);
 });
 
 test('occupied, held or unknown browsers refuse; the token never appears in output', async (t) => {

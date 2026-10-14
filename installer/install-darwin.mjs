@@ -35,10 +35,10 @@ import { fileURLToPath } from 'node:url';
 import { AGENT_BROWSER_VERSION, provisionAgentBrowser } from './agent-browser.mjs';
 import { browserManagerPaths, provisionLocalBrowserManager } from './browser-manager.mjs';
 import { loadEnvFile, readEnvFile, upsertEnvValues, validateInstallEnv } from './env.mjs';
-import { renderReloadJobPlist, waitForReloadStatus } from './launchd-reload.mjs';
+import { reloadOrder, renderReloadJobPlist, waitForReloadStatus } from './launchd-reload.mjs';
 import { provisionNodeShellProfile } from './node-shell-profile.mjs';
-import { activateRelease, activeLink, activeRelease, capturePointers, plistRoots, RELEASE_SERVICES, releaseIdFor, restorePointers, snapshotRelease } from '../scripts/releases.mjs';
-import { assertReloadSafe, browserOccupancy, describePlan, guardedReload, LABEL_SERVICE, pendingTurnCount, planReload } from './activation-guard.mjs';
+import { activateRelease, activeLink, activeRelease, capturePointers, plistRoots, RELEASE_SERVICES, releaseIdFor, restorePointers, snapshotRelease, verifyRelease } from '../scripts/releases.mjs';
+import { assertReloadSafe, browserOccupancy, captureState, describePlan, guardedReload, restorePlistFiles, writePlistFiles, LABEL_SERVICE, pendingTurnCount, planReload } from './activation-guard.mjs';
 
 const SERVICES = [
   { label: 'com.veneer.web-watchdog', plist: 'com.veneer.web-watchdog.plist' },
@@ -368,7 +368,22 @@ console.log(`[install] browser agent-browser ${AGENT_BROWSER_VERSION}`);
 // Which bytes each job will launch, which jobs actually need a reload, and the
 // two conditions that make a reload unsafe right now. Nothing is written,
 // snapshotted or activated until the whole plan has passed the guard.
-const releaseId = activateReleaseFlag ? releaseIdFor(codeDir) : null;
+// --release <id> activates an existing, verified snapshot (the armed activation
+// job binds to one); otherwise the current build is snapshotted.
+const namedRelease = flag('release', null);
+if (namedRelease && !activateReleaseFlag) {
+  console.error('[install] REFUSED — --release <id> is only meaningful with --activate-release; nothing was written.');
+  process.exit(2);
+}
+let releaseId = null;
+if (activateReleaseFlag) {
+  try {
+    releaseId = namedRelease ? (verifyRelease(releaseDataDir, namedRelease), namedRelease) : releaseIdFor(codeDir);
+  } catch (error) {
+    console.error(`[install] REFUSED — ${error.message}; nothing was written.`);
+    process.exit(1);
+  }
+}
 const pointerMoves = new Set();
 {
   const { roots, warnings } = plistRoots({ dataDir: releaseDataDir, codeDir });
@@ -396,7 +411,18 @@ const renderJobs = () => SERVICES.filter((service) => !installable(service)).map
   try { current = fs.readFileSync(target, 'utf8'); } catch { /* not installed yet */ }
   return { label: service.label, target, mode: service.secret ? 0o600 : 0o644, text: render(service.plist, service.label), current };
 });
-const plan = planReload({ rendered: renderJobs(), bounded: releaseServicesOnly, pointerMoves });
+// Listed in the exact order the reload helper will run them.
+const plan = (({ reload, untouchedChanged }) => ({ reload: reloadOrder(reload), untouchedChanged }))(planReload({ rendered: renderJobs(), bounded: releaseServicesOnly, pointerMoves }));
+// The armed activation job names the exact jobs it was approved for.
+const expectedJobs = flag('expect-jobs', null);
+if (expectedJobs !== null) {
+  const want = expectedJobs.split(',').filter(Boolean).sort().join(',');
+  const have = plan.reload.map((job) => job.label).sort().join(',');
+  if (want !== have) {
+    console.error(`[install] REFUSED — the plan would reload [${have}] but the approval names [${want}]; nothing was written.`);
+    process.exit(1);
+  }
+}
 const serverPackage = path.join(codeDir, 'server', 'package.json');
 const occupancy = () => browserOccupancy({ browserEnvFile: browserPaths.browserEnvFile, port: Number(process.env.VENEER_BROWSER_MANAGER_PORT || 7300) });
 const pendingNow = pendingTurnCount({ dataDir: releaseDataDir, serverPackage });
@@ -504,12 +530,12 @@ if (!releaseServicesOnly) {
 
 // Inert until activated: a snapshot changes nothing any service loads.
 if (activateReleaseFlag) {
-  const release = snapshotRelease({ appRoot: codeDir, dataDir: releaseDataDir });
+  const release = namedRelease ? { id: namedRelease } : snapshotRelease({ appRoot: codeDir, dataDir: releaseDataDir });
   if (release.id !== releaseId) {
     console.error(`[install] REFUSED — the build changed after planning (${releaseId} became ${release.id}); nothing was activated. Re-run the dry run.`);
     process.exit(1);
   }
-  console.log(`[install] release ${release.id} snapshotted (not active yet)`);
+  console.log(`[install] release ${release.id} ${namedRelease ? 'verified' : 'snapshotted'} (not active yet)`);
 }
 
 // Never reload these jobs inline. This installer is commonly run by a Veneer
@@ -546,41 +572,41 @@ try {
 // guard, write plists, move pointers, guard again, bootstrap the helper. Any
 // refusal before the helper starts restores plists and pointers exactly.
 const reloadLabels = new Set(plan.reload.map((job) => job.label));
+// Re-rendered after provisioning, which may have moved the browser certificate.
+const writeJobs = () => renderJobs().filter((entry) => reloadLabels.has(entry.label));
 try {
   await guardedReload({
+    capture: () => captureState({
+      plistTargets: writeJobs().map((job) => job.target),
+      capturePointers: activateReleaseFlag ? () => capturePointers(releaseDataDir, RELEASE_SERVICES) : null,
+    }),
     finalCheck: guard,
-    writePlists: () => {
-      const undo = [];
-      // Re-rendered after provisioning, which may have moved the browser certificate.
-      for (const job of renderJobs().filter((entry) => reloadLabels.has(entry.label))) {
-        undo.push({ target: job.target, previous: job.current, mode: job.mode });
-        fs.writeFileSync(job.target, job.text, { mode: job.mode });
-        // writeFileSync only applies mode when it creates the file, so a re-install
-        // over an existing plist would silently keep the old, wider permissions.
-        fs.chmodSync(job.target, job.mode);
-      }
-      return undo;
-    },
-    restorePlists: (undo) => {
-      for (const { target, previous, mode } of undo) {
-        if (previous === null) fs.rmSync(target, { force: true });
-        else fs.writeFileSync(target, previous, { mode });
-      }
-    },
+    writePlists: () => writePlistFiles(writeJobs()),
     activate: () => {
-      if (!activateReleaseFlag) return null;
-      const captured = capturePointers(releaseDataDir, RELEASE_SERVICES);
+      if (!activateReleaseFlag) return;
       activateRelease({ dataDir: releaseDataDir, id: releaseId, services: RELEASE_SERVICES, maintenanceApproved, reason: 'install-darwin.mjs --activate-release' });
       console.log(`[install] release ${releaseId} activated for ${RELEASE_SERVICES.join(', ')}; the reload starts them on it`);
-      return captured;
     },
-    restorePointers: (captured) => restorePointers(releaseDataDir, captured, { reason: 'install-darwin.mjs refused before reload' }),
-    bootstrapHelper: () => {
+    restorePlists: (plists) => restorePlistFiles(plists),
+    restorePointers: (pointers) => restorePointers(releaseDataDir, pointers, { reason: 'install-darwin.mjs refused before reload' }),
+    bootstrapHelper: (state) => {
       fs.rmSync(statusPath, { force: true });
       fs.writeFileSync(manifestPath, `${JSON.stringify({
         runId,
         uid,
         services: plan.reload.map((job) => ({ label: job.label, plist: path.join(agentsDir, `${job.label}.plist`) })),
+        // The helper re-checks before the whole plan and before each job's
+        // bootout. allowActive is only ever the operator's explicit flag.
+        gate: guardRequired ? {
+          dataDir: releaseDataDir,
+          serverPackage,
+          browserEnvFile: browserPaths.browserEnvFile,
+          browserPort: Number(process.env.VENEER_BROWSER_MANAGER_PORT || 7300),
+          maintenanceApproved,
+          allowActive: allowActiveTurns,
+        } : null,
+        // What a job that is never reloaded goes back to (see launchd-reload.mjs).
+        restore: { dataDir: releaseDataDir, plists: state.plists, pointers: state.pointers, labelService: LABEL_SERVICE },
         healthChecks: [{
           name: 'Veneer Pro web and runner',
           url: `http://127.0.0.1:${process.env.PORT || 3100}/healthz`,
@@ -616,8 +642,9 @@ try {
 }
 fs.rmSync(reloadDir, { recursive: true, force: true });
 if (!reloadStatus.ok) {
-  console.error('Cannot install: one or more macOS services failed to reload:');
+  console.error('Cannot install: one or more macOS services failed to reload or were refused:');
   for (const error of reloadStatus.errors) console.error(`  - ${error}`);
+  for (const job of reloadStatus.jobs ?? []) console.error(`  ${job.label}: ${job.outcome}${job.detail ? ` (${job.detail})` : ''}`);
   console.error(`See ${helperLog}`);
   process.exit(1);
 }

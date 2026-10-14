@@ -10,6 +10,8 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertReloadSafe, browserOccupancy, restorePlistFiles } from './activation-guard.mjs';
+import { restorePointers } from '../scripts/releases.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -36,28 +38,96 @@ function serviceTarget(uid, label) {
   return `gui/${uid}/${label}`;
 }
 
+/**
+ * The order jobs are reloaded in. The runner is deliberately reloaded after the
+ * other persistent services: this is not required for the launchd-owned helper
+ * to survive, but it keeps the initiating Pro turn alive for as long as
+ * possible. The web watchdog follows web's release pointer, so it reloads right
+ * after web. The boot probe stays last because it validates the install.
+ */
+export function reloadOrder(services) {
+  const watchdog = (service) => service.label === 'com.veneer.web-watchdog';
+  const rest = services.filter((service) => !watchdog(service) && service.label !== 'com.veneer.pro.runner' && service.label !== 'com.veneer.boot-probe');
+  const webAt = rest.findIndex((service) => service.label === 'com.veneer.pro');
+  return [
+    ...rest.slice(0, webAt + 1),
+    ...services.filter(watchdog),
+    ...rest.slice(webAt + 1),
+    ...services.filter((service) => service.label === 'com.veneer.pro.runner'),
+    ...services.filter((service) => service.label === 'com.veneer.boot-probe'),
+  ];
+}
+
+/** The idle gate the helper applies, built from the installer's manifest. Never adds an override. */
+export function gateFromManifest(gate) {
+  if (!gate) return null;
+  const occupancy = () => browserOccupancy({ browserEnvFile: gate.browserEnvFile, port: gate.browserPort });
+  return (phase, jobs) => assertReloadSafe({
+    phase, jobs, dataDir: gate.dataDir, serverPackage: gate.serverPackage,
+    maintenanceApproved: gate.maintenanceApproved === true, allowActive: gate.allowActive === true, occupancy,
+  });
+}
+
+/**
+ * Puts the plists and release pointers of jobs that were never reloaded back
+ * to their pre-install state, so no loaded-but-not-reloaded job respawns (or
+ * reboots) onto bytes it is not running. Jobs already reloaded keep their new
+ * state: they run it. The web watchdog has no pointer of its own; it follows web.
+ */
+export function restoreNotReloaded(restore, services, { restorePlists = restorePlistFiles, restoreLinks = restorePointers } = {}) {
+  if (!restore) return [];
+  const targets = new Set(services.map((service) => service.plist));
+  const owners = new Set(services.map((service) => restore.labelService?.[service.label]).filter(Boolean));
+  const problems = [];
+  try { restorePlists(restore.plists.filter((entry) => targets.has(entry.target))); } catch (error) { problems.push(error.message); }
+  const pointers = (restore.pointers ?? []).filter((entry) => owners.has(entry.service));
+  if (pointers.length) {
+    try { restoreLinks(restore.dataDir, pointers, { reason: 'reload helper stopped before these jobs' }); } catch (error) { problems.push(error.message); }
+  }
+  return problems;
+}
+
 export async function reloadLaunchdServices({
   uid,
   services,
   healthChecks = [],
+  gate = null,
+  restore = null,
+  check = gateFromManifest(gate),
   launchctl = defaultLaunchctl,
   fetchImpl = globalThis.fetch,
   wait = sleep,
   log = console.log,
+  restoreOptions,
 }) {
   const errors = [];
 
-  // The runner is deliberately reloaded after the other persistent services.
-  // This is not required for this launchd-owned helper to survive, but it keeps
-  // the initiating Pro turn alive for as long as possible. The boot probe stays
-  // last because it validates the completed install.
-  const ordered = [
-    ...services.filter((service) => service.label !== 'com.veneer.pro.runner' && service.label !== 'com.veneer.boot-probe'),
-    ...services.filter((service) => service.label === 'com.veneer.pro.runner'),
-    ...services.filter((service) => service.label === 'com.veneer.boot-probe'),
-  ];
+  const ordered = reloadOrder(services);
+  const jobs = ordered.map((service) => ({ label: service.label, outcome: 'not_started' }));
 
-  for (const service of ordered) {
+  // Stop at the first refusal: nothing after it is booted out, nothing is
+  // retried or forced, and jobs never reached go back to their prior state.
+  const stop = (index, phase, error) => {
+    jobs[index] = { ...jobs[index], outcome: 'refused', detail: error.message };
+    const untouched = ordered.slice(index);
+    const problems = restoreNotReloaded(restore, untouched, restoreOptions);
+    for (const job of jobs.slice(index)) job.restored = problems.length === 0 && Boolean(restore);
+    errors.push(`${phase}: ${error.message}`);
+    for (const problem of problems) errors.push(problem);
+    log(`[install] REFUSED ${phase}; stopped. Reloaded: ${jobs.filter((job) => job.outcome === 'reloaded').map((job) => job.label).join(', ') || 'none'}. Restored and not reloaded: ${untouched.map((service) => service.label).join(', ')}${problems.length ? ' (RESTORE INCOMPLETE)' : ''}`);
+    return { ok: false, refused: true, errors, jobs };
+  };
+
+  if (check) {
+    try { await check('helper start', ordered.map((service) => service.label)); }
+    catch (error) { return stop(0, 'helper start', error); }
+  }
+
+  for (const [index, service] of ordered.entries()) {
+    if (check) {
+      try { await check(`before ${service.label}`, [service.label]); }
+      catch (error) { return stop(index, `before ${service.label}`, error); }
+    }
     const target = serviceTarget(uid, service.label);
     try {
       try {
@@ -79,9 +149,11 @@ export async function reloadLaunchdServices({
       launchctl(['bootstrap', `gui/${uid}`, service.plist]);
       launchctl(['enable', target]);
       launchctl(['print', target]);
+      jobs[index].outcome = 'reloaded';
       log(`[install] loaded ${service.label}`);
     } catch (error) {
       const detail = errorDetail(error);
+      jobs[index] = { ...jobs[index], outcome: 'failed', detail: detail || 'launchctl reload failed' };
       errors.push(`${service.label}: ${detail || 'launchctl reload failed'}`);
       // Continue so one bad optional/ancillary job cannot strand a later core
       // service the way the former inline installer did.
@@ -106,7 +178,7 @@ export async function reloadLaunchdServices({
     else log(`[install] healthy ${check.name}`);
   }
 
-  return { ok: errors.length === 0, errors };
+  return { ok: errors.length === 0, errors, jobs };
 }
 
 export function renderReloadJobPlist({ label, nodeBin, helperPath, manifestPath, statusPath, logPath }) {
