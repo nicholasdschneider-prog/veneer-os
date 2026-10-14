@@ -334,24 +334,3 @@ restart the tunnel. The boot report remains a one-shot check, not a continuous
 outage monitor. Run `node scripts/boot-probe.mjs --now --no-email` for its detailed
 report without sending email.
 
-### Prospective completed-case custody (optional, inactive until enrolled)
-
-`VP_CASE_CUSTODY_REGISTRY_FILE` is an absolute protected regular non-symlink file,
-owned by the service user with mode0600 and bounded to128KiB. It contains only
-nonsecret dedicated registration metadata, credential references and hash
-commitments. It is independent of message/return/routine trust. Do not populate
-it with guessed identities or copied grants. An actual owner must confirm the
-exact authenticated source enrollment through the dedicated human APIs before
-review or service use. No production registry is installed by BUILD485. See the
-[versioned contract](docs/reports/case-custody/build485/contract.md) for schemas,
-source acceptance, expiry/revocation, and irreversible claim reconciliation.
-
-### Paired contact-verification integration (optional, disabled)
-
-`VP_CONTACT_VERIFICATION_REGISTRY_FILE` is a separate absolute, regular,
-non-symlink, service-owned 0600 file of at most 128 KiB. It contains dedicated
-nonsecret service metadata, hash commitments and reader references only. The
-actual owner must confirm exact authenticated technical enrollment after source,
-renderer/dispatch and secure-redemption acceptance. No production configuration
-is installed by BUILD487. Existing return, SMS and custody grants cannot be reused.
-See [the paired contract](docs/reports/contact-verification/build487/contract.md).

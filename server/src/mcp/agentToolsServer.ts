@@ -286,7 +286,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'enqueue_build',
     description:
-      'Put shared software source or technical repair work into this workspace\'s durable build queue. Project workspaces have independent queues; only an unfiled Platform Dev chat uses the Veneer Pro source queue. Call this early before changing shared software source, executable automation, dependencies, schemas, or deployment configuration unless the user explicitly says to start immediately, skip the line, or not use the queue. Do not use it for routine authorized bot training text, procedural documentation, task records, or isolated artifacts; coordinate overlapping file edits with their current owner and preserve current content. Training is not business approval. Mixed requests queue only the software portion. Do not use it for a standalone Veneer page or Mini App because those are isolated published deliverables; if the same request also changes shared software, queue that source work. Unfiled non-Platform-Dev chats cannot queue. Do not use it for purely read-only work. After enqueueing, do not change or validate the queued source work in the current turn; prepare that work read-only. Independent authorized business work may continue without a build slot. The queue itself starts a new turn in this chat when the slot is active, so never call `schedule_wakeup`, `schedule_task`, or any other timer to wait for your own build slot.',
+      'Put shared software source or technical repair work into this workspace\'s durable build queue. Only a turn Nick started (or James on his behalf) can queue a build; from any other turn it is refused, so first look for a skill, config or manual fix, and if truly stuck raise_decision in one sentence. Project workspaces have independent queues; only an unfiled Platform Dev chat uses the Veneer Pro source queue. Call this early before changing shared software source, executable automation, dependencies, schemas, or deployment configuration unless the user explicitly says to start immediately, skip the line, or not use the queue. Do not use it for routine authorized bot training text, procedural documentation, task records, or isolated artifacts; coordinate overlapping file edits with their current owner and preserve current content. Training is not business approval. Mixed requests queue only the software portion. Do not use it for a standalone Veneer page or Mini App because those are isolated published deliverables; if the same request also changes shared software, queue that source work. Unfiled non-Platform-Dev chats cannot queue. Do not use it for purely read-only work. After enqueueing, do not change or validate the queued source work in the current turn; prepare that work read-only. Independent authorized business work may continue without a build slot. The queue itself starts a new turn in this chat when the slot is active, so never call `schedule_wakeup`, `schedule_task`, or any other timer to wait for your own build slot.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -294,11 +294,6 @@ const TOOLS: ToolDef[] = [
         brief: {
           type: 'string',
           description: 'Self-contained implementation brief, including requirements and relevant decisions from this chat.',
-        },
-        continues_this_chat: {
-          type: 'boolean',
-          description:
-            "Only matters when another bot's message, not the human in this chat, asked for the build. By default such a build gets a new chat of its own, so unrelated work stays out of this chat's human thread. Set true only when the build continues work the human already asked for in this chat.",
         },
       },
       required: ['title', 'brief'],
@@ -1197,30 +1192,18 @@ async function callTool(
       if (!spawnConversationId) {
         return { content: [{ type: 'text', text: 'enqueue_build is unavailable here (no active conversation).' }], isError: true };
       }
-      const { job, position, disposition, buildConversation } = (await callApi('/api/build-queue', {
+      const { job, position, disposition } = (await callApi('/api/build-queue', {
         method: 'POST',
         body: JSON.stringify({
           sourceConversationId: spawnConversationId,
           title: String(args.title ?? ''),
           brief: String(args.brief ?? ''),
-          ...(args.continues_this_chat === true ? { continuesThisChat: true } : {}),
         }),
       })) as {
         job: Record<string, unknown>;
         position: number;
         disposition: 'enqueued' | 'merged' | 'existing' | 'requeued';
-        buildConversation?: { id: string; title: string | null };
       };
-      if (buildConversation) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Queued build #${String(job.id)} “${String(job.title)}” at position ${position} in a new chat of its own (${buildConversation.id}), because another bot asked for it and it is not this chat's own work. That chat builds it when its slot is up: do not change or validate source for it here, and do not schedule a wake-up. Give the new chat id in your reply to the requesting bot, so it follows up in that chat.`,
-            },
-          ],
-        };
-      }
       // Agents otherwise read "wait for your slot" as a follow-up they must
       // arrange themselves, and stack a redundant wake-up on top of the queue.
       const wakeGuarantee =

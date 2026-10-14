@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { BUILD_REFUSAL, isReplyToTechnical, isTechnicalConversation, requestMayStartBuild } from '../buildQueue/buildApproval.js';
 import express from 'express';
 import type { AppContext } from '../context.js';
 import type { ConversationRow } from '../db/db.js';
@@ -216,6 +217,8 @@ export async function sendCoordination(
     !sameBusiness(ctx.db, source.id, target)
   )
     throw new Error('Conversation not available');
+  if (isTechnicalConversation(ctx.db, target.id) && !isTechnicalConversation(ctx.db, source.id) && !isReplyToTechnical(ctx.db, source.id, target.id) && !requestMayStartBuild(ctx.db, req))
+    throw new Error(BUILD_REFUSAL);
   if (req.agentExecutionConversationId) {
     const execution = coordinationLane(
       ctx.db,

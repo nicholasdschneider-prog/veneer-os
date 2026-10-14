@@ -50,7 +50,7 @@ it('accepts exact native template without inventing human approval and delivers 
   expect(s.accept(bot, p.args)).toMatchObject({ execute: false, authorization_basis: 'standing_policy' });
   expect(db.prepare('SELECT authorized_by FROM bot_message_drafts').get()).toEqual({ authorized_by: null });
   expect(db.prepare('SELECT count(*) n FROM bot_decision_events').get()).toEqual({ n: 0 });
-  expect(() => communicationService(db).claim(bot, p.d.id, 'legacy')).toThrow('claim_routine_message');
+  expect(() => communicationService(db).claim(bot, p.d.id, 'legacy')).toThrow('retired flow');
   expect(s.claim(bot, p.claim).execute).toBe(false);
   expect(s.dispatchClaim(identity,{...p.claim,source_intent:"case-request1",scope_hash:p.proof.scope_hash,material_hash:p.proof.material_hash,request_key:"dispatch1"}).execute).toBe(true); expect(s.claim(bot, p.claim).execute).toBe(false);
   expect(() => s.claim(bot, { ...p.claim, claim_key: 'retry' })).toThrow();

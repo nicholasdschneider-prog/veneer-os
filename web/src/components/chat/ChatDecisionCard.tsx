@@ -47,7 +47,7 @@ export function ChatDecisionCard({ decision: d, unavailable = false }: { decisio
   const pending = d.state === 'needs_input' && !recorded;
   const summary = d.proposal.review_summary;
   const copy = decisionCopy(d.proposal);
-  const exact = !!(d.proposal.message_delivery || d.proposal.contact_verification || copy.draft);
+  const exact = !!(d.proposal.message_delivery || copy.draft);
   const found = [summary?.request && summary.request !== d.proposal.question ? summary.request : '', ...(summary?.background ?? [])].filter(Boolean);
   return <article aria-label={`Question from ${d.bot_name}`} className="rounded-xl border bg-background p-4 space-y-3 [overflow-wrap:anywhere]">
     <p className="text-sm font-medium">{d.bot_name} · {recorded ? 'Answer recorded' : decisionStatusLabel(d)} · v{d.version}</p>

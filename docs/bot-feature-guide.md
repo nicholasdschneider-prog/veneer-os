@@ -2,6 +2,26 @@
 
 Standing order from the owner, September 23, 2026: employees and bots must discover and know how to use capabilities as they ship. The owner should not have to teach or announce every release.
 
+## Nick approves code changes; eleven contract tool sets retired — October 14, 2026
+
+Build #845. Only a turn Nick started (or James on his behalf, through his link) can queue a
+build, hand new work to Platform Dev, or send new work to Boris. Other employees, bot
+messages, wake-ups, routines, huddles, scheduled and spare runs are refused with a plain
+explanation; a bot may still answer a Boris or Platform Dev chat that wrote to it this week.
+The approver list is the `build_approver_user_ids` setting (default: the owner). A stuck bot
+works around the blocker or raises one sentence to Nick. Core rules are v17. The
+`nick-approves-builds` catalog entry reaches employees and bots.
+
+Retired, with their tools, routes, verifier endpoints and catalog entries (tables kept for
+history): composed SMS and its corrections, customer-email direction, exact refund, case
+custody, paired contact verification, routine-message accept/claim/proof, correction
+preflight, instruction obligations, the vendor-email gate and the custom-direction tracker.
+Approved vendor and customer email now go through ordinary message drafts or the bot's
+Gmail connector; a clear human direction is simply carried out and reported. Migration 0184
+drops the old send-fence triggers. The dated sections below for those features are history.
+Builds now dispatch even when bot turns fill the shared background slots (the disk floor
+still applies).
+
 ## Archer conversational phone calls — October 7, 2026 (staged)
 
 Build #638 replaces #629's staged static reminder adapter with Archer's existing live

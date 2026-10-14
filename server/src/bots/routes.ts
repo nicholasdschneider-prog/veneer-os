@@ -1,22 +1,8 @@
 import { qboRoutes } from '../qbo/routes.js';
-import { customDirections, customDirectionInspect, customDirectionReview, customDirectionRead, customDirectionFence, customDirectionRenew, customDirectionResult } from './customDirection.js';
-import {exactRefundRoutes} from './exactRefundRoutes.js';
 import { requestOutboundCall } from './outboundCalls.js';
 import { proposalDiagnostics } from './proposalDiagnostics.js';
-import {contactVerificationRoutes} from './contactVerificationRoutes.js';
-import {caseCustodyRoutes} from './caseCustodyRoutes.js';
 import { mergeAuthorizationRoutes, mergeIO } from './mergeAuthorizationRoutes.js';
 import { mergeAuthorization, type MergeIO } from './mergeAuthorization.js';
-import {composedSmsCorrectionV2} from './composedSmsCorrectionV2.js';
-import {correctionPreflight} from './correctionPreflight.js';
-import {composedSmsCorrection} from './composedSmsCorrection.js';
-import {composedSmsScope,composeScopeReviewSchema} from './composedSmsScope.js';
-import {composeEvidenceReader} from './composedSmsEvidenceReader.js';
-import {composeVerifierIO} from './composedSmsVerifierRoutes.js';
-import {composedSmsVerifier} from './composedSmsVerifier.js';
-import {composedSmsService,composedInspectionSchema,deriveComposedSchema} from './composedSms.js';
-import {composedSmsReader} from './composedSmsReader.js';
-import { createInstructionObligations, obligationInspectionSchema, obligationRecordSchema } from './instructionObligations.js';
 import { createDecisionHandoffRouter } from './decisionHandoffRoutes.js';
 import { bindDecisionImages, readDecisionImage } from './decisionImages.js';
 import { bindDecisionEvidence, bindHumanEvidence, composioGmailFetchers, readDecisionEvidence, type EvidenceFetchers } from './decisionEvidence.js';
@@ -50,11 +36,8 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
     next();
   });
   router.use(createDecisionHandoffRouter(ctx));
-  router.use(caseCustodyRoutes(ctx));
   router.use(mergeAuthorizationRoutes(ctx, deps.mergeIO));
   const merges = mergeAuthorization(ctx.db, deps.mergeIO ?? mergeIO(ctx));
-  router.use(contactVerificationRoutes(ctx));
-  router.use(exactRefundRoutes(ctx));
   router.use(qboRoutes(ctx));
   const run =
     (fn: (req: express.Request, res: express.Response) => unknown) =>
@@ -399,43 +382,6 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
       });
     }),
   );
-  const composed=composedSmsService(ctx.db,composedSmsReader(ctx));
-  const correctionsV2=composedSmsCorrectionV2(ctx.db,composedSmsReader(ctx));
-  router.post('/composed-sms/corrections-v2/inspect',run(async(req,res)=>res.json(await correctionsV2.inspect(actor(req),req.body))));
-  router.post('/composed-sms/corrections-v2/derive',run(async(req,res)=>res.json(await correctionsV2.derive(actor(req),req.body))));
-  router.post('/composed-sms/corrections-v2/reconcile',run((req,res)=>res.json(correctionsV2.reconcile(actor(req),req.body))));
-  const corrections=composedSmsCorrection(ctx.db,composedSmsReader(ctx));
-  const preflight=correctionPreflight(ctx.db);
-  router.post('/composed-sms/correction-preflight/inspect',run((req,res)=>res.json(preflight.inspect(actor(req),req.body))));
-  router.post('/composed-sms/correction-preflight/review',run((req,res)=>res.json(preflight.review(actor(req),req.body))));
-  router.post('/composed-sms/corrections/reconcile',run((req,res)=>res.json(corrections.reconcile(actor(req),req.body))));
-  router.post('/composed-sms/corrections/inspect',run(async(req,res)=>res.json(await corrections.inspect(actor(req),req.body))));
-  router.post('/composed-sms/corrections/derive',run(async(req,res)=>res.json(await corrections.derive(actor(req),req.body))));
-  const scopeReview=composedSmsScope(ctx.db,composeVerifierIO(ctx).registration,composeEvidenceReader(ctx).scope,id=>composed.serviceCurrent(id));
-  router.post('/composed-sms/:id/scope/inspect',run(async(req,res)=>{z.object({}).strict().parse(req.body);res.json(await scopeReview.inspect(actor(req),z.string().uuid().parse(req.params.id)));}));
-  router.post('/composed-sms/:id/scope/record',run(async(req,res)=>res.json(await scopeReview.record(actor(req),composeScopeReviewSchema.parse({...req.body,authority_id:req.params.id})))));
-  router.post('/composed-sms/scope/:id/revoke',run((req,res)=>{const p=z.object({reason:z.string().min(1).max(2000)}).strict().parse(req.body);res.json(scopeReview.revoke(actor(req),z.string().uuid().parse(req.params.id),p.reason));}));
-  router.post('/composed-sms/inspect',run(async(req,res)=>res.json(await composed.inspect(actor(req),composedInspectionSchema.parse(req.body)))));
-  router.post('/composed-sms/derive',run(async(req,res)=>res.json(await composed.derive(actor(req),deriveComposedSchema.parse(req.body)))));
-  router.get('/composed-sms/:id',run((req,res)=>res.json(composed.reconcile(actor(req),req.params.id!))));
-  router.post('/composed-sms/:id/accept',run(async(req,res)=>{const p=z.object({request_key:key,payload_hash:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body);res.json(await composed.accept(actor(req),req.params.id!,p.request_key,p.payload_hash));}));
-  router.post('/composed-sms/:id/claim',run(async(req,res)=>{const p=z.object({request_key:key,send_check:z.unknown()}).strict().parse(req.body);res.json(await composed.claim(actor(req),req.params.id!,p.request_key,p.send_check));}));
-  router.post('/composed-sms/:id/delivery',run(async(req,res)=>{const p=z.object({request_key:key,claim_key:key}).strict().parse(req.body);const target=composed.receiptTarget(actor(req),req.params.id!,p.claim_key);res.json(await composedSmsVerifier(ctx.db,composeVerifierIO(ctx)).receipt(target.registration_id,target.action_id));}));
-  router.post('/composed-sms/:id/revoke',run((req,res)=>{const p=z.object({request_key:key,reason:z.string().min(1).max(2000)}).strict().parse(req.body);res.json(composed.revoke(actor(req),req.params.id!,p.request_key,p.reason));}));
-  const directions=customDirections(ctx.db);
-  router.post('/custom-directions/inspect',run((req,res)=>res.json(directions.inspect(actor(req),customDirectionInspect.parse(req.body)))));
-  router.post('/custom-directions/reviews',run((req,res)=>res.json(directions.record(actor(req),customDirectionReview.parse(req.body)))));
-  router.post('/custom-directions/read',run((req,res)=>res.json(directions.read(actor(req),customDirectionRead.parse(req.body)))));
-  router.post('/custom-directions/renew',run((req,res)=>res.json(directions.renew(actor(req),customDirectionRenew.parse(req.body)))));
-  router.post('/custom-directions/result',run((req,res)=>res.json(directions.result(actor(req),customDirectionResult.parse(req.body)))));
-  router.post('/custom-directions/fences',run((req,res)=>res.json(directions.fence(actor(req),customDirectionFence.parse(req.body)))));
-  const obligations=createInstructionObligations(ctx.db);
-  router.post('/instruction-obligations/inspect', run((req,res)=>res.json(obligations.inspect(actor(req),obligationInspectionSchema.parse(req.body)))));
-  router.post('/instruction-obligations', run((req,res)=>res.json(obligations.record(actor(req),obligationRecordSchema.parse(req.body)))));
-  router.post('/instruction-obligations/:id/revoke', run((req,res)=>{
-    const p=z.object({reason:z.string().trim().min(1).max(600),request_key:key}).strict().parse(req.body);
-    res.json(obligations.revoke(actor(req),req.params.id!,p.reason,p.request_key));
-  }));
   router.get('/decisions/:id/conversational-source', run((req,res)=>{
     const p=z.object({expected_version:z.coerce.number().int().positive(),source_kind:z.enum(['result_reply','direct_message']),source_id:key.optional()}).strict().parse(req.query);
     res.json(s.inspectConversationalDecision(actor(req),req.params.id!,p.expected_version,p.source_kind,p.source_id));

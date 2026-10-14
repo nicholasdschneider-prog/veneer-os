@@ -1,22 +1,17 @@
-import crypto from 'node:crypto';
 import { BuildRecoveryInput } from '../buildQueue/recovery.js';
 import express, { type Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { canManageConversation, canTrainBusinessBot, canViewConversation, sameBusiness } from '../conversations/access.js';
 import { createConversationReactivator } from './conversationActivity.js';
-import { coordinationLane } from '../coordination/store.js';
-import { hasBotLane } from '../coordination/botLane.js';
-import { ensureConversationInstructionSnapshot } from '../instructions/context.js';
 import type { ConversationRow } from '../db/db.js';
 import type { MoveBuildActor } from '../buildQueue/coordinator.js';
+import { BUILD_REFUSAL, requestMayStartBuild } from '../buildQueue/buildApproval.js';
 
 const EnqueueSchema = z.object({
   sourceConversationId: z.string().trim().min(1).max(100),
   title: z.string().trim().min(1).max(200),
   brief: z.string().trim().min(1).max(100_000),
-  // Only read when another bot's coordination message prompted the build.
-  continuesThisChat: z.boolean().optional(),
 });
 const ResolveSchema = z.object({ action: z.enum(['retry', 'skip']) });
 const MoveTargetSchema = z.union([
@@ -66,50 +61,6 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
     if (row.project_id) return `project:${row.project_id}`;
     return row.slug === 'platform-dev' ? 'source' : null;
   };
-
-  /** A build that another bot asked for through coordination is not something
-   * the human in the receiving chat asked for there. Unless the receiving
-   * agent says it continues that chat's own work, it gets a chat of its own,
-   * so unrelated work never lands in an existing human thread. A registered
-   * bot keeps its one standing chat: its identity and approvals live there. */
-  function requesterOfCoordinatedBuild(req: express.Request, ownerId: string): ConversationRow | null {
-    if (!req.agentExecutionConversationId) return null;
-    const lane = coordinationLane(ctx.db, req.agentExecutionConversationId);
-    if (!lane || lane.owner_id !== ownerId) return null;
-    if (ctx.db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(ownerId)) return null;
-    const thread = ctx.db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as
-      | { left_id: string; right_id: string }
-      | undefined;
-    if (!thread) return null;
-    const requesterId = thread.left_id === ownerId ? thread.right_id : thread.left_id;
-    return (ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(requesterId) as ConversationRow | undefined) ?? null;
-  }
-
-  function receivingBotLaneOf(req: express.Request, ownerId: string): ConversationRow | null {
-    if (!req.agentExecutionConversationId || !hasBotLane(ctx.db, ownerId)) return null;
-    const lane = coordinationLane(ctx.db, req.agentExecutionConversationId);
-    if (!lane || lane.owner_id !== ownerId) return null;
-    const laneChat = ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(lane.conversation_id) as ConversationRow | undefined;
-    // The queue re-checks this actor against the lane at dispatch.
-    return laneChat && canManageConversation(req.user!, laneChat, ctx.db) ? laneChat : null;
-  }
-
-  function createBuildChat(owner: ConversationRow, requester: ConversationRow, title: string): ConversationRow {
-    const id = crypto.randomUUID();
-    ctx.db.transaction(() => {
-      ctx.db.prepare(
-        `INSERT INTO conversations
-           (id, assistant_id, user_id, visibility, project_id, title, provider, model, effort, approval_mode, native_session_id, channel, origin_conversation_id, business_team_id, last_user_activity_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'web', ?, ?, datetime('now'))`,
-      ).run(
-        id, owner.assistant_id, owner.user_id, owner.visibility, owner.project_id, title.slice(0, 120),
-        owner.provider, owner.model, owner.effort, owner.approval_mode ?? null, crypto.randomUUID(),
-        requester.id, owner.business_team_id ?? null,
-      );
-      ensureConversationInstructionSnapshot(ctx.db, id);
-    })();
-    return ctx.db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow;
-  }
 
   function jobView(
     job: Awaited<ReturnType<typeof ctx.manager.listBuildQueue>>[number],
@@ -182,23 +133,19 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
       res.status(404).json({ ok: false, error: 'Conversation not found' });
       return;
     }
+    if (!requestMayStartBuild(ctx.db, req)) {
+      res.status(403).json({ ok: false, error: BUILD_REFUSAL });
+      return;
+    }
     // enqueue_build is fresh activity just like a prompt. Reactivate first so
     // the coordinator's active-conversation guard can reserve the workspace.
-    // A registered bot keeps builds that bot traffic asked for in the session
-    // that received it (its bot lane or coordination thread), never the human chat.
-    const laneChat = receivingBotLaneOf(req, conv.id);
-    const requester = laneChat || body.data.continuesThisChat ? null : requesterOfCoordinatedBuild(req, conv.id);
-    const buildChat = laneChat ?? (requester ? createBuildChat(conv, requester, body.data.title) : conv);
-    const brief = requester
-      ? `[Requested by another chat] Chat ${requester.id} “${requester.title ?? 'Untitled'}” asked for this build through coordination with chat ${conv.id} “${conv.title ?? 'Untitled'}”. It runs here, in its own chat, so it stays out of that chat's human thread. Call read_conversation("${requester.id}") for the context behind the request, and report the result to that chat with send_message.\n\n${body.data.brief}`
-      : body.data.brief;
+    const buildChat = conv;
+    const brief = body.data.brief;
     reactivateConversation(buildChat.id);
     void ctx.manager
       .enqueueBuild(buildChat.id, body.data.title, brief, req.user!.id)
       .then((result) => {
         if (!result.ok) {
-          // Never leave behind an empty chat that no build will ever start.
-          if (requester) ctx.db.prepare('DELETE FROM conversations WHERE id=?').run(buildChat.id);
           res.status(result.error === 'not_queueable' ? 400 : 404).json({
             ok: false,
             error: result.error === 'not_queueable'
@@ -216,7 +163,6 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
           job: result.job,
           position: result.position,
           disposition: result.disposition,
-          ...(requester ? { buildConversation: { id: buildChat.id, title: buildChat.title } } : {}),
         });
       })
       .catch((err: Error) => res.status(503).json({ ok: false, error: err.message }));

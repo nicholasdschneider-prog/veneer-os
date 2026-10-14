@@ -30,15 +30,6 @@ export function isOpenQuestion(d: { state: string; stale?: { resolved?: boolean 
   return d.state === 'needs_input' && !d.stale?.resolved;
 }
 export interface BotProposal {
-  contact_verification?: {
-    schemaVersion: 'paired-contact-manifest/v1'; manifestId: string; manifestRevision: number;
-    statement: string; manifestHash: string;
-    channels: {channel:'email'|'sms';accountId:string;from:string;recipient:string;subject:string;
-      segments:({kind:'literal';text:string}|{kind:'slot';slotId:string})[];
-      slot:{origin:string;path:string};attachments:{name:string;sha256:string}[];
-    }[];
-    [key:string]:unknown;
-  };
   review_summary?: {
     action_title: string; request?: string; customer_request?: string; background: string[];
     refund?: { status: 'not_verified' } | { status: 'none'; source: string; as_of: string; scope: string; evidence_kind: 'complete_refund_history' } | { status: 'partial' | 'full'; source: string; as_of: string; scope: string; evidence_kind: 'completed_refund'; receipt: string; amount: number; currency: string };

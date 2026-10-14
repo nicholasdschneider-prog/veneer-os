@@ -1,4 +1,5 @@
 import { purchaseTimingSetupRoutes } from '../bots/purchaseTimingRoutes.js';
+import { BUILD_REFUSAL, isTechnicalConversation, requestMayStartBuild } from '../buildQueue/buildApproval.js';
 import { createJamesNotifyRouter } from '../jamesLink/notifyRoutes.js';
 import { currentJamesLink } from '../jamesLink/index.js';
 import { captureHumanMessage } from '../bots/humanMessages.js';
@@ -2754,6 +2755,12 @@ export function createApiRouter(ctx: AppContext): Router {
       }
     }
     const slug = assistant.slug;
+    // Starting a Platform Dev chat, or any handoff from a technical bot, starts
+    // code work: only Nick's own turn (or James's link) may do it from an agent.
+    if (req.agentConversationId && (slug === 'platform-dev' || isTechnicalConversation(db, req.agentConversationId)) && !requestMayStartBuild(db, req)) {
+      res.status(403).json({ ok: false, error: BUILD_REFUSAL });
+      return;
+    }
     // A bot handing new work to Platform Dev rarely knows where those chats
     // live. Without a project the new chat would join a different build queue
     // than the existing Platform Dev chats and could edit the same source at

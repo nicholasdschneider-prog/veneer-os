@@ -1,5 +1,3 @@
-import {customerEmailRoutes} from './customerEmailRoutes.js';
-import {vendorEmailService} from './vendorEmail.js';
 import {loadConversationFile,documentType} from './decisionImages.js';
 import { routineOwnerSetup } from './routineOwnerSetup.js';
 import { csReadiness } from './csReadiness.js';
@@ -36,12 +34,6 @@ export function createCommunicationRouter(ctx: AppContext) {
   r.use(messageAudioRoutes(ctx, text =>
     synthesizeSpeech(speechKey(), text, 'Read clearly, preserving amounts and qualifications.')));
   const s = communicationService(ctx.db);
-  const vendorEmails=vendorEmailService(ctx.db,async(a,scope)=>{
-    for(const file of scope.attachments){
-      const found=await loadConversationFile(ctx,a,scope.executor_conversation_id,{conversation_id:scope.executor_conversation_id,path:file.path},documentType);
-      if(found.sha256!==file.sha256)throw new BotError(409,'Attachment bytes changed; inspect and review the exact new scope');
-    }
-  });
   const delegations = messageDelegationService(ctx.db);
   const generating = new Map<string, Promise<void>>();
   const actor = (req: express.Request): Actor => ({
@@ -69,14 +61,6 @@ export function createCommunicationRouter(ctx: AppContext) {
           else next(e);
         });
     };
-  r.use('/customer-email-direction',customerEmailRoutes(ctx));
-  r.post('/vendor-email/context',run((req,res)=>{z.object({}).strict().parse(req.body);res.json(vendorEmails.context(actor(req)));}));
-  r.post('/vendor-email/inspect',run(async(req,res)=>res.json(await vendorEmails.inspect(actor(req),req.body))));
-  r.post('/vendor-email/bind',run(async(req,res)=>res.json(await vendorEmails.bind(actor(req),req.body))));
-  r.post('/vendor-email/claim',run(async(req,res)=>res.json(await vendorEmails.claim(actor(req),req.body))));
-  r.post('/vendor-email/read',run((req,res)=>{const p=z.object({authority_id:key}).strict().parse(req.body);res.json(vendorEmails.read(actor(req),p.authority_id));}));
-  r.post('/vendor-email/receipt',run((req,res)=>res.json(vendorEmails.receipt(actor(req),req.body))));
-  r.post('/vendor-email/revoke',run((req,res)=>res.json(vendorEmails.revoke(actor(req),req.body))));
   const current = (req: express.Request) =>
     req.params.chat === 'current'
       ? (req.agentConversationId ?? '')

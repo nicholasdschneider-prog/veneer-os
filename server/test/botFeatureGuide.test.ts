@@ -78,12 +78,6 @@ describe('living bot guide release contract', () => {
     expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
     for (const elevated of [false, true]) expectDelivery(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'bot', elevated }), f);
   });
-  it('delivers staged exact refund limits to employee and resumed-agent instructions',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-10-06')).features.find(f=>f.id==='exact-refund')!;
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('Staged');expect(f.agent).toContain('Never issue as builder');
-    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);expectDelivery(botFeatureInstructions(), f);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}), f);
-  });
   it('delivers staged strict evidence guidance to employees and fresh/resumed agents', () => {
     const f = botFeatureCatalog(Date.parse('2026-10-02')).features.find(f => f.id === 'decision-evidence-validation')!;
     expect(f.isNew).toBe(true); expect(f.limits).toContain('Staged');
@@ -92,13 +86,6 @@ describe('living bot guide release contract', () => {
     expect(employeeRouteAllowed('GET', '/bot-workflows/guide')).toBe(true);
     expectDelivery(botFeatureInstructions(), f);
     for (const elevated of [false, true]) expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}), f);
-  });
-  it('delivers exact vendor-email steps and limits to employees and resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-10-02')).features.find(f=>f.id==='vendor-email-direction')!;
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('UNKNOWN');expect(f.limits).toContain('not server-authenticated Gmail');
-    expect(f.agent).toContain('Never bind or claim as the builder');expect(f.agent).toContain('FIRST execute:true');
-    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated}), f);
   });
   it('delivers the staged question desk and hotline boundaries to employees and resumed agents',()=>{
     const f=botFeatureCatalog(Date.parse('2026-10-05')).features.find(f=>f.id==='question-desk')!;
@@ -127,17 +114,6 @@ describe('living bot guide release contract', () => {
     expect(f.limits).toContain('Deployed');expect(f.limits).toContain('original owner');expect(f.agent).toContain('UNKNOWN');
     expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
     for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'browser-bot',elevated}), f);
-  });
-  it('delivers paired contact limits to employees and both resumed instruction modes',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(x=>x.id==='paired-contact-verification')!;
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('Production is disabled');expect(f.agent).toContain('No outreach approval ask before executable manifest');expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated}), f);
-  });
-  it('delivers unavailable-until-enrolled prospective custody guidance to employees and resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-30')).features.find(f=>f.id==='prospective-case-custody')!;
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('historical');expect(f.agent).toContain('Never issue as builder');
-    expect(f.agent).toContain('No production trust installed');expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated}), f);
   });
   it('delivers startup recovery limits to employees and resumed bots', () => {
     const f = botFeatureCatalog(Date.parse('2026-09-29')).features.find(f => f.id === 'codex-startup-recovery')!;
@@ -169,37 +145,6 @@ describe('living bot guide release contract', () => {
     for (const elevated of [false, true]) {
       expectDelivery(coreVeneerRules({ workspaceDir: '/repo', assistantSlug: 'business-bot', elevated }), feature);
     }
-  });
-  it('delivers integrated review steps and unaccepted source boundaries to full/restricted/resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='correction-integration')!;
-    expect(f.isNew).toBe(true);expect(f.agent).toContain('context_review INPUT');expect(f.agent).toContain('no correction amendment');expect(f.limits).toContain('UNKNOWN');expect(f.steps.join(' ')).toContain('same key');
-    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated}), f);
-  });
-  it('delivers native-only correction preflight limits to employees and resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='correction-preflight')!;
-    expect(f.isNew).toBe(true);expect(f.agent).toContain('inspect_correction_preflight');expect(f.agent).toContain('EVERY later human message');expect(f.limits).toContain('Reviews are not persisted');
-    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated}), f);
-  });
-  it('delivers prospective correction proof limits to employees and full/restricted resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='composed-sms-correction')!;
-    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('composition AND sending');expect(f.limits).toContain('CORRECTION_AUTHORITY_EXPORT_UNAVAILABLE');expect(f.agent).toContain('derive_composed_sms_correction');expect(f.agent).toContain('No replacement after UNKNOWN');
-    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated}), f);
-  });
-  it('delivers composed SMS source and execution limits to full, restricted and resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-29')).features.find(f=>f.id==='composed-sms')!;
-    expect(f.agent).toContain('inspect_composed_sms_scope');expect(f.agent).toContain('native service/evidence registries are configured');expect(f.agent).toContain('Synthetic complete graphs do not establish Brian or global inventory readiness');expect(f.agent).toContain('association/readback v3');expect(f.steps.join(' ')).toContain('no extra customer approval');expect(f.agent).toContain('contextRevision');expect(f.agent).toContain('unknown scopes');expect(f.announcement).toContain('provisioned');
-    expect(f.isNew).toBe(true);expect(f.limits).toContain('SMS_SENDER_OWNERSHIP_UNVERIFIED');expect(f.agent).toContain('inspect_composed_sms');expect(f.agent).toContain('do not ask for duplicate reader setup');expect(f.limits).toContain('Grant, Owen, Avery, Nora, Miles and Tess');expect(f.agent).toContain('no generic manual-SMS fallback');
-    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated}), f);
-  });
-  it('delivers intent-only SMS guidance to employees and fresh/resumed agents',()=>{
-    const f=botFeatureCatalog(Date.parse('2026-09-28')).features.find(f=>f.id==='instruction-obligations')!;
-    expect(f.isNew).toBe(true);expect(f.steps.join(' ')).toContain('exact existing SMS draft');
-    expect(f.agent).toContain('execute:false/ready:false');expect(f.agent).toContain('inspect_instruction_obligation');
-    expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
-    for(const elevated of [false,true])expectDelivery(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'business-bot',elevated}), f);
   });
   it('teaches the simplified approved-message send to employees and resumed bots',()=>{
     const f=botFeatureCatalog(Date.parse('2026-10-14')).features.find(f=>f.id==='approved-message-delegation')!;
@@ -336,11 +281,11 @@ describe('living bot guide release contract', () => {
     const text = botFeatureInstructions();
     expect(words(text)).toBeLessThan(3000);
     expect(text).not.toContain('(updated ');
-    const omitted = ['customer-email-direction', 'composed-sms', 'composed-sms-correction', 'correction-integration', 'correction-preflight',
-      'paired-contact-verification', 'prospective-case-custody', 'exact-refund', 'sms-fixture-preparation', 'purchase-timing-verifier',
+    const omitted = [
+      'sms-fixture-preparation', 'purchase-timing-verifier',
       'return-exception-verifier', 'routine-policy-enrollment', 'routine-scope-handoff', 'routine-hold-scopes', 'return-owner-setup',
-      'autoship-candidate-setup', 'instruction-obligations', 'calendar-phone-reminders', 'web-watchdog', 'lippert-purchase-events',
-      'browser-unknown-inspection', 'browser-controller-reconnect', 'vendor-email-direction', 'bot-outbound-calls'];
+      'autoship-candidate-setup', 'calendar-phone-reminders', 'web-watchdog', 'lippert-purchase-events',
+      'browser-unknown-inspection', 'browser-controller-reconnect', 'bot-outbound-calls'];
     const catalog = botFeatureCatalog(Date.parse('2026-10-09')).features;
     for (const id of omitted) {
       const feature = BOT_FEATURES.find(f => f.id === id)!;

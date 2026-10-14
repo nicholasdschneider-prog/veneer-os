@@ -161,7 +161,9 @@ const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bu
       ? canDispatchBackground({ ignoreActiveLimit: true })
       : canDispatchBackground() || Boolean(resultReplyWake(db, row.id)),
 });
-const buildQueue = createBuildQueueCoordinator({ db, manager, canDispatch: canDispatchBackground });
+// Builds are human-approved and run at most one per workspace queue, so bot
+// wake-ups filling the shared slots must not starve them; the disk floor still applies.
+const buildQueue = createBuildQueueCoordinator({ db, manager, canDispatch: () => canDispatchBackground({ ignoreActiveLimit: true }) });
 // Huddle delivery rides on conversation_wakeups; this loop only repairs cursors
 // and re-wakes members whose wake was lost, so it can run after the scheduler.
 const huddles = createHuddleReconciler({ service: createHuddleService(db), tickMs: 5_000 });
