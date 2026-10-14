@@ -27,6 +27,10 @@ Status 2026-10-14. **No option below is deployment-ready.** No window is request
   It checks again right before reloading and undoes itself if that check fails. It can be limited
   to the five Veneer service jobs (web, runner, mini-app runner, terminal, web watchdog), leaving
   the browsers and the tunnel alone.
+- `c846932`: the reload now checks again right before each of those five jobs and stops if a
+  bot started working or a browser opened, leaving the rest exactly as they were. A failure at
+  any step puts every file back exactly. The activation can be scheduled to run by itself once
+  nothing is busy. It never acts after its deadline or if anything changed since it was set up.
 
 Until something is deployed in an approved window, web can still crash and come back on the same
 10-13 build.
@@ -36,11 +40,13 @@ Until something is deployed in an approved window, web can still crash and come 
 1. **Hold.** Keep the current mix (web 10-13 build, old runner) while the repair evidence is
    reviewed. Nothing changes; the crash risk stays as it is now.
 2. **A separately bounded maintenance window using the guarded activation**, after the open gates
-   are reviewed. The plan is REPORT.md section 23.1.
+   are reviewed. The plan is REPORT.md section 25.1.
    - It restarts five jobs: web, runner, mini-app runner, terminal and web watchdog. Open
      terminal sessions and local mini apps restart too.
-   - It needs your own-words approval naming all 11 commits `f9c59dd..63d0ddb`, those five jobs,
-     the window, and the accepted limitation.
+   - It needs your own-words approval naming all 12 commits `f9c59dd..c846932`, those five jobs,
+     the window and its deadline, and the accepted limitation.
+   - If a bot starts work during the reload, it stops partway. Some services would then run the
+     new build and others the old one, and that would be reported exactly.
    - Gate 1 is still UNMET: there is no verified way back to the old runner, because its bytes
      were never kept. Only you (or someone you verifiably authorize) can accept that
      limitation, in your own words. No bot can waive it. The BUILD801 owner assesses only the
@@ -50,8 +56,10 @@ Until something is deployed in an approved window, web can still crash and come 
 3. **A checkout-mode restart (web and runner only, without the locked-copy fix).** This also needs
    its own exact, bounded approval: the commits, the two services and the window. It keeps the
    hazard that caused this incident: after it, any later build goes live the next time a service
-   crashes, without approval. It is listed for completeness, not recommended.
+   crashes, without approval. It also has none of the new checks: `restart.mjs` refuses while bots
+   are working, but nothing re-checks between the web and runner restarts. It is listed for
+   completeness, not recommended.
 
 No option is deployment-ready today.
 
-Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–23.
+Owner: Platform Dev a6e39d6e. Evidence: [REPORT.md](./REPORT.md), sections 13–25.
