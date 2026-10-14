@@ -3,16 +3,7 @@
 Owner: Platform Dev a6e39d6e (original BUILD806 owner). Prepared 21:26–21:45Z (17:26–17:45 ET).
 No restart, recovery, credential change, source edit or queue change was made. No deploy approval is requested.
 
-> **Status 2026-10-13 22:48Z: re-pinned to cumulative source `155b497` (#812). Not ready; no restart is approved or armed.** See section 13.
->
-> - Source `155b49718ccfe5179fc25650d124cdaa1b91acc4` = `db8b7f0` + #812. Live `server/dist` is byte-identical to a clean rebuild; `web/dist` is unchanged from the 7a74def pin.
-> - Source validation evidence is the #812 cumulative full-suite receipt at `155b497`; the full suite was not re-run.
-> - The disposable forward/rollback/re-forward check passed again with the new live artifact.
-> - Still open: the prior-runtime gate (1b8561a is a reconstruction; empty-ledger bound only), the registered-caller v2 read probe, end-to-end probes, timeout persistence, frozen runtime/parent custody and authoritative adapters.
-> - The 21:39:53Z backup is stale. Retake it within 15 minutes before any approved restart. Order stays web then runner.
-> - Sections 1–12 are the historical `db8b7f0` / `7a74def` record and are kept as evidence for #801/#804/#806.
->
-> Earlier banner (22:41Z, superseded by section 13): the packet was historical while #812 edited the shared tree; no restart executor was armed (overnight3/overnight4 absent; #790 owner stopped overnight4 at 22:00:05Z), so the runner-first finding in section 12 is obsolete.
+> **ARCHIVED 2026-10-14. No further work.** BUILD806 shipped in the approved 11:15Z window on 2026-10-14 (`1b8561a..9b6424e`, web then runner). Everything below is the historical prep record only; do not refresh, re-pin or act on it.
 
 ## 1. Cumulative source pin
 
