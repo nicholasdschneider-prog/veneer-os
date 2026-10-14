@@ -12,6 +12,9 @@ export const customDirectionInput = z.object({
   decision_id: id, expected_version: z.number().int().positive(), answer_event_id: id,
   executor_conversation_id: id,
 }).strict();
+// Complete context is served in whole-row pages so a bot can read all of it; the hashes cover the whole.
+export const customDirectionInspect = customDirectionInput.extend({page:z.number().int().positive().safe().optional()}).strict();
+const PAGE_BYTES=30000,CONTEXT_BYTES=5000000;
 const citation = z.object({kind:z.enum(['direct_message','result_reply','decision_discussion','voice_dispatch','decision_event']),id,text:z.string().min(1).max(120000)}).strict();
 const purchasingScope = z.object({
   kind:z.literal('purchasing_unit_cost_correction'), source_account:id, source_message_id:id,
@@ -30,12 +33,14 @@ const nonfinancialScope = z.object({
 export const customDirectionScope = z.discriminatedUnion('kind',[purchasingScope,nonfinancialScope]);
 type Scope = z.infer<typeof customDirectionScope>;
 const operationsFor = (kind:Scope['kind']) => kind==='nonfinancial_direction' ? ['native_delegation'] : ['autopo','shopify'];
+const operationsAllowed = (kind:Scope['kind']) => kind==='nonfinancial_direction' ? ['native_delegation','existing_source'] : ['autopo','shopify'];
 const reviewBase = customDirectionInput.extend({
   inspection_hash:hash, request_key:id, reviewed_full_context:z.literal(true), answer_text:text,
+  page_hashes:z.array(hash).min(1).max(100).optional(),
   interpretation:z.enum(['unconditional_direction','identity_only','status_only','conditional','quoted_or_reported','ambiguous']),
   explanation:z.string().trim().min(20).max(3000), scope:customDirectionScope,
   scope_review:z.array(z.object({field:id,assessment:z.enum(['supported','unsupported','ambiguous']),citations:z.array(citation).min(1).max(20),explanation:text}).strict()).max(50).default([]),
-  operations:z.array(z.enum(['autopo','shopify','native_delegation'])).min(1).max(2).refine(v=>new Set(v).size===v.length,'Unique operations required').optional(),
+  operations:z.array(z.enum(['autopo','shopify','native_delegation','existing_source'])).min(1).max(2).refine(v=>new Set(v).size===v.length,'Unique operations required').optional(),
   later_context:z.array(z.object({citation,classification:z.enum(['status_only','substantive_supersession','ambiguous']),explanation:text}).strict()).max(2500),
   observation:z.object({observed_at:z.string().datetime(),source_identity:text,existing_business_authority:text,ownership_and_duplicates:text,evidence:text}).strict(),
 }).strict();
@@ -43,7 +48,7 @@ function checkScope<T extends {scope:Scope;operations?:string[]|undefined}>(r:T,
   const s=r.scope;
   if(s.kind==='purchasing_unit_cost_correction'&&!(Number.isSafeInteger(s.quantity*s.unit_cents)&&s.total_cents===s.quantity*s.unit_cents))ctx.addIssue({code:'custom',path:['scope','total_cents'],message:'Exact quantity × unit price total required'});
   if(s.kind==='nonfinancial_direction'&&new Set(s.targets.map(t=>t.id)).size!==s.targets.length)ctx.addIssue({code:'custom',path:['scope','targets'],message:'Unique target ids required'});
-  const allowed=operationsFor(s.kind);
+  const allowed=operationsAllowed(s.kind);
   if(r.operations?.some(o=>!allowed.includes(o)))ctx.addIssue({code:'custom',path:['operations'],message:`Operations must match scope kind ${s.kind}: ${allowed.join(', ')}`});
 }
 const withOperations=<T extends {scope:Scope;operations?:string[]|undefined}>(r:T)=>({...r,operations:r.operations??operationsFor(r.scope.kind)});
@@ -62,9 +67,25 @@ export const customDirectionResult = customDirectionRead.extend({request_key:id,
   state:z.enum(['running','blocked','unknown','verified_completed']),evidence:text,inspection_hash:hash.optional(),checks:checks.optional(),
   readbacks:z.array(z.discriminatedUnion('system',[
     z.object({system:z.enum(['autopo','shopify']),record_id:id,unit_cents:z.number().int().nonnegative().safe(),quantity:z.number().int().positive().safe().optional(),total_cents:z.number().int().nonnegative().safe().optional(),retail_cents:z.number().int().nonnegative().safe().optional(),protected_fields_unchanged:z.literal(true),observed_at:z.string().datetime(),receipt:text}).strict(),
-    z.object({system:z.literal('native_delegation'),record_id:id,protected_fields_unchanged:z.literal(true),observed_at:z.string().datetime(),receipt:text}).strict(),
+    z.object({system:z.enum(['native_delegation','existing_source']),record_id:id,protected_fields_unchanged:z.literal(true),observed_at:z.string().datetime(),receipt:text}).strict(),
   ])).max(50).default([]),
-}).strict();
+  // An action already done with existing source permissions before any tracker record: closed once, never a backdated running row.
+  recorded_after_execution:z.literal(true).optional(),execution_evidence:text.optional(),
+}).strict().superRefine((r,ctx)=>{
+  if(r.recorded_after_execution&&(r.state!=='verified_completed'||!r.execution_evidence))ctx.addIssue({code:'custom',path:['recorded_after_execution'],message:'recorded_after_execution requires verified_completed and execution_evidence'});
+  if(!r.recorded_after_execution&&r.execution_evidence)ctx.addIssue({code:'custom',path:['execution_evidence'],message:'execution_evidence only applies with recorded_after_execution'});
+});
+type Context=Record<string,unknown[]>;
+/** Deterministic whole-row pages in surface order; a row larger than a page is its own page. */
+function contextPages(context:Context) {
+  const pages:{surface:string;index:number;row:unknown}[][]=[[]];let bytes=0;
+  for(const [surface,list] of Object.entries(context))list.forEach((row,index)=>{
+    const item={surface,index,row},size=Buffer.byteLength(JSON.stringify(item));
+    if(pages.at(-1)!.length&&bytes+size>PAGE_BYTES){pages.push([]);bytes=0;}
+    pages.at(-1)!.push(item);bytes+=size;
+  });
+  return pages.map((rows,i)=>({page:i+1,rows,page_sha256:canonicalSha256({page:i+1,rows})}));
+}
 type Progress={id:string;review_id:string;request_key:string;request_hash:string;state:string;attempt_key:string;payload_json:string};
 
 
@@ -136,16 +157,18 @@ export function customDirections(db:Database.Database) {
     const messages=[...direct,...replies,...discussion,...voice,...humanEvents];
     if(messages.some(m=>!Number.isFinite(stamp(m.created_at))))throw new BotError(409,'Native chronology missing');
     const context={direct_messages:direct,result_replies:replies,decision_discussion:discussion,shared_voice_directions:voice,human_decision_events:humanEvents,decision_events:events};
-    if(Buffer.byteLength(JSON.stringify(context))>240000)throw new BotError(409,'Complete context exceeds 240000 bytes; no excerpt review');
+    if(Buffer.byteLength(JSON.stringify(context))>CONTEXT_BYTES)throw new BotError(409,`Complete context exceeds ${CONTEXT_BYTES} bytes; no excerpt review`);
     const later=messages.filter(m=>!m.actor_conversation_id && m.id!==answer.id && stamp(m.created_at)+(/\.\d+/.test(m.created_at)?0:999)>=stamp(answer.created_at));
     const binding={schema_version:'native-custom-direction-review/v1',input:p,owner_id:c.id,user_id:c.user_id,owner_role:user.role,business_id:c.business_team_id,author:{id:human.id,role:human.role,status:human.status},decision:d,answer_event:answer,context_hash:canonicalSha256(context)};
-    return {...limits,tracking_only:true,missing_proof:[],inspection_hash:canonicalSha256(binding),binding,answer_text:payload.answer,context,later_human_context:later,
+    return {...limits,tracking_only:true,missing_proof:[],inspection_hash:canonicalSha256(binding),binding,answer_text:payload.answer,context,pages:contextPages(context),later_human_context:later,
       coverage:{complete_native_text:true,caller_private_voice:false,omitted:['external source facts','attachment/media bytes','authenticated source execution guards']},existing:response(stored(a,d.id))};
   }
   function reviewSnapshot(a:Actor,r:z.infer<typeof customDirectionReview>) {
       const now=collect(a,customDirectionInput.parse({decision_id:r.decision_id,expected_version:r.expected_version,answer_event_id:r.answer_event_id,executor_conversation_id:r.executor_conversation_id}));
       if(now.inspection_hash!==r.inspection_hash)throw new BotError(409,'Context, version or identity changed; inspect again');
       if(now.answer_text!==r.answer_text)throw new BotError(409,'Complete exact human answer citation required');
+      const pageHashes=now.pages.map(x=>x.page_sha256);
+      if((pageHashes.length>1||r.page_hashes)&&canonicalSha256(r.page_hashes??[])!==canonicalSha256(pageHashes))throw new BotError(409,'Exact page_sha256 of every complete context page required, in order; read every page');
       const matches=(c:z.infer<typeof citation>,m:Message)=>c.kind===m.kind&&c.id===m.id&&c.text===m.text;
       const seen=new Set<string>();
       for(const item of r.later_context){const k=item.citation.kind+':'+item.citation.id;if(seen.has(k)||!now.later_human_context.some(m=>matches(item.citation,m)))throw new BotError(409,'Exact later-human citations required without duplicates');seen.add(k);}
@@ -165,7 +188,17 @@ export function customDirections(db:Database.Database) {
   }
   function fresh(value:string){const t=Date.parse(value);if(t>Date.now()+1000||Date.now()-t>300000)throw new BotError(409,'Fresh original-owner source checks required');}
   return {
-    inspect(a:Actor,p:unknown){return db.transaction(()=>collect(a,p))();},
+    inspect(a:Actor,raw:unknown){return db.transaction(()=>{
+      const {page,...input}=customDirectionInspect.parse(raw),{pages,context,later_human_context,...rest}=collect(a,input);
+      const meta={page_count:pages.length,context_hash:rest.binding.context_hash,page_bytes:PAGE_BYTES};
+      // Small contexts keep the original whole response; larger ones are read page by page.
+      if(pages.length===1&&!page)return {...rest,context,later_human_context,context_page:{...meta,page:1,page_sha256:pages[0]!.page_sha256}};
+      const current=pages[(page??1)-1];if(!current)throw new BotError(409,`Context page ${page} does not exist; page_count ${pages.length}`);
+      const laterFits=Buffer.byteLength(JSON.stringify(later_human_context))<=PAGE_BYTES;
+      return {...rest,context:null,context_page:{...meta,page:current.page,page_sha256:current.page_sha256,rows:current.rows},
+        later_human_context:laterFits?later_human_context:later_human_context.map(m=>({kind:m.kind,id:m.id,created_at:m.created_at,text_in_context_pages:true})),
+        reading:'Read every page 1..page_count. Cite each page_sha256 in order as page_hashes when recording or renewing the review.'};
+    })();},
     read(a:Actor,raw:unknown){const p=customDirectionRead.parse(raw);return response(stored(a,p.decision_id));},
     record(a:Actor,raw:unknown){return db.transaction(()=>{
       const r=customDirectionReview.parse(raw),prior=stored(a,r.decision_id),requestHash=canonicalSha256(r);
@@ -190,36 +223,42 @@ export function customDirections(db:Database.Database) {
     result(a:Actor,raw:unknown){return db.transaction(()=>{
       const p=customDirectionResult.parse(raw),row=stored(a,p.decision_id);if(!row)throw new BotError(409,'Original review required');
       const requestHash=canonicalSha256(p),prior=db.prepare('SELECT * FROM bot_custom_direction_progress WHERE review_id=? AND request_key=?').get(row.id,p.request_key) as Progress|undefined;
-      if(prior){if(prior.request_hash!==requestHash)throw new BotError(409,'Conflicting result replay');return {...response(row),first_recording:false,reconcile_only:true};}
+      if(prior){if(prior.request_hash!==requestHash)throw new BotError(409,'Conflicting result replay');return {...response(row),first_recording:false,reconcile_only:true,...(p.recorded_after_execution?{recorded_after_execution:true}:{})};}
       const snapshot=latest(row);if(canonicalSha256(snapshot)!==p.expected_review_hash)throw new BotError(409,'Exact current review required');
       const running=db.prepare("SELECT * FROM bot_custom_direction_progress WHERE review_id=? AND state='running'").get(row.id) as Progress|undefined;
       const completed=db.prepare("SELECT 1 FROM bot_custom_direction_progress WHERE review_id=? AND state='verified_completed'").get(row.id);
       if(completed)throw new BotError(409,'Completed action cannot be restarted or replaced');
-      if(p.state==='running') {
-        if(running||db.prepare('SELECT 1 FROM bot_custom_direction_fences WHERE review_id=?').get(row.id))throw new BotError(409,'Existing attempt or UNKNOWN: reconcile original action, never replay');
-        if(p.attempt_key!==p.request_key||!p.checks)throw new BotError(409,'One original attempt key and fresh existing source guards required');
-        fresh(p.checks.observed_at);
+      const fenced=()=>db.prepare('SELECT 1 FROM bot_custom_direction_fences WHERE review_id=?').get(row.id);
+      const guards=(c:typeof p.checks)=>{
+        if(p.attempt_key!==p.request_key||!c)throw new BotError(409,'One original attempt key and fresh existing source guards required');
+        fresh(c.observed_at);
         if(snapshot.direction_assessment!=='direction_retained'||snapshot.scope_assessment==='unverified')throw new BotError(409,'Unconditional unchanged action direction required');
         const current=collect(a,snapshot.binding.input);
         if(current.inspection_hash!==p.inspection_hash||current.inspection_hash!==snapshot.review.inspection_hash)throw new BotError(409,'Native context changed; renew semantic review before starting');
-      } else {
-        if((!running&&p.state!=='blocked')||(running&&running.attempt_key!==p.attempt_key))throw new BotError(409,'Exact original running attempt required');
-        if(p.state==='verified_completed') {
+      };
+      if(p.recorded_after_execution) {
+        // First and only record of an action the bot already executed under its existing source permissions.
+        if(running||fenced()||db.prepare("SELECT 1 FROM bot_custom_direction_progress WHERE review_id=? AND state IN ('running','unknown')").get(row.id))throw new BotError(409,'Existing attempt or UNKNOWN: reconcile original action, never record after execution');
+        guards(p.checks);
+      } else if(p.state==='running') {
+        if(running||fenced())throw new BotError(409,'Existing attempt or UNKNOWN: reconcile original action, never replay');
+        guards(p.checks);
+      } else if((!running&&p.state!=='blocked')||(running&&running.attempt_key!==p.attempt_key))throw new BotError(409,'Exact original running attempt required');
+      if(p.state==='verified_completed') {
           const scope:Scope=snapshot.review.scope,operations:string[]=snapshot.review.operations??operationsFor(scope.kind);
           if(scope.kind==='nonfinancial_direction') {
             // One actual readback per original target; excluded (already done) items are never completed here.
             const targets=scope.targets.map(t=>t.id);
             if(p.readbacks.length!==targets.length||new Set(p.readbacks.map(r=>r.record_id)).size!==targets.length)throw new BotError(409,'Actual readbacks for every original target required');
-            for(const r of p.readbacks){fresh(r.observed_at);if(r.system!=='native_delegation'||!operations.includes(r.system)||!targets.includes(r.record_id))throw new BotError(409,'Readback differs from original nonfinancial targets');}
+            for(const r of p.readbacks){fresh(r.observed_at);if(!['native_delegation','existing_source'].includes(r.system)||!operations.includes(r.system)||!targets.includes(r.record_id))throw new BotError(409,'Readback differs from original nonfinancial targets');}
           } else {
           if(p.readbacks.length!==operations.length||new Set(p.readbacks.map(r=>r.system)).size!==operations.length)throw new BotError(409,'Actual readbacks for every original operation required');
-          for(const r of p.readbacks){fresh(r.observed_at);if(r.system==='native_delegation'||!operations.includes(r.system)||r.unit_cents!==scope.unit_cents||r.record_id!==(r.system==='autopo'?scope.autopo_line_id:scope.inventory_item_id)|| (r.system==='autopo'&&(r.quantity!==scope.quantity||r.total_cents!==scope.total_cents))||(r.system==='shopify'&&r.retail_cents!==scope.unchanged_retail_cents))throw new BotError(409,'Readback differs from original correction or protected fields');}
+          for(const r of p.readbacks){fresh(r.observed_at);if(!('unit_cents' in r)||!operations.includes(r.system)||r.unit_cents!==scope.unit_cents||r.record_id!==(r.system==='autopo'?scope.autopo_line_id:scope.inventory_item_id)|| (r.system==='autopo'&&(r.quantity!==scope.quantity||r.total_cents!==scope.total_cents))||(r.system==='shopify'&&r.retail_cents!==scope.unchanged_retail_cents))throw new BotError(409,'Readback differs from original correction or protected fields');}
           }
-        }
       }
       db.prepare('INSERT INTO bot_custom_direction_progress(id,review_id,request_key,request_hash,state,attempt_key,payload_json) VALUES(?,?,?,?,?,?,?)').run(crypto.randomUUID(),row.id,p.request_key,requestHash,p.state,p.attempt_key,JSON.stringify(p));
       if(p.state==='unknown')db.prepare('INSERT INTO bot_custom_direction_fences(id,review_id,request_key,request_hash,state,evidence) VALUES(?,?,?,?,?,?)').run(crypto.randomUUID(),row.id,p.request_key,requestHash,'unknown',p.evidence);
-      return {...response(row),first_recording:true,reconcile_only:p.state!=='running'};
+      return {...response(row),first_recording:true,reconcile_only:p.state!=='running',...(p.recorded_after_execution?{recorded_after_execution:true}:{})};
     }).immediate();},
     fence(a:Actor,raw:unknown){return db.transaction(()=>{
       const p=customDirectionFence.parse(raw),row=stored(a,p.decision_id);if(!row)throw new BotError(409,'Original review required');

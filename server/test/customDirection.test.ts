@@ -3,7 +3,8 @@ import {fileURLToPath} from 'node:url';
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
 import {migrate} from '../src/db/migrate.js';
 import {createBotService,type Actor} from '../src/bots/service.js';
-import {customDirections} from '../src/bots/customDirection.js';
+import {customDirections,customDirectionReview} from '../src/bots/customDirection.js';
+import {canonicalSha256} from '../src/bots/canonical.js';
 import {captureHumanMessage} from '../src/bots/humanMessages.js';
 import type {UserRow} from '../src/db/db.js';
 import {callBotTool,BOT_TOOL_DEFINITIONS} from '../src/mcp/botTools.js';
@@ -123,7 +124,7 @@ it('routes all MCP calls with exact payloads and announces truthful limits to em
   const api=vi.fn(async()=>({execute:false}));await callBotTool({name,args:{decision_id:decision},callApi:api});
   expect(api).toHaveBeenCalledWith('/api/bots/custom-directions/'+path,{method:'POST',body:JSON.stringify({decision_id:decision})});
  }
- const feature=botFeatureCatalog(Date.parse('2026-10-13')).features.find(f=>f.id==='custom-direction-review')!;
+ const feature=botFeatureCatalog(Date.parse('2026-10-14')).features.find(f=>f.id==='custom-direction-review')!;
  expect(feature.isNew).toBe(true);expect(feature.limits).toContain('No blanket verifier enrollment requirement');expect(botFeatureInstructions()).toContain(`- ${feature.title}: ${feature.prompt}`);
  expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
  for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'bot',elevated})).toContain(feature.prompt!);
@@ -225,4 +226,63 @@ it('rejects money fields, mismatched operations and duplicate targets on nonfina
  expect(db.prepare('SELECT count(*) n FROM bot_custom_direction_reviews').get()).toEqual({n:0});
  const {r}=nonfinancialStart();
  expect(()=>directions.renew(bot,{...p,scope:{...nonfinancial,targets:[...nonfinancial.targets,{id:'T9',description:'Menu'}]},request_key:'broaden',expected_review_hash:r.review!.review_hash})).toThrow('only narrow');
+});
+it('keeps small-context hashes and serves large native context in complete whole-row pages',()=>{
+ const small=directions.inspect(bot,input());
+ expect(small.context_page).toMatchObject({page:1,page_count:1});expect(small.context).not.toBeNull();
+ expect(small.inspection_hash).toBe(canonicalSha256(small.binding));expect(small.binding.context_hash).toBe(canonicalSha256(small.context));
+ for(let n=0;n<300;n++)db.prepare("INSERT INTO bot_human_messages(id,conversation_id,actor_id,text,proposals_json,created_at) VALUES(?,'clara',1,?,'[]','2026-10-07T00:00:00Z')").run('big'+n,`message ${n} `+'x'.repeat(1000));
+ const first=directions.inspect(bot,input());
+ expect(first.context).toBeNull();const count=first.context_page.page_count;expect(count).toBeGreaterThan(4);
+ const pages=Array.from({length:count},(_,i)=>directions.inspect(bot,{...input(),page:i+1}));
+ expect(new Set(pages.map(p=>p.inspection_hash))).toEqual(new Set([first.inspection_hash]));
+ const rows=pages.flatMap(p=>p.context_page.rows!);
+ expect(rows.filter(r=>r.surface==='direct_messages')).toHaveLength(300);
+ for(const p of pages)expect(Buffer.byteLength(JSON.stringify(p.context_page.rows))).toBeLessThan(40000);
+ expect(()=>directions.inspect(bot,{...input(),page:count+1})).toThrow('does not exist');
+ const hashes=pages.map(p=>p.context_page.page_sha256),p=request();
+ expect(()=>directions.record(bot,p)).toThrow('every complete context page');
+ expect(()=>directions.record(bot,{...p,page_hashes:hashes.slice(1)})).toThrow('every complete context page');
+ expect(()=>directions.record(bot,{...p,page_hashes:[...hashes].reverse()})).toThrow('every complete context page');
+ expect(db.prepare('SELECT count(*) n FROM bot_custom_direction_reviews').get()).toEqual({n:0});
+ expect(directions.record(bot,{...p,page_hashes:hashes}).review?.snapshot.assessment).toBe('direction_retained');
+});
+it('still refuses context beyond the overall bound without excerpting',()=>{
+ for(let n=0;n<60;n++)db.prepare("INSERT INTO bot_human_messages(id,conversation_id,actor_id,text,proposals_json,created_at) VALUES(?,'clara',1,?,'[]','2026-10-07T00:00:00Z')").run('huge'+n,'y'.repeat(90000));
+ expect(()=>directions.inspect(bot,input())).toThrow('5000000 bytes');
+});
+function afterExecution(){
+ const {scope_review,...base}=request(),p={...base,scope:nonfinancial,operations:['existing_source']},r=directions.record(bot,p);
+ const readback=(record_id:string)=>({system:'existing_source' as const,record_id,protected_fields_unchanged:true as const,observed_at:new Date().toISOString(),receipt:`Saved record for ${record_id} read back`});
+ return {p,r,done:{decision_id:decision,request_key:'closed',attempt_key:'closed',expected_review_hash:r.review!.review_hash,state:'verified_completed' as const,recorded_after_execution:true as const,execution_evidence:'Saved once with existing permissions at 12:07Z before any tracker record.',evidence:'Both targets already done and read back.',inspection_hash:p.inspection_hash,
+  checks:{material_unchanged:true as const,source_identity_checked:true as const,existing_authority_checked:true as const,ownership_and_duplicates_checked:true as const,tool_permissions_checked:true as const,observed_at:new Date().toISOString(),evidence:'Live source shows one effect, no duplicate'},readbacks:[readback('T2'),readback('T3')]}};
+}
+it('closes an action already executed before tracking once, without a running row, and never after',()=>{
+ const original=db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(decision),{p,r,done}=afterExecution();
+ expect(()=>directions.result(bot,{...done,execution_evidence:undefined})).toThrow('execution_evidence');
+ expect(()=>directions.result(bot,{...done,state:'running'})).toThrow('verified_completed');
+ expect(()=>directions.result(bot,{...done,checks:undefined})).toThrow('source guards');
+ expect(()=>directions.result(bot,{...done,readbacks:done.readbacks.slice(1)})).toThrow('every original target');
+ const first=directions.result(bot,done);
+ expect(first).toMatchObject({execute:false,authority:false,first_recording:true,reconcile_only:true,recorded_after_execution:true,progress:{state:'verified_completed'}});
+ expect(db.prepare("SELECT count(*) n FROM bot_custom_direction_progress WHERE state='running'").get()).toEqual({n:0});
+ expect(directions.result(bot,done)).toMatchObject({first_recording:false,reconcile_only:true,recorded_after_execution:true});
+ expect(()=>directions.result(bot,{...done,evidence:'changed'})).toThrow('Conflicting');
+ expect(()=>directions.result(bot,{...done,request_key:'again',attempt_key:'again'})).toThrow('Completed');
+ const run={decision_id:decision,request_key:'run',attempt_key:'run',expected_review_hash:r.review!.review_hash,state:'running' as const,evidence:'again',inspection_hash:p.inspection_hash,checks:done.checks};
+ expect(()=>directions.result(bot,run)).toThrow('Completed');
+ expect(()=>directions.renew(bot,{...p,request_key:'renew',expected_review_hash:r.review!.review_hash})).toThrow('cannot be renewed');
+ expect(db.prepare('SELECT * FROM bot_decisions WHERE id=?').get(decision)).toEqual(original);
+});
+it('refuses after-execution closure once a running attempt, UNKNOWN or fence exists',()=>{
+ const {done}=afterExecution();
+ directions.fence(bot,{decision_id:decision,request_key:'f',state:'unknown',evidence:'Uncertain earlier attempt'});
+ expect(()=>directions.result(bot,done)).toThrow('never record after execution');
+});
+it('refuses after-execution closure while a tracked attempt is running and keeps existing_source off money scopes',()=>{
+ const {done}=afterExecution(),{readbacks,recorded_after_execution,execution_evidence,...run}={...done,state:'running' as const};
+ directions.result(bot,run);
+ expect(()=>directions.result(bot,{...done,request_key:'late',attempt_key:'late'})).toThrow('never record after execution');
+ const {scope_review,...p}=request();
+ expect(()=>customDirectionReview.parse({...p,operations:['existing_source']})).toThrow('must match scope kind');
 });
