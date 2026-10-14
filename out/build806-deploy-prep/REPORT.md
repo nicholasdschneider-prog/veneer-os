@@ -778,3 +778,26 @@ Then decide one of: done; a single `npm run restart -- --maintenance-approved <o
 - Rolling back never restores the DB and never drops the 0178/0179 ledgers.
 
 Readiness stays withdrawn. Gate 1 is UNMET, and gate 4 transport and runtime lookup are unverified. Nick is not asked until this plan has been reviewed (BUILD801 owner 6a752161 and its reviewer).
+
+## 24. Review of 63d0ddb/3ed76ec (§23.1), 2026-10-14 (read-only; owner a6e39d6e)
+
+The bounded 5-job scope and the pre-write guard are adopted. Three blockers were confirmed read-only and are queued as **#818** (owner a6e39d6e). No source was edited outside that slot.
+
+1. **No per-job idle gate in the helper.**
+   - `installer/launchd-reload.mjs` `reloadLaunchdServices` runs bootout/bootstrap for each job with no active-turn or browser re-check before each bootout.
+   - The installer's final check happens before the helper is bootstrapped. Web returns before the runner, so a turn or browser admitted in that gap would be interrupted.
+   - Required: a whole-plan check plus a check before each service is booted out (or an enforced, reviewed admission hold), stopping on refusal with an exact per-job status. The no-active-override boundary is kept.
+2. **Partial failures are not restored.**
+   - In `installer/activation-guard.mjs`, `guardedReload` calls `writePlists()` outside the try.
+   - `activate()` returns the pointer capture only after `activateRelease` completes, so a throw partway through leaves `pointerUndo` null.
+   - The earlier "exact restoration" proof covers only failures after those callbacks return.
+   - Required: capture the prior state before any write, restore it exactly on any throw at any step, and inject a failure at every step in the tests.
+3. **The executor cannot reach zero pending.**
+   - The executor's own turn is a pending row, so the guarded command run from that turn always refuses. It must not exclude its own turn.
+   - #818 designs a reachable path. The candidate is a one-shot launchd activation job armed with the approval, release, SHA and deadline:
+     - it waits for N consecutive zero-pending reads after the arming turn ends, then runs the per-job-gated reload;
+     - at the deadline it exits without acting;
+     - it never forces or retries, and it refuses on source, dist or release change.
+   - The alternative is a human running the command from a shell that is not a Veneer turn.
+
+**Status.** §23.1's plan is not executable until #818 lands and is reviewed. Gate 1 is UNMET. Gate 4 is unverified. Readiness stays withdrawn. No window question will go to Nick yet.
