@@ -615,3 +615,24 @@ Requested in BUILD801 coordination thread 60a12836 (fce19860); owner a6e39d6e. N
 - Re-pin at the then-current source inside the window (section 17); approval must enumerate all 10 commits `f9c59dd..9b6424e`.
 
 Readiness stays withdrawn. The human disposition is in [DISPOSITION.md](/Users/archerclawdington/veneer-os/out/build806-deploy-prep/DISPOSITION.md).
+
+## 21. Runner RPC availability reconciliation, 2026-10-14 00:14Z (read-only)
+
+Prompted by a coordination observation that `read_conversation` for the BUILD806 chat returned `runner unreachable (/rpc/status): fetch failed`, while DB and queue tools worked and the runner pid was present. The observer did not give a time.
+
+- **Processes.** Web pid 98183 (started 23:19:52Z) and runner pid 34641 (started 16:05:13Z) are both running. Pid 34641 is listening on 127.0.0.1:3101.
+- **Health.** At 00:13:49Z, `GET /healthz` returned 200 on runner (0.4 ms) and on web (1.8 ms). As section 17 says, that is not proof of the authenticated RPC path.
+- **Authenticated path, exercised directly.** At 00:14Z, `read_conversation a6e39d6e…` returned the chat's transcript with no RPC error. It runs through web and the runner `/rpc/*` path.
+  - This shows RPC was available at 00:14Z, nothing more. It does not prove RPC is continuously available.
+  - Live web is the 155b497 dist, which has no `/healthz/runner-rpc`. That endpoint only arrives with #815 (`929ae3e`) once it is installed.
+- **Web log** (`veneer-pro.log` has no timestamps, so it is bounded by boot lines):
+  - The last 3 `runner unreachable (/rpc/status): fetch failed` lines are at 20034, 20159 and 20322.
+  - The last boot line, at 20373, is taken to be pid 98183's 23:19:52Z boot because it is the only later boot line. That is inferred from ordering and is not timestamp-proven.
+  - Since that line there are **0** `runner unreachable` lines. The observed failure therefore most likely happened before 23:19:52Z, in an earlier web process before a crash.
+  - An unlogged failure in the current process cannot be ruled out.
+- **Disposition.** This is consistent with section 17's shared mechanism: loopback socket failures while web stalls, with crash/respawn cycles. Nothing new is needed.
+  - The repair is #815 (cause codes, a single read-only retry, explicit not-delivered/UNKNOWN for effectful calls, `/healthz/runner-rpc`). With #816, a respawn can no longer change which bytes load.
+  - Both are source only and not installed, so RPC failures can recur until an approved window.
+  - After that window, readback adds `GET /healthz/runner-rpc` = 200 (section 17). It does not replace gates 2 and 4.
+- **Not re-verified here.** The run/batch/worker-start/exclusion pins and FK 0 rest on section 16.2 and the live pin taken after the respawn. This section did not re-run `postcheck.sh`.
+- **No restart, rollback, restore, recovery or UNKNOWN clearing was done. No window or approval is implied. Sage custody is unchanged.**
