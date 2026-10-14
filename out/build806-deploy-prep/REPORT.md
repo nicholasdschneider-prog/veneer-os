@@ -1179,3 +1179,42 @@ Nothing was armed, activated, restarted or rebuilt. Readiness stays withdrawn.
 - The live `server/dist` was rebuilt at 13:52Z (manifest `81b3c9b8dea637c99a463498a3fe5f04db367ffab85e7ed66f6bafd303d6dc83`). The rebuild includes the later, unapproved commits `7908c79`, `80630ff`, `2d9e479`, `bc21ed1` and `38b2bf2`, with four new migrations. The live DB is still at 0179.
 - The running web and runner carry the `929ae3e` TOS guard, which lowers the crash risk, but any crash or respawn would load that dist and apply those migrations without approval.
 - Reported to 9d6d01d1. The owners of those builds and their approvals are separate.
+
+## 32. BUILD823 web-only window: scope after the 13:52Z rebuild, and 80630ff compatibility, 2026-10-14 13:58Z (read-only; owner a6e39d6e)
+
+**Window state.**
+- Nick's approval (08:51 ET, James link thread 36e73759 turn 5) covers **`9b6424e..7908c79` web only**.
+- The one-shot waiter was stopped at 13:55Z without acting, because the live `server/dist` was rebuilt at 13:52Z to manifest `81b3c9b8…dc83`, which is beyond that scope.
+- The live dist is the `38b2bf2` build. The DB is still at 0179. Web 82497 and runner 82506 (started 11:15Z) still run `9b6424e`.
+- Restoring the 7908c79-only dist would itself be another live rebuild. So a web restart now installs `9b6424e..38b2bf2`:
+
+| commit | change | migration |
+|---|---|---|
+| `7908c79` | James actionable-only pushes + digest (approved) | 0180 |
+| `2d9e479` | Paged custom-direction inspect + recorded_after_execution | — |
+| `80630ff` | Bind approved vendor replies to existing Gmail drafts | 0181 |
+| `bc21ed1` | ERVP digest spool importer + ACTIVE-gated digest | (0182 after renumber) |
+| `38b2bf2` | Renumber the spool migration after the Gmail one | 0182 |
+
+**80630ff compatibility (732adce5, #804/#812 owner, technical confirmation only):**
+- It may ship in a web-only restart with the runner left on `9b6424e`. No runner restart is required for this commit.
+- Conditions:
+  - 0181 must migrate normally before the new web serves requests.
+  - The native Gmail reader stays uninstalled.
+  - Gmail binding and operational use stay unavailable until source-custody acceptance.
+- Checked here: `routes/api.ts:908` calls `createCommunicationRouter(ctx)` with no reader. 0181 is one table, two immutability triggers, and a draft-material trigger that fires only for drafts that have a binding row (none exist).
+- The runner imports `communication.ts` (`resultReplyWake`), which imports `messageDelegation.ts`. Per the owner, `resultReplyWake` is unchanged and the runner needs no protocol or schema change.
+- 80630ff changes the customer-email artifact pin. Earlier source acceptance does **not** carry over.
+- This is not Nick's approval, and it covers 80630ff only.
+
+**Still needed before any restart of the web on the 38b2bf2 dist:**
+1. Nick's own-words approval naming `9b6424e..38b2bf2` and migrations 0180–0182. The 08:51 approval does not cover them.
+2. Web-only compatibility confirmations from the owners of `2d9e479` (custom directions; its build note said web+runner) and `bc21ed1`/`38b2bf2` (#827).
+3. Re-pin the waiter to `38b2bf2` and manifest `81b3c9b8…`, and take a fresh backup.
+
+**New finding: part of the rebuilt dist is already live without a restart.**
+- Each agent turn spawns `server/dist/mcp/agentToolsServer.js` fresh from disk (`toolbox/materialize.ts:67-72`).
+- Four such processes started between 13:53Z and 13:57Z (pids 58586, 59362, 60238, 60293), so they run the `38b2bf2` tool layer. That layer includes changes from 7908c79, 2d9e479, 80630ff and bc21ed1 in `agentToolsServer.ts`/`botTools.ts`, and exposes the `inspect/bind_approved_gmail_draft` tools.
+- Those tools call the web on `9b6424e`, which has none of their routes or tables. The expected effect is errors rather than writes, but this has not been verified.
+- This is a de facto unapproved partial deploy. It continues for every new turn until the dist and web match again.
+- It is reported, not changed here: a further dist rebuild or a restart would itself be an unapproved deploy. The decision belongs with the 13:52Z rebuild owner and Nick.
