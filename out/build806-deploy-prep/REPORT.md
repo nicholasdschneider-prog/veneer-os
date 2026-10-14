@@ -1110,3 +1110,25 @@ This addresses the deadline-boundary gap from the #819 review (BUILD801 coordina
 - Everything else in 27.1 is unchanged.
 
 Gate 1 is UNMET and only Nick can accept it. Gate 4 is unverified. Readiness stays withdrawn. No window question goes to Nick.
+
+## 30. Review closure for e4e5066/27252a2, 2026-10-14 (read-only; owner a6e39d6e)
+
+BUILD801 coordination (thread 60a12836, fce19860) completed a bounded source review. It inspected:
+- `windowedGuard`;
+- the `withinWindow` wiring in `guardedReload`;
+- the helper's checks after the idle check and immediately before each bootout;
+- the arm's CAS check after the binding and backup steps;
+- the backup clock read after hashing.
+
+Its result: the BUILD819 deadline-boundary finding (section 28) is **closed for those paths**, and no new blocker was identified. All earlier findings from that thread are addressed by source review together with the validation receipts in sections 16–29. The result was forwarded to the BUILD801 owner (6a752161) for the remaining gate disposition.
+
+Limits, as stated by the reviewer: this is not independent runtime certification, not a rerun of the full suite, and not installation acceptance. It grants no authority to arm, open a window or deploy.
+
+**Scope:** 14 shipped commits in `1b8561a..e4e5066`, re-counted read-only over the shipped source paths. Activation scope is the 5 release jobs (web, runner, app-runner, term, web-watchdog). The tracked tree is clean.
+
+**Still open:**
+- **Gate 1:** UNMET. Only Nick can accept the limitation.
+- **Gate 4:** transport and runtime lookup unverified.
+- At the time of any window, the dist must be rebuilt and a release snapshot re-pinned inside that window. A fresh backup receipt is also required.
+
+Nothing was armed, activated, restarted or rebuilt. Readiness stays withdrawn.
