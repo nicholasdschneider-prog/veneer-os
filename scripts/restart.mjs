@@ -68,8 +68,10 @@ const checkOnly = args.includes('--check');
 const healthOnly = args.includes('--health-check');
 const allowActive = args.includes('--allow-active-turns');
 const maintenanceApproved = args.includes('--maintenance-approved');
+const maintenanceAction = args.includes('--stop') ? 'stop' : args.includes('--start') ? 'start' : null;
+if (args.includes('--stop') && args.includes('--start')) throw new Error('Choose --stop or --start, not both');
 const releaseArg = args.find((arg) => arg.startsWith('--release='))?.slice('--release='.length) ?? null;
-const requested = args.filter((arg) => !['--check', '--health-check', '--allow-active-turns', '--maintenance-approved'].includes(arg) && !arg.startsWith('--release='));
+const requested = args.filter((arg) => !['--check', '--health-check', '--allow-active-turns', '--maintenance-approved', '--stop', '--start'].includes(arg) && !arg.startsWith('--release='));
 const unknown = requested.filter((name) => !ALL_SERVICES.includes(name));
 if (unknown.length) {
   console.error(`unknown service(s): ${unknown.join(', ')}`);
@@ -83,7 +85,9 @@ const pidFile = (service) => path.join(dataDir, 'run', `${service}.pid`);
 function launchdNodePath() {
   const plist = path.join(os.homedir(), 'Library', 'LaunchAgents', 'com.veneer.pro.plist');
   try {
-    return execFileSync('/usr/bin/plutil', ['-extract', 'ProgramArguments.0', 'raw', '-o', '-', plist], {
+    const entry = launchdEntry('com.veneer.pro');
+    const guarded = fs.readFileSync(plist, 'utf8').includes('<key>VeneerOriginalProgramArguments</key>');
+    return execFileSync('/usr/bin/plutil', ['-extract', guarded && entry ? 'VeneerOriginalProgramArguments.0' : 'ProgramArguments.0', 'raw', '-o', '-', plist], {
       encoding: 'utf8',
     }).trim();
   } catch {
@@ -469,6 +473,37 @@ async function verifyConnectivity() {
 }
 
 if (healthOnly) process.exit(await verifyConnectivity() ? 0 : 1);
+// Storage maintenance must keep supervisors stopped while files are copied.
+// These actions preserve the installed executable/release; they never snapshot
+// the checkout or activate pending application changes.
+if (maintenanceAction) {
+  if (process.platform !== 'darwin' || releaseArg || checkOnly) {
+    console.error('[maintenance] --stop/--start requires macOS and cannot select a release or --check');
+    process.exit(2);
+  }
+  try { assertRunnerRestartSafe({ targets, dataDir, serverPackage, allowActive, maintenanceApproved }); }
+  catch (error) { console.error(`[maintenance] blocked: ${error.message}`); process.exit(1); }
+  for (const service of targets) {
+    const label = SERVICE_LABEL[service] || LAUNCHD_SERVICES[service];
+    if (!label) throw new Error(`No supervisor label for ${service}`);
+    const target = `gui/${process.getuid()}/${label}`;
+    const plist = path.join(os.homedir(), 'Library', 'LaunchAgents', `${label}.plist`);
+    let loaded = true;
+    try { execFileSync('/bin/launchctl', ['print', target], { stdio: 'ignore' }); }
+    catch { loaded = false; }
+    const oldPid = SERVICES.includes(service) ? livePid(service) : null;
+    if (maintenanceAction === 'stop' && loaded) {
+      execFileSync('/bin/launchctl', ['bootout', target], { stdio: 'inherit' });
+      if (oldPid && !(await waitFor(() => !isRunning(oldPid), EXIT_TIMEOUT_MS))) {
+        throw new Error(`${service} has not stopped; do not move its data`);
+      }
+    } else if (maintenanceAction === 'start' && !loaded) {
+      execFileSync('/bin/launchctl', ['bootstrap', `gui/${process.getuid()}`, plist], { stdio: 'inherit' });
+    }
+    console.log(`[maintenance] ${service}: ${maintenanceAction === 'stop' ? 'supervisor stopped' : 'installed supervisor loaded'}; release unchanged`);
+  }
+  process.exit(0);
+}
 // Which bytes each target respawns from. Checkout-mode plists load the build in
 // place, so any later npm run build is deployed by the next crash; say so loudly.
 const releaseMode = new Set();

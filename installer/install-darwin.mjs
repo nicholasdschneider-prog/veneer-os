@@ -412,11 +412,12 @@ function installable(service) {
   if (service.needsTunnel && (!cloudflaredBin || !fs.existsSync(tunnelTokenFile))) return `skipped ${service.label} (cloudflared or its token file is missing)`;
   return null;
 }
+const { preserveVolumeGuard } = await import('./volume-guard.mjs');
 const renderJobs = () => SERVICES.filter((service) => !installable(service)).map((service) => {
   const target = path.join(agentsDir, `${service.label}.plist`);
   let current = null;
   try { current = fs.readFileSync(target, 'utf8'); } catch { /* not installed yet */ }
-  return { label: service.label, target, mode: service.secret ? 0o600 : 0o644, text: render(service.plist, service.label), current };
+  return { label: service.label, target, mode: service.secret ? 0o600 : 0o644, text: preserveVolumeGuard(render(service.plist, service.label), current), current };
 });
 // Listed in the exact order the reload helper will run them.
 const plan = (({ reload, untouchedChanged }) => ({ reload: reloadOrder(reload), untouchedChanged }))(planReload({ rendered: renderJobs(), bounded: releaseServicesOnly, pointerMoves }));

@@ -309,6 +309,10 @@ export function releaseStatus({ dataDir, appRoot, plistEntry = () => null }) {
 export function launchdEntry(label) {
   const plist = path.join(os.homedir(), 'Library', 'LaunchAgents', `${label}.plist`);
   try {
+    const wrapped = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', plist], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+    const actual = wrapped.ProgramArguments;
+    const original = wrapped.VeneerOriginalProgramArguments;
+    if (Array.isArray(original) && actual?.[1]?.endsWith('/veneer-volume/ensure-mounted.py') && actual[2] === '--exec' && JSON.stringify(actual.slice(3)) === JSON.stringify(original)) return original[1] ?? null;
     return execFileSync('/usr/bin/plutil', ['-extract', 'ProgramArguments.1', 'raw', '-o', '-', plist], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   } catch {
     return null;
