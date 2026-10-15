@@ -28,7 +28,7 @@ export async function createBackup({
 } = {}) {
   if (!Number.isSafeInteger(keep) || keep < 1 || keep > 100) throw new Error('VP_BACKUP_KEEP must be from 1 to 100.');
   const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'veneer-backup-'));
+  const workDir = fs.mkdtempSync(path.join(process.env.VP_BACKUP_STAGING_DIR || os.tmpdir(), 'veneer-backup-'));
   const stagedData = path.join(workDir, 'data');
   const archive = path.join(backupDir, `veneer-pro-${stamp}.tar.gz`);
   const excluded = new Set([
@@ -55,7 +55,11 @@ export async function createBackup({
     if (fs.existsSync(dataDir)) {
       for (const entry of fs.readdirSync(dataDir, { withFileTypes: true })) {
         if (excluded.has(entry.name) || entry.name.startsWith('.hub-keyring.') && entry.name.endsWith('.tmp')) continue;
-        fs.cpSync(path.join(dataDir, entry.name), path.join(stagedData, entry.name), {
+        // The relocated transcript root must remain real content in a backup.
+        // Preserve nested links and other top-level links as before.
+        const source = path.join(dataDir, entry.name);
+        const backupSource = entry.name === 'transcripts' && entry.isSymbolicLink() ? fs.realpathSync(source) : source;
+        fs.cpSync(backupSource, path.join(stagedData, entry.name), {
           recursive: true,
           preserveTimestamps: true,
           dereference: false,

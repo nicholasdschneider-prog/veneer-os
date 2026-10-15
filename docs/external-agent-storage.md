@@ -42,3 +42,16 @@ Never log or commit the recovery key.
 Migration manifests, original plists, deployed-file hashes and the database
 snapshot are in the operator's task folder `ssd-setup-20261015`. Restore data
 before removing links or disabling guards. Never start against empty replacements.
+
+## Backup coverage after relocation
+
+The nightly backup explicitly copies the target of the top-level transcript
+link, preserving the previous transcript coverage. Other and nested symlinks
+remain links. Temporary staging is on the SSD in a private directory configured
+in volume.json (`backup_staging_dir`); the completed compressed archive stays on
+the internal disk. The storage guard exports `VP_BACKUP_STAGING_DIR` so installer
+refreshes retain this behavior. The host disk-pressure preflight counts relocated
+transcript bytes and reserves space on both filesystems. Service-native Codex and
+Claude homes were not part of this nightly DATA_DIR backup; a separate backup of
+those histories and retired archives is still needed for protection against SSD
+failure. The migration itself is not a second copy of that data.

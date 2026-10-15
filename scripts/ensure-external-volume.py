@@ -52,6 +52,12 @@ def main():
     root = pathlib.Path(config['mount_point']) / 'Veneer'
     if not root.is_dir() or not os.access(root, os.W_OK):
         raise RuntimeError('The existing Veneer directory is not writable')
+    staging = config.get('backup_staging_dir')
+    if staging:
+        stage = pathlib.Path(staging)
+        if not stage.is_dir() or not stage.resolve().is_relative_to(root.resolve()):
+            raise RuntimeError('Backup staging directory is missing or outside the verified volume')
+        os.environ.setdefault('VP_BACKUP_STAGING_DIR', str(stage))
     print('Verified encrypted VeneerData volume is mounted and available.')
     return 0
 
