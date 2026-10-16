@@ -1,0 +1,14 @@
+{
+  "path": "mirror\\local-hermes\\kanban.db",
+  "results": [
+    {
+      "mode": "extended",
+      "readonly_open_ok": true
+    },
+    {
+      "mode": "normal",
+      "readonly_open_ok": true
+    }
+  ],
+  "no_rows_or_contents_exported": true
+}

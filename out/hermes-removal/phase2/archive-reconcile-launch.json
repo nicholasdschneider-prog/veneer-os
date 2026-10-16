@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-16T18:08:03.7180319-04:00",
+  "pid": 2032,
+  "created": "2026-10-16T18:08:03.6473960-04:00",
+  "source": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\archive-reconcile.py",
+  "sha256": "DC06932A9396508C621BC57C71654160E7DA9FE781180C4049672E29E4F9EC1F",
+  "original_controller_absent": true,
+  "copy_log_known_lock_only": true,
+  "status": "started; not yet verified"
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-16T18:05:14.5213135-04:00",
+  "controller": null,
+  "source_sha256": "53A757C5504592F6E39FEF2D6BDBAD472321FFF8974A96234236E12B705C03FC",
+  "manifest_reported_bytes": 862647806,
+  "manifest_open_stream_bytes": 862647806,
+  "free_bytes": 523323363328,
+  "archive_changed_by_probe": false
+}
