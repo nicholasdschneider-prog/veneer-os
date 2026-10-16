@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-16T12:37:11.9529525-04:00",
+  "profile": "cs-mallory",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-mallory",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_cs_mallory_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T12:35:01.0000000-04:00",
+      "next_run": "2026-10-16T12:40:00.0000000-04:00",
+      "state": "Ready",
+      "enabled": true
+    }
+  ],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-mallory.vbs",
+      "sha256": "BC869989C28314C4951B79184F59FC36683EAEEDA3A5BA5EBFFEE1DD94EC58C5",
+      "name": "Hermes_Gateway_cs-mallory.vbs",
+      "bytes": 488,
+      "active": true
+    }
+  ],
+  "gateways": [
+    {
+      "parent": 2108,
+      "pid": 10112,
+      "created": "2026-10-15T14:18:52.1105050-04:00",
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe"
+    }
+  ],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:19:44.476229+00:00",
+    "pid": 10112,
+    "active_agents": 0,
+    "start_time": 179208833211
+  },
+  "heartbeat_modified": "2026-10-16T16:37:05.3588887Z",
+  "default_alias_caution": false
+}

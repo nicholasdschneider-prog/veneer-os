@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-16T12:35:18.1142001-04:00",
+  "checks": {
+    "task_last_run_unchanged": true,
+    "disabled_launcher_hash_unchanged": true,
+    "no_dashboard_processes": true,
+    "task_disabled": true,
+    "full_15m": true,
+    "active_task_launcher_absent": true
+  },
+  "cron_delta": "Both disabled with unchanged last_run/execution IDs, zero ALL unfinished executions.",
+  "outcome": "Verified retired; no relaunch"
+}

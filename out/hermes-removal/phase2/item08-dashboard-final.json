@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-16T12:35:18.1142001-04:00",
+  "item": 8,
+  "observation_start": "2026-10-16T12:19:11.2141979-04:00",
+  "elapsed_seconds": 966.9000021999999,
+  "checks": {
+    "task_last_run_unchanged": true,
+    "disabled_launcher_hash_unchanged": true,
+    "no_dashboard_processes": true,
+    "task_disabled": true,
+    "full_15m": true,
+    "active_task_launcher_absent": true
+  },
+  "dashboard_processes": [],
+  "launcher": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.vbs.disabled-20261016",
+  "launcher_sha256": "A18DDAA136FDE639E1AC306FC298A0804CF295EF6CEEC055A5ACE5B9ED2435AB"
+}

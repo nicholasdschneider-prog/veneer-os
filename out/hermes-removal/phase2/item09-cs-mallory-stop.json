@@ -1,0 +1,42 @@
+{
+  "item": 9,
+  "profile": "cs-mallory",
+  "at": "2026-10-16T12:38:59.2933159-04:00",
+  "observation_start": "2026-10-16T12:38:59.2933159-04:00",
+  "remaining_gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T12:35:01.0000000-04:00",
+      "last_result": 0,
+      "enabled": false,
+      "name": "Hermes_cs_mallory_Watchdog",
+      "at": "2026-10-16T12:38:58.9181375-04:00"
+    }
+  ],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-mallory.vbs.disabled-20261016",
+      "sha256": "BC869989C28314C4951B79184F59FC36683EAEEDA3A5BA5EBFFEE1DD94EC58C5",
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-mallory.vbs",
+      "at": "2026-10-16T12:38:59.0421365-04:00"
+    }
+  ],
+  "process_stops": [
+    {
+      "effect": "exact gateway PID stopped",
+      "parent": 2108,
+      "pid": 10112,
+      "created": "2026-10-15T14:18:52.1105050-04:00",
+      "at": "2026-10-16T12:38:59.1481362-04:00"
+    }
+  ],
+  "no_inflight": {
+    "additional_child_workers": 0,
+    "active_agents": 0,
+    "runtime_status_updated_at": "2026-10-15T18:19:44.476229+00:00",
+    "unfinished_all_profile": 0
+  },
+  "journal": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\cs-mallory\\idle-steps.jsonl",
+  "observation": "Pending 15 minutes",
+  "original_files_preserved": true
+}

@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-16T12:35:58.1921210-04:00",
+  "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\supervisor.lock",
+  "destination": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\dashboard\\supervisor.lock.final",
+  "bytes": 37,
+  "sha256": "C734F9BD92FD5082D1C4D70F905A7FE37A8F6B61801209CBC4796314D84CCF88",
+  "original_preserved": true,
+  "archive_tree_changed": false,
+  "note": "Preserved after dashboard observation passed. Reconcile into archive only after its controller finishes."
+}

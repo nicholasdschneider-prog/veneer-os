@@ -13,14 +13,14 @@ Authority: Nick’s October 16 SSH stop approval in chat fce19860, followed by t
 | 5 Martine Reply Watcher | Verified disabled | Full-hour observation passed at 11:39 ET: disabled, same June 20 last-run field, zero recorded/unfinished executions, no matching helper process, script hash unchanged and no retained local reply cursor. No helper invocation or mailbox query was performed; no assertion about new mailbox replies. |
 | 6 Accounting Inbox Read-Only Monitor | Verified disabled | Full 30-minute/business-slot observation passed at 12:12 ET, after Friday’s 12:07 trigger. Disabled, last-run/execution IDs unchanged, zero ALL unfinished executions, all 36 preserved state/processed artifacts unchanged. No monitor or mailbox query performed. |
 | 7 Lippert SHADOW lane | SKIPPED; unchanged/enabled | Shadow-only wrapper is confirmed, but no-unique-pending-downstream-output prerequisite was not established. Original conditional instruction permits reporting/skipping; no mutation or job invocation. |
-| 8 Auth sync / dashboard | Crons verified disabled; dashboard observation pending | Both manager crons disabled 12:13:27–28 ET; full five-minute observations passed with unchanged last-run/execution IDs and zero unfinished. Dashboard task disabled and task .vbs launcher renamed 12:18:53 ET; exact supervisor and wrapper stopped, server exited with wrapper. Fresh absence confirmed 12:19:11 ET; require full 15 minutes through 12:34:11 ET. No active dashboard Startup launcher existed; historical disabled CMD preserved. Held gateway PIDs/creation times unchanged. |
-| 9 Idle gateways | Not yet changed | Begin only after item 8 passes. Original per-profile no enabled cron/no task dependency and 15-minute conditions remain. |
+| 8 Auth sync / dashboard | Verified retired | Final 12:35 ET observation passed: both crons disabled with unchanged last-run/execution IDs and zero ALL unfinished; dashboard task disabled, task launcher hash unchanged, no dashboard processes after full 15 minutes. Held gateway identities preserved. Missing 37-byte supervisor.lock copied to separate PC custody after observation; archive tree untouched. |
+| 9 Idle gateways | In progress: cs-mallory observation | cs-mallory had zero enabled cron/unfinished executions/active agents and only its dedicated watchdog task. Watchdog disabled and active Startup VBS renamed; exact PID10112 stopped 12:38:59 ET. Interim no-relaunch checks passed; require full 15 minutes through 12:53:59 ET. Other profiles untouched; next cs-jasmine. |
 
 ## PC-only archive
 
-The recovery baseline remains on the PC at `C:\Users\nicho\backups\hermes-final-20261016`. The six-root copy phase has finished; the original WMI controller PID 19500 (created 08:47:43 ET) is hashing the archive. At 12:12 ET its status reported 640,000 files hashed, 42,262,966,566 bytes, and 1,798 accumulated errors (count stable since the prior check). Hashing remains in progress; the detailed error list will be emitted on completion. The archive is NOT verified. A bounded 20-second long-path sample checked 454,105 entries without finding a diagnostic candidate; this does not establish the cause of hashing errors. All **199/199 consistent SQLite snapshots passed integrity_check**; no database error metadata was returned. Per-file manifest hashing, restore sample and ACL verification are still pending. No archive data is copied to this Mac.
+The recovery baseline remains on the PC at `C:\Users\nicho\backups\hermes-final-20261016`. The six-root copy phase has finished; the original WMI controller PID 19500 (created 08:47:43 ET) is hashing the archive. At 12:35 ET its status reported 770,000 files hashed, 47,122,598,703 bytes, and 1,798 accumulated errors (count stable). Hashing remains in progress; the detailed error list will be emitted on completion. The archive is NOT verified. A bounded 20-second long-path sample checked 454,105 entries without finding a diagnostic candidate; this does not establish the cause of hashing errors. All **199/199 consistent SQLite snapshots passed integrity_check**; no database error metadata was returned. Per-file manifest hashing, restore sample and ACL verification are still pending. No archive data is copied to this Mac.
 
-The separately identified initial copy error is **services/dashboard/supervisor.lock**, a 37-byte file held open by the dashboard (Robocopy error 33/retry limit). No retry or premature process stop was performed. Keep the archive unverified until both this copy issue and all hashing errors are reconciled. After the approved item 8 dashboard stop and observation, preserve this now-unlocked file on the PC, reconcile its hash with the archive/manifest and rerun appropriate artifact-only checks; do not rerun Hermes. Wait until the archive controller completes before changing its destination tree.
+The initial copy error was **services/dashboard/supervisor.lock**, 37 bytes. After item 8 passed its observation, it was preserved with matching SHA-256 at `C:\Users\nicho\backups\hermes-phase2-20261016\dashboard\supervisor.lock.final`; see supervisor-lock-custody.json. The original remains intact and the active archive tree was not changed. After controller completion, reconcile that custody file and ALL hashing errors into a verified manifest before claiming archive verification. Do not rerun Hermes or overwrite/delete archive artifacts blindly.
 
 The initial SSH-child launch exited when its SSH session ended; its unverified directory was preserved under `hermes-final-20261016.incomplete-0847`. Review also found auth/config backup filename variants, so exclusions were broadened and checked before the WMI launch. No secret values were read or displayed. The incomplete directory is retained, not a usable recovery archive.
 
@@ -28,13 +28,19 @@ The archive will remain a **baseline**, not a final quiescent seal, while held w
 
 ## Continuation
 
-At the next wake at 12:35 ET, run item08-observe-dashboard.ps1 and require all checks, including elapsed >=900 seconds since 16:19:11.2141979Z, unchanged dashboard task last run, task disabled, no dashboard process and unchanged renamed launcher hash. Re-read both manager crons via make-cron-probe.py read mode; compare item08-*-disable.json for disabled/unchanged last-run and execution IDs/zero ALL unfinished. Never repeat task/launcher/process stops. The stop script’s final server PID check raced with that server exiting after its wrapper; journal plus fresh process inventory confirmed all three absent, with no extra stop/retry.
+At the next wake at 12:54:05 ET, run item09-cs-mallory-observe.ps1 into a FINAL receipt and require every check including >=900 seconds since 16:38:59.2933159Z. Re-run its preflight read-only into a distinct post-observation receipt to confirm zero ALL unfinished executions and no unexpected new dependency; do not repeat its stop. If it passes, mark cs-mallory complete and begin cs-jasmine.
 
-The earlier drift comparator incorrectly keyed cron rows by ID alone; qa-review has a separate disabled 89de9427e76b row. There was NO auth re-enable. audit-drift.py now compares file+ID, and corrected checks passed; QA/Tier C and all HOLD states are unchanged. Original failed audit and correction receipts are retained.
+Generic isolated helpers now support the item 9 sequence:
 
-Items 1–6 are verified complete. Item 7 is skipped under the original unmet prerequisite, left unchanged/enabled; coordinator notified. If item 8 passes, preserve the now-unlocked supervisor.lock into a new PC-only phase2 dashboard custody file and record its checksum without changing the still-running archive destination. Reconcile it into the archive only after the archive controller completes. All hashing errors still need reconciliation before any verified-archive claim; brain/vault holds stay.
+1. `make-idle-preflight.py <profile>` writes a reviewed read-only profile probe. Run with run-probe.py and save the original `item09-<profile>-preflight.json`. Inspect enabled cron, task actions/dependencies, exact PID/parent/creation, children, runtime active_agents and heartbeat. Stop nothing on an unresolved dependency or in-flight work.
+2. `make-idle-stop.py <profile>` builds the profile-specific stop from that original receipt; run it exactly once. It rechecks identities, idle state, cron and task dependencies, then disables only active gateway/watchdog tasks, renames only active Startup entries and stops exact profile gateway PIDs. It journals each effect on PC; any uncertain result requires source reconciliation before another action. Tier C entries stay unchanged.
+3. `make-idle-observe.py <profile>` writes the read-only no-relaunch check from its stop receipt. Require >=900 seconds and all checks before advancing to the next profile. A missing watchdog/process is recorded as absent, never fabricated or launched for testing.
 
-Then start original item 9 serially: cs-mallory, cs-jasmine, cs-rae, cs-ali, cs-joe, cust-service, nick, hermesops-2, accounting-sharon, tripower-consulting, default. For each, first verify no enabled cron/task dependency, capture no-in-flight metadata, disable only its active watchdog task, rename only its active Startup launcher to .disabled-20261016, stop only exact fresh matching gateway PID(s), observe 15 minutes and confirm no relaunch before the next profile. Already-disabled historical tasks/launchers are Tier C and stay unchanged. For accounting-sharon and tripower-consulting capture pending session/state metadata first; contents stay on the PC under the named owners’ custody. Preserve held manager/orders/hermesops gateways and root LTL duties.
+Item 9 order remains cs-mallory → cs-jasmine → cs-rae → cs-ali → cs-joe → cust-service → nick → hermesops-2 → accounting-sharon → tripower-consulting → default. Accounting-sharon/TriPower need their custody metadata captured first; the stop helper requires a custody receipt with profile and custody_metadata_captured=true. Do not assert that receipt until actual metadata is captured; no session contents go to the Mac. Default profile is intentionally excluded from the generic stop pending explicit root/default alias and root LTL dependency checks.
+
+Items 1–6 and 8 are verified complete; 7 remains skipped/unchanged. Coordinator notified of item 8 completion and first idle stop. Never repeat those completed effects. HOLD and Tier C states passed source-qualified file+ID comparisons; the QA duplicate ID caused an audit false alarm, not an actual auth re-enable. For drift checks include expected task arguments `task:ERVP Hermes Dashboard`, `task:Hermes_cs_mallory_Watchdog` and Startup `startup:Hermes_Gateway_cs-mallory.vbs` in addition to the prior cron IDs; add only each subsequent profile’s actual authorized changes.
+
+Archive controller remains running/unverified. Check status/source identity each wake; inspect final error list only when available, never relaunch blindly. Reconcile the supervisor custody file only after controller completion. Keep brain/vault and all other held jobs/gateways. Persist every pending observation/archive wake.
 
 Keep the original full GO/HOLD list and never run business scripts or delete files. No application source changes, build or production restart are involved. Send complete items1–9 results to fce19860 using request_key `hermes-pc-operator-phase2`, with a separate archive verification report when actually verified.
 
@@ -66,6 +72,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [archive-status-item05-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-item05-start.json)
 - [archive-status-item06-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-item06-start.json)
 - [archive-status-item07-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-item07-start.json)
+- [archive-status-item09-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-item09-start.json)
 - [archive-status-wmi.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-wmi.json)
 - [archive-status.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status.json)
 - [archive-status.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status.ps1)
@@ -81,10 +88,15 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [drift-after-item06.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-item06.json)
 - [drift-after-item08-cron-disable-corrected.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-item08-cron-disable-corrected.json)
 - [drift-after-item08-cron-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-item08-cron-disable.json)
+- [drift-after-mallory-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-mallory-stop.json)
 - [drift-check-after-item03.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-check-after-item03.json)
 - [drift-check-after-tim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-check-after-tim.json)
 - [drift-item06-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-item06-start.json)
 - [drift-item07-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-item07-start.json)
+- [drift-item09-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-item09-start.json)
+- [idle-observe-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/idle-observe-body.ps1)
+- [idle-preflight-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/idle-preflight-body.ps1)
+- [idle-stop-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/idle-stop-body.ps1)
 - [inventory-0954.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-0954.json)
 - [inventory-after-dashboard-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-dashboard-stop.json)
 - [inventory-after-item03-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-item03-disable.json)
@@ -92,9 +104,11 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [inventory-after-item05-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-item05-disable.json)
 - [inventory-after-item06-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-item06-disable.json)
 - [inventory-after-item08-cron-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-item08-cron-disable.json)
+- [inventory-after-mallory-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-mallory-stop.json)
 - [inventory-after-tim-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-tim-stop.json)
 - [inventory-item06-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-item06-start.json)
 - [inventory-item07-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-item07-start.json)
+- [inventory-item09-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-item09-start.json)
 - [item01-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item01-disable.json)
 - [item01-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item01-disable.ps1)
 - [item01-observe-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item01-observe-final.json)
@@ -188,10 +202,12 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [item08-auth-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-disable.json)
 - [item08-auth-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-disable.ps1)
 - [item08-auth-final-cron.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-final-cron.json)
+- [item08-auth-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-final.json)
 - [item08-auth-observe.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-observe.json)
 - [item08-auth-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-observe.ps1)
 - [item08-auth-reenable-review.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-reenable-review.json)
 - [item08-auth-reenable-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-auth-reenable-review.ps1)
+- [item08-confirmed.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-confirmed.json)
 - [item08-cron-confirmed.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-cron-confirmed.json)
 - [item08-cron-observation.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-cron-observation.json)
 - [item08-dashboard-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-before.json)
@@ -199,6 +215,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [item08-dashboard-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-disable.json)
 - [item08-dashboard-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-disable.ps1)
 - [item08-dashboard-final-cron.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-final-cron.json)
+- [item08-dashboard-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-final.json)
 - [item08-dashboard-observe.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-observe.json)
 - [item08-dashboard-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-observe.ps1)
 - [item08-dashboard-stop-confirmed.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-dashboard-stop-confirmed.json)
@@ -212,7 +229,17 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [item08-stop-dashboard.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-stop-dashboard.ps1)
 - [item08-stop-syntax-check.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-stop-syntax-check.json)
 - [item08-stop-syntax-check.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-stop-syntax-check.ps1)
+- [item08-watchdog-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-watchdog-final.json)
+- [item09-cs-mallory-interim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-mallory-interim.json)
+- [item09-cs-mallory-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-mallory-observe.ps1)
+- [item09-cs-mallory-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-mallory-preflight.json)
+- [item09-cs-mallory-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-mallory-preflight.ps1)
+- [item09-cs-mallory-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-mallory-stop.json)
+- [item09-cs-mallory-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-mallory-stop.ps1)
 - [make-cron-probe.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/make-cron-probe.py)
+- [make-idle-observe.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/make-idle-observe.py)
+- [make-idle-preflight.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/make-idle-preflight.py)
+- [make-idle-stop.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/make-idle-stop.py)
 - [martine-path-review.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/martine-path-review.json)
 - [martine-path-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/martine-path-review.ps1)
 - [martine-state-discovery.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/martine-state-discovery.json)
@@ -221,6 +248,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [mirror-ledger-discovery.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/mirror-ledger-discovery.ps1)
 - [next-state-source-review.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/next-state-source-review.json)
 - [next-state-source-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/next-state-source-review.ps1)
+- [preserve-supervisor-lock.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/preserve-supervisor-lock.ps1)
 - [review-targets.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/review-targets.json)
 - [review-targets.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/review-targets.ps1)
 - [router-path-and-archive-progress.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/router-path-and-archive-progress.json)
@@ -237,5 +265,6 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [state-discovery.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/state-discovery.ps1)
 - [stop-timedout-own-scan.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/stop-timedout-own-scan.json)
 - [stop-timedout-own-scan.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/stop-timedout-own-scan.ps1)
+- [supervisor-lock-custody.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/supervisor-lock-custody.json)
 - [tim-state-review.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/tim-state-review.json)
 - [tim-state-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/tim-state-review.ps1)
