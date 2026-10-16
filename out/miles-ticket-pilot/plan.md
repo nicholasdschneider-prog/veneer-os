@@ -29,3 +29,10 @@ Directed by Nick, voice call 2026-10-16: one bot (Miles) owns customer tickets s
 
 ## Validation
 See the build report in the chat: root typecheck, full npm test, npm run build. Deployment pending a Nick-approved window (web + runner; migration 0185 applies on start).
+
+## Build #868 — read-only OrderOps mirror (2026-10-16)
+- Principal: see mirror-principal.md (veneer:ca80d9c1…, fingerprint c3d89115da56, Doppler ervp/prd ORDEROPS_TICKET_MIRROR_*).
+- server/src/csTickets/poll.ts: GET-only allowlist (messages, capability), 2-minute cadence inside the bot background loop, 25 tickets per pass, 10 s timeout, per-ticket backoff 1/2/4/8/30 min, 15-minute pause on 401/403, credential cached 10 min and read via readSecretValue.
+- Mapping from OrderOps cs_messages: inbound → customer, outbound → bot (api principal / ai) or human (staff); internal notes skipped; attachments by filename; SMS delivery status appended to outbound SMS bodies and refreshed when it changes.
+- Migration 0186: cs_tickets.last_polled_at / last_poll_error; ticket page shows "Checked OrderOps Xm ago" and the last failure.
+- Deployment pending the same window as #866 (web + runner; migrations 0185 + 0186).

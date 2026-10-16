@@ -29,6 +29,8 @@ export interface CsTicketRow {
   orders_json: string;
   summary: string;
   last_inbound_at: string | null;
+  last_polled_at: string | null;
+  last_poll_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +71,7 @@ export const SyncInput = z.object({
   }).strict()).max(200).optional(),
 }).strict();
 export type SyncInputType = z.infer<typeof SyncInput>;
+export type SyncMessage = NonNullable<SyncInputType['messages']>[number];
 export const NoteInput = z.object({ body: z.string().trim().min(1).max(12000), remember: z.boolean().default(false), request_key: bounded(200).min(1) }).strict();
 
 export interface TicketActor { user: UserRow; conversationId?: string; executionConversationId?: string }
@@ -133,6 +136,31 @@ export function createCsTicketService(db: Database.Database) {
     ticketOfLane,
     read: ticketRow,
     messages: messagesOf,
+    /** Tickets the server-side OrderOps poll should read: owned, not done, with a ticket chat; least recently read first. */
+    pollCandidates(limit: number): CsTicketRow[] {
+      return db.prepare(`SELECT t.* FROM cs_tickets t JOIN cs_ticket_owners o ON o.conversation_id=t.owner_conversation_id AND o.enabled=1
+        JOIN bot_registrations r ON r.conversation_id=o.conversation_id AND r.active=1
+        WHERE t.status<>'done' AND t.ticket_conversation_id IS NOT NULL ORDER BY t.last_polled_at IS NOT NULL, t.last_polled_at, t.created_at LIMIT ?`).all(limit) as CsTicketRow[];
+    },
+    /** Messages read from OrderOps by the poll: record them, and wake the ticket chat only for new inbound ones. */
+    applyPolledMessages(ticketId: string, messages: SyncMessage[], now = new Date()): { added: number; inboundIds: string[]; woke: boolean } {
+      return db.transaction(() => {
+        const t = ticketRow(ticketId);
+        if (!t) return { added: 0, inboundIds: [], woke: false };
+        const r = appendMessages(t, messages);
+        db.prepare("UPDATE cs_tickets SET last_polled_at=?,last_poll_error=NULL,last_inbound_at=COALESCE(?,last_inbound_at),updated_at=CASE WHEN ?>0 THEN datetime('now') ELSE updated_at END WHERE id=?")
+          .run(now.toISOString(), r.lastInbound, r.added, t.id);
+        let woke = false;
+        if (r.inboundIds.length) {
+          if (t.status === 'done') db.prepare("UPDATE cs_tickets SET status='open' WHERE id=?").run(t.id);
+          woke = wake(t, `poll:${r.inboundIds[r.inboundIds.length - 1]}`, `OrderOps shows ${r.inboundIds.length} new customer message${r.inboundIds.length === 1 ? '' : 's'} on ticket ${t.orderops_ticket_id} (OrderOps message id${r.inboundIds.length === 1 ? '' : 's'} ${r.inboundIds.join(', ')}). They are already in your ticket record; continue the work here.`);
+        }
+        return { added: r.added, inboundIds: r.inboundIds, woke };
+      })();
+    },
+    markPollError(ticketId: string, error: string, now = new Date()) {
+      db.prepare('UPDATE cs_tickets SET last_polled_at=?,last_poll_error=? WHERE id=?').run(now.toISOString(), error.slice(0, 300), ticketId);
+    },
     /** Upsert the owning bot's copy of an OrderOps ticket and open its chat on first sight. */
     sync(actor: TicketActor, raw: unknown) {
       const owner = ownerChat(actor);
@@ -156,16 +184,9 @@ export function createCsTicketService(db: Database.Database) {
         if (p.status !== undefined) set('status', p.status);
         if (p.orders !== undefined) set('orders_json', JSON.stringify(p.orders));
         if (p.summary !== undefined) set('summary', p.summary);
-        let added = 0;
-        let lastInbound = t.last_inbound_at;
-        for (const m of p.messages ?? []) {
-          const r = db.prepare('INSERT OR IGNORE INTO cs_ticket_messages(id,ticket_id,direction,channel,external_id,author,author_label,body,attachments_json,at) VALUES(?,?,?,?,?,?,?,?,?,?)')
-            .run(crypto.randomUUID(), t.id, m.direction, m.channel ?? t.channel, m.external_id ?? null, m.author, m.author_label ?? '', m.body, JSON.stringify(m.attachments ?? []), m.at);
-          if (!r.changes) continue;
-          added++;
-          if (m.direction === 'in' && (!lastInbound || m.at > lastInbound)) lastInbound = m.at;
-        }
-        if (lastInbound !== t.last_inbound_at) set('last_inbound_at', lastInbound);
+        const appended = appendMessages(t, p.messages ?? []);
+        const added = appended.added;
+        if (appended.lastInbound !== t.last_inbound_at) set('last_inbound_at', appended.lastInbound);
         set('updated_at', new Date().toISOString());
         db.prepare(`UPDATE cs_tickets SET ${sets.join(',')} WHERE id=?`).run(...vals, t.id);
         t = ticketRow(t.id)!;
@@ -307,6 +328,21 @@ export function createCsTicketService(db: Database.Database) {
     },
   };
 
+  /** Insert messages not yet recorded (by OrderOps id); existing rows keep their first-seen body unless the body changed (delivery status). */
+  function appendMessages(t: CsTicketRow, messages: SyncMessage[]): { added: number; inboundIds: string[]; lastInbound: string | null } {
+    let added = 0; const inboundIds: string[] = []; let lastInbound = t.last_inbound_at;
+    for (const m of messages) {
+      const r = db.prepare('INSERT OR IGNORE INTO cs_ticket_messages(id,ticket_id,direction,channel,external_id,author,author_label,body,attachments_json,at) VALUES(?,?,?,?,?,?,?,?,?,?)')
+        .run(crypto.randomUUID(), t.id, m.direction, m.channel ?? t.channel, m.external_id ?? null, m.author, m.author_label ?? '', m.body, JSON.stringify(m.attachments ?? []), m.at);
+      if (!r.changes) {
+        if (m.external_id) db.prepare('UPDATE cs_ticket_messages SET body=? WHERE ticket_id=? AND external_id=? AND direction=? AND body<>?').run(m.body, t.id, m.external_id, m.direction, m.body);
+        continue;
+      }
+      added++;
+      if (m.direction === 'in') { if (m.external_id) inboundIds.push(m.external_id); if (!lastInbound || m.at > lastInbound) lastInbound = m.at; }
+    }
+    return { added, inboundIds, lastInbound };
+  }
   function addMessage(ticketId: string, direction: CsTicketMessageRow['direction'], author: CsTicketMessageRow['author'], label: string, body: string, remember = false, externalId: string | null = null): string {
     const id = crypto.randomUUID();
     db.prepare('INSERT INTO cs_ticket_messages(id,ticket_id,direction,channel,external_id,author,author_label,body,attachments_json,remember,at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
@@ -332,7 +368,7 @@ function attachmentNames(json: string): string { try { const v = JSON.parse(json
 export function present(t: CsTicketRow) {
   return { id: t.id, orderops_ticket_id: t.orderops_ticket_id, owner_conversation_id: t.owner_conversation_id, ticket_conversation_id: t.ticket_conversation_id,
     customer_name: t.customer_name, customer_email: t.customer_email, customer_phone: t.customer_phone, subject: t.subject, channel: t.channel, status: t.status,
-    orders: parseOrders(t.orders_json), summary: t.summary, last_inbound_at: t.last_inbound_at, created_at: t.created_at, updated_at: t.updated_at };
+    orders: parseOrders(t.orders_json), summary: t.summary, last_inbound_at: t.last_inbound_at, last_polled_at: t.last_polled_at, last_poll_error: t.last_poll_error, created_at: t.created_at, updated_at: t.updated_at };
 }
 export function presentMessage(m: CsTicketMessageRow) {
   return { id: m.id, direction: m.direction, channel: m.channel, external_id: m.external_id, author: m.author, author_label: m.author_label, body: m.body, attachments: (() => { try { return JSON.parse(m.attachments_json) as { name: string; reference?: string }[]; } catch { return []; } })(), remember: Boolean(m.remember), at: m.at };

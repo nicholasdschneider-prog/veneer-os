@@ -8,9 +8,16 @@ import { tickNotifications, queueNotification, sendCallPush } from './notificati
 import { startPhoneCall, tickBotCalls } from '../bots/botCalls.js';
 import { startCalendarReminderWorker } from '../calendarReminders/worker.js';
 import { escalateStaleDecisions, escalationEnabled } from '../bots/decisionEscalation.js';
+import { createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
+import { readSecretValue } from '../secrets/readSecret.js';
 export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics = createWebOperationMetrics()) {
   const stopReminders=startCalendarReminderWorker(ctx);
   const stopLoopMetrics = startWebLoopMetrics(ctx.config.dataDir, metrics);
+  // Read-only OrderOps mirror for tickets owned inside Veneer (Miles pilot); paces itself to every two minutes.
+  const ticketPoller = createTicketPoller(ctx.db, {
+    readCredential: async () => (await readSecretValue({ db: ctx.db, projectDopplerCli: ctx.projectDopplerCli ?? null }, { name: MIRROR_SECRET.credential, project: MIRROR_SECRET.project, config: MIRROR_SECRET.config })).value,
+    log: { info: (m) => console.info(m), warn: (m) => console.warn(m) },
+  });
   let busy = false,
     searchBusy = false;
   const tick = async () => {
@@ -29,6 +36,7 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
       for (const { userId, ring } of calls.pushes) void sendCallPush(ctx, userId, ring).catch(() => {});
       for (const phone of calls.phones) void startPhoneCall(ctx, phone);
       await metrics.measureAsync('notifications', () => tickNotifications(ctx));
+      await metrics.measureAsync('cs_ticket_poll', () => ticketPoller.tick());
     } catch {
       console.warn('[bot-workflows] Background pass failed; retrying.');
     } finally {

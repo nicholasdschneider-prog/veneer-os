@@ -1,0 +1,146 @@
+import Database from 'better-sqlite3';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { migrate } from '../src/db/migrate.js';
+import type { UserRow } from '../src/db/db.js';
+import { createCsTicketService } from '../src/csTickets/service.js';
+import { AUTH_BLOCK_MS, createTicketPoller, mapOrderOpsMessage, mirrorRequestUrl, ORDEROPS_ORIGIN, POLL_INTERVAL_MS, type OrderOpsMessage } from '../src/csTickets/poll.js';
+
+const migrations = fileURLToPath(new URL('../src/db/migrations', import.meta.url));
+const OWNER = '11111111-1111-4111-8111-111111111111', TEAM = 'team';
+const oo = (over: Partial<OrderOpsMessage> = {}): OrderOpsMessage => ({
+  id: 'oo-m1', direction: 'inbound', channel: 'email', fromName: 'Pat Rivera', fromEmail: 'pat@example.test', body: 'Any update on my claim?',
+  attachments: JSON.stringify([{ filename: 'IMG_2.jpg', url: 'https://files.example.test/2', size: 10, type: 'image/jpeg' }]), messageType: 'message', createdAt: '2026-10-16T17:00:00.000Z', ...over,
+});
+
+describe('OrderOps ticket mirror poll', () => {
+  let db: Database.Database;
+  let tickets: ReturnType<typeof createCsTicketService>;
+  let user: UserRow;
+  let clock: number;
+  const pendingWakes = () => db.prepare("SELECT wake_key,reason FROM conversation_wakeups WHERE conversation_id=? AND status='pending' ORDER BY created_at").all(OWNER) as { wake_key: string; reason: string }[];
+  const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  beforeEach(() => {
+    db = new Database(':memory:');
+    db.pragma('foreign_keys=ON');
+    migrate(db, migrations);
+    db.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'nick@example.test','Nick','owner')").run();
+    db.prepare('INSERT INTO business_teams(id,name,owner_id) VALUES(?,?,1)').run(TEAM, 'ERVP');
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES(?,1,1,'Miles','codex','n','team',?)").run(OWNER, TEAM);
+    db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,'Miles',1)").run(OWNER);
+    db.prepare('INSERT INTO cs_ticket_owners(conversation_id) VALUES(?)').run(OWNER);
+    user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
+    tickets = createCsTicketService(db);
+    clock = Date.parse('2026-10-16T17:05:00Z');
+  });
+  afterEach(() => db.close());
+  const mirrored = () => {
+    const r = tickets.sync({ user, conversationId: OWNER }, { ticket_id: 'OO-1001', subject: 'Cracked skylight', messages: [
+      { external_id: 'oo-m0', direction: 'in', author: 'customer', author_label: 'Pat Rivera', body: 'It arrived cracked.', at: '2026-10-16T12:00:00Z' },
+    ] });
+    db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE conversation_id=?").run(OWNER);
+    return r;
+  };
+  const poller = (fetchImpl: typeof fetch, readCredential = async () => 'oo_veneer_test') =>
+    createTicketPoller(db, { fetch: fetchImpl, readCredential, now: () => clock, log: { info: () => {}, warn: () => {} } });
+
+  it('only ever GETs the two allowlisted OrderOps paths', () => {
+    expect(mirrorRequestUrl('/api/cs/conversations/OO-1001/messages')).toBe(`${ORDEROPS_ORIGIN}/api/cs/conversations/OO-1001/messages`);
+    expect(mirrorRequestUrl('/api/cs/leases/capability')).toContain('/api/cs/leases/capability');
+    expect(() => mirrorRequestUrl('/api/cs/conversations/OO-1001/messages', 'POST')).toThrow(/read-only/);
+    expect(() => mirrorRequestUrl('/api/cs/conversations/OO-1001')).toThrow(/not allowed/);
+    expect(() => mirrorRequestUrl('/api/cs/leases/OO-1001/claim')).toThrow(/not allowed/);
+    expect(() => mirrorRequestUrl('/api/cs/conversations/../../admin/messages')).toThrow(/not allowed/);
+  });
+
+  it('maps OrderOps rows onto the ticket record and drops internal notes', () => {
+    expect(mapOrderOpsMessage(oo())).toEqual({ external_id: 'oo-m1', direction: 'in', channel: 'email', author: 'customer', author_label: 'Pat Rivera', body: 'Any update on my claim?', attachments: [{ name: 'IMG_2.jpg', reference: 'https://files.example.test/2' }], at: '2026-10-16T17:00:00.000Z' });
+    expect(mapOrderOpsMessage(oo({ id: 'oo-m2', direction: 'outbound', channel: 'sms', fromName: null, actorType: 'api_principal', actorContext: { profile: 'Miles' }, body: 'Replacement ships Monday.', attachments: null, deliveryStatus: 'delivered' })))
+      .toMatchObject({ direction: 'out', channel: 'sms', author: 'bot', author_label: 'Miles', body: 'Replacement ships Monday.\n\n[SMS delivery: delivered]' });
+    expect(mapOrderOpsMessage(oo({ id: 'oo-m3', direction: 'outbound', channel: 'email', actorType: 'staff', actorContext: { displayName: 'Ali' }, body: 'Refund issued.' }))).toMatchObject({ author: 'human', author_label: 'Ali' });
+    expect(mapOrderOpsMessage(oo({ messageType: 'internal_note' }))).toBeNull();
+    expect(mapOrderOpsMessage(oo({ channel: 'internal', body: '' , attachments: null }))).toBeNull();
+    expect(mapOrderOpsMessage(oo({ createdAt: 'nope' }))).toBeNull();
+    expect(mapOrderOpsMessage(oo({ attachments: '{broken' }))).toMatchObject({ attachments: [] });
+  });
+
+  it('records new messages, wakes the ticket chat only for new inbound ones, and paces itself', async () => {
+    const r = mirrored();
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push(`${init?.method} ${String(url)}`);
+      expect(String((init?.headers as Record<string, string>).Authorization)).toBe('Bearer oo_veneer_test');
+      return jsonResponse([oo({ id: 'oo-m0', body: 'It arrived cracked.', createdAt: '2026-10-16T12:00:00Z' }), oo({ id: 'oo-out', direction: 'outbound', actorType: 'staff', actorContext: { displayName: 'Ali' }, body: 'Looking into it.', createdAt: '2026-10-16T13:00:00Z' })]);
+    }) as unknown as typeof fetch;
+    const p = poller(fetchImpl);
+    expect(await p.tick()).toMatchObject({ polled: 1, added: 1, woke: 0, errors: 0 });
+    expect(calls).toEqual([`GET ${ORDEROPS_ORIGIN}/api/cs/conversations/OO-1001/messages`]);
+    expect(tickets.messages(r.ticket.id).map((m) => m.external_id)).toEqual(['oo-m0', 'oo-out']);
+    expect(pendingWakes()).toEqual([]);
+    expect(tickets.read(r.ticket.id)).toMatchObject({ last_polled_at: new Date(clock).toISOString(), last_poll_error: null });
+    // Within the interval nothing runs; after it, a new customer message wakes the ticket chat once.
+    expect((await p.tick()).skipped).toBe('interval');
+    clock += POLL_INTERVAL_MS;
+    (fetchImpl as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => jsonResponse([oo({ id: 'oo-m0', createdAt: '2026-10-16T12:00:00Z' }), oo(), oo({ id: 'oo-m2', body: 'Second nudge', createdAt: '2026-10-16T17:01:00Z' })]));
+    expect(await p.tick()).toMatchObject({ polled: 1, added: 2, woke: 1 });
+    const wakes = pendingWakes();
+    expect(wakes).toHaveLength(1);
+    expect(wakes[0]!.wake_key).toBe(`cs-ticket:${r.ticket.id}:poll:oo-m2`);
+    expect(wakes[0]!.reason).toContain('2 new customer messages');
+    expect(wakes[0]!.reason).toContain('oo-m1, oo-m2');
+    expect(tickets.read(r.ticket.id)!.last_inbound_at).toBe('2026-10-16T17:01:00.000Z');
+    // Already-recorded messages (from sync or an earlier poll) are never re-announced.
+    clock += POLL_INTERVAL_MS;
+    expect(await p.tick()).toMatchObject({ polled: 1, added: 0, woke: 0 });
+    expect(pendingWakes()).toHaveLength(1);
+  });
+
+  it('skips done tickets and tickets whose owner is not enrolled', async () => {
+    const r = mirrored();
+    tickets.setStatus({ user, conversationId: OWNER, executionConversationId: r.ticket_conversation_id! }, { status: 'done' });
+    const fetchImpl = vi.fn(async () => jsonResponse([])) as unknown as typeof fetch;
+    expect(await poller(fetchImpl).tick()).toMatchObject({ polled: 0 });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    db.prepare("UPDATE cs_tickets SET status='open' WHERE id=?").run(r.ticket.id);
+    db.prepare('UPDATE cs_ticket_owners SET enabled=0 WHERE conversation_id=?').run(OWNER);
+    expect(await poller(fetchImpl).tick()).toMatchObject({ polled: 0 });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('backs off a failing ticket and pauses the mirror for 15 minutes on an auth refusal', async () => {
+    const r = mirrored();
+    let status = 503;
+    const fetchImpl = vi.fn(async () => jsonResponse({ error: 'nope' }, status)) as unknown as typeof fetch;
+    const p = poller(fetchImpl);
+    expect(await p.tick()).toMatchObject({ polled: 0, errors: 1 });
+    expect(tickets.read(r.ticket.id)!.last_poll_error).toBe('OrderOps returned 503');
+    expect(p.backoffState(r.ticket.id)).toMatchObject({ failures: 1, nextAt: clock + 60_000 });
+    clock += POLL_INTERVAL_MS;
+    expect(await p.tick()).toMatchObject({ polled: 0, errors: 1 });
+    expect(p.backoffState(r.ticket.id)).toMatchObject({ failures: 2, nextAt: clock + 120_000 });
+    clock += 2 * POLL_INTERVAL_MS;
+    status = 401;
+    expect(await p.tick()).toMatchObject({ polled: 0, errors: 1 });
+    expect(p.authBlockedUntil()).toBe(clock + AUTH_BLOCK_MS);
+    expect(tickets.read(r.ticket.id)!.last_poll_error).toContain('refused the mirror principal (401)');
+    clock += POLL_INTERVAL_MS;
+    expect((await p.tick()).skipped).toBe('auth_block');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    // A missing credential never throws out of the loop.
+    const broken = poller(fetchImpl, async () => { throw new Error('Doppler CLI is not available'); });
+    clock += AUTH_BLOCK_MS;
+    expect((await broken.tick()).skipped).toBe('credential');
+  });
+
+  it('reads the credential once per cache window', async () => {
+    mirrored();
+    const readCredential = vi.fn(async () => 'oo_veneer_test');
+    const fetchImpl = vi.fn(async () => jsonResponse([])) as unknown as typeof fetch;
+    const p = poller(fetchImpl, readCredential);
+    await p.tick(); clock += POLL_INTERVAL_MS; await p.tick(); clock += POLL_INTERVAL_MS; await p.tick();
+    expect(readCredential).toHaveBeenCalledTimes(1);
+    clock += 10 * 60_000;
+    await p.tick();
+    expect(readCredential).toHaveBeenCalledTimes(2);
+  });
+});

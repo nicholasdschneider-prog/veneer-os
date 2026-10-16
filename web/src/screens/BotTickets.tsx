@@ -181,6 +181,7 @@ function TicketDetail({ botId, ticketId, onNavigate, onChanged }: { botId: strin
           <p className="text-sm text-muted-foreground">{t.customer_name || 'Customer'}{t.customer_email ? ` · ${t.customer_email}` : ''}{t.customer_phone ? ` · ${t.customer_phone}` : ''}</p>
           {t.orders.length > 0 && <p className="text-sm">Orders: {t.orders.map((o) => o.order_number).join(', ')}</p>}
           {t.summary && <p className="mt-1 text-sm">{t.summary}</p>}
+          <p className="mt-1 text-xs text-muted-foreground">{t.last_polled_at ? `Checked OrderOps ${ago(t.last_polled_at)} ago` : 'OrderOps not checked yet'}{t.last_poll_error ? ` · last check failed: ${t.last_poll_error}` : ''}</p>
         </div>
         {open.map((d) => <ChatDecisionCard key={`${d.id}:${d.version}`} decision={d} />)}
         <details open className="rounded-xl border">

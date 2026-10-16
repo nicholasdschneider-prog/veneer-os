@@ -1,5 +1,5 @@
 /** Fixed labels only: never record requests, SQL, identities or exception text. */
-export const WEB_OPERATION_PHASES = ['routines', 'stale_questions', 'question_rechecks', 'call_poll', 'notifications', 'search'] as const;
+export const WEB_OPERATION_PHASES = ['routines', 'stale_questions', 'question_rechecks', 'call_poll', 'notifications', 'cs_ticket_poll', 'search'] as const;
 export type WebOperationPhase = typeof WEB_OPERATION_PHASES[number];
 type Kind = 'sync' | 'elapsed';
 type Failure = 'none' | 'busy' | 'locked' | 'timeout' | 'other';

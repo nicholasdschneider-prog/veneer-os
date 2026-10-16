@@ -133,6 +133,8 @@ export interface CsTicket {
   orders: { order_number: string; order_id?: string }[];
   summary: string;
   last_inbound_at: string | null;
+  last_polled_at?: string | null;
+  last_poll_error?: string | null;
   created_at: string;
   updated_at: string;
 }

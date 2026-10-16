@@ -20,8 +20,13 @@ Employees open Bots → Tickets on Miles's row (`#/bots/tickets/<bot id>`), filt
 Waiting / Done / All, search, and answer or leave a note on the ticket itself. Customer sends
 are unchanged (draft, claim, record delivery). Enrollment is the `cs_ticket_owners` table,
 seeded with Miles by migration 0185; `POST /api/cs-tickets/owners` toggles it. Catalog entry
-`cs-tickets-in-veneer` carries the prompt. Deployment pending a Nick-approved window (web,
-runner, migration).
+`cs-tickets-in-veneer` carries the prompt. Build #868 adds the read-only OrderOps mirror: the web
+service reads `GET /api/cs/conversations/:id/messages` for every open owned ticket every two minutes
+with the dedicated principal Veneer Ticket Mirror (Doppler ervp/prd `ORDEROPS_TICKET_MIRROR_*`),
+records new messages, wakes the ticket chat for new customer messages, backs off on errors, pauses
+15 minutes on an auth refusal, and can only GET two allowlisted paths (pinned by test). Migration
+0186 adds `last_polled_at` / `last_poll_error`, shown on the ticket page. Deployment pending a
+Nick-approved window (web, runner, migrations 0185 and 0186).
 
 ## Leaner Veneer Browser — October 16, 2026
 
