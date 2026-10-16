@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-16T15:39:25.745229+00:00",
+  "checks": {
+    "disabled": true,
+    "last_run_unchanged": true,
+    "execution_ids_unchanged": true,
+    "all_unfinished_zero": true,
+    "hour_elapsed": true,
+    "no_matching_processes": true,
+    "local_metadata_unchanged": true
+  },
+  "reply_state_delta": "No retained local cursor or metadata change; no mailbox query/helper invocation performed."
+}

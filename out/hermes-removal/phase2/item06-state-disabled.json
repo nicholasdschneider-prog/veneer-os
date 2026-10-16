@@ -1,0 +1,484 @@
+{
+  "at": "2026-10-16T15:40:25.144837+00:00",
+  "files": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-ap-card-2026-07-25.md",
+      "bytes": 2959,
+      "sha256": "b613538d5ab7266a084a23b0420c52f97b177ec3db87eca37232e51da54e2ef6",
+      "mtime_ns": 1785013742723509100
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-ap-worker.json",
+      "bytes": 5598414,
+      "sha256": "e15c6e0dd4cb8f2afbfb5ed82d0cb02b6956a42dcefedb64fc6fd9c25e22845f",
+      "mtime_ns": 1790181993102653200,
+      "fields": {
+        "active_recovery": {
+          "type": "dict",
+          "count": 9,
+          "sha256": "204e4af8d19edd9c6c8b66019a759e799ad770f42d9c266b235655e94c44f4f4"
+        },
+        "checkpoint": {
+          "type": "dict",
+          "count": 18,
+          "sha256": "52cfb5e9f6c94035a91bd910797e1e39fb5c5bfd1e5655fa6e1863aa144eed26"
+        },
+        "current_owner": {
+          "type": "dict",
+          "count": 15,
+          "sha256": "5190406316333d523ce8dea49cb8dff2dd0f35e30673b62e4aede0a01e1d2267"
+        },
+        "final_checkpoint": {
+          "type": "dict",
+          "count": 18,
+          "sha256": "52cfb5e9f6c94035a91bd910797e1e39fb5c5bfd1e5655fa6e1863aa144eed26"
+        },
+        "last_checkpoint": {
+          "type": "dict",
+          "count": 9,
+          "sha256": "6c91e0543ddeef84d95b8132210172e14bf5e8e07a0bbf7f522221463f33bf1a"
+        },
+        "last_run_at": {
+          "type": "str",
+          "count": null,
+          "sha256": "06b4f16610de6d5ce2ddf0c639ab3ae27d85732d994f8a65ae9edefb1e5b896a"
+        },
+        "last_run_source_matrix": {
+          "type": "dict",
+          "count": 22,
+          "sha256": "a59062ce2488794b7c8eed11350bd9bc770dded3a5e6d03d7dace4f57cb48471"
+        },
+        "last_run_status": {
+          "type": "str",
+          "count": null,
+          "sha256": "fc5955c8599edf7d5badc9a7243a3930592b567d700cd6b9c27d750b386f5046"
+        },
+        "last_run_summary": {
+          "type": "dict",
+          "count": 13,
+          "sha256": "dd2559187cacfe27fcb6fea409d9ddbcfce86ef301e976098d66b02c8a80e2c2"
+        },
+        "last_scoped_run": {
+          "type": "dict",
+          "count": 20,
+          "sha256": "f5c822de52a6807e11998c9d50525796ef45067608d50cf1e8e89622a350c6a0"
+        },
+        "last_task_id": {
+          "type": "str",
+          "count": null,
+          "sha256": "9df38d5021cca7c914681514b4caf51d7378fd72808e9b6bee848ce1d2a3cdc2"
+        },
+        "last_updated": {
+          "type": "str",
+          "count": null,
+          "sha256": "7b3ae5c039b63dc47e8b04bd06783defa530cc57aa7b4b2a3fc5b54fb2b46404"
+        },
+        "mailbox": {
+          "type": "str",
+          "count": null,
+          "sha256": "3e98079a130a9ed683ebbf3af199c48a3d7ac2fd026fc061c3d0c8e7eaf7ecc2"
+        },
+        "messages": {
+          "type": "dict",
+          "count": 2513,
+          "sha256": "6c66d8a47229bb75be9033400a17d28cc5aa5b504d713ba2b0883ba46d1bafc4"
+        },
+        "ownership_history": {
+          "type": "list",
+          "count": 12,
+          "sha256": "52fb69b59b99928481f163a4d093510c0f51a08090ab4eafcbd628a0d230bbe6"
+        },
+        "previous_owner": {
+          "type": "dict",
+          "count": 15,
+          "sha256": "5beefaf7ce5c8e9be3f708c679cf2659afb1b982c42269ef1737ab39d82fd7cf"
+        },
+        "previous_owner_reconciled": {
+          "type": "bool",
+          "count": null,
+          "sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        },
+        "prior_owner_recovery": {
+          "type": "dict",
+          "count": 8,
+          "sha256": "b0ccb7346df950c7bbd541857bbd41741073b2755dddad5dfaf6fdbb345898e5"
+        },
+        "records": {
+          "type": "dict",
+          "count": 0,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        "run_owner": {
+          "type": "str",
+          "count": null,
+          "sha256": "0111de018f61ae7223154d5d2812ad9e8c36e2d6df89757e9ef8e3aecaaf605f"
+        },
+        "run_state": {
+          "type": "str",
+          "count": null,
+          "sha256": "c34e20c40cc2581f3184cc0fc5e67f7d5cbebd5365a5ce02a3614f321b6e3e4b"
+        },
+        "scoped_run_checkpoints": {
+          "type": "dict",
+          "count": 1,
+          "sha256": "4a4297f9ab654a9ffcf377c14ad0745f32ef2e1e617495194f10037a8c06d123"
+        },
+        "source_query": {
+          "type": "str",
+          "count": null,
+          "sha256": "10458d4817299aca72c67108135def76df0acaaaf01fdd929ebb340592f0c4c5"
+        },
+        "source_result_count": {
+          "type": "int",
+          "count": null,
+          "sha256": "9400f1b21cb527d7fa3d3eabba93557a18ebe7a2ca4e471cfe5e4c5b4ca7f767"
+        },
+        "updated_at": {
+          "type": "str",
+          "count": null,
+          "sha256": "06b4f16610de6d5ce2ddf0c639ab3ae27d85732d994f8a65ae9edefb1e5b896a"
+        },
+        "version": {
+          "type": "int",
+          "count": null,
+          "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+        },
+        "worker": {
+          "type": "str",
+          "count": null,
+          "sha256": "7fcdd102a23a207a69d5097decf1f057f2539e4e5a07bf95a3d289e68bca27a6"
+        },
+        "task_checkpoints": {
+          "type": "dict",
+          "count": 1,
+          "sha256": "acc4a742a740bf557f0b3ed0764d30991a380bf84f0252bc706fca88f04b7fe4"
+        }
+      },
+      "safe_status": {
+        "previous_owner_reconciled": true,
+        "source_result_count": 19,
+        "updated_at": "2026-09-23T16:46:33.040152+00:00",
+        "version": 1
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-ap-worker.json.lock",
+      "bytes": 2,
+      "sha256": "f1534392279bddbf9d43dde8701cb5be14b82f76ec6607bf8d6ad557f60f304e",
+      "mtime_ns": 1788236808944806300
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-ap-worker.json.t_a56f0d43.bak",
+      "bytes": 1691662,
+      "sha256": "b6c422ec598524ad1b554eb9ff81cd0f93a642591208ce4412d242bc6b549b6b",
+      "mtime_ns": 1786380472613257900
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-ap-worker.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1788529230553575100
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-card-2026-07-29T1807.txt",
+      "bytes": 6297,
+      "sha256": "a2bee24db21fe2797c6660142f4cbaccdebe6440347cb62172773143bfffe6c9",
+      "mtime_ns": 1785348555981669400
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-card-20260725-1537.md",
+      "bytes": 4260,
+      "sha256": "544f233f915acd116737a365ec953c4f2d31abf8fbdeb4d78cd85633e576fcef",
+      "mtime_ns": 1784993958521852800
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-checkpoint-20260716T1337.json",
+      "bytes": 807,
+      "sha256": "9756c80abd2fe9396bd0e6f8cdb7a7587331ba61c05f634bfd1808e8e848a932",
+      "mtime_ns": 1784209929614063500,
+      "fields": {
+        "verified_at": {
+          "type": "str",
+          "count": null,
+          "sha256": "22661502a1974aeafcc68fd833d2d9888f65e5034139a824b1c6e88ecce7017e"
+        },
+        "success": {
+          "type": "bool",
+          "count": null,
+          "sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        },
+        "checkpoint": {
+          "type": "dict",
+          "count": 12,
+          "sha256": "1e09c92d1e213d3a4c392730bf669e0f6f9cb7e4df5a6d740f499f1caeaf7dad"
+        },
+        "bounded_snapshot_stable": {
+          "type": "bool",
+          "count": null,
+          "sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        },
+        "bounded_untracked_ids": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "unbounded_untracked_ids": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "claimed_ids": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "completed_with_bad_labels": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "held_missing_inbox": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "held_schema_invalid": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "tracked_inbox_not_held": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "gmail_readback_failures": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "exact_label_readback_count": {
+          "type": "int",
+          "count": null,
+          "sha256": "303c8bd55875dda240897db158acf70afe4226f300757f3518b86e6817c00022"
+        }
+      },
+      "safe_status": {
+        "success": true,
+        "bounded_snapshot_stable": true,
+        "exact_label_readback_count": 273
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-inbox-card-2026-07-27T2107Z.md",
+      "bytes": 2303,
+      "sha256": "a750c93b7d58e2bd1c786f734bb7fed96118fcf513974b41a2e95f3d53fbf478",
+      "mtime_ns": 1785186540586004900
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-inbox-monitor.json",
+      "bytes": 7468,
+      "sha256": "666a98f1fe0438068ed8341e799f26b57e59c26177e61bd2e977d89596e54b03",
+      "mtime_ns": 1792165063919326900,
+      "fields": {
+        "ok": {
+          "type": "bool",
+          "count": null,
+          "sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        },
+        "checked_at": {
+          "type": "str",
+          "count": null,
+          "sha256": "af9f0fe93075fc8cf29c305d87e408d956357efa3afe4c65b8f984b2f414355a"
+        },
+        "account": {
+          "type": "str",
+          "count": null,
+          "sha256": "3e98079a130a9ed683ebbf3af199c48a3d7ac2fd026fc061c3d0c8e7eaf7ecc2"
+        },
+        "scopes": {
+          "type": "list",
+          "count": 3,
+          "sha256": "6ad7c873d9d10f5e55446133b73c94f503f2577cc84cf85702857b701d5d5de9"
+        },
+        "query": {
+          "type": "str",
+          "count": null,
+          "sha256": "10458d4817299aca72c67108135def76df0acaaaf01fdd929ebb340592f0c4c5"
+        },
+        "result_count": {
+          "type": "int",
+          "count": null,
+          "sha256": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443"
+        },
+        "messages": {
+          "type": "list",
+          "count": 21,
+          "sha256": "c45b17b042d088cb0e4ccce445e6f7dc6d03d0e43aad1aac2dd4eb2a07ee83ad"
+        }
+      },
+      "safe_status": {
+        "ok": true,
+        "checked_at": "2026-10-16T15:37:43.918336+00:00",
+        "result_count": 21
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-recovery-card-20260721T1437.txt",
+      "bytes": 3334,
+      "sha256": "03689f3c4578e0430df463d836d405bf2be4cd21dc3db3ea16b25820dc803802",
+      "mtime_ns": 1784644784336940100
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\accounting-recovery-card-body-20260720.txt",
+      "bytes": 3108,
+      "sha256": "b80ac83ed1996ad98350e70bc978f5d2b57580a7d6aaa46d185ef344c466748b",
+      "mtime_ns": 1784560158266132300
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\card-accounting-inbox-2026-07-28-1737.md",
+      "bytes": 6424,
+      "sha256": "1115b17ba97912fd5205734f6222f9bd5a9c2013ba6096611ab03fe40f45ea8e",
+      "mtime_ns": 1785260401936158000
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\card-body-accounting-inbox-2026-07-29T2007Z.txt",
+      "bytes": 4441,
+      "sha256": "f0ce5590fbb05f0087034fedccda24cdb85178a445390f03a9666134f88d8a81",
+      "mtime_ns": 1785355764071746300
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\current-accounting-card-body.txt",
+      "bytes": 6816,
+      "sha256": "3535e34d5270273f7cfddc9e4b569dc3c70cd2d63d4f6208c42483fd2af5c833",
+      "mtime_ns": 1785011938388475700
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\current-accounting-kanban-body.txt",
+      "bytes": 6454,
+      "sha256": "c8d4f5587b20e62edfe309b82bd30f314287c8f8a32548c10835421a281798e5",
+      "mtime_ns": 1784929169321292500
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\current-inbox.json",
+      "bytes": 19681,
+      "sha256": "c818cb1cded5209bf10ff7bc78d99de75728dfcffddf17e862ee2264ffeaf5b9",
+      "mtime_ns": 1784209787409056500
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\current_inbox.json",
+      "bytes": 22775,
+      "sha256": "de1cd0b56e38b7c2fd3cc31e184c40061025d7224bdf501a49433b6c746f075b",
+      "mtime_ns": 1784139000765133800
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\inbox-full-20260712.json",
+      "bytes": 240656,
+      "sha256": "df374ecbd70ddbd3ded01b4b963cbbfe4495ecb8275f369899045ed0732a47be",
+      "mtime_ns": 1783889030262540700
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-ap-2026-07-27T153725Z.md",
+      "bytes": 5617,
+      "sha256": "162f78b64027bf94b12477d7519e0e25eab75adcab1453c24bd8bb56d1c3ad65",
+      "mtime_ns": 1785166713583243100
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-17T1407Z.md",
+      "bytes": 4637,
+      "sha256": "5a0140e282639bfa7d95b89f1cc8220ca0b5dc9a4dd9fb31524ab79b88955c88",
+      "mtime_ns": 1784297339347872600
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-17T203745Z.md",
+      "bytes": 4971,
+      "sha256": "7cc20fc7fcc61bcdad68d6d1de2270009d2d327262887993a75cff588df1f2fc",
+      "mtime_ns": 1784320727731085400
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-20.md",
+      "bytes": 5453,
+      "sha256": "41480d48cd2dee824f0236f6eec00f13a5d17fd43f8db017fef6e1d6650a7f08",
+      "mtime_ns": 1784570939097546600
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-21T193806Z.md",
+      "bytes": 3964,
+      "sha256": "956a6449731f28ca6254a727da138526554932e3c66cdefacd9dac2734c3353c",
+      "mtime_ns": 1784662782239633700
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-22T143716Z.md",
+      "bytes": 4427,
+      "sha256": "dbdf42f89ed09516534c374bda00ad92f364dd402afe4de4646618e8a9c2fb20",
+      "mtime_ns": 1784731095227025800
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-24T163758Z.md",
+      "bytes": 6281,
+      "sha256": "799b624de3934a866d869e2c155e4a90b8c745513ed77a21fbec4ac3e6a3d240",
+      "mtime_ns": 1784911154546715300
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-29-1737.md",
+      "bytes": 6504,
+      "sha256": "6f4e78d241b753b6e9aeb603af4d4eaca9d0e085bd65b6eadd498c3bfde14f7d",
+      "mtime_ns": 1785346741729037400
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-2026-07-29T1407-body.txt",
+      "bytes": 6202,
+      "sha256": "08cdd42699d402601476c916f022a715ade70d0606b6a236bbd8f20a502822a4",
+      "mtime_ns": 1785334171390908100
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-20260717.md",
+      "bytes": 4751,
+      "sha256": "32ccf1f6561753365c5f8a553e7a649a5536d3752d3da91a0506bbcd98a0ed44",
+      "mtime_ns": 1784308199333731900
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-20260720T213719Z.md",
+      "bytes": 4595,
+      "sha256": "3d309c9a8ff403aa03a83fa78176c2242f7d4c1afc570aa35fad956991fdd7aa",
+      "mtime_ns": 1784583503735424200
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-inbox-run-2026-07-17T143738Z.md",
+      "bytes": 4175,
+      "sha256": "cf6c1d4628934abccd5d213f5c200846dda36e4079e34ad10c562136cb5050da",
+      "mtime_ns": 1784299118016379900
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting-run-2026-07-20T153715Z.md",
+      "bytes": 4330,
+      "sha256": "53fe755a3c093a039b20dbb2394cf5c5ae6a082c4aa3f981975fe8342b72f535",
+      "mtime_ns": 1784561900130897900
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-accounting.json",
+      "bytes": 54416,
+      "sha256": "93ffe63ced62c240baf5375533636a841b9d44194fba229a161b3c7d619fe1af",
+      "mtime_ns": 1784209824444033100
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\kanban-card-accounting-2026-07-29T143728Z.md",
+      "bytes": 6381,
+      "sha256": "601747b25027dbf00750fefd561c6cb69df88defb5fde4d8a231592e7a5119c0",
+      "mtime_ns": 1785335971206220300
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\query_active_accounting.py",
+      "bytes": 554,
+      "sha256": "b21dd594fc3e20c52ece1108b07d54fe1203aeff6698501eb1e95b2cc14cdca6",
+      "mtime_ns": 1787251194696272500
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\state\\queued-accounting-run-2026-07-30T133758Z.md",
+      "bytes": 6655,
+      "sha256": "9f7db48270c94f5ce056a48922b68935cd1fc1f339cb7eb05bc6c93e789c5f08",
+      "mtime_ns": 1785418762097167800
+    }
+  ],
+  "preservation": "Original accounting processed/state files remain intact. No monitor invocation or mailbox query."
+}
