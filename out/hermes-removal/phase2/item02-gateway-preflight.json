@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-16T08:51:17.5029720-04:00",
+  "profile": "cs-tim",
+  "processes": [
+    {
+      "name": "pythonw.exe",
+      "children": [],
+      "pid": 10056,
+      "parent": 4856,
+      "created": "2026-10-15T14:18:52.0552880-04:00",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe"
+    }
+  ],
+  "enabled_cron_ids": [],
+  "referencing_enabled_tasks": [
+    {
+      "state": "Ready",
+      "name": "Hermes_CS_Tim_Watchdog"
+    }
+  ],
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:47:44.623306+00:00",
+    "pid": 10056,
+    "active_agents": 0,
+    "start_time": 179208833206
+  },
+  "heartbeat_keys": [
+    "pid",
+    "updated_at",
+    "monotonic",
+    "start_time"
+  ],
+  "heartbeat_file_modified": "2026-10-16T12:50:53.2366771Z",
+  "ledger": {
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "launcher": {
+    "sha256": "41A00EE6C553B611D9EAD5A093A54B54EF6FEC14B9AC2EB581C096EA9E85CAD4",
+    "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs"
+  }
+}

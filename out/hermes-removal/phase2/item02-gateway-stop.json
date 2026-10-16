@@ -1,0 +1,46 @@
+{
+  "item": 2,
+  "profile": "cs-tim",
+  "watchdog_disabled_at": "2026-10-16T08:51:54.7731702-04:00",
+  "stopped_at": "2026-10-16T08:51:55.9298884-04:00",
+  "watchdog_enabled": false,
+  "launcher": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs.disabled-20261016",
+  "remaining_gateways": [],
+  "no_inflight": {
+    "active_agents": 0,
+    "child_processes": 0,
+    "all_profile_unfinished": 0,
+    "runtime_status_updated_at": "2026-10-15T18:47:44.623306+00:00"
+  },
+  "journal_path": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\cs-tim\\gateway-steps.jsonl",
+  "steps": [
+    {
+      "at": "2026-10-16T08:51:54.7731702-04:00",
+      "step": "disable_watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T08:51:43.0000000-04:00",
+      "enabled": false,
+      "task": "Hermes_CS_Tim_Watchdog"
+    },
+    {
+      "step": "rename_launcher",
+      "sha256": "41A00EE6C553B611D9EAD5A093A54B54EF6FEC14B9AC2EB581C096EA9E85CAD4",
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs",
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs.disabled-20261016",
+      "at": "2026-10-16T08:51:55.8181942-04:00"
+    },
+    {
+      "runtime_status_updated_at": "2026-10-15T18:47:44.623306+00:00",
+      "active_agents": 0,
+      "method": "Stop-Process -Id 10056; no broad tree or force command",
+      "step": "stop_exact_gateway",
+      "at": "2026-10-16T08:51:55.9298884-04:00",
+      "parent": 4856,
+      "created": "2026-10-15T14:18:52.0552880-04:00",
+      "unfinished_executions": 0,
+      "pid": 10056,
+      "child_processes": 0
+    }
+  ],
+  "observation": "Pending full 15 minutes after gateway stop"
+}

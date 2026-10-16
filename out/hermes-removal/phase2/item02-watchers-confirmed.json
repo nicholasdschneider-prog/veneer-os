@@ -1,0 +1,31 @@
+[
+  {
+    "job": "brent",
+    "at": "2026-10-16T12:50:25.835763+00:00",
+    "checks": {
+      "disabled": true,
+      "last_run_unchanged": true,
+      "same_execution_ids": true,
+      "all_unfinished_zero": true,
+      "full_five_minutes": true
+    },
+    "last_run": "2026-10-16T08:41:27.476697-04:00",
+    "executions": 500
+  },
+  {
+    "job": "brady",
+    "at": "2026-10-16T12:50:26.931781+00:00",
+    "checks": {
+      "disabled": true,
+      "last_run_unchanged": true,
+      "same_execution_ids": true,
+      "all_unfinished_zero": true,
+      "full_five_minutes": true
+    },
+    "last_run": "2026-10-16T08:41:27.505632-04:00",
+    "executions": 500
+  },
+  {
+    "cursor_delta": "Both cursor files remain absent; no cursor or alert state created."
+  }
+]

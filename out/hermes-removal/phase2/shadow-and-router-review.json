@@ -1,0 +1,328 @@
+[
+  {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\scripts\\lippert_final_tracking_shadow.py",
+    "exists": true,
+    "path_literals": [
+      "C:/Users/nicho/AppData/Local/hermes/profiles/ervp-dev2/workspace/lippert-final-tracking-owner/lippert_final_tracking.py"
+    ],
+    "mode_source": [
+      {
+        "line": 2,
+        "code": "\"\"\"Hermes cron entrypoint for the ERVP Lippert owner shadow lane.\"\"\""
+      },
+      {
+        "line": 9,
+        "code": "if os.getenv(\"LIPPERT_TRACKING_LIVE_ENABLE\") == \"YES\" or \"--live\" in sys.argv:"
+      },
+      {
+        "line": 10,
+        "code": "    raise SystemExit(\"shadow cron refuses live enablement; replace this wrapper only on an approved go-live card\")"
+      },
+      {
+        "line": 11,
+        "code": "sys.argv = [str(TARGET)]"
+      }
+    ],
+    "effect_calls": [
+      {
+        "line": 12,
+        "function": "runpy.run_path"
+      }
+    ]
+  },
+  {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\lippert_final_tracking.py",
+    "exists": true,
+    "path_literals": [
+      "shadow-latest.json",
+      "/orders.json",
+      "/shop.json",
+      ".json",
+      "/update_tracking.json"
+    ],
+    "mode_source": [
+      {
+        "line": 4,
+        "code": "Default and scheduled mode is shadow-only. A production mutation requires BOTH"
+      },
+      {
+        "line": 32,
+        "code": "DEFAULT_STATE = ROOT / \"state\" / \"owner.sqlite3\""
+      },
+      {
+        "line": 33,
+        "code": "DEFAULT_REPORT = ROOT / \"reports\" / \"shadow-latest.json\""
+      },
+      {
+        "line": 197,
+        "code": "class State:"
+      },
+      {
+        "line": 242,
+        "code": "    def claim_operation(self, key: str, order: str, fulfillment_id: str, tracking: str) -> bool:"
+      },
+      {
+        "line": 244,
+        "code": "            self.db.execute(\"INSERT INTO operations VALUES(?,?,?,?,?,?,?)\", (key, order, fulfillment_id, digest(tracking), \"claimed\", utcnow(), None))"
+      },
+      {
+        "line": 324,
+        "code": "    result = subprocess.run([\"gog\", *args], capture_output=True, text=True, timeout=timeout)"
+      },
+      {
+        "line": 344,
+        "code": "    # --all is the explicit Gmail pagination contract; --max bounds one shadow scan."
+      },
+      {
+        "line": 352,
+        "code": "    placeholder and keeps a complete shadow run within Hermes cron's hard cap."
+      },
+      {
+        "line": 379,
+        "code": "    mode = \"live\" if args.live else \"shadow\""
+      },
+      {
+        "line": 382,
+        "code": "    state = State(Path(args.state))"
+      },
+      {
+        "line": 384,
+        "code": "    if not state.acquire(run_id):"
+      },
+      {
+        "line": 387,
+        "code": "    state.start_run(run_id, mode)"
+      },
+      {
+        "line": 438,
+        "code": "                if not state.claim_operation(key, order, plan.fulfillment_id, plan.tracking):"
+      },
+      {
+        "line": 443,
+        "code": "                    state.operation_status(key, \"ambiguous\", \"timeout-or-connection-after-post; manual readback required\")"
+      },
+      {
+        "line": 447,
+        "code": "                    state.operation_status(key, \"readback_failed\", \"tracking/company mismatch\")"
+      },
+      {
+        "line": 449,
+        "code": "                state.operation_status(key, \"verified\")"
+      },
+      {
+        "line": 466,
+        "code": "        state.finish_run(run_id, \"ok\")"
+      },
+      {
+        "line": 475,
+        "code": "        state.finish_run(run_id, \"error\")"
+      },
+      {
+        "line": 479,
+        "code": "        state.release(run_id)"
+      },
+      {
+        "line": 480,
+        "code": "        state.close()"
+      },
+      {
+        "line": 486,
+        "code": "    p.add_argument(\"--state\", default=str(DEFAULT_STATE))"
+      }
+    ],
+    "effect_calls": [
+      {
+        "line": 57,
+        "function": "datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace"
+      },
+      {
+        "line": 66,
+        "function": "hashlib.sha256(value.encode('utf-8', 'replace')).hexdigest"
+      },
+      {
+        "line": 324,
+        "function": "subprocess.run"
+      },
+      {
+        "line": 331,
+        "function": "subprocess.run"
+      },
+      {
+        "line": 387,
+        "function": "state.start_run"
+      },
+      {
+        "line": 74,
+        "function": "json.dumps"
+      },
+      {
+        "line": 201,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 202,
+        "function": "self.db.executescript"
+      },
+      {
+        "line": 228,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 231,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 234,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 240,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 250,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 279,
+        "function": "RuntimeError"
+      },
+      {
+        "line": 326,
+        "function": "RuntimeError"
+      },
+      {
+        "line": 465,
+        "function": "Path(args.report).write_text"
+      },
+      {
+        "line": 466,
+        "function": "state.finish_run"
+      },
+      {
+        "line": 493,
+        "function": "run"
+      },
+      {
+        "line": 57,
+        "function": "datetime.now(timezone.utc).replace(microsecond=0).isoformat"
+      },
+      {
+        "line": 215,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 216,
+        "function": "self.db.execute(\"SELECT run_id, lease_until FROM singleton_lock WHERE name='owner'\").fetchone"
+      },
+      {
+        "line": 220,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 221,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 237,
+        "function": "self.db.execute('SELECT 1 FROM processed_messages WHERE message_id=?', (message_id,)).fetchone"
+      },
+      {
+        "line": 244,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 320,
+        "function": "self.request('POST', f'/fulfillments/{fulfillment_id}/update_tracking.json', body=body, retries=1, ambiguous_on_connection=True).json"
+      },
+      {
+        "line": 465,
+        "function": "json.dumps"
+      },
+      {
+        "line": 474,
+        "function": "Path(args.report).write_text"
+      },
+      {
+        "line": 475,
+        "function": "state.finish_run"
+      },
+      {
+        "line": 218,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 434,
+        "function": "report['would_write'].append"
+      },
+      {
+        "line": 474,
+        "function": "json.dumps"
+      },
+      {
+        "line": 57,
+        "function": "datetime.now(timezone.utc).replace"
+      },
+      {
+        "line": 168,
+        "function": "date_value.replace"
+      },
+      {
+        "line": 216,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 224,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 237,
+        "function": "self.db.execute"
+      },
+      {
+        "line": 448,
+        "function": "RuntimeError"
+      }
+    ]
+  },
+  {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\inventory-sync-incident-router-wrapper.py",
+    "exists": true,
+    "path_literals": [
+      "inventory-sync-incident-router.cjs",
+      "inventory-sync-incident-router-wrapper.jsonl"
+    ],
+    "mode_source": [
+      {
+        "line": 2,
+        "code": "\"\"\"Hermes no-agent wrapper for the Node inventory incident router."
+      },
+      {
+        "line": 17,
+        "code": "ROUTER = SCRIPT_DIR / \"inventory-sync-incident-router.cjs\""
+      },
+      {
+        "line": 18,
+        "code": "LOG_PATH = SCRIPT_DIR / \"state\" / \"inventory-sync-incident-router-wrapper.jsonl\""
+      },
+      {
+        "line": 35,
+        "code": "            [node, str(ROUTER)], capture_output=True, text=True, timeout=120,"
+      }
+    ],
+    "effect_calls": [
+      {
+        "line": 25,
+        "function": "handle.write"
+      },
+      {
+        "line": 34,
+        "function": "subprocess.run"
+      },
+      {
+        "line": 25,
+        "function": "json.dumps"
+      }
+    ]
+  }
+]

@@ -1,0 +1,359 @@
+[
+  {
+    "profile": "ervp-manager",
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\inventory-sync-incident-router-wrapper.py",
+    "exists": true,
+    "path_constants": [
+      "inventory-sync-incident-router-wrapper.jsonl"
+    ],
+    "state_assignments": [],
+    "effect_calls": [
+      {
+        "line": 25,
+        "function": "handle.write",
+        "keywords": []
+      },
+      {
+        "line": 34,
+        "function": "subprocess.run",
+        "keywords": [
+          "capture_output",
+          "text",
+          "timeout",
+          "check",
+          "creationflags"
+        ]
+      },
+      {
+        "line": 25,
+        "function": "json.dumps",
+        "keywords": []
+      }
+    ],
+    "imports": [
+      "from __future__ import annotations",
+      "import json",
+      "from datetime import datetime, timezone",
+      "from pathlib import Path",
+      "import shutil",
+      "import subprocess"
+    ]
+  },
+  {
+    "profile": "ervp-orders",
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\watch_dometic_101592515_reply.py",
+    "exists": true,
+    "path_constants": [
+      "C:/Users/nicho/AppData/Local/hermes/profiles/ervp-orders/state/vendor-email-watch-100118388.json",
+      "C:/Users/nicho/AppData/Local/hermes/profiles/ervp-orders/state/technical-incidents/dometic-reply-watcher-101592515.json"
+    ],
+    "state_assignments": [
+      {
+        "line": 7,
+        "names": [
+          "STATE"
+        ],
+        "expression": "Path(os.environ.get('DOMETIC_REPLY_WATCH_STATE', 'C:/Users/nicho/AppData/Local/hermes/profiles/ervp-orders/state/vendor-email-watch-100118388.json'))"
+      },
+      {
+        "line": 8,
+        "names": [
+          "INCIDENT"
+        ],
+        "expression": "Path(os.environ.get('DOMETIC_REPLY_WATCH_INCIDENT', 'C:/Users/nicho/AppData/Local/hermes/profiles/ervp-orders/state/technical-incidents/dometic-reply-watcher-101592515.json'))"
+      },
+      {
+        "line": 110,
+        "names": [
+          "fingerprint"
+        ],
+        "expression": "hashlib.sha256(f'dometic-reply-watcher:101592515:{reason_code}'.encode()).hexdigest()"
+      },
+      {
+        "line": 201,
+        "names": [
+          "state['reported_message_ids']"
+        ],
+        "expression": "sorted(reported)"
+      },
+      {
+        "line": 146,
+        "names": [
+          "state"
+        ],
+        "expression": "json.loads(STATE.read_text(encoding='utf-8'))"
+      }
+    ],
+    "effect_calls": [
+      {
+        "line": 83,
+        "function": "subprocess.run",
+        "keywords": [
+          "capture_output",
+          "text",
+          "timeout"
+        ]
+      },
+      {
+        "line": 100,
+        "function": "tmp.write_text",
+        "keywords": [
+          "encoding"
+        ]
+      },
+      {
+        "line": 101,
+        "function": "os.replace",
+        "keywords": []
+      },
+      {
+        "line": 164,
+        "function": "run_thread_lookup",
+        "keywords": []
+      },
+      {
+        "line": 202,
+        "function": "STATE.write_text",
+        "keywords": [
+          "encoding"
+        ]
+      },
+      {
+        "line": 93,
+        "function": "RuntimeError",
+        "keywords": []
+      },
+      {
+        "line": 57,
+        "function": "subprocess.run",
+        "keywords": [
+          "capture_output",
+          "text",
+          "timeout"
+        ]
+      },
+      {
+        "line": 100,
+        "function": "json.dumps",
+        "keywords": [
+          "indent",
+          "sort_keys"
+        ]
+      },
+      {
+        "line": 202,
+        "function": "json.dumps",
+        "keywords": [
+          "indent"
+        ]
+      }
+    ],
+    "imports": [
+      "from __future__ import annotations",
+      "import base64, hashlib, html, json, os, re, shutil, subprocess, time",
+      "from datetime import datetime, timezone",
+      "from pathlib import Path"
+    ]
+  },
+  {
+    "profile": "ervp-orders",
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\watch_manual_dometic_100120323_100120506.py",
+    "exists": true,
+    "path_constants": [
+      "dometic_pending_reconciler.py",
+      "C:/Users/nicho/AppData/Local/hermes/profiles/ervp-orders/state/manual-dometic-watch-100120323-100120506.json"
+    ],
+    "state_assignments": [
+      {
+        "line": 8,
+        "names": [
+          "STATE"
+        ],
+        "expression": "Path('C:/Users/nicho/AppData/Local/hermes/profiles/ervp-orders/state/manual-dometic-watch-100120323-100120506.json')"
+      },
+      {
+        "line": 27,
+        "names": [
+          "fingerprint"
+        ],
+        "expression": "json.dumps(row, sort_keys=True)"
+      }
+    ],
+    "effect_calls": [
+      {
+        "line": 11,
+        "function": "subprocess.run",
+        "keywords": [
+          "cwd",
+          "text",
+          "capture_output",
+          "timeout"
+        ]
+      },
+      {
+        "line": 40,
+        "function": "tmp.write_text",
+        "keywords": [
+          "encoding"
+        ]
+      },
+      {
+        "line": 41,
+        "function": "tmp.replace",
+        "keywords": []
+      },
+      {
+        "line": 13,
+        "function": "RuntimeError",
+        "keywords": []
+      },
+      {
+        "line": 27,
+        "function": "json.dumps",
+        "keywords": [
+          "sort_keys"
+        ]
+      },
+      {
+        "line": 40,
+        "function": "json.dumps",
+        "keywords": [
+          "indent",
+          "sort_keys"
+        ]
+      }
+    ],
+    "imports": [
+      "from __future__ import annotations",
+      "import json, subprocess",
+      "from pathlib import Path"
+    ]
+  },
+  {
+    "profile": "root",
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\scripts\\check_martine_reply.py",
+    "exists": false
+  },
+  {
+    "profile": "accounting-migration",
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\scripts\\accounting_inbox_readonly.py",
+    "exists": true,
+    "path_constants": [
+      "accounting-gmail.json",
+      "accounting-inbox-monitor.json"
+    ],
+    "state_assignments": [
+      {
+        "line": 26,
+        "names": [
+          "STATE"
+        ],
+        "expression": "HOME / 'state' / 'accounting-inbox-monitor.json'"
+      },
+      {
+        "line": 68,
+        "names": [
+          "state"
+        ],
+        "expression": "{'ok': True, 'checked_at': datetime.now(timezone.utc).isoformat(), 'account': actual, 'scopes': REQUIRED_SCOPES, 'query': 'in:inbox newer_than:14d', 'result_count': len(rows), 'messages': rows}"
+      }
+    ],
+    "effect_calls": [
+      {
+        "line": 31,
+        "function": "STATE.write_text",
+        "keywords": [
+          "encoding"
+        ]
+      },
+      {
+        "line": 57,
+        "function": "gmail.users().getProfile(userId='me').execute",
+        "keywords": []
+      },
+      {
+        "line": 61,
+        "function": "gmail.users().messages().list(userId='me', q='in:inbox newer_than:14d', maxResults=30).execute().get",
+        "keywords": []
+      },
+      {
+        "line": 70,
+        "function": "STATE.write_text",
+        "keywords": [
+          "encoding"
+        ]
+      },
+      {
+        "line": 31,
+        "function": "json.dumps",
+        "keywords": [
+          "indent"
+        ]
+      },
+      {
+        "line": 65,
+        "function": "gmail.users().messages().get(userId='me', id=mid, format='metadata', metadataHeaders=['From', 'Subject', 'Date']).execute",
+        "keywords": []
+      },
+      {
+        "line": 70,
+        "function": "json.dumps",
+        "keywords": [
+          "indent"
+        ]
+      },
+      {
+        "line": 71,
+        "function": "json.dumps",
+        "keywords": []
+      },
+      {
+        "line": 61,
+        "function": "gmail.users().messages().list(userId='me', q='in:inbox newer_than:14d', maxResults=30).execute",
+        "keywords": []
+      },
+      {
+        "line": 44,
+        "function": "runtime.resolve",
+        "keywords": []
+      },
+      {
+        "line": 44,
+        "function": "runtime.is_file",
+        "keywords": []
+      }
+    ],
+    "imports": [
+      "from __future__ import annotations",
+      "import json",
+      "import os",
+      "import sys",
+      "from datetime import datetime, timezone",
+      "from pathlib import Path"
+    ]
+  },
+  {
+    "profile": "ervp-dev2",
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\scripts\\lippert_final_tracking_shadow.py",
+    "exists": true,
+    "path_constants": [
+      "C:/Users/nicho/AppData/Local/hermes/profiles/ervp-dev2/workspace/lippert-final-tracking-owner/lippert_final_tracking.py"
+    ],
+    "state_assignments": [],
+    "effect_calls": [
+      {
+        "line": 12,
+        "function": "runpy.run_path",
+        "keywords": [
+          "run_name"
+        ]
+      }
+    ],
+    "imports": [
+      "import os",
+      "import runpy",
+      "import sys",
+      "from pathlib import Path"
+    ]
+  }
+]
