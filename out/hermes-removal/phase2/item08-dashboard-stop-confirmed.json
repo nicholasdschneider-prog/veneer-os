@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-16T12:19:11.2141979-04:00",
+  "item": 8,
+  "observation_start": "2026-10-16T12:19:11.2141979-04:00",
+  "observation_pending_seconds": 900,
+  "task_enabled": false,
+  "dashboard_processes_remaining": [],
+  "held_gateways_unchanged": [
+    {
+      "pid": 9828,
+      "created": "2026-10-15T14:18:51.8699910-04:00",
+      "unchanged": true
+    },
+    {
+      "pid": 3116,
+      "created": "2026-10-15T14:19:30.5635020-04:00",
+      "unchanged": true
+    },
+    {
+      "pid": 17952,
+      "created": "2026-10-15T14:20:09.9227170-04:00",
+      "unchanged": true
+    },
+    {
+      "pid": 18032,
+      "created": "2026-10-15T14:20:09.9465260-04:00",
+      "unchanged": true
+    }
+  ],
+  "steps": [
+    {
+      "at": "2026-10-16T12:18:53.3208243-04:00",
+      "step": "disable_dashboard_task",
+      "last_result": 0,
+      "last_run": "2026-10-15T14:18:50.0000000-04:00",
+      "name": "ERVP Hermes Dashboard",
+      "enabled": false
+    },
+    {
+      "at": "2026-10-16T12:18:53.3508301-04:00",
+      "step": "rename_task_launcher",
+      "startup_note": "No active dashboard Startup launcher; historical disabled CMD retained as Tier C",
+      "new": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.vbs.disabled-20261016",
+      "sha256": "A18DDAA136FDE639E1AC306FC298A0804CF295EF6CEEC055A5ACE5B9ED2435AB",
+      "old": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.vbs"
+    },
+    {
+      "at": "2026-10-16T12:18:53.4208276-04:00",
+      "step": "stop_exact_process",
+      "pid": 9500,
+      "method": "Stop-Process exact PID; no force or broad process tree command",
+      "parent": 5096,
+      "created": "2026-10-15T14:18:51.6955790-04:00",
+      "role": "supervisor"
+    },
+    {
+      "at": "2026-10-16T12:18:53.4799591-04:00",
+      "step": "stop_exact_process",
+      "pid": 10500,
+      "method": "Stop-Process exact PID; no force or broad process tree command",
+      "parent": 9500,
+      "created": "2026-10-15T14:19:02.1558450-04:00",
+      "role": "dashboard wrapper"
+    }
+  ],
+  "server_exit_reconciliation": "Server PID5372 exited after its wrapper stopped; original stop script halted on transient final-PID identity. Reconciled journal and fresh process list; no retry or additional stop was performed.",
+  "no_inflight_basis": "Both infrastructure execution ledgers unfinished0; only expected dashboard/UI/conhost descendants before stop; no additional dashboard workers."
+}

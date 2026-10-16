@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-16T12:14:14.9133486-04:00",
+  "launcher": {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.vbs",
+    "sha256": "A18DDAA136FDE639E1AC306FC298A0804CF295EF6CEEC055A5ACE5B9ED2435AB",
+    "disabled_destination_exists": false,
+    "bytes": 762
+  },
+  "source": {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.py",
+    "process_control_calls": [
+      {
+        "line": 130,
+        "function": "subprocess.Popen"
+      },
+      {
+        "line": 107,
+        "function": "proc.terminate"
+      },
+      {
+        "line": 109,
+        "function": "proc.wait"
+      },
+      {
+        "line": 191,
+        "function": "child.terminate"
+      },
+      {
+        "line": 111,
+        "function": "proc.kill"
+      },
+      {
+        "line": 112,
+        "function": "proc.wait"
+      },
+      {
+        "line": 193,
+        "function": "child.wait"
+      },
+      {
+        "line": 195,
+        "function": "child.kill"
+      }
+    ],
+    "relaunch_control_source": [
+      {
+        "line": 29,
+        "code": "LOCK_FILE = SERVICE_DIR / \"supervisor.lock\""
+      },
+      {
+        "line": 169,
+        "code": "        while True:"
+      }
+    ]
+  }
+}

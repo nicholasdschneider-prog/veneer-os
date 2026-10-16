@@ -1,0 +1,12 @@
+{
+  "prior_audit": "drift-after-item08-cron-disable.json",
+  "corrected_audit": "drift-after-item08-cron-disable-corrected.json",
+  "cause": "Prior comparator keyed current cron records by id alone; 89de9427e76b also exists disabled in qa-review. It masked the approved manager change.",
+  "actual_job_reenabled": false,
+  "manager_enabled_on_direct_read": false,
+  "extra_mutation_performed": false,
+  "comparison_now_uses": [
+    "file",
+    "id"
+  ]
+}

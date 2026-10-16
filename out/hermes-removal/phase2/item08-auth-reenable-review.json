@@ -1,0 +1,63 @@
+{
+  "job_metadata": {
+    "id": "89de9427e76b",
+    "enabled": false,
+    "state": "scheduled",
+    "paused_at": null,
+    "paused_reason": null,
+    "last_run_at": "2026-10-16T12:12:08.155720-04:00",
+    "next_run_at": "2026-10-16T12:17:08.155720-04:00",
+    "last_status": "error",
+    "failure_streak": 5225
+  },
+  "script_files": [
+    "sync-worker-model-auth.py"
+  ],
+  "pause_source": [
+    {
+      "line": 556,
+      "code": "    # Display state is derived from the scheduler-honoured ``enabled`` flag so a"
+    },
+    {
+      "line": 557,
+      "code": "    # half-paused record (enabled=true + state/paused_at) cannot render as"
+    },
+    {
+      "line": 574,
+      "code": "    ``enabled`` is the scheduler-honoured flag. Pause markers (``state`` /"
+    },
+    {
+      "line": 590,
+      "code": "    Terminal states (completed/error) are preserved regardless of enabled."
+    },
+    {
+      "line": 2070,
+      "code": "def update_job(job_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:"
+    },
+    {
+      "line": 2180,
+      "code": "            if updated.get(\"enabled\", True) and updated.get(\"state\") != \"paused\" and not updated.get(\"next_run_at\"):"
+    },
+    {
+      "line": 2196,
+      "code": "def pause_job(job_id: str, reason: Optional[str] = None) -> Optional[Dict[str, Any]]:"
+    },
+    {
+      "line": 2212,
+      "code": "def resume_job(job_id: str) -> Optional[Dict[str, Any]]:"
+    },
+    {
+      "line": 2530,
+      "code": "                            \"leaving enabled and marking state=error so the \""
+    },
+    {
+      "line": 2859,
+      "code": "            # (enabled=true, state=paused/paused_at set) must not claim. An"
+    },
+    {
+      "function": "pause_job",
+      "code": "def pause_job(job_id: str, reason: Optional[str] = None) -> Optional[Dict[str, Any]]:\n    \"\"\"Pause a job without deleting it. Accepts a job ID or name.\"\"\"\n    job = resolve_job_ref(job_id)\n    if not job:\n        return None\n    return update_job(\n        job[\"id\"],\n        {\n            \"enabled\": False,\n            \"state\": \"paused\",\n            \"paused_at\": _hermes_now().isoformat(),\n            \"paused_reason\": reason,\n        },\n    )"
+    }
+  ],
+  "profile_script_references": []
+}

@@ -1,0 +1,102 @@
+{
+  "at": "2026-10-16T12:13:30.9279766-04:00",
+  "dashboard_processes": [
+    {
+      "pid": 9500,
+      "supervisor": true,
+      "profile": null,
+      "name": "pythonw.exe",
+      "parent": 5096,
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:18:51.6955790-04:00",
+      "script_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.py"
+      ]
+    },
+    {
+      "pid": 10500,
+      "supervisor": false,
+      "profile": "default",
+      "name": "pythonw.exe",
+      "parent": 9500,
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\pythonw.exe",
+      "created": "2026-10-15T14:19:02.1558450-04:00",
+      "script_paths": []
+    },
+    {
+      "pid": 5372,
+      "supervisor": false,
+      "profile": "default",
+      "name": "python.exe",
+      "parent": 10500,
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe",
+      "created": "2026-10-15T14:19:02.1842520-04:00",
+      "script_paths": []
+    }
+  ],
+  "dashboard_children": [
+    {
+      "parent": 9500,
+      "pid": 10500,
+      "name": "pythonw.exe",
+      "created": "2026-10-15T14:19:02.1558450-04:00"
+    },
+    {
+      "parent": 10500,
+      "pid": 10496,
+      "name": "conhost.exe",
+      "created": "2026-10-15T14:19:02.1675320-04:00"
+    },
+    {
+      "parent": 10500,
+      "pid": 5372,
+      "name": "python.exe",
+      "created": "2026-10-15T14:19:02.1842520-04:00"
+    }
+  ],
+  "task": {
+    "name": "ERVP Hermes Dashboard",
+    "last_result": 0,
+    "last_run": "2026-10-15T14:18:50.0000000-04:00",
+    "script_paths": [
+      "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.vbs"
+    ],
+    "state": "Ready",
+    "enabled": true
+  },
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\ERVP_Hermes_Dashboard.cmd.disabled-windowless-20260724",
+      "sha256": "107B10D93CF0B7BB0B15A80587111C806C21235C6B221D84C7647B1A7C2DFFC5",
+      "name": "ERVP_Hermes_Dashboard.cmd.disabled-windowless-20260724",
+      "bytes": 258,
+      "active": false
+    }
+  ],
+  "held_gateway_processes": [
+    {
+      "profile": "hermesops",
+      "parent": 4128,
+      "pid": 9828,
+      "created": "2026-10-15T14:18:51.8699910-04:00"
+    },
+    {
+      "profile": "ervp-orders",
+      "parent": 15468,
+      "pid": 3116,
+      "created": "2026-10-15T14:19:30.5635020-04:00"
+    },
+    {
+      "profile": "ervp-manager",
+      "parent": 12108,
+      "pid": 17952,
+      "created": "2026-10-15T14:20:09.9227170-04:00"
+    },
+    {
+      "profile": "ervp-manager",
+      "parent": 17952,
+      "pid": 18032,
+      "created": "2026-10-15T14:20:09.9465260-04:00"
+    }
+  ]
+}

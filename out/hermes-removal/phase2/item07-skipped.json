@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-16T16:12:52.890129+00:00",
+  "id": "9868ee5f2643",
+  "profile": "ervp-dev2",
+  "disposition": "SKIPPED under original conditional authorization; left unchanged",
+  "enabled": true,
+  "reason": "Shadow-only wrapper proven by source guard, but absence of unique pending downstream-consumed output is not established. Broad read-only audit timed out; it is not proof of no consumers.",
+  "mutation_performed": false,
+  "job_invoked": false
+}
