@@ -1,0 +1,3 @@
+$ErrorActionPreference='Stop'
+$b='C:\Users\nicho\AppData\Local\hermes\profiles\tripower-consulting\gateway-service'
+[pscustomobject]@{at=(Get-Date -Format o);files=@(Get-ChildItem -LiteralPath $b -File|Where-Object {$_.Extension -in '.vbs','.cmd','.bat','.ps1'}|Select-Object -First 20|ForEach-Object {$s=Get-Content $_.FullName -Raw;@{name=$_.Name;sha256=(Get-FileHash $_.FullName).Hash;gateway_run=($s -match 'gateway\s+run');profile_tripower=($s -match 'tripower-consulting');script_paths=@([regex]::Matches($s,'(?i)[A-Z]:\\[^"\r\n]+?\.(?:ps1|vbs|cmd|bat|py)')|ForEach-Object {$_.Value});uses_taskkill=($s -match 'taskkill|Stop-Process');contains_job_execution=($s -match 'cron\s+(run|trigger)|run_job|execute_job')}})}|ConvertTo-Json -Depth 7

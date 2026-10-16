@@ -1,0 +1,283 @@
+{
+  "profile": "accounting-sharon",
+  "at": "2026-10-16T19:09:28.573187+00:00",
+  "owner_custody": "Clara",
+  "phase": "post-observation",
+  "contents_retained_on_pc": true,
+  "files": [
+    {
+      "path": "state.db",
+      "bytes": 9789440,
+      "mtime_ns": 1792088538508609100,
+      "sha256": "6f4ca09be721712bc932cd67ccdec814c5788460734840337ee00fcfc78dcd84"
+    },
+    {
+      "path": "state.db-wal",
+      "bytes": 4152,
+      "mtime_ns": 1792088526033101900,
+      "sha256": "c79eda2304c76a5d8a89dcf1a852bbc0d9ccd2f0c916a7d4fb17b79ac230234a"
+    },
+    {
+      "path": "state.db-shm",
+      "bytes": 32768,
+      "mtime_ns": 1792088525922435800,
+      "sha256": "645d293c5dd89166040a0fa17ca9ee2f195e6ac69c764105ea3a0dd042ab7ede"
+    },
+    {
+      "path": "projects.db",
+      "bytes": 45056,
+      "mtime_ns": 1787242698243866100,
+      "sha256": "0203e84b7750ed2405517ecef246c9c2ddf4dc2e97fb9fc86f51040b82c4cb08"
+    },
+    {
+      "path": "projects.db-wal",
+      "bytes": 0,
+      "mtime_ns": 1792160299506877300,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "verification_evidence.db",
+      "bytes": 32768,
+      "mtime_ns": 1786822410405003000,
+      "sha256": "f58b6989729afa9b4fe0d9b53e7d750cad50bec8cc5855bde71eeb6f358c7f77"
+    },
+    {
+      "path": "verification_evidence.db-wal",
+      "bytes": 0,
+      "mtime_ns": 1792160299631246000,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "gateway_state.json",
+      "bytes": 621,
+      "mtime_ns": 1792088538462259000,
+      "sha256": "e5467e7bfa5497b9c10dc9632f9707f6103112185f9f3435ca050c1b3dafb929"
+    },
+    {
+      "path": "sessions\\sessions.json",
+      "bytes": 446,
+      "mtime_ns": 1788447278879821500,
+      "sha256": "4d70f49feeaf91077442877baef400dd48b068640a871d054b9d5a09cb5950bd"
+    },
+    {
+      "path": "state\\accounting-inbox-monitor.json",
+      "bytes": 10464,
+      "mtime_ns": 1788460186781985000,
+      "sha256": "12cf68d5c1b1954abdbf04248d641ab84d9033b45f12e569226c2a7052422543"
+    },
+    {
+      "path": "state\\gateway.lifecycle.json",
+      "bytes": 146,
+      "mtime_ns": 1792088526070789000,
+      "sha256": "070a3d74416ee712bd59620ab0c864390d17fcc6963c94547bb80871dc870dea"
+    },
+    {
+      "path": "cron\\executions.db",
+      "bytes": 20480,
+      "mtime_ns": 1786740807501705100,
+      "sha256": "a1710d3669e94fb22a5cb1fd35dff53182ad00fc5a2a1dcfddae301eac5db699"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "20260814_162629_5572b7",
+      "started_at": 1786739192.3449142,
+      "ended_at": null,
+      "last_activity_at": 1786739192.3522367,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 2,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260814_164925_d5d733",
+      "started_at": 1786740568.3122876,
+      "ended_at": null,
+      "last_activity_at": 1786740568.3343277,
+      "message_count": 10,
+      "tool_call_count": 5,
+      "last_retained_message_id": 12,
+      "retained_message_rows": 10,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260814_165026_35b0ba",
+      "started_at": 1786740628.6691864,
+      "ended_at": null,
+      "last_activity_at": 1786740628.6778107,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 14,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260814_165509_c592b7",
+      "started_at": 1786740912.500094,
+      "ended_at": null,
+      "last_activity_at": 1786740912.5111494,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 16,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260814_170929_d4926aa6",
+      "started_at": 1786741769.7762501,
+      "ended_at": 1786780869.0279605,
+      "last_activity_at": 1786741772.7630472,
+      "message_count": 12,
+      "tool_call_count": 4,
+      "last_retained_message_id": 28,
+      "retained_message_rows": 12,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260814_172741_2c3a8e15",
+      "started_at": 1786742861.2240324,
+      "ended_at": 1786780869.0674684,
+      "last_activity_at": 1786744414.3647602,
+      "message_count": 97,
+      "tool_call_count": 50,
+      "last_retained_message_id": 125,
+      "retained_message_rows": 97,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260815_090636_d8948de0",
+      "started_at": 1786799196.6527996,
+      "ended_at": 1786865966.3008103,
+      "last_activity_at": 1786822463.4080305,
+      "message_count": 91,
+      "tool_call_count": 49,
+      "last_retained_message_id": 323,
+      "retained_message_rows": 198,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260818_222142_a40b5f",
+      "started_at": 1787106107.1265192,
+      "ended_at": null,
+      "last_activity_at": 1787106107.201163,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 325,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260825_121351_0e87672d",
+      "started_at": 1787674431.6221225,
+      "ended_at": 1787719288.7394972,
+      "last_activity_at": 1787675850.6064744,
+      "message_count": 38,
+      "tool_call_count": 19,
+      "last_retained_message_id": 363,
+      "retained_message_rows": 38,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260826_135723_06a1ef",
+      "started_at": 1787767046.502988,
+      "ended_at": 1787767502.5390131,
+      "last_activity_at": 1787767488.0127063,
+      "message_count": 92,
+      "tool_call_count": 55,
+      "last_retained_message_id": 455,
+      "retained_message_rows": 92,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260901_144922_250ca5",
+      "started_at": 1788288565.9558103,
+      "ended_at": 1788288579.4743664,
+      "last_activity_at": 1788288565.975948,
+      "message_count": 7,
+      "tool_call_count": 3,
+      "last_retained_message_id": 462,
+      "retained_message_rows": 7,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260903_142057_f4a24e",
+      "started_at": 1788459660.5878851,
+      "ended_at": null,
+      "last_activity_at": 1788459660.5969012,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 464,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260916_140134_e29756",
+      "started_at": 1789581699.1158903,
+      "ended_at": 1789582505.3925872,
+      "last_activity_at": 1789582491.8822207,
+      "message_count": 142,
+      "tool_call_count": 84,
+      "last_retained_message_id": 606,
+      "retained_message_rows": 142,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    }
+  ],
+  "pending": {
+    "delivery_obligations": 0,
+    "async_delegations": 0,
+    "session_turn_leases": 0,
+    "compression_locks": 0,
+    "gateway_routing": 0,
+    "pending_messages_entries": 0
+  },
+  "state_projections": [
+    {
+      "path": "sessions/sessions.json",
+      "field_fingerprints": {
+        "_README": "f06aebff3604fa5788e91f0010b5bc729275fc710c4d105857287d9245164fa9"
+      },
+      "safe_values": {},
+      "retained_message_entries": 0,
+      "active_legacy_mapping_entries": 0
+    },
+    {
+      "path": "state/accounting-inbox-monitor.json",
+      "field_fingerprints": {
+        "ok": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
+        "checked_at": "1e015823c3227638ca6471cef8f2efdda73327030754be6ddc18c1696238cdd3",
+        "account": "3e98079a130a9ed683ebbf3af199c48a3d7ac2fd026fc061c3d0c8e7eaf7ecc2",
+        "scopes": "6ad7c873d9d10f5e55446133b73c94f503f2577cc84cf85702857b701d5d5de9",
+        "query": "10458d4817299aca72c67108135def76df0acaaaf01fdd929ebb340592f0c4c5",
+        "result_count": "624b60c58c9d8bfb6ff1886c2fd605d2adeb6ea4da576068201b6c6958ce93f4",
+        "messages": "febacd1863ff2c8bae99b90e0c67d772686327914b5a0ef0541a3f7a4af96ba4"
+      },
+      "safe_values": {
+        "checked_at": "2026-09-03T18:29:46.780996+00:00",
+        "ok": true,
+        "result_count": 30
+      },
+      "retained_message_entries": 30,
+      "active_legacy_mapping_entries": null
+    }
+  ],
+  "limitations": [
+    "Retained sessions with ended_at null are not evidence of an executing agent. No mailbox query or business monitor invocation."
+  ],
+  "session_count": 13,
+  "custody_metadata_captured": true,
+  "pc_custody_receipt": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\accounting-sharon\\pending-state-final.json"
+}

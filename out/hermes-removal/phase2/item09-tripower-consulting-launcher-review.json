@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-16T15:10:10.1583988-04:00",
+  "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_tripower-consulting.vbs",
+  "sha256": "E84DDD539BB6F69650F89E6B70CAF0C4A1E10A7FF28A5F739921E55B8DAC7407",
+  "profile_tripower": true,
+  "gateway_run": false,
+  "script_paths": [
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\gateway-service\\Hermes_Gateway_tripower-consulting.vbs"
+  ],
+  "held_profile_reference": false
+}

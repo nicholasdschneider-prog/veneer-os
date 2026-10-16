@@ -1,0 +1,411 @@
+{
+  "profile": "tripower-consulting",
+  "databases": [
+    {
+      "path": "state.db",
+      "tables": [
+        {
+          "name": "schema_version",
+          "count": 1,
+          "columns": [
+            "version"
+          ]
+        },
+        {
+          "name": "sessions",
+          "count": 12,
+          "columns": [
+            "id",
+            "source",
+            "user_id",
+            "model",
+            "model_config",
+            "system_prompt",
+            "parent_session_id",
+            "started_at",
+            "ended_at",
+            "end_reason",
+            "message_count",
+            "tool_call_count",
+            "input_tokens",
+            "output_tokens",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "reasoning_tokens",
+            "cwd",
+            "billing_provider",
+            "billing_base_url",
+            "billing_mode",
+            "estimated_cost_usd",
+            "actual_cost_usd",
+            "cost_status",
+            "cost_source",
+            "pricing_version",
+            "title",
+            "api_call_count",
+            "handoff_state",
+            "handoff_platform",
+            "handoff_error",
+            "rewind_count",
+            "archived",
+            "session_key",
+            "chat_id",
+            "chat_type",
+            "thread_id",
+            "display_name",
+            "origin_json",
+            "expiry_finalized",
+            "git_branch",
+            "git_repo_root",
+            "compression_failure_cooldown_until",
+            "compression_failure_error",
+            "compression_fallback_streak",
+            "profile_name",
+            "system_prompt_hash",
+            "last_activity_at",
+            "last_activity_description",
+            "last_activity_provenance",
+            "compression_ineffective_count",
+            "pinned",
+            "last_read_at",
+            "title_source",
+            "git_metadata_generation",
+            "hidden"
+          ]
+        },
+        {
+          "name": "messages",
+          "count": 303,
+          "columns": [
+            "id",
+            "session_id",
+            "role",
+            "content",
+            "tool_call_id",
+            "tool_calls",
+            "tool_name",
+            "timestamp",
+            "token_count",
+            "finish_reason",
+            "reasoning",
+            "reasoning_content",
+            "reasoning_details",
+            "codex_reasoning_items",
+            "codex_message_items",
+            "platform_message_id",
+            "observed",
+            "active",
+            "effect_disposition",
+            "compacted",
+            "api_content",
+            "display_kind",
+            "display_metadata"
+          ]
+        },
+        {
+          "name": "state_meta",
+          "count": 6,
+          "columns": [
+            "key",
+            "value"
+          ]
+        },
+        {
+          "name": "compression_locks",
+          "count": 0,
+          "columns": [
+            "session_id",
+            "holder",
+            "acquired_at",
+            "expires_at"
+          ]
+        },
+        {
+          "name": "messages_fts_data",
+          "count": 74,
+          "columns": [
+            "id",
+            "block"
+          ]
+        },
+        {
+          "name": "messages_fts_idx",
+          "count": 71,
+          "columns": [
+            "segid",
+            "term",
+            "pgno"
+          ]
+        },
+        {
+          "name": "messages_fts_content",
+          "count": 303,
+          "columns": [
+            "id",
+            "c0"
+          ]
+        },
+        {
+          "name": "messages_fts_docsize",
+          "count": 303,
+          "columns": [
+            "id",
+            "sz"
+          ]
+        },
+        {
+          "name": "messages_fts_config",
+          "count": 1,
+          "columns": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "name": "messages_fts_trigram_data",
+          "count": 470,
+          "columns": [
+            "id",
+            "block"
+          ]
+        },
+        {
+          "name": "messages_fts_trigram_idx",
+          "count": 459,
+          "columns": [
+            "segid",
+            "term",
+            "pgno"
+          ]
+        },
+        {
+          "name": "messages_fts_trigram_content",
+          "count": 303,
+          "columns": [
+            "id",
+            "c0"
+          ]
+        },
+        {
+          "name": "messages_fts_trigram_docsize",
+          "count": 303,
+          "columns": [
+            "id",
+            "sz"
+          ]
+        },
+        {
+          "name": "messages_fts_trigram_config",
+          "count": 1,
+          "columns": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "name": "async_delegations",
+          "count": 0,
+          "columns": [
+            "delegation_id",
+            "origin_session",
+            "origin_ui_session_id",
+            "parent_session_id",
+            "state",
+            "dispatched_at",
+            "completed_at",
+            "updated_at",
+            "event_json",
+            "result_json",
+            "delivery_state",
+            "delivery_attempts",
+            "delivered_at",
+            "owner_pid",
+            "owner_started_at",
+            "task_json",
+            "delivery_claim",
+            "delivery_claimed_at",
+            "origin_session_id"
+          ]
+        },
+        {
+          "name": "session_model_usage",
+          "count": 15,
+          "columns": [
+            "session_id",
+            "model",
+            "billing_provider",
+            "billing_base_url",
+            "billing_mode",
+            "task",
+            "api_call_count",
+            "input_tokens",
+            "output_tokens",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "reasoning_tokens",
+            "estimated_cost_usd",
+            "actual_cost_usd",
+            "cost_status",
+            "cost_source",
+            "first_seen",
+            "last_seen"
+          ]
+        },
+        {
+          "name": "gateway_routing",
+          "count": 0,
+          "columns": [
+            "scope",
+            "session_key",
+            "entry_json",
+            "updated_at"
+          ]
+        },
+        {
+          "name": "system_prompts",
+          "count": 9,
+          "columns": [
+            "hash",
+            "prompt"
+          ]
+        },
+        {
+          "name": "delivery_obligations",
+          "count": 0,
+          "columns": [
+            "obligation_id",
+            "session_key",
+            "platform",
+            "chat_id",
+            "thread_id",
+            "content",
+            "state",
+            "attempts",
+            "created_at",
+            "updated_at",
+            "owner_pid",
+            "owner_started_at",
+            "last_error"
+          ]
+        },
+        {
+          "name": "gateway_hygiene_state",
+          "count": 0,
+          "columns": [
+            "session_key",
+            "failure_streak"
+          ]
+        },
+        {
+          "name": "session_turn_leases",
+          "count": 0,
+          "columns": [
+            "conversation_id",
+            "holder",
+            "acquired_at",
+            "expires_at"
+          ]
+        },
+        {
+          "name": "messages_fts",
+          "count": 303,
+          "columns": [
+            "content"
+          ]
+        },
+        {
+          "name": "messages_fts_trigram",
+          "count": 303,
+          "columns": [
+            "content"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "projects.db",
+      "tables": [
+        {
+          "name": "projects",
+          "count": 0,
+          "columns": [
+            "id",
+            "slug",
+            "name",
+            "description",
+            "icon",
+            "color",
+            "board_slug",
+            "primary_path",
+            "created_at",
+            "archived"
+          ]
+        },
+        {
+          "name": "project_folders",
+          "count": 0,
+          "columns": [
+            "project_id",
+            "path",
+            "label",
+            "is_primary",
+            "added_at"
+          ]
+        },
+        {
+          "name": "project_meta",
+          "count": 0,
+          "columns": [
+            "key",
+            "value"
+          ]
+        },
+        {
+          "name": "discovered_repos",
+          "count": 0,
+          "columns": [
+            "root",
+            "label",
+            "last_seen"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "cron/executions.db",
+      "tables": [
+        {
+          "name": "executions",
+          "count": 0,
+          "columns": [
+            "id",
+            "job_id",
+            "source",
+            "process_id",
+            "pid",
+            "process_started_at",
+            "status",
+            "claimed_at",
+            "started_at",
+            "finished_at",
+            "error"
+          ]
+        }
+      ]
+    }
+  ],
+  "json_shapes": [
+    {
+      "path": "sessions/sessions.json",
+      "type": "dict",
+      "fields": [
+        {
+          "key": "_README",
+          "type": "str",
+          "count": null
+        }
+      ]
+    }
+  ],
+  "pending_messages": []
+}

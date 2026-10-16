@@ -1,0 +1,392 @@
+{
+  "at": "2026-10-16T15:09:29.5426974-04:00",
+  "profile": "tripower-consulting",
+  "directories": [
+    {
+      "entries": [
+        {
+          "directory": true,
+          "name": ".curator_backups",
+          "bytes": null,
+          "modified": "2026-10-03T01:20:57.9363536Z"
+        },
+        {
+          "directory": true,
+          "name": "assets",
+          "bytes": null,
+          "modified": "2026-08-20T16:17:11.5120719Z"
+        },
+        {
+          "directory": true,
+          "name": "audio_cache",
+          "bytes": null,
+          "modified": "2026-08-06T04:58:43.1974684Z"
+        },
+        {
+          "directory": true,
+          "name": "cache",
+          "bytes": null,
+          "modified": "2026-10-06T15:32:35.1085640Z"
+        },
+        {
+          "directory": true,
+          "name": "cron",
+          "bytes": null,
+          "modified": "2026-10-16T14:20:53.8543919Z"
+        },
+        {
+          "directory": true,
+          "name": "gateway-service",
+          "bytes": null,
+          "modified": "2026-07-24T13:09:11.7704044Z"
+        },
+        {
+          "directory": true,
+          "name": "home",
+          "bytes": null,
+          "modified": "2026-07-10T20:46:16.6207636Z"
+        },
+        {
+          "directory": true,
+          "name": "hooks",
+          "bytes": null,
+          "modified": "2026-07-03T14:47:51.7674040Z"
+        },
+        {
+          "directory": true,
+          "name": "image_cache",
+          "bytes": null,
+          "modified": "2026-07-03T14:47:51.7674040Z"
+        },
+        {
+          "directory": true,
+          "name": "logs",
+          "bytes": null,
+          "modified": "2026-08-20T20:38:41.4483584Z"
+        },
+        {
+          "directory": true,
+          "name": "lsp",
+          "bytes": null,
+          "modified": "2026-07-13T14:19:21.4078430Z"
+        },
+        {
+          "directory": true,
+          "name": "memories",
+          "bytes": null,
+          "modified": "2026-07-03T22:54:42.1892748Z"
+        },
+        {
+          "directory": true,
+          "name": "pairing",
+          "bytes": null,
+          "modified": "2026-07-03T14:47:51.7668539Z"
+        },
+        {
+          "directory": true,
+          "name": "pending_messages",
+          "bytes": null,
+          "modified": "2026-08-06T03:59:42.4767072Z"
+        },
+        {
+          "directory": true,
+          "name": "plans",
+          "bytes": null,
+          "modified": "2026-07-03T14:42:28.3095981Z"
+        },
+        {
+          "directory": true,
+          "name": "platforms",
+          "bytes": null,
+          "modified": "2026-07-17T15:26:37.7058485Z"
+        },
+        {
+          "directory": true,
+          "name": "sandboxes",
+          "bytes": null,
+          "modified": "2026-07-03T18:59:50.6797740Z"
+        },
+        {
+          "directory": true,
+          "name": "sessions",
+          "bytes": null,
+          "modified": "2026-10-06T15:32:37.5707085Z"
+        },
+        {
+          "directory": true,
+          "name": "skills",
+          "bytes": null,
+          "modified": "2026-10-12T12:41:45.2833488Z"
+        },
+        {
+          "directory": true,
+          "name": "skins",
+          "bytes": null,
+          "modified": "2026-07-03T14:42:28.3085976Z"
+        },
+        {
+          "directory": true,
+          "name": "state",
+          "bytes": null,
+          "modified": "2026-10-15T18:13:11.8103141Z"
+        },
+        {
+          "directory": true,
+          "name": "workspace",
+          "bytes": null,
+          "modified": "2026-07-03T14:42:28.3106007Z"
+        },
+        {
+          "directory": true,
+          "name": "workspaces",
+          "bytes": null,
+          "modified": "2026-07-24T12:57:23.2424066Z"
+        },
+        {
+          "directory": false,
+          "name": ".env",
+          "bytes": 136,
+          "modified": "2026-07-03T18:44:28.9144766Z"
+        },
+        {
+          "directory": false,
+          "name": ".env.env.bak-router-swap",
+          "bytes": 136,
+          "modified": "2026-07-03T18:44:28.9144766Z"
+        },
+        {
+          "directory": false,
+          "name": ".env.pre-token-swap-20260703143441",
+          "bytes": 133,
+          "modified": "2026-07-03T14:43:38.7767744Z"
+        },
+        {
+          "directory": false,
+          "name": ".skills_prompt_snapshot.json",
+          "bytes": 36382,
+          "modified": "2026-08-06T11:24:52.0362037Z"
+        },
+        {
+          "directory": false,
+          "name": ".update_check",
+          "bytes": 71,
+          "modified": "2026-08-21T15:46:08.0564244Z"
+        },
+        {
+          "directory": false,
+          "name": "auth.json",
+          "bytes": 11569,
+          "modified": "2026-09-04T17:59:50.1161197Z"
+        },
+        {
+          "directory": false,
+          "name": "auth.json.bak-openai-codex",
+          "bytes": 9672,
+          "modified": "2026-07-03T18:57:30.3857009Z"
+        },
+        {
+          "directory": false,
+          "name": "auth.lock",
+          "bytes": 1,
+          "modified": "2026-07-03T14:50:07.1199286Z"
+        },
+        {
+          "directory": false,
+          "name": "channel_directory.json",
+          "bytes": 232,
+          "modified": "2026-10-15T18:09:40.4582087Z"
+        },
+        {
+          "directory": false,
+          "name": "config.yaml",
+          "bytes": 10795,
+          "modified": "2026-08-08T15:58:18.0678616Z"
+        },
+        {
+          "directory": false,
+          "name": "config.yaml.bak-openai-codex",
+          "bytes": 115,
+          "modified": "2026-07-03T18:57:30.3867020Z"
+        },
+        {
+          "directory": false,
+          "name": "context_length_cache.yaml",
+          "bytes": 297,
+          "modified": "2026-08-08T15:56:59.5070403Z"
+        },
+        {
+          "directory": false,
+          "name": "f.src)",
+          "bytes": 95,
+          "modified": "2026-07-03T19:02:33.9713067Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway-starts.log",
+          "bytes": 322,
+          "modified": "2026-10-06T15:32:36.2303494Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway.lock",
+          "bytes": 265,
+          "modified": "2026-10-06T15:32:37.7977603Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway.pid",
+          "bytes": 265,
+          "modified": "2026-10-06T15:32:37.8006639Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway_state.json",
+          "bytes": 535,
+          "modified": "2026-10-06T15:32:49.6794951Z"
+        },
+        {
+          "directory": false,
+          "name": "models_dev_cache.json",
+          "bytes": 3612268,
+          "modified": "2026-08-08T15:56:59.2053127Z"
+        },
+        {
+          "directory": false,
+          "name": "profile.yaml",
+          "bytes": 216,
+          "modified": "2026-07-14T14:01:38.3586634Z"
+        },
+        {
+          "directory": false,
+          "name": "projects.db",
+          "bytes": 45056,
+          "modified": "2026-08-20T16:18:28.7204974Z"
+        },
+        {
+          "directory": false,
+          "name": "projects.db-shm",
+          "bytes": 32768,
+          "modified": "2026-10-16T14:20:53.7392168Z"
+        },
+        {
+          "directory": false,
+          "name": "projects.db-wal",
+          "bytes": 0,
+          "modified": "2026-10-16T14:20:53.7392168Z"
+        },
+        {
+          "directory": false,
+          "name": "SOUL.md",
+          "bytes": 536,
+          "modified": "2026-07-14T14:02:00.1864089Z"
+        },
+        {
+          "directory": false,
+          "name": "state.db",
+          "bytes": 5660672,
+          "modified": "2026-10-06T15:32:49.7087398Z"
+        },
+        {
+          "directory": false,
+          "name": "state.db-shm",
+          "bytes": 32768,
+          "modified": "2026-10-16T14:20:53.7623921Z"
+        },
+        {
+          "directory": false,
+          "name": "state.db-wal",
+          "bytes": 12392,
+          "modified": "2026-10-06T15:32:37.7752672Z"
+        }
+      ],
+      "relative": ""
+    },
+    {
+      "entries": [
+        {
+          "directory": false,
+          "name": "gateway.heartbeat",
+          "bytes": 123,
+          "modified": "2026-10-15T18:13:11.8061354Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway.lifecycle.json",
+          "bytes": 146,
+          "modified": "2026-10-06T15:32:37.8178983Z"
+        }
+      ],
+      "relative": "state"
+    },
+    {
+      "entries": [
+        {
+          "directory": false,
+          "name": "request_dump_20260714_100830_92a77b_20260714_100836_042454.json",
+          "bytes": 95754,
+          "modified": "2026-07-14T14:08:36.0458309Z"
+        },
+        {
+          "directory": false,
+          "name": "sessions.json",
+          "bytes": 446,
+          "modified": "2026-08-07T10:02:54.1267002Z"
+        }
+      ],
+      "relative": "sessions"
+    },
+    {
+      "entries": [
+        {
+          "directory": true,
+          "name": "output",
+          "bytes": null,
+          "modified": "2026-07-03T14:42:51.9672673Z"
+        },
+        {
+          "directory": false,
+          "name": ".jobs.lock",
+          "bytes": 0,
+          "modified": "2026-07-17T15:26:45.2468409Z"
+        },
+        {
+          "directory": false,
+          "name": ".tick.lock",
+          "bytes": 0,
+          "modified": "2026-10-15T18:12:49.2696689Z"
+        },
+        {
+          "directory": false,
+          "name": "executions.db",
+          "bytes": 20480,
+          "modified": "2026-07-17T15:26:45.4377397Z"
+        },
+        {
+          "directory": false,
+          "name": "executions.db-shm",
+          "bytes": 32768,
+          "modified": "2026-10-16T14:20:53.8543919Z"
+        },
+        {
+          "directory": false,
+          "name": "executions.db-wal",
+          "bytes": 0,
+          "modified": "2026-10-16T14:20:53.8533926Z"
+        },
+        {
+          "directory": false,
+          "name": "ticker_heartbeat",
+          "bytes": 18,
+          "modified": "2026-10-15T18:12:49.2737034Z"
+        },
+        {
+          "directory": false,
+          "name": "ticker_last_success",
+          "bytes": 17,
+          "modified": "2026-10-15T18:12:49.2812227Z"
+        }
+      ],
+      "relative": "cron"
+    }
+  ]
+}

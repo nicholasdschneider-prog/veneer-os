@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-16T15:10:29.4552771-04:00",
+  "files": [
+    {
+      "uses_taskkill": false,
+      "name": "Hermes_Gateway_tripower-consulting.cmd",
+      "script_paths": [],
+      "gateway_run": true,
+      "sha256": "03332F64D2D2C811E11B823C50EF0141D131395F40C99A214329FB4CCD8FA1C3",
+      "profile_tripower": true,
+      "contains_job_execution": false
+    },
+    {
+      "uses_taskkill": false,
+      "name": "Hermes_Gateway_tripower-consulting.vbs",
+      "script_paths": [],
+      "gateway_run": true,
+      "sha256": "30BFCCDCFA5F9F04D209A693CFFA78D7AECF2D0344942850051303275AAFC334",
+      "profile_tripower": true,
+      "contains_job_execution": false
+    }
+  ]
+}

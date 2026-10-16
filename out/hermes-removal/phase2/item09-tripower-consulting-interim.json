@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-16T15:10:50.1466711-04:00",
+  "item": 9,
+  "profile": "tripower-consulting",
+  "observation_start": "2026-10-16T15:10:41.7404830-04:00",
+  "elapsed_seconds": 8.4061881,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": false
+  },
+  "gateways": [],
+  "tasks": [],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_tripower-consulting.vbs.disabled-20261016",
+      "active_absent": true,
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_tripower-consulting.vbs",
+      "sha256": "E84DDD539BB6F69650F89E6B70CAF0C4A1E10A7FF28A5F739921E55B8DAC7407",
+      "sha256_unchanged": true
+    }
+  ],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}
