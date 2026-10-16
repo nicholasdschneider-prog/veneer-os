@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-16T13:59:48.9785860-04:00",
+  "profile": "cs-joe",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-joe",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-joe.vbs.disabled-20261016",
+      "sha256": "7337A2FFE9D8309BEA38B2A9516AB109DD7E47D5EB811E1E07F7A943F1814F91",
+      "name": "Hermes_Gateway_cs-joe.vbs.disabled-20261016",
+      "bytes": 897,
+      "active": false
+    }
+  ],
+  "gateways": [],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-06T15:32:27.633969+00:00",
+    "pid": 16812,
+    "active_agents": 0,
+    "start_time": 179130073240
+  },
+  "heartbeat_modified": "2026-10-15T18:13:11.8214969Z",
+  "default_alias_caution": false
+}

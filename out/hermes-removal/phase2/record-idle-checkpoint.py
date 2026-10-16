@@ -22,7 +22,7 @@ local_due=due.astimezone(start.tzinfo).strftime('%H:%M:%S')
 f=p/'README.md';s=f.read_text();lines=s.splitlines()
 for i,l in enumerate(lines):
  if l.startswith('| 9 Idle gateways'):
-  lines[i]=f"| 9 Idle gateways | {', '.join(verified)} verified; {current} observing | {previous} passed all final checks and post-read unfinished=0. {current} launch sources retired {start.strftime('%H:%M:%S')} ET after idle/dependency/identity checks; active watchdogs disabled or confirmed absent, active Startup renamed, exact gateway stops recorded only when present, interim checks passed. Require full 15 minutes through {local_due} ET before {next_profile}. Remaining profiles untouched. |"
+  lines[i]=f"| 9 Idle gateways | {', '.join(verified)} verified; {current} observing | {previous} passed all final checks and post-read unfinished=0. {current} launch sources retired {start.strftime('%H:%M:%S')} ET after idle/dependency/identity checks; active watchdogs disabled or confirmed absent, active Startup launchers renamed when present, exact gateway stops recorded only when present, interim checks passed. Require full 15 minutes through {local_due} ET before {next_profile}. Remaining profiles untouched. |"
 s='\n'.join(lines)+'\n'
 s=re.sub(r'At \d\d:\d\d ET its status reported [\d,]+ files hashed, [\d,]+ bytes, and [\d,]+ accumulated errors(?: \(count stable\))?\.',f"At {datetime.datetime.now().strftime('%H:%M')} ET its status reported {archive.get('files_hashed',0):,} files hashed, {archive.get('bytes',0):,} bytes, and {state['archive']['errors']:,} accumulated errors.",s)
 a=s.index('At the next wake');b=s.index('Generic isolated helpers',a)

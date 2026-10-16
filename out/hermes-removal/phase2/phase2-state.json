@@ -62,20 +62,32 @@
       "post_receipt": "item09-cs-ali-post.json"
     },
     "cs-joe": {
-      "status": "observing",
+      "status": "verified",
       "observation_start": "2026-10-16T13:44:18.3220529-04:00",
       "not_before_utc": "2026-10-16T17:59:18.322052+00:00",
       "stop_receipt": "item09-cs-joe-stop.json",
-      "observe_probe": "item09-cs-joe-observe.ps1"
+      "observe_probe": "item09-cs-joe-observe.ps1",
+      "confirmed_at": "2026-10-16T13:59:42.3864323-04:00",
+      "final_receipt": "item09-cs-joe-final.json",
+      "post_receipt": "item09-cs-joe-post.json"
+    },
+    "cust-service": {
+      "status": "observing",
+      "observation_start": "2026-10-16T14:01:02.3527278-04:00",
+      "not_before_utc": "2026-10-16T18:16:02.352727+00:00",
+      "stop_receipt": "item09-cust-service-stop.json",
+      "observe_probe": "item09-cust-service-observe.ps1",
+      "preflight_receipt": "item09-cust-service-dependency-preflight.json",
+      "post_probe": "item09-cust-service-dependency-preflight.ps1"
     }
   },
-  "next_profile": "cust-service",
+  "next_profile": "nick",
   "archive": {
     "controller_pid": 19500,
     "controller_created": "2026-10-16T12:47:43Z",
     "state": "hashing_unverified",
-    "files_hashed": 1180000,
-    "errors": 1814,
+    "files_hashed": 1300000,
+    "errors": 1835,
     "sqlite_integrity_ok": 199,
     "supervisor_lock_custody_receipt": "supervisor-lock-custody.json"
   }

@@ -11,7 +11,7 @@ $children=@($all|Where-Object {$_.ParentProcessId -in $pids}|ForEach-Object {@{p
 $enabled=@()
 $cron=Join-Path $base 'cron\jobs.json'
 if(Test-Path $cron){$d=Get-Content $cron -Raw|ConvertFrom-Json;$jobs=if($null -ne $d.jobs){@($d.jobs)}else{@($d)};$enabled=@($jobs|Where-Object {$_.enabled}|ForEach-Object {$_.id})}
-$tasks=@(Get-ScheduledTask|Where-Object {@($_.Actions|Where-Object {$_.Arguments -match [regex]::Escape($ProfileName)}).Count -gt 0}|ForEach-Object {$t=$_;$i=$t|Get-ScheduledTaskInfo;@{name=$t.TaskName;enabled=$t.Settings.Enabled;state=[string]$t.State;last_run=$i.LastRunTime.ToString('o');last_result=$i.LastTaskResult;next_run=$i.NextRunTime.ToString('o')}})
+$tasks=@(Get-ScheduledTask|Where-Object {@($_.Actions|Where-Object {($_.Arguments -match [regex]::Escape($ProfileName) -or $_.Execute -match [regex]::Escape($ProfileName))}).Count -gt 0}|ForEach-Object {$t=$_;$i=$t|Get-ScheduledTaskInfo;@{name=$t.TaskName;enabled=$t.Settings.Enabled;state=[string]$t.State;last_run=$i.LastRunTime.ToString('o');last_result=$i.LastTaskResult;next_run=if($i.NextRunTime){$i.NextRunTime.ToString('o')}else{$null}}})
 $startup=@(Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup" -File|Where-Object {$_.Name -match [regex]::Escape($ProfileName)}|ForEach-Object {@{name=$_.Name;path=$_.FullName;active=($_.Extension -in '.vbs','.cmd','.bat','.lnk','.exe');bytes=$_.Length;sha256=(Get-FileHash $_.FullName).Hash}})
 $statusPath=Join-Path $base 'gateway_state.json'
 $status=if(Test-Path $statusPath){Get-Content $statusPath -Raw|ConvertFrom-Json}else{$null}

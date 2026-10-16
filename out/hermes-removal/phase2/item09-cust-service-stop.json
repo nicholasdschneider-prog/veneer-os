@@ -1,0 +1,42 @@
+{
+  "item": 9,
+  "profile": "cust-service",
+  "at": "2026-10-16T14:01:02.3527278-04:00",
+  "observation_start": "2026-10-16T14:01:02.3527278-04:00",
+  "remaining_gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T13:59:02.0000000-04:00",
+      "last_result": 0,
+      "enabled": false,
+      "name": "Hermes_Gianna_Watchdog",
+      "at": "2026-10-16T14:01:01.2512616-04:00"
+    },
+    {
+      "last_run": "2026-10-15T14:20:53.0000000-04:00",
+      "last_result": 0,
+      "enabled": false,
+      "name": "Hermes_Gateway_cust-service",
+      "at": "2026-10-16T14:01:02.0545427-04:00"
+    }
+  ],
+  "launchers": [],
+  "process_stops": [
+    {
+      "effect": "exact gateway PID stopped",
+      "parent": 3056,
+      "pid": 10132,
+      "created": "2026-10-15T14:20:59.1655820-04:00",
+      "at": "2026-10-16T14:01:02.2497262-04:00"
+    }
+  ],
+  "no_inflight": {
+    "additional_child_workers": 0,
+    "active_agents": 0,
+    "runtime_status_updated_at": "2026-10-15T18:46:04.626058+00:00",
+    "unfinished_all_profile": 0
+  },
+  "journal": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\cust-service\\idle-steps.jsonl",
+  "observation": "Pending 15 minutes",
+  "original_files_preserved": true
+}

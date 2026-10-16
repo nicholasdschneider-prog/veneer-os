@@ -42,13 +42,13 @@ $encoded=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($py))
 $count=& 'C:\Python314\python.exe' -c "import base64;exec(base64.b64decode('$encoded'))" $base
 if($LASTEXITCODE -ne 0 -or [string]$count -ne '0'){throw 'No-in-flight ledger check failed'}
 $taskNames=@($cfg.tasks|Where-Object {$_.enabled}|ForEach-Object {$_.name})
-$references=@(Get-ScheduledTask|Where-Object {$_.Settings.Enabled -and @($_.Actions|Where-Object {$_.Arguments -match [regex]::Escape($name)}).Count -gt 0})
+$references=@(Get-ScheduledTask|Where-Object {$_.Settings.Enabled -and @($_.Actions|Where-Object {($_.Arguments -match [regex]::Escape($name) -or $_.Execute -match [regex]::Escape($name))}).Count -gt 0})
 if($references.Count -ne $taskNames.Count -or @($references|Where-Object {$_.TaskName -notin $taskNames}).Count){throw 'Task dependencies changed'}
 foreach($t in $references){if($t.TaskName -notmatch 'Watchdog|^Hermes_Gateway_' -or [string]$t.State -ne 'Ready'){throw 'Non-idle task dependency or launcher in flight'}}
 $launchers=@($cfg.startup|Where-Object {$_.active})
 foreach($l in $launchers){if(Test-Path ($l.path+'.disabled-20261016')){throw 'Disabled launcher exists; inspect prior effects'};if((Get-FileHash $l.path).Hash -ne $l.sha256){throw 'Launcher identity changed'}}
 $taskReceipts=@()
-foreach($t in $references){
+foreach($t in @($references|Sort-Object @{Expression={if($_.TaskName -match 'Watchdog'){0}else{1}}})){
  $i=$t|Get-ScheduledTaskInfo
  Disable-ScheduledTask -TaskName $t.TaskName -TaskPath $t.TaskPath|Out-Null
  $read=Get-ScheduledTask -TaskName $t.TaskName -TaskPath $t.TaskPath

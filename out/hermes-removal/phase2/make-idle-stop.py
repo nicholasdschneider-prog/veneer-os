@@ -1,6 +1,6 @@
 from pathlib import Path
 import json,sys,base64
-p=Path('out/hermes-removal/phase2');name=sys.argv[1];cfg=json.loads((p/f'item09-{name}-preflight.json').read_text())
+p=Path('out/hermes-removal/phase2');name=sys.argv[1];cfg_path=Path(sys.argv[sys.argv.index('--preflight-receipt')+1]) if '--preflight-receipt' in sys.argv else p/f'item09-{name}-preflight.json';cfg=json.loads(cfg_path.read_text())
 assert name==cfg['profile'] and name in ['cs-mallory','cs-jasmine','cs-rae','cs-ali','cs-joe','cust-service','nick','hermesops-2','accounting-sharon','tripower-consulting']
 assert not cfg['enabled_cron_ids'] and cfg['ledger']['unfinished_all_profile']==0
 custody=False

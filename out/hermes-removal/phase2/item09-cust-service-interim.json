@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-16T14:01:07.2584639-04:00",
+  "item": 9,
+  "profile": "cust-service",
+  "observation_start": "2026-10-16T14:01:02.3527278-04:00",
+  "elapsed_seconds": 4.9057360999999995,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": false
+  },
+  "gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T13:59:02.0000000-04:00",
+      "name": "Hermes_Gianna_Watchdog",
+      "last_run_unchanged": true,
+      "enabled": false
+    },
+    {
+      "last_run": "2026-10-15T14:20:53.0000000-04:00",
+      "name": "Hermes_Gateway_cust-service",
+      "last_run_unchanged": true,
+      "enabled": false
+    }
+  ],
+  "launchers": [],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}
