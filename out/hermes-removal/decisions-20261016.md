@@ -9,3 +9,6 @@
 - Archer: Martine YES; fourth mailbox archerclawdington@gmail.com NO (unbound) → Nick must drop or connect.
 - Boris: one replacement build, five lanes (Trending, LTL metadata, returns watchdog, vendor-failure feed, every-order scanner), shadow → stop Windows writer → enable → observe; queue rejected his coordination turn, needs Nick-started turn (queued from this chat).
 - PC operator: phase 1 complete (59117a6), 107-row stop plan; phase 2 GO sent for 9 cleared items; archive on PC disk requested.
+
+## BUILD863 (2026-10-16 13:16Z)
+- Five replacement lanes deployed to Railway in shadow (commits 24eb22e1, fc54a9f2, 599de6be). Report: /Users/archerclawdington/Projects/ERVP/Order Ops/output/build863/report.md. Boris acceptance requested (thread 425424e4). Per-lane live flip = `railway variables set --service orderops-web ORDEROPS_HERMES_LANE_<NAME>=live` after the PC operator stops the matching Windows job.
