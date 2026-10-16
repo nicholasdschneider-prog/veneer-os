@@ -1,0 +1,115 @@
+NOW 2026-10-16T08:00:18.9836256-04:00
+--- PROCESSES
+9500 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" "C:\Users\nicho\AppData\Local\hermes\services\dashboard\dashboard_supervisor.py"
+9828 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile hermesops gateway run
+10056 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile cs-tim gateway run
+10112 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile cs-mallory gateway run
+10120 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile cs-jasmine gateway run
+10180 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile cs-rae gateway run
+10212 pythonw.exe "C:\Users\nicho\AppData\Local\hermes\hermes-agent\venv\Scripts\pythonw.exe" -m hermes_cli.main --profile nick gateway run
+9632 pythonw.exe "C:\Users\nicho\.worktrees\t_14c058c8\.venv\Scripts\pythonw.exe" -m hermes_cli.main --profile cs-ali gateway run
+8680 python.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python.exe" -m hermes_cli.main --profile nick gateway run
+9808 python.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python.exe" -m hermes_cli.main --profile cs-ali gateway run
+10500 pythonw.exe C:\Users\nicho\AppData\Local\hermes\hermes-agent\venv\Scripts\pythonw.exe -m hermes_cli.main -p default dashboard --port 9119 --host 127.0.0.1 --open-profile ervp-dev --n
+5372 python.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python.exe" -m hermes_cli.main -p default dashboard --port 9119 --host 127.0.0.1 --open-profile
+3116 pythonw.exe C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe -m hermes_cli.main --profile ervp-orders gateway run
+17952 python.exe C:\Users\nicho\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe -m hermes_cli.main --profile ervp-manager gateway run
+18032 python.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python.exe" -m hermes_cli.main --profile ervp-manager gateway run
+10132 pythonw.exe C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe -m hermes_cli.main --profile cust-service gateway run
+12408 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile hermesops-2 gateway run
+11916 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11.15-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile accounting-sharon gateway run
+8580 Notepad.exe "C:\Program Files\WindowsApps\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\Notepad\Notepad.exe" "C:\Users\nicho\AppData\Roaming\Microsoft\Windows\Start Menu\P
+2272 pythonw.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe" -m hermes_cli.main --profile accounting-migration gateway run
+16904 wscript.exe "C:\Windows\System32\wscript.exe" //B //NoLogo "C:\Users\nicho\AppData\Local\hermes\services\ERVP_Orders_Bot_Direct_Shopify-silent.vbs"
+9316 powershell.exe "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& 'C:\Users\nicho\App
+8276 cmd.exe C:\WINDOWS\system32\cmd.exe /c ""C:\Users\nicho\AppData\Local\hermes\profiles\ervp-orders\scripts\run_production_owner_policy_cycle.cmd""
+5636 python.exe C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python.exe C:\Users\nicho\AppData\Local\hermes\profiles\ervp-orders\scripts\watch_manual_dometic
+15548 wscript.exe "C:\WINDOWS\System32\wscript.exe" //B //NoLogo "C:\Users\nicho\AppData\Local\hermes\profiles\ervp-manager\scripts\ensure-manager-gateway.vbs"
+2372 cmd.exe "C:\Windows\System32\cmd.exe" /d /c ""C:\Users\nicho\AppData\Local\hermes\profiles\ervp-manager\scripts\ensure-manager-gateway.cmd""
+2612 hermes.exe "C:\Users\nicho\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe" -p ervp-manager gateway status 
+11632 python.exe "C:\Users\nicho\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe" "C:\Users\nicho\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe" -p ervp-manager gate
+5952 python.exe "C:\Users\nicho\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python.exe" "C:\Users\nicho\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe" -p ervp-
+3712 wscript.exe "C:\Windows\System32\wscript.exe" //B //NoLogo "C:\Users\nicho\AppData\Local\hermes\services\OrderOps_Order_Completion_Mirror-silent.vbs"
+10624 powershell.exe "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Users\nicho\AppData\L
+--- SCHEDULED TASKS
+ERVP Hermes Dashboard | Ready | last=10/15/2026 2:18:50 PM result=0
+ERVP_Dometic_Inventory | Disabled | last=9/18/2026 10:35:21 AM result=0
+ERVP_Dometic_Safe_Poller | Disabled | last=8/18/2026 2:36:01 AM result=267014
+ERVP_Orders_Bot_All_Order_Review | Ready | last=10/16/2026 7:57:01 AM result=0
+ERVP_Orders_Bot_Direct_Shopify | Running | last=10/16/2026 7:56:01 AM result=267009
+ERVP_Orders_Bot_Placement | Disabled | last=9/18/2026 2:37:01 PM result=0
+ERVP_Orders_Bot_Producer | Disabled | last=8/20/2026 2:15:01 PM result=0
+HermesDesktopUpdate-20260805 | Ready | last=8/5/2026 11:59:00 PM result=0
+Hermes_Accounting_Migration_Watchdog | Ready | last=10/16/2026 7:55:48 AM result=0
+Hermes_Accounting_Sharon_Watchdog | Ready | last=10/16/2026 7:57:01 AM result=0
+Hermes_Brain_Backup | Ready | last=10/16/2026 7:20:22 AM result=1
+Hermes_cs_ali_Watchdog | Ready | last=10/16/2026 8:00:01 AM result=0
+Hermes_cs_jasmine_Watchdog | Ready | last=10/16/2026 8:00:01 AM result=0
+Hermes_cs_mallory_Watchdog | Ready | last=10/16/2026 8:00:01 AM result=0
+Hermes_cs_rae_Watchdog | Ready | last=10/16/2026 8:00:01 AM result=0
+Hermes_CS_Tim_Watchdog | Ready | last=10/16/2026 7:56:43 AM result=0
+Hermes_ERVP_Manager_Watchdog | Running | last=10/16/2026 8:00:01 AM result=267009
+Hermes_ERVP_Orders_Watchdog | Ready | last=10/16/2026 8:00:01 AM result=0
+Hermes_Gateway | Ready | last=10/15/2026 2:18:50 PM result=0
+Hermes_Gateway_cust-service | Ready | last=10/15/2026 2:20:53 PM result=0
+Hermes_Gianna_Watchdog | Ready | last=10/16/2026 7:59:00 AM result=0
+Hermes_HermesOps2_Watchdog | Ready | last=10/16/2026 7:56:01 AM result=0
+Hermes_HermesOps_Watchdog | Ready | last=10/16/2026 7:59:58 AM result=0
+Hermes_MPHealth_Watchdog | Disabled | last=9/25/2026 5:04:01 PM result=0
+Hermes_Nick_Watchdog | Ready | last=10/16/2026 7:59:16 AM result=0
+OrderOps_Order_Completion_Mirror | Running | last=10/16/2026 8:00:15 AM result=267009
+--- STARTUP
+ERVP_Hermes_Dashboard.cmd.disabled-windowless-20260724
+Hermes_Gateway_accounting-migration.cmd.disabled-20260722-153130
+Hermes_Gateway_accounting-migration.vbs
+Hermes_Gateway_accounting-sharon.vbs.disabled
+Hermes_Gateway_cs-ali.vbs
+Hermes_Gateway_cs-jasmine.vbs
+Hermes_Gateway_cs-joe.vbs
+Hermes_Gateway_cs-mallory.vbs
+Hermes_Gateway_cs-rae.vbs
+Hermes_Gateway_cs-tim.cmd.disabled-20260720
+Hermes_Gateway_cs-tim.cmd.rollback-20260720
+Hermes_Gateway_cs-tim.vbs
+Hermes_Gateway_cs-tim.vbs.disabled-20260724-120734
+Hermes_Gateway_cust-service.vbs.disabled-t_73a06450-20260723-124208
+Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130
+Hermes_Gateway_ervp-manager.vbs
+Hermes_Gateway_ervp-orders.cmd.disabled-20260722-153130
+Hermes_Gateway_ervp-orders.vbs
+Hermes_Gateway_hermesops.vbs.disabled-20260724-111603
+Hermes_Gateway_mphealth.cmd.disabled-20260722-153130
+Hermes_Gateway_mphealth.vbs.disabled-20260724-111603
+Hermes_Gateway_tripower-consulting.cmd.disabled-20260722-153130
+Hermes_Gateway_tripower-consulting.vbs
+Wispr Flow.lnk
+--- CRON FILES
+C:\Users\nicho\AppData\Local\hermes\cron\jobs.json total=2 enabled=2
+C:\Users\nicho\AppData\Local\hermes\profiles\accounting-migration\cron\jobs.json total=4 enabled=1
+C:\Users\nicho\AppData\Local\hermes\profiles\cs-tim\backups\t_5fc99c39-human-send-gate-20260912\cron\jobs.json total=4 enabled=2
+C:\Users\nicho\AppData\Local\hermes\profiles\cs-tim\cron\jobs.json total=2 enabled=2
+C:\Users\nicho\AppData\Local\hermes\profiles\cust-service\backups\t_5fc99c39-human-send-gate-20260912\cron\jobs.json total=3 enabled=0
+C:\Users\nicho\AppData\Local\hermes\profiles\cust-service\cron\jobs.json total=1 enabled=0
+C:\Users\nicho\AppData\Local\hermes\profiles\ervp-dev2\cron\jobs.json total=1 enabled=1
+C:\Users\nicho\AppData\Local\hermes\profiles\ervp-manager\cron\jobs.json total=11 enabled=7
+C:\Users\nicho\AppData\Local\hermes\profiles\ervp-manager\state-snapshots\20260722-172210-pre-update\cron\jobs.json total=6 enabled=6
+C:\Users\nicho\AppData\Local\hermes\profiles\ervp-ops\cron\jobs.json total=1 enabled=0
+C:\Users\nicho\AppData\Local\hermes\profiles\ervp-orders\cron\jobs.json total=4 enabled=4
+C:\Users\nicho\AppData\Local\hermes\profiles\ervp-storefront\cron\jobs.json total=1 enabled=0
+C:\Users\nicho\AppData\Local\hermes\profiles\hermesops\backups\t_2b7ea26c-20260819T174017Z\profiles\ervp-manager\cron\jobs.json total=9 enabled=8
+C:\Users\nicho\AppData\Local\hermes\profiles\hermesops\cron\jobs.json total=2 enabled=1
+C:\Users\nicho\AppData\Local\hermes\profiles\hermesops-2\cron\jobs.json total=1 enabled=0
+C:\Users\nicho\AppData\Local\hermes\profiles\qa-review\cron\jobs.json total=4 enabled=0
+--- DISK
+free=626GB used=325.8GB
+--- TOOLS
+codex: missing
+git: C:\Program Files\Git\cmd\git.exe
+python: C:\Python314\python.exe
+node: C:\Program Files\nodejs\node.exe
+tailscale: C:\Program Files\Tailscale\tailscale.exe
+--- UPTIME
+
+Thursday, October 15, 2026 2:16:12 PM
+
+
