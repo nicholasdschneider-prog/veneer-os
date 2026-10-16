@@ -1,0 +1,740 @@
+{
+  "cron/jobs.py": [
+    {
+      "line": 270,
+      "code": ""
+    },
+    {
+      "line": 271,
+      "code": ""
+    },
+    {
+      "line": 272,
+      "code": "@contextlib.contextmanager"
+    },
+    {
+      "line": 273,
+      "code": "def _jobs_lock():"
+    },
+    {
+      "line": 274,
+      "code": "    \"\"\"Serialize a load_jobs\u2192modify\u2192save_jobs critical section."
+    },
+    {
+      "line": 275,
+      "code": ""
+    },
+    {
+      "line": 276,
+      "code": "    Combines the in-process threading lock (cheap mutual exclusion between"
+    },
+    {
+      "line": 277,
+      "code": "    the gateway's parallel tick threads) with a cross-process advisory file"
+    },
+    {
+      "line": 278,
+      "code": "    lock on ``<cron dir>/.jobs.lock`` (mutual exclusion between the gateway process"
+    },
+    {
+      "line": 279,
+      "code": "    and standalone ``hermes`` CLI invocations, which previously shared no lock"
+    },
+    {
+      "line": 280,
+      "code": "    at all \u2014 a `cron pause` could be silently clobbered by a concurrent"
+    },
+    {
+      "line": 281,
+      "code": "    gateway write, leaving a \"paused\" job still firing)."
+    },
+    {
+      "line": 282,
+      "code": ""
+    },
+    {
+      "line": 283,
+      "code": "    The flock is blocking, but every critical section that uses it is short"
+    },
+    {
+      "line": 284,
+      "code": "    (field updates only \u2014 no agent execution), so contention resolves in"
+    },
+    {
+      "line": 285,
+      "code": "    milliseconds. If neither fcntl nor msvcrt is available the manager still"
+    },
+    {
+      "line": 286,
+      "code": "    provides in-process locking, matching the historical behaviour."
+    },
+    {
+      "line": 287,
+      "code": ""
+    },
+    {
+      "line": 288,
+      "code": "    Nested calls in the same thread reuse the held lock so legacy callers that"
+    },
+    {
+      "line": 289,
+      "code": "    invoke save_jobs() inside a broader mutation section don't deadlock or try"
+    },
+    {
+      "line": 290,
+      "code": "    to reacquire the advisory file lock."
+    },
+    {
+      "line": 291,
+      "code": "    \"\"\""
+    },
+    {
+      "line": 292,
+      "code": "    depth = getattr(_jobs_lock_state, \"depth\", 0)"
+    },
+    {
+      "line": 293,
+      "code": "    if depth:"
+    },
+    {
+      "line": 294,
+      "code": "        _jobs_lock_state.depth = depth + 1"
+    },
+    {
+      "line": 295,
+      "code": "        try:"
+    },
+    {
+      "line": 296,
+      "code": "            yield"
+    },
+    {
+      "line": 297,
+      "code": "        finally:"
+    },
+    {
+      "line": 298,
+      "code": "            _jobs_lock_state.depth -= 1"
+    },
+    {
+      "line": 299,
+      "code": "        return"
+    },
+    {
+      "line": 300,
+      "code": ""
+    },
+    {
+      "line": 301,
+      "code": "    with _jobs_file_lock:"
+    },
+    {
+      "line": 302,
+      "code": "        _jobs_lock_state.depth = 1"
+    },
+    {
+      "line": 303,
+      "code": "        # Stamp of jobs.json as of this section's load_jobs() (#80703's"
+    },
+    {
+      "line": 304,
+      "code": "        # fast-path, credit @JoaoMarcos44): lets _save_jobs_unlocked skip the"
+    },
+    {
+      "line": 305,
+      "code": "        # shrink-merge parse when the file provably hasn't changed since this"
+    },
+    {
+      "line": 306,
+      "code": "        # section read it. Reset on entry/exit so stale stamps from unlocked"
+    },
+    {
+      "line": 307,
+      "code": "        # loads or prior sections can never suppress a needed merge."
+    },
+    {
+      "line": 308,
+      "code": "        _jobs_lock_state.load_stamp = None"
+    },
+    {
+      "line": 309,
+      "code": "        lock_fd = None"
+    },
+    {
+      "line": 310,
+      "code": "        try:"
+    },
+    {
+      "line": 311,
+      "code": "            try:"
+    },
+    {
+      "line": 312,
+      "code": "                ensure_dirs()"
+    },
+    {
+      "line": 313,
+      "code": "                lock_fd = open(_jobs_lock_file(), \"a+\", encoding=\"utf-8\")"
+    },
+    {
+      "line": 314,
+      "code": "                lock_fd.seek(0)"
+    },
+    {
+      "line": 315,
+      "code": "                if fcntl is not None:"
+    },
+    {
+      "line": 316,
+      "code": "                    # Bounded acquisition (#60703): a plain blocking"
+    },
+    {
+      "line": 317,
+      "code": "                    # fcntl.flock(LOCK_EX) here has NO timeout, and it is"
+    },
+    {
+      "line": 318,
+      "code": "                    # taken while holding the process-wide _jobs_file_lock"
+    },
+    {
+      "line": 319,
+      "code": "                    # RLock above.  If another process wedges while holding"
+    },
+    {
+      "line": 320,
+      "code": "                    # .jobs.lock (e.g. an old gateway draining through a"
+    },
+    {
+      "line": 321,
+      "code": "                    # restart), a single blocked acquirer freezes EVERY cron"
+    },
+    {
+      "line": 322,
+      "code": "                    # function in this process \u2014 including the ticker's"
+    },
+    {
+      "line": 323,
+      "code": "                    # get_due_jobs() \u2014 silently and forever: the heartbeat"
+    },
+    {
+      "line": 324,
+      "code": "                    # file stops updating and all jobs stop firing with no"
+    },
+    {
+      "line": 325,
+      "code": "                    # error logged.  Poll LOCK_NB against a deadline instead;"
+    },
+    {
+      "line": 326,
+      "code": "                    # on timeout, log loudly and fall through to the same"
+    },
+    {
+      "line": 327,
+      "code": "                    # in-process-only degraded mode used when locking is"
+    },
+    {
+      "line": 328,
+      "code": "                    # unavailable.  A briefly-torn cross-process write is"
+    },
+    {
+      "line": 329,
+      "code": "                    # strictly better than a permanently dead scheduler."
+    },
+    {
+      "line": 330,
+      "code": "                    _deadline = time.monotonic() + _JOBS_LOCK_TIMEOUT_SECONDS"
+    },
+    {
+      "line": 331,
+      "code": "                    while True:"
+    },
+    {
+      "line": 332,
+      "code": "                        try:"
+    },
+    {
+      "line": 333,
+      "code": "                            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)"
+    },
+    {
+      "line": 334,
+      "code": "                            break"
+    },
+    {
+      "line": 335,
+      "code": "                        except (OSError, IOError):"
+    },
+    {
+      "line": 336,
+      "code": "                            if time.monotonic() >= _deadline:"
+    },
+    {
+      "line": 337,
+      "code": "                                logger.error("
+    },
+    {
+      "line": 338,
+      "code": "                                    \"Timed out after %.0fs waiting for the cron \""
+    },
+    {
+      "line": 339,
+      "code": "                                    \"jobs lock (%s) \u2014 another process is holding \""
+    },
+    {
+      "line": 340,
+      "code": "                                    \"it. Proceeding with in-process locking only \""
+    },
+    {
+      "line": 341,
+      "code": "                                    \"so the scheduler stays alive (#60703).\","
+    },
+    {
+      "line": 342,
+      "code": "                                    _JOBS_LOCK_TIMEOUT_SECONDS,"
+    },
+    {
+      "line": 343,
+      "code": "                                    _jobs_lock_file(),"
+    },
+    {
+      "line": 344,
+      "code": "                                )"
+    },
+    {
+      "line": 345,
+      "code": "                                try:"
+    },
+    {
+      "line": 346,
+      "code": "                                    lock_fd.close()"
+    },
+    {
+      "line": 347,
+      "code": "                                except OSError:"
+    },
+    {
+      "line": 348,
+      "code": "                                    pass"
+    },
+    {
+      "line": 349,
+      "code": "                                lock_fd = None"
+    },
+    {
+      "line": 350,
+      "code": "                                break"
+    },
+    {
+      "line": 351,
+      "code": "                            time.sleep(0.1)"
+    },
+    {
+      "line": 352,
+      "code": "                elif msvcrt is not None:"
+    },
+    {
+      "line": 353,
+      "code": "                    getattr(msvcrt, \"locking\")(lock_fd.fileno(), getattr(msvcrt, \"LK_LOCK\"), 1)"
+    },
+    {
+      "line": 354,
+      "code": "            except (OSError, IOError) as e:"
+    },
+    {
+      "line": 355,
+      "code": "                # Never let a locking failure take down cron writes \u2014 fall back to"
+    },
+    {
+      "line": 356,
+      "code": "                # in-process-only protection (still held via _jobs_file_lock)."
+    },
+    {
+      "line": 357,
+      "code": "                logger.warning(\"jobs.json cross-process lock unavailable (%s); \""
+    },
+    {
+      "line": 358,
+      "code": "                               \"proceeding with in-process lock only\", e)"
+    },
+    {
+      "line": 359,
+      "code": "            try:"
+    },
+    {
+      "line": 360,
+      "code": "                yield"
+    },
+    {
+      "line": 361,
+      "code": "            finally:"
+    },
+    {
+      "line": 362,
+      "code": "                if lock_fd is not None:"
+    },
+    {
+      "line": 363,
+      "code": "                    try:"
+    },
+    {
+      "line": 364,
+      "code": "                        if fcntl is not None:"
+    },
+    {
+      "line": 365,
+      "code": "                            fcntl.flock(lock_fd, fcntl.LOCK_UN)"
+    },
+    {
+      "line": 366,
+      "code": "                        elif msvcrt is not None:"
+    },
+    {
+      "line": 367,
+      "code": "                            getattr(msvcrt, \"locking\")(lock_fd.fileno(), getattr(msvcrt, \"LK_UNLCK\"), 1)"
+    },
+    {
+      "line": 368,
+      "code": "                    except (OSError, IOError):"
+    },
+    {
+      "line": 369,
+      "code": "                        pass"
+    },
+    {
+      "line": 370,
+      "code": "                    finally:"
+    },
+    {
+      "line": 371,
+      "code": "                        lock_fd.close()"
+    },
+    {
+      "line": 372,
+      "code": "        finally:"
+    },
+    {
+      "line": 373,
+      "code": "            _jobs_lock_state.depth = 0"
+    },
+    {
+      "line": 374,
+      "code": "            _jobs_lock_state.load_stamp = None"
+    },
+    {
+      "line": 375,
+      "code": ""
+    }
+  ],
+  "cron/scheduler.py": [
+    {
+      "line": 6900,
+      "code": ""
+    },
+    {
+      "line": 6901,
+      "code": ""
+    },
+    {
+      "line": 6902,
+      "code": "def create_job_with_scheduler_registration(**kwargs) -> dict:"
+    },
+    {
+      "line": 6903,
+      "code": "    \"\"\"Persist one job and register its first trigger with the active provider.\"\"\""
+    },
+    {
+      "line": 6904,
+      "code": "    from cron.jobs import create_job"
+    },
+    {
+      "line": 6905,
+      "code": "    from cron.scheduler_provider import resolve_cron_scheduler"
+    },
+    {
+      "line": 6906,
+      "code": ""
+    },
+    {
+      "line": 6907,
+      "code": "    job = create_job(**kwargs)"
+    },
+    {
+      "line": 6908,
+      "code": "    try:"
+    },
+    {
+      "line": 6909,
+      "code": "        resolve_cron_scheduler().register_job(job)"
+    },
+    {
+      "line": 6910,
+      "code": "    except Exception as exc:"
+    },
+    {
+      "line": 6911,
+      "code": "        raise CronSchedulerRegistrationError(job, exc) from exc"
+    },
+    {
+      "line": 6912,
+      "code": "    return job"
+    },
+    {
+      "line": 6913,
+      "code": ""
+    },
+    {
+      "line": 6914,
+      "code": ""
+    },
+    {
+      "line": 6915,
+      "code": "# Dead-owner claim reclaim throttle (#86721): recover_interrupted_executions"
+    },
+    {
+      "line": 6916,
+      "code": "# opens the executions ledger, so the per-tick reap is rate-limited rather"
+    },
+    {
+      "line": 6917,
+      "code": "# than run on every idle 60s cycle. Tests may reset _last_dead_owner_reap_at"
+    },
+    {
+      "line": 6918,
+      "code": "# to None to force a reap on the next tick."
+    },
+    {
+      "line": 6919,
+      "code": "_DEAD_OWNER_REAP_INTERVAL_SECONDS = 300.0"
+    },
+    {
+      "line": 6920,
+      "code": "_last_dead_owner_reap_at: Optional[float] = None"
+    },
+    {
+      "line": 6921,
+      "code": ""
+    },
+    {
+      "line": 6922,
+      "code": ""
+    },
+    {
+      "line": 6923,
+      "code": "def tick("
+    },
+    {
+      "line": 6924,
+      "code": "    verbose: bool = True,"
+    },
+    {
+      "line": 6925,
+      "code": "    adapters=None,"
+    },
+    {
+      "line": 6926,
+      "code": "    loop=None,"
+    },
+    {
+      "line": 6927,
+      "code": "    sync: bool = True,"
+    },
+    {
+      "line": 6928,
+      "code": "    *,"
+    },
+    {
+      "line": 6929,
+      "code": "    can_dispatch=None,"
+    },
+    {
+      "line": 6930,
+      "code": "):"
+    },
+    {
+      "line": 6931,
+      "code": "    \"\"\""
+    },
+    {
+      "line": 6932,
+      "code": "    Check and run all due jobs."
+    },
+    {
+      "line": 6933,
+      "code": "    "
+    },
+    {
+      "line": 6934,
+      "code": "    Uses a file lock so only one tick runs at a time, even if the gateway's"
+    },
+    {
+      "line": 6935,
+      "code": "    in-process ticker and a standalone daemon or manual tick overlap."
+    },
+    {
+      "line": 6936,
+      "code": "    "
+    },
+    {
+      "line": 6937,
+      "code": "    Args:"
+    },
+    {
+      "line": 6938,
+      "code": "        verbose: Whether to print status messages"
+    },
+    {
+      "line": 6939,
+      "code": "        adapters: Optional dict mapping Platform \u2192 live adapter (from gateway)"
+    },
+    {
+      "line": 6940,
+      "code": "        loop: Optional asyncio event loop (from gateway) for live adapter sends"
+    },
+    {
+      "line": 6941,
+      "code": "        can_dispatch: Optional synchronous gate; false leaves due jobs untouched"
+    },
+    {
+      "line": 6942,
+      "code": "            for the next allowed tick"
+    },
+    {
+      "line": 6943,
+      "code": ""
+    },
+    {
+      "line": 6944,
+      "code": "    Returns:"
+    },
+    {
+      "line": 6945,
+      "code": "        Number of jobs executed (0 if another tick is already running)"
+    },
+    {
+      "line": 6946,
+      "code": "    \"\"\""
+    },
+    {
+      "line": 6947,
+      "code": "    lock_dir, lock_file = _get_lock_paths()"
+    },
+    {
+      "line": 6948,
+      "code": "    lock_dir.mkdir(parents=True, exist_ok=True)"
+    },
+    {
+      "line": 6949,
+      "code": ""
+    },
+    {
+      "line": 6950,
+      "code": "    # Cross-platform file locking: fcntl on Unix, msvcrt on Windows."
+    },
+    {
+      "line": 6951,
+      "code": "    # Only genuine lock contention (another ticker holds the lock) skips the"
+    },
+    {
+      "line": 6952,
+      "code": "    # tick silently.  A real OSError \u2014 most importantly EMFILE/ENFILE from fd"
+    },
+    {
+      "line": 6953,
+      "code": "    # exhaustion \u2014 must NOT be swallowed as \"another instance holds the"
+    },
+    {
+      "line": 6954,
+      "code": "    # lock\": that previously made the scheduler appear healthy (tick returned"
+    },
+    {
+      "line": 6955,
+      "code": "    # 0, heartbeat recorded success) while no job ever ran again (#87644)."
+    },
+    {
+      "line": 6956,
+      "code": "    lock_fd = None"
+    },
+    {
+      "line": 6957,
+      "code": "    try:"
+    },
+    {
+      "line": 6958,
+      "code": "        lock_fd = open(lock_file, \"w\", encoding=\"utf-8\")"
+    },
+    {
+      "line": 6959,
+      "code": "        if fcntl:"
+    },
+    {
+      "line": 6960,
+      "code": "            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)"
+    },
+    {
+      "line": 6961,
+      "code": "        elif msvcrt:"
+    },
+    {
+      "line": 6962,
+      "code": "            msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)"
+    },
+    {
+      "line": 6963,
+      "code": "    except OSError as exc:"
+    },
+    {
+      "line": 6964,
+      "code": "        if lock_fd is not None and _is_lock_contention_errno(exc):"
+    },
+    {
+      "line": 6965,
+      "code": "            logger.debug(\"Tick skipped \u2014 another instance holds the lock\")"
+    },
+    {
+      "line": 6966,
+      "code": "            try:"
+    },
+    {
+      "line": 6967,
+      "code": "                lock_fd.close()"
+    },
+    {
+      "line": 6968,
+      "code": "            except OSError:"
+    },
+    {
+      "line": 6969,
+      "code": "                pass"
+    },
+    {
+      "line": 6970,
+      "code": "            return 0"
+    },
+    {
+      "line": 6971,
+      "code": "        # Real failure: log loudly, attempt fd reclamation, and let the"
+    },
+    {
+      "line": 6972,
+      "code": "        # caller (ticker loop) see a FAILED tick so liveness degrades"
+    },
+    {
+      "line": 6973,
+      "code": "        # instead of reporting healthy-while-stalled."
+    },
+    {
+      "line": 6974,
+      "code": "        if lock_fd is not None:"
+    },
+    {
+      "line": 6975,
+      "code": "            try:"
+    }
+  ],
+  "hermes_cli/gateway.py": [
+    {
+      "line": 1,
+      "code": "\"\"\""
+    }
+  ]
+}

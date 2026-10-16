@@ -1,0 +1,503 @@
+{
+  "source_lines": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\scripts\\watch_brent_orderops_reply.py",
+      "matches": [
+        {
+          "line": 14,
+          "code": "STATE = Path(r\"C:/Users/nicho/AppData/Local/hermes/profiles/cs-tim/runtime/reply-monitor-SP6NF4.json\")"
+        },
+        {
+          "line": 35,
+          "code": "    if STATE.exists():"
+        },
+        {
+          "line": 37,
+          "code": "            seen = set(json.loads(STATE.read_text(encoding=\"utf-8\")).get(\"seen\", []))"
+        },
+        {
+          "line": 59,
+          "code": "    STATE.parent.mkdir(parents=True, exist_ok=True)"
+        },
+        {
+          "line": 60,
+          "code": "    STATE.write_text(json.dumps({\"seen\": sorted(seen)}, indent=2), encoding=\"utf-8\")"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\scripts\\orderops_monitor_brady_reply.py",
+      "matches": [
+        {
+          "line": 17,
+          "code": "STATE_PATH = PROFILE / \"runtime\" / \"brady-sms-reply-monitor-state.json\""
+        },
+        {
+          "line": 52,
+          "code": "    state = {\"notifiedInboundIds\": []}"
+        },
+        {
+          "line": 53,
+          "code": "    if STATE_PATH.exists():"
+        },
+        {
+          "line": 55,
+          "code": "            state.update(json.loads(STATE_PATH.read_text(encoding=\"utf-8\")))"
+        },
+        {
+          "line": 58,
+          "code": "    notified = set(state.get(\"notifiedInboundIds\") or [])"
+        },
+        {
+          "line": 83,
+          "code": "    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)"
+        },
+        {
+          "line": 84,
+          "code": "    STATE_PATH.write_text(json.dumps({\"notifiedInboundIds\": sorted(notified)}, indent=2) + \"\\n\", encoding=\"utf-8\")"
+        }
+      ]
+    }
+  ],
+  "top_files": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\({text",
+      "bytes": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\({title",
+      "bytes": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\.env",
+      "bytes": 942
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\.env.pre-archer.dpapi",
+      "bytes": 1002
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\.env.pre-t_afb83fdc-20260720T1400.bak",
+      "bytes": 428
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\.env.rollback-20260720-terminal-cwd",
+      "bytes": 439
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\.skills_prompt_snapshot.json",
+      "bytes": 61096
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\.update_check",
+      "bytes": 72
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\a.href)",
+      "bytes": 95
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\auth.json",
+      "bytes": 5896
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\auth.json.pre-ervpprofile-primary-20260810T185659Z.bak",
+      "bytes": 12761
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\auth.lock",
+      "bytes": 1
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\channel_directory.json",
+      "bytes": 382
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\config.yaml",
+      "bytes": 11382
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\config.yaml.bak.gpt-cutover-20260810-145956",
+      "bytes": 11048
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\config.yaml.pre-fallback-fix-t_49242698-20260812T115751.bak",
+      "bytes": 11155
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\config.yaml.pre-t_49242698-20260812T115443.bak",
+      "bytes": 11663
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\context_length_cache.yaml",
+      "bytes": 221
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\gateway-starts.log",
+      "bytes": 755
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\gateway.lock",
+      "bytes": 252
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\gateway.pid",
+      "bytes": 252
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\gateway_state.json",
+      "bytes": 535
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\models_dev_cache.etag",
+      "bytes": 36
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\models_dev_cache.json",
+      "bytes": 4692095
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\ollama_cloud_models_cache.json",
+      "bytes": 344
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\processes.json",
+      "bytes": 2
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\profile.yaml",
+      "bytes": 217
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\projects.db",
+      "bytes": 45056
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\provider_models_cache.json",
+      "bytes": 930
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\SOUL.md",
+      "bytes": 7206
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\SOUL.md.latency-backup-20260714",
+      "bytes": 2308
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state.db",
+      "bytes": 3223068672
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state.db-shm",
+      "bytes": 6324224
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state.db-wal",
+      "bytes": 12392
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\u.includes('rv-tank-fit')))",
+      "bytes": 95
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\verification_evidence.db",
+      "bytes": 49152
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state\\abandoned-checkout-prep-2026-08-05-06.dpapi",
+      "bytes": 61628
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state\\gateway.heartbeat",
+      "bytes": 122
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state\\gateway.lifecycle.json",
+      "bytes": 146
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260724_082904_44e38600_20260724_092115_569715.json",
+      "bytes": 699756
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260724_105848_f977c9c5_20260724_140955_658606.json",
+      "bytes": 737125
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260807_105224_5ffabe32_20260807_111745_837701.json",
+      "bytes": 135961
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260811_165648_34b4e01d_20260811_170251_119763.json",
+      "bytes": 155230
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260812_115637_0d6429_20260812_115647_946868.json",
+      "bytes": 22539
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260817_151218_bcda9792_20260817_153051_395470.json",
+      "bytes": 428148
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260903_094052_8784d450_20260903_102700_109397.json",
+      "bytes": 244009
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260903_103027_1ee8c92b_20260903_105015_275936.json",
+      "bytes": 149395
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\sessions.json",
+      "bytes": 446
+    }
+  ],
+  "state_files": [],
+  "status_paths": [
+    {
+      "line": 2,
+      "code": "Gateway runtime status helpers."
+    },
+    {
+      "line": 7,
+      "code": "The PID file lives at ``{HERMES_HOME}/gateway.pid``.  HERMES_HOME defaults to"
+    },
+    {
+      "line": 39,
+      "code": "_RUNTIME_STATUS_FILE = \"gateway_state.json\""
+    },
+    {
+      "line": 46,
+      "code": "# past the JSON payload so runtime status / PID readers can still read the file"
+    },
+    {
+      "line": 67,
+      "code": "    breaker. Distinct from ``restart_loop.json`` (the auto-resume guard) \u2014 no"
+    },
+    {
+      "line": 135,
+      "code": "    Gateway identity files (PID, lock, runtime status, takeover/stop markers)"
+    },
+    {
+      "line": 220,
+      "code": "    return home / \"gateway.pid\""
+    },
+    {
+      "line": 231,
+      "code": "def _get_runtime_status_path() -> Path:"
+    },
+    {
+      "line": 258,
+      "code": "    The ``gateway_state.json`` writers all emit RFC3339 via :func:`_utc_now_iso`,"
+    },
+    {
+      "line": 560,
+      "code": "    In a per-profile container, one profile's stale ``gateway_state.json`` can"
+    },
+    {
+      "line": 641,
+      "code": "def _build_runtime_status_record() -> dict[str, Any]:"
+    },
+    {
+      "line": 647,
+      "code": "        \"active_agents\": 0,"
+    },
+    {
+      "line": 735,
+      "code": "    include_runtime_status: bool,"
+    },
+    {
+      "line": 741,
+      "code": "    if include_runtime_status:"
+    },
+    {
+      "line": 742,
+      "code": "        parts.append(_file_cache_signature(_get_runtime_status_path()))"
+    },
+    {
+      "line": 822,
+      "code": "        # ``psutil.pid_exists()`` returns True for it \u2014 but it is already"
+    },
+    {
+      "line": 839,
+      "code": "        return bool(psutil.pid_exists(int(pid)))"
+    },
+    {
+      "line": 1038,
+      "code": "def write_runtime_status("
+    },
+    {
+      "line": 1043,
+      "code": "    active_agents: Any = _UNSET,"
+    },
+    {
+      "line": 1054,
+      "code": "    path = _get_runtime_status_path()"
+    },
+    {
+      "line": 1055,
+      "code": "    payload = _read_json_file(path) or _build_runtime_status_record()"
+    },
+    {
+      "line": 1085,
+      "code": "    if active_agents is not _UNSET:"
+    },
+    {
+      "line": 1086,
+      "code": "        payload[\"active_agents\"] = parse_active_agents(active_agents)"
+    },
+    {
+      "line": 1128,
+      "code": "        from agent.monitoring.gateway_health import emit_runtime_status_transition"
+    },
+    {
+      "line": 1129,
+      "code": "        emit_runtime_status_transition(previous_payload, payload)"
+    },
+    {
+      "line": 1134,
+      "code": "def read_runtime_status(path: Optional[Path] = None) -> Optional[dict[str, Any]]:"
+    },
+    {
+      "line": 1140,
+      "code": "    the active profile's ``gateway_state.json``."
+    },
+    {
+      "line": 1142,
+      "code": "    return _read_json_file(path or _get_runtime_status_path())"
+    },
+    {
+      "line": 1145,
+      "code": "# Max age of a persisted ``gateway_state.json`` snapshot before its liveness"
+    },
+    {
+      "line": 1153,
+      "code": "def runtime_status_is_stale("
+    },
+    {
+      "line": 1157,
+      "code": "    \"\"\"Return True when the runtime-status snapshot is older than ``ttl_s``."
+    },
+    {
+      "line": 1168,
+      "code": "def runtime_status_pid_is_live(record: Optional[dict[str, Any]]) -> bool:"
+    },
+    {
+      "line": 1172,
+      "code": "    ``start_time`` PID-reuse guard as :func:`get_runtime_status_running_pid`:"
+    },
+    {
+      "line": 1191,
+      "code": "def parse_active_agents(raw: Any) -> int:"
+    },
+    {
+      "line": 1192,
+      "code": "    \"\"\"Coerce a persisted ``active_agents`` value to a clamped non-negative int."
+    },
+    {
+      "line": 1195,
+      "code": "    side (``write_runtime_status``) and by both HTTP read surfaces"
+    },
+    {
+      "line": 1213,
+      "code": "    *, gateway_running: bool, gateway_state: Any, active_agents: Any"
+    },
+    {
+      "line": 1219,
+      "code": "    mid-turn (``active_agents > 0``).  Degrades to ``False`` whenever liveness"
+    },
+    {
+      "line": 1232,
+      "code": "        return int(active_agents) > 0"
+    },
+    {
+      "line": 1242,
+      "code": "    independent of ``active_agents``: an idle running gateway is drainable (the"
+    },
+    {
+      "line": 1290,
+      "code": "    the runtime-status fallback)."
+    },
+    {
+      "line": 1318,
+      "code": "    _runtime_reader = runtime_reader or read_runtime_status"
+    },
+    {
+      "line": 1319,
+      "code": "    _runtime_pid_probe = runtime_pid_probe or get_runtime_status_running_pid"
+    },
+    {
+      "line": 1321,
+      "code": "    pid_path = (profile_dir / \"gateway.pid\") if profile_dir is not None else None"
+    },
+    {
+      "line": 1357,
+      "code": "                _runtime_reader(path=profile_dir / \"gateway_state.json\")"
+    },
+    {
+      "line": 1377,
+      "code": "            source=\"runtime_status\","
+    },
+    {
+      "line": 1390,
+      "code": "def get_runtime_status_running_pid("
+    },
+    {
+      "line": 1395,
+      "code": "    \"\"\"Return a live gateway PID from the runtime status record, if valid."
+    },
+    {
+      "line": 1399,
+      "code": "    a live process and a fresh ``gateway_state.json`` but no ``gateway.pid``; use"
+    },
+    {
+      "line": 1410,
+      "code": "    payload = runtime if runtime is not None else read_runtime_status()"
+    },
+    {
+      "line": 1694,
+      "code": "_TAKEOVER_MARKER_FILENAME = \".gateway-takeover.json\""
+    },
+    {
+      "line": 1696,
+      "code": "_PLANNED_STOP_MARKER_FILENAME = \".gateway-planned-stop.json\""
+    },
+    {
+      "line": 1918,
+      "code": "    pid_record = _read_json_file(target_home / \"gateway.pid\")"
+    },
+    {
+      "line": 2028,
+      "code": "                        child.pid,"
+    },
+    {
+      "line": 2289,
+      "code": "            runtime_pid = get_runtime_status_running_pid()"
+    },
+    {
+      "line": 2316,
+      "code": "        runtime_pid = get_runtime_status_running_pid()"
+    },
+    {
+      "line": 2333,
+      "code": "    minute. Cache for a short window and invalidate on PID/lock/runtime-status"
+    },
+    {
+      "line": 2341,
+      "code": "    include_runtime_status = pid_path is None"
+    },
+    {
+      "line": 2344,
+      "code": "        include_runtime_status=include_runtime_status,"
+    },
+    {
+      "line": 2346,
+      "code": "    key = (str(resolved_pid_path), bool(cleanup_stale), include_runtime_status)"
+    },
+    {
+      "line": 2359,
+      "code": "        include_runtime_status=include_runtime_status,"
+    }
+  ]
+}

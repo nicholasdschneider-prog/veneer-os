@@ -1,0 +1,24 @@
+{
+  "item": 1,
+  "task": "OrderOps_Order_Completion_Mirror",
+  "disabled_at": "2026-10-16T08:39:15.5501125-04:00",
+  "before": {
+    "state": "Ready",
+    "next_run": "2026-10-16T08:40:14.0000000-04:00",
+    "last_run": "2026-10-16T08:35:15.0000000-04:00",
+    "result": 0,
+    "enabled": true
+  },
+  "after_enabled": false,
+  "after_state": "Disabled",
+  "inflight_processes": [],
+  "files": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\OrderOps_Order_Completion_Mirror-silent.vbs",
+      "sha256": "C3113B8C5B550B6E3C927516253BF03A4315521EA7012894D039028975760FA5",
+      "size": 552,
+      "modified": "2026-09-14T15:47:27.9444271Z"
+    }
+  ],
+  "observation": "Pending: full five-minute cycle after disable and drain"
+}

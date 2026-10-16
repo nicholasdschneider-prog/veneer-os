@@ -1,0 +1,2806 @@
+{
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\cron\\jobs.py",
+      "matches": [
+        {
+          "line": 4,
+          "code": "Jobs are stored in ~/.hermes/cron/jobs.json"
+        },
+        {
+          "line": 22,
+          "code": "# Cross-process advisory file locking for jobs.json critical sections."
+        },
+        {
+          "line": 23,
+          "code": "# fcntl is Unix-only; on Windows fall back to msvcrt. Either may be absent,"
+        },
+        {
+          "line": 31,
+          "code": "    import msvcrt"
+        },
+        {
+          "line": 33,
+          "code": "    msvcrt = None"
+        },
+        {
+          "line": 71,
+          "code": "# `coder` lives in `~/.hermes/profiles/coder/cron/jobs.json` and executes with"
+        },
+        {
+          "line": 75,
+          "code": "# into one shared `jobs.json` and run them under whatever HERMES_HOME the"
+        },
+        {
+          "line": 85,
+          "code": "JOBS_FILE = CRON_DIR / \"jobs.json\""
+        },
+        {
+          "line": 109,
+          "code": "# Upper bound on waiting for the cross-process .jobs.lock flock (#60703)."
+        },
+        {
+          "line": 111,
+          "code": "# flock is taken while holding the process-wide RLock \u2014 so an unbounded wait"
+        },
+        {
+          "line": 153,
+          "code": "       imported reads/writes ITS OWN store, not whatever jobs.json the"
+        },
+        {
+          "line": 169,
+          "code": "    return _CronStorePaths(cron_dir, cron_dir / \"jobs.json\", cron_dir / \"output\")"
+        },
+        {
+          "line": 179,
+          "code": "            jobs_file=cron_dir / \"jobs.json\","
+        },
+        {
+          "line": 283,
+          "code": "    The flock is blocking, but every critical section that uses it is short"
+        },
+        {
+          "line": 285,
+          "code": "    milliseconds. If neither fcntl nor msvcrt is available the manager still"
+        },
+        {
+          "line": 303,
+          "code": "        # Stamp of jobs.json as of this section's load_jobs() (#80703's"
+        },
+        {
+          "line": 317,
+          "code": "                    # fcntl.flock(LOCK_EX) here has NO timeout, and it is"
+        },
+        {
+          "line": 333,
+          "code": "                            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 352,
+          "code": "                elif msvcrt is not None:"
+        },
+        {
+          "line": 353,
+          "code": "                    getattr(msvcrt, \"locking\")(lock_fd.fileno(), getattr(msvcrt, \"LK_LOCK\"), 1)"
+        },
+        {
+          "line": 357,
+          "code": "                logger.warning(\"jobs.json cross-process lock unavailable (%s); \""
+        },
+        {
+          "line": 365,
+          "code": "                            fcntl.flock(lock_fd, fcntl.LOCK_UN)"
+        },
+        {
+          "line": 366,
+          "code": "                        elif msvcrt is not None:"
+        },
+        {
+          "line": 367,
+          "code": "                            getattr(msvcrt, \"locking\")(lock_fd.fileno(), getattr(msvcrt, \"LK_UNLCK\"), 1)"
+        },
+        {
+          "line": 403,
+          "code": "                        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 414,
+          "code": "            elif msvcrt is not None:"
+        },
+        {
+          "line": 415,
+          "code": "                getattr(msvcrt, \"locking\")("
+        },
+        {
+          "line": 416,
+          "code": "                    lock_fd.fileno(), getattr(msvcrt, \"LK_LOCK\"), 1"
+        },
+        {
+          "line": 430,
+          "code": "                        fcntl.flock(lock_fd, fcntl.LOCK_UN)"
+        },
+        {
+          "line": 431,
+          "code": "                    elif acquired and msvcrt is not None:"
+        },
+        {
+          "line": 432,
+          "code": "                        getattr(msvcrt, \"locking\")("
+        },
+        {
+          "line": 433,
+          "code": "                            lock_fd.fileno(), getattr(msvcrt, \"LK_UNLCK\"), 1"
+        },
+        {
+          "line": 629,
+          "code": "    the replace flips ``jobs.json`` to ``root:root`` mode 600 and the gateway's"
+        },
+        {
+          "line": 1207,
+          "code": "    A root-owned ``jobs.json`` (#68483) failed every tick for ~14h with the"
+        },
+        {
+          "line": 1273,
+          "code": "    \"\"\"Tolerantly parse jobs.json; shared by load_jobs and the save-path peek."
+        },
+        {
+          "line": 1304,
+          "code": "        logger.error(\"IOError reading jobs.json: %s\", e)"
+        },
+        {
+          "line": 1307,
+          "code": "        logger.error(\"Failed to auto-repair jobs.json: %s\", e)"
+        },
+        {
+          "line": 1319,
+          "code": "            logger.warning(\"Auto-repaired jobs.json (had invalid control characters)\")"
+        },
+        {
+          "line": 1327,
+          "code": "            logger.warning(\"Auto-repaired jobs.json (bare list wrapped as dict)\")"
+        },
+        {
+          "line": 1362,
+          "code": "    \"\"\"Cheap change-detection stamp for jobs.json: ``(mtime_ns, size, ino)``."
+        },
+        {
+          "line": 1381,
+          "code": "    \"\"\"Remember jobs.json's stamp for the enclosing _jobs_lock() section."
+        },
+        {
+          "line": 1404,
+          "code": "    Under ``_jobs_lock()``'s degraded flock-timeout path (#60703), two"
+        },
+        {
+          "line": 1409,
+          "code": "    ``jobs.json`` empty or without the new id)."
+        },
+        {
+          "line": 1488,
+          "code": "    # Shrink-merge + rewrite loop (#80624): under the degraded flock-timeout"
+        },
+        {
+          "line": 1918,
+          "code": "    # agent-driven SIGTERM-respawn loops under launchd/systemd KeepAlive"
+        },
+        {
+          "line": 2900,
+          "code": "# Completed one-shot job records are retained in jobs.json (final status +"
+        },
+        {
+          "line": 3045,
+          "code": "    # jobs.json edit that bypassed add_job() can leave a record without an \"id\""
+        },
+        {
+          "line": 3062,
+          "code": "    # Normalize malformed \"schedule\" records (direct jobs.json edit, old writers,"
+        },
+        {
+          "line": 3079,
+          "code": "    # Normalize malformed \"next_run_at\" records (direct jobs.json edit,"
+        },
+        {
+          "line": 3141,
+          "code": "    # being deleted on completion, but they must not accumulate in jobs.json"
+        },
+        {
+          "line": 3223,
+          "code": "                # direct jobs.json edit that bypassed add_job() \u2014 left"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\cron\\lifecycle_guard.py",
+      "matches": [
+        {
+          "line": 8,
+          "code": "turn re-runs the same logic \u2014 a SIGTERM-respawn loop every ~10 seconds"
+        },
+        {
+          "line": 798,
+          "code": "            \"SIGTERM-respawn loops under launchd/systemd supervision \""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\cron\\monitor.py",
+      "matches": [
+        {
+          "line": 23,
+          "code": "* ``job[\"monitor_state\"]`` in jobs.json \u2014 ``last_output_hash`` +"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\cron\\scheduler.py",
+      "matches": [
+        {
+          "line": 30,
+          "code": "# fcntl is Unix-only; on Windows use msvcrt for file locking"
+        },
+        {
+          "line": 36,
+          "code": "        import msvcrt"
+        },
+        {
+          "line": 38,
+          "code": "        msvcrt = None"
+        },
+        {
+          "line": 590,
+          "code": "# ``mark_running_jobs_interrupted`` below. ``run_one_job``'s own completion"
+        },
+        {
+          "line": 661,
+          "code": "    gateway shutdown drain, #60432) and ``mark_running_jobs_interrupted``."
+        },
+        {
+          "line": 1034,
+          "code": "def mark_running_jobs_interrupted("
+        },
+        {
+          "line": 1121,
+          "code": "    execution interrupted (see ``mark_running_jobs_interrupted``)."
+        },
+        {
+          "line": 1143,
+          "code": "    THIS execution interrupted (see ``mark_running_jobs_interrupted``)."
+        },
+        {
+          "line": 1379,
+          "code": "    A cron tick can fire while the gateway is tearing down \u2014 SIGTERM from"
+        },
+        {
+          "line": 1438,
+          "code": "    - POSIX: ``flock(LOCK_EX|LOCK_NB)`` reports EWOULDBLOCK/EAGAIN when"
+        },
+        {
+          "line": 1440,
+          "code": "    - Windows: ``msvcrt.locking(LK_NBLCK)`` reports EACCES/EDEADLK."
+        },
+        {
+          "line": 1446,
+          "code": "    if msvcrt is not None:"
+        },
+        {
+          "line": 1544,
+          "code": "    migration scripts or hand-edited jobs.json) as missing instead of"
+        },
+        {
+          "line": 2358,
+          "code": "    ``jobs.json``, or stale code paths \u2014 have stored a list/tuple like"
+        },
+        {
+          "line": 3300,
+          "code": "            # If the interpreter is finalizing (gateway SIGTERM / restart /"
+        },
+        {
+          "line": 3564,
+          "code": "                os.killpg(process_group, signal.SIGTERM)  # windows-footgun: ok \u2014 POSIX-only branch (win32 handled above)"
+        },
+        {
+          "line": 3582,
+          "code": "                        os.killpg(process_group, getattr(signal, \"SIGKILL\", signal.SIGTERM))"
+        },
+        {
+          "line": 4991,
+          "code": "    # against a wedged sqlite3.connect (e.g. a stale flock left by a crashed"
+        },
+        {
+          "line": 6858,
+          "code": "    No-op for the built-in (it re-reads jobs.json each tick), so the default"
+        },
+        {
+          "line": 6950,
+          "code": "    # Cross-platform file locking: fcntl on Unix, msvcrt on Windows."
+        },
+        {
+          "line": 6960,
+          "code": "            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 6961,
+          "code": "        elif msvcrt:"
+        },
+        {
+          "line": 6962,
+          "code": "            msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)"
+        },
+        {
+          "line": 7178,
+          "code": "                cross-process flock) and does a full load_jobs read, and the"
+        },
+        {
+          "line": 7356,
+          "code": "                fcntl.flock(lock_fd, fcntl.LOCK_UN)"
+        },
+        {
+          "line": 7359,
+          "code": "        elif msvcrt:"
+        },
+        {
+          "line": 7361,
+          "code": "                msvcrt.locking(lock_fd.fileno(), msvcrt.LK_UNLCK, 1)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\cron\\scheduler_provider.py",
+      "matches": [
+        {
+          "line": 108,
+          "code": "    def stop(self) -> None:"
+        },
+        {
+          "line": 122,
+          "code": "        Built-in: no-op (it re-reads jobs.json on every tick).\"\"\""
+        },
+        {
+          "line": 234,
+          "code": "        \"\"\"Converge the external registry toward jobs.json (the desired state):"
+        },
+        {
+          "line": 586,
+          "code": "                # e.g. a root-rewritten jobs.json locking out the ticker's"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\agent_cache_pressure.py",
+      "matches": [
+        {
+          "line": 38,
+          "code": "# SIGTERM flush from there could not finish inside systemd's stop timeout."
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\kanban_watchers.py",
+      "matches": [
+        {
+          "line": 88,
+          "code": "    POSIX, ``msvcrt`` on Windows) so the guard is cross-platform."
+        },
+        {
+          "line": 95,
+          "code": "    without flock, or the status.py helpers are unimportable) \u2014 caller falls"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\lifecycle_ledger.py",
+      "matches": [
+        {
+          "line": 4,
+          "code": "(:mod:`gateway.shutdown_forensics` \u2014 who sent the SIGTERM) and an exit-path"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\memory_monitor.py",
+      "matches": [
+        {
+          "line": 196,
+          "code": "def stop_memory_monitoring(timeout: float = 2.0) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\restart.py",
+      "matches": [
+        {
+          "line": 40,
+          "code": "# waiting on it, it lands in jobs.json as a permanent failure, and a recurring"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\restart_loop_guard.py",
+      "matches": [
+        {
+          "line": 6,
+          "code": "CLI paths.  They do NOT cover every SIGTERM source: an agent running a"
+        },
+        {
+          "line": 12,
+          "code": "logic \u2014 SIGTERM every ~10 seconds until manually broken."
+        },
+        {
+          "line": 205,
+          "code": "            \"auto-resume to break a suspected SIGTERM-respawn loop (#30719, \""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\run.py",
+      "matches": [
+        {
+          "line": 6141,
+          "code": "        # restart, crash, SIGTERM).  Prepend a system note so the model"
+        },
+        {
+          "line": 6847,
+          "code": "        # Set by shutdown_signal_handler when a SIGTERM/SIGINT arrived"
+        },
+        {
+          "line": 6849,
+          "code": "        # external signal (container/s6 SIGTERM on `docker restart` or"
+        },
+        {
+          "line": 10524,
+          "code": "        # is recorded in jobs.json as a permanent failure nobody is waiting"
+        },
+        {
+          "line": 10580,
+          "code": "        a line in jobs.json nobody reads (#82232)."
+        },
+        {
+          "line": 10939,
+          "code": "            # the whole shutdown so SIGTERM never completed (#53175)."
+        },
+        {
+          "line": 10973,
+          "code": "    # runtime-status updated_at heartbeat freezes, and SIGTERM cannot be"
+        },
+        {
+          "line": 12039,
+          "code": "        # Defense-3 (#30719): break the SIGTERM-respawn loop. Only count this"
+        },
+        {
+          "line": 12047,
+          "code": "        # this catches every other SIGTERM source (e.g. a raw `terminal("
+        },
+        {
+          "line": 14397,
+          "code": "    async def stop("
+        },
+        {
+          "line": 14456,
+          "code": "                    from cron.scheduler import mark_running_jobs_interrupted"
+        },
+        {
+          "line": 14457,
+          "code": "                    _interrupted = _marked_cron_jobs = mark_running_jobs_interrupted("
+        },
+        {
+          "line": 14467,
+          "code": "                    logger.debug(\"mark_running_jobs_interrupted (%s) error: %s\", phase, _e)"
+        },
+        {
+          "line": 14774,
+          "code": "                    # is why SIGTERM failed to kill the process (#53175)."
+        },
+        {
+          "line": 14983,
+          "code": "            # signal (container/s6 SIGTERM on `docker restart` or image"
+        },
+        {
+          "line": 27074,
+          "code": "        climbs until the cgroup throttles and SIGTERM can no longer flush"
+        },
+        {
+          "line": 29774,
+          "code": "    for SIGTERM/SIGINT, so the standard signal-driven shutdown path"
+        },
+        {
+          "line": 29784,
+          "code": "    same shutdown-handler invocation a real SIGTERM would have produced"
+        },
+        {
+          "line": 29801,
+          "code": "        shutdown_handler: same callable that's wired to SIGTERM \u2014"
+        },
+        {
+          "line": 30177,
+          "code": "            # recognises its SIGTERM as a planned takeover and exits 0"
+        },
+        {
+          "line": 30227,
+          "code": "                    \"Old gateway (PID %d) did not exit after SIGTERM, sending SIGKILL.\","
+        },
+        {
+          "line": 30279,
+          "code": "                (get_hermes_home() / \"gateway.pid\").unlink(missing_ok=True)"
+        },
+        {
+          "line": 30370,
+          "code": "    # unexpected SIGTERM kills the gateway, we exit non-zero so service"
+        },
+        {
+          "line": 30380,
+          "code": "        # before sending SIGTERM. If present, treat the signal as a"
+        },
+        {
+          "line": 30393,
+          "code": "        # also send SIGTERM, which is indistinguishable from an unexpected"
+        },
+        {
+          "line": 30426,
+          "code": "                _shutdown_ctx[\"signal\"] if _shutdown_ctx else \"SIGTERM\","
+        },
+        {
+          "line": 30431,
+          "code": "                _shutdown_ctx[\"signal\"] if _shutdown_ctx else \"SIGTERM/SIGINT\","
+        },
+        {
+          "line": 30437,
+          "code": "            # (container/s6 SIGTERM on restart, OOM, bare kill) \u2014 see"
+        },
+        {
+          "line": 30444,
+          "code": "                _shutdown_ctx[\"signal\"] if _shutdown_ctx else \"SIGTERM/SIGINT\","
+        },
+        {
+          "line": 30491,
+          "code": "        for sig in (signal.SIGINT, signal.SIGTERM):"
+        },
+        {
+          "line": 30505,
+          "code": "    # on Windows, so `hermes gateway stop`'s SIGTERM (which Python maps to"
+        },
+        {
+          "line": 30515,
+          "code": "    # SIGTERM) still get a clean drain."
+        },
+        {
+          "line": 30799,
+          "code": "    # When an unexpected SIGTERM caused the shutdown and it wasn't a planned"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\shutdown_forensics.py",
+      "matches": [
+        {
+          "line": 1,
+          "code": "\"\"\"Shutdown forensics \u2014 capture context when the gateway receives SIGTERM/SIGINT."
+        },
+        {
+          "line": 31,
+          "code": "for _name in (\"SIGTERM\", \"SIGINT\", \"SIGHUP\", \"SIGQUIT\", \"SIGUSR1\", \"SIGUSR2\"):"
+        },
+        {
+          "line": 109,
+          "code": "    * The signal number/name (so SIGINT vs SIGTERM is visible)"
+        },
+        {
+          "line": 136,
+          "code": "    # systemd reaped+forwarded the SIGTERM."
+        },
+        {
+          "line": 328,
+          "code": "    ``restart_drain_timeout``.  Result: SIGTERM arrives, the drain starts,"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\shutdown_watchdog.py",
+      "matches": [
+        {
+          "line": 86,
+          "code": "    def stop(self) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\status.py",
+      "matches": [
+        {
+          "line": 7,
+          "code": "The PID file lives at ``{HERMES_HOME}/gateway.pid``.  HERMES_HOME defaults to"
+        },
+        {
+          "line": 34,
+          "code": "    import msvcrt"
+        },
+        {
+          "line": 220,
+          "code": "    return home / \"gateway.pid\""
+        },
+        {
+          "line": 308,
+          "code": "    POSIX uses SIGTERM/SIGKILL. Windows uses taskkill /T /F for true force-kill"
+        },
+        {
+          "line": 309,
+          "code": "    because os.kill(..., SIGTERM) is not equivalent to a tree-killing hard stop."
+        },
+        {
+          "line": 326,
+          "code": "            os.kill(pid, signal.SIGTERM)"
+        },
+        {
+          "line": 334,
+          "code": "    sig = signal.SIGTERM if not force else getattr(signal, \"SIGKILL\", signal.SIGTERM)"
+        },
+        {
+          "line": 788,
+          "code": "            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)"
+        },
+        {
+          "line": 790,
+          "code": "            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 919,
+          "code": "            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)"
+        },
+        {
+          "line": 921,
+          "code": "            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)"
+        },
+        {
+          "line": 1296,
+          "code": "       churn file descriptors re-flocking ``gateway.lock`` on every request."
+        },
+        {
+          "line": 1321,
+          "code": "    pid_path = (profile_dir / \"gateway.pid\") if profile_dir is not None else None"
+        },
+        {
+          "line": 1399,
+          "code": "    a live process and a fresh ``gateway_state.json`` but no ``gateway.pid``; use"
+        },
+        {
+          "line": 1677,
+          "code": "# When a new gateway starts with ``--replace``, it SIGTERMs the existing"
+        },
+        {
+          "line": 1678,
+          "code": "# gateway so it can take over the bot token. PR #5646 made SIGTERM exit"
+        },
+        {
+          "line": 1687,
+          "code": "# file naming the target PID + start_time BEFORE sending SIGTERM."
+        },
+        {
+          "line": 1689,
+          "code": "# this process, treats the SIGTERM as a planned takeover and exits 0."
+        },
+        {
+          "line": 1850,
+          "code": "    start_time. A returning True indicates the current SIGTERM is a"
+        },
+        {
+          "line": 1918,
+          "code": "    pid_record = _read_json_file(target_home / \"gateway.pid\")"
+        },
+        {
+          "line": 2007,
+          "code": "    - SIGTERM first, bounded wait, SIGKILL only for survivors."
+        },
+        {
+          "line": 2176,
+          "code": "    The gateway exits non-zero for unexpected SIGTERM so service managers can"
+        },
+        {
+          "line": 2177,
+          "code": "    revive it. Service stop commands send the same SIGTERM, so the CLI writes"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\systemd_notify.py",
+      "matches": [
+        {
+          "line": 159,
+          "code": "    async def stop(self) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\platforms\\base.py",
+      "matches": [
+        {
+          "line": 4371,
+          "code": "    async def stop_typing(self, chat_id: str) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\platforms\\bluebubbles.py",
+      "matches": [
+        {
+          "line": 735,
+          "code": "    async def stop_typing(self, chat_id: str) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\platforms\\signal.py",
+      "matches": [
+        {
+          "line": 1549,
+          "code": "    async def stop_typing(self, chat_id: str) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\platforms\\weixin.py",
+      "matches": [
+        {
+          "line": 2031,
+          "code": "    async def stop_typing(self, chat_id: str) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\platforms\\yuanbao.py",
+      "matches": [
+        {
+          "line": 4266,
+          "code": "    async def stop(self, chat_id: str, send_finish: bool = True) -> None:"
+        },
+        {
+          "line": 4829,
+          "code": "    async def stop_typing(self, chat_id: str, send_finish: bool = False) -> None:"
+        },
+        {
+          "line": 5104,
+          "code": "    async def stop_typing(self, chat_id: str) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\gateway\\relay\\adapter.py",
+      "matches": [
+        {
+          "line": 716,
+          "code": "    async def stop_native_task_card_progress("
+        },
+        {
+          "line": 2188,
+          "code": "    async def stop_typing("
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\active_sessions.py",
+      "matches": [
+        {
+          "line": 129,
+          "code": "class _FileLock:"
+        },
+        {
+          "line": 139,
+          "code": "                import msvcrt"
+        },
+        {
+          "line": 142,
+          "code": "                msvcrt.locking(self._fh.fileno(), msvcrt.LK_LOCK, 1)"
+        },
+        {
+          "line": 151,
+          "code": "                fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX)"
+        },
+        {
+          "line": 163,
+          "code": "                import msvcrt"
+        },
+        {
+          "line": 166,
+          "code": "                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)"
+        },
+        {
+          "line": 173,
+          "code": "                fcntl.flock(self._fh.fileno(), fcntl.LOCK_UN)"
+        },
+        {
+          "line": 317,
+          "code": "    with _FileLock(_lock_path()):"
+        },
+        {
+          "line": 353,
+          "code": "        with _FileLock(lock_path):"
+        },
+        {
+          "line": 384,
+          "code": "    with _FileLock(lock_path):"
+        },
+        {
+          "line": 420,
+          "code": "    with _FileLock(_lock_path()):"
+        },
+        {
+          "line": 437,
+          "code": "    with _FileLock(_lock_path()):"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\auth.py",
+      "matches": [
+        {
+          "line": 101,
+          "code": "    import msvcrt"
+        },
+        {
+          "line": 103,
+          "code": "    msvcrt = None"
+        },
+        {
+          "line": 1186,
+          "code": "    \"\"\"Cross-process advisory flock helper."
+        },
+        {
+          "line": 1189,
+          "code": "    guard when neither ``fcntl`` nor ``msvcrt`` is available (rare)."
+        },
+        {
+          "line": 1193,
+          "code": "    the other's kernel-level flock."
+        },
+        {
+          "line": 1205,
+          "code": "    if fcntl is None and msvcrt is None:"
+        },
+        {
+          "line": 1213,
+          "code": "    # On Windows, msvcrt.locking needs the file to have content and the"
+        },
+        {
+          "line": 1215,
+          "code": "    if msvcrt and (not lock_path.exists() or lock_path.stat().st_size == 0):"
+        },
+        {
+          "line": 1218,
+          "code": "    with lock_path.open(\"r+\" if msvcrt else \"a+\", encoding=\"utf-8\") as lock_file:"
+        },
+        {
+          "line": 1223,
+          "code": "                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 1226,
+          "code": "                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)"
+        },
+        {
+          "line": 1240,
+          "code": "                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)"
+        },
+        {
+          "line": 1243,
+          "code": "            elif msvcrt:"
+        },
+        {
+          "line": 1246,
+          "code": "                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\backup.py",
+      "matches": [
+        {
+          "line": 102,
+          "code": "    \"gateway.pid\","
+        },
+        {
+          "line": 123,
+          "code": "#   - ``gateway.pid`` / ``cron.pid`` / ``gateway.lock`` / ``processes.json``"
+        },
+        {
+          "line": 133,
+          "code": "    \"gateway.pid\","
+        },
+        {
+          "line": 172,
+          "code": "            import msvcrt"
+        },
+        {
+          "line": 180,
+          "code": "                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)"
+        },
+        {
+          "line": 192,
+          "code": "                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 205,
+          "code": "                    import msvcrt"
+        },
+        {
+          "line": 208,
+          "code": "                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)"
+        },
+        {
+          "line": 212,
+          "code": "                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)"
+        },
+        {
+          "line": 1286,
+          "code": "    \"cron/jobs.json\","
+        },
+        {
+          "line": 1669,
+          "code": "_CRON_JOBS_REL = \"cron/jobs.json\""
+        },
+        {
+          "line": 1689,
+          "code": "        # it a BOM'd jobs.json counts as \"unreadable\" (None) and the"
+        },
+        {
+          "line": 1709,
+          "code": "    Config-version migrations have been observed to leave ``cron/jobs.json``"
+        },
+        {
+          "line": 1717,
+          "code": "    of ``cron/jobs.json`` is restored in place."
+        },
+        {
+          "line": 1754,
+          "code": "    # desktop scheduler can overwrite jobs.json with its own small set of"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\config_defaults.py",
+      "matches": [
+        {
+          "line": 91,
+          "code": "        # (seconds). Applies to SIGTERM/external stop and to the final"
+        },
+        {
+          "line": 102,
+          "code": "        # their next message; an interrupted cron run is written to jobs.json"
+        },
+        {
+          "line": 305,
+          "code": "        # After a gateway crash/restart/SIGTERM mid-run, the next user"
+        },
+        {
+          "line": 394,
+          "code": "        # Bounded grace period (seconds) between SIGTERM and an escalated"
+        },
+        {
+          "line": 396,
+          "code": "        # A daemon that stalls in its SIGTERM handler is force-killed after this"
+        },
+        {
+          "line": 397,
+          "code": "        # window so it can't leak indefinitely. 0 disables escalation (SIGTERM"
+        },
+        {
+          "line": 2932,
+          "code": "        # gateway is killed mid-turn (SIGTERM) and revived by a supervisor"
+        },
+        {
+          "line": 2937,
+          "code": "        # cover), the result is a tight SIGTERM-respawn loop. This breaker"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\container_boot.py",
+      "matches": [
+        {
+          "line": 53,
+          "code": "# recreate SIGTERMs it before `_stop_impl` reaches its terminal-state persist),"
+        },
+        {
+          "line": 75,
+          "code": "_STALE_RUNTIME_FILES = (\"gateway.pid\", \"processes.json\")"
+        },
+        {
+          "line": 360,
+          "code": "    both race to ``flock()`` the same ``logs/gateways/<profile>/lock`` files,"
+        },
+        {
+          "line": 414,
+          "code": "    \"\"\"Remove gateway.pid and processes.json \u2014 they reference PIDs in"
+        },
+        {
+          "line": 588,
+          "code": "    # bind-mounted HERMES_HOME, both race to flock() the same s6-log lock"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\cron.py",
+      "matches": [
+        {
+          "line": 274,
+          "code": "        _print_active_jobs_summary(list_jobs(include_disabled=False))"
+        },
+        {
+          "line": 320,
+          "code": "                # Show WHY ticks fail \u2014 e.g. a root-rewritten jobs.json"
+        },
+        {
+          "line": 328,
+          "code": "                        \"  Hint: jobs.json may be owned by another user \""
+        },
+        {
+          "line": 358,
+          "code": "    _print_active_jobs_summary(list_jobs(include_disabled=False))"
+        },
+        {
+          "line": 363,
+          "code": "def _print_active_jobs_summary(jobs) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\dashboard_procs.py",
+      "matches": [
+        {
+          "line": 311,
+          "code": "    POSIX: SIGTERM, wait up to ~3s for graceful exit, SIGKILL any survivors."
+        },
+        {
+          "line": 312,
+          "code": "    Windows: ``taskkill /PID <pid> /F`` since there's no clean SIGTERM"
+        },
+        {
+          "line": 321,
+          "code": "    restarted after the kill, because systemd treats our SIGTERM as a clean"
+        },
+        {
+          "line": 421,
+          "code": "        # SIGTERM first \u2014 give each process a chance to shut down cleanly"
+        },
+        {
+          "line": 425,
+          "code": "                os.kill(pid, _signal.SIGTERM)"
+        },
+        {
+          "line": 468,
+          "code": "    #    back after our clean SIGTERM, and the Desktop can't reconnect (#68934)."
+        },
+        {
+          "line": 876,
+          "code": "        signal_term = _signal.SIGTERM"
+        },
+        {
+          "line": 878,
+          "code": "        signal_kill = getattr(_signal, \"SIGKILL\", _signal.SIGTERM)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\dump.py",
+      "matches": [
+        {
+          "line": 166,
+          "code": "    jobs_file = hermes_home / \"cron\" / \"jobs.json\""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\gateway.py",
+      "matches": [
+        {
+          "line": 266,
+          "code": "    This is the drain-aware alternative to ``systemctl restart`` / ``SIGTERM``,"
+        },
+        {
+          "line": 331,
+          "code": "# #72707) cannot process SIGTERM/SIGUSR1 shutdown: the drain wait then burns"
+        },
+        {
+          "line": 410,
+          "code": "    SIGTERM first (the process may still have a live signal handler thread"
+        },
+        {
+          "line": 429,
+          "code": "        print(f\"\u26a0 Gateway PID {pid} unresponsive to SIGTERM; sent SIGKILL\")"
+        },
+        {
+          "line": 767,
+          "code": "            pid = get_running_pid(profile.path / \"gateway.pid\", cleanup_stale=False)"
+        },
+        {
+          "line": 1591,
+          "code": "                pid = get_running_pid(prof.path / \"gateway.pid\", cleanup_stale=False)"
+        },
+        {
+          "line": 1639,
+          "code": "    whose ``gateway.pid`` record is missing or stale is invisible to both the"
+        },
+        {
+          "line": 1694,
+          "code": "            the caller so the sweep doesn't send a redundant SIGTERM/SIGKILL)."
+        },
+        {
+          "line": 1733,
+          "code": "    # gets SIGTERM'd, causing launchd to restart it \u2014 or leaving it down"
+        },
+        {
+          "line": 1790,
+          "code": "            os.kill(pid, signal.SIGTERM)"
+        },
+        {
+          "line": 1798,
+          "code": "    # SIGTERM released the port in the field report but the orphan kept"
+        },
+        {
+          "line": 1809,
+          "code": "            os.kill(pid, getattr(signal, \"SIGKILL\", signal.SIGTERM))"
+        },
+        {
+          "line": 1816,
+          "code": "def stop_profile_gateway() -> bool:"
+        },
+        {
+          "line": 1853,
+          "code": "        os.kill(pid, signal.SIGTERM)"
+        },
+        {
+          "line": 2497,
+          "code": "    SIGTERM flap loop."
+        },
+        {
+          "line": 2546,
+          "code": "    print_info(\"  cause SIGTERM flap loops \u2014 both try to use the same bot token.\")"
+        },
+        {
+          "line": 3386,
+          "code": "KillSignal=SIGTERM"
+        },
+        {
+          "line": 3424,
+          "code": "KillSignal=SIGTERM"
+        },
+        {
+          "line": 3950,
+          "code": "        # budget. Bounded escalation (SIGTERM grace \u2192 SIGKILL, ~10s) then let"
+        },
+        {
+          "line": 4526,
+          "code": "    gateway.pid file that `run_gateway` writes, so stop/status/restart keep"
+        },
+        {
+          "line": 4681,
+          "code": "         headroom before launchd escalates from SIGTERM to SIGKILL on stop. -->"
+        },
+        {
+          "line": 4798,
+          "code": "            # bootout only sends SIGTERM; the gateway then drains in-flight agent"
+        },
+        {
+          "line": 4830,
+          "code": "            # (it SIGTERMs the job, but this is the final statement anyway)."
+        },
+        {
+          "line": 5049,
+          "code": "    # the process.  A plain `kill SIGTERM` only signals the process \u2014 launchd"
+        },
+        {
+          "line": 5073,
+          "code": "    Uses the PID from the gateway.pid file \u2014 not launchd labels \u2014 so this"
+        },
+        {
+          "line": 5136,
+          "code": "            # behind it) for 180s. Bounded escalation instead: SIGTERM grace"
+        },
+        {
+          "line": 5360,
+          "code": "        default_pid_path = default_root / \"gateway.pid\""
+        },
+        {
+          "line": 5574,
+          "code": "            signal.signal(signal.SIGINT, signal.SIG_IGN)"
+        },
+        {
+          "line": 5576,
+          "code": "                signal.signal(signal.SIGBREAK, signal.SIG_IGN)"
+        },
+        {
+          "line": 7440,
+          "code": "    # `docker stop` sends SIGTERM, at which point /init runs stage 3"
+        },
+        {
+          "line": 7473,
+          "code": "    (``sleep`` missing from PATH \u2014 issue #36208). Installs a SIGTERM"
+        },
+        {
+          "line": 7481,
+          "code": "    signal.signal(signal.SIGTERM, lambda signum, _frame: sys.exit(128 + signum))"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\gateway_windows.py",
+      "matches": [
+        {
+          "line": 1334,
+          "code": "    pid_path = home / \"gateway.pid\""
+        },
+        {
+          "line": 1529,
+          "code": "    the marker and drives the same shutdown path the SIGTERM handler"
+        },
+        {
+          "line": 1612,
+          "code": "def stop() -> None:"
+        },
+        {
+          "line": 1618,
+          "code": "    can't deliver SIGTERM to the loop, so the marker is our only IPC)."
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\goals.py",
+      "matches": [
+        {
+          "line": 1778,
+          "code": "    def stop_waiting(self) -> bool:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\kanban.py",
+      "matches": [
+        {
+          "line": 355,
+          "code": "                               \"the dispatcher SIGTERMs (then SIGKILLs) the worker \""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\kanban_db.py",
+      "matches": [
+        {
+          "line": 1548,
+          "code": "# blocking flock had no timeout, so a wedged holder blocked the dispatcher's"
+        },
+        {
+          "line": 1611,
+          "code": "    ``flock(LOCK_EX)`` had no timeout, so a single process stalled inside the"
+        },
+        {
+          "line": 1630,
+          "code": "            import msvcrt"
+        },
+        {
+          "line": 1632,
+          "code": "            locking = getattr(msvcrt, \"locking\")"
+        },
+        {
+          "line": 1633,
+          "code": "            nb_lock = getattr(msvcrt, \"LK_NBLCK\")"
+        },
+        {
+          "line": 1649,
+          "code": "                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 1669,
+          "code": "                    import msvcrt"
+        },
+        {
+          "line": 1672,
+          "code": "                    locking = getattr(msvcrt, \"locking\")"
+        },
+        {
+          "line": 1673,
+          "code": "                    unlock_mode = getattr(msvcrt, \"LK_UNLCK\")"
+        },
+        {
+          "line": 1678,
+          "code": "                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)"
+        },
+        {
+          "line": 1710,
+          "code": "    platforms without ``fcntl``/``msvcrt`` the guard degrades to a no-op"
+        },
+        {
+          "line": 1722,
+          "code": "                import msvcrt"
+        },
+        {
+          "line": 1725,
+          "code": "                locking = getattr(msvcrt, \"locking\")"
+        },
+        {
+          "line": 1727,
+          "code": "                nb_lock = getattr(msvcrt, \"LK_NBLCK\")"
+        },
+        {
+          "line": 1736,
+          "code": "                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 1752,
+          "code": "                        import msvcrt"
+        },
+        {
+          "line": 1755,
+          "code": "                        locking = getattr(msvcrt, \"locking\")"
+        },
+        {
+          "line": 1756,
+          "code": "                        unlock_mode = getattr(msvcrt, \"LK_UNLCK\")"
+        },
+        {
+          "line": 1761,
+          "code": "                        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)"
+        },
+        {
+          "line": 1776,
+          "code": "# #45383/#80255/#44795): the dispatch flock only makes the dispatcher the"
+        },
+        {
+          "line": 1778,
+          "code": "# same board without taking that flock, so a TRUNCATE here races live"
+        },
+        {
+          "line": 2083,
+          "code": "    board's cross-process init flock so no other process connects mid-repair."
+        },
+        {
+          "line": 2118,
+          "code": "    fail-closed path), run REINDEX under the caller-held init flock,"
+        },
+        {
+          "line": 2235,
+          "code": "    the board's cross-process init flock; and anything else stays corrupt"
+        },
+        {
+          "line": 2362,
+          "code": "    # unbounded flock with no timeout, no LOCK_NB, no recovery (#36644). On the"
+        },
+        {
+          "line": 3201,
+          "code": "    dispatcher SIGTERMs (then SIGKILLs after a grace window) and"
+        },
+        {
+          "line": 8285,
+          "code": "        kill(int(pid), signal.SIGTERM)"
+        },
+        {
+          "line": 8303,
+          "code": "            # signal.SIGKILL doesn't exist on Windows; fall back to SIGTERM"
+        },
+        {
+          "line": 8305,
+          "code": "            _sigkill = getattr(signal, \"SIGKILL\", signal.SIGTERM)"
+        },
+        {
+          "line": 8430,
+          "code": "    Sends SIGTERM, waits a short grace window, then SIGKILL. Emits a"
+        },
+        {
+          "line": 8468,
+          "code": "        # SIGTERM then SIGKILL. Keep it simple: 5 s grace. Workers that"
+        },
+        {
+          "line": 8469,
+          "code": "        # want a cleaner shutdown can install their own SIGTERM handler"
+        },
+        {
+          "line": 8477,
+          "code": "                kill(pid, signal.SIGTERM)"
+        },
+        {
+          "line": 8488,
+          "code": "                    _sigkill = getattr(signal, \"SIGKILL\", signal.SIGTERM)"
+        },
+        {
+          "line": 10939,
+          "code": "    on SIGINT / SIGTERM so ``hermes kanban daemon`` is systemd-friendly."
+        },
+        {
+          "line": 10960,
+          "code": "        for sig_name in (\"SIGINT\", \"SIGTERM\"):"
+        },
+        {
+          "line": 10964,
+          "code": "                    signal.signal(sig, _handle)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\main.py",
+      "matches": [
+        {
+          "line": 6279,
+          "code": "    flock; the rest serve the existing dist (stale is acceptable) or, when"
+        },
+        {
+          "line": 6291,
+          "code": "        # Windows: no flock \u2014 fall through to the unserialized build."
+        },
+        {
+          "line": 6301,
+          "code": "            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 6308,
+          "code": "            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)"
+        },
+        {
+          "line": 8153,
+          "code": "    SIGTERM of the service's main PID as a clean stop, so ``Restart=on-failure``"
+        },
+        {
+          "line": 9952,
+          "code": "    ``SIGINT`` (Ctrl-C) and ``SIGTERM`` (systemd shutdown) are"
+        },
+        {
+          "line": 9978,
+          "code": "            _signal.signal(_signal.SIGHUP, _signal.SIG_IGN)"
+        },
+        {
+          "line": 11208,
+          "code": "        # Reuse the same SIGTERM-grace-SIGKILL path used after `hermes update`."
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\managed_uv.py",
+      "matches": [
+        {
+          "line": 978,
+          "code": "            import msvcrt"
+        },
+        {
+          "line": 983,
+          "code": "            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)"
+        },
+        {
+          "line": 987,
+          "code": "            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)"
+        },
+        {
+          "line": 997,
+          "code": "            import msvcrt"
+        },
+        {
+          "line": 1000,
+          "code": "            msvcrt.locking(lock.fd, msvcrt.LK_UNLCK, 1)"
+        },
+        {
+          "line": 1004,
+          "code": "            fcntl.flock(lock.fd, fcntl.LOCK_UN)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\nous_auth_keepalive.py",
+      "matches": [
+        {
+          "line": 179,
+          "code": "def stop_nous_auth_keepalive(timeout: float = 5.0) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\plugins.py",
+      "matches": [
+        {
+          "line": 1289,
+          "code": "    ``fcntl`` is used on POSIX and ``msvcrt`` on native Windows.  The lock is"
+        },
+        {
+          "line": 1299,
+          "code": "                import msvcrt"
+        },
+        {
+          "line": 1305,
+          "code": "                msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)"
+        },
+        {
+          "line": 1309,
+          "code": "                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)"
+        },
+        {
+          "line": 1315,
+          "code": "                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)"
+        },
+        {
+          "line": 1317,
+          "code": "                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\profiles.py",
+      "matches": [
+        {
+          "line": 79,
+          "code": "    \"gateway.pid\","
+        },
+        {
+          "line": 218,
+          "code": "    \"gateway.pid\", \"gateway_state.json\", \"processes.json\","
+        },
+        {
+          "line": 713,
+          "code": "    Primary signal is the profile's ``gateway.pid`` (verified against the"
+        },
+        {
+          "line": 726,
+          "code": "            get_running_pid(profile_dir / \"gateway.pid\", cleanup_stale=False)"
+        },
+        {
+          "line": 1368,
+          "code": "    The ``gateway.pid`` file only tracks the messaging gateway.  A Desktop app"
+        },
+        {
+          "line": 1372,
+          "code": "    ``ENOTEMPTY`` (and, pre-fix, resurrected the tree).  ``gateway.pid`` never"
+        },
+        {
+          "line": 1509,
+          "code": "    Complements ``_stop_gateway_process`` (which only knows ``gateway.pid``):"
+        },
+        {
+          "line": 1655,
+          "code": "    # serve/dashboard processes the gateway.pid file never names). They hold"
+        },
+        {
+          "line": 1883,
+          "code": "    pid_file = profile_dir / \"gateway.pid\""
+        },
+        {
+          "line": 1894,
+          "code": "        # and raw os.kill with SIGTERM doesn't cascade to child processes"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\profile_distribution.py",
+      "matches": [
+        {
+          "line": 108,
+          "code": "    \"gateway.pid\", \"gateway_state.json\", \"processes.json\","
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\pty_bridge.py",
+      "matches": [
+        {
+          "line": 251,
+          "code": "        \"\"\"Terminate the child (SIGTERM \u2192 0.5s grace \u2192 SIGKILL) and close fds."
+        },
+        {
+          "line": 269,
+          "code": "        for sig in (signal.SIGHUP, signal.SIGTERM, signal.SIGKILL):  # windows-footgun: ok \u2014 POSIX-only module (imports fcntl/termios/ptyprocess at top)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\secret_prompt.py",
+      "matches": [
+        {
+          "line": 92,
+          "code": "    import msvcrt"
+        },
+        {
+          "line": 95,
+          "code": "        ch = msvcrt.getwch()"
+        },
+        {
+          "line": 97,
+          "code": "            msvcrt.getwch()"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\service_manager.py",
+      "matches": [
+        {
+          "line": 69,
+          "code": "    def stop(self, name: str) -> None: ..."
+        },
+        {
+          "line": 217,
+          "code": "    def stop(self, name: str) -> None:"
+        },
+        {
+          "line": 240,
+          "code": "    def stop(self, name: str) -> None:"
+        },
+        {
+          "line": 287,
+          "code": "    def stop(self, name: str) -> None:"
+        },
+        {
+          "line": 696,
+          "code": "        # SIGTERM\u2192SIGKILL-with-confirmation + scoped-lock cleanup, see"
+        },
+        {
+          "line": 877,
+          "code": "        the gateway's shutdown handler classifies the incoming SIGTERM"
+        },
+        {
+          "line": 895,
+          "code": "    def stop(self, name: str) -> None:"
+        },
+        {
+          "line": 900,
+          "code": "        handler recognises this SIGTERM as an operator-initiated stop"
+        },
+        {
+          "line": 903,
+          "code": "        stop`` is indistinguishable from the container/s6 SIGTERM sent on"
+        },
+        {
+          "line": 925,
+          "code": "        \"\"\"Restart a registered service (``s6-svc -t`` = SIGTERM)."
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\status.py",
+      "matches": [
+        {
+          "line": 585,
+          "code": "    jobs_file = get_hermes_home() / \"cron\" / \"jobs.json\""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\stderr_timestamp.py",
+      "matches": [
+        {
+          "line": 58,
+          "code": "    for signum in (signal.SIGTERM, signal.SIGINT, getattr(signal, \"SIGHUP\", None)):"
+        },
+        {
+          "line": 62,
+          "code": "                signal.signal(signum, _forward)"
+        },
+        {
+          "line": 70,
+          "code": "        signal.signal(signum, handler)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\update_cmd.py",
+      "matches": [
+        {
+          "line": 3941,
+          "code": "    whose supervisor is gone: SIGTERM raced its spawn, or it belongs to a"
+        },
+        {
+          "line": 5037,
+          "code": "                # Electron's teardown lost the SIGTERM race, exited, and left"
+        },
+        {
+          "line": 6187,
+          "code": "        # cron/jobs.json valid-but-empty, silently dropping every scheduled"
+        },
+        {
+          "line": 6199,
+          "code": "                    \"  \u26a0\ufe0f  cron/jobs.json lost jobs during this update \u2014 \""
+        },
+        {
+          "line": 6643,
+          "code": "                                # Bounded escalation (SIGTERM grace \u2192 SIGKILL,"
+        },
+        {
+          "line": 6917,
+          "code": "                # the drain budget, fall back to SIGTERM \u2014 the watcher"
+        },
+        {
+          "line": 6935,
+          "code": "                    # provably dead (#81642) \u2014 SIGUSR1/SIGTERM shutdown can"
+        },
+        {
+          "line": 6937,
+          "code": "                    # and stall the update. Bounded stop instead (SIGTERM"
+        },
+        {
+          "line": 6954,
+          "code": "                        os.kill(pid, _signal.SIGTERM)"
+        },
+        {
+          "line": 6982,
+          "code": "                    os.kill(pid, _signal.SIGTERM)"
+        },
+        {
+          "line": 7028,
+          "code": "            # Issue #17648: some gateways ignore SIGTERM (stuck drain,"
+        },
+        {
+          "line": 7051,
+          "code": "                        f\"  \u26a0 {len(_stuck)} gateway process(es) ignored SIGTERM \u2014 force-killing\""
+        },
+        {
+          "line": 7098,
+          "code": "        # current hermes-gateway.service are enabled, they SIGTERM-fight"
+        },
+        {
+          "line": 7116,
+          "code": "                print(\"  hermes-gateway.service for the bot token and cause SIGTERM\")"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\voice.py",
+      "matches": [
+        {
+          "line": 387,
+          "code": "def stop_and_transcribe() -> Optional[str]:"
+        },
+        {
+          "line": 533,
+          "code": "def stop_continuous(force_transcribe: bool = False) -> None:"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\web_server.py",
+      "matches": [
+        {
+          "line": 12632,
+          "code": "    one profile's jobs.json, and its orphan cleanup cancels every remote"
+        },
+        {
+          "line": 12639,
+          "code": "    re-reads jobs.json each tick and stays a no-op here."
+        },
+        {
+          "line": 13790,
+          "code": "async def stop_gateway(profile: Optional[str] = None):"
+        },
+        {
+          "line": 19062,
+          "code": "            # SIGTERM us on quit, but a crash / SIGKILL / update handoff that"
+        },
+        {
+          "line": 19214,
+          "code": "    # SIGTERM/SIGBREAK keep their default terminate disposition and never reach"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\windows_ssh_runtime.py",
+      "matches": [
+        {
+          "line": 429,
+          "code": "    import msvcrt"
+        },
+        {
+          "line": 430,
+          "code": "    log_fd = msvcrt.open_osfhandle(int(log_handle), os.O_WRONLY)"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\proxy\\server.py",
+      "matches": [
+        {
+          "line": 254,
+          "code": "    If shutdown_event is None, runs until cancelled (Ctrl+C or SIGTERM)."
+        },
+        {
+          "line": 277,
+          "code": "        for sig in (signal.SIGINT, signal.SIGTERM):"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\subcommands\\dashboard.py",
+      "matches": [
+        {
+          "line": 73,
+          "code": "    # `hermes dashboard` / `hermes serve` cmdlines and SIGTERM them directly \u2014"
+        }
+      ]
+    }
+  ],
+  "profile_files": {
+    "cs-tim": [
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\.fire-62d96345279851e3aa88a4322eb5eea1.lock",
+        "bytes": 0,
+        "mtime": 1787242443.8633537
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\.fire-ef8c0e98383b591f8275b8f8ebc299fe.lock",
+        "bytes": 0,
+        "mtime": 1787242443.850051
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\.jobs.lock",
+        "bytes": 0,
+        "mtime": 1784295722.55656
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\.tick.lock",
+        "bytes": 0,
+        "mtime": 1792154366.9348214
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\catch_up_occurrences",
+        "bytes": 2,
+        "mtime": 1792090065.790617
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\executions.db",
+        "bytes": 589824,
+        "mtime": 1792154127.3927755
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\jobs.json",
+        "bytes": 3214,
+        "mtime": 1792154127.384776
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\ticker_heartbeat",
+        "bytes": 17,
+        "mtime": 1792154366.940078
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\ticker_last_success",
+        "bytes": 18,
+        "mtime": 1792154366.94547
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state\\abandoned-checkout-prep-2026-08-05-06.dpapi",
+        "bytes": 61628,
+        "mtime": 1786035820.3383534
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state\\gateway.heartbeat",
+        "bytes": 122,
+        "mtime": 1792154362.8236723
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\state\\gateway.lifecycle.json",
+        "bytes": 146,
+        "mtime": 1792090051.507067
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\.__agent.lock",
+        "bytes": 0,
+        "mtime": 1784295474.6431813
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\.__errors.lock",
+        "bytes": 0,
+        "mtime": 1784295478.5574636
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\.__gateway.lock",
+        "bytes": 0,
+        "mtime": 1784302000.3123386
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\.__gui.lock",
+        "bytes": 0,
+        "mtime": 1784639536.0578635
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\agent.log",
+        "bytes": 4681668,
+        "mtime": 1792154127.3656683
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\agent.log.1",
+        "bytes": 5242881,
+        "mtime": 1789173089.5505857
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\agent.log.2",
+        "bytes": 5242915,
+        "mtime": 1787673410.109099
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\agent.log.3",
+        "bytes": 5243049,
+        "mtime": 1786381379.389863
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\errors.log",
+        "bytes": 1110836,
+        "mtime": 1792097307.5846884
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\errors.log.1",
+        "bytes": 2103962,
+        "mtime": 1787567108.6920104
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\errors.log.2",
+        "bytes": 2097160,
+        "mtime": 1785529964.9075868
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\gateway-exit-diag.log",
+        "bytes": 44999,
+        "mtime": 1792090051.5014307
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\gateway-stdio.log",
+        "bytes": 2654181,
+        "mtime": 1787567859.6767507
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\gateway-watchdog.log",
+        "bytes": 946889,
+        "mtime": 1792154203.572932
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\gateway.log",
+        "bytes": 2326964,
+        "mtime": 1792097323.7058249
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\gateway_faulthandler.log",
+        "bytes": 0,
+        "mtime": 1786035559.6801543
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\logs\\gui.log",
+        "bytes": 13907,
+        "mtime": 1787327074.4036694
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260724_082904_44e38600_20260724_092115_569715.json",
+        "bytes": 699756,
+        "mtime": 1784899275.9210086
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260724_105848_f977c9c5_20260724_140955_658606.json",
+        "bytes": 737125,
+        "mtime": 1784916596.0117068
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260807_105224_5ffabe32_20260807_111745_837701.json",
+        "bytes": 135961,
+        "mtime": 1786115865.8912158
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260811_165648_34b4e01d_20260811_170251_119763.json",
+        "bytes": 155230,
+        "mtime": 1786482171.1802764
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260812_115637_0d6429_20260812_115647_946868.json",
+        "bytes": 22539,
+        "mtime": 1786550207.95587
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260817_151218_bcda9792_20260817_153051_395470.json",
+        "bytes": 428148,
+        "mtime": 1786995051.7278402
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260903_094052_8784d450_20260903_102700_109397.json",
+        "bytes": 244009,
+        "mtime": 1788445620.4919355
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\request_dump_20260903_103027_1ee8c92b_20260903_105015_275936.json",
+        "bytes": 149395,
+        "mtime": 1788447015.442947
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\sessions\\sessions.json",
+        "bytes": 446,
+        "mtime": 1790864430.4572294
+      }
+    ],
+    "ervp-dev2": [
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\.fire-b2e2adfc52805ab4a9576e6f8ff63610.lock",
+        "bytes": 0,
+        "mtime": 1787242685.5780542
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\.jobs.lock",
+        "bytes": 0,
+        "mtime": 1784294304.6473494
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\.tick.lock",
+        "bytes": 0,
+        "mtime": 1787327687.8341064
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\catch_up_occurrences",
+        "bytes": 1,
+        "mtime": 1787327087.4791415
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\executions.db",
+        "bytes": 81920,
+        "mtime": 1787327088.1763647
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\executions.db-shm",
+        "bytes": 32768,
+        "mtime": 1788294065.217434
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\executions.db-wal",
+        "bytes": 0,
+        "mtime": 1788264337.3963175
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\jobs.json",
+        "bytes": 1595,
+        "mtime": 1787327088.1643617
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\ticker_heartbeat",
+        "bytes": 18,
+        "mtime": 1787327687.8421595
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\ticker_last_success",
+        "bytes": 18,
+        "mtime": 1787327687.850105
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\.__agent.lock",
+        "bytes": 0,
+        "mtime": 1784294233.3313997
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\.__errors.lock",
+        "bytes": 0,
+        "mtime": 1784294267.9163756
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\.__gateway.lock",
+        "bytes": 0,
+        "mtime": 1784642771.8151062
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\.__gui.lock",
+        "bytes": 0,
+        "mtime": 1784294304.4107492
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\agent.log",
+        "bytes": 1965956,
+        "mtime": 1787755447.1515224
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\agent.log.1",
+        "bytes": 5243090,
+        "mtime": 1785914849.8835835
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\errors.log",
+        "bytes": 1171865,
+        "mtime": 1787755390.5869584
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\gateway-exit-diag.log",
+        "bytes": 326,
+        "mtime": 1784642768.6562893
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\gateway.log",
+        "bytes": 1484,
+        "mtime": 1784646314.5638099
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\gui.log",
+        "bytes": 5262,
+        "mtime": 1787327087.6463127
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\logs\\update.log",
+        "bytes": 2650,
+        "mtime": 1784293928.7527785
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260715_152913_923735_20260715_152951_485127.json",
+        "bytes": 190688,
+        "mtime": 1784143791.4906402
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260716_142403_28bc0e_20260716_142411_112729.json",
+        "bytes": 1155961,
+        "mtime": 1784226251.1237178
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260717_111924_b96707_20260717_113642_422960.json",
+        "bytes": 412863,
+        "mtime": 1784302602.567161
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260717_121715_c5acda_20260717_121837_038022.json",
+        "bytes": 208649,
+        "mtime": 1784305117.1950407
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092342_173647.json",
+        "bytes": 657363,
+        "mtime": 1784640222.4406207
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092400_346925.json",
+        "bytes": 188779,
+        "mtime": 1784640240.4319766
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092411_995479.json",
+        "bytes": 188779,
+        "mtime": 1784640252.088482
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092423_270007.json",
+        "bytes": 188779,
+        "mtime": 1784640263.3571584
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092433_878388.json",
+        "bytes": 188779,
+        "mtime": 1784640273.949731
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092445_095550.json",
+        "bytes": 188779,
+        "mtime": 1784640285.1676118
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092457_602771.json",
+        "bytes": 188779,
+        "mtime": 1784640297.6809719
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092508_606786.json",
+        "bytes": 188779,
+        "mtime": 1784640308.7052143
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092520_703026.json",
+        "bytes": 188779,
+        "mtime": 1784640320.7735665
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092532_658489.json",
+        "bytes": 188779,
+        "mtime": 1784640332.7371373
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092548_084686.json",
+        "bytes": 188779,
+        "mtime": 1784640348.1937337
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092620_386776.json",
+        "bytes": 189187,
+        "mtime": 1784640380.465798
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092623_906832.json",
+        "bytes": 189352,
+        "mtime": 1784640383.9800465
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092627_092729.json",
+        "bytes": 189335,
+        "mtime": 1784640387.1888666
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092629_848916.json",
+        "bytes": 189339,
+        "mtime": 1784640389.918773
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092632_943105.json",
+        "bytes": 189332,
+        "mtime": 1784640393.0295048
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092640_661372.json",
+        "bytes": 189299,
+        "mtime": 1784640400.7311816
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092647_562770.json",
+        "bytes": 189377,
+        "mtime": 1784640407.6439874
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092656_685771.json",
+        "bytes": 189285,
+        "mtime": 1784640416.7572992
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260721_090827_e39873_20260721_092711_007821.json",
+        "bytes": 189308,
+        "mtime": 1784640431.0787232
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140740_125279.json",
+        "bytes": 420595,
+        "mtime": 1784916460.4176896
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140752_468971.json",
+        "bytes": 131374,
+        "mtime": 1784916472.5497239
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140802_791737.json",
+        "bytes": 131374,
+        "mtime": 1784916482.8512506
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140813_877157.json",
+        "bytes": 131374,
+        "mtime": 1784916493.9466887
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140824_947554.json",
+        "bytes": 131374,
+        "mtime": 1784916505.0334437
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140835_862070.json",
+        "bytes": 131374,
+        "mtime": 1784916515.93811
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140847_534724.json",
+        "bytes": 131374,
+        "mtime": 1784916527.5892606
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140858_582325.json",
+        "bytes": 131374,
+        "mtime": 1784916538.632681
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140906_317849.json",
+        "bytes": 131782,
+        "mtime": 1784916546.4159343
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140938_781834.json",
+        "bytes": 131517,
+        "mtime": 1784916578.8343503
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_140950_830049.json",
+        "bytes": 131374,
+        "mtime": 1784916590.8930771
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141002_098109.json",
+        "bytes": 131374,
+        "mtime": 1784916602.1646316
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141012_560882.json",
+        "bytes": 131374,
+        "mtime": 1784916612.6129105
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141023_211469.json",
+        "bytes": 131374,
+        "mtime": 1784916623.2707076
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141033_072291.json",
+        "bytes": 131374,
+        "mtime": 1784916633.1330338
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141045_129735.json",
+        "bytes": 131374,
+        "mtime": 1784916645.184147
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141056_150139.json",
+        "bytes": 131374,
+        "mtime": 1784916656.2259817
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141106_418926.json",
+        "bytes": 131374,
+        "mtime": 1784916666.4897118
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141118_051426.json",
+        "bytes": 131374,
+        "mtime": 1784916678.1143448
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141127_716267.json",
+        "bytes": 131374,
+        "mtime": 1784916687.7915578
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141139_444878.json",
+        "bytes": 131374,
+        "mtime": 1784916699.5094407
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141149_881052.json",
+        "bytes": 131374,
+        "mtime": 1784916709.930024
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141200_281806.json",
+        "bytes": 131374,
+        "mtime": 1784916720.3321517
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141211_900636.json",
+        "bytes": 131374,
+        "mtime": 1784916731.951259
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141222_708514.json",
+        "bytes": 131374,
+        "mtime": 1784916742.7725484
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141229_462244.json",
+        "bytes": 131782,
+        "mtime": 1784916749.5249252
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141231_929739.json",
+        "bytes": 131930,
+        "mtime": 1784916751.9813426
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141235_384691.json",
+        "bytes": 131942,
+        "mtime": 1784916755.4468312
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141238_726282.json",
+        "bytes": 131970,
+        "mtime": 1784916758.7769203
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_135338_8e4eef_20260724_141244_062153.json",
+        "bytes": 131886,
+        "mtime": 1784916764.111062
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152530_615450.json",
+        "bytes": 392459,
+        "mtime": 1784921130.776511
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152542_431719.json",
+        "bytes": 118305,
+        "mtime": 1784921142.4923432
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152553_128216.json",
+        "bytes": 118305,
+        "mtime": 1784921153.1777368
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152603_387139.json",
+        "bytes": 118305,
+        "mtime": 1784921163.4390917
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152615_247243.json",
+        "bytes": 118305,
+        "mtime": 1784921175.2948196
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152712_566903.json",
+        "bytes": 118305,
+        "mtime": 1784921232.6139023
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152722_204045.json",
+        "bytes": 118305,
+        "mtime": 1784921242.3577626
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152858_003024.json",
+        "bytes": 195511,
+        "mtime": 1784921338.076707
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_152920_178882.json",
+        "bytes": 118305,
+        "mtime": 1784921360.2229886
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153032_365143.json",
+        "bytes": 118305,
+        "mtime": 1784921432.444139
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153055_203929.json",
+        "bytes": 118305,
+        "mtime": 1784921455.251603
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153148_313702.json",
+        "bytes": 118305,
+        "mtime": 1784921508.3771844
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153508_345509.json",
+        "bytes": 187025,
+        "mtime": 1784921708.4437978
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153519_389898.json",
+        "bytes": 118305,
+        "mtime": 1784921719.449866
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153530_439044.json",
+        "bytes": 118305,
+        "mtime": 1784921730.4961889
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153541_903354.json",
+        "bytes": 118305,
+        "mtime": 1784921741.951609
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153552_547456.json",
+        "bytes": 118305,
+        "mtime": 1784921752.6124659
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153603_398915.json",
+        "bytes": 118305,
+        "mtime": 1784921763.4480405
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153614_867303.json",
+        "bytes": 118305,
+        "mtime": 1784921774.9164436
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153626_292037.json",
+        "bytes": 118305,
+        "mtime": 1784921786.3543205
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153638_701898.json",
+        "bytes": 118305,
+        "mtime": 1784921798.762833
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153650_770472.json",
+        "bytes": 118305,
+        "mtime": 1784921810.8237684
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153700_408148.json",
+        "bytes": 118305,
+        "mtime": 1784921820.4739525
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153711_459426.json",
+        "bytes": 118305,
+        "mtime": 1784921831.5175433
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153723_089181.json",
+        "bytes": 118305,
+        "mtime": 1784921843.1379066
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153732_927189.json",
+        "bytes": 118305,
+        "mtime": 1784921852.9753878
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153743_364964.json",
+        "bytes": 118305,
+        "mtime": 1784921863.421582
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153754_604397.json",
+        "bytes": 118305,
+        "mtime": 1784921874.6556003
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153806_247424.json",
+        "bytes": 118305,
+        "mtime": 1784921886.312
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153816_889595.json",
+        "bytes": 118305,
+        "mtime": 1784921896.9374146
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153829_435390.json",
+        "bytes": 118305,
+        "mtime": 1784921909.482749
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153841_082218.json",
+        "bytes": 118305,
+        "mtime": 1784921921.1295664
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153852_508314.json",
+        "bytes": 118305,
+        "mtime": 1784921932.5561063
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153902_936553.json",
+        "bytes": 118305,
+        "mtime": 1784921942.987538
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153914_969825.json",
+        "bytes": 118305,
+        "mtime": 1784921955.0221996
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260724_151726_6b3c6f_20260724_153927_015393.json",
+        "bytes": 118305,
+        "mtime": 1784921967.0790536
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260819_134909_9cb83c_20260819_134916_147529.json",
+        "bytes": 139415,
+        "mtime": 1787161756.2703867
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260823_125111_e81840_20260823_125537_284044.json",
+        "bytes": 172974,
+        "mtime": 1787504137.4106104
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260823_125111_e81840_20260823_130117_586729.json",
+        "bytes": 173841,
+        "mtime": 1787504477.6935146
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260823_213542_715eb0_20260823_214945_115034.json",
+        "bytes": 652246,
+        "mtime": 1787536185.4862156
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\sessions\\request_dump_20260823_213542_715eb0_20260823_220203_484481.json",
+        "bytes": 324846,
+        "mtime": 1787536923.6648655
+      }
+    ],
+    "accounting-sharon": [
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\cron\\.jobs.lock",
+        "bytes": 0,
+        "mtime": 1786740807.5132675
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\cron\\.tick.lock",
+        "bytes": 0,
+        "mtime": 1792154335.049151
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\cron\\executions.db",
+        "bytes": 20480,
+        "mtime": 1786740807.5017052
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\cron\\ticker_heartbeat",
+        "bytes": 17,
+        "mtime": 1792154335.0566392
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\cron\\ticker_last_success",
+        "bytes": 18,
+        "mtime": 1792154335.0606363
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\state\\accounting-inbox-monitor.json",
+        "bytes": 10464,
+        "mtime": 1788460186.781985
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\state\\gateway.heartbeat",
+        "bytes": 121,
+        "mtime": 1792154373.785175
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\state\\gateway.lifecycle.json",
+        "bytes": 146,
+        "mtime": 1792088526.070789
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\.__agent.lock",
+        "bytes": 0,
+        "mtime": 1786739188.9818168
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\.__errors.lock",
+        "bytes": 0,
+        "mtime": 1786739189.343973
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\.__gateway.lock",
+        "bytes": 0,
+        "mtime": 1786740794.923443
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\.__gui.lock",
+        "bytes": 0,
+        "mtime": 1787242696.9045508
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\agent.log",
+        "bytes": 1013489,
+        "mtime": 1792153386.2821815
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\errors.log",
+        "bytes": 624711,
+        "mtime": 1792090803.9035788
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\gateway-exit-diag.log",
+        "bytes": 7446,
+        "mtime": 1792088526.0687811
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\gateway-stdio.log",
+        "bytes": 6455,
+        "mtime": 1787180427.4372084
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\gateway-watchdog.log",
+        "bytes": 560167,
+        "mtime": 1792154221.7484744
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\gateway.log",
+        "bytes": 396124,
+        "mtime": 1792090803.9035788
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\gateway_faulthandler.log",
+        "bytes": 0,
+        "mtime": 1787673497.974765
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\gui.log",
+        "bytes": 2192,
+        "mtime": 1787500792.3273282
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\logs\\t_a1dd1b3e-restart.log",
+        "bytes": 361,
+        "mtime": 1787673484.76482
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\sessions\\sessions.json",
+        "bytes": 446,
+        "mtime": 1788447278.8798215
+      }
+    ],
+    "tripower-consulting": [
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\cron\\.jobs.lock",
+        "bytes": 0,
+        "mtime": 1784302005.246841
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\cron\\.tick.lock",
+        "bytes": 0,
+        "mtime": 1792087969.2696688
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\cron\\executions.db",
+        "bytes": 20480,
+        "mtime": 1784302005.4377396
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\cron\\ticker_heartbeat",
+        "bytes": 18,
+        "mtime": 1792087969.2737033
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\cron\\ticker_last_success",
+        "bytes": 17,
+        "mtime": 1792087969.2812226
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\state\\gateway.heartbeat",
+        "bytes": 123,
+        "mtime": 1792087991.8061354
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\state\\gateway.lifecycle.json",
+        "bytes": 146,
+        "mtime": 1791300757.8178983
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\.__agent.lock",
+        "bytes": 0,
+        "mtime": 1784301985.7485704
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\.__errors.lock",
+        "bytes": 0,
+        "mtime": 1784302000.7413993
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\.__gateway.lock",
+        "bytes": 0,
+        "mtime": 1784302000.3163404
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\.__gui.lock",
+        "bytes": 0,
+        "mtime": 1784820142.6822531
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\agent.log",
+        "bytes": 4549850,
+        "mtime": 1792076404.60035
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\errors.log",
+        "bytes": 1495707,
+        "mtime": 1792075617.6942837
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\errors.log.1",
+        "bytes": 2101703,
+        "mtime": 1787258321.444357
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\gateway-exit-diag.log",
+        "bytes": 23926,
+        "mtime": 1791300757.8168902
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\gateway-stdio.log",
+        "bytes": 3356,
+        "mtime": 1784307452.4075763
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\gateway.log",
+        "bytes": 1513246,
+        "mtime": 1792075688.417913
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\gateway_faulthandler.log",
+        "bytes": 0,
+        "mtime": 1786096974.076282
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\logs\\gui.log",
+        "bytes": 2304,
+        "mtime": 1787327166.8689883
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\sessions\\request_dump_20260714_100830_92a77b_20260714_100836_042454.json",
+        "bytes": 95754,
+        "mtime": 1784038116.045831
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\sessions\\sessions.json",
+        "bytes": 446,
+        "mtime": 1786096974.1267002
+      }
+    ]
+  },
+  "mirror_launcher_targets": [
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_order_completion_sync.ps1"
+  ]
+}

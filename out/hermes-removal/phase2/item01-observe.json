@@ -1,0 +1,32 @@
+{
+  "item": 1,
+  "observed_at": "2026-10-16T08:43:51.4890541-04:00",
+  "enabled": false,
+  "task_state": "Disabled",
+  "last_run": "2026-10-16T08:35:15.0000000-04:00",
+  "last_result": 0,
+  "matching_processes": [],
+  "state_metadata": {
+    "path_literals": [],
+    "state_files": [
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_order_completion_sync.ps1",
+        "bytes": 1441,
+        "mtime_ns": 1787745119006134000,
+        "sha256": "2430ae15c6c18e749f6545328e64e865fe0c1a5b73a13fea7b5387a3f0132c16"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\sync_order_completion_board.cjs",
+        "bytes": 5224,
+        "mtime_ns": 1787788838514997000,
+        "sha256": "8779adf98bc38e9042602ef9ccceda7d42f88a6f634893052fa8adb8b817f1a9"
+      }
+    ]
+  },
+  "archive_status": {
+    "state": "running",
+    "started": "2026-10-16T12:42:54.082127+00:00",
+    "final_seal": false,
+    "note": "Held writers remain live; this is a recovery baseline, not a quiescent final seal."
+  }
+}

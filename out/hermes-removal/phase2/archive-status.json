@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-16T08:47:06.3968060-04:00",
+  "status": {
+    "status.json": {
+      "state": "running",
+      "started": "2026-10-16T12:42:54.082127+00:00",
+      "final_seal": false,
+      "note": "Held writers remain live; this is a recovery baseline, not a quiescent final seal."
+    }
+  },
+  "processes": [],
+  "stderr": {},
+  "files": [
+    {
+      "bytes": 8524,
+      "name": "archive-pc.py"
+    },
+    {
+      "bytes": 0,
+      "name": "archive.stderr.log"
+    },
+    {
+      "bytes": 0,
+      "name": "archive.stdout.log"
+    },
+    {
+      "bytes": 0,
+      "name": "exclusions.jsonl"
+    },
+    {
+      "bytes": 270,
+      "name": "paused-exclusion-review.json"
+    },
+    {
+      "bytes": 0,
+      "name": "reparse.jsonl"
+    },
+    {
+      "bytes": 0,
+      "name": "robocopy-local-hermes.log"
+    },
+    {
+      "bytes": 1621,
+      "name": "scope.json"
+    },
+    {
+      "bytes": 199,
+      "name": "status.json"
+    }
+  ]
+}

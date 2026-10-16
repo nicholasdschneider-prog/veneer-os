@@ -1,0 +1,89 @@
+{
+  "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\sync_order_completion_board.cjs",
+  "matches": [
+    {
+      "line": 7,
+      "code": "const DEFAULT_LEDGER = path.join("
+    },
+    {
+      "line": 9,
+      "code": "  \"hermes\", \"profiles\", \"ervp-orders\", \"state\", \"orders-bot\", \"every-order-review.json\","
+    },
+    {
+      "line": 19,
+      "code": "  if (Number.isNaN(date.getTime())) throw new Error(\"orders_bot_ledger_has_invalid_timestamp\");"
+    },
+    {
+      "line": 23,
+      "code": "function translateLedger(ledger) {"
+    },
+    {
+      "line": 24,
+      "code": "  if (![1, 2].includes(ledger?.schema_version) || !ledger?.orders || typeof ledger.orders !== \"object\") {"
+    },
+    {
+      "line": 25,
+      "code": "    throw new Error(\"orders_bot_ledger_v1_or_v2_required\");"
+    },
+    {
+      "line": 27,
+      "code": "  const run = ledger.last_run || {};"
+    },
+    {
+      "line": 28,
+      "code": "  const rows = Object.values(ledger.orders).map((row) => ({"
+    },
+    {
+      "line": 39,
+      "code": "    nextCheckpointAt: normalizeIso(row.next_checkpoint_at),"
+    },
+    {
+      "line": 64,
+      "code": "  const sourceCheckpoint = sha(JSON.stringify({"
+    },
+    {
+      "line": 65,
+      "code": "    updatedAt: ledger.updated_at,"
+    },
+    {
+      "line": 66,
+      "code": "    lastSuccessAt: ledger.last_success_at,"
+    },
+    {
+      "line": 74,
+      "code": "    generatedAt: normalizeIso(ledger.updated_at || ledger.last_success_at),"
+    },
+    {
+      "line": 75,
+      "code": "    lastSuccessAt: normalizeIso(ledger.last_success_at),"
+    },
+    {
+      "line": 76,
+      "code": "    sourceCheckpoint,"
+    },
+    {
+      "line": 77,
+      "code": "    lastDailyClosureDate: ledger.last_daily_closure_date || null,"
+    },
+    {
+      "line": 101,
+      "code": "  const ledgerPath = process.env.ORDER_COMPLETION_LEDGER_PATH || DEFAULT_LEDGER;"
+    },
+    {
+      "line": 105,
+      "code": "  const payload = translateLedger(JSON.parse(fs.readFileSync(ledgerPath, \"utf8\")));"
+    },
+    {
+      "line": 111,
+      "code": "      \"Idempotency-Key\": `order-completion:${payload.sourceCheckpoint}`,"
+    },
+    {
+      "line": 115,
+      "code": "  const body = await response.json().catch(() => ({}));"
+    },
+    {
+      "line": 123,
+      "code": "    sourceCheckpoint: payload.sourceCheckpoint,"
+    }
+  ]
+}

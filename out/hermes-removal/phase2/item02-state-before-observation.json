@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-16T12:48:21.817381+00:00",
+  "profile": "cs-tim",
+  "watcher_state": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\runtime\\reply-monitor-SP6NF4.json",
+      "exists": false
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\runtime\\brady-sms-reply-monitor-state.json",
+      "exists": false
+    }
+  ],
+  "gateway_status": {
+    "pid": 10056,
+    "state": null,
+    "active_agents": 0,
+    "updated_at": "2026-10-15T18:47:44.623306+00:00",
+    "started_at": null,
+    "start_time": 179208833206
+  },
+  "completion_shared_ledger": {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\every-order-review.json",
+    "bytes": 2234213,
+    "sha256": "8d3657c3af9c341a1e2f2c92da31363d1ee95b806044f2aac96597ddad558705",
+    "order_count": 2306,
+    "updated_at": "2026-10-16T12:47:02.330539+00:00",
+    "last_success_at": "2026-10-16T12:47:02.330539+00:00",
+    "last_daily_closure_date": "2026-10-15",
+    "note": "Held All Order Review remains the writer. Mirror consumer disabled; file preserved."
+  }
+}

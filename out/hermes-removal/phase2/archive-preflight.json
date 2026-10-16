@@ -1,0 +1,140 @@
+{
+  "free_bytes": 671867564032,
+  "robocopy": "C:\\WINDOWS\\system32\\robocopy.EXE",
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_order_completion_sync.ps1",
+      "matches": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\gateway.py",
+      "matches": [
+        {
+          "line": 331,
+          "code": "# #72707) cannot process SIGTERM/SIGUSR1 shutdown: the drain wait then burns"
+        },
+        {
+          "line": 361,
+          "code": "# Heartbeat cadence is 30s (gateway.shutdown_watchdog.DEFAULT_HEARTBEAT_INTERVAL_S)."
+        },
+        {
+          "line": 384,
+          "code": "        from gateway.shutdown_watchdog import get_loop_heartbeat_path"
+        },
+        {
+          "line": 1725,
+          "code": "    from gateway.status import _pid_exists, write_planned_stop_marker"
+        },
+        {
+          "line": 1786,
+          "code": "            write_planned_stop_marker(pid)"
+        },
+        {
+          "line": 1816,
+          "code": "def stop_profile_gateway() -> bool:"
+        },
+        {
+          "line": 1846,
+          "code": "        from gateway.status import write_planned_stop_marker"
+        },
+        {
+          "line": 1848,
+          "code": "        write_planned_stop_marker(pid)"
+        },
+        {
+          "line": 3910,
+          "code": "        from gateway.status import get_running_pid, write_planned_stop_marker"
+        },
+        {
+          "line": 3914,
+          "code": "            write_planned_stop_marker(pid)"
+        },
+        {
+          "line": 3925,
+          "code": "            \"check `hermes gateway status` or logs for final shutdown state.\""
+        },
+        {
+          "line": 5041,
+          "code": "        from gateway.status import get_running_pid, write_planned_stop_marker"
+        },
+        {
+          "line": 5045,
+          "code": "            write_planned_stop_marker(pid)"
+        },
+        {
+          "line": 5134,
+          "code": "            # the gateway cannot process a graceful shutdown, so waiting the"
+        },
+        {
+          "line": 5631,
+          "code": "    # When the gateway dies silently on Windows (no shutdown log, no"
+        },
+        {
+          "line": 5749,
+          "code": "        from gateway.run import _exit_after_graceful_shutdown"
+        },
+        {
+          "line": 5751,
+          "code": "        _exit_after_graceful_shutdown(code)"
+        },
+        {
+          "line": 6168,
+          "code": "    # ungracefully-killed gateway (taskkill /F, OOM, power loss) whose shutdown"
+        },
+        {
+          "line": 6179,
+          "code": "            \"recorded process is gone (likely an ungraceful shutdown)\""
+        },
+        {
+          "line": 6186,
+          "code": "        action = \"restart\" if restart_requested else \"shutdown\""
+        },
+        {
+          "line": 6192,
+          "code": "        lines.append(f\"\u26a0 Last shutdown reason: {exit_reason}\")"
+        },
+        {
+          "line": 7229,
+          "code": "                    \"  To enable systemd: add systemd=true to /etc/wsl.conf, then 'wsl --shutdown'\""
+        },
+        {
+          "line": 7441,
+          "code": "    # shutdown (which tears down the supervised gateway cleanly)."
+        },
+        {
+          "line": 7712,
+          "code": "                \"To enable systemd: add systemd=true to /etc/wsl.conf and run 'wsl --shutdown' from PowerShell.\""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\cron\\jobs.py",
+      "matches": [
+        {
+          "line": 109,
+          "code": "# Upper bound on waiting for the cross-process .jobs.lock flock (#60703)."
+        },
+        {
+          "line": 267,
+          "code": "def _jobs_lock_file() -> Path:"
+        },
+        {
+          "line": 269,
+          "code": "    return _current_cron_store().cron_dir / \".jobs.lock\""
+        },
+        {
+          "line": 278,
+          "code": "    lock on ``<cron dir>/.jobs.lock`` (mutual exclusion between the gateway process"
+        },
+        {
+          "line": 320,
+          "code": "                    # .jobs.lock (e.g. an old gateway draining through a"
+        },
+        {
+          "line": 2711,
+          "code": "    When dispatch itself fails (interpreter shutdown, executor submit error,"
+        }
+      ]
+    }
+  ]
+}

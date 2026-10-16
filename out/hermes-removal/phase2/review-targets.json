@@ -1,0 +1,384 @@
+{
+  "stop_source": [
+    {
+      "line": 1816,
+      "code": "def stop_profile_gateway() -> bool:"
+    },
+    {
+      "line": 1817,
+      "code": "    \"\"\"Stop only the gateway for the current profile (HERMES_HOME-scoped)."
+    },
+    {
+      "line": 1818,
+      "code": ""
+    },
+    {
+      "line": 1819,
+      "code": "    Uses the PID file written by start_gateway(), so it only kills the"
+    },
+    {
+      "line": 1820,
+      "code": "    gateway belonging to this profile \u2014 not gateways from other profiles."
+    },
+    {
+      "line": 1821,
+      "code": "    Returns True if a process was stopped, False if none was found."
+    },
+    {
+      "line": 1822,
+      "code": ""
+    },
+    {
+      "line": 1823,
+      "code": "    On hosts without a service supervisor (e.g. WSL/no-systemd, where the"
+    },
+    {
+      "line": 1824,
+      "code": "    manual restart fallback runs the gateway in-process under a ``gateway"
+    },
+    {
+      "line": 1825,
+      "code": "    restart`` argv), the pidfile/runtime record can be missing or stale while"
+    },
+    {
+      "line": 1826,
+      "code": "    a live orphan still holds the webhook port. In that case fall back to the"
+    },
+    {
+      "line": 1827,
+      "code": "    orphan-aware process scan so the replacement reaps the prior instance"
+    },
+    {
+      "line": 1828,
+      "code": "    instead of stacking a duplicate on the same port (#51325)."
+    },
+    {
+      "line": 1829,
+      "code": ""
+    },
+    {
+      "line": 1830,
+      "code": "    Even when the pid file is valid and points to the current gateway, older"
+    },
+    {
+      "line": 1831,
+      "code": "    orphans may linger from prior restarts that overwrote the pid file before"
+    },
+    {
+      "line": 1832,
+      "code": "    the old process exited. After killing the recorded PID, also sweep for"
+    },
+    {
+      "line": 1833,
+      "code": "    any remaining orphans so each restart produces at most one live gateway"
+    },
+    {
+      "line": 1834,
+      "code": "    (#75936)."
+    },
+    {
+      "line": 1835,
+      "code": "    \"\"\""
+    },
+    {
+      "line": 1836,
+      "code": "    try:"
+    },
+    {
+      "line": 1837,
+      "code": "        from gateway.status import get_running_pid, remove_pid_file"
+    },
+    {
+      "line": 1838,
+      "code": "    except ImportError:"
+    },
+    {
+      "line": 1839,
+      "code": "        return False"
+    },
+    {
+      "line": 1840,
+      "code": ""
+    },
+    {
+      "line": 1841,
+      "code": "    pid = get_running_pid()"
+    },
+    {
+      "line": 1842,
+      "code": "    if pid is None:"
+    },
+    {
+      "line": 1843,
+      "code": "        return _reap_unsupervised_gateway_orphans()"
+    },
+    {
+      "line": 1844,
+      "code": ""
+    },
+    {
+      "line": 1845,
+      "code": "    try:"
+    },
+    {
+      "line": 1846,
+      "code": "        from gateway.status import write_planned_stop_marker"
+    },
+    {
+      "line": 1847,
+      "code": ""
+    },
+    {
+      "line": 1848,
+      "code": "        write_planned_stop_marker(pid)"
+    },
+    {
+      "line": 1849,
+      "code": "    except Exception:"
+    },
+    {
+      "line": 1850,
+      "code": "        pass"
+    },
+    {
+      "line": 1851,
+      "code": ""
+    },
+    {
+      "line": 1852,
+      "code": "    try:"
+    },
+    {
+      "line": 1853,
+      "code": "        os.kill(pid, signal.SIGTERM)"
+    },
+    {
+      "line": 1854,
+      "code": "    except ProcessLookupError:"
+    },
+    {
+      "line": 1855,
+      "code": "        pass  # Already gone"
+    },
+    {
+      "line": 1856,
+      "code": "    except PermissionError:"
+    },
+    {
+      "line": 1857,
+      "code": "        print(f\"\u26a0 Permission denied to kill PID {pid}\")"
+    },
+    {
+      "line": 1858,
+      "code": "        return False"
+    },
+    {
+      "line": 1859,
+      "code": ""
+    },
+    {
+      "line": 1860,
+      "code": "    # Wait briefly for it to exit. On Windows, os.kill(pid, 0) is NOT"
+    },
+    {
+      "line": 1861,
+      "code": "    # a no-op \u2014 route through the cross-platform existence check."
+    },
+    {
+      "line": 1862,
+      "code": "    import time as _time"
+    },
+    {
+      "line": 1863,
+      "code": "    from gateway.status import _pid_exists"
+    },
+    {
+      "line": 1864,
+      "code": ""
+    },
+    {
+      "line": 1865,
+      "code": "    for _ in range(20):"
+    },
+    {
+      "line": 1866,
+      "code": "        if not _pid_exists(pid):"
+    },
+    {
+      "line": 1867,
+      "code": "            break"
+    },
+    {
+      "line": 1868,
+      "code": "        _time.sleep(0.5)"
+    },
+    {
+      "line": 1869,
+      "code": ""
+    },
+    {
+      "line": 1870,
+      "code": "    if get_running_pid() is None:"
+    },
+    {
+      "line": 1871,
+      "code": "        remove_pid_file()"
+    },
+    {
+      "line": 1872,
+      "code": ""
+    },
+    {
+      "line": 1873,
+      "code": "    # Also reap any orphans from prior restarts whose PIDs were overwritten"
+    },
+    {
+      "line": 1874,
+      "code": "    # in the pid file before they exited (#75936).  Exclude the PID we just"
+    },
+    {
+      "line": 1875,
+      "code": "    # killed so the sweep doesn't double-kill a process that's still tearing"
+    },
+    {
+      "line": 1876,
+      "code": "    # down \u2014 _reap_unsupervised_gateway_orphans already excludes our own PID."
+    },
+    {
+      "line": 1877,
+      "code": "    try:"
+    },
+    {
+      "line": 1878,
+      "code": "        _reap_unsupervised_gateway_orphans(extra_exclude={pid} if pid else None)"
+    },
+    {
+      "line": 1879,
+      "code": "    except Exception as exc:"
+    },
+    {
+      "line": 1880,
+      "code": "        logger.debug(\"orphan reap after stop_profile_gateway failed: %s\", exc)"
+    },
+    {
+      "line": 1881,
+      "code": ""
+    },
+    {
+      "line": 1882,
+      "code": "    return True"
+    },
+    {
+      "line": 1883,
+      "code": ""
+    },
+    {
+      "line": 1884,
+      "code": ""
+    },
+    {
+      "line": 1885,
+      "code": "def is_linux() -> bool:"
+    }
+  ],
+  "job_shapes": [
+    {
+      "id": "b2b5b67f02c0",
+      "keys": [
+        "id",
+        "name",
+        "prompt",
+        "skills",
+        "skill",
+        "model",
+        "provider",
+        "provider_snapshot",
+        "model_snapshot",
+        "base_url",
+        "script",
+        "no_agent",
+        "context_from",
+        "schedule",
+        "schedule_display",
+        "repeat",
+        "enabled",
+        "state",
+        "paused_at",
+        "paused_reason",
+        "created_at",
+        "next_run_at",
+        "last_run_at",
+        "last_status",
+        "last_error",
+        "last_delivery_error",
+        "deliver",
+        "origin",
+        "enabled_toolsets",
+        "workdir",
+        "fire_claim",
+        "failure_streak"
+      ],
+      "status": null,
+      "last_status": "ok",
+      "running": null,
+      "script_paths": []
+    },
+    {
+      "id": "394f30773d39",
+      "keys": [
+        "id",
+        "name",
+        "prompt",
+        "skills",
+        "skill",
+        "model",
+        "provider",
+        "provider_snapshot",
+        "model_snapshot",
+        "base_url",
+        "script",
+        "no_agent",
+        "context_from",
+        "schedule",
+        "schedule_display",
+        "repeat",
+        "enabled",
+        "state",
+        "paused_at",
+        "paused_reason",
+        "created_at",
+        "next_run_at",
+        "last_run_at",
+        "last_status",
+        "last_error",
+        "last_delivery_error",
+        "deliver",
+        "origin",
+        "enabled_toolsets",
+        "workdir",
+        "fire_claim",
+        "failure_streak"
+      ],
+      "status": null,
+      "last_status": "ok",
+      "running": null,
+      "script_paths": []
+    }
+  ],
+  "ledger_schema": {
+    "executions": [
+      "id",
+      "job_id",
+      "source",
+      "process_id",
+      "pid",
+      "process_started_at",
+      "status",
+      "claimed_at",
+      "started_at",
+      "finished_at",
+      "error"
+    ]
+  },
+  "mirror_source": "[CmdletBinding()]\nparam(\n  [string]$CredentialPath = (Join-Path $env:LOCALAPPDATA \"hermes\\profiles\\ervp-orders\\secrets\\order-completion-api-key.dpapi\")\n)\n\n$ErrorActionPreference = \"Stop\"\n$scriptPath = Join-Path $PSScriptRoot \"sync_order_completion_board.cjs\"\nAdd-Type -AssemblyName System.Security\n\nif (-not (Test-Path -LiteralPath $CredentialPath)) {\n  throw \"Order Completion credential is not installed for this Windows user.\"\n}\nif (-not (Test-Path -LiteralPath $scriptPath)) {\n  throw \"The branch-independent Order Completion mirror is missing.\"\n}\n\n$protectedBytes = [IO.File]::ReadAllBytes($CredentialPath)\n$plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(\n  $protectedBytes,\n  $null,\n  [System.Security.Cryptography.DataProtectionScope]::CurrentUser\n)\n$credentialValue = [Text.Encoding]::UTF8.GetString($plainBytes)\nif ($credentialValue -notmatch '^oo_hermes_[A-Za-z0-9_-]{43,112}$') {\n  throw \"Order Completion credential has an invalid format.\"\n}\n\n$priorCredential = $env:ORDEROPS_API_KEY\ntry {\n  $env:ORDEROPS_API_KEY = $credentialValue\n  & node $scriptPath\n  if ($LASTEXITCODE -ne 0) {\n    throw \"Order Completion mirror exited with code $LASTEXITCODE.\"\n  }\n} finally {\n  if ($null -eq $priorCredential) {\n    Remove-Item Env:ORDEROPS_API_KEY -ErrorAction SilentlyContinue\n  } else {\n    $env:ORDEROPS_API_KEY = $priorCredential\n  }\n  $credentialValue = $null\n  $plainBytes = $null\n  $protectedBytes = $null\n}\n"
+}

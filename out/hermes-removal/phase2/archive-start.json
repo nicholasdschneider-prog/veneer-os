@@ -1,0 +1,8 @@
+{
+  "started_at": "2026-10-16T08:42:53.9986515-04:00",
+  "pid": 5708,
+  "destination": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
+  "script_sha256": "87C0C36F47DB9F3248046231F0E005319282ADEF2DB76B72B4C8CF1DA626E2E2",
+  "status": "started; not yet verified",
+  "note": "PC-only baseline; held writers require a later final seal"
+}
