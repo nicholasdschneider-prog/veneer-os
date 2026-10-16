@@ -1,0 +1,77 @@
+{
+  "at": "2026-10-16T13:43:36.7909729-04:00",
+  "status": {
+    "status.json": {
+      "state": "hashing",
+      "started": "2026-10-16T12:47:43.738037+00:00",
+      "updated": "2026-10-16T17:43:33.708463+00:00",
+      "files_hashed": 1180000,
+      "bytes": 68169489733,
+      "errors": 1814,
+      "final_seal": false
+    }
+  },
+  "processes": [
+    {
+      "parent": 8172,
+      "pid": 19500,
+      "name": "python.exe",
+      "created": "2026-10-16T08:47:43.6215740-04:00"
+    }
+  ],
+  "stderr": null,
+  "files": [
+    {
+      "bytes": 8840,
+      "name": "archive-pc.py"
+    },
+    {
+      "bytes": 3302887,
+      "name": "exclusions.jsonl"
+    },
+    {
+      "bytes": 0,
+      "name": "manifest.jsonl"
+    },
+    {
+      "bytes": 3516,
+      "name": "reparse.jsonl"
+    },
+    {
+      "bytes": 2,
+      "name": "robocopy-brain-ops.log"
+    },
+    {
+      "bytes": 2,
+      "name": "robocopy-dot-hermes.log"
+    },
+    {
+      "bytes": 2,
+      "name": "robocopy-legacy-data.log"
+    },
+    {
+      "bytes": 514,
+      "name": "robocopy-local-hermes.log"
+    },
+    {
+      "bytes": 2,
+      "name": "robocopy-obsidian-brain.log"
+    },
+    {
+      "bytes": 2,
+      "name": "robocopy-worktrees.log"
+    },
+    {
+      "bytes": 2087,
+      "name": "scope.json"
+    },
+    {
+      "bytes": 77905,
+      "name": "sqlite-checks.json"
+    },
+    {
+      "bytes": 224,
+      "name": "status.json"
+    }
+  ]
+}

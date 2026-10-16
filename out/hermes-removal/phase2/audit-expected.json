@@ -21,13 +21,15 @@
     "Hermes_Gateway_cs-mallory.vbs",
     "Hermes_Gateway_cs-jasmine.vbs",
     "Hermes_Gateway_cs-rae.vbs",
-    "Hermes_Gateway_cs-ali.vbs"
+    "Hermes_Gateway_cs-ali.vbs",
+    "Hermes_Gateway_cs-joe.vbs"
   ],
   "source_stop_receipts": [
     "item09-cs-mallory-stop.json",
     "item09-cs-jasmine-stop.json",
     "item09-cs-rae-stop.json",
-    "item09-cs-ali-stop.json"
+    "item09-cs-ali-stop.json",
+    "item09-cs-joe-stop.json"
   ],
   "note": "Tim watchdog and Startup are implicit in audit-drift.py; entries here come only from performed authorized stop receipts."
 }

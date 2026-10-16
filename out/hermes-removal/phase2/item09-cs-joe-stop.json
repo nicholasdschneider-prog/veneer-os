@@ -1,0 +1,26 @@
+{
+  "item": 9,
+  "profile": "cs-joe",
+  "at": "2026-10-16T13:44:18.3220529-04:00",
+  "observation_start": "2026-10-16T13:44:18.3220529-04:00",
+  "remaining_gateways": [],
+  "tasks": [],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-joe.vbs.disabled-20261016",
+      "sha256": "7337A2FFE9D8309BEA38B2A9516AB109DD7E47D5EB811E1E07F7A943F1814F91",
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-joe.vbs",
+      "at": "2026-10-16T13:44:18.2458809-04:00"
+    }
+  ],
+  "process_stops": [],
+  "no_inflight": {
+    "additional_child_workers": 0,
+    "active_agents": 0,
+    "runtime_status_updated_at": null,
+    "unfinished_all_profile": 0
+  },
+  "journal": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\cs-joe\\idle-steps.jsonl",
+  "observation": "Pending 15 minutes",
+  "original_files_preserved": true
+}

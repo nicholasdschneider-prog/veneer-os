@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-16T13:43:35.5247662-04:00",
+  "item": 9,
+  "profile": "cs-ali",
+  "observation_start": "2026-10-16T13:28:03.3297917-04:00",
+  "elapsed_seconds": 932.1949745,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": true
+  },
+  "gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T13:25:01.0000000-04:00",
+      "name": "Hermes_cs_ali_Watchdog",
+      "last_run_unchanged": true,
+      "enabled": false
+    }
+  ],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-ali.vbs.disabled-20261016",
+      "active_absent": true,
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-ali.vbs",
+      "sha256": "FB0ABCC1D62178B8A0CF842EAA01F624872B23B0F056C44FDBB2B42B71CE44C0",
+      "sha256_unchanged": true
+    }
+  ],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}

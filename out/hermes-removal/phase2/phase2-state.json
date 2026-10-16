@@ -52,20 +52,30 @@
       "post_receipt": "item09-cs-rae-post.json"
     },
     "cs-ali": {
-      "status": "observing",
+      "status": "verified",
       "observation_start": "2026-10-16T13:28:03.3297917-04:00",
       "not_before_utc": "2026-10-16T17:43:03.329791+00:00",
       "stop_receipt": "item09-cs-ali-stop.json",
-      "observe_probe": "item09-cs-ali-observe.ps1"
+      "observe_probe": "item09-cs-ali-observe.ps1",
+      "confirmed_at": "2026-10-16T13:43:35.5247662-04:00",
+      "final_receipt": "item09-cs-ali-final.json",
+      "post_receipt": "item09-cs-ali-post.json"
+    },
+    "cs-joe": {
+      "status": "observing",
+      "observation_start": "2026-10-16T13:44:18.3220529-04:00",
+      "not_before_utc": "2026-10-16T17:59:18.322052+00:00",
+      "stop_receipt": "item09-cs-joe-stop.json",
+      "observe_probe": "item09-cs-joe-observe.ps1"
     }
   },
-  "next_profile": "cs-joe",
+  "next_profile": "cust-service",
   "archive": {
     "controller_pid": 19500,
     "controller_created": "2026-10-16T12:47:43Z",
     "state": "hashing_unverified",
-    "files_hashed": 1060000,
-    "errors": 1798,
+    "files_hashed": 1180000,
+    "errors": 1814,
     "sqlite_integrity_ok": 199,
     "supervisor_lock_custody_receipt": "supervisor-lock-custody.json"
   }

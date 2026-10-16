@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-16T13:44:26.3636944-04:00",
+  "item": 9,
+  "profile": "cs-joe",
+  "observation_start": "2026-10-16T13:44:18.3220529-04:00",
+  "elapsed_seconds": 8.041641499999999,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": false
+  },
+  "gateways": [],
+  "tasks": [],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-joe.vbs.disabled-20261016",
+      "active_absent": true,
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-joe.vbs",
+      "sha256": "7337A2FFE9D8309BEA38B2A9516AB109DD7E47D5EB811E1E07F7A943F1814F91",
+      "sha256_unchanged": true
+    }
+  ],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}
