@@ -22,3 +22,8 @@
 - Phase 2: items 1–6 and 8 verified; item 7 (Lippert SHADOW lane) SKIPPED, left enabled (no-unique-pending-output prerequisite not established); item 9 idle gateways: cs-mallory/jasmine/rae/ali/joe, cust-service, nick done, hermesops-2 observing, accounting-sharon / tripower-consulting / default remaining. Dashboard, auth sync, CS gateways retired.
 - Archive: copy done, hashing in progress with 3,165 accumulated errors; NOT verified. supervisor.lock preserved separately.
 - Boris: unchanged. BUILD863 repairs still await a Nick-started turn. No live flips.
+
+## 17:40 ET review (2026-10-16)
+- Phase 2 complete except item 7 (SHADOW lane, skipped) and the held business jobs. Item 9: ten idle gateways verified stopped; `default` profile retained because it aliases root where the held LTL cron lives.
+- Archive hashing at 2.66M of 2.78M files, 3,217 errors, not verified; verdict and error list pending controller completion.
+- Remaining on the PC: ervp-manager, ervp-orders, hermesops gateways (host the five held jobs), Brain backup, vault drift, SHADOW lane, Startup launchers for those. Nothing further until BUILD863 repairs (Nick-started turn) and Boris acceptance.
