@@ -6,7 +6,7 @@ Authority: Nick’s October 16 SSH stop approval in chat fce19860, followed by t
 
 | Item | State | Evidence / next step |
 | --- | --- | --- |
-| 1 Completion Mirror | Verified disabled | Disabled 08:39:15 ET. No in-flight process. Observed through 08:44:20 ET, covering a full five-minute cycle; last run stayed 08:35:15 ET, no relaunch. Shared ledger preserved; All Order Review remains its held writer. |
+| 1 Completion Mirror | Verified disabled | Disabled 08:39:15 ET. No in-flight process. Observed through 08:44:30 ET, covering a full five-minute cycle; last run stayed 08:35:15 ET, no relaunch. Shared ledger preserved; All Order Review remains its held writer. |
 | 2 Brent and Brady | Disabled; observation pending | Brent disabled 08:44:46 ET; Brady 08:45:00 ET. Last execution records completed, no unfinished records among captured recent runs. Observe after 08:50:01 ET before disabling Tim watchdog, renaming its launcher, and stopping gateway. Both named cursor files were absent at 08:48:21 ET; no synthetic cursor created. |
 | 3–9 | Not yet changed | Continue item by item after prior observation passes. |
 
