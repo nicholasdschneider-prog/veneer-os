@@ -67,7 +67,7 @@ foreach($l in $launchers){
 $stops=@()
 foreach($e in @($expected|Sort-Object @{Expression={if($_.parent -in $ids){1}else{0}}})){
  $p=Get-CimInstance Win32_Process -Filter "ProcessId=$($e.pid)"
- if($p -and $p.CreationDate.ToString('o') -eq $e.created -and $p.ParentProcessId -eq $e.parent -and $p.CommandLine -match $pattern -and $p.CommandLine -match 'gateway\s+run'){
+ if($p -and $p.CreationDate -and $p.CreationDate.ToString('o') -eq $e.created -and $p.ParentProcessId -eq $e.parent -and $p.CommandLine -match $pattern -and $p.CommandLine -match 'gateway\s+run'){
   Stop-Process -Id $e.pid
   $r=@{pid=$e.pid;parent=$e.parent;created=$e.created;at=(Get-Date -Format o);effect='exact gateway PID stopped'}
  }else{$r=@{pid=$e.pid;at=(Get-Date -Format o);effect='not stopped: already exited or identity no longer matches; final profile scan required'}}

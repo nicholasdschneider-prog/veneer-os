@@ -14,17 +14,20 @@
     "ERVP Hermes Dashboard",
     "Hermes_cs_mallory_Watchdog",
     "Hermes_cs_jasmine_Watchdog",
-    "Hermes_cs_rae_Watchdog"
+    "Hermes_cs_rae_Watchdog",
+    "Hermes_cs_ali_Watchdog"
   ],
   "extra_startup": [
     "Hermes_Gateway_cs-mallory.vbs",
     "Hermes_Gateway_cs-jasmine.vbs",
-    "Hermes_Gateway_cs-rae.vbs"
+    "Hermes_Gateway_cs-rae.vbs",
+    "Hermes_Gateway_cs-ali.vbs"
   ],
   "source_stop_receipts": [
     "item09-cs-mallory-stop.json",
     "item09-cs-jasmine-stop.json",
-    "item09-cs-rae-stop.json"
+    "item09-cs-rae-stop.json",
+    "item09-cs-ali-stop.json"
   ],
   "note": "Tim watchdog and Startup are implicit in audit-drift.py; entries here come only from performed authorized stop receipts."
 }

@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-16T13:27:35.3550535-04:00",
+  "profile": "cs-ali",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-ali",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_cs_ali_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T13:25:01.0000000-04:00",
+      "next_run": "2026-10-16T13:30:00.0000000-04:00",
+      "state": "Ready",
+      "enabled": true
+    }
+  ],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-ali.vbs",
+      "sha256": "FB0ABCC1D62178B8A0CF842EAA01F624872B23B0F056C44FDBB2B42B71CE44C0",
+      "name": "Hermes_Gateway_cs-ali.vbs",
+      "bytes": 240,
+      "active": true
+    }
+  ],
+  "gateways": [
+    {
+      "parent": 5744,
+      "pid": 9632,
+      "created": "2026-10-15T14:18:52.2185730-04:00",
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\.worktrees\\t_14c058c8\\.venv\\Scripts\\pythonw.exe"
+    },
+    {
+      "parent": 9632,
+      "pid": 9808,
+      "created": "2026-10-15T14:18:52.2806930-04:00",
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe"
+    }
+  ],
+  "gateway_children": [
+    {
+      "matches_profile_gateway": false,
+      "parent": 9632,
+      "pid": 9436,
+      "name": "conhost.exe",
+      "created": "2026-10-15T14:18:52.2402380-04:00"
+    },
+    {
+      "matches_profile_gateway": true,
+      "parent": 9632,
+      "pid": 9808,
+      "name": "python.exe",
+      "created": "2026-10-15T14:18:52.2806930-04:00"
+    }
+  ],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:19:34.838906+00:00",
+    "pid": 9808,
+    "active_agents": 0,
+    "start_time": 179208833228
+  },
+  "heartbeat_modified": "2026-10-16T17:27:34.0042500Z",
+  "default_alias_caution": false
+}
