@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-16T10:39:19.2064093-04:00",
+  "sqlite_count": 199,
+  "sqlite_integrity_ok": 199,
+  "sqlite_failed_metadata": [],
+  "copy_log_classification": [
+    {
+      "name": "robocopy-brain-ops.log",
+      "bytes": 2,
+      "error_codes": [],
+      "privilege_signal": false,
+      "link_signal": false,
+      "access_denied_signal": false,
+      "missing_signal": false,
+      "retry_limit_signal": false
+    },
+    {
+      "name": "robocopy-dot-hermes.log",
+      "bytes": 2,
+      "error_codes": [],
+      "privilege_signal": false,
+      "link_signal": false,
+      "access_denied_signal": false,
+      "missing_signal": false,
+      "retry_limit_signal": false
+    },
+    {
+      "name": "robocopy-legacy-data.log",
+      "bytes": 2,
+      "error_codes": [],
+      "privilege_signal": false,
+      "link_signal": false,
+      "access_denied_signal": false,
+      "missing_signal": false,
+      "retry_limit_signal": false
+    },
+    {
+      "name": "robocopy-local-hermes.log",
+      "bytes": 514,
+      "error_codes": [
+        "33",
+        "33"
+      ],
+      "privilege_signal": false,
+      "link_signal": false,
+      "access_denied_signal": false,
+      "missing_signal": false,
+      "retry_limit_signal": true
+    },
+    {
+      "name": "robocopy-obsidian-brain.log",
+      "bytes": 2,
+      "error_codes": [],
+      "privilege_signal": false,
+      "link_signal": false,
+      "access_denied_signal": false,
+      "missing_signal": false,
+      "retry_limit_signal": false
+    },
+    {
+      "name": "robocopy-worktrees.log",
+      "bytes": 2,
+      "error_codes": [],
+      "privilege_signal": false,
+      "link_signal": false,
+      "access_denied_signal": false,
+      "missing_signal": false,
+      "retry_limit_signal": false
+    }
+  ]
+}

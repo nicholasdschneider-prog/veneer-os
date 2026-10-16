@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-16T14:38:51.686843+00:00",
+  "script_metadata": [
+    {
+      "path": "C:\\Users\\nicho\\.hermes\\scripts\\check_martine_reply.py",
+      "bytes": 2060,
+      "sha256": "a3ab01f6df78bcdf87b37763a59a9cc1b8588e39b5755c2b02ac7ce609571a4e"
+    }
+  ],
+  "state_candidates": [],
+  "reply_delta_limit": "No helper invocation or mailbox read. Script has no file-writing calls or local cursor path; only retained local artifacts are inventoried."
+}

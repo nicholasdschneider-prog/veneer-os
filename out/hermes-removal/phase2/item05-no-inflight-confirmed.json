@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-16T10:40:17.7761215-04:00",
+  "all_unfinished_executions": 0,
+  "matched_helper_processes": [],
+  "last_run": "2026-06-20T08:12:28.558868-04:00",
+  "recorded_executions": 0,
+  "scope": "Local ledger/process confirmation only; no helper invocation or mailbox read."
+}

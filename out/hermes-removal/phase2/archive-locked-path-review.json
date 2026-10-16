@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-16T10:39:44.0536966-04:00",
+  "error_code": 33,
+  "paths": [
+    {
+      "bytes": 37,
+      "modified": "2026-10-15T18:18:59.9998516Z",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\supervisor.lock",
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\mirror\\local-hermes\\services\\dashboard\\supervisor.lock",
+      "archive_bytes": null,
+      "archive_exists": false
+    }
+  ],
+  "no_retry_performed": true
+}

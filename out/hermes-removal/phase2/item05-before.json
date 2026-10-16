@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-16T14:38:37.953337+00:00",
+  "profile": "root",
+  "id": "ce772d25016e",
+  "operation": "read",
+  "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\cron\\jobs.json",
+  "before": {
+    "id": "ce772d25016e",
+    "name": "Martine Reply Watcher",
+    "enabled": true,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 60,
+      "display": "every 60m"
+    },
+    "last_run_at": "2026-06-20T08:12:28.558868-04:00",
+    "next_run_at": "2026-06-20T09:12:28.558868-04:00",
+    "last_status": "ok",
+    "failure_streak": null
+  },
+  "after": {
+    "id": "ce772d25016e",
+    "name": "Martine Reply Watcher",
+    "enabled": true,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 60,
+      "display": "every 60m"
+    },
+    "last_run_at": "2026-06-20T08:12:28.558868-04:00",
+    "next_run_at": "2026-06-20T09:12:28.558868-04:00",
+    "last_status": "ok",
+    "failure_streak": null
+  },
+  "before_sha256": "b39517b14b029df489b623e1cb67074e513749ff37fb252a593ea90d897ad69c",
+  "after_sha256": "b39517b14b029df489b623e1cb67074e513749ff37fb252a593ea90d897ad69c",
+  "ledger": {
+    "exists": true,
+    "recent": [],
+    "unfinished": 0,
+    "active": [],
+    "total_executions": 0
+  },
+  "no_job_invoked": true,
+  "scheduler_lock": "msvcrt byte 0 .jobs.lock acquired"
+}
