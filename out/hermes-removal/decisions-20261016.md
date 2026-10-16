@@ -17,3 +17,8 @@
 - PC operator: items 1–2 verified (completion mirror disabled 08:39; Brent/Brady + cs-tim gateway retired 08:51, clean at 09:28); item 3 (inventory router) disabled 09:28:55, observation pending; items 4–9 serial; PC archive ~72.5 GiB copied, unverified. Receipts: out/hermes-removal/phase2/README.md.
 - Boris REJECTED cutover acceptance for all five lanes (13:21Z). Repair criteria: no mutation retries + independent readback; durable scheduler exclusion; durable alert attempt records; Trending low-data = control-only hidden_low_data + epoch 0 (Piper contract, out/piper/hermes-trending-acceptance-20261013); LTL lookback/completeness proof + separate readback; Returns preflight = POST /api/returns/lookup with content-type; failure feed process death from action events, gaps block delivery, seed legacy 526 ids, hold 5794a63b; scanner per-row freshness, Sage conflict rules, ledger continuity.
 - enqueue_build for the repairs was REFUSED (needs a Nick-started turn). Lanes stay in shadow; Windows jobs for the five lanes stay HELD. Nick must say "queue the BUILD863 repairs" in this chat to proceed.
+
+## 14:40 ET review (2026-10-16)
+- Phase 2: items 1–6 and 8 verified; item 7 (Lippert SHADOW lane) SKIPPED, left enabled (no-unique-pending-output prerequisite not established); item 9 idle gateways: cs-mallory/jasmine/rae/ali/joe, cust-service, nick done, hermesops-2 observing, accounting-sharon / tripower-consulting / default remaining. Dashboard, auth sync, CS gateways retired.
+- Archive: copy done, hashing in progress with 3,165 accumulated errors; NOT verified. supervisor.lock preserved separately.
+- Boris: unchanged. BUILD863 repairs still await a Nick-started turn. No live flips.
