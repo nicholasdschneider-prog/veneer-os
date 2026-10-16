@@ -1,0 +1,416 @@
+{
+  "at": "2026-10-16T14:50:03.5020328-04:00",
+  "profile": "accounting-sharon",
+  "directories": [
+    {
+      "entries": [
+        {
+          "directory": true,
+          "name": "assets",
+          "bytes": null,
+          "modified": "2026-08-20T16:17:11.4813722Z"
+        },
+        {
+          "directory": true,
+          "name": "audio_cache",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:28.5685229Z"
+        },
+        {
+          "directory": true,
+          "name": "backups",
+          "bytes": null,
+          "modified": "2026-09-01T18:37:58.1627350Z"
+        },
+        {
+          "directory": true,
+          "name": "cache",
+          "bytes": null,
+          "modified": "2026-10-15T18:22:03.4405422Z"
+        },
+        {
+          "directory": true,
+          "name": "codex-home",
+          "bytes": null,
+          "modified": "2026-08-19T17:50:21.0015787Z"
+        },
+        {
+          "directory": true,
+          "name": "cron",
+          "bytes": null,
+          "modified": "2026-10-16T18:49:09.2122358Z"
+        },
+        {
+          "directory": true,
+          "name": "evidence",
+          "bytes": null,
+          "modified": "2026-08-14T21:18:47.6648218Z"
+        },
+        {
+          "directory": true,
+          "name": "gateway-service",
+          "bytes": null,
+          "modified": "2026-08-25T15:56:46.6393081Z"
+        },
+        {
+          "directory": true,
+          "name": "home",
+          "bytes": null,
+          "modified": "2026-08-26T17:59:56.7160284Z"
+        },
+        {
+          "directory": true,
+          "name": "hooks",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:28.5675154Z"
+        },
+        {
+          "directory": true,
+          "name": "image_cache",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:28.5685229Z"
+        },
+        {
+          "directory": true,
+          "name": "logs",
+          "bytes": null,
+          "modified": "2026-08-25T16:00:52.1577386Z"
+        },
+        {
+          "directory": true,
+          "name": "memories",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:13.3381455Z"
+        },
+        {
+          "directory": true,
+          "name": "pairing",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:28.5675154Z"
+        },
+        {
+          "directory": true,
+          "name": "pending_messages",
+          "bytes": null,
+          "modified": "2026-08-14T20:53:27.4800088Z"
+        },
+        {
+          "directory": true,
+          "name": "plans",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:13.3434420Z"
+        },
+        {
+          "directory": true,
+          "name": "platforms",
+          "bytes": null,
+          "modified": "2026-08-14T20:53:14.8958950Z"
+        },
+        {
+          "directory": true,
+          "name": "plugins",
+          "bytes": null,
+          "modified": "2026-08-14T20:45:00.0113798Z"
+        },
+        {
+          "directory": true,
+          "name": "sandboxes",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:34.8836457Z"
+        },
+        {
+          "directory": true,
+          "name": "scripts",
+          "bytes": null,
+          "modified": "2026-09-16T18:06:41.3018522Z"
+        },
+        {
+          "directory": true,
+          "name": "secrets",
+          "bytes": null,
+          "modified": "2026-09-03T18:31:24.0803573Z"
+        },
+        {
+          "directory": true,
+          "name": "sessions",
+          "bytes": null,
+          "modified": "2026-09-03T14:54:38.8978169Z"
+        },
+        {
+          "directory": true,
+          "name": "skills",
+          "bytes": null,
+          "modified": "2026-10-14T14:58:54.6063913Z"
+        },
+        {
+          "directory": true,
+          "name": "skins",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:13.3424379Z"
+        },
+        {
+          "directory": true,
+          "name": "state",
+          "bytes": null,
+          "modified": "2026-10-16T18:49:51.5953953Z"
+        },
+        {
+          "directory": true,
+          "name": "workspace",
+          "bytes": null,
+          "modified": "2026-08-14T20:26:13.3434420Z"
+        },
+        {
+          "directory": false,
+          "name": ".env",
+          "bytes": 609,
+          "modified": "2026-08-19T17:50:21.0025627Z"
+        },
+        {
+          "directory": false,
+          "name": ".env.pre-outage-recovery-20260903T142659.bak",
+          "bytes": 609,
+          "modified": "2026-08-19T17:50:21.0025627Z"
+        },
+        {
+          "directory": false,
+          "name": ".no-bundled-skills",
+          "bytes": 153,
+          "modified": "2026-08-14T20:26:13.3454440Z"
+        },
+        {
+          "directory": false,
+          "name": ".skills_prompt_snapshot.json",
+          "bytes": 27954,
+          "modified": "2026-08-25T16:14:01.2018690Z"
+        },
+        {
+          "directory": false,
+          "name": ".update_check",
+          "bytes": 72,
+          "modified": "2026-09-16T18:01:38.2390783Z"
+        },
+        {
+          "directory": false,
+          "name": "auth.json",
+          "bytes": 4657,
+          "modified": "2026-09-16T18:20:11.5252005Z"
+        },
+        {
+          "directory": false,
+          "name": "auth.lock",
+          "bytes": 1,
+          "modified": "2026-08-14T20:26:30.5909184Z"
+        },
+        {
+          "directory": false,
+          "name": "channel_directory.json",
+          "bytes": 394,
+          "modified": "2026-10-16T18:46:40.7637953Z"
+        },
+        {
+          "directory": false,
+          "name": "config.yaml",
+          "bytes": 17202,
+          "modified": "2026-08-25T15:56:43.9394607Z"
+        },
+        {
+          "directory": false,
+          "name": "context_length_cache.yaml",
+          "bytes": 79,
+          "modified": "2026-09-16T18:01:38.6010747Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway-starts.log",
+          "bytes": 228,
+          "modified": "2026-10-15T18:22:04.6291468Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway.lock",
+          "bytes": 263,
+          "modified": "2026-10-15T18:22:06.0466669Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway.pid",
+          "bytes": 263,
+          "modified": "2026-10-15T18:22:06.0509718Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway_state.json",
+          "bytes": 621,
+          "modified": "2026-10-15T18:22:18.4622590Z"
+        },
+        {
+          "directory": false,
+          "name": "models_dev_cache.etag",
+          "bytes": 36,
+          "modified": "2026-09-16T18:01:39.2362496Z"
+        },
+        {
+          "directory": false,
+          "name": "models_dev_cache.json",
+          "bytes": 4674718,
+          "modified": "2026-09-16T18:01:39.2247309Z"
+        },
+        {
+          "directory": false,
+          "name": "Order_100117030_Chargeback_Response_REDESIGNED.pdf",
+          "bytes": 355058,
+          "modified": "2026-08-15T19:24:04.1947550Z"
+        },
+        {
+          "directory": false,
+          "name": "Order_100117030_Chargeback_Response_REVISED.pdf",
+          "bytes": 286247,
+          "modified": "2026-08-14T21:57:47.2578116Z"
+        },
+        {
+          "directory": false,
+          "name": "profile.yaml",
+          "bytes": 277,
+          "modified": "2026-08-14T20:47:43.7281900Z"
+        },
+        {
+          "directory": false,
+          "name": "projects.db",
+          "bytes": 45056,
+          "modified": "2026-08-20T16:18:18.2438661Z"
+        },
+        {
+          "directory": false,
+          "name": "projects.db-shm",
+          "bytes": 32768,
+          "modified": "2026-10-16T14:18:19.5078811Z"
+        },
+        {
+          "directory": false,
+          "name": "projects.db-wal",
+          "bytes": 0,
+          "modified": "2026-10-16T14:18:19.5068773Z"
+        },
+        {
+          "directory": false,
+          "name": "SOUL.md",
+          "bytes": 8299,
+          "modified": "2026-09-01T18:37:58.1652489Z"
+        },
+        {
+          "directory": false,
+          "name": "state.db",
+          "bytes": 9789440,
+          "modified": "2026-10-15T18:22:18.5086091Z"
+        },
+        {
+          "directory": false,
+          "name": "state.db-shm",
+          "bytes": 32768,
+          "modified": "2026-10-15T18:22:05.9224358Z"
+        },
+        {
+          "directory": false,
+          "name": "state.db-wal",
+          "bytes": 4152,
+          "modified": "2026-10-15T18:22:06.0331019Z"
+        },
+        {
+          "directory": false,
+          "name": "verification_evidence.db",
+          "bytes": 32768,
+          "modified": "2026-08-15T19:33:30.4050030Z"
+        },
+        {
+          "directory": false,
+          "name": "verification_evidence.db-shm",
+          "bytes": 32768,
+          "modified": "2026-10-16T14:18:19.6317521Z"
+        },
+        {
+          "directory": false,
+          "name": "verification_evidence.db-wal",
+          "bytes": 0,
+          "modified": "2026-10-16T14:18:19.6312460Z"
+        }
+      ],
+      "relative": ""
+    },
+    {
+      "entries": [
+        {
+          "directory": false,
+          "name": "accounting-inbox-monitor.json",
+          "bytes": 10464,
+          "modified": "2026-09-03T18:29:46.7819850Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway.heartbeat",
+          "bytes": 122,
+          "modified": "2026-10-16T18:49:51.5923954Z"
+        },
+        {
+          "directory": false,
+          "name": "gateway.lifecycle.json",
+          "bytes": 146,
+          "modified": "2026-10-15T18:22:06.0707890Z"
+        }
+      ],
+      "relative": "state"
+    },
+    {
+      "entries": [
+        {
+          "directory": false,
+          "name": "sessions.json",
+          "bytes": 446,
+          "modified": "2026-09-03T14:54:38.8798215Z"
+        }
+      ],
+      "relative": "sessions"
+    },
+    {
+      "entries": [
+        {
+          "directory": true,
+          "name": "output",
+          "bytes": null,
+          "modified": "2026-08-14T20:44:59.1849738Z"
+        },
+        {
+          "directory": false,
+          "name": ".jobs.lock",
+          "bytes": 0,
+          "modified": "2026-08-14T20:53:27.5132675Z"
+        },
+        {
+          "directory": false,
+          "name": ".tick.lock",
+          "bytes": 0,
+          "modified": "2026-10-16T18:49:09.2012360Z"
+        },
+        {
+          "directory": false,
+          "name": "executions.db",
+          "bytes": 20480,
+          "modified": "2026-08-14T20:53:27.5017051Z"
+        },
+        {
+          "directory": false,
+          "name": "ticker_heartbeat",
+          "bytes": 18,
+          "modified": "2026-10-16T18:49:09.2052364Z"
+        },
+        {
+          "directory": false,
+          "name": "ticker_last_success",
+          "bytes": 18,
+          "modified": "2026-10-16T18:49:09.2092353Z"
+        }
+      ],
+      "relative": "cron"
+    }
+  ]
+}

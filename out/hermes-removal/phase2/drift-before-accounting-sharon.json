@@ -1,0 +1,148 @@
+{
+  "at": "2026-10-16T14:50:04.1703570-04:00",
+  "baseline": "2026-10-16T08:40:11.5624493-04:00",
+  "baseline_note": "Completion Mirror was disabled before baseline",
+  "cron": {
+    "changed": [
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\cron\\jobs.json",
+        "id": "ce772d25016e",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cron\\jobs.json",
+        "id": "2ecec57ee69b",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\jobs.json",
+        "id": "394f30773d39",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\jobs.json",
+        "id": "b2b5b67f02c0",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+        "id": "89de9427e76b",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+        "id": "917a1ee90aec",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+        "id": "d68cb0c1ae05",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\cron\\jobs.json",
+        "id": "305da2ff8a02",
+        "before": true,
+        "after": false
+      },
+      {
+        "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\cron\\jobs.json",
+        "id": "330388e25e93",
+        "before": true,
+        "after": false
+      }
+    ],
+    "added": [],
+    "removed": []
+  },
+  "tasks": {
+    "changed": [
+      {
+        "name": "ERVP Hermes Dashboard",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_CS_Tim_Watchdog",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_Gateway_cust-service",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_Gianna_Watchdog",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_HermesOps2_Watchdog",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_Nick_Watchdog",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_cs_ali_Watchdog",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_cs_jasmine_Watchdog",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_cs_mallory_Watchdog",
+        "before": true,
+        "after": false
+      },
+      {
+        "name": "Hermes_cs_rae_Watchdog",
+        "before": true,
+        "after": false
+      }
+    ],
+    "added": [],
+    "removed": []
+  },
+  "startup": {
+    "changed": [],
+    "added": [
+      "Hermes_Gateway_cs-ali.vbs.disabled-20261016",
+      "Hermes_Gateway_cs-jasmine.vbs.disabled-20261016",
+      "Hermes_Gateway_cs-joe.vbs.disabled-20261016",
+      "Hermes_Gateway_cs-mallory.vbs.disabled-20261016",
+      "Hermes_Gateway_cs-rae.vbs.disabled-20261016",
+      "Hermes_Gateway_cs-tim.vbs.disabled-20261016"
+    ],
+    "removed": [
+      "Hermes_Gateway_cs-ali.vbs",
+      "Hermes_Gateway_cs-jasmine.vbs",
+      "Hermes_Gateway_cs-joe.vbs",
+      "Hermes_Gateway_cs-mallory.vbs",
+      "Hermes_Gateway_cs-rae.vbs",
+      "Hermes_Gateway_cs-tim.vbs"
+    ]
+  },
+  "checks": {
+    "only_expected_cron_changes": true,
+    "only_expected_task_changes": true,
+    "all_changed_flags_disabled": true,
+    "only_expected_launcher_renames": true,
+    "no_added_removed_jobs_tasks": true
+  },
+  "result": "PASS: HOLD and Tier C states unchanged"
+}

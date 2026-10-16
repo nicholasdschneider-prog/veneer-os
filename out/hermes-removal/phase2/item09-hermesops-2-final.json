@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-16T14:49:52.3140317-04:00",
+  "item": 9,
+  "profile": "hermesops-2",
+  "observation_start": "2026-10-16T14:34:27.0190190-04:00",
+  "elapsed_seconds": 925.2950126999999,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": true
+  },
+  "gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T14:31:01.0000000-04:00",
+      "name": "Hermes_HermesOps2_Watchdog",
+      "last_run_unchanged": true,
+      "enabled": false
+    }
+  ],
+  "launchers": [],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}

@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-16T14:51:27.8419638-04:00",
+  "item": 9,
+  "profile": "accounting-sharon",
+  "observation_start": "2026-10-16T14:51:18.7695831-04:00",
+  "elapsed_seconds": 9.0723807,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": false
+  },
+  "gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T14:47:01.0000000-04:00",
+      "name": "Hermes_Accounting_Sharon_Watchdog",
+      "last_run_unchanged": true,
+      "enabled": false
+    }
+  ],
+  "launchers": [],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}

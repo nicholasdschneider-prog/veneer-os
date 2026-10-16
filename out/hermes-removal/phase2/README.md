@@ -14,11 +14,11 @@ Authority: Nick’s October 16 SSH stop approval in chat fce19860, followed by t
 | 6 Accounting Inbox Read-Only Monitor | Verified disabled | Full 30-minute/business-slot observation passed at 12:12 ET, after Friday’s 12:07 trigger. Disabled, last-run/execution IDs unchanged, zero ALL unfinished executions, all 36 preserved state/processed artifacts unchanged. No monitor or mailbox query performed. |
 | 7 Lippert SHADOW lane | SKIPPED; unchanged/enabled | Shadow-only wrapper is confirmed, but no-unique-pending-downstream-output prerequisite was not established. Original conditional instruction permits reporting/skipping; no mutation or job invocation. |
 | 8 Auth sync / dashboard | Verified retired | Final 12:35 ET observation passed: both crons disabled with unchanged last-run/execution IDs and zero ALL unfinished; dashboard task disabled, task launcher hash unchanged, no dashboard processes after full 15 minutes. Held gateway identities preserved. Missing 37-byte supervisor.lock copied to separate PC custody after observation; archive tree untouched. |
-| 9 Idle gateways | cs-mallory, cs-jasmine, cs-rae, cs-ali, cs-joe, cust-service, nick verified; hermesops-2 observing | nick passed all final checks and post-read unfinished=0. hermesops-2 launch sources retired 14:34:27 ET after idle/dependency/identity checks; active watchdogs disabled or confirmed absent, active Startup launchers renamed when present, exact gateway stops recorded only when present, interim checks passed. Require full 15 minutes through 14:49:27 ET before accounting-sharon. Remaining profiles untouched. |
+| 9 Idle gateways | cs-mallory, cs-jasmine, cs-rae, cs-ali, cs-joe, cust-service, nick, hermesops-2 verified; accounting-sharon observing | hermesops-2 passed all final checks and post-read unfinished=0. accounting-sharon launch sources retired 14:51:18 ET after idle/dependency/identity checks; active watchdogs disabled or confirmed absent, active Startup launchers renamed when present, exact gateway stops recorded only when present, interim checks passed. Require full 15 minutes through 15:06:18 ET before tripower-consulting. Remaining profiles untouched. |
 
 ## PC-only archive
 
-The recovery baseline remains on the PC at `C:\Users\nicho\backups\hermes-final-20261016`. The six-root copy phase has finished; the original WMI controller PID 19500 (created 08:47:43 ET) is hashing the archive. At 14:34 ET its status reported 1,520,000 files hashed, 91,966,467,767 bytes, and 3,165 accumulated errors. Hashing remains in progress; the detailed error list will be emitted on completion. The archive is NOT verified. A bounded 20-second long-path sample checked 454,105 entries without finding a diagnostic candidate; this does not establish the cause of hashing errors. All **199/199 consistent SQLite snapshots passed integrity_check**; no database error metadata was returned. Per-file manifest hashing, restore sample and ACL verification are still pending. No archive data is copied to this Mac.
+The recovery baseline remains on the PC at `C:\Users\nicho\backups\hermes-final-20261016`. The six-root copy phase has finished; the original WMI controller PID 19500 (created 08:47:43 ET) is hashing the archive. At 14:51 ET its status reported 1,620,000 files hashed, 94,554,331,247 bytes, and 3,168 accumulated errors. Hashing remains in progress; the detailed error list will be emitted on completion. The archive is NOT verified. A bounded 20-second long-path sample checked 454,105 entries without finding a diagnostic candidate; this does not establish the cause of hashing errors. All **199/199 consistent SQLite snapshots passed integrity_check**; no database error metadata was returned. Per-file manifest hashing, restore sample and ACL verification are still pending. No archive data is copied to this Mac.
 
 The initial copy error was **services/dashboard/supervisor.lock**, 37 bytes. After item 8 passed its observation, it was preserved with matching SHA-256 at `C:\Users\nicho\backups\hermes-phase2-20261016\dashboard\supervisor.lock.final`; see supervisor-lock-custody.json. The original remains intact and the active archive tree was not changed. After controller completion, reconcile that custody file and ALL hashing errors into a verified manifest before claiming archive verification. Do not rerun Hermes or overwrite/delete archive artifacts blindly.
 
@@ -28,7 +28,9 @@ The archive will remain a **baseline**, not a final quiescent seal, while held w
 
 ## Continuation
 
-At the next wake after 14:49:27 ET, run item09-hermesops-2-observe.ps1 into item09-hermesops-2-final.json and require every check including >=900 seconds. Re-run its EXISTING preflight probe into DISTINCT item09-hermesops-2-post.json, confirming zero ALL unfinished/no gateway/no enabled dependency. Do not overwrite original preflight JSON or repeat the stop. After it passes, begin accounting-sharon, with fresh preflight and inspected task action metadata.
+At the next wake after 15:06:18 ET, run item09-accounting-sharon-observe.ps1 into item09-accounting-sharon-final.json and require every check including >=900 seconds. Re-run its EXISTING preflight probe into DISTINCT item09-accounting-sharon-post.json, confirming zero ALL unfinished/no gateway/no enabled dependency. Do not overwrite original preflight JSON or repeat the stop. After it passes, begin tripower-consulting, with fresh preflight and inspected task action metadata.
+
+Accounting-Sharon custody captured before stop: 13 retained session records and 30 retained inbox entries, zero pending delivery obligations/delegations/turn leases/compression locks/queued messages. Safe session IDs/cursors, file hashes/mtimes and field fingerprints are in item09-accounting-sharon-custody.json; source contents and a metadata receipt remain on PC under backups/hermes-phase2-20261016/accounting-sharon/pending-state-custody.json. Unended historical sessions are not executing agents. No mailbox/monitor run. After the full observation, run item09-accounting-sharon-final-state.ps1 ONCE into item09-accounting-sharon-state-final.json (writes a new PC metadata receipt), compare sessions/pending/field fingerprints/file hashes against custody, report any runtime-state delta, and compare historical disabled Startup metadata in post vs original preflight. Preserve all files.
 
 Read phase2-state.json for current progress and exact UTC deadline. record-idle-checkpoint.py updates only local operation records from successful receipts; it does not execute PC actions. audit-expected.json records exact prior authorized changes for drift comparison. Never mutate a later profile before the current observation passes.
 
@@ -72,6 +74,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [archive-status-0953.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-0953.json)
 - [archive-status-ali-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-ali-final.json)
 - [archive-status-cust-service-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-cust-service-final.json)
+- [archive-status-hermesops-2-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-hermesops-2-final.json)
 - [archive-status-item04-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-item04-start.json)
 - [archive-status-item05-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-item05-start.json)
 - [archive-status-item06-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-item06-start.json)
@@ -92,6 +95,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [discover-runtime.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/discover-runtime.json)
 - [discover-runtime.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/discover-runtime.ps1)
 - [drift-0954.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-0954.json)
+- [drift-after-accounting-sharon.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-accounting-sharon.json)
 - [drift-after-ali-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-ali-stop.json)
 - [drift-after-cust-service.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-cust-service.json)
 - [drift-after-dashboard-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-dashboard-stop.json)
@@ -107,6 +111,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [drift-after-nick.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-nick.json)
 - [drift-after-rae-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-after-rae-stop.json)
 - [drift-ali-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-ali-start.json)
+- [drift-before-accounting-sharon.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-before-accounting-sharon.json)
 - [drift-before-cust-service.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-before-cust-service.json)
 - [drift-before-hermesops-2.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-before-hermesops-2.json)
 - [drift-before-joe.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-before-joe.json)
@@ -122,6 +127,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [idle-preflight-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/idle-preflight-body.ps1)
 - [idle-stop-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/idle-stop-body.ps1)
 - [inventory-0954.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-0954.json)
+- [inventory-after-accounting-sharon.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-accounting-sharon.json)
 - [inventory-after-ali-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-ali-stop.json)
 - [inventory-after-cust-service.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-cust-service.json)
 - [inventory-after-dashboard-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-dashboard-stop.json)
@@ -138,6 +144,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [inventory-after-rae-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-rae-stop.json)
 - [inventory-after-tim-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-tim-stop.json)
 - [inventory-ali-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-ali-start.json)
+- [inventory-before-accounting-sharon.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-before-accounting-sharon.json)
 - [inventory-before-cust-service.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-before-cust-service.json)
 - [inventory-before-hermesops-2.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-before-hermesops-2.json)
 - [inventory-before-joe.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-before-joe.json)
@@ -268,6 +275,19 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [item08-stop-syntax-check.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-stop-syntax-check.json)
 - [item08-stop-syntax-check.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-stop-syntax-check.ps1)
 - [item08-watchdog-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item08-watchdog-final.json)
+- [item09-accounting-sharon-custody.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-custody.json)
+- [item09-accounting-sharon-custody.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-custody.ps1)
+- [item09-accounting-sharon-discover.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-discover.json)
+- [item09-accounting-sharon-discover.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-discover.ps1)
+- [item09-accounting-sharon-final-state.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-final-state.ps1)
+- [item09-accounting-sharon-interim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-interim.json)
+- [item09-accounting-sharon-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-observe.ps1)
+- [item09-accounting-sharon-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-preflight.json)
+- [item09-accounting-sharon-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-preflight.ps1)
+- [item09-accounting-sharon-state-schema.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-state-schema.json)
+- [item09-accounting-sharon-state-schema.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-state-schema.ps1)
+- [item09-accounting-sharon-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-stop.json)
+- [item09-accounting-sharon-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-accounting-sharon-stop.ps1)
 - [item09-cs-ali-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-ali-final.json)
 - [item09-cs-ali-interim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-ali-interim.json)
 - [item09-cs-ali-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cs-ali-observe.ps1)
@@ -322,8 +342,10 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [item09-cust-service-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cust-service-preflight.ps1)
 - [item09-cust-service-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cust-service-stop.json)
 - [item09-cust-service-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-cust-service-stop.ps1)
+- [item09-hermesops-2-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-hermesops-2-final.json)
 - [item09-hermesops-2-interim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-hermesops-2-interim.json)
 - [item09-hermesops-2-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-hermesops-2-observe.ps1)
+- [item09-hermesops-2-post.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-hermesops-2-post.json)
 - [item09-hermesops-2-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-hermesops-2-preflight.json)
 - [item09-hermesops-2-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-hermesops-2-preflight.ps1)
 - [item09-hermesops-2-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item09-hermesops-2-stop.json)

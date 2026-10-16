@@ -94,20 +94,32 @@
       "post_receipt": "item09-nick-post.json"
     },
     "hermesops-2": {
-      "status": "observing",
+      "status": "verified",
       "observation_start": "2026-10-16T14:34:27.0190190-04:00",
       "not_before_utc": "2026-10-16T18:49:27.019019+00:00",
       "stop_receipt": "item09-hermesops-2-stop.json",
-      "observe_probe": "item09-hermesops-2-observe.ps1"
+      "observe_probe": "item09-hermesops-2-observe.ps1",
+      "confirmed_at": "2026-10-16T14:49:52.3140317-04:00",
+      "final_receipt": "item09-hermesops-2-final.json",
+      "post_receipt": "item09-hermesops-2-post.json"
+    },
+    "accounting-sharon": {
+      "status": "observing",
+      "observation_start": "2026-10-16T14:51:18.7695831-04:00",
+      "not_before_utc": "2026-10-16T19:06:18.769583+00:00",
+      "stop_receipt": "item09-accounting-sharon-stop.json",
+      "observe_probe": "item09-accounting-sharon-observe.ps1",
+      "custody_receipt": "item09-accounting-sharon-custody.json",
+      "final_state_probe": "item09-accounting-sharon-final-state.ps1"
     }
   },
-  "next_profile": "accounting-sharon",
+  "next_profile": "tripower-consulting",
   "archive": {
     "controller_pid": 19500,
     "controller_created": "2026-10-16T12:47:43Z",
     "state": "hashing_unverified",
-    "files_hashed": 1520000,
-    "errors": 3165,
+    "files_hashed": 1620000,
+    "errors": 3168,
     "sqlite_integrity_ok": 199,
     "supervisor_lock_custody_receipt": "supervisor-lock-custody.json"
   }
