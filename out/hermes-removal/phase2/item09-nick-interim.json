@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-16T14:17:07.3992773-04:00",
+  "item": 9,
+  "profile": "nick",
+  "observation_start": "2026-10-16T14:16:58.9266601-04:00",
+  "elapsed_seconds": 8.4726172,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": false
+  },
+  "gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T14:14:16.0000000-04:00",
+      "name": "Hermes_Nick_Watchdog",
+      "last_run_unchanged": true,
+      "enabled": false
+    }
+  ],
+  "launchers": [],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}

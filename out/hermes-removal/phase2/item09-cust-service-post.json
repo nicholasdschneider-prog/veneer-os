@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-16T14:16:35.0181839-04:00",
+  "profile": "cust-service",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cust-service",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_Gateway_cust-service",
+      "last_result": 0,
+      "last_run": "2026-10-15T14:20:53.0000000-04:00",
+      "next_run": null,
+      "state": "Disabled",
+      "enabled": false
+    },
+    {
+      "name": "Hermes_Gianna_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T13:59:02.0000000-04:00",
+      "next_run": "2026-10-16T14:17:00.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    }
+  ],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cust-service.vbs.disabled-t_73a06450-20260723-124208",
+      "sha256": "F794EEB4DF55D09E1F445CB35B16A0445C7AB41557FD89073EE14576DD3B132C",
+      "name": "Hermes_Gateway_cust-service.vbs.disabled-t_73a06450-20260723-124208",
+      "bytes": 500,
+      "active": false
+    }
+  ],
+  "gateways": [],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:46:04.626058+00:00",
+    "pid": 10132,
+    "active_agents": 0,
+    "start_time": 179208845917
+  },
+  "heartbeat_modified": "2026-10-16T18:00:57.5694448Z",
+  "default_alias_caution": false
+}

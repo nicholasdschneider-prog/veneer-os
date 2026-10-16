@@ -1,0 +1,42 @@
+{
+  "item": 9,
+  "profile": "nick",
+  "at": "2026-10-16T14:16:58.9266601-04:00",
+  "observation_start": "2026-10-16T14:16:58.9266601-04:00",
+  "remaining_gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T14:14:16.0000000-04:00",
+      "last_result": 0,
+      "enabled": false,
+      "name": "Hermes_Nick_Watchdog",
+      "at": "2026-10-16T14:16:58.6531457-04:00"
+    }
+  ],
+  "launchers": [],
+  "process_stops": [
+    {
+      "effect": "exact gateway PID stopped",
+      "parent": 6188,
+      "pid": 10212,
+      "created": "2026-10-15T14:18:52.1709880-04:00",
+      "at": "2026-10-16T14:16:58.8081719-04:00"
+    },
+    {
+      "effect": "exact gateway PID stopped",
+      "parent": 10212,
+      "pid": 8680,
+      "created": "2026-10-15T14:18:52.2488320-04:00",
+      "at": "2026-10-16T14:16:58.8625229-04:00"
+    }
+  ],
+  "no_inflight": {
+    "additional_child_workers": 0,
+    "active_agents": 0,
+    "runtime_status_updated_at": "2026-10-15T18:19:35.262922+00:00",
+    "unfinished_all_profile": 0
+  },
+  "journal": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\nick\\idle-steps.jsonl",
+  "observation": "Pending 15 minutes",
+  "original_files_preserved": true
+}

@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-16T14:16:39.8913367-04:00",
+  "profile": "nick",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\nick",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_Nick_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T14:14:16.0000000-04:00",
+      "next_run": "2026-10-16T14:19:15.0000000-04:00",
+      "state": "Ready",
+      "enabled": true
+    }
+  ],
+  "startup": [],
+  "gateways": [
+    {
+      "parent": 6188,
+      "pid": 10212,
+      "created": "2026-10-15T14:18:52.1709880-04:00",
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\pythonw.exe"
+    },
+    {
+      "parent": 10212,
+      "pid": 8680,
+      "created": "2026-10-15T14:18:52.2488320-04:00",
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe"
+    }
+  ],
+  "gateway_children": [
+    {
+      "matches_profile_gateway": false,
+      "parent": 10212,
+      "pid": 9360,
+      "name": "conhost.exe",
+      "created": "2026-10-15T14:18:52.1920850-04:00"
+    },
+    {
+      "matches_profile_gateway": true,
+      "parent": 10212,
+      "pid": 8680,
+      "name": "python.exe",
+      "created": "2026-10-15T14:18:52.2488320-04:00"
+    }
+  ],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:19:35.262922+00:00",
+    "pid": 8680,
+    "active_agents": 0,
+    "start_time": 179208833225
+  },
+  "heartbeat_modified": "2026-10-16T18:16:35.0181839Z",
+  "default_alias_caution": false
+}

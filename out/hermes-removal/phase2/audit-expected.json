@@ -17,7 +17,8 @@
     "Hermes_cs_rae_Watchdog",
     "Hermes_cs_ali_Watchdog",
     "Hermes_Gianna_Watchdog",
-    "Hermes_Gateway_cust-service"
+    "Hermes_Gateway_cust-service",
+    "Hermes_Nick_Watchdog"
   ],
   "extra_startup": [
     "Hermes_Gateway_cs-mallory.vbs",
@@ -32,7 +33,8 @@
     "item09-cs-rae-stop.json",
     "item09-cs-ali-stop.json",
     "item09-cs-joe-stop.json",
-    "item09-cust-service-stop.json"
+    "item09-cust-service-stop.json",
+    "item09-nick-stop.json"
   ],
   "note": "Tim watchdog and Startup are implicit in audit-drift.py; entries here come only from performed authorized stop receipts."
 }
