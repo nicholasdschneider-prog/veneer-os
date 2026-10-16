@@ -7,12 +7,13 @@ Authority: Nick’s October 16 SSH stop approval in chat fce19860, followed by t
 | Item | State | Evidence / next step |
 | --- | --- | --- |
 | 1 Completion Mirror | Verified disabled | Disabled 08:39:15 ET. No in-flight process. Observed through 08:44:30 ET, covering a full five-minute cycle; last run stayed 08:35:15 ET, no relaunch. Shared ledger preserved; All Order Review remains its held writer. |
-| 2 Brent and Brady / Tim gateway | Watchers verified; gateway observation pending | At 08:50:25–26 ET both jobs remained disabled, last-run times and recent execution IDs were unchanged, and ALL unfinished execution counts were zero. Both cursor files remain absent. Tim watchdog disabled 08:51:54 ET; active launcher renamed to .disabled-20261016 with unchanged SHA-256; exact gateway PID 10056 stopped 08:51:55 ET after verifying creation time/parent, no child processes, zero unfinished executions across the entire profile, and active_agents=0 in the matching runtime status (last status transition was Oct 15; fresh heartbeat confirmed the same running gateway). Immediate and interim checks found no relaunch. Complete the 15-minute check after 09:06:55 ET. |
-| 3–9 | Not yet changed | Continue item by item after prior observation passes. |
+| 2 Brent and Brady / Tim gateway | Verified retired | Both watcher cron entries stayed disabled with unchanged last-run times/execution IDs and zero ALL unfinished executions through 09:28 ET. Both cursor files remain absent. Watchdog disabled 08:51:54 ET, active launcher renamed with original SHA-256 preserved, exact gateway stopped 08:51:55 ET. Final 09:27:58 ET observation passed all checks after 2,162 seconds: no relaunch, watchdog last run unchanged, active launcher absent, disabled launcher hash unchanged. |
+| 3 Inventory sync incident router | Disabled; five-minute observation pending | Disabled 09:28:55 ET under scheduler lock. No unfinished execution. Next nominal trigger 09:32:54 ET; require a full five-minute check after 09:33:55 ET. Local state log SHA-256 f97f3fc2aa9b0e67b5bb9e6e18860d883bae02eed399215d00d6968f5a8daf0e; last modified Oct 15, recent statuses failed, no authoritative current open-incident count or claim cursor. Preserve original state; do not claim zero remote incidents. |
+| 4–9 | Not yet changed | Continue serially after item 3 observation passes. |
 
 ## PC-only archive
 
-The running recovery baseline is `C:\Users\nicho\backups\hermes-final-20261016`, launched through Windows WMI at 08:47:43 ET. A separate SSH check confirmed both controller PID 19500 and its Robocopy child PID 18796 survived the SSH session. At 08:50:28 ET the same controller and Robocopy child were still running. Six-root copy, per-file checksums, metadata exclusions, SQLite backup/integrity checks, restore sample, and ACL metadata remain pending. No archive data is copied to this Mac.
+The running recovery baseline is `C:\Users\nicho\backups\hermes-final-20261016`, launched through Windows WMI at 08:47:43 ET. A separate SSH check confirmed both controller PID 19500 and its Robocopy child PID 18796 survived the SSH session. At 09:29:20 ET the same controller and Robocopy child were still running. Robocopy had read/written 77,800,005,928 bytes (~72.5 GiB), and C: retained 588,908,630,016 free bytes. Six-root copy, per-file checksums, metadata exclusions, SQLite backup/integrity checks, restore sample, and ACL metadata remain pending. No archive data is copied to this Mac.
 
 The initial SSH-child launch exited when its SSH session ended; its unverified directory was preserved under `hermes-final-20261016.incomplete-0847`. Review also found auth/config backup filename variants, so exclusions were broadened and checked before the WMI launch. No secret values were read or displayed. The incomplete directory is retained, not a usable recovery archive.
 
@@ -20,7 +21,9 @@ The archive will remain a **baseline**, not a final quiescent seal, while held w
 
 ## Continuation
 
-At the next wake, run item02-gateway-observe.ps1 after 09:06:55 ET and require every check to pass. Recheck both watcher cron records in read mode and both absent cursor files. Do not repeat the completed gateway stop. The 08:52 drift comparison confirms all other cron/task enabled states and Tier C Startup entries stayed unchanged. Only after the full Tim gateway observation passes, begin item 3 (ervp-manager d68cb0c1ae05). Continue items 3–9; never run a job to test. Check archive process/status without retrying an uncertain launch. Send the complete result to fce19860 using request_key `hermes-pc-operator-phase2` after items 1–9, and a separate archive verification result when available.
+At the next wake after 09:33:55 ET, read item03 cron d68cb0c1ae05 with make-cron-probe.py read mode, write item03-observe.json, and compare its disabled flag, last_run_at, execution IDs, and ALL unfinished execution count against item03-disable.json. Re-run item03-state.ps1 and compare state file hashes/mtime to item03-state-disabled.json. Record the final local delta and limits; no source-system incident list has been queried. After that observation passes, begin item 4: ervp-orders 330388e25e93 and 305da2ff8a02, capture states, disable both under the scheduler lock, and observe the longer actual scheduled interval before item 5.
+
+Items 1–2 are complete: never repeat Tim stops. A fresh 09:30 drift comparison confirmed only approved items1–3 enabled-state/Startup changes; all HOLD and Tier C states remain unchanged. The coordinator was sent an informational checkpoint for its 09:32 review. Keep the original full GO/HOLD list, do not run any business script, and persist every pending observation/archive wake. No source build or production restart is involved. Send complete items1–9 results to fce19860 using request_key `hermes-pc-operator-phase2`, and separately send verified archive results when actually available.
 
 ## Artifacts
 
@@ -35,6 +38,7 @@ At the next wake, run item02-gateway-observe.ps1 after 09:06:55 ET and require e
 - [archive-start-wmi.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-start-wmi.json)
 - [archive-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-start.json)
 - [archive-status-0850.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-0850.json)
+- [archive-status-0928.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-0928.json)
 - [archive-status-wmi.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-wmi.json)
 - [archive-status.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status.json)
 - [archive-status.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status.ps1)
@@ -42,7 +46,9 @@ At the next wake, run item02-gateway-observe.ps1 after 09:06:55 ET and require e
 - [current-inventory.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/current-inventory.json)
 - [discover-runtime.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/discover-runtime.json)
 - [discover-runtime.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/discover-runtime.ps1)
+- [drift-check-after-item03.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-check-after-item03.json)
 - [drift-check-after-tim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/drift-check-after-tim.json)
+- [inventory-after-item03-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-item03-disable.json)
 - [inventory-after-tim-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/inventory-after-tim-stop.json)
 - [item01-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item01-disable.json)
 - [item01-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item01-disable.ps1)
@@ -51,12 +57,17 @@ At the next wake, run item02-gateway-observe.ps1 after 09:06:55 ET and require e
 - [item01-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item01-observe.ps1)
 - [item02-brady-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brady-disable.json)
 - [item02-brady-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brady-disable.ps1)
+- [item02-brady-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brady-final.json)
+- [item02-brady-final.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brady-final.ps1)
 - [item02-brady-observe.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brady-observe.json)
 - [item02-brady-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brady-observe.ps1)
 - [item02-brent-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brent-disable.json)
 - [item02-brent-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brent-disable.ps1)
+- [item02-brent-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brent-final.json)
+- [item02-brent-final.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brent-final.ps1)
 - [item02-brent-observe.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brent-observe.json)
 - [item02-brent-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-brent-observe.ps1)
+- [item02-gateway-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-gateway-final.json)
 - [item02-gateway-interim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-gateway-interim.json)
 - [item02-gateway-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-gateway-observe.ps1)
 - [item02-gateway-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-gateway-preflight.json)
@@ -65,8 +76,17 @@ At the next wake, run item02-gateway-observe.ps1 after 09:06:55 ET and require e
 - [item02-gateway-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-gateway-stop.ps1)
 - [item02-state-after-observation.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-state-after-observation.json)
 - [item02-state-before-observation.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-state-before-observation.json)
+- [item02-state-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-state-final.json)
 - [item02-state.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-state.ps1)
 - [item02-watchers-confirmed.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item02-watchers-confirmed.json)
+- [item03-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-before.json)
+- [item03-before.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-before.ps1)
+- [item03-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-disable.json)
+- [item03-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-disable.ps1)
+- [item03-state-disabled.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-state-disabled.json)
+- [item03-state-review.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-state-review.json)
+- [item03-state-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-state-review.ps1)
+- [item03-state.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/item03-state.ps1)
 - [make-cron-probe.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/make-cron-probe.py)
 - [mirror-ledger-discovery.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/mirror-ledger-discovery.json)
 - [mirror-ledger-discovery.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/mirror-ledger-discovery.ps1)
@@ -74,6 +94,8 @@ At the next wake, run item02-gateway-observe.ps1 after 09:06:55 ET and require e
 - [next-state-source-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/next-state-source-review.ps1)
 - [review-targets.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/review-targets.json)
 - [review-targets.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/review-targets.ps1)
+- [router-path-and-archive-progress.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/router-path-and-archive-progress.json)
+- [router-path-and-archive-progress.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/router-path-and-archive-progress.ps1)
 - [run-probe.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/run-probe.py)
 - [shadow-and-router-review.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/shadow-and-router-review.json)
 - [shadow-and-router-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/shadow-and-router-review.ps1)

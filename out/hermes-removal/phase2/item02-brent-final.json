@@ -1,0 +1,137 @@
+{
+  "at": "2026-10-16T13:28:01.419424+00:00",
+  "profile": "cs-tim",
+  "id": "b2b5b67f02c0",
+  "operation": "read",
+  "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\jobs.json",
+  "before": {
+    "id": "b2b5b67f02c0",
+    "name": "Watch for Brent OrderOps reply",
+    "enabled": false,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 5,
+      "display": "every 5m"
+    },
+    "last_run_at": "2026-10-16T08:41:27.476697-04:00",
+    "next_run_at": "2026-10-16T08:46:27.476697-04:00",
+    "last_status": "ok",
+    "failure_streak": 0
+  },
+  "after": {
+    "id": "b2b5b67f02c0",
+    "name": "Watch for Brent OrderOps reply",
+    "enabled": false,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 5,
+      "display": "every 5m"
+    },
+    "last_run_at": "2026-10-16T08:41:27.476697-04:00",
+    "next_run_at": "2026-10-16T08:46:27.476697-04:00",
+    "last_status": "ok",
+    "failure_streak": 0
+  },
+  "before_sha256": "550950e5281bd3c1ba7f93dacf2a0b3417101ba950c16c4dd03495a6194ddfe1",
+  "after_sha256": "550950e5281bd3c1ba7f93dacf2a0b3417101ba950c16c4dd03495a6194ddfe1",
+  "ledger": {
+    "exists": true,
+    "recent": [
+      {
+        "id": "151badc8f0b54b4c9ab5ec93f51fa723",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T08:41:27.005073-04:00",
+        "started_at": "2026-10-16T08:41:27.077957-04:00",
+        "finished_at": "2026-10-16T08:41:27.483697-04:00"
+      },
+      {
+        "id": "93c47bd813554d79b86b3e4fbfa6a041",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T08:35:26.850865-04:00",
+        "started_at": "2026-10-16T08:35:26.908769-04:00",
+        "finished_at": "2026-10-16T08:35:27.357447-04:00"
+      },
+      {
+        "id": "7d295de200204b04b2a4b35b331ee28d",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T08:29:26.686510-04:00",
+        "started_at": "2026-10-16T08:29:26.735788-04:00",
+        "finished_at": "2026-10-16T08:29:27.106356-04:00"
+      },
+      {
+        "id": "8ae22cfc54294a159e9a1cf2d0df6803",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T08:23:26.518929-04:00",
+        "started_at": "2026-10-16T08:23:26.565013-04:00",
+        "finished_at": "2026-10-16T08:23:26.979209-04:00"
+      },
+      {
+        "id": "67f7f1ea643f4427805612927661c5e8",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T08:17:26.312721-04:00",
+        "started_at": "2026-10-16T08:17:26.385164-04:00",
+        "finished_at": "2026-10-16T08:17:26.828011-04:00"
+      },
+      {
+        "id": "f8e37a5031e54a179b68bf5c8039da7a",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T08:11:26.119594-04:00",
+        "started_at": "2026-10-16T08:11:26.169966-04:00",
+        "finished_at": "2026-10-16T08:11:26.547441-04:00"
+      },
+      {
+        "id": "b3f0e5cc712c4f4db59f2c7e23b979a2",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T08:05:25.938939-04:00",
+        "started_at": "2026-10-16T08:05:25.992147-04:00",
+        "finished_at": "2026-10-16T08:05:26.435786-04:00"
+      },
+      {
+        "id": "1fca3449fc914831aaeafcfb781044ce",
+        "job_id": "b2b5b67f02c0",
+        "pid": 10056,
+        "process_id": "92b0ff4d06d244fa97fef9c756300fba",
+        "process_started_at": 179208833206,
+        "status": "completed",
+        "claimed_at": "2026-10-16T07:59:21.895360-04:00",
+        "started_at": "2026-10-16T07:59:24.704725-04:00",
+        "finished_at": "2026-10-16T07:59:26.771968-04:00"
+      }
+    ],
+    "unfinished": 0,
+    "active": [],
+    "total_executions": 500
+  },
+  "no_job_invoked": true,
+  "scheduler_lock": "msvcrt byte 0 .jobs.lock acquired"
+}

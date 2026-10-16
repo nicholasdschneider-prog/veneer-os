@@ -1,0 +1,19 @@
+{
+  "item": 2,
+  "at": "2026-10-16T09:27:58.1703282-04:00",
+  "stopped_at": "2026-10-16T08:51:55.9298884-04:00",
+  "observation_seconds": 2162.2404398,
+  "checks": {
+    "watchdog_disabled": true,
+    "active_launcher_absent": true,
+    "window_complete": true,
+    "watchdog_last_run_unchanged": true,
+    "renamed_launcher_hash_unchanged": true,
+    "no_gateway": true
+  },
+  "matching_gateways": [],
+  "task_last_run": "2026-10-16T08:51:43.0000000-04:00",
+  "task_last_result": 0,
+  "launcher": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs.disabled-20261016",
+  "launcher_sha256": "41A00EE6C553B611D9EAD5A093A54B54EF6FEC14B9AC2EB581C096EA9E85CAD4"
+}

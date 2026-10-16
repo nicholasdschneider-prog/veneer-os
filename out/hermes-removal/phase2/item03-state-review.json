@@ -1,0 +1,25 @@
+{
+  "source_path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\inventory-sync-incident-router.cjs",
+  "references": [
+    {
+      "line": 32,
+      "code": "async function routeIncidents({ incidents, createCard, attachCard, claimManager, excludedVendors = [] }) {"
+    },
+    {
+      "line": 109,
+      "code": "async function claimManager(incidentId) {"
+    },
+    {
+      "line": 118,
+      "code": "  const path = process.env.INVENTORY_SYNC_ROUTER_LOG || 'state/inventory-sync-incident-router.jsonl';"
+    },
+    {
+      "line": 134,
+      "code": "      claimManager,"
+    },
+    {
+      "line": 139,
+      "code": "    // Never emit stderr/nonzero here: Manager Telegram is reserved for the claimed"
+    }
+  ]
+}

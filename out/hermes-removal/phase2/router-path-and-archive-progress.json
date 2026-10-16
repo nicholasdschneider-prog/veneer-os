@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-16T09:29:20.2211512-04:00",
+  "archive_process_progress": [
+    {
+      "name": "python.exe",
+      "kernel_time": 625000,
+      "pid": 19500,
+      "user_time": 312500,
+      "created": "2026-10-16T08:47:43.6215740-04:00",
+      "read_bytes": 1042529,
+      "write_bytes": 2286
+    },
+    {
+      "name": "Robocopy.exe",
+      "kernel_time": 17442656250,
+      "pid": 18796,
+      "user_time": 1692812500,
+      "created": "2026-10-16T08:47:43.7450500-04:00",
+      "read_bytes": 77800005928,
+      "write_bytes": 77800005928
+    }
+  ],
+  "source": {
+    "wrapper_metadata_source": [
+      {
+        "line": 4,
+        "code": "The wrapper forwards only Manager-eligible business stdout. Node/runtime failures"
+      },
+      {
+        "line": 16,
+        "code": "SCRIPT_DIR = Path(__file__).resolve().parent"
+      },
+      {
+        "line": 17,
+        "code": "ROUTER = SCRIPT_DIR / \"inventory-sync-incident-router.cjs\""
+      },
+      {
+        "line": 18,
+        "code": "LOG_PATH = SCRIPT_DIR / \"state\" / \"inventory-sync-incident-router-wrapper.jsonl\""
+      },
+      {
+        "line": 22,
+        "code": "    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)"
+      },
+      {
+        "line": 24,
+        "code": "    with LOG_PATH.open(\"a\", encoding=\"utf-8\") as handle:"
+      },
+      {
+        "line": 44,
+        "code": "    if result.returncode != 0:"
+      },
+      {
+        "line": 47,
+        "code": "    if result.stdout.strip():"
+      },
+      {
+        "line": 48,
+        "code": "        print(result.stdout.strip())"
+      }
+    ]
+  },
+  "free_bytes": 588908630016
+}
