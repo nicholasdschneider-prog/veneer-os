@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-16T12:54:32.7480754-04:00",
+  "profile": "cs-mallory",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-mallory",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_cs_mallory_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T12:35:01.0000000-04:00",
+      "next_run": "2026-10-16T12:55:00.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    }
+  ],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-mallory.vbs.disabled-20261016",
+      "sha256": "BC869989C28314C4951B79184F59FC36683EAEEDA3A5BA5EBFFEE1DD94EC58C5",
+      "name": "Hermes_Gateway_cs-mallory.vbs.disabled-20261016",
+      "bytes": 488,
+      "active": false
+    }
+  ],
+  "gateways": [],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:19:44.476229+00:00",
+    "pid": 10112,
+    "active_agents": 0,
+    "start_time": 179208833211
+  },
+  "heartbeat_modified": "2026-10-16T16:38:35.4212061Z",
+  "default_alias_caution": false
+}

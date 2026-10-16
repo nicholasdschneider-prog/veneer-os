@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-16T12:54:58.2471562-04:00",
+  "item": 9,
+  "profile": "cs-jasmine",
+  "observation_start": "2026-10-16T12:54:57.5042916-04:00",
+  "elapsed_seconds": 0.7428646,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": false
+  },
+  "gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T12:50:01.0000000-04:00",
+      "name": "Hermes_cs_jasmine_Watchdog",
+      "last_run_unchanged": true,
+      "enabled": false
+    }
+  ],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-jasmine.vbs.disabled-20261016",
+      "active_absent": true,
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-jasmine.vbs",
+      "sha256": "038430B725B5113065553D0403828471701AC818491CAA716D6A54AC774248FC",
+      "sha256_unchanged": true
+    }
+  ],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}

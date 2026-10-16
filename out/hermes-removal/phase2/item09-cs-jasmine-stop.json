@@ -1,0 +1,42 @@
+{
+  "item": 9,
+  "profile": "cs-jasmine",
+  "at": "2026-10-16T12:54:57.5042916-04:00",
+  "observation_start": "2026-10-16T12:54:57.5042916-04:00",
+  "remaining_gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T12:50:01.0000000-04:00",
+      "last_result": 0,
+      "enabled": false,
+      "name": "Hermes_cs_jasmine_Watchdog",
+      "at": "2026-10-16T12:54:57.1598750-04:00"
+    }
+  ],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-jasmine.vbs.disabled-20261016",
+      "sha256": "038430B725B5113065553D0403828471701AC818491CAA716D6A54AC774248FC",
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-jasmine.vbs",
+      "at": "2026-10-16T12:54:57.3041727-04:00"
+    }
+  ],
+  "process_stops": [
+    {
+      "effect": "exact gateway PID stopped",
+      "parent": 4692,
+      "pid": 10120,
+      "created": "2026-10-15T14:18:52.1120340-04:00",
+      "at": "2026-10-16T12:54:57.3932930-04:00"
+    }
+  ],
+  "no_inflight": {
+    "additional_child_workers": 0,
+    "active_agents": 0,
+    "runtime_status_updated_at": "2026-10-15T18:19:44.356988+00:00",
+    "unfinished_all_profile": 0
+  },
+  "journal": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\cs-jasmine\\idle-steps.jsonl",
+  "observation": "Pending 15 minutes",
+  "original_files_preserved": true
+}
