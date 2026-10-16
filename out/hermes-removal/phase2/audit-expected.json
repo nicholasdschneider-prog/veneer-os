@@ -1,0 +1,30 @@
+{
+  "cron_ids": [
+    "b2b5b67f02c0",
+    "394f30773d39",
+    "d68cb0c1ae05",
+    "330388e25e93",
+    "305da2ff8a02",
+    "ce772d25016e",
+    "2ecec57ee69b",
+    "89de9427e76b",
+    "917a1ee90aec"
+  ],
+  "extra_tasks": [
+    "ERVP Hermes Dashboard",
+    "Hermes_cs_mallory_Watchdog",
+    "Hermes_cs_jasmine_Watchdog",
+    "Hermes_cs_rae_Watchdog"
+  ],
+  "extra_startup": [
+    "Hermes_Gateway_cs-mallory.vbs",
+    "Hermes_Gateway_cs-jasmine.vbs",
+    "Hermes_Gateway_cs-rae.vbs"
+  ],
+  "source_stop_receipts": [
+    "item09-cs-mallory-stop.json",
+    "item09-cs-jasmine-stop.json",
+    "item09-cs-rae-stop.json"
+  ],
+  "note": "Tim watchdog and Startup are implicit in audit-drift.py; entries here come only from performed authorized stop receipts."
+}

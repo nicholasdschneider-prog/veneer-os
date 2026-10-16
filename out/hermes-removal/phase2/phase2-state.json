@@ -32,19 +32,29 @@
       "post_receipt": "item09-cs-mallory-post.json"
     },
     "cs-jasmine": {
-      "status": "observing",
+      "status": "verified",
       "observation_start": "2026-10-16T12:54:57.5042916-04:00",
       "not_before_utc": "2026-10-16T17:09:57.504291+00:00",
       "stop_receipt": "item09-cs-jasmine-stop.json",
-      "observe_probe": "item09-cs-jasmine-observe.ps1"
+      "observe_probe": "item09-cs-jasmine-observe.ps1",
+      "confirmed_at": "2026-10-16T13:11:04.0885646-04:00",
+      "final_receipt": "item09-cs-jasmine-final.json",
+      "post_receipt": "item09-cs-jasmine-post.json"
+    },
+    "cs-rae": {
+      "status": "observing",
+      "observation_start": "2026-10-16T13:11:42.2194648-04:00",
+      "not_before_utc": "2026-10-16T17:26:42.219464+00:00",
+      "stop_receipt": "item09-cs-rae-stop.json",
+      "observe_probe": "item09-cs-rae-observe.ps1"
     }
   },
-  "next_profile": "cs-rae",
+  "next_profile": "cs-ali",
   "archive": {
     "controller_pid": 19500,
     "controller_created": "2026-10-16T12:47:43Z",
     "state": "hashing_unverified",
-    "files_hashed": 870000,
+    "files_hashed": 970000,
     "errors": 1798,
     "sqlite_integrity_ok": 199,
     "supervisor_lock_custody_receipt": "supervisor-lock-custody.json"

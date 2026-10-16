@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-16T13:11:29.0640285-04:00",
+  "profile": "cs-rae",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-rae",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_cs_rae_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T13:10:01.0000000-04:00",
+      "next_run": "2026-10-16T13:15:00.0000000-04:00",
+      "state": "Ready",
+      "enabled": true
+    }
+  ],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-rae.vbs",
+      "sha256": "8557610E330FE9DDDEC5F5AACA4E01EA5AE3B850BC248802D0E2DA24CAFB46F6",
+      "name": "Hermes_Gateway_cs-rae.vbs",
+      "bytes": 472,
+      "active": true
+    }
+  ],
+  "gateways": [
+    {
+      "parent": 5072,
+      "pid": 10180,
+      "created": "2026-10-15T14:18:52.1486070-04:00",
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe"
+    }
+  ],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:19:44.356988+00:00",
+    "pid": 10180,
+    "active_agents": 0,
+    "start_time": 179208833215
+  },
+  "heartbeat_modified": "2026-10-16T17:11:06.5588450Z",
+  "default_alias_caution": false
+}

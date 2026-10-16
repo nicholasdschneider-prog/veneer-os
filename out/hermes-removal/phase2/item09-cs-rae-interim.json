@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-16T13:11:43.0086058-04:00",
+  "item": 9,
+  "profile": "cs-rae",
+  "observation_start": "2026-10-16T13:11:42.2194648-04:00",
+  "elapsed_seconds": 0.789141,
+  "checks": {
+    "renamed_launcher_hashes_unchanged": true,
+    "no_gateway": true,
+    "no_enabled_cron": true,
+    "all_watchdogs_disabled": true,
+    "active_launchers_absent": true,
+    "watchdog_last_runs_unchanged": true,
+    "no_enabled_task_dependency": true,
+    "full_15m": false
+  },
+  "gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T13:10:01.0000000-04:00",
+      "name": "Hermes_cs_rae_Watchdog",
+      "last_run_unchanged": true,
+      "enabled": false
+    }
+  ],
+  "launchers": [
+    {
+      "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-rae.vbs.disabled-20261016",
+      "active_absent": true,
+      "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-rae.vbs",
+      "sha256": "8557610E330FE9DDDEC5F5AACA4E01EA5AE3B850BC248802D0E2DA24CAFB46F6",
+      "sha256_unchanged": true
+    }
+  ],
+  "enabled_cron_ids": [],
+  "active_task_dependencies": []
+}
