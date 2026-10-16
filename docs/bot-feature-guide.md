@@ -25,8 +25,14 @@ service reads `GET /api/cs/conversations/:id/messages` for every open owned tick
 with the dedicated principal Veneer Ticket Mirror (Doppler ervp/prd `ORDEROPS_TICKET_MIRROR_*`),
 records new messages, wakes the ticket chat for new customer messages, backs off on errors, pauses
 15 minutes on an auth refusal, and can only GET two allowlisted paths (pinned by test). Migration
-0186 adds `last_polled_at` / `last_poll_error`, shown on the ticket page. Deployment pending a
-Nick-approved window (web, runner, migrations 0185 and 0186).
+0186 adds `last_polled_at` / `last_poll_error`, shown on the ticket page. Builds #866 and #868 went
+live 2026-10-16 19:30Z. Build #872 (Nick's first-use feedback): the ticket page uses the bot composer
+(attachments uploaded like chat, dictation, Live voice), human attachments ride on the note and reach
+the ticket chat as upload paths; `add_cs_ticket_note` takes 2–4 tappable `choices` rendered under the
+newest bot note (a tap posts the choice as a human note); bot notes are capped at three plain
+sentences with no internal ids or REPLY TO prefixes (the server rejects obvious violations), and the
+lane rules say to end an answer with choices or a decision card. Migration 0187 adds
+`cs_ticket_messages.choices_json`. Deployment pending a Nick-approved window (web, runner).
 
 ## Leaner Veneer Browser — October 16, 2026
 

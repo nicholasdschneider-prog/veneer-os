@@ -9,6 +9,15 @@ export function withAttachmentFooter(text: string, paths: readonly string[]): st
   return `${body ? `${body}\n\n` : ''}Attached files (saved on this server — read them from these paths):\n${list}`;
 }
 
+/** Inverse of withAttachmentFooter: the human's text plus the uploaded file paths the composer appended. */
+export function splitAttachmentFooter(text: string): { body: string; paths: string[] } {
+  const marker = '\nAttached files (saved on this server — read them from these paths):\n';
+  const at = text.indexOf(marker);
+  if (at < 0) return { body: text.trim(), paths: [] };
+  const paths = text.slice(at + marker.length).split('\n').map((l) => l.replace(/^- /, '').trim()).filter(Boolean);
+  return { body: text.slice(0, at).trim(), paths };
+}
+
 /** "Claude Opus 5 · High" style chip text for the bot's conversation. */
 export function botModelChipLabel(
   provider: string | null,

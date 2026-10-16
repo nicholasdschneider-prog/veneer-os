@@ -26,3 +26,24 @@ describe('bot tickets (Miles pilot)', () => {
     expect(detail).toContain('hidden md:flex');
   });
 });
+
+import { latestOpenChoiceNote } from './BotTickets';
+import { splitAttachmentFooter } from '@/lib/botComposer';
+import type { CsTicketMessage } from '@/lib/bots';
+
+describe('ticket notes with tappable choices and attachments', () => {
+  const note = (over: Partial<CsTicketMessage>): CsTicketMessage => ({ id: 'n', direction: 'note', channel: '', external_id: null, author: 'bot', author_label: 'Miles', body: 'x', attachments: [], remember: false, at: '2026-10-16T20:00:00Z', ...over });
+  it('keeps only the newest bot choices live until a human writes', () => {
+    const choices = [{ label: 'Refund', note: 'Refund the line.' }, { label: 'Wait', note: 'Wait for the carrier.' }];
+    expect(latestOpenChoiceNote([note({ id: 'a', choices })])).toBe('a');
+    expect(latestOpenChoiceNote([note({ id: 'a', choices }), note({ id: 'b', choices })])).toBe('b');
+    expect(latestOpenChoiceNote([note({ id: 'a', choices }), note({ id: 'h', author: 'human', author_label: 'Nick' })])).toBeNull();
+    expect(latestOpenChoiceNote([note({ id: 'h', author: 'human' }), note({ id: 'c', choices })])).toBe('c');
+    expect(latestOpenChoiceNote([note({ id: 'a' })])).toBeNull();
+  });
+  it('splits the composer attachment footer back into text and paths', () => {
+    expect(splitAttachmentFooter('Look at this\n\nAttached files (saved on this server — read them from these paths):\n- /data/uploads/ab/claim.pdf\n- /data/uploads/cd/photo.jpg'))
+      .toEqual({ body: 'Look at this', paths: ['/data/uploads/ab/claim.pdf', '/data/uploads/cd/photo.jpg'] });
+    expect(splitAttachmentFooter('  just text  ')).toEqual({ body: 'just text', paths: [] });
+  });
+});

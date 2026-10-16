@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { ConversationRow, UserRow } from '../src/db/db.js';
 import type { AppContext } from '../src/context.js';
-import { createCsTicketService } from '../src/csTickets/service.js';
+import { createCsTicketService, presentMessage } from '../src/csTickets/service.js';
 import { createCsTicketsRouter } from '../src/csTickets/routes.js';
 import { createBotService, proposalSchema } from '../src/bots/service.js';
 import { acceptEventDetailed, saveRoutine } from '../src/botWorkflows/routines.js';
@@ -147,6 +147,25 @@ describe('cs tickets owned inside Veneer (Miles pilot)', () => {
     expect(tickets.contextBlock(r.ticket_conversation_id!)).toContain('NOTE Nick [Remember]: Always offer a replacement first');
     const ali = db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow;
     expect(() => tickets.detail({ user: ali }, r.ticket.id)).toThrow(/not found/);
+  });
+
+  it('keeps bot notes short with tappable choices, carries human attachments to the ticket chat, and tells the bot the style', () => {
+    const r = tickets.sync({ user, conversationId: OWNER }, sample());
+    const lane = { user, conversationId: OWNER, executionConversationId: r.ticket_conversation_id! };
+    expect(() => tickets.botNote(lane, { body: 'REPLY TO NICHOLAS — see thread 2896e911.' })).toThrow(/Rewrite the note/);
+    expect(() => tickets.botNote(lane, { body: 'Short.', choices: [{ label: 'A', note: 'a', recommended: true }, { label: 'B', note: 'b', recommended: true }] })).toThrow(/at most one/);
+    expect(() => tickets.botNote(lane, { body: 'Short.', choices: [{ label: 'Only one', note: 'x' }] })).toThrow();
+    const noted = tickets.botNote(lane, { body: 'The carrier has the photos. We need you to pick refund or replacement.', choices: [{ label: 'Ship a replacement', note: 'Ship a replacement skylight.', recommended: true }, { label: 'Refund the line', note: 'Refund the skylight line.' }] });
+    expect(noted.choices).toBe(2);
+    const msgs = tickets.messages(r.ticket.id).map(presentMessage);
+    expect(msgs[msgs.length - 1]).toMatchObject({ author: 'bot', choices: [{ label: 'Ship a replacement', recommended: true }, { label: 'Refund the line' }] });
+    expect(tickets.contextBlock(r.ticket_conversation_id!)).toContain('[choices offered: Ship a replacement | Refund the line]');
+    expect(tickets.laneRules(r.ticket_conversation_id!)).toContain('at most three plain sentences');
+    const human = tickets.humanNote({ user }, r.ticket.id, { body: 'Here is the invoice.', remember: false, request_key: 'n2', attachments: [{ name: 'invoice.pdf', reference: '/data/uploads/ab12cd34ef/invoice.pdf' }] });
+    const wake = pendingWakes(OWNER).find((w) => w.wake_key === `cs-ticket:${r.ticket.id}:note:${human.note_id}`)!;
+    expect(wake.reason).toContain('- /data/uploads/ab12cd34ef/invoice.pdf (invoice.pdf)');
+    expect(wake.reason).toContain('End with 2–4 tappable choices');
+    expect(tickets.messages(r.ticket.id).map(presentMessage).pop()).toMatchObject({ author: 'human', attachments: [{ name: 'invoice.pdf' }] });
   });
 
   describe('HTTP and tool surface', () => {

@@ -44,6 +44,7 @@ export interface CsTicketMessageRow {
   author_label: string;
   body: string;
   attachments_json: string;
+  choices_json: string;
   remember: number;
   at: string;
   created_at: string;
@@ -72,7 +73,11 @@ export const SyncInput = z.object({
 }).strict();
 export type SyncInputType = z.infer<typeof SyncInput>;
 export type SyncMessage = NonNullable<SyncInputType['messages']>[number];
-export const NoteInput = z.object({ body: z.string().trim().min(1).max(12000), remember: z.boolean().default(false), request_key: bounded(200).min(1) }).strict();
+const attachmentInput = z.object({ name: bounded(300).min(1), reference: bounded(2000).optional() }).strict();
+export const NoteInput = z.object({ body: z.string().trim().min(1).max(12000), remember: z.boolean().default(false), request_key: bounded(200).min(1), attachments: z.array(attachmentInput).max(12).optional() }).strict();
+/** Tappable next steps under a bot note: direction within the bot's existing authority, never money or send approval. */
+export const NoteChoices = z.array(z.object({ label: bounded(60).min(1), note: bounded(300).min(1), recommended: z.boolean().optional() }).strict()).min(2).max(4);
+export const NOTE_STYLE = 'A note is at most three plain sentences for a non-technical reader: what happened, what is needed, what happens next. No internal ids, hashes, thread ids, policy jargon or "REPLY TO" prefixes; order numbers and dollar amounts are fine. Internal detail belongs in the ticket chat transcript, not in notes.';
 
 export interface TicketActor { user: UserRow; conversationId?: string; executionConversationId?: string }
 
@@ -209,10 +214,12 @@ export function createCsTicketService(db: Database.Database) {
       return { ticket: present(ticketRow(t.id)!) };
     },
     botNote(actor: TicketActor, raw: unknown) {
-      const p = z.object({ ticket_id: orderopsId.optional(), body: z.string().trim().min(1).max(12000) }).strict().parse(raw);
+      const p = z.object({ ticket_id: orderopsId.optional(), body: z.string().trim().min(1).max(1200), choices: NoteChoices.optional() }).strict().parse(raw);
       const t = botTicket(actor, p.ticket_id);
-      const id = addMessage(t.id, 'note', 'bot', botName(t.owner_conversation_id), p.body);
-      return { note_id: id, ticket: present(ticketRow(t.id)!) };
+      if (/\bREPLY TO\b|[a-f0-9]{32,}/i.test(p.body)) throw new BotError(400, `Rewrite the note. ${NOTE_STYLE}`);
+      if (p.choices && p.choices.filter((c) => c.recommended).length > 1) throw new BotError(400, 'Mark at most one choice recommended');
+      const id = addMessage(t.id, 'note', 'bot', botName(t.owner_conversation_id), p.body, false, null, { choices: p.choices });
+      return { note_id: id, ticket: present(ticketRow(t.id)!), choices: p.choices?.length ?? 0 };
     },
     /** A human's note on the ticket page; Remember asks the bot to fold it into its skill. */
     humanNote(actor: TicketActor, id: string, raw: unknown) {
@@ -220,9 +227,10 @@ export function createCsTicketService(db: Database.Database) {
       const t = humanTicket(actor, id);
       const existing = db.prepare('SELECT id FROM cs_ticket_messages WHERE ticket_id=? AND external_id=?').get(t.id, `note:${p.request_key}`) as { id: string } | undefined;
       if (existing) return { note_id: existing.id, ticket: present(t), duplicate: true };
-      const noteId = addMessage(t.id, 'note', 'human', actor.user.display_name, p.body, p.remember, `note:${p.request_key}`);
+      const noteId = addMessage(t.id, 'note', 'human', actor.user.display_name, p.body, p.remember, `note:${p.request_key}`, { attachments: p.attachments });
       if (t.status === 'done') db.prepare("UPDATE cs_tickets SET status='open',updated_at=datetime('now') WHERE id=?").run(t.id);
-      wake(t, `note:${noteId}`, `${actor.user.display_name} wrote on ticket ${t.orderops_ticket_id}:\n${p.body}\n\n${p.remember
+      const files = (p.attachments ?? []).filter((a) => a.reference).map((a) => `- ${a.reference} (${a.name})`);
+      wake(t, `note:${noteId}`, `${actor.user.display_name} wrote on ticket ${t.orderops_ticket_id}:\n${p.body}${files.length ? `\n\nAttached files (saved on this server; read them from these paths):\n${files.join('\n')}` : ''}\n\nAnswer with add_cs_ticket_note: ${NOTE_STYLE} End with 2–4 tappable choices (the next steps ${actor.user.display_name} can pick), or raise_decision with choices if money or a customer send is involved.\n${p.remember
         ? 'They checked Remember: this is a standing instruction, not just for this ticket. Apply it here, then fold it into your skill with update_skill (no build or approval needed) and confirm in one line what you saved.'
         : 'Apply it to this ticket; a human note in the ticket chat is direction within your existing authority, not a new approval for money or sends.'}`);
       return { note_id: noteId, ticket: present(ticketRow(t.id)!), duplicate: false };
@@ -312,7 +320,7 @@ export function createCsTicketService(db: Database.Database) {
         orders.length ? `Orders: ${orders.map((o) => o.order_number).join(', ')}` : 'Orders: none recorded',
         t.summary ? `Summary: ${t.summary}` : '',
         all.length > shown.length ? `(${all.length - shown.length} earlier message${all.length - shown.length === 1 ? '' : 's'} omitted)` : '',
-        ...shown.map((m) => `- ${m.at} ${m.direction === 'note' ? 'NOTE' : m.direction === 'in' ? 'IN' : 'OUT'} ${m.author_label || m.author}${m.remember ? ' [Remember]' : ''}: ${clip(m.body, MAX_CONTEXT_BODY)}${attachmentNames(m.attachments_json)}`),
+        ...shown.map((m) => `- ${m.at} ${m.direction === 'note' ? 'NOTE' : m.direction === 'in' ? 'IN' : 'OUT'} ${m.author_label || m.author}${m.remember ? ' [Remember]' : ''}: ${clip(m.body, MAX_CONTEXT_BODY)}${attachmentNames(m.attachments_json)}${choiceLabels(m.choices_json)}`),
         ...decisions.map((d) => {
           const p = JSON.parse(d.proposal_json) as { question?: string };
           const a = d.answer_json ? JSON.parse(d.answer_json) as { choice_label?: string; text?: string; action?: string } : null;
@@ -324,7 +332,7 @@ export function createCsTicketService(db: Database.Database) {
     laneRules(laneConversationId: string): string | null {
       const t = ticketOfLane(laneConversationId);
       if (!t) return null;
-      return `You are working OrderOps ticket ${t.orderops_ticket_id} in its own ticket chat, as ${botName(t.owner_conversation_id)} (${t.owner_conversation_id}), with that bot's identity, skills, tools, connectors and authority. This chat owns the ticket start to finish; the full ticket record is supplied as reference data each turn, so do not re-read the thread from OrderOps for backstory. When you are told a new message arrived, read only the new messages in OrderOps and record them with sync_cs_ticket (messages with their OrderOps ids). Customer replies go through the existing draft/send tools exactly as before; after a verified send, record it with sync_cs_ticket as an out message. When a human must decide, raise_decision as usual: the question is attached to this ticket automatically and the card shows this thread. While waiting on the customer, call set_cs_ticket_status waiting_customer and, if OrderOps events may not reach you, schedule_wakeup to re-check OrderOps for a reply; when resolved, set_cs_ticket_status done. Record what you learned with add_cs_ticket_note. Human notes arrive as wakes here and are direction within your existing authority, never a new approval for money or sends. Nothing you write here appears in the bot's human chat; keep the final message of each turn a short plain status of the ticket.`;
+      return `You are working OrderOps ticket ${t.orderops_ticket_id} in its own ticket chat, as ${botName(t.owner_conversation_id)} (${t.owner_conversation_id}), with that bot's identity, skills, tools, connectors and authority. This chat owns the ticket start to finish; the full ticket record is supplied as reference data each turn, so do not re-read the thread from OrderOps for backstory. When you are told a new message arrived, read only the new messages in OrderOps and record them with sync_cs_ticket (messages with their OrderOps ids). Customer replies go through the existing draft/send tools exactly as before; after a verified send, record it with sync_cs_ticket as an out message. When a human must decide, raise_decision as usual: the question is attached to this ticket automatically and the card shows this thread. While waiting on the customer, call set_cs_ticket_status waiting_customer and, if OrderOps events may not reach you, schedule_wakeup to re-check OrderOps for a reply; when resolved, set_cs_ticket_status done. Record what you learned with add_cs_ticket_note. ${NOTE_STYLE} When you answer a human note, end with 2–4 tappable choices on add_cs_ticket_note (concrete next steps the human can pick), or raise_decision with choices when money or a customer send is involved; a question like "what do we need on this?" gets one or two sentences plus choices, not a case file. Human notes and tapped choices arrive as wakes here and are direction within your existing authority, never a new approval for money or sends. Nothing you write here appears in the bot's human chat; keep the final message of each turn a short plain status of the ticket.`;
     },
   };
 
@@ -343,10 +351,10 @@ export function createCsTicketService(db: Database.Database) {
     }
     return { added, inboundIds, lastInbound };
   }
-  function addMessage(ticketId: string, direction: CsTicketMessageRow['direction'], author: CsTicketMessageRow['author'], label: string, body: string, remember = false, externalId: string | null = null): string {
+  function addMessage(ticketId: string, direction: CsTicketMessageRow['direction'], author: CsTicketMessageRow['author'], label: string, body: string, remember = false, externalId: string | null = null, extra: { attachments?: { name: string; reference?: string }[]; choices?: { label: string; note: string; recommended?: boolean }[] } = {}): string {
     const id = crypto.randomUUID();
-    db.prepare('INSERT INTO cs_ticket_messages(id,ticket_id,direction,channel,external_id,author,author_label,body,attachments_json,remember,at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
-      .run(id, ticketId, direction, '', externalId, author, label, body, '[]', Number(remember), new Date().toISOString());
+    db.prepare('INSERT INTO cs_ticket_messages(id,ticket_id,direction,channel,external_id,author,author_label,body,attachments_json,choices_json,remember,at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(id, ticketId, direction, '', externalId, author, label, body, JSON.stringify(extra.attachments ?? []), JSON.stringify(extra.choices ?? []), Number(remember), new Date().toISOString());
     touch(ticketId);
     return id;
   }
@@ -364,6 +372,7 @@ export function createCsTicketService(db: Database.Database) {
 function ticketTitle(t: CsTicketRow): string { return `Ticket ${t.orderops_ticket_id}${t.subject ? ` · ${t.subject}` : ''}`.slice(0, 200); }
 function parseOrders(json: string): { order_number: string; order_id?: string }[] { try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; } catch { return []; } }
 function clip(text: string, max: number): string { const s = text.replace(/\s+/g, ' ').trim(); return s.length > max ? `${s.slice(0, max - 1)}…` : s; }
+function choiceLabels(json: string): string { try { const v = JSON.parse(json) as { label: string }[]; return v.length ? ` [choices offered: ${v.map((c) => c.label).join(' | ')}]` : ''; } catch { return ''; } }
 function attachmentNames(json: string): string { try { const v = JSON.parse(json) as { name: string }[]; return v.length ? ` [attachments: ${v.map((a) => a.name).join(', ')}]` : ''; } catch { return ''; } }
 export function present(t: CsTicketRow) {
   return { id: t.id, orderops_ticket_id: t.orderops_ticket_id, owner_conversation_id: t.owner_conversation_id, ticket_conversation_id: t.ticket_conversation_id,
@@ -371,6 +380,6 @@ export function present(t: CsTicketRow) {
     orders: parseOrders(t.orders_json), summary: t.summary, last_inbound_at: t.last_inbound_at, last_polled_at: t.last_polled_at, last_poll_error: t.last_poll_error, created_at: t.created_at, updated_at: t.updated_at };
 }
 export function presentMessage(m: CsTicketMessageRow) {
-  return { id: m.id, direction: m.direction, channel: m.channel, external_id: m.external_id, author: m.author, author_label: m.author_label, body: m.body, attachments: (() => { try { return JSON.parse(m.attachments_json) as { name: string; reference?: string }[]; } catch { return []; } })(), remember: Boolean(m.remember), at: m.at };
+  return { id: m.id, direction: m.direction, channel: m.channel, external_id: m.external_id, author: m.author, author_label: m.author_label, body: m.body, attachments: (() => { try { return JSON.parse(m.attachments_json) as { name: string; reference?: string }[]; } catch { return []; } })(), choices: (() => { try { return JSON.parse(m.choices_json || '[]') as { label: string; note: string; recommended?: boolean }[]; } catch { return []; } })(), remember: Boolean(m.remember), at: m.at };
 }
 export type CsTicketService = ReturnType<typeof createCsTicketService>;

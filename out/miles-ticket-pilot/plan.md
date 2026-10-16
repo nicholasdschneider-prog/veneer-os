@@ -36,3 +36,9 @@ See the build report in the chat: root typecheck, full npm test, npm run build. 
 - Mapping from OrderOps cs_messages: inbound → customer, outbound → bot (api principal / ai) or human (staff); internal notes skipped; attachments by filename; SMS delivery status appended to outbound SMS bodies and refreshed when it changes.
 - Migration 0186: cs_tickets.last_polled_at / last_poll_error; ticket page shows "Checked OrderOps Xm ago" and the last failure.
 - Deployment pending the same window as #866 (web + runner; migrations 0185 + 0186).
+
+## Build #872 — composer, tappable answers, short notes (2026-10-16)
+- Ticket page note box is the BotComposer (attachments via /api/uploads, dictation, Live voice button); attachments ride on the human note (attachments_json) and reach the ticket chat as upload paths in the wake prompt.
+- add_cs_ticket_note: optional choices (2–4 {label ≤60, note ≤300, recommended on at most one}); rendered as tappable buttons under the newest bot note, disabled once a human writes; a tap posts the choice note (request_key choice:<note>:<i>).
+- Note style enforced: ≤1200 chars, obvious "REPLY TO" / hash-like ids rejected; lane rules + wake text + catalog prompt say three plain sentences and end with choices or raise_decision.
+- Migration 0187: cs_ticket_messages.choices_json. Deployment pending Nick window (web + runner).

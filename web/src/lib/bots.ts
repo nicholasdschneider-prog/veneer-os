@@ -151,6 +151,8 @@ export interface CsTicketMessage {
   author_label: string;
   body: string;
   attachments: { name: string; reference?: string }[];
+  /** Tappable next steps the bot offered under this note. */
+  choices?: { label: string; note: string; recommended?: boolean }[];
   remember: boolean;
   at: string;
 }
@@ -160,7 +162,7 @@ export const csTicketsApi = {
       `/api/cs-tickets?owner=${encodeURIComponent(owner)}&filter=${encodeURIComponent(filter)}&q=${encodeURIComponent(q)}`, { signal }),
   detail: (id: string, signal?: AbortSignal) =>
     requestJson<{ ticket: CsTicket; owner: { conversation_id: string; name: string }; messages: CsTicketMessage[]; decisions: BotDecision[] }>(`/api/cs-tickets/${encodeURIComponent(id)}`, { signal }),
-  note: (id: string, body: { body: string; remember: boolean; request_key: string }) =>
+  note: (id: string, body: { body: string; remember: boolean; request_key: string; attachments?: { name: string; reference: string }[] }) =>
     requestJson<{ note_id: string; duplicate: boolean }>(`/api/cs-tickets/${encodeURIComponent(id)}/notes`, { method: 'POST', body: JSON.stringify(body) }),
 };
 export interface BotThread {

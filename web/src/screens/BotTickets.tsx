@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BotComposer } from '@/components/BotComposer';
+import { splitAttachmentFooter } from '@/lib/botComposer';
 import { ChatDecisionCard } from '@/components/chat/ChatDecisionCard';
 import { CHAT_DECISIONS_CHANGED } from '@/components/chat/OpenQuestionsPanel';
 import { BotAvatar } from '@/components/BotIdentity';
@@ -130,11 +132,11 @@ export function BotTickets({ botId, ticketId, onNavigate }: { botId: string; tic
 function TicketDetail({ botId, ticketId, onNavigate, onChanged }: { botId: string; ticketId: string; onNavigate: (hash: string) => void; onChanged: () => void }) {
   const [detail, setDetail] = useState<{ ticket: CsTicket; owner: { conversation_id: string; name: string }; messages: CsTicketMessage[]; decisions: BotDecision[] } | null>(null);
   const [error, setError] = useState('');
-  const [note, setNote] = useState('');
   const [remember, setRemember] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState('');
   const noteKey = useRef(crypto.randomUUID());
+  const choiceKeys = useRef(new Map<string, string>());
   const load = useCallback(async () => {
     try { setDetail(await csTicketsApi.detail(ticketId)); setError(''); } catch (e) { setError((e as Error).message); }
   }, [ticketId]);
@@ -145,27 +147,42 @@ function TicketDetail({ botId, ticketId, onNavigate, onChanged }: { botId: strin
     window.addEventListener(CHAT_DECISIONS_CHANGED, onChange);
     return () => { clearInterval(timer); window.removeEventListener(CHAT_DECISIONS_CHANGED, onChange); };
   }, [load]);
-  const send = async () => {
-    const body = note.trim();
-    if (!body || sending) return;
+  const post = async (body: { body: string; remember: boolean; request_key: string; attachments?: { name: string; reference: string }[] }, done: string) => {
+    if (sending) return;
     setSending(true);
     setError('');
     try {
-      await csTicketsApi.note(ticketId, { body, remember, request_key: noteKey.current });
-      noteKey.current = crypto.randomUUID();
-      setNote('');
-      setRemember(false);
-      setSent(remember ? 'Sent. The bot will apply it here and remember it.' : 'Sent to the bot.');
+      await csTicketsApi.note(ticketId, body);
+      setSent(done);
       await load();
       onChanged();
     } catch (e) {
       setError((e as Error).message);
+      throw e;
     } finally {
       setSending(false);
     }
   };
+  /** The composer hands back the text with the chat-style attachment footer; the note keeps the files as attachments. */
+  const send = async (text: string) => {
+    const { body, paths } = splitAttachmentFooter(text);
+    if (!body && !paths.length) return;
+    const key = noteKey.current;
+    await post({ body: body || `Sent ${paths.length} file${paths.length === 1 ? '' : 's'}.`, remember, request_key: key, ...(paths.length ? { attachments: paths.map((p) => ({ name: p.split('/').pop() || p, reference: p })) } : {}) },
+      remember ? 'Sent. The bot will apply it here and remember it.' : 'Sent to the bot.');
+    noteKey.current = crypto.randomUUID();
+    setRemember(false);
+  };
+  /** A tapped choice is a human note with the bot's suggested direction; one stable key per note + choice. */
+  const pick = async (noteId: string, index: number, choice: { label: string; note: string }) => {
+    const id = `${noteId}:${index}`;
+    const key = choiceKeys.current.get(id) ?? `choice:${id}`;
+    choiceKeys.current.set(id, key);
+    await post({ body: choice.note, remember: false, request_key: key }, `Picked: ${choice.label}`);
+  };
   const t = detail?.ticket;
   const open = detail?.decisions.filter(isOpenQuestion) ?? [];
+  const latestChoiceNote = latestOpenChoiceNote(detail?.messages ?? []);
   const answered = detail?.decisions.filter((d) => !isOpenQuestion(d)) ?? [];
   return (
     <section aria-label="Ticket" className="conversation-surface flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-card [overflow-wrap:anywhere]">
@@ -193,6 +210,7 @@ function TicketDetail({ botId, ticketId, onNavigate, onChanged }: { botId: strin
               </p>
               <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
               {m.attachments.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Attachments: {m.attachments.map((a) => a.name).join(', ')}</p>}
+              {!!m.choices?.length && <NoteChoices noteId={m.id} choices={m.choices} stale={m.id !== latestChoiceNote} disabled={sending} onPick={pick} />}
             </li>)}
           </ol>
         </details>
@@ -200,18 +218,35 @@ function TicketDetail({ botId, ticketId, onNavigate, onChanged }: { botId: strin
           <summary className="cursor-pointer p-3 text-sm font-medium">Earlier questions · {answered.length}</summary>
           <div className="space-y-3 p-3">{answered.map((d) => <ChatDecisionCard key={`${d.id}:${d.version}`} decision={d} />)}</div>
         </details>}
-        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-          <label className="block text-sm font-medium">Add a note for {detail!.owner.name}
-            <textarea className="mt-1 block w-full rounded-lg border bg-background p-2 text-sm" rows={3} value={note} placeholder="Tell the bot what to do on this ticket" onChange={(e) => setNote(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send(); } }} />
-          </label>
+        <section aria-label={`Add a note for ${detail!.owner.name}`} className="space-y-2">
+          <p className="text-sm font-medium">Add a note for {detail!.owner.name}</p>
+          <BotComposer conversationId={botId} botName={detail!.owner.name} busy={sending} onSend={send} />
           <div className="flex flex-wrap items-center gap-4">
-            <Button type="submit" disabled={sending || !note.trim()}>Send</Button>
             <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember</label>
             {sent && <span role="status" className="text-sm text-muted-foreground">{sent}</span>}
           </div>
-        </form>
+        </section>
       </div>}
     </section>
   );
+}
+
+/** The bot note whose choices are still live: the newest note with choices, unless a human wrote after it. */
+export function latestOpenChoiceNote(messages: CsTicketMessage[]): string | null {
+  let latest: string | null = null;
+  for (const m of messages) {
+    if (m.direction === 'note' && m.author === 'bot' && m.choices?.length) latest = m.id;
+    else if (m.direction === 'note' && m.author === 'human') latest = null;
+  }
+  return latest;
+}
+function NoteChoices({ noteId, choices, stale, disabled, onPick }: { noteId: string; choices: NonNullable<CsTicketMessage['choices']>; stale: boolean; disabled: boolean; onPick: (noteId: string, index: number, choice: { label: string; note: string }) => Promise<void> }) {
+  const ordered = choices.map((c, index) => ({ ...c, index })).sort((a, b) => Number(!!b.recommended) - Number(!!a.recommended));
+  return <div className="mt-3 flex flex-col gap-2" aria-label="Next steps">
+    {ordered.map((c, i) => <Button key={c.index} type="button" variant="outline" className="h-auto min-h-11 justify-start whitespace-normal py-2" disabled={disabled || stale} onClick={() => void onPick(noteId, c.index, c)}>
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md border text-xs text-muted-foreground">{String.fromCharCode(65 + i)}</span>
+      <span className="min-w-0 break-words text-left">{c.label}{c.recommended && <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">Recommended</span>}</span>
+    </Button>)}
+    {stale && <p className="text-xs text-muted-foreground">Answered.</p>}
+  </div>;
 }
