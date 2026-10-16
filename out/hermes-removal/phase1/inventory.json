@@ -1,0 +1,4378 @@
+{
+  "captured": "2026-10-16T08:03:17.8476352-04:00",
+  "host": "MINIPC-9OB1Z",
+  "cron": [
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\cron\\jobs.json",
+      "id": "9b03a939ef99",
+      "name": "LTL Tracking Mapper",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 720,
+        "display": "every 720m"
+      },
+      "next_run_at": "2026-06-20T14:28:29.384543-04:00",
+      "last_run_at": "2026-06-20T02:28:29.384543-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\cron\\jobs.json",
+      "id": "ce772d25016e",
+      "name": "Martine Reply Watcher",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 60,
+        "display": "every 60m"
+      },
+      "next_run_at": "2026-06-20T09:12:28.558868-04:00",
+      "last_run_at": "2026-06-20T08:12:28.558868-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cron\\jobs.json",
+      "id": "2ecec57ee69b",
+      "name": "Accounting Inbox Read-Only Monitor",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "7,37 9-17 * * 1-5",
+        "display": "7,37 9-17 * * 1-5"
+      },
+      "next_run_at": "2026-10-16T09:07:00-04:00",
+      "last_run_at": "2026-10-15T17:37:17.896997-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cron\\jobs.json",
+      "id": "2aa4a45d09d7",
+      "name": "QBO Auth Healthcheck",
+      "enabled": false,
+      "schedule": {
+        "kind": "cron",
+        "expr": "15 8 * * 1",
+        "display": "15 8 * * 1"
+      },
+      "next_run_at": "2026-09-28T08:15:00-04:00",
+      "last_run_at": "2026-09-21T08:15:52.819271-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cron\\jobs.json",
+      "id": "221d34c9ed66",
+      "name": "Sarah Autonomous Accounting Inbox Worker",
+      "enabled": false,
+      "schedule": {
+        "kind": "cron",
+        "expr": "7,37 9-17 * * 1-6",
+        "display": "7,37 9-17 * * 1-6"
+      },
+      "next_run_at": "2026-09-23T13:07:00-04:00",
+      "last_run_at": "2026-09-23T12:39:01.938777-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cron\\jobs.json",
+      "id": "39b749a8532d",
+      "name": "Daily prior-day Shopify canceled-fraud refund control",
+      "enabled": false,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8,12,20 * * *",
+        "display": "0 8,12,20 * * *"
+      },
+      "next_run_at": "2026-09-23T12:00:00-04:00",
+      "last_run_at": "2026-09-23T08:09:12.929780-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\jobs.json",
+      "id": "b2b5b67f02c0",
+      "name": "Watch for Brent OrderOps reply",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-10-16T08:04:26.743970-04:00",
+      "last_run_at": "2026-10-16T07:59:26.743970-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\jobs.json",
+      "id": "394f30773d39",
+      "name": "Notify Nick when Brady replies to shipment SMS",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-10-16T08:04:26.933730-04:00",
+      "last_run_at": "2026-10-16T07:59:26.933730-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cust-service\\cron\\jobs.json",
+      "id": "a1730c4e3f23",
+      "name": "Order 100119091 urgent shipment confirmation",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": null,
+      "last_run_at": "2026-08-07T15:04:00.891758-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\jobs.json",
+      "id": "9868ee5f2643",
+      "name": "Lippert final tracking owner (SHADOW ONLY)",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": "2026-08-21T11:59:48.161365-04:00",
+      "last_run_at": "2026-08-21T11:44:48.161365-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "9b03a939ef99",
+      "name": "LTL Tracking Mapper",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 720,
+        "display": "every 720m"
+      },
+      "next_run_at": "2026-09-04T02:51:55.136193-04:00",
+      "last_run_at": "2026-09-03T14:51:55.136193-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "0f42447c64a6",
+      "name": "Lippert ETA guarded catalog refresh",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 2,
+        "display": "every 2m"
+      },
+      "next_run_at": "2026-08-27T10:02:24.583728-04:00",
+      "last_run_at": "2026-08-27T10:00:24.583728-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "89de9427e76b",
+      "name": "Keep Kanban worker model auth current",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-10-16T08:02:46.964613-04:00",
+      "last_run_at": "2026-10-16T07:57:46.964613-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "917a1ee90aec",
+      "name": "Hermes dashboard UI watchdog",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-10-16T08:02:47.247317-04:00",
+      "last_run_at": "2026-10-16T07:57:47.247317-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "ece0db616afe",
+      "name": "ERVP 12h Trending materializer",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": "2026-10-16T08:17:52.082903-04:00",
+      "last_run_at": "2026-10-16T08:02:52.082903-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "9270a51ed61a",
+      "name": "ERVP Kanban actionable supervisor",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-07-23T08:27:01.775962-04:00",
+      "last_run_at": "2026-07-23T08:22:01.775962-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "59b1ee116748",
+      "name": "ERVP CS bot health watchdog",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-10-16T08:03:08.719098-04:00",
+      "last_run_at": "2026-10-16T07:58:08.719098-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "a66190546089",
+      "name": "Lippert ETA freshness SLA watchdog",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 60,
+        "display": "every 60m"
+      },
+      "next_run_at": "2026-08-27T10:28:00.896097-04:00",
+      "last_run_at": "2026-08-27T09:28:00.896097-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "2a806c33e3f2",
+      "name": "ERVP returns portal health watchdog",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-10-16T08:06:48.286644-04:00",
+      "last_run_at": "2026-10-16T08:01:48.286644-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "d68cb0c1ae05",
+      "name": "Inventory sync incident router",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-10-16T08:03:48.178974-04:00",
+      "last_run_at": "2026-10-16T07:58:48.178974-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\jobs.json",
+      "id": "c94a14183a61",
+      "name": "Archer ERVP inbox material-alert maintenance",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 30,
+        "display": "every 30m"
+      },
+      "next_run_at": "2026-10-16T08:32:47.573855-04:00",
+      "last_run_at": "2026-10-16T08:02:47.573855-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-ops\\cron\\jobs.json",
+      "id": "e1140f54039a",
+      "name": "Archer ERVP inbox material-alert maintenance",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 30,
+        "display": "every 30m"
+      },
+      "next_run_at": "2026-08-21T12:15:04.669115-04:00",
+      "last_run_at": "2026-08-21T11:45:04.669115-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\cron\\jobs.json",
+      "id": "ce09b813238c",
+      "name": "ERVP vendor failure Telegram alerts",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 1,
+        "display": "every 1m"
+      },
+      "next_run_at": "2026-10-16T08:02:48.154922-04:00",
+      "last_run_at": "2026-10-16T08:01:48.154922-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\cron\\jobs.json",
+      "id": "330388e25e93",
+      "name": "Watch Dometic reply for SO 101592515",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 60,
+        "display": "every 60m"
+      },
+      "next_run_at": "2026-10-16T08:38:43.425126-04:00",
+      "last_run_at": "2026-10-16T07:38:43.425126-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\cron\\jobs.json",
+      "id": "305da2ff8a02",
+      "name": "Monitor manual Dometic submissions 100120323 and 100120506",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": "2026-10-16T08:16:11.487477-04:00",
+      "last_run_at": "2026-10-16T08:01:11.487477-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\cron\\jobs.json",
+      "id": "b95f03d799dc",
+      "name": "ERVP Orders LTL Tracking Mapper",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 720,
+        "display": "every 720m"
+      },
+      "next_run_at": "2026-10-16T08:46:31.527343-04:00",
+      "last_run_at": "2026-10-15T20:46:31.527343-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-storefront\\cron\\jobs.json",
+      "id": "451f5e565408",
+      "name": "ERVP 12h Trending materializer",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": "2026-07-20T14:14:02.171542-04:00",
+      "last_run_at": "2026-07-20T13:59:02.171542-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\cron\\jobs.json",
+      "id": "d7914a111735",
+      "name": "ERVP OpenClaw warehouse registry sync",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": "2026-08-13T15:05:28.798337-04:00",
+      "last_run_at": "2026-08-13T14:50:28.798337-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\cron\\jobs.json",
+      "id": "48352e1e4b39",
+      "name": "Obsidian vault drift monitor",
+      "enabled": true,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 30,
+        "display": "every 30m"
+      },
+      "next_run_at": "2026-10-16T08:08:17.151023-04:00",
+      "last_run_at": "2026-10-16T07:38:17.151023-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops-2\\cron\\jobs.json",
+      "id": "02530f5f6c99",
+      "name": "Watch Dometic 11-order reply",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": null,
+      "last_run_at": "2026-09-19T17:10:48.178162-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\qa-review\\cron\\jobs.json",
+      "id": "9b03a939ef99",
+      "name": "LTL Tracking Mapper",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 720,
+        "display": "every 720m"
+      },
+      "next_run_at": "2026-07-24T20:54:35.764396-04:00",
+      "last_run_at": "2026-07-24T08:54:35.764396-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\qa-review\\cron\\jobs.json",
+      "id": "78a0446338e8",
+      "name": "ERVP CS bot health watchdog",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-07-24T09:05:34.407151-04:00",
+      "last_run_at": "2026-07-24T09:00:34.407151-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\qa-review\\cron\\jobs.json",
+      "id": "0f42447c64a6",
+      "name": "Lippert ETA guarded catalog refresh",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 15,
+        "display": "every 15m"
+      },
+      "next_run_at": "2026-07-24T09:09:34.223896-04:00",
+      "last_run_at": "2026-07-24T08:54:34.223896-04:00"
+    },
+    {
+      "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\qa-review\\cron\\jobs.json",
+      "id": "89de9427e76b",
+      "name": "Keep Kanban worker model auth current",
+      "enabled": false,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "next_run_at": "2026-07-24T09:05:34.383411-04:00",
+      "last_run_at": "2026-07-24T09:00:34.383411-04:00"
+    }
+  ],
+  "tasks": [
+    {
+      "name": "ERVP Hermes Dashboard",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/15/2026 14:18:50",
+      "last_result": 0,
+      "next_run": "",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "ERVP_Dometic_Inventory",
+      "path": "\\",
+      "state": "Disabled",
+      "enabled": false,
+      "last_run": "09/18/2026 10:35:21",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:20",
+      "missed": 2677,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\ERVP\\DometicInventory\\app",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\ERVP\\DometicInventory\\app\\run-windows.ps1"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-09-10T09:35:20-04:00",
+          "duration": null,
+          "interval": "PT15M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        },
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskBootTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "ERVP_Dometic_Safe_Poller",
+      "path": "\\",
+      "state": "Disabled",
+      "enabled": false,
+      "last_run": "08/18/2026 02:36:01",
+      "last_result": 267014,
+      "next_run": "10/16/2026 08:06:00",
+      "missed": 5685,
+      "actions": [
+        {
+          "execute": "\"C:\\WINDOWS\\System32\\wscript.exe\"",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_safe_vendor_poller_hidden.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-10T10:21:00",
+          "duration": null,
+          "interval": "PT15M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "ERVP_Orders_Bot_All_Order_Review",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:02:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:07:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_All_Order_Review-silent.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-24T08:27:00",
+          "duration": null,
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 07:56:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:11:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_Direct_Shopify-silent.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-20T16:11:00",
+          "duration": null,
+          "interval": "PT15M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "ERVP_Orders_Bot_Placement",
+      "path": "\\",
+      "state": "Disabled",
+      "enabled": false,
+      "last_run": "09/18/2026 14:37:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:04:00",
+      "missed": 39926,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_orders_bot_worker.cmd"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-08-03T13:49:00-04:00",
+          "duration": null,
+          "interval": "PT1M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "ERVP_Orders_Bot_Producer",
+      "path": "\\",
+      "state": "Disabled",
+      "enabled": false,
+      "last_run": "08/20/2026 14:15:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:15:00",
+      "missed": 5447,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\cmd.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_production_owner_policy_cycle.cmd"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-16T07:45:00",
+          "duration": null,
+          "interval": "PT15M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "HermesDesktopUpdate-20260805",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "08/05/2026 23:59:00",
+      "last_result": 0,
+      "next_run": "",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "\"C:\\Python314\\python.exe\"",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\update-backups\\run-desktop-update-20260805.py"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-05T23:59:00",
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_Accounting_Migration_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:48",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:47",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-12T12:00:47-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_Accounting_Sharon_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:02:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:07:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-25T11:57:00",
+          "duration": null,
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_Brain_Backup",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 07:20:22",
+      "last_result": 1,
+      "next_run": "10/16/2026 11:20:21",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\Hermes_Brain_Backup-silent.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-07-25T23:20:21-04:00",
+          "duration": "P3650D",
+          "interval": "PT4H",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_cs_ali_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-ali",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-ali\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-08-12T11:25:00-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_cs_jasmine_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-jasmine",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-jasmine\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-08-12T11:25:00-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_cs_mallory_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-mallory",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-mallory\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-08-12T11:25:00-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_cs_rae_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-rae",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-rae\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-08-12T11:25:00-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_CS_Tim_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:01:43",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:06:42",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-07-23T09:16:42-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_ERVP_Manager_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-07-14T10:55:00",
+          "duration": null,
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_ERVP_Orders_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-18T16:10:00",
+          "duration": null,
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_Gateway",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/15/2026 14:18:50",
+      "last_result": 0,
+      "next_run": "",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\gateway-service\\Hermes_Gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-06-10T09:10:00",
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_cust-service",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/15/2026 14:20:53",
+      "last_result": 0,
+      "next_run": "",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cust-service\\gateway-service\\Hermes_Gateway_cust-service.cmd",
+          "working_directory": null,
+          "script_paths": []
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-06-10T09:15:00",
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_Gianna_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:03:00",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cust-service\\scripts\\gateway_watchdog.py"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-07-23T12:43:00-04:00",
+          "duration": "P1D",
+          "interval": "PT2M",
+          "type": "MSFT_TaskDailyTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_HermesOps2_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:01:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:06:00",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops-2\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-11T16:01:00",
+          "duration": null,
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_HermesOps_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 07:59:58",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:04:57",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-07-23T10:44:57-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_MPHealth_Watchdog",
+      "path": "\\",
+      "state": "Disabled",
+      "enabled": false,
+      "last_run": "09/25/2026 17:04:01",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:04:00",
+      "missed": 5939,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\mphealth",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\mphealth\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-07-14T10:59:00",
+          "duration": null,
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Hermes_Nick_Watchdog",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 07:59:16",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:04:15",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\WINDOWS\\System32\\wscript.exe",
+          "working_directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\nick",
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\nick\\scripts\\ensure-gateway.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": null,
+          "duration": null,
+          "interval": null,
+          "type": "MSFT_TaskLogonTrigger",
+          "enabled": true
+        },
+        {
+          "start": "2026-08-15T14:19:15-04:00",
+          "duration": "P3650D",
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "OrderOps_Order_Completion_Mirror",
+      "path": "\\",
+      "state": "Ready",
+      "enabled": true,
+      "last_run": "10/16/2026 08:00:15",
+      "last_result": 0,
+      "next_run": "10/16/2026 08:05:14",
+      "missed": 0,
+      "actions": [
+        {
+          "execute": "C:\\Windows\\System32\\wscript.exe",
+          "working_directory": null,
+          "script_paths": [
+            "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\OrderOps_Order_Completion_Mirror-silent.vbs"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "start": "2026-08-25T17:30:14-04:00",
+          "duration": null,
+          "interval": "PT5M",
+          "type": "MSFT_TaskTimeTrigger",
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "startup": [
+    {
+      "name": "ERVP_Hermes_Dashboard.cmd.disabled-windowless-20260724",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\ERVP_Hermes_Dashboard.cmd.disabled-windowless-20260724",
+      "bytes": 258,
+      "modified": "2026-07-20T14:08:19.4401562Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_accounting-migration.cmd.disabled-20260722-153130",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_accounting-migration.cmd.disabled-20260722-153130",
+      "bytes": 444,
+      "modified": "2026-07-11T21:48:14.7378624Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_accounting-migration.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_accounting-migration.vbs",
+      "bytes": 432,
+      "modified": "2026-07-22T19:33:33.1825523Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\gateway-service\\Hermes_Gateway_accounting-migration.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_accounting-sharon.vbs.disabled",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_accounting-sharon.vbs.disabled",
+      "bytes": 516,
+      "modified": "2026-08-14T20:28:10.3188261Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_cs-ali.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-ali.vbs",
+      "bytes": 240,
+      "modified": "2026-08-14T17:15:31.5444041Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-ali\\scripts\\ensure-gateway.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_cs-jasmine.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-jasmine.vbs",
+      "bytes": 488,
+      "modified": "2026-07-25T15:40:26.5614227Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-jasmine\\gateway-service\\Hermes_Gateway_cs-jasmine.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_cs-joe.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-joe.vbs",
+      "bytes": 897,
+      "modified": "2026-08-11T20:01:52.8466859Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_cs-mallory.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-mallory.vbs",
+      "bytes": 488,
+      "modified": "2026-08-11T15:17:02.4601415Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-mallory\\gateway-service\\Hermes_Gateway_cs-mallory.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_cs-rae.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-rae.vbs",
+      "bytes": 472,
+      "modified": "2026-08-11T15:17:07.7654531Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-rae\\gateway-service\\Hermes_Gateway_cs-rae.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_cs-tim.cmd.disabled-20260720",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.cmd.disabled-20260720",
+      "bytes": 311,
+      "modified": "2026-07-13T14:16:58.2958353Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_cs-tim.cmd.rollback-20260720",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.cmd.rollback-20260720",
+      "bytes": 426,
+      "modified": "2026-07-20T18:19:55.2207659Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_cs-tim.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs",
+      "bytes": 472,
+      "modified": "2026-07-31T20:02:40.1880652Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\gateway-service\\Hermes_Gateway_cs-tim.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_cs-tim.vbs.disabled-20260724-120734",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs.disabled-20260724-120734",
+      "bytes": 464,
+      "modified": "2026-07-20T18:19:55.2207659Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_cust-service.vbs.disabled-t_73a06450-20260723-124208",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cust-service.vbs.disabled-t_73a06450-20260723-124208",
+      "bytes": 500,
+      "modified": "2026-07-20T19:41:02.6541865Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130",
+      "bytes": 335,
+      "modified": "2026-07-14T14:10:12.0754323Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_ervp-manager.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.vbs",
+      "bytes": 416,
+      "modified": "2026-07-22T19:33:33.1855498Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\gateway-service\\Hermes_Gateway_ervp-manager.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_ervp-orders.cmd.disabled-20260722-153130",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.cmd.disabled-20260722-153130",
+      "bytes": 327,
+      "modified": "2026-07-16T20:52:41.7711203Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_ervp-orders.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.vbs",
+      "bytes": 414,
+      "modified": "2026-07-22T19:33:33.1885511Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\gateway-service\\Hermes_Gateway_ervp-orders.vbs"
+      ]
+    },
+    {
+      "name": "Hermes_Gateway_hermesops.vbs.disabled-20260724-111603",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_hermesops.vbs.disabled-20260724-111603",
+      "bytes": 484,
+      "modified": "2026-07-20T15:36:39.2416537Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_mphealth.cmd.disabled-20260722-153130",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_mphealth.cmd.disabled-20260722-153130",
+      "bytes": 305,
+      "modified": "2026-07-14T14:58:17.6553665Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_mphealth.vbs.disabled-20260724-111603",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_mphealth.vbs.disabled-20260724-111603",
+      "bytes": 408,
+      "modified": "2026-07-22T19:33:33.1905527Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_tripower-consulting.cmd.disabled-20260722-153130",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_tripower-consulting.cmd.disabled-20260722-153130",
+      "bytes": 363,
+      "modified": "2026-07-14T14:08:08.1750717Z",
+      "active_extension": false,
+      "target_paths": []
+    },
+    {
+      "name": "Hermes_Gateway_tripower-consulting.vbs",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_tripower-consulting.vbs",
+      "bytes": 430,
+      "modified": "2026-07-22T19:33:33.1955772Z",
+      "active_extension": true,
+      "target_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\gateway-service\\Hermes_Gateway_tripower-consulting.vbs"
+      ]
+    },
+    {
+      "name": "Wispr Flow.lnk",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Wispr Flow.lnk",
+      "bytes": 2314,
+      "modified": "2026-10-14T03:49:41.5048063Z",
+      "active_extension": true,
+      "target_paths": []
+    },
+    {
+      "name": "Tailscale.lnk",
+      "path": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\Tailscale.lnk",
+      "bytes": 1942,
+      "modified": "2026-09-17T19:18:04.1865875Z",
+      "active_extension": true,
+      "target_paths": []
+    }
+  ],
+  "processes": [
+    {
+      "pid": 0,
+      "parent_pid": 0,
+      "name": "System Idle Process",
+      "executable": null,
+      "created": "2026-10-15T14:16:13.7674660-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4,
+      "parent_pid": 0,
+      "name": "System",
+      "executable": null,
+      "created": "2026-10-15T14:16:13.7674660-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 236,
+      "parent_pid": 4,
+      "name": "Secure System",
+      "executable": null,
+      "created": "2026-10-15T14:16:12.5629300-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 280,
+      "parent_pid": 4,
+      "name": "Registry",
+      "executable": null,
+      "created": "2026-10-15T14:16:12.5759090-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 860,
+      "parent_pid": 4,
+      "name": "smss.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:13.7750020-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1148,
+      "parent_pid": 1084,
+      "name": "csrss.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:16.9196500-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1292,
+      "parent_pid": 1084,
+      "name": "wininit.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:17.4267790-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1300,
+      "parent_pid": 1284,
+      "name": "csrss.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:17.4281680-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1360,
+      "parent_pid": 1284,
+      "name": "winlogon.exe",
+      "executable": "C:\\WINDOWS\\system32\\winlogon.exe",
+      "created": "2026-10-15T14:16:17.4395240-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1432,
+      "parent_pid": 1292,
+      "name": "services.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:17.5187670-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1452,
+      "parent_pid": 1292,
+      "name": "LsaIso.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:17.5613750-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1460,
+      "parent_pid": 1292,
+      "name": "lsass.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:17.5646980-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1596,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.0982630-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1628,
+      "parent_pid": 1292,
+      "name": "fontdrvhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\fontdrvhost.exe",
+      "created": "2026-10-15T14:16:18.1133200-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1636,
+      "parent_pid": 1360,
+      "name": "fontdrvhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\fontdrvhost.exe",
+      "created": "2026-10-15T14:16:18.1133510-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1724,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.1718930-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1776,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.1942580-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1860,
+      "parent_pid": 1360,
+      "name": "dwm.exe",
+      "executable": "C:\\WINDOWS\\system32\\dwm.exe",
+      "created": "2026-10-15T14:16:18.2905960-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1908,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3012540-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2000,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3190190-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2008,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3190270-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2016,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3190430-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 868,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3329050-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 840,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3331140-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2072,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3607020-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2112,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3690510-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2196,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3803190-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2228,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.3850300-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2292,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.4005260-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2332,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.4101320-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2456,
+      "parent_pid": 1432,
+      "name": "amdfendrsr.exe",
+      "executable": "C:\\WINDOWS\\System32\\DriverStore\\FileRepository\\amdfendr.inf_amd64_5f2cd636dbc40dd2\\amdfendrsr.exe",
+      "created": "2026-10-15T14:16:18.4385840-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2464,
+      "parent_pid": 1432,
+      "name": "atiesrxx.exe",
+      "executable": "C:\\WINDOWS\\System32\\DriverStore\\FileRepository\\u0407052.inf_amd64_84d15514ad17ffa0\\B406619\\atiesrxx.exe",
+      "created": "2026-10-15T14:16:18.4387230-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2472,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.4390440-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2560,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.4594250-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2684,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.4852010-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2736,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5071130-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2924,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5390920-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2984,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5481420-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2992,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5494300-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3000,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5499440-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3012,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5500480-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2212,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5558540-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3136,
+      "parent_pid": 4,
+      "name": "Memory Compression",
+      "executable": null,
+      "created": "2026-10-15T14:16:18.5713770-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3188,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5769870-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3248,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5924910-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3256,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.5926400-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3424,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.6345680-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3460,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.6495330-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3616,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.6989450-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3624,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.6989560-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3704,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.7244540-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3740,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.7388080-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3800,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.7621190-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3908,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.8048090-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3936,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.8157960-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4012,
+      "parent_pid": 1432,
+      "name": "spoolsv.exe",
+      "executable": "C:\\WINDOWS\\System32\\spoolsv.exe",
+      "created": "2026-10-15T14:16:18.8403530-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4052,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.8603450-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2716,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.8805750-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4228,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9761030-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4248,
+      "parent_pid": 1432,
+      "name": "remoting_host.exe",
+      "executable": "C:\\Program Files (x86)\\Google\\Chrome Remote Desktop\\154.0.8037.40\\remoting_host.exe",
+      "created": "2026-10-15T14:16:18.9775360-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4256,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9782950-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4264,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9783260-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4272,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9783540-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4280,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9788130-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4288,
+      "parent_pid": 1432,
+      "name": "sshd.exe",
+      "executable": "C:\\WINDOWS\\System32\\OpenSSH\\sshd.exe",
+      "created": "2026-10-15T14:16:18.9800840-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4312,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9807980-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4328,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9811940-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4348,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:18.9820560-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4364,
+      "parent_pid": 1432,
+      "name": "MpDefenderCoreService.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:18.9842350-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4376,
+      "parent_pid": 1432,
+      "name": "MsMpEng.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:18.9851670-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4776,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:19.0282090-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4824,
+      "parent_pid": 1432,
+      "name": "tailscaled.exe",
+      "executable": "C:\\Program Files\\Tailscale\\tailscaled.exe",
+      "created": "2026-10-15T14:16:19.0375370-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5196,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:19.1219610-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5400,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:19.1686990-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5864,
+      "parent_pid": 4264,
+      "name": "AggregatorHost.exe",
+      "executable": "C:\\WINDOWS\\System32\\AggregatorHost.exe",
+      "created": "2026-10-15T14:16:19.3547660-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5872,
+      "parent_pid": 4248,
+      "name": "remoting_host.exe",
+      "executable": "C:\\Program Files (x86)\\Google\\Chrome Remote Desktop\\154.0.8037.40\\remoting_host.exe",
+      "created": "2026-10-15T14:16:19.3563450-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6048,
+      "parent_pid": 4824,
+      "name": "tailscaled.exe",
+      "executable": "C:\\Program Files\\Tailscale\\tailscaled.exe",
+      "created": "2026-10-15T14:16:19.3820570-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6244,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:19.8140060-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6344,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:19.8714240-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6448,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:19.9843810-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7148,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:20.6093180-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6292,
+      "parent_pid": 1432,
+      "name": "cowork-svc.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\Claude_2.16120.0.0_x64__pzs8sxrjxfjjc\\app\\resources\\cowork-svc.exe",
+      "created": "2026-10-15T14:16:20.6568150-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6428,
+      "parent_pid": 1432,
+      "name": "codex-windows-sandbox-service.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\resources\\codex-windows-sandbox-service.exe",
+      "created": "2026-10-15T14:16:20.6598920-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6408,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:20.6632630-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7012,
+      "parent_pid": 3908,
+      "name": "wlanext.exe",
+      "executable": "C:\\WINDOWS\\system32\\WLANExt.exe",
+      "created": "2026-10-15T14:16:20.8215520-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4172,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:21.2527800-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4148,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:21.9485840-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6440,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:24.0636520-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1896,
+      "parent_pid": 6440,
+      "name": "NgcIso.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:24.0956650-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5412,
+      "parent_pid": 1432,
+      "name": "NisSrv.exe",
+      "executable": null,
+      "created": "2026-10-15T14:16:24.4743470-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7320,
+      "parent_pid": 1432,
+      "name": "vmcompute.exe",
+      "executable": "C:\\WINDOWS\\system32\\vmcompute.exe",
+      "created": "2026-10-15T14:16:24.8454400-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7628,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:16:26.6535400-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7692,
+      "parent_pid": 2560,
+      "name": "dasHost.exe",
+      "executable": "C:\\WINDOWS\\system32\\dashost.exe",
+      "created": "2026-10-15T14:16:26.9143760-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7744,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:16:27.4341500-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1644,
+      "parent_pid": 2464,
+      "name": "atieclxx.exe",
+      "executable": "C:\\WINDOWS\\System32\\DriverStore\\FileRepository\\u0407052.inf_amd64_84d15514ad17ffa0\\B406619\\atieclxx.exe",
+      "created": "2026-10-15T14:17:00.5570540-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2496,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:17:00.5976350-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8064,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:20.8101850-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7884,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": null,
+      "created": "2026-10-15T14:18:21.3306590-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5204,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:21.6615330-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 2776,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:18:22.1354830-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6480,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:22.2780560-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4144,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:22.5461300-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7356,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": null,
+      "created": "2026-10-15T14:18:22.9415650-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7528,
+      "parent_pid": 1432,
+      "name": "SearchIndexer.exe",
+      "executable": "C:\\WINDOWS\\system32\\SearchIndexer.exe",
+      "created": "2026-10-15T14:18:23.1126780-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5756,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:39.9095430-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5912,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:50.0912720-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3220,
+      "parent_pid": 4376,
+      "name": "DefenderSessionHelper.exe",
+      "executable": null,
+      "created": "2026-10-15T14:18:50.2505480-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7868,
+      "parent_pid": 2332,
+      "name": "sihost.exe",
+      "executable": "C:\\WINDOWS\\system32\\sihost.exe",
+      "created": "2026-10-15T14:18:50.2847670-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7784,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:50.3056700-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8020,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:50.3072750-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8148,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:50.3233300-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1592,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:50.3412630-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6908,
+      "parent_pid": 2924,
+      "name": "taskhostw.exe",
+      "executable": "C:\\WINDOWS\\system32\\taskhostw.exe",
+      "created": "2026-10-15T14:18:50.3660810-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5552,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:50.3952980-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9000,
+      "parent_pid": 7868,
+      "name": "ShellHost.exe",
+      "executable": "C:\\Windows\\System32\\ShellHost.exe",
+      "created": "2026-10-15T14:18:50.9190090-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9048,
+      "parent_pid": 8868,
+      "name": "explorer.exe",
+      "executable": "C:\\WINDOWS\\Explorer.EXE",
+      "created": "2026-10-15T14:18:50.9405630-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8780,
+      "parent_pid": 7868,
+      "name": "CrossDeviceResume.exe",
+      "executable": "C:\\WINDOWS\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResume.exe",
+      "created": "2026-10-15T14:18:51.1711920-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9500,
+      "parent_pid": 5096,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:18:51.6955790-04:00",
+      "hermes_related": true,
+      "profile": null,
+      "script_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.py"
+      ],
+      "role": "dashboard"
+    },
+    {
+      "pid": 9828,
+      "parent_pid": 4128,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:18:51.8699910-04:00",
+      "hermes_related": true,
+      "profile": "hermesops",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 10056,
+      "parent_pid": 4856,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:18:52.0552880-04:00",
+      "hermes_related": true,
+      "profile": "cs-tim",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 10112,
+      "parent_pid": 2108,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:18:52.1105050-04:00",
+      "hermes_related": true,
+      "profile": "cs-mallory",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 10120,
+      "parent_pid": 4692,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:18:52.1120340-04:00",
+      "hermes_related": true,
+      "profile": "cs-jasmine",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 10180,
+      "parent_pid": 5072,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:18:52.1486070-04:00",
+      "hermes_related": true,
+      "profile": "cs-rae",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 10212,
+      "parent_pid": 6188,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\pythonw.exe",
+      "created": "2026-10-15T14:18:52.1709880-04:00",
+      "hermes_related": true,
+      "profile": "nick",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 9360,
+      "parent_pid": 10212,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:18:52.1920850-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9632,
+      "parent_pid": 5744,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\.worktrees\\t_14c058c8\\.venv\\Scripts\\pythonw.exe",
+      "created": "2026-10-15T14:18:52.2185730-04:00",
+      "hermes_related": true,
+      "profile": "cs-ali",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 9436,
+      "parent_pid": 9632,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:18:52.2402380-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8680,
+      "parent_pid": 10212,
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe",
+      "created": "2026-10-15T14:18:52.2488320-04:00",
+      "hermes_related": true,
+      "profile": "nick",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 9808,
+      "parent_pid": 9632,
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe",
+      "created": "2026-10-15T14:18:52.2806930-04:00",
+      "hermes_related": true,
+      "profile": "cs-ali",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 9708,
+      "parent_pid": 1596,
+      "name": "CrossDeviceService.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\MicrosoftWindows.CrossDevice_1.26082.74.0_x64__cw5n1h2txyewy\\CrossDeviceService.exe",
+      "created": "2026-10-15T14:18:53.5797980-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9788,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:54.1852780-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9748,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:54.4486280-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10568,
+      "parent_pid": 1596,
+      "name": "SearchHost.exe",
+      "executable": "C:\\WINDOWS\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe",
+      "created": "2026-10-15T14:18:54.7717560-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10596,
+      "parent_pid": 1596,
+      "name": "StartMenuExperienceHost.exe",
+      "executable": "C:\\WINDOWS\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe",
+      "created": "2026-10-15T14:18:54.7766980-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10736,
+      "parent_pid": 1596,
+      "name": "WidgetBoard.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\MicrosoftWindows.Client.WebExperience_526.21100.40.0_x64__cw5n1h2txyewy\\WidgetBoard.exe",
+      "created": "2026-10-15T14:18:54.8639990-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10908,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:55.1171030-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10960,
+      "parent_pid": 1596,
+      "name": "RuntimeBroker.exe",
+      "executable": "C:\\Windows\\System32\\RuntimeBroker.exe",
+      "created": "2026-10-15T14:18:55.1551000-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11124,
+      "parent_pid": 1596,
+      "name": "UserOOBEBroker.exe",
+      "executable": "C:\\Windows\\System32\\oobe\\UserOOBEBroker.exe",
+      "created": "2026-10-15T14:18:55.2232070-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11148,
+      "parent_pid": 1596,
+      "name": "WidgetService.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WidgetsPlatformRuntime_1.6.19.0_x64__8wekyb3d8bbwe\\WidgetService\\WidgetService.exe",
+      "created": "2026-10-15T14:18:55.2445280-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10752,
+      "parent_pid": 1596,
+      "name": "RuntimeBroker.exe",
+      "executable": "C:\\Windows\\System32\\RuntimeBroker.exe",
+      "created": "2026-10-15T14:18:55.4324220-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 12608,
+      "parent_pid": 10568,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:18:56.3762470-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 12892,
+      "parent_pid": 12608,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:18:56.4434320-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11048,
+      "parent_pid": 12608,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:18:56.8030190-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 12980,
+      "parent_pid": 12608,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:18:56.8037630-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 13252,
+      "parent_pid": 1596,
+      "name": "MicrosoftStartFeedProvider.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\Microsoft.StartExperiencesApp_1.398.2.0_x64__8wekyb3d8bbwe\\MicrosoftStartFeedProvider\\MicrosoftStartFeedProvider.exe",
+      "created": "2026-10-15T14:18:56.8653000-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11044,
+      "parent_pid": 12608,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:18:56.9233340-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 13496,
+      "parent_pid": 12608,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:18:57.0726630-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 13752,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:18:57.3258930-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6436,
+      "parent_pid": 3460,
+      "name": "ctfmon.exe",
+      "executable": "C:\\WINDOWS\\system32\\ctfmon.exe",
+      "created": "2026-10-15T14:19:00.5196320-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11692,
+      "parent_pid": 2744,
+      "name": "cua-driver.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\Programs\\Cua\\cua-driver\\bin\\cua-driver.exe",
+      "created": "2026-10-15T14:19:01.3559700-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10384,
+      "parent_pid": 11692,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:19:01.3669180-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10500,
+      "parent_pid": 9500,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\pythonw.exe",
+      "created": "2026-10-15T14:19:02.1558450-04:00",
+      "hermes_related": true,
+      "profile": "default",
+      "script_paths": [],
+      "role": "dashboard"
+    },
+    {
+      "pid": 10496,
+      "parent_pid": 10500,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:19:02.1675320-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5372,
+      "parent_pid": 10500,
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe",
+      "created": "2026-10-15T14:19:02.1842520-04:00",
+      "hermes_related": true,
+      "profile": "default",
+      "script_paths": [],
+      "role": "dashboard"
+    },
+    {
+      "pid": 10092,
+      "parent_pid": 1596,
+      "name": "TextInputHost.exe",
+      "executable": "C:\\WINDOWS\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe",
+      "created": "2026-10-15T14:19:04.6604740-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9284,
+      "parent_pid": 12196,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:19:08.7541920-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9276,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:19:08.8003360-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8972,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:19:09.1200110-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9924,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:19:09.1289920-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7408,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:19:09.1834640-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8668,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:19:09.2621370-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 13856,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:19:09.2646320-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14600,
+      "parent_pid": 9284,
+      "name": "cmd.exe",
+      "executable": "C:\\WINDOWS\\system32\\cmd.exe",
+      "created": "2026-10-15T14:19:09.5062670-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14616,
+      "parent_pid": 14600,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:19:09.5372380-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14688,
+      "parent_pid": 9284,
+      "name": "cmd.exe",
+      "executable": "C:\\WINDOWS\\system32\\cmd.exe",
+      "created": "2026-10-15T14:19:09.6440540-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14700,
+      "parent_pid": 14688,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:19:09.6642870-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14852,
+      "parent_pid": 14688,
+      "name": "chrome-native-host.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\Claude\\ChromeNativeHost\\chrome-native-host.exe",
+      "created": "2026-10-15T14:19:09.7296910-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14860,
+      "parent_pid": 14600,
+      "name": "extension-host.exe",
+      "executable": "C:\\Users\\nicho\\.codex\\plugins\\cache\\openai-bundled\\chrome\\latest\\extension-host\\windows\\x64\\extension-host.exe",
+      "created": "2026-10-15T14:19:09.7418310-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15604,
+      "parent_pid": 9048,
+      "name": "SecurityHealthSystray.exe",
+      "executable": "C:\\Windows\\System32\\SecurityHealthSystray.exe",
+      "created": "2026-10-15T14:19:23.7883110-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11688,
+      "parent_pid": 1432,
+      "name": "SecurityHealthService.exe",
+      "executable": null,
+      "created": "2026-10-15T14:19:23.8152370-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15864,
+      "parent_pid": 9048,
+      "name": "OneDrive.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe",
+      "created": "2026-10-15T14:19:25.9587970-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3944,
+      "parent_pid": 7876,
+      "name": "MoNotificationUx.exe",
+      "executable": "C:\\WINDOWS\\uus\\AMD64\\MoNotificationUx.exe",
+      "created": "2026-10-15T14:19:30.3586220-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3116,
+      "parent_pid": 15468,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:19:30.5635020-04:00",
+      "hermes_related": true,
+      "profile": "ervp-orders",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 6164,
+      "parent_pid": 9048,
+      "name": "ms-teams.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\MSTeams_26246.1604.5133.838_x64__8wekyb3d8bbwe\\ms-teams.exe",
+      "created": "2026-10-15T14:19:56.0489270-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15472,
+      "parent_pid": 6164,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:19:56.5074840-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15860,
+      "parent_pid": 15472,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:19:56.5358900-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4740,
+      "parent_pid": 15472,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:19:56.6320510-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 16280,
+      "parent_pid": 15472,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:19:56.6377490-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4944,
+      "parent_pid": 1596,
+      "name": "RuntimeBroker.exe",
+      "executable": "C:\\Windows\\System32\\RuntimeBroker.exe",
+      "created": "2026-10-15T14:19:56.6589430-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15992,
+      "parent_pid": 15472,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:19:56.7002850-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 12472,
+      "parent_pid": 15472,
+      "name": "msedgewebview2.exe",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.45\\msedgewebview2.exe",
+      "created": "2026-10-15T14:19:56.7997920-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17480,
+      "parent_pid": 6164,
+      "name": "ms-teams.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\MSTeams_26246.1604.5133.838_x64__8wekyb3d8bbwe\\ms-teams.exe",
+      "created": "2026-10-15T14:19:57.2014870-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17952,
+      "parent_pid": 12108,
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+      "created": "2026-10-15T14:20:09.9227170-04:00",
+      "hermes_related": true,
+      "profile": "ervp-manager",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 17984,
+      "parent_pid": 17952,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:20:09.9301760-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 18032,
+      "parent_pid": 17952,
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe",
+      "created": "2026-10-15T14:20:09.9465260-04:00",
+      "hermes_related": true,
+      "profile": "ervp-manager",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 10132,
+      "parent_pid": 3056,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:20:59.1655820-04:00",
+      "hermes_related": true,
+      "profile": "cust-service",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 12408,
+      "parent_pid": 12540,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:21:02.0244140-04:00",
+      "hermes_related": true,
+      "profile": "hermesops-2",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 13692,
+      "parent_pid": 7868,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:21:56.5011810-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 16296,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:21:56.6668380-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9020,
+      "parent_pid": 16296,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:21:56.6945180-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7224,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:21:57.3285050-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 12284,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:21:57.3382410-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9900,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:21:57.3891990-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11916,
+      "parent_pid": 18124,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11.15-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:22:02.1369570-04:00",
+      "hermes_related": true,
+      "profile": "accounting-sharon",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 13204,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:04.6933870-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 13448,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:04.6940780-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8740,
+      "parent_pid": 13692,
+      "name": "codex.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\bin\\9614f1d9b40d9c4f\\codex.exe",
+      "created": "2026-10-15T14:22:04.9623380-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 16080,
+      "parent_pid": 8740,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:22:04.9698380-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 18344,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:06.6394660-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17528,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:10.8026210-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 16272,
+      "parent_pid": 13692,
+      "name": "codex-computer-use-swift.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\a9ba6825a525118c\\bin\\node_modules\\@oai\\sky\\bin\\windows\\swift\\x64\\codex-computer-use-swift.exe",
+      "created": "2026-10-15T14:22:10.9618090-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 18156,
+      "parent_pid": 16272,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:22:10.9775390-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8068,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:10.9981450-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9716,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:12.4364460-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10924,
+      "parent_pid": 13692,
+      "name": "codex.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\bin\\9614f1d9b40d9c4f\\codex.exe",
+      "created": "2026-10-15T14:22:17.8123120-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3904,
+      "parent_pid": 10924,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:22:17.8169430-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 13028,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:20.5326640-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10852,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:21.2148300-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 16000,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:25.0661800-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7384,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:26.4116800-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6572,
+      "parent_pid": 9048,
+      "name": "tailscale-ipn.exe",
+      "executable": "C:\\Program Files\\Tailscale\\tailscale-ipn.exe",
+      "created": "2026-10-15T14:22:27.3937390-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 10684,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:22:28.3336120-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11524,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:28.7028720-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17788,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:30.6505930-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 13956,
+      "parent_pid": 13692,
+      "name": "ChatGPT.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1007.9446.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "created": "2026-10-15T14:22:30.7342160-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11324,
+      "parent_pid": 1596,
+      "name": "OpenWith.exe",
+      "executable": "C:\\WINDOWS\\system32\\OpenWith.exe",
+      "created": "2026-10-15T14:22:57.5979430-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 3668,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T14:22:57.6875770-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8580,
+      "parent_pid": 9048,
+      "name": "Notepad.exe",
+      "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe",
+      "created": "2026-10-15T14:22:57.8636510-04:00",
+      "hermes_related": true,
+      "profile": null,
+      "script_paths": [
+        "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_accounting-migration.cmd"
+      ],
+      "role": null
+    },
+    {
+      "pid": 2272,
+      "parent_pid": 12052,
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe",
+      "created": "2026-10-15T14:23:28.2566660-04:00",
+      "hermes_related": true,
+      "profile": "accounting-migration",
+      "script_paths": [],
+      "role": "gateway"
+    },
+    {
+      "pid": 4712,
+      "parent_pid": 1596,
+      "name": "OpenWith.exe",
+      "executable": "C:\\WINDOWS\\system32\\OpenWith.exe",
+      "created": "2026-10-15T14:23:58.1450580-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 16884,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:27:23.6310580-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17900,
+      "parent_pid": 1432,
+      "name": "WUDFHost.exe",
+      "executable": "C:\\Windows\\System32\\WUDFHost.exe",
+      "created": "2026-10-15T14:33:22.6433690-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15876,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:33:33.2457520-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17164,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:33:38.7142970-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17300,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T14:35:00.5563640-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8260,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:36:28.3071460-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8508,
+      "parent_pid": 9284,
+      "name": "chrome.exe",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "created": "2026-10-15T14:36:30.8184340-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6820,
+      "parent_pid": 8740,
+      "name": "codex-code-mode-host.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\bin\\9614f1d9b40d9c4f\\codex-code-mode-host.exe",
+      "created": "2026-10-15T14:42:01.1765250-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 18348,
+      "parent_pid": 6820,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T14:42:01.1892230-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6616,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T15:12:13.9990260-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 12112,
+      "parent_pid": 1596,
+      "name": "SystemSettings.exe",
+      "executable": "C:\\Windows\\ImmersiveControlPanel\\SystemSettings.exe",
+      "created": "2026-10-15T15:19:38.3179520-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17048,
+      "parent_pid": 1596,
+      "name": "ApplicationFrameHost.exe",
+      "executable": "C:\\WINDOWS\\system32\\ApplicationFrameHost.exe",
+      "created": "2026-10-15T15:19:38.3414440-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 19344,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T15:19:40.3529420-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 812,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T15:19:40.6064970-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 19120,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-15T15:19:41.3770190-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11924,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-15T18:14:15.3743480-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 5900,
+      "parent_pid": 8740,
+      "name": "node_repl.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\a9ba6825a525118c\\bin\\node_repl.exe",
+      "created": "2026-10-15T20:43:21.7011350-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14296,
+      "parent_pid": 8740,
+      "name": "node.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\a9ba6825a525118c\\bin\\node.exe",
+      "created": "2026-10-15T20:43:21.7049940-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 18788,
+      "parent_pid": 8740,
+      "name": "cmd.exe",
+      "executable": "C:\\WINDOWS\\system32\\cmd.exe",
+      "created": "2026-10-15T20:43:21.7077120-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 19360,
+      "parent_pid": 5900,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T20:43:21.7080910-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7660,
+      "parent_pid": 8740,
+      "name": "cmd.exe",
+      "executable": "C:\\WINDOWS\\system32\\cmd.exe",
+      "created": "2026-10-15T20:43:21.7107200-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17640,
+      "parent_pid": 14296,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T20:43:21.7126650-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1840,
+      "parent_pid": 7660,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T20:43:21.7148950-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 8628,
+      "parent_pid": 18788,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-15T20:43:21.7230360-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15172,
+      "parent_pid": 7660,
+      "name": "node.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\a9ba6825a525118c\\bin\\node.exe",
+      "created": "2026-10-15T20:43:21.7540070-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1904,
+      "parent_pid": 18788,
+      "name": "node.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\a9ba6825a525118c\\bin\\node.exe",
+      "created": "2026-10-15T20:43:21.7636620-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17084,
+      "parent_pid": 14296,
+      "name": "node_repl.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\a9ba6825a525118c\\bin\\node_repl.exe",
+      "created": "2026-10-15T20:43:21.8255490-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 1444,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\System32\\svchost.exe",
+      "created": "2026-10-16T06:16:19.7973870-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 9092,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-16T06:16:19.9566090-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 18696,
+      "parent_pid": 1596,
+      "name": "WmiPrvSE.exe",
+      "executable": "C:\\WINDOWS\\system32\\wbem\\wmiprvse.exe",
+      "created": "2026-10-16T07:49:02.7223730-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 15064,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-16T08:00:17.8191940-04:00",
+      "hermes_related": false,
+      "profile": "-s",
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 11744,
+      "parent_pid": 1432,
+      "name": "svchost.exe",
+      "executable": "C:\\WINDOWS\\system32\\svchost.exe",
+      "created": "2026-10-16T08:01:23.5399150-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 17372,
+      "parent_pid": 2924,
+      "name": "wscript.exe",
+      "executable": "C:\\Windows\\System32\\wscript.exe",
+      "created": "2026-10-16T08:03:01.0209290-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [
+        "C:\\Users\\nicho\\Documents\\Codex\\2026-09-06\\pickup-this-chat-and-build-it\\.runtime\\FamilyFrameBridge\\Family_Frame_Bridge-silent.vbs"
+      ],
+      "role": null
+    },
+    {
+      "pid": 18604,
+      "parent_pid": 17372,
+      "name": "python.exe",
+      "executable": "C:\\Users\\nicho\\Documents\\Codex\\2026-09-06\\pickup-this-chat-and-build-it\\.runtime\\FamilyFrameBridge\\.venv\\Scripts\\python.exe",
+      "created": "2026-10-16T08:03:01.1223550-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [
+        "C:\\Users\\nicho\\Documents\\Codex\\2026-09-06\\pickup-this-chat-and-build-it\\.runtime\\FamilyFrameBridge\\frame_bridge.py"
+      ],
+      "role": null
+    },
+    {
+      "pid": 13408,
+      "parent_pid": 18604,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-16T08:03:01.1312740-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 4176,
+      "parent_pid": 18604,
+      "name": "python.exe",
+      "executable": "C:\\Python314\\python.exe",
+      "created": "2026-10-16T08:03:01.1580230-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [
+        "C:\\Users\\nicho\\Documents\\Codex\\2026-09-06\\pickup-this-chat-and-build-it\\.runtime\\FamilyFrameBridge\\frame_bridge.py"
+      ],
+      "role": null
+    },
+    {
+      "pid": 16516,
+      "parent_pid": 4288,
+      "name": "sshd.exe",
+      "executable": "C:\\WINDOWS\\System32\\OpenSSH\\sshd.exe",
+      "created": "2026-10-16T08:03:14.9371370-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 716,
+      "parent_pid": 16516,
+      "name": "sshd.exe",
+      "executable": "C:\\WINDOWS\\System32\\OpenSSH\\sshd.exe",
+      "created": "2026-10-16T08:03:15.1299840-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 14332,
+      "parent_pid": 716,
+      "name": "cmd.exe",
+      "executable": "c:\\windows\\system32\\cmd.exe",
+      "created": "2026-10-16T08:03:15.1617970-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 6272,
+      "parent_pid": 14332,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "created": "2026-10-16T08:03:15.1813800-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    },
+    {
+      "pid": 7880,
+      "parent_pid": 14332,
+      "name": "powershell.exe",
+      "executable": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "created": "2026-10-16T08:03:15.2045440-04:00",
+      "hermes_related": false,
+      "profile": null,
+      "script_paths": [],
+      "role": null
+    }
+  ],
+  "drives": [
+    {
+      "DeviceID": "C:",
+      "DriveType": 3,
+      "Size": 1022022905856,
+      "FreeSpace": 672166539264,
+      "FileSystem": "NTFS",
+      "VolumeName": ""
+    },
+    {
+      "DeviceID": "D:",
+      "DriveType": 2,
+      "Size": null,
+      "FreeSpace": null,
+      "FileSystem": null,
+      "VolumeName": null
+    },
+    {
+      "DeviceID": "E:",
+      "DriveType": 2,
+      "Size": null,
+      "FreeSpace": null,
+      "FileSystem": null,
+      "VolumeName": null
+    }
+  ],
+  "errors": []
+}

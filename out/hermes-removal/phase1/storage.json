@@ -1,0 +1,264 @@
+[
+  {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes",
+    "exists": true,
+    "bytes": 129362716397,
+    "files": 2785454,
+    "directories": 259135,
+    "reparse_points_skipped": 16,
+    "reparse_points": [
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\workspace\\orderops-shopify-containment-20260727\\node_modules",
+        "target": "\\\\?\\C:\\Users\\nicho\\elkhart-orderops-fix\\node_modules"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\workspace\\orderops-main-qa-20260727\\node_modules",
+        "target": "\\\\?\\C:\\Users\\nicho\\elkhart-orderops-fix\\node_modules"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\hermes",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\apps\\desktop"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\hermes-tui",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\ui-tui"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\web",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\web"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\bootstrap-installer",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\apps\\bootstrap-installer"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\ink",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\ui-tui\\packages\\hermes-ink"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\root-tests",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\tests-js"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\shared",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\apps\\shared"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\hermes",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\hermes-tui",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\ui-tui"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\web",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\web"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\bootstrap-installer",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\apps\\bootstrap-installer"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\ink",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\ui-tui\\packages\\hermes-ink"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\root-tests",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\tests-js"
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\shared",
+        "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\apps\\shared"
+      }
+    ],
+    "errors": 0,
+    "archival_cron": [
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\backups\\t_2b7ea26c-20260819T174017Z\\profiles\\ervp-manager\\cron\\jobs.json",
+        "jobs": [
+          {
+            "id": "9b03a939ef99",
+            "name": "LTL Tracking Mapper",
+            "enabled": true
+          },
+          {
+            "id": "0f42447c64a6",
+            "name": "Lippert ETA guarded catalog refresh",
+            "enabled": true
+          },
+          {
+            "id": "89de9427e76b",
+            "name": "Keep Kanban worker model auth current",
+            "enabled": true
+          },
+          {
+            "id": "917a1ee90aec",
+            "name": "Hermes dashboard UI watchdog",
+            "enabled": true
+          },
+          {
+            "id": "ece0db616afe",
+            "name": "ERVP 12h Trending materializer",
+            "enabled": true
+          },
+          {
+            "id": "9270a51ed61a",
+            "name": "ERVP Kanban actionable supervisor",
+            "enabled": false
+          },
+          {
+            "id": "59b1ee116748",
+            "name": "ERVP CS bot health watchdog",
+            "enabled": true
+          },
+          {
+            "id": "a66190546089",
+            "name": "Lippert ETA freshness SLA watchdog",
+            "enabled": true
+          },
+          {
+            "id": "2a806c33e3f2",
+            "name": "ERVP returns portal health watchdog",
+            "enabled": true
+          }
+        ]
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\state-snapshots\\20260722-172210-pre-update\\cron\\jobs.json",
+        "jobs": [
+          {
+            "id": "9b03a939ef99",
+            "name": "LTL Tracking Mapper",
+            "enabled": true
+          },
+          {
+            "id": "0f42447c64a6",
+            "name": "Lippert ETA guarded catalog refresh",
+            "enabled": true
+          },
+          {
+            "id": "89de9427e76b",
+            "name": "Keep Kanban worker model auth current",
+            "enabled": true
+          },
+          {
+            "id": "917a1ee90aec",
+            "name": "Hermes dashboard UI watchdog",
+            "enabled": true
+          },
+          {
+            "id": "ece0db616afe",
+            "name": "ERVP 12h Trending materializer",
+            "enabled": true
+          },
+          {
+            "id": "9270a51ed61a",
+            "name": "ERVP Kanban actionable supervisor",
+            "enabled": true
+          }
+        ]
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cust-service\\backups\\t_5fc99c39-human-send-gate-20260912\\cron\\jobs.json",
+        "jobs": [
+          {
+            "id": "81ff2e312e93",
+            "name": "Gianna NEW inbox drive-to-zero",
+            "enabled": false
+          },
+          {
+            "id": "642e54e68656",
+            "name": "Gianna daytime OrderOps workflow through 3pm ET",
+            "enabled": false
+          },
+          {
+            "id": "a1730c4e3f23",
+            "name": "Order 100119091 urgent shipment confirmation",
+            "enabled": false
+          }
+        ]
+      },
+      {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\backups\\t_5fc99c39-human-send-gate-20260912\\cron\\jobs.json",
+        "jobs": [
+          {
+            "id": "39006619c2e5",
+            "name": "Order 100118935 physical-address reply monitor",
+            "enabled": false
+          },
+          {
+            "id": "b8cbc5758ab9",
+            "name": "OrderOps WAITING ON US oldest-first coverage to 1 PM EDT",
+            "enabled": false
+          },
+          {
+            "id": "b2b5b67f02c0",
+            "name": "Watch for Brent OrderOps reply",
+            "enabled": true
+          },
+          {
+            "id": "394f30773d39",
+            "name": "Notify Nick when Brady replies to shipment SMS",
+            "enabled": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "C:\\Users\\nicho\\.hermes",
+    "exists": true,
+    "bytes": 309667,
+    "files": 8,
+    "directories": 18,
+    "reparse_points_skipped": 0,
+    "reparse_points": [],
+    "errors": 0,
+    "archival_cron": []
+  },
+  {
+    "path": "C:\\Users\\nicho\\HermesBrainOps",
+    "exists": true,
+    "bytes": 1747995,
+    "files": 26,
+    "directories": 2,
+    "reparse_points_skipped": 0,
+    "reparse_points": [],
+    "errors": 0,
+    "archival_cron": []
+  },
+  {
+    "path": "C:\\Users\\nicho\\HermesLegacyData",
+    "exists": true,
+    "bytes": 155312482,
+    "files": 1608,
+    "directories": 2331,
+    "reparse_points_skipped": 0,
+    "reparse_points": [],
+    "errors": 0,
+    "archival_cron": []
+  },
+  {
+    "path": "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain",
+    "exists": true,
+    "bytes": 55135173,
+    "files": 3978,
+    "directories": 3362,
+    "reparse_points_skipped": 0,
+    "reparse_points": [],
+    "errors": 0,
+    "archival_cron": []
+  },
+  {
+    "path": "C:\\Users\\nicho\\.worktrees",
+    "exists": true,
+    "bytes": 332816845,
+    "files": 18872,
+    "directories": 1991,
+    "reparse_points_skipped": 0,
+    "reparse_points": [],
+    "errors": 0,
+    "archival_cron": []
+  }
+]

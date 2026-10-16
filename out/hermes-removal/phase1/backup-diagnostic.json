@@ -1,0 +1,99 @@
+{
+  "log": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261016T072023.log",
+  "recognized_diagnostics": [],
+  "keyword_presence": {
+    "git": false,
+    "ssh": false,
+    "scp": false,
+    "zip": false,
+    "snapshot": true,
+    "sync": true,
+    "remote": true,
+    "timeout": false,
+    "denied": false,
+    "failed": true,
+    "fatal": false,
+    "exception": false,
+    "exit": false,
+    "readonly": false,
+    "constant": false,
+    "bind": false,
+    "argument": false,
+    "connect": false,
+    "hostname": false,
+    "port": true,
+    "parse": false
+  },
+  "log_sanitized_words": [
+    "[redacted] [redacted] [redacted] [redacted] export [redacted] [redacted] [redacted] [redacted] [redacted] [redacted] [redacted]",
+    "[redacted] [redacted] [redacted] export completed for [redacted]",
+    "[redacted] Remote [redacted] export failed Remote [redacted] workspace is not reachable",
+    "[redacted] Vault [redacted] [redacted] [redacted] [redacted] failed Source export is [redacted] [redacted] to [redacted] [redacted] [redacted] the [redacted] [redacted] generated snapshot",
+    "[redacted] Remote snapshot failed The [redacted] vault was not [redacted] [redacted] the [redacted] snapshot was skipped",
+    "[redacted] [redacted] sync [redacted] with error [redacted]"
+  ],
+  "original_verification": {
+    "captured_utc": "2026-10-13T21:22:43.766775+00:00",
+    "integrity_check": [
+      [
+        "ok"
+      ]
+    ],
+    "task_counts": [
+      [
+        "archived",
+        96
+      ],
+      [
+        "blocked",
+        313
+      ],
+      [
+        "done",
+        1391
+      ],
+      [
+        "ready",
+        1
+      ],
+      [
+        "scheduled",
+        5
+      ],
+      [
+        "todo",
+        120
+      ],
+      [
+        "triage",
+        1
+      ]
+    ]
+  },
+  "snapshot_status_counts": {
+    "archived": 96,
+    "blocked": 313,
+    "done": 1391,
+    "ready": 1,
+    "scheduled": 5,
+    "todo": 120,
+    "triage": 1
+  },
+  "remote_config": {
+    "RemoteHost": "10.0.1.16",
+    "RemoteWorkspace": "/Users/archerclawdington/.openclaw/workspace",
+    "RemoteBackupRoot": "/Users/archerclawdington/.openclaw/backups/hermes-brain-vault"
+  },
+  "projection_scope_keywords": {
+    "kanban.db": false,
+    "sqlite": true,
+    "state.db": true,
+    "session": true,
+    "token": true,
+    "Compress-Archive": true,
+    "Push-Location": false,
+    "git push": false,
+    "scp": true,
+    "ssh": true
+  }
+}

@@ -1,0 +1,399 @@
+{
+  "captured": "2026-10-16T08:04:10.4913617-04:00",
+  "directories": [
+    {
+      "path": "C:\\Users\\nicho\\backups",
+      "children": [
+        {
+          "Name": "hermes-retirement-20261013",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1791927156364)/"
+        },
+        {
+          "Name": "t_9a6b8ae4-cs-shopify-plugins-20260817-104432.zip",
+          "PSIsContainer": false,
+          "Length": 22,
+          "LastWriteTimeUtc": "/Date(1786977872495)/"
+        },
+        {
+          "Name": "t_9a6b8ae4-cs-shopify-plugins-20260817-104456.zip",
+          "PSIsContainer": false,
+          "Length": 136335,
+          "LastWriteTimeUtc": "/Date(1786977896251)/"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesBrainOps",
+      "children": [
+        {
+          "Name": "rollback",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1785435719540)/"
+        },
+        {
+          "Name": "accounting-session-20260730-redacted.jsonl",
+          "PSIsContainer": false,
+          "Length": 723986,
+          "LastWriteTimeUtc": "/Date(1785435422178)/"
+        },
+        {
+          "Name": "Add-HermesKanbanCallbackRule.ps1",
+          "PSIsContainer": false,
+          "Length": 5965,
+          "LastWriteTimeUtc": "/Date(1785087929791)/"
+        },
+        {
+          "Name": "all-workspaces-shadow.err.log",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1785003469453)/"
+        },
+        {
+          "Name": "all-workspaces-shadow.out.log",
+          "PSIsContainer": false,
+          "Length": 551,
+          "LastWriteTimeUtc": "/Date(1785003565821)/"
+        },
+        {
+          "Name": "all-workspaces-shadow.pid",
+          "PSIsContainer": false,
+          "Length": 7,
+          "LastWriteTimeUtc": "/Date(1785003469514)/"
+        },
+        {
+          "Name": "first-shadow-run.err.log",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1785001424887)/"
+        },
+        {
+          "Name": "first-shadow-run.out.log",
+          "PSIsContainer": false,
+          "Length": 657,
+          "LastWriteTimeUtc": "/Date(1785001501483)/"
+        },
+        {
+          "Name": "Inspect-HermesKanbanCallback.py",
+          "PSIsContainer": false,
+          "Length": 1779,
+          "LastWriteTimeUtc": "/Date(1785090039659)/"
+        },
+        {
+          "Name": "INSPECTION-REPORT-2026-07-26.md",
+          "PSIsContainer": false,
+          "Length": 6820,
+          "LastWriteTimeUtc": "/Date(1785075222621)/"
+        },
+        {
+          "Name": "lean-shadow.err.log",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1785020972231)/"
+        },
+        {
+          "Name": "lean-shadow.out.log",
+          "PSIsContainer": false,
+          "Length": 551,
+          "LastWriteTimeUtc": "/Date(1785021052476)/"
+        },
+        {
+          "Name": "lean-shadow.pid",
+          "PSIsContainer": false,
+          "Length": 7,
+          "LastWriteTimeUtc": "/Date(1785020972275)/"
+        },
+        {
+          "Name": "mac-protected-shadow.err.log",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1785007641579)/"
+        },
+        {
+          "Name": "mac-protected-shadow.out.log",
+          "PSIsContainer": false,
+          "Length": 551,
+          "LastWriteTimeUtc": "/Date(1785007762324)/"
+        },
+        {
+          "Name": "mac-protected-shadow.pid",
+          "PSIsContainer": false,
+          "Length": 7,
+          "LastWriteTimeUtc": "/Date(1785007641631)/"
+        },
+        {
+          "Name": "manager-session-20260730-redacted.jsonl",
+          "PSIsContainer": false,
+          "Length": 384267,
+          "LastWriteTimeUtc": "/Date(1785435502918)/"
+        },
+        {
+          "Name": "obsidian.json.bak.pre-local-vault-20260725",
+          "PSIsContainer": false,
+          "Length": 134,
+          "LastWriteTimeUtc": "/Date(1784897364221)/"
+        },
+        {
+          "Name": "README.md",
+          "PSIsContainer": false,
+          "Length": 2564,
+          "LastWriteTimeUtc": "/Date(1785075218988)/"
+        },
+        {
+          "Name": "Repoint-HermesObsidianPath.ps1",
+          "PSIsContainer": false,
+          "Length": 2406,
+          "LastWriteTimeUtc": "/Date(1785074426235)/"
+        },
+        {
+          "Name": "second-shadow-run.err.log",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1785001953897)/"
+        },
+        {
+          "Name": "second-shadow-run.out.log",
+          "PSIsContainer": false,
+          "Length": 594,
+          "LastWriteTimeUtc": "/Date(1785001986347)/"
+        },
+        {
+          "Name": "second-shadow-run.pid",
+          "PSIsContainer": false,
+          "Length": 7,
+          "LastWriteTimeUtc": "/Date(1785001953958)/"
+        },
+        {
+          "Name": "Sync-HermesBrain.ps1",
+          "PSIsContainer": false,
+          "Length": 33044,
+          "LastWriteTimeUtc": "/Date(1785020940931)/"
+        },
+        {
+          "Name": "telegram-continuity-report-20260730.md",
+          "PSIsContainer": false,
+          "Length": 5702,
+          "LastWriteTimeUtc": "/Date(1785436454818)/"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesLegacyData",
+      "children": [
+        {
+          "Name": "Hermes",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1786378538322)/"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backups",
+      "children": [
+        {
+          "Name": "ervp-memory-compaction-t_b41f68a0",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1784322345890)/"
+        },
+        {
+          "Name": "hermes-agent-pre-v0.17.0-20260717-090648",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1784293626890)/"
+        },
+        {
+          "Name": "windowless-20260724",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1784902389396)/"
+        },
+        {
+          "Name": "hermes-agent-pre-v0.17.0-20260717-090648.zip",
+          "PSIsContainer": false,
+          "Length": 398113969,
+          "LastWriteTimeUtc": "/Date(1784293638266)/"
+        },
+        {
+          "Name": "hermes-agent-pre-v0.17.0-20260717-090648.zip.sha256",
+          "PSIsContainer": false,
+          "Length": 155,
+          "LastWriteTimeUtc": "/Date(1784293651543)/"
+        },
+        {
+          "Name": "pre-update-2026-07-17-090012.zip",
+          "PSIsContainer": false,
+          "Length": 7545974653,
+          "LastWriteTimeUtc": "/Date(1784293834746)/"
+        },
+        {
+          "Name": "pre-update-2026-07-17-111916.zip",
+          "PSIsContainer": false,
+          "Length": 8743977579,
+          "LastWriteTimeUtc": "/Date(1784301972025)/"
+        },
+        {
+          "Name": "pre-update-2026-07-22-132222.zip",
+          "PSIsContainer": false,
+          "Length": 785793251,
+          "LastWriteTimeUtc": "/Date(1784741552902)/"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\kanban\\boards\\nick-work",
+      "children": [
+        {
+          "Name": "attachments",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1790703268834)/"
+        },
+        {
+          "Name": "logs",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1790700778702)/"
+        },
+        {
+          "Name": "verification",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1785413375168)/"
+        },
+        {
+          "Name": "workspaces",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1789920898951)/"
+        },
+        {
+          "Name": "board.json",
+          "PSIsContainer": false,
+          "Length": 314,
+          "LastWriteTimeUtc": "/Date(1783793177401)/"
+        },
+        {
+          "Name": "kanban.db",
+          "PSIsContainer": false,
+          "Length": 21733376,
+          "LastWriteTimeUtc": "/Date(1791826485226)/"
+        },
+        {
+          "Name": "kanban.db.dispatch.lock",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1784293962013)/"
+        },
+        {
+          "Name": "kanban.db.init.lock",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1783793177402)/"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\.hermes",
+      "children": [
+        {
+          "Name": "ervp-inventory-sync",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1787498331310)/"
+        },
+        {
+          "Name": "profiles",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1784721659991)/"
+        },
+        {
+          "Name": "scripts",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1785472840162)/"
+        },
+        {
+          "Name": "skills",
+          "PSIsContainer": true,
+          "Length": null,
+          "LastWriteTimeUtc": "/Date(1782167651495)/"
+        },
+        {
+          "Name": "inventory-sync-health.env",
+          "PSIsContainer": false,
+          "Length": 427,
+          "LastWriteTimeUtc": "/Date(1787752975191)/"
+        },
+        {
+          "Name": "kanban.db",
+          "PSIsContainer": false,
+          "Length": 0,
+          "LastWriteTimeUtc": "/Date(1784651062431)/"
+        }
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "FullName": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\accounting-procedures-recovery.zip",
+      "Length": 328768,
+      "LastWriteTimeUtc": "/Date(1791926564797)/"
+    },
+    {
+      "FullName": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\ledger-backup-verification.json",
+      "Length": 869,
+      "LastWriteTimeUtc": "/Date(1791926563788)/"
+    },
+    {
+      "FullName": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\nick-work-kanban.snapshot.db",
+      "Length": 21733376,
+      "LastWriteTimeUtc": "/Date(1791926563633)/"
+    }
+  ],
+  "backup_code_metadata": [
+    {
+      "uses_sqlite_backup": false,
+      "path_references": [
+        "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1"
+      ],
+      "uses_tar": false,
+      "uses_compress_archive": false,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\Hermes_Brain_Backup-silent.vbs",
+      "uses_robocopy": false,
+      "relative_file_references": [
+        "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1"
+      ]
+    },
+    {
+      "uses_sqlite_backup": false,
+      "path_references": [
+        "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain",
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles",
+        "C:\\Users\\nicho\\.ssh\\hermes_key",
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault",
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-versions\\brain-vault"
+      ],
+      "uses_tar": false,
+      "uses_compress_archive": true,
+      "path": "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1",
+      "uses_robocopy": false,
+      "relative_file_references": [
+        "brain-sync-$runId.log",
+        ".py",
+        ".ps1",
+        "state.db",
+        "hermes-brain-$snapshotDate.zip",
+        "{0}@{1}:{2}/hermes-brain-{3}.zip",
+        "$RemoteBackupRoot/hermes-brain-$snapshotDate.zip",
+        "hermes-brain-*.zip"
+      ]
+    }
+  ],
+  "log_candidates": [],
+  "smb_mappings": []
+}

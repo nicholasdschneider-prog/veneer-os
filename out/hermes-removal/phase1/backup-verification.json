@@ -1,0 +1,331 @@
+{
+  "artifacts": [
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\accounting-procedures-recovery.zip",
+      "bytes": 328768,
+      "sha256": "15ee98df7ff21f6fe58de82af26aa8ab9fc9a8cac6045431bdbdc416640eefe1",
+      "crc_ok": true,
+      "entry_count": 115,
+      "uncompressed_bytes": 565614
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\audit-status.json",
+      "bytes": 1866,
+      "sha256": "92e08833569149d9889141e6bc7395695dac78de3fe1ba3a49bbe97321eac7ab"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\build_detail_packet.py",
+      "bytes": 4416,
+      "sha256": "60d979e637eed04d5c805871b6da8140a3c104cbeea819bdebd2a2c1c39ffab5"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\build_packet.py",
+      "bytes": 5607,
+      "sha256": "83a65090d5f6bee7648e6b14c9851ab47c45ad23c6dfb409a4aa3ab1e03f2694"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\compact_packet.py",
+      "bytes": 1820,
+      "sha256": "0b9b275e514df3b0617051662397a3412c88f25e266cda5cdd4c04cf5c7195ac"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\disk-inventory.json",
+      "bytes": 424,
+      "sha256": "02fdbcc10e4decc685208d5c92ac4dc678cce6752722957a7a9ca57afe6cc2fb"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\ledger-backup-verification.json",
+      "bytes": 869,
+      "sha256": "f200a063bc6a1cb629e2bb8875b11b49598bacd420c195f2004fdc3415743c42",
+      "verification_keys": [
+        "captured_utc",
+        "source",
+        "snapshot",
+        "sha256",
+        "integrity_check",
+        "task_counts",
+        "warning"
+      ],
+      "verification_metadata": {
+        "snapshot": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\nick-work-kanban.snapshot.db",
+        "sha256": "62dae3adafebc52dca2f4e5dcb8aa7294b2626b3cffa3cb2f60d27cfaf852a25"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\nick-work-kanban.snapshot.db",
+      "bytes": 21733376,
+      "sha256": "62dae3adafebc52dca2f4e5dcb8aa7294b2626b3cffa3cb2f60d27cfaf852a25",
+      "integrity_check": [
+        "ok"
+      ],
+      "table_count": 8,
+      "task_count": 1927
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\open-task-index.json",
+      "bytes": 190661,
+      "sha256": "ccc6973dcb97a8dab12368d07338f5a6fbcbaf34e23f2d234fd34fc0548e7df9"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\preserve_ledger.py",
+      "bytes": 1637,
+      "sha256": "971358d099f7d801960919db004975515cd8f01d34c27014ee1f9c05afb98ea7"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\process-inventory.json",
+      "bytes": 10565,
+      "sha256": "091d9f240bee0ea1b0996d5a9ea44081a1ba6ab2294d75e0319b56f94b304dc2"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\removal-root-inventory.json",
+      "bytes": 31178,
+      "sha256": "bf157d67fc9b26b961f2bfa6e458edff7418602898d1ccac3dce754a2ce0e677"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\scheduled-task-inventory.json",
+      "bytes": 1318095,
+      "sha256": "76b717b716b81dc0e2e678a4855f4e9957ba9421d51740d38442118afb7746ae"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-accounting-task-supplement.json",
+      "bytes": 531665,
+      "sha256": "0c41f1d3e8dfa88c70a3dd385ac954a9c109e3eae81af283b1666b5cd22e77e1"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-continuity-packet.json",
+      "bytes": 117040412,
+      "sha256": "9d375d9e4cef1941f503781c1404b2252902cc9a2ed0a3916f6e75ead9de2e5c"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-detailed-state.json",
+      "bytes": 105395798,
+      "sha256": "c705966f5191413bdbde5b1246a9548aaf8e4c4bbf3c8f66e30f0d44f3d588cf"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-detailed-state.zip",
+      "bytes": 33300485,
+      "sha256": "61b96ea3eaae22b5e667d222ec91cfa43fa2f0f8bbf9243507fa780fb894eb2a",
+      "crc_ok": true,
+      "entry_count": 1,
+      "uncompressed_bytes": 105395798
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-handoff.json",
+      "bytes": 2629935,
+      "sha256": "800fd5a6062b38c521d1a87abc764c66fb250802db0ccd2fb13bed0da1322bca"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-reconciliation-detail.json",
+      "bytes": 21205678,
+      "sha256": "e1ce394d65acd09fd1854aadb2e8e69b68391da1906bd5a67ecd3737839e60e4"
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-reconciliation-detail.zip",
+      "bytes": 2326177,
+      "sha256": "4235c25ed3e42c5fcf441048acf561e5d914b6c5adbcfc4956dae8c2862fb358",
+      "crc_ok": true,
+      "entry_count": 1,
+      "uncompressed_bytes": 21205678
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-retirement-20261013\\veneer-watchdog-supplement.json",
+      "bytes": 47088,
+      "sha256": "c9d28563f6a97c042cc39cd79ba01b91511576d6c01908d50b7fd1514cb5db98"
+    }
+  ],
+  "recent_logs": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261016T072023.log",
+      "bytes": 686,
+      "line_count": 6,
+      "signals": [
+        {
+          "line": 2,
+          "labels": [
+            "success"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 3,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 4,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 5,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 6,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261016T032023.log",
+      "bytes": 686,
+      "line_count": 6,
+      "signals": [
+        {
+          "line": 2,
+          "labels": [
+            "success"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 3,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 4,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 5,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 6,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261015T232023.log",
+      "bytes": 686,
+      "line_count": 6,
+      "signals": [
+        {
+          "line": 2,
+          "labels": [
+            "success"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 3,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 4,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 5,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 6,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261015T192023.log",
+      "bytes": 686,
+      "line_count": 6,
+      "signals": [
+        {
+          "line": 2,
+          "labels": [
+            "success"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 3,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 4,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 5,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        },
+        {
+          "line": 6,
+          "labels": [
+            "powershell_error"
+          ],
+          "error_types": []
+        }
+      ]
+    }
+  ],
+  "snapshots": [],
+  "backup_logic": {
+    "script": "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1",
+    "line_count": 733,
+    "remote_variable_names": [
+      "$RemoteBackupRoot",
+      "$RemoteHost",
+      "$RemoteUser",
+      "$RemoteWorkspace"
+    ],
+    "exclusion_literals": [
+      "Excluded to avoid credentials and machine-specific settings'",
+      "excluded from Obsidian and requires a consistent binary backup'",
+      "excluded.'",
+      "excluded'",
+      "excluded'",
+      "excluded'",
+      "excluded'",
+      "excluded'",
+      "excluded',",
+      "excluded runtime assets require a separate consistent binary backup; putting them in Obsidian would increase CPU and corruption risk.',",
+      "Skip 7",
+      "skipped'"
+    ]
+  }
+}
