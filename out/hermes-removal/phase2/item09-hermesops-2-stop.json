@@ -1,0 +1,35 @@
+{
+  "item": 9,
+  "profile": "hermesops-2",
+  "at": "2026-10-16T14:34:27.0190190-04:00",
+  "observation_start": "2026-10-16T14:34:27.0190190-04:00",
+  "remaining_gateways": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-16T14:31:01.0000000-04:00",
+      "last_result": 0,
+      "enabled": false,
+      "name": "Hermes_HermesOps2_Watchdog",
+      "at": "2026-10-16T14:34:26.7670191-04:00"
+    }
+  ],
+  "launchers": [],
+  "process_stops": [
+    {
+      "effect": "exact gateway PID stopped",
+      "parent": 12540,
+      "pid": 12408,
+      "created": "2026-10-15T14:21:02.0244140-04:00",
+      "at": "2026-10-16T14:34:26.9310193-04:00"
+    }
+  ],
+  "no_inflight": {
+    "additional_child_workers": 0,
+    "active_agents": 0,
+    "runtime_status_updated_at": "2026-10-15T18:21:19.041020+00:00",
+    "unfinished_all_profile": 0
+  },
+  "journal": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\hermesops-2\\idle-steps.jsonl",
+  "observation": "Pending 15 minutes",
+  "original_files_preserved": true
+}

@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-16T14:34:04.4062062-04:00",
+  "profile": "nick",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\nick",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_Nick_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-16T14:14:16.0000000-04:00",
+      "next_run": "2026-10-16T14:34:15.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    }
+  ],
+  "startup": [],
+  "gateways": [],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-15T18:19:35.262922+00:00",
+    "pid": 8680,
+    "active_agents": 0,
+    "start_time": 179208833225
+  },
+  "heartbeat_modified": "2026-10-16T18:16:35.0181839Z",
+  "default_alias_caution": false
+}
