@@ -114,7 +114,53 @@ export interface Bot {
   archived: boolean;
   provider: string;
   project_id: string | null;
+  /** Enrolled to own customer tickets inside Veneer (Miles pilot). */
+  ticket_owner?: boolean;
+  open_tickets?: number;
 }
+export type CsTicketStatus = 'open' | 'waiting_customer' | 'waiting_human' | 'done';
+export interface CsTicket {
+  id: string;
+  orderops_ticket_id: string;
+  owner_conversation_id: string;
+  ticket_conversation_id: string | null;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  subject: string;
+  channel: string;
+  status: CsTicketStatus;
+  orders: { order_number: string; order_id?: string }[];
+  summary: string;
+  last_inbound_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface CsTicketListItem extends CsTicket {
+  open_decision: { id: string; version: number; question: string; recommended: string | null } | null;
+  message_count: number;
+}
+export interface CsTicketMessage {
+  id: string;
+  direction: 'in' | 'out' | 'note';
+  channel: string;
+  external_id: string | null;
+  author: 'customer' | 'bot' | 'human';
+  author_label: string;
+  body: string;
+  attachments: { name: string; reference?: string }[];
+  remember: boolean;
+  at: string;
+}
+export const csTicketsApi = {
+  list: (owner: string, filter: string, q: string, signal?: AbortSignal) =>
+    requestJson<{ owner: { conversation_id: string; name: string }; enabled: boolean; tickets: CsTicketListItem[] }>(
+      `/api/cs-tickets?owner=${encodeURIComponent(owner)}&filter=${encodeURIComponent(filter)}&q=${encodeURIComponent(q)}`, { signal }),
+  detail: (id: string, signal?: AbortSignal) =>
+    requestJson<{ ticket: CsTicket; owner: { conversation_id: string; name: string }; messages: CsTicketMessage[]; decisions: BotDecision[] }>(`/api/cs-tickets/${encodeURIComponent(id)}`, { signal }),
+  note: (id: string, body: { body: string; remember: boolean; request_key: string }) =>
+    requestJson<{ note_id: string; duplicate: boolean }>(`/api/cs-tickets/${encodeURIComponent(id)}/notes`, { method: 'POST', body: JSON.stringify(body) }),
+};
 export interface BotThread {
   decision: BotDecision;
   messages: {

@@ -79,6 +79,12 @@ export function canViewConversation(
         const owner = db.prepare('SELECT * FROM conversations WHERE id=?').get(botLane.owner_id) as ConversationRow | undefined;
         return Boolean(owner && canViewConversation(user, owner, db));
       }
+      // A ticket chat (cs_tickets, Miles pilot) is likewise visible exactly where its owning bot's chat is.
+      const ticket = c.id ? db.prepare('SELECT owner_conversation_id FROM cs_tickets WHERE ticket_conversation_id=?').get(c.id) as {owner_conversation_id:string} | undefined : undefined;
+      if (ticket) {
+        const owner = db.prepare('SELECT * FROM conversations WHERE id=?').get(ticket.owner_conversation_id) as ConversationRow | undefined;
+        return Boolean(owner && canViewConversation(user, owner, db));
+      }
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string} | undefined;
       return Boolean(thread && canViewCoordinationPair(user, [thread.left_id, thread.right_id], db));
     }

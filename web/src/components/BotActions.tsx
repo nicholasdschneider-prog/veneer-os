@@ -103,6 +103,15 @@ export function BotActions({
               >
                 Bot settings and routines
               </DropdownMenuItem>
+              {bot.ticket_owner && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    window.location.hash = `#/bots/tickets/${encodeURIComponent(bot.conversation_id)}`;
+                  }}
+                >
+                  Tickets
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 disabled={busy}
                 onSelect={() => void change({ pinned: !bot.pinned })}

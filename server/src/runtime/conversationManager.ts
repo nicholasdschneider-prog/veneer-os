@@ -6,6 +6,7 @@ import { coalescePeriodicChecks } from '../botWorkflows/periodicChecks.js';
 import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js';
 import { coordinationLane, coordinationFamily } from '../coordination/store.js';
 import { BOT_LANE_RULES, hasBotLane, botLaneOfConversation, spliceSurfacedNotices, surfacedRows, takeSurfacedContext } from '../coordination/botLane.js';
+import { createCsTicketService } from '../csTickets/service.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 import { candidateWakeAllowed, startQueuedCandidate } from '../botWorkflows/autoshipCandidates.js';
 import {HistoryPages,type HistoryPage} from './historyPages.js';
@@ -1447,6 +1448,9 @@ export function createConversationManager({
     }
     const lane = coordinationLane(db, conv.id);
     const botLane = lane ? botLaneOfConversation(db, conv.id) : undefined;
+    // A ticket chat (Miles pilot) is a lane of its owning bot, paired with that chat like a bot lane.
+    const csTickets = createCsTicketService(db);
+    const ticketLane = lane && !botLane ? csTickets.ticketOfLane(conv.id) : undefined;
     const family = coordinationFamily(db, conv.id);
     // A registered bot's human chat never waits behind its bot sessions.
     if (!humanFirst(conv.id) && family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;
@@ -1471,7 +1475,7 @@ export function createConversationManager({
       const actor = {id:item.actorUserId ?? -1, botSession:true};
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string};
       // A bot lane's thread pairs the chat with its own session; its peer check is the chat itself.
-      const peer = botLane ? authority : db.prepare('SELECT * FROM conversations WHERE id=?').get(thread.left_id===authority.id ? thread.right_id : thread.left_id) as ConversationRow | undefined;
+      const peer = botLane || ticketLane ? authority : db.prepare('SELECT * FROM conversations WHERE id=?').get(thread.left_id===authority.id ? thread.right_id : thread.left_id) as ConversationRow | undefined;
       if (!peer || !canViewConversation(actor,peer,db) || !canSendToConversation(actor,authority,db) || !sameBusiness(db,peer.id,authority)) {
         if (item.id!==null) deleteQueuedMessageStmt.run(item.id);
         clearPendingTurnStmt.run(conv.id);
@@ -1660,6 +1664,9 @@ export function createConversationManager({
       log.warn(`[runtime] memory context omitted: ${(err as Error).message}`);
     }
     const surfaced = !lane && !optional ? takeSurfacedContext(db, conv.id) : null;
+    // The whole ticket record rides along every ticket-chat turn, so the bot never re-reads OrderOps for backstory.
+    const ticketRecord = ticketLane ? csTickets.contextBlock(conv.id) : null;
+    if (ticketRecord) memoryBlock = [ticketRecord, memoryBlock].filter(Boolean).join('\n\n');
     if (surfaced) {
       memoryBlock = [memoryBlock, surfaced].filter(Boolean).join('\n\n');
       if (!db.prepare('SELECT 1 FROM turn_recall WHERE conversation_id = ? AND turn_id = ?').get(conv.id, turnId)) {
@@ -1731,6 +1738,9 @@ export function createConversationManager({
     }
     if (botLane) {
       spawnConfig.developerInstructions = `${spawnConfig.developerInstructions ?? ''}\n\n${BOT_LANE_RULES(authority.id, lane!.thread_id)}`;
+      spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
+    } else if (ticketLane) {
+      spawnConfig.developerInstructions = `${spawnConfig.developerInstructions ?? ''}\n\n${csTickets.laneRules(conv.id) ?? ''}`;
       spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
     } else if (lane) {
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string};

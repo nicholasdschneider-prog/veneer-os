@@ -644,6 +644,15 @@ export function Bots({
                         {bot.questions === 1 ? 'question' : 'questions'}
                       </span>
                     </button>
+                    {bot.ticket_owner && (
+                      <a
+                        className="col-span-2 col-start-2 justify-self-start text-xs underline sm:col-span-1 sm:col-start-auto"
+                        href={`#/bots/tickets/${encodeURIComponent(bot.conversation_id)}`}
+                        onClick={(event) => { event.preventDefault(); onNavigate(`#/bots/tickets/${encodeURIComponent(bot.conversation_id)}`); }}
+                      >
+                        Tickets{bot.open_tickets ? ` · ${bot.open_tickets}` : ''}
+                      </a>
+                    )}
                     {canCall && !bot.archived ? (
                       <CallButton
                         aria-label={`Talk with ${bot.name}`}

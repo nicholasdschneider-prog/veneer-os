@@ -1,6 +1,7 @@
 import { pendingPeriodicCheck, routineReason } from './periodicChecks.js';
 import { createBotService } from '../bots/service.js';
 import { mergeAuthorization, type MergeIO } from '../bots/mergeAuthorization.js';
+import { createCsTicketService } from '../csTickets/service.js';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
@@ -264,13 +265,16 @@ export function acceptEventDetailed(
       400,
       'Customer reply events require the responsible bot ID',
     );
+  // A ticket already owned inside Veneer (Miles pilot) is woken in its own chat instead of the owner's routine.
+  const mirrored = createCsTicketService(db).acceptEvent(source.team_id, p.ticket_id, `${sourceId}:${p.id}`, p.type);
   const routines = db
     .prepare(
       `SELECT r.* FROM bot_routines r JOIN conversations c ON c.id=r.conversation_id WHERE r.enabled=1 AND r.source=? AND r.kind=? AND c.business_team_id=?`,
     )
     .all(sourceId, p.type, source.team_id) as Routine[];
-  return { queued: routines
+  return { queued: mirrored.queued + routines
     .filter((r) => !p.assigned_bot || r.conversation_id === p.assigned_bot)
+    .filter((r) => !mirrored.owners.includes(r.conversation_id))
     .reduce(
       (n, r) =>
         n +

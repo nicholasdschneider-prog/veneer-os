@@ -11,6 +11,7 @@ import { BotGuide } from './screens/BotGuide';
 import { EmployeeWorkspace } from './screens/EmployeeWorkspace';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { Bots } from './screens/Bots';
+import { BotTickets } from './screens/BotTickets';
 import { Huddles } from './screens/Huddles';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from './lib/api';
@@ -409,6 +410,14 @@ export function App() {
 
   if (routePath === '#/bots' || routePath.startsWith('#/bots/')) {
     const botsSegments = routePath.split('/');
+    // #/bots/tickets/<botId>[/<ticketId>]: a bot's customer tickets owned inside Veneer (Miles pilot).
+    if (botsSegments[2] === 'tickets' && botsSegments[3]) {
+      return (
+        <NavShell current="bots" canManage={canManage} focused={focused} signedInEmail={signedInEmail} onNavigate={navigate} navigation={navigation}>
+          <BotTickets botId={decodeURIComponent(botsSegments[3])} ticketId={botsSegments[4] ? decodeURIComponent(botsSegments[4]) : undefined} onNavigate={navigate} />
+        </NavShell>
+      );
+    }
     // #/bots/talk/<conversationId>?decision=<id>: a live voice call with one bot.
     if (botsSegments[2] === 'talk' && botsSegments[3]) {
       if (!canManage) { navigate('#/bots'); return null; }

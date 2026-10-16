@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import type { ConversationRow } from '../db/db.js';
 import type { ConversationEvent } from '../runtime/events.js';
 import { insertLaneConversation } from './store.js';
+import { createCsTicketService } from '../csTickets/service.js';
 
 /** Bot traffic that runs in a registered bot's lane instead of its human chat:
  * routines, huddle wakes, question re-checks, decision handoffs between bots
@@ -120,7 +121,12 @@ export function wakeTarget(db: Database.Database, conv: ConversationRow, wakeId:
     if (lane?.owner_id === conv.id)
       return db.prepare('SELECT * FROM conversations WHERE id=?').get(prior.conversation_id) as ConversationRow;
   }
-  if (prior || !isBotLaneWake(wakeKey) || !hasBotLane(db, conv.id)) return conv;
+  if (prior) return conv;
+  // A ticket owned inside Veneer is worked in its own chat (Miles pilot): its
+  // event wakes, human notes and decision answers land there, not in the human chat.
+  const ticketChat = createCsTicketService(db).wakeTarget(conv.id, wakeKey);
+  if (ticketChat) return ticketChat;
+  if (!isBotLaneWake(wakeKey) || !hasBotLane(db, conv.id)) return conv;
   return ensureBotLane(db, conv);
 }
 

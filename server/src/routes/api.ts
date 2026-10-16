@@ -13,6 +13,7 @@ import { employeeApiBoundary, isEmployee } from '../bots/employeeAccess.js';
 import { businessScopeSql, sameBusiness, businessAgentSql } from '../conversations/access.js';
 import { createCommunicationRouter } from '../bots/communicationRoutes.js';
 import { createBotsRouter } from '../bots/routes.js';
+import { createCsTicketsRouter } from '../csTickets/routes.js';
 import { createHuddlesRouter } from '../huddles/routes.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -922,6 +923,7 @@ export function createApiRouter(ctx: AppContext): Router {
   router.use('/fixture-tests', createFixtureTestsRouter(ctx));
   router.use('/purchase-timing/setup', purchaseTimingSetupRoutes(ctx));
   router.use('/bots', createBotsRouter(ctx));
+  router.use('/cs-tickets', createCsTicketsRouter(ctx));
   router.use('/bot-communication', createCommunicationRouter(ctx));
   router.use('/team-rooms', createRoomsRouter(ctx));
   router.use('/james-notify', createJamesNotifyRouter(currentJamesLink));

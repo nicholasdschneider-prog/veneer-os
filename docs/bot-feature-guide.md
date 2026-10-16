@@ -2,6 +2,27 @@
 
 Standing order from the owner, September 23, 2026: employees and bots must discover and know how to use capabilities as they ship. The owner should not have to teach or announce every release.
 
+## Customer tickets owned inside Veneer: Miles pilot — October 16, 2026
+
+Build #866, directed by Nick on a call. One bot, Miles, owns his customer tickets start to
+finish inside Veneer while Nora, Tess, Owen and Avery keep working through OrderOps unchanged.
+OrderOps stays the inbox and order system of record (Veneer has no server-side OrderOps client;
+bots read OrderOps with their own logins), so the owning bot copies a ticket in with
+`sync_cs_ticket`. The first sync opens the ticket's own chat (a coordination lane of the bot's
+registered chat, visible exactly where that chat is), wakes it, and from then on that chat owns
+the ticket: the whole record (customer, orders, thread, notes, questions) is injected as
+reference data on every turn, so the bot re-reads OrderOps only for new messages. A
+`customer.replied` or `ticket.created` event for a mirrored ticket wakes the ticket chat and
+skips the owner's routine; `raise_decision` from a ticket chat is bound to the ticket (as_of
+ticket id filled, status waiting_human) and the human's answer wakes the ticket chat; a human
+note from the ticket page wakes it too, with Remember meaning "fold this into your skill".
+Employees open Bots → Tickets on Miles's row (`#/bots/tickets/<bot id>`), filter Needs you /
+Waiting / Done / All, search, and answer or leave a note on the ticket itself. Customer sends
+are unchanged (draft, claim, record delivery). Enrollment is the `cs_ticket_owners` table,
+seeded with Miles by migration 0185; `POST /api/cs-tickets/owners` toggles it. Catalog entry
+`cs-tickets-in-veneer` carries the prompt. Deployment pending a Nick-approved window (web,
+runner, migration).
+
 ## Leaner Veneer Browser — October 16, 2026
 
 Build #865, approved by Nick. A working copy used to restore every tab from its last session

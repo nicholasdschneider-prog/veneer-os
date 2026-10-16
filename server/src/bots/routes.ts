@@ -8,6 +8,7 @@ import { bindDecisionEvidence, bindHumanEvidence, composioGmailFetchers, readDec
 import {createOrganizationService,latestBotPreview} from './organization.js';
 import { createTeamService } from './teams.js';
 import { createChiefOfStaffService } from './chiefOfStaff.js';
+import { createCsTicketService } from '../csTickets/service.js';
 import express from 'express';
 import { isUnread, markSeen } from '../conversations/unread.js';
 import { canViewConversation } from '../conversations/access.js';
@@ -30,6 +31,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   const teams = createTeamService(ctx.db);
   const chiefOfStaff = createChiefOfStaffService(ctx.db);
   const organization=createOrganizationService(ctx.db);
+  const csTickets = createCsTicketService(ctx.db);
   router.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
@@ -152,6 +154,8 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
           archived: Boolean(c.archived),
           can_manage: !c.business_team_id && !a.conversationId && c.user_id === a.user.id,
           questions: own.filter((d) => d.state === 'needs_input').length,
+          ticket_owner: csTickets.isOwner(c.id),
+          open_tickets: (ctx.db.prepare("SELECT COUNT(*) AS n FROM cs_tickets WHERE owner_conversation_id=? AND status<>'done'").get(c.id) as { n: number }).n,
           state:
             status === 'working'
               ? 'working'
@@ -246,9 +250,13 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
       const binding = p.proposal.merge_intent ? merges.prepareBinding(p.proposal.merge_intent, req.agentConversationId, p.proposal.choices) : null;
       p.proposal = await bindDecisionImages(ctx, actor(req), req.agentConversationId, p.proposal);
       p.proposal = await bindDecisionEvidence(ctx, actor(req), req.agentConversationId, p.proposal, evidenceFetchers);
+      // A question raised from a ticket chat (Miles pilot) carries its OrderOps ticket id and is bound to the ticket.
+      const ticket = csTickets.ticketOfLane(req.agentExecutionConversationId);
+      if (ticket) p.proposal = { ...p.proposal, as_of: { captured_at: new Date().toISOString(), last_inbound: [], evidence_hashes: [], ...(p.proposal.as_of ?? {}), ticket_id: ticket.orderops_ticket_id } };
       const raised = ctx.db.transaction(() => {
         const d = s.raise(actor(req), p);
         if (binding && !ctx.db.prepare('SELECT 1 FROM merge_intent_bindings WHERE decision_id=? AND decision_version=?').get(d.id, d.version)) merges.recordBinding(d.id, d.version, binding);
+        if (ticket) csTickets.linkDecision(d.id, req.agentExecutionConversationId);
         return d;
       })();
       res.json({ decision: raised });
@@ -330,8 +338,10 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
       scope: z.enum(['this_case', 'standing_rule']),
       expected_handling_revision: z.number().int().nonnegative().optional(),
     }).strict().parse(req.body);
-    res.json({ decision: s.choose(actor(req), req.params.id!, p.expected_version, p.request_key,
-      p.choice_id, p.note, p.scope, p.expected_handling_revision) });
+    const decision = s.choose(actor(req), req.params.id!, p.expected_version, p.request_key,
+      p.choice_id, p.note, p.scope, p.expected_handling_revision);
+    csTickets.decisionAnswered(req.params.id!);
+    res.json({ decision });
   }));
   router.post('/decisions/:id/custom', run((req, res) => {
     const p = mutation.extend({
@@ -342,7 +352,9 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
     }).strict().parse(req.body);
     const a = actor(req);
     for (const [i, upload] of (p.evidence ?? []).entries()) s.addHumanEvidence(a, req.params.id!, p.expected_version, `${p.request_key}:evidence:${i}`, bindHumanEvidence(ctx, upload));
-    res.json({ decision: s.answerCustom(a, req.params.id!, p.expected_version, p.request_key, p.text, p.expected_handling_revision) });
+    const decision = s.answerCustom(a, req.params.id!, p.expected_version, p.request_key, p.text, p.expected_handling_revision);
+    csTickets.decisionAnswered(req.params.id!);
+    res.json({ decision });
   }));
   router.post(
     '/decisions/:id/answer',
