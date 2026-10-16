@@ -16,6 +16,7 @@ import { blockPasskeys, browserSocketUrl, passkeysAllowed } from './webauthn.mjs
 import { createDockerBackend } from './backends/docker.mjs';
 import { createNativeBackend } from './backends/native.mjs';
 import { installTypeOfServiceGuard } from './type-of-service-guard.mjs';
+import { pruneTabs } from './tab-prune.mjs';
 
 // Before any request: an undici TOS EINVAL must fail one request, not the manager.
 installTypeOfServiceGuard();
@@ -921,11 +922,59 @@ async function suspendProfile(s, expectedLastUsedAt) {
     if (fs.readdirSync(s.downloadsDir).some(name => name.endsWith('.crdownload'))) return blocked('download_in_progress');
     // The authenticated application has verified no active turn/command and
     // unchanged activity. Old automation transports are not ownership leases.
+    // Only the page the bot was last on survives into the next open.
+    const port = await cdpPort(s).catch(() => null);
+    if (port) {
+      const pruned = await pruneTabs(port);
+      if (pruned.closed || pruned.failed) console.log(`[veneer-browser] closed ${pruned.closed} extra tab(s) in ${s.key.slice(0, 10)} before pausing${pruned.failed ? `, ${pruned.failed} would not close` : ''}`);
+    }
     purgeTickets(s);
     for (const socket of agentConnections.get(s.key) ?? []) socket.terminate();
     await stopProfileLocked(s);
     return { suspended: !(await runtimeStatus(s)).running, reason: 'stop_unconfirmed' };
   });
+}
+
+// The application's cleanup asks which working copies exist in a project so it
+// can remove ones no chat owns any more. Warm copies belong to the pool, not
+// to a chat, and are never listed.
+async function listTemporaryProfiles(clientId, projectId) {
+  const projectRoot = path.dirname(scope(clientId, projectId, 'listing').root);
+  let names = [];
+  try { names = fs.readdirSync(projectRoot); } catch { return []; }
+  const result = [];
+  for (const name of names) {
+    let meta;
+    try { meta = JSON.parse(fs.readFileSync(path.join(projectRoot, name, 'metadata.json'), 'utf8')); } catch { continue; }
+    if (!meta?.temporary || typeof meta.profileId !== 'string' || !ID.test(meta.profileId)) continue;
+    const s = scope(clientId, projectId, meta.profileId);
+    if (s.key !== name || warmCopyEntry(s.key)) continue;
+    result.push({
+      profileId: meta.profileId,
+      createdAt: meta.createdAt ?? null,
+      lastUsedAt: meta.lastUsedAt ?? null,
+      lastViewerAt: meta.lastViewerAt ?? null,
+      humanProtected: meta.humanProtected === true,
+      running: (await runtimeStatus(s)).running,
+    });
+  }
+  return result;
+}
+
+function directoryBytes(dir) {
+  let total = 0;
+  const pending = [dir];
+  while (pending.length) {
+    const current = pending.pop();
+    let entries = [];
+    try { entries = fs.readdirSync(current, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) pending.push(full);
+      else if (entry.isFile()) { try { total += fs.statSync(full).size; } catch {} }
+    }
+  }
+  return total;
 }
 
 async function statusProfile(s) {
@@ -1056,6 +1105,10 @@ async function apiRequest(req, res) {
     send(res, 201, { ok: true, profile });
     return;
   }
+  if (url.pathname === '/v1/temporary-profiles' && req.method === 'GET') {
+    send(res, 200, { ok: true, profiles: await listTemporaryProfiles(clientId, safeId(url.searchParams.get('projectId'), 'project')) });
+    return;
+  }
   if (url.pathname === '/v1/temporary-profiles' && req.method === 'POST') {
     const projectId = safeId(body.projectId, 'project');
     const profileId = safeId(body.profileId, 'profile');
@@ -1101,9 +1154,12 @@ async function apiRequest(req, res) {
   }
   if (req.method === 'DELETE' && !action) {
     if ((await runtimeStatus(s)).running) throw new HttpError(409, 'Stop the active browser first.');
-    if (!readMeta(s)) throw new HttpError(404, 'Browser profile not found.');
+    const meta = readMeta(s);
+    if (!meta) throw new HttpError(404, 'Browser profile not found.');
+    const bytes = meta.temporary ? directoryBytes(s.root) : 0;
     fs.rmSync(s.root, { recursive: true, force: true });
     dropWarmCopy(s.key);
+    if (meta.temporary) console.log(`[veneer-browser] deleted working copy ${s.key.slice(0, 10)} (${Math.round(bytes / 1048576)} MB)`);
     send(res, 200, { ok: true });
     return;
   }

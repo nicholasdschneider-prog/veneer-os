@@ -50,6 +50,16 @@ export interface RemoteProfileStatus {
   profile?: { lastUsedAt?: string; humanProtected?: boolean; lastViewerAt?: string };
 }
 
+/** A working copy on disk, as the manager's cleanup listing reports it. */
+export interface RemoteTemporaryProfile {
+  profileId: string;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+  lastViewerAt: string | null;
+  humanProtected: boolean;
+  running: boolean;
+}
+
 export interface RemoteTicket {
   cdpUrl: string;
   viewerUrl: string;
@@ -98,6 +108,8 @@ export interface VeneerBrowserRemote {
   stop(projectId: string, profileId: string): Promise<void>;
   suspend?(projectId: string, profileId: string, expectedLastUsedAt: string): Promise<{ suspended: boolean; reason?: string }>;
   status(projectId: string, profileId: string): Promise<RemoteProfileStatus>;
+  /** Working copies (not warm pool copies) in one project scope. */
+  listTemporary?(projectId: string): Promise<RemoteTemporaryProfile[]>;
   open(
     projectId: string,
     sourceProfileId: string,
@@ -363,6 +375,9 @@ export function createVeneerBrowserRemote(options: {
     suspend: (projectId, profileId, expectedLastUsedAt) => request(`/v1/profiles/${encodeURIComponent(profileId)}/suspend`, { method: 'POST', body: JSON.stringify({ projectId, expectedLastUsedAt }) }),
     stop: (projectId, profileId) => post(projectId, profileId, 'stop').then(() => undefined),
     status: (projectId, profileId) => request(encoded(projectId, profileId)),
+    listTemporary: (projectId) =>
+      request<{ profiles: RemoteTemporaryProfile[] }>(`/v1/temporary-profiles?projectId=${encodeURIComponent(projectId)}`)
+        .then((value) => value.profiles ?? []),
     open: (projectId, sourceProfileId, cloneProfileId, purpose) =>
       request<Partial<RemoteOpenResult> & RemoteTicket>(
         `/v1/profiles/${encodeURIComponent(sourceProfileId)}/open`,

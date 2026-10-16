@@ -2,6 +2,20 @@
 
 Standing order from the owner, September 23, 2026: employees and bots must discover and know how to use capabilities as they ship. The owner should not have to teach or announce every release.
 
+## Leaner Veneer Browser — October 16, 2026
+
+Build #865, approved by Nick. A working copy used to restore every tab from its last session
+and add one more blank tab on each open, so copies averaged 16 tabs (worst 39, 27 blank).
+Now the browser manager closes every page except the most recently active real page
+(`/json/list` order) before a turn-end pause, and Chrome is started without a startup URL
+when a saved session exists. A pause still never happens under a hold, a viewer, a turn, a
+sign-in or a capture. Separately, the server deletes stopped working copies nobody has used
+or watched for seven days, plus unowned copies on disk under the same age rule, unless a
+hold, capture grant, unresolved controller recovery, human protection, running browser or
+error row (a refused profile update) keeps them. Saved profiles and backups are never
+touched; the next open clones the saved profile again, so only a sign-in never saved with
+update_profile is lost. The `browser` catalog entry and its prompt say so.
+
 ## Nick approves code changes; eleven contract tool sets retired — October 14, 2026
 
 Build #845. Only a turn Nick started (or James on his behalf, through his link) can queue a

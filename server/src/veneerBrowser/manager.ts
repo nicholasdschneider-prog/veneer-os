@@ -33,6 +33,7 @@ import {
   isVeneerBrowserRemoteError,
   type RemoteDownload,
   type RemoteOpenResult,
+  type RemoteProfileStatus,
   type RemoteTicket,
   type VeneerBrowserRemote,
 } from './remoteClient.js';
@@ -58,6 +59,11 @@ const HOLD_BOUND_REFUSAL = 'Keep open cannot be renewed: nothing has been clicke
 const IDLE_SAFE_COMMANDS = new Set(['open', 'get', 'snapshot', 'screenshot', 'tab', 'scroll',
   'scrollintoview', 'wait', 'back', 'forward', 'reload', 'fetch_url', 'script.read']);
 const UNFILED_SCOPE_PREFIX = 'unfiled-user-';
+// A working copy nobody has used, opened or watched for this long is deleted.
+// The chat's next browser call clones the saved profile again; only a sign-in
+// that was never saved back to the profile is lost.
+const COPY_REAP_AGE_MS = 7 * 24 * 60 * 60_000;
+const COPY_REAP_INTERVAL_MS = 60 * 60_000;
 // A chat that is already running commands re-checks the remote runtime at most
 // this often.
 const ACTIVE_CHECK_MS = 30_000;
@@ -291,6 +297,7 @@ export class VeneerBrowserManager {
   private readonly probeAddresses = new Map<string, ProbeAddress>();
   readonly capacityWaits: ReturnType<typeof createCapacityWaits>;
   private readonly maintenanceTimer: NodeJS.Timeout;
+  private lastCopyReapAt = 0;
 
   constructor(options: VeneerBrowserManagerOptions) {
     this.db = options.db;
@@ -327,6 +334,10 @@ export class VeneerBrowserManager {
     this.maintenanceTimer = setInterval(() => {
       this.evictIdleRuntimeCache();
       void this.reconcile().then(() => this.capacityWaits.tick()).catch(() => undefined);
+      if (Date.now() - this.lastCopyReapAt >= COPY_REAP_INTERVAL_MS) {
+        this.lastCopyReapAt = Date.now();
+        void this.reapIdleCopies().catch(() => undefined);
+      }
     }, 60_000);
     this.maintenanceTimer.unref();
   }
@@ -2270,6 +2281,88 @@ export class VeneerBrowserManager {
       if (this.queue(`conversation:${row.conversation_id}`).depth > 0) return;
       await this.suspendIfIdle(refreshed, false);
     }));
+  }
+
+  /** True while a controller recovery for this copy is still short of a verified read. */
+  private recoveryUnresolved(conversationId: string | null, cloneId: string): boolean {
+    const latest = (conversationId
+      ? this.db.prepare('SELECT outcome FROM browser_controller_recovery WHERE conversation_id = ? AND clone_id = ? ORDER BY id DESC LIMIT 1').get(conversationId, cloneId)
+      : this.db.prepare('SELECT outcome FROM browser_controller_recovery WHERE clone_id = ? ORDER BY id DESC LIMIT 1').get(cloneId)) as { outcome: string } | undefined;
+    return !!latest && latest.outcome !== 'read_verified';
+  }
+
+  /**
+   * Deletes stopped working copies untouched for COPY_REAP_AGE_MS, then copies
+   * on disk that no chat row owns any more. A copy is kept while anything could
+   * still need it: a running browser, a turn or queued command, a hold, a
+   * capture grant, an unresolved controller recovery, a recent human viewer, a
+   * human-protected copy, or an error row (a refused profile update keeps its
+   * copy for the person to decide). Saved profiles are never touched.
+   */
+  async reapIdleCopies(nowMs = Date.now()): Promise<{ removed: number; orphansRemoved: number }> {
+    if (!this.configured()) return { removed: 0, orphansRemoved: 0 };
+    const cutoff = nowMs - COPY_REAP_AGE_MS;
+    const stale = (...values: Array<string | null | undefined>) => {
+      const times = values.map((value) => Date.parse(value ?? '')).filter(Number.isFinite);
+      return times.length > 0 && Math.max(...times) < cutoff;
+    };
+    const days = (value: string | null | undefined) => Math.floor((nowMs - Date.parse(value ?? '')) / 86_400_000);
+    let removed = 0;
+    let orphansRemoved = 0;
+    const rows = this.db.prepare(
+      "SELECT * FROM veneer_browser_clone_sessions WHERE client_scope = ? AND status = 'stopped'",
+    ).all(this.clientScope()) as VeneerBrowserCloneSessionRow[];
+    for (const row of rows) {
+      if (!stale(row.last_used_at, row.stopped_at, row.created_at)) continue;
+      if (this.queue(`conversation:${row.conversation_id}`).depth > 0) continue;
+      await this.queue(`conversation:${row.conversation_id}`).run(async () => {
+        const current = this.cloneSession(row.conversation_id);
+        if (!current || current.clone_profile_id !== row.clone_profile_id || current.status !== 'stopped') return;
+        if (!stale(current.last_used_at, current.stopped_at, current.created_at)) return;
+        if (this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id = ?').get(current.conversation_id)) return;
+        if (this.holdState(current).active || this.captureGrantActive(current.conversation_id)) return;
+        if (this.recoveryUnresolved(current.conversation_id, current.clone_profile_id)) return;
+        let remote: RemoteProfileStatus | null = null;
+        try {
+          remote = await this.remote.status(current.project_id, current.clone_profile_id);
+        } catch (error) {
+          if (!isVeneerBrowserRemoteError(error, 404)) return;
+        }
+        if (remote?.active || remote?.profile?.humanProtected) return;
+        if (remote?.profile && !stale(remote.profile.lastUsedAt, remote.profile.lastViewerAt ?? current.created_at)) return;
+        await this.removeTemporaryClone(current);
+        removed += 1;
+        console.log(`[veneer-browser] removed working copy ${current.clone_profile_id.slice(0, 8)} for chat ${current.conversation_id.slice(0, 8)}, idle ${days(current.last_used_at ?? current.stopped_at)} days`);
+      }).catch(() => undefined);
+    }
+
+    if (!this.remote.listTemporary) return { removed, orphansRemoved };
+    const owned = new Set((this.db.prepare('SELECT clone_profile_id FROM veneer_browser_clone_sessions WHERE client_scope = ?')
+      .all(this.clientScope()) as Array<{ clone_profile_id: string }>).map((row) => row.clone_profile_id));
+    for (const { clone_profile_id } of this.db.prepare('SELECT clone_profile_id FROM veneer_browser_capture_grants WHERE client_scope = ?')
+      .all(this.clientScope()) as Array<{ clone_profile_id: string }>) owned.add(clone_profile_id);
+    const scopes = (this.db.prepare(
+      `SELECT project_id FROM veneer_browser_clone_sessions WHERE client_scope = ?
+       UNION SELECT project_id FROM veneer_browser_profiles WHERE client_scope = ?`,
+    ).all(this.clientScope(), this.clientScope()) as Array<{ project_id: string }>).map((row) => row.project_id);
+    for (const scopeId of scopes) {
+      const copies = await this.remote.listTemporary(scopeId).catch(() => []);
+      for (const copy of copies) {
+        if (owned.has(copy.profileId) || copy.running || copy.humanProtected) continue;
+        if (!stale(copy.lastUsedAt ?? copy.createdAt, copy.lastViewerAt, copy.createdAt)) continue;
+        if (this.recoveryUnresolved(null, copy.profileId)) continue;
+        // A row may have been written since the snapshot above.
+        if (this.db.prepare('SELECT 1 FROM veneer_browser_clone_sessions WHERE clone_profile_id = ?').get(copy.profileId)) continue;
+        try {
+          await this.remote.delete(scopeId, copy.profileId);
+        } catch {
+          continue;
+        }
+        orphansRemoved += 1;
+        console.log(`[veneer-browser] removed unowned working copy ${copy.profileId.slice(0, 8)}, idle ${days(copy.lastUsedAt ?? copy.createdAt)} days`);
+      }
+    }
+    return { removed, orphansRemoved };
   }
 
   shutdown(): void {

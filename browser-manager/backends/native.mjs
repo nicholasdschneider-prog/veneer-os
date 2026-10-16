@@ -66,6 +66,17 @@ function commandLine(pid) {
   catch { return ''; }
 }
 
+// Chrome writes Session_* (and older builds "Current Session") under the
+// profile; either one means --restore-last-session will reopen tabs.
+export function hasSavedSession(chromeDir) {
+  try {
+    return fs.readdirSync(path.join(chromeDir, 'Default', 'Sessions')).some((name) => name.startsWith('Session_'))
+      || fs.existsSync(path.join(chromeDir, 'Default', 'Current Session'));
+  } catch {
+    return false;
+  }
+}
+
 export function createNativeBackend({ store, chromeBin, headless = true, windowSize = '1440,1000' }) {
   const stateFile = path.join(store, 'runtime', 'native-processes.json');
   const children = new Map();
@@ -153,7 +164,9 @@ export function createNativeBackend({ store, chromeBin, headless = true, windowS
       // binary). The boundary is the relay refusing file:/chrome: navigations.
       '--disable-file-system',
       '--restore-last-session',
-      'about:blank',
+      // A restored session brings its own tabs back; a startup URL on top of
+      // it added one more blank tab on every open.
+      ...(hasSavedSession(s.chromeDir) ? [] : ['about:blank']),
     ];
   }
 

@@ -867,6 +867,59 @@ describe('Veneer Browser manager', () => {
     clearSecretFields('conv-1');
   });
 
+  async function idleStoppedCopy(conversationId = 'conv-1') {
+    const id = await idleReadOnlyCopy();
+    await manager.releaseAtTurnEnd(conversationId);
+    db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2026-09-01T00:00:00Z', stopped_at = '2026-09-01T00:00:00Z', created_at = '2026-09-01T00:00:00Z'").run();
+    return id;
+  }
+
+  it('deletes a working copy left idle for a week so the next open clones the saved profile again', async () => {
+    const id = await idleStoppedCopy();
+    expect(await manager.reapIdleCopies(Date.parse('2026-10-16T00:00:00Z'))).toEqual({ removed: 1, orphansRemoved: 0 });
+    expect(remote.delete).toHaveBeenCalledWith('project-1', id);
+    expect(db.prepare('SELECT 1 FROM veneer_browser_clone_sessions WHERE conversation_id = ?').get('conv-1')).toBeUndefined();
+    expect(db.prepare("SELECT COUNT(*) AS n FROM veneer_browser_audit WHERE action = 'clone.removed'").get()).toEqual({ n: 1 });
+    await manager.runCommand(1, 'conv-1', ['snapshot', '-i']);
+    expect(cloneId('conv-1')).not.toBe(id);
+    expect(remote.open).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['recent', 'pending', 'hold', 'capture', 'recovery', 'viewer', 'protected', 'running', 'error'])('keeps an old working copy while %s', async (guard) => {
+    const id = await idleStoppedCopy();
+    const nowMs = Date.parse('2026-10-16T00:00:00Z');
+    if (guard === 'recent') db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2026-10-12T00:00:00Z'").run();
+    if (guard === 'pending') db.prepare("INSERT INTO pending_turns(conversation_id,prompt) VALUES('conv-1','working')").run();
+    if (guard === 'hold') db.prepare("INSERT INTO veneer_browser_audit(client_scope, project_id, profile_id, conversation_id, action, metadata_json) VALUES(?,'project-1',?,'conv-1','clone.hold_enabled',?)").run(manager.clientScope(), id, JSON.stringify({ expiresAt: '2099-01-01T00:00:00Z' }));
+    if (guard === 'capture') db.prepare("INSERT INTO veneer_browser_capture_grants(conversation_id, client_scope, clone_profile_id, granted_by) VALUES('conv-1', ?, ?, 1)").run(manager.clientScope(), id);
+    if (guard === 'recovery') db.prepare(`INSERT INTO browser_controller_recovery(conversation_id, actor_user_id, clone_id, source_profile_id, source_generation, runtime_id, process_generation, request_key, request_hash, outcome)
+      VALUES('conv-1', 1, ?, 'src', 1, 'rt', ?, 'cccec360-a028-4628-8d7f-36322a9bdb37', ?, 'started')`).run(id, 'a'.repeat(64), 'b'.repeat(64));
+    if (guard === 'viewer') remote.status.mockResolvedValue({ active: false, status: 'stopped', profile: { lastUsedAt: '2026-09-01T00:00:00Z', lastViewerAt: '2026-10-15T00:00:00Z' } });
+    if (guard === 'protected') remote.status.mockResolvedValue({ active: false, status: 'stopped', profile: { lastUsedAt: '2026-09-01T00:00:00Z', humanProtected: true } });
+    if (guard === 'running') remote.status.mockResolvedValue({ active: true, status: 'running', profile: { lastUsedAt: '2026-09-01T00:00:00Z' } });
+    if (guard === 'error') db.prepare("UPDATE veneer_browser_clone_sessions SET status = 'error', last_error = 'The saved profile changed after this working copy started.'").run();
+    expect(await manager.reapIdleCopies(nowMs)).toEqual({ removed: 0, orphansRemoved: 0 });
+    expect(remote.delete).not.toHaveBeenCalled();
+    expect(cloneId('conv-1')).toBe(id);
+  });
+
+  it('deletes old unowned copies on disk but never owned, warm-fresh, running or protected ones', async () => {
+    const id = await idleStoppedCopy();
+    db.prepare("UPDATE veneer_browser_clone_sessions SET last_used_at = '2026-10-15T00:00:00Z'").run();
+    const old = { createdAt: '2026-09-01T00:00:00Z', lastUsedAt: '2026-09-01T00:00:00Z', lastViewerAt: null, humanProtected: false, running: false };
+    remote.listTemporary = vi.fn(async (scopeId: string) => scopeId !== 'project-1' ? [] : [
+      { ...old, profileId: id },
+      { ...old, profileId: 'orphan-old' },
+      { ...old, profileId: 'orphan-new', lastUsedAt: '2026-10-14T00:00:00Z' },
+      { ...old, profileId: 'orphan-running', running: true },
+      { ...old, profileId: 'orphan-protected', humanProtected: true },
+      { ...old, profileId: 'orphan-viewed', lastViewerAt: '2026-10-15T00:00:00Z' },
+    ]);
+    expect(await manager.reapIdleCopies(Date.parse('2026-10-16T00:00:00Z'))).toEqual({ removed: 0, orphansRemoved: 1 });
+    expect(remote.delete).toHaveBeenCalledTimes(1);
+    expect(remote.delete).toHaveBeenCalledWith('project-1', 'orphan-old');
+  });
+
   it('releases copies with old uncertain actions or missing history and flags them for review instead of pinning them', async () => {
     const id = await idleReadOnlyCopy();
     runBrowser.mockRejectedValueOnce(new Error('uncertain action'));

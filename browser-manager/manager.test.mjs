@@ -186,6 +186,17 @@ fs.appendFileSync(process.env.FAKE_CHROME_LOG, \`\${process.pid}\t\${args.join('
 
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
+  // A test drops fake-tabs.json into the profile to stand in for open tabs.
+  const tabsFile = userDataDir + '/fake-tabs.json';
+  if (req.url === '/json/list') {
+    res.end(fs.existsSync(tabsFile) ? fs.readFileSync(tabsFile, 'utf8') : '[]');
+    return;
+  }
+  if (req.url.startsWith('/json/close/')) {
+    fs.appendFileSync(userDataDir + '/fake-closed.log', decodeURIComponent(req.url.slice(12)) + '\\n');
+    res.end('"Target is closing"');
+    return;
+  }
   res.end(JSON.stringify({
     Browser: 'Chrome/fake-native',
     userDataDir,
@@ -1174,6 +1185,51 @@ test('opens a working copy as a native chrome process and stops it again', async
   assert.equal(stopped.status, 200);
   assert.equal(nativeProcesses(native)[work.container], undefined);
   await native.wait(() => !pidAlive(entry.pid), 10_000);
+});
+
+test('a paused native copy keeps only its last-used tab and reopens without an extra blank tab', async () => {
+  const opened = await native.call('/v1/profiles/native-source/open', {
+    method: 'POST',
+    body: JSON.stringify({ projectId, cloneProfileId: 'native-tabs', purpose: 'agent' }),
+  });
+  assert.equal(opened.status, 200, native.output);
+  const work = native.scope('native-tabs');
+  const launches = () => fs.readFileSync(chromeLog, 'utf8').split('\n').filter((line) => line.includes(work.chromeDir));
+  // No saved session yet, so Chrome needs a page to open.
+  assert.ok(launches().at(-1).endsWith(' about:blank'));
+
+  // Most recently active first, as Chrome lists them.
+  fs.writeFileSync(path.join(work.chromeDir, 'fake-tabs.json'), JSON.stringify([
+    { id: 'blank-new', type: 'page', url: 'about:blank' },
+    { id: 'orders', type: 'page', url: 'https://admin.shopify.com/orders' },
+    { id: 'worker', type: 'service_worker', url: 'https://admin.shopify.com/sw.js' },
+    { id: 'ntp', type: 'page', url: 'chrome://newtab/' },
+    { id: 'old-mail', type: 'page', url: 'https://mail.google.com/mail/u/0/' },
+  ]));
+  const status = await (await native.call(`/v1/profiles/native-tabs?projectId=${projectId}`)).json();
+  const paused = await (await native.call('/v1/profiles/native-tabs/suspend', {
+    method: 'POST',
+    body: JSON.stringify({ projectId, expectedLastUsedAt: status.profile.lastUsedAt }),
+  })).json();
+  assert.equal(paused.suspended, true, native.output);
+  const closed = fs.readFileSync(path.join(work.chromeDir, 'fake-closed.log'), 'utf8').trim().split('\n');
+  assert.deepEqual(closed.sort(), ['blank-new', 'ntp', 'old-mail']);
+
+  // Chrome saved the session on the way out, so the next open restores it alone.
+  fs.mkdirSync(path.join(work.chromeDir, 'Default', 'Sessions'), { recursive: true });
+  fs.writeFileSync(path.join(work.chromeDir, 'Default', 'Sessions', 'Session_1'), 'SNSS');
+  const started = await native.call('/v1/profiles/native-tabs/start', { method: 'POST', body: JSON.stringify({ projectId }) });
+  assert.equal(started.status, 200, native.output);
+  assert.equal(launches().at(-1).includes('about:blank'), false);
+  assert.ok(launches().at(-1).includes('--restore-last-session'));
+
+  const listed = await (await native.call(`/v1/temporary-profiles?projectId=${projectId}`)).json();
+  const row = listed.profiles.find((p) => p.profileId === 'native-tabs');
+  assert.equal(row.running, true);
+  assert.equal(listed.profiles.some((p) => p.profileId === 'native-source'), false);
+
+  await native.call('/v1/profiles/native-tabs/stop', { method: 'POST', body: JSON.stringify({ projectId }) });
+  assert.equal(await native.call(`/v1/profiles/native-tabs?projectId=${projectId}`, { method: 'DELETE' }).then((r) => r.status), 200);
 });
 
 test('reaps a native process record whose browser died while the manager was down', async () => {
