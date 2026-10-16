@@ -1,0 +1,22 @@
+{
+  "sessions_unchanged": true,
+  "pending_unchanged": true,
+  "state_projections_unchanged": true,
+  "file_delta": [
+    {
+      "path": "state.db-shm",
+      "before": {
+        "path": "state.db-shm",
+        "bytes": 32768,
+        "mtime_ns": 1792177785018264500,
+        "sha256": "d722577ad6e4f4fcdc95d14f029a052c982462c25871285126e0d96131ae5f4a"
+      },
+      "after": {
+        "path": "state.db-shm",
+        "bytes": 32768,
+        "mtime_ns": 1792177809479395900,
+        "sha256": "d722577ad6e4f4fcdc95d14f029a052c982462c25871285126e0d96131ae5f4a"
+      }
+    }
+  ]
+}

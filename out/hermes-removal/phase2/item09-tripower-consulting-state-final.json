@@ -1,0 +1,234 @@
+{
+  "profile": "tripower-consulting",
+  "at": "2026-10-16T19:26:17.732395+00:00",
+  "owner_custody": "TriPower owner",
+  "phase": "post-observation",
+  "contents_retained_on_pc": true,
+  "files": [
+    {
+      "path": "state.db",
+      "bytes": 5660672,
+      "mtime_ns": 1791300769708739800,
+      "sha256": "500d24f6eb67c65ecb36bb9a5cf77f597df61d45806f49720d2d5eee4b9dd0cb"
+    },
+    {
+      "path": "state.db-wal",
+      "bytes": 12392,
+      "mtime_ns": 1791300757775267200,
+      "sha256": "7f7009bbd1b959278d2fa4feffdf16309f14cf03cfeafcf19a1b835fa195b3f4"
+    },
+    {
+      "path": "state.db-shm",
+      "bytes": 32768,
+      "mtime_ns": 1792177809479395900,
+      "sha256": "d722577ad6e4f4fcdc95d14f029a052c982462c25871285126e0d96131ae5f4a"
+    },
+    {
+      "path": "projects.db",
+      "bytes": 45056,
+      "mtime_ns": 1787242708720497400,
+      "sha256": "0203e84b7750ed2405517ecef246c9c2ddf4dc2e97fb9fc86f51040b82c4cb08"
+    },
+    {
+      "path": "projects.db-wal",
+      "bytes": 0,
+      "mtime_ns": 1792160453739216800,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "gateway_state.json",
+      "bytes": 535,
+      "mtime_ns": 1791300769679495100,
+      "sha256": "e1fa9b146a6f158674912773bc50a72f311c1975bdc84221ad78caceb5dbc9f1"
+    },
+    {
+      "path": "sessions\\sessions.json",
+      "bytes": 446,
+      "mtime_ns": 1786096974126700200,
+      "sha256": "4d70f49feeaf91077442877baef400dd48b068640a871d054b9d5a09cb5950bd"
+    },
+    {
+      "path": "state\\gateway.lifecycle.json",
+      "bytes": 146,
+      "mtime_ns": 1791300757817898300,
+      "sha256": "30cbc526fd732324e241461ed2f43c5286a355e5bd3a4ed00bca5f0d61777e53"
+    },
+    {
+      "path": "cron\\executions.db",
+      "bytes": 20480,
+      "mtime_ns": 1784302005437739700,
+      "sha256": "a1710d3669e94fb22a5cb1fd35dff53182ad00fc5a2a1dcfddae301eac5db699"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "20260703_145945_051113",
+      "started_at": 1783105187.6161737,
+      "ended_at": null,
+      "last_activity_at": null,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 12,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260713_101152_c54afdf5",
+      "started_at": 1783951912.250993,
+      "ended_at": 1784040476.4751909,
+      "last_activity_at": null,
+      "message_count": 97,
+      "tool_call_count": 49,
+      "last_retained_message_id": 453,
+      "retained_message_rows": 97,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260714_100830_92a77b",
+      "started_at": 1784038114.058296,
+      "ended_at": null,
+      "last_activity_at": null,
+      "message_count": 1,
+      "tool_call_count": 0,
+      "last_retained_message_id": 454,
+      "retained_message_rows": 1,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260714_100920_08c2a0",
+      "started_at": 1784038162.2169147,
+      "ended_at": null,
+      "last_activity_at": null,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 456,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260714_104756_9448f0c9",
+      "started_at": 1784040476.4771962,
+      "ended_at": 1784301579.541713,
+      "last_activity_at": null,
+      "message_count": 7,
+      "tool_call_count": 0,
+      "last_retained_message_id": 463,
+      "retained_message_rows": 7,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260717_111939_303c1463",
+      "started_at": 1784301579.5443573,
+      "ended_at": 1784350750.5375652,
+      "last_activity_at": null,
+      "message_count": 8,
+      "tool_call_count": 0,
+      "last_retained_message_id": 471,
+      "retained_message_rows": 8,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260724_085725_dcc848",
+      "started_at": 1784897849.3401196,
+      "ended_at": null,
+      "last_activity_at": null,
+      "message_count": 100,
+      "tool_call_count": 55,
+      "last_retained_message_id": 571,
+      "retained_message_rows": 100,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260724_093314_ce5be1",
+      "started_at": 1784899997.8097937,
+      "ended_at": null,
+      "last_activity_at": null,
+      "message_count": 61,
+      "tool_call_count": 40,
+      "last_retained_message_id": 632,
+      "retained_message_rows": 61,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260730_091707_81fd64bb",
+      "started_at": 1785417427.818057,
+      "ended_at": 1785461063.201071,
+      "last_activity_at": null,
+      "message_count": 18,
+      "tool_call_count": 6,
+      "last_retained_message_id": 650,
+      "retained_message_rows": 18,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260806_072448_14e2f749",
+      "started_at": 1786015488.4548233,
+      "ended_at": 1786058781.0392,
+      "last_activity_at": 1786015492.2993388,
+      "message_count": 3,
+      "tool_call_count": 0,
+      "last_retained_message_id": 653,
+      "retained_message_rows": 3,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260808_115656_9a7842",
+      "started_at": 1786204619.8330204,
+      "ended_at": null,
+      "last_activity_at": 1786204619.844016,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 655,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    },
+    {
+      "id": "20260808_120220_f52907",
+      "started_at": 1786204943.4509754,
+      "ended_at": null,
+      "last_activity_at": 1786204943.4601612,
+      "message_count": 2,
+      "tool_call_count": 0,
+      "last_retained_message_id": 657,
+      "retained_message_rows": 2,
+      "handoff_state_present": false,
+      "handoff_state_sha256": null
+    }
+  ],
+  "pending": {
+    "delivery_obligations": 0,
+    "async_delegations": 0,
+    "session_turn_leases": 0,
+    "compression_locks": 0,
+    "gateway_routing": 0,
+    "pending_messages_entries": 0
+  },
+  "state_projections": [
+    {
+      "path": "sessions/sessions.json",
+      "field_fingerprints": {
+        "_README": "f06aebff3604fa5788e91f0010b5bc729275fc710c4d105857287d9245164fa9"
+      },
+      "safe_values": {},
+      "retained_message_entries": 0,
+      "active_legacy_mapping_entries": 0
+    }
+  ],
+  "limitations": [
+    "Retained sessions with ended_at null are not evidence of an executing agent. No mailbox query or business monitor invocation."
+  ],
+  "session_count": 12,
+  "custody_metadata_captured": true,
+  "pc_custody_receipt": "C:\\Users\\nicho\\backups\\hermes-phase2-20261016\\tripower-consulting\\pending-state-final.json"
+}

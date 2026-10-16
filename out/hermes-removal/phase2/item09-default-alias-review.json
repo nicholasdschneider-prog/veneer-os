@@ -1,0 +1,1797 @@
+{
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\profiles.py",
+      "sha256": "db1b0ae8657d1731597d33e63502482246b0fd7d7df37b5af13f2d13a65e5ec0",
+      "excerpts": [
+        {
+          "line": 2,
+          "source": "Profile management for multiple isolated Hermes instances."
+        },
+        {
+          "line": 3,
+          "source": ""
+        },
+        {
+          "line": 4,
+          "source": "Each profile is a fully independent HERMES_HOME directory with its own"
+        },
+        {
+          "line": 5,
+          "source": "config.yaml, .env, memory, sessions, skills, gateway, cron, and logs."
+        },
+        {
+          "line": 6,
+          "source": "Profiles live under ``~/.hermes/profiles/<name>/`` by default."
+        },
+        {
+          "line": 7,
+          "source": ""
+        },
+        {
+          "line": 8,
+          "source": "The \"default\" profile is ``~/.hermes`` itself \u2014 backward compatible,"
+        },
+        {
+          "line": 9,
+          "source": "zero migration needed."
+        },
+        {
+          "line": 10,
+          "source": ""
+        },
+        {
+          "line": 229,
+          "source": "})"
+        },
+        {
+          "line": 230,
+          "source": ""
+        },
+        {
+          "line": 231,
+          "source": "# Allow-list for ``export_profile(\"default\")``: when HERMES_HOME equals the"
+        },
+        {
+          "line": 232,
+          "source": "# cwd (Docker/custom deployments), the default profile home is the working"
+        },
+        {
+          "line": 233,
+          "source": "# directory and contains arbitrary user files that should NOT be bundled"
+        },
+        {
+          "line": 234,
+          "source": "# into the export. The set below identifies the *known Hermes profile"
+        },
+        {
+          "line": 235,
+          "source": "# artifacts* at the root of HERMES_HOME; everything else is excluded."
+        },
+        {
+          "line": 236,
+          "source": "# Sensitive runtime infrastructure (``state.db``, ``logs/``, ``auth.*``,"
+        },
+        {
+          "line": 237,
+          "source": "# other profiles) is intentionally *not* in this list so the export stays"
+        },
+        {
+          "line": 238,
+          "source": "# a portable, credential-free snapshot of the user-facing surface"
+        },
+        {
+          "line": 239,
+          "source": "# (#58394). Add new artifacts here when introduced in ``hermes_constants``."
+        },
+        {
+          "line": 272,
+          "source": "    \"\"\"Return the directory where named profiles are stored."
+        },
+        {
+          "line": 273,
+          "source": ""
+        },
+        {
+          "line": 274,
+          "source": "    Anchored to the hermes root, NOT to the current HERMES_HOME"
+        },
+        {
+          "line": 275,
+          "source": "    (which may itself be a profile).  This ensures ``coder profile list``"
+        },
+        {
+          "line": 276,
+          "source": "    can see all profiles."
+        },
+        {
+          "line": 277,
+          "source": ""
+        },
+        {
+          "line": 278,
+          "source": "    In Docker/custom deployments where HERMES_HOME points outside"
+        },
+        {
+          "line": 279,
+          "source": "    ``~/.hermes``, profiles live under ``HERMES_HOME/profiles/`` so"
+        },
+        {
+          "line": 280,
+          "source": "    they persist on the mounted volume."
+        },
+        {
+          "line": 281,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 282,
+          "source": "    return _get_default_hermes_home() / \"profiles\""
+        },
+        {
+          "line": 283,
+          "source": ""
+        },
+        {
+          "line": 284,
+          "source": ""
+        },
+        {
+          "line": 285,
+          "source": "def _get_default_hermes_home() -> Path:"
+        },
+        {
+          "line": 286,
+          "source": "    \"\"\"Return the default (pre-profile) HERMES_HOME path."
+        },
+        {
+          "line": 287,
+          "source": ""
+        },
+        {
+          "line": 288,
+          "source": "    In standard deployments this is ``~/.hermes``."
+        },
+        {
+          "line": 289,
+          "source": "    In Docker/custom deployments where HERMES_HOME is outside ``~/.hermes``"
+        },
+        {
+          "line": 290,
+          "source": "    (e.g. ``/opt/data``), returns HERMES_HOME directly."
+        },
+        {
+          "line": 291,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 292,
+          "source": "    from hermes_constants import get_default_hermes_root"
+        },
+        {
+          "line": 293,
+          "source": "    return get_default_hermes_root()"
+        },
+        {
+          "line": 294,
+          "source": ""
+        },
+        {
+          "line": 341,
+          "source": "    it's a valid alias for the built-in root profile."
+        },
+        {
+          "line": 342,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 343,
+          "source": "    if name == \"default\":"
+        },
+        {
+          "line": 344,
+          "source": "        return  # special alias for ~/.hermes"
+        },
+        {
+          "line": 345,
+          "source": "    if not _PROFILE_ID_RE.match(name):"
+        },
+        {
+          "line": 346,
+          "source": "        raise ValueError("
+        },
+        {
+          "line": 347,
+          "source": "            f\"Invalid profile name {name!r}. Must match \""
+        },
+        {
+          "line": 373,
+          "source": ""
+        },
+        {
+          "line": 374,
+          "source": "def get_profile_dir(name: str) -> Path:"
+        },
+        {
+          "line": 375,
+          "source": "    \"\"\"Resolve a profile name to its HERMES_HOME directory.\"\"\""
+        },
+        {
+          "line": 376,
+          "source": "    canon = normalize_profile_name(name)"
+        },
+        {
+          "line": 377,
+          "source": "    if canon == \"default\":"
+        },
+        {
+          "line": 378,
+          "source": "        return _get_default_hermes_home()"
+        },
+        {
+          "line": 379,
+          "source": "    return _get_profiles_root() / canon"
+        },
+        {
+          "line": 719,
+          "source": "    in the profile's own ``gateway_state.json`` against the live process table,"
+        },
+        {
+          "line": 720,
+          "source": "    mirroring the ``/api/status`` sidebar's liveness logic so the two surfaces"
+        },
+        {
+          "line": 721,
+          "source": "    agree.  Parameterized by ``profile_dir`` so it never mutates ``HERMES_HOME``."
+        },
+        {
+          "line": 722,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 723,
+          "source": "    try:"
+        },
+        {
+          "line": 724,
+          "source": "        from gateway.status import get_running_pid"
+        },
+        {
+          "line": 725,
+          "source": "        if ("
+        },
+        {
+          "line": 930,
+          "source": ""
+        },
+        {
+          "line": 931,
+          "source": "def list_profiles() -> List[ProfileInfo]:"
+        },
+        {
+          "line": 932,
+          "source": "    \"\"\"Return info for all profiles, including the default.\"\"\""
+        },
+        {
+          "line": 933,
+          "source": "    profiles = []"
+        },
+        {
+          "line": 934,
+          "source": "    wrapper_dir = _get_wrapper_dir()"
+        },
+        {
+          "line": 935,
+          "source": ""
+        },
+        {
+          "line": 936,
+          "source": "    # Default profile"
+        },
+        {
+          "line": 968,
+          "source": "                continue"
+        },
+        {
+          "line": 969,
+          "source": "            name = entry.name"
+        },
+        {
+          "line": 970,
+          "source": "            if name == \"default\":"
+        },
+        {
+          "line": 971,
+          "source": "                continue  # already added as the built-in default above"
+        },
+        {
+          "line": 972,
+          "source": "            if not _PROFILE_ID_RE.match(name):"
+        },
+        {
+          "line": 973,
+          "source": "                continue"
+        },
+        {
+          "line": 974,
+          "source": "            model, provider = _read_config_model(entry)"
+        },
+        {
+          "line": 1017,
+          "source": "      active named profile's id."
+        },
+        {
+          "line": 1018,
+          "source": "    - ``multiplex=True``: returns the default profile plus every valid named"
+        },
+        {
+          "line": 1019,
+          "source": "      profile under ``profiles/``, each paired with its own HERMES_HOME. When"
+        },
+        {
+          "line": 1020,
+          "source": "      ``profile_allowlist`` is provided, only selected named profiles are"
+        },
+        {
+          "line": 1021,
+          "source": "      included; the default profile is always served."
+        },
+        {
+          "line": 1022,
+          "source": ""
+        },
+        {
+          "line": 1023,
+          "source": "    Intentionally lightweight (a directory scan + name validation only): no"
+        },
+        {
+          "line": 1053,
+          "source": "                continue"
+        },
+        {
+          "line": 1054,
+          "source": "            name = entry.name"
+        },
+        {
+          "line": 1055,
+          "source": "            if name == \"default\":"
+        },
+        {
+          "line": 1056,
+          "source": "                continue  # default is the built-in entry already added above"
+        },
+        {
+          "line": 1057,
+          "source": "            if not _PROFILE_ID_RE.match(name):"
+        },
+        {
+          "line": 1058,
+          "source": "                continue"
+        },
+        {
+          "line": 1059,
+          "source": "            if allowed is not None and name not in allowed:"
+        },
+        {
+          "line": 1269,
+          "source": "    \"\"\"Seed bundled skills into a profile via subprocess."
+        },
+        {
+          "line": 1270,
+          "source": ""
+        },
+        {
+          "line": 1271,
+          "source": "    Uses subprocess because sync_skills() caches HERMES_HOME at module level."
+        },
+        {
+          "line": 1272,
+          "source": "    Returns the sync result dict, or None on failure."
+        },
+        {
+          "line": 1273,
+          "source": ""
+        },
+        {
+          "line": 1274,
+          "source": "    Profiles that opted out of bundled skills (via ``hermes profile create"
+        },
+        {
+          "line": 1275,
+          "source": "    --no-skills`` \u2014 which writes ``.no-bundled-skills`` to the profile root)"
+        },
+        {
+          "line": 1290,
+          "source": "             \"import json; from tools.skills_sync import sync_skills; \""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\main.py",
+      "sha256": "2451f4c6afd745d2dcc55b43886ffcbd616bfc6fdb76f09d91c73fa2bb2fc248",
+      "excerpts": [
+        {
+          "line": 289,
+          "source": "    value = \"cli\""
+        },
+        {
+          "line": 290,
+          "source": "    try:"
+        },
+        {
+          "line": 291,
+          "source": "        home = os.environ.get(\"HERMES_HOME\")"
+        },
+        {
+          "line": 292,
+          "source": "        if home:"
+        },
+        {
+          "line": 293,
+          "source": "            cfg_path = os.path.join(home, \"config.yaml\")"
+        },
+        {
+          "line": 294,
+          "source": "        else:"
+        },
+        {
+          "line": 295,
+          "source": "            cfg_path = os.path.join(os.path.expanduser(\"~\"), \".hermes\", \"config.yaml\")"
+        },
+        {
+          "line": 512,
+          "source": "# Profile override \u2014 MUST happen before any hermes module import."
+        },
+        {
+          "line": 513,
+          "source": "#"
+        },
+        {
+          "line": 514,
+          "source": "# Many modules cache HERMES_HOME at import time (module-level constants)."
+        },
+        {
+          "line": 515,
+          "source": "# We intercept --profile/-p from sys.argv here and set the env var so that"
+        },
+        {
+          "line": 516,
+          "source": "# every subsequent ``os.getenv(\"HERMES_HOME\", ...)`` resolves correctly."
+        },
+        {
+          "line": 517,
+          "source": "# The flag is stripped from sys.argv so argparse never sees it."
+        },
+        {
+          "line": 518,
+          "source": "# Falls back to ~/.hermes/active_profile for sticky default."
+        },
+        {
+          "line": 519,
+          "source": "# ---------------------------------------------------------------------------"
+        },
+        {
+          "line": 520,
+          "source": "def _apply_profile_override() -> None:"
+        },
+        {
+          "line": 521,
+          "source": "    \"\"\"Pre-parse --profile/-p and set HERMES_HOME before imports.\"\"\""
+        },
+        {
+          "line": 522,
+          "source": "    argv = sys.argv[1:]"
+        },
+        {
+          "line": 523,
+          "source": "    profile_name = None"
+        },
+        {
+          "line": 524,
+          "source": "    consume = 0"
+        },
+        {
+          "line": 525,
+          "source": "    profile_index = None"
+        },
+        {
+          "line": 547,
+          "source": "        while the profile store normally belongs to the user who invoked sudo."
+        },
+        {
+          "line": 548,
+          "source": "        \"\"\""
+        },
+        {
+          "line": 549,
+          "source": "        if name == \"default\":"
+        },
+        {
+          "line": 550,
+          "source": "            return None"
+        },
+        {
+          "line": 551,
+          "source": "        if not hasattr(os, \"geteuid\") or os.geteuid() != 0:"
+        },
+        {
+          "line": 552,
+          "source": "            return None"
+        },
+        {
+          "line": 553,
+          "source": "        sudo_user = os.environ.get(\"SUDO_USER\", \"\").strip()"
+        },
+        {
+          "line": 625,
+          "source": "            profile_index = None"
+        },
+        {
+          "line": 626,
+          "source": ""
+        },
+        {
+          "line": 627,
+          "source": "    # 1.5 If HERMES_HOME is already set and no explicit flag was given, trust it"
+        },
+        {
+          "line": 628,
+          "source": "    # only when it already points to a specific profile directory.  The"
+        },
+        {
+          "line": 629,
+          "source": "    # distinguishing heuristic: a profile path has \"profiles\" as its immediate"
+        },
+        {
+          "line": 630,
+          "source": "    # parent directory name (e.g. ~/.hermes/profiles/coder or"
+        },
+        {
+          "line": 631,
+          "source": "    # /opt/data/profiles/coder).  If HERMES_HOME points to the hermes root"
+        },
+        {
+          "line": 632,
+          "source": "    # instead (e.g. systemd hardcodes HERMES_HOME=/root/.hermes), we must"
+        },
+        {
+          "line": 633,
+          "source": "    # still read active_profile \u2014 the user may have switched profiles via"
+        },
+        {
+          "line": 634,
+          "source": "    # `hermes profile use` and the gateway should honour that choice."
+        },
+        {
+          "line": 635,
+          "source": "    # See issue #22502."
+        },
+        {
+          "line": 636,
+          "source": "    hermes_home_env = os.environ.get(\"HERMES_HOME\", \"\")"
+        },
+        {
+          "line": 637,
+          "source": "    if profile_name is None and hermes_home_env:"
+        },
+        {
+          "line": 638,
+          "source": "        if Path(hermes_home_env).parent.name == \"profiles\":"
+        },
+        {
+          "line": 639,
+          "source": "            return"
+        },
+        {
+          "line": 640,
+          "source": ""
+        },
+        {
+          "line": 646,
+          "source": "    # slots pass ``-p <name>`` explicitly (handled in step 1 above), and the"
+        },
+        {
+          "line": 647,
+          "source": "    # reserved ``gateway-default`` slot runs bare ``hermes gateway run`` to mean"
+        },
+        {
+          "line": 648,
+          "source": "    # \"the root HERMES_HOME profile\". If the reserved default child read"
+        },
+        {
+          "line": 649,
+          "source": "    # active_profile here, switching the active profile (e.g. via the dashboard)"
+        },
+        {
+          "line": 650,
+          "source": "    # would silently redirect the default gateway into that profile \u2014 yielding a"
+        },
+        {
+          "line": 651,
+          "source": "    # duplicate gateway for the active profile and no real default gateway. See"
+        },
+        {
+          "line": 652,
+          "source": "    # the \"Docker & Profiles & Dashboard\" report."
+        },
+        {
+          "line": 664,
+          "source": "            pass  # corrupted file, skip"
+        },
+        {
+          "line": 665,
+          "source": ""
+        },
+        {
+          "line": 666,
+          "source": "    # 3. If we found a profile, resolve and set HERMES_HOME"
+        },
+        {
+          "line": 667,
+          "source": "    if profile_name is not None:"
+        },
+        {
+          "line": 668,
+          "source": "        try:"
+        },
+        {
+          "line": 669,
+          "source": "            from hermes_cli.profiles import resolve_profile_env"
+        },
+        {
+          "line": 670,
+          "source": ""
+        },
+        {
+          "line": 685,
+          "source": "            )"
+        },
+        {
+          "line": 686,
+          "source": "            return"
+        },
+        {
+          "line": 687,
+          "source": "        os.environ[\"HERMES_HOME\"] = hermes_home"
+        },
+        {
+          "line": 688,
+          "source": "        # Strip the flag from argv so argparse doesn't choke"
+        },
+        {
+          "line": 689,
+          "source": "        if consume > 0 and profile_index is not None:"
+        },
+        {
+          "line": 690,
+          "source": "            start = profile_index + 1  # +1 because argv is sys.argv[1:]"
+        },
+        {
+          "line": 691,
+          "source": "            sys.argv = sys.argv[:start] + sys.argv[start + consume :]"
+        },
+        {
+          "line": 2221,
+          "source": "                f'source \"{helper}\" >&2 && ensure_node >&2 && command -v node',"
+        },
+        {
+          "line": 2222,
+          "source": "            ],"
+        },
+        {
+          "line": 2223,
+          "source": "            env={**os.environ, \"HERMES_HOME\": hermes_home},"
+        },
+        {
+          "line": 2224,
+          "source": "            capture_output=True,"
+        },
+        {
+          "line": 2225,
+          "source": "            text=True,"
+        },
+        {
+          "line": 2226,
+          "source": "            encoding=\"utf-8\","
+        },
+        {
+          "line": 2227,
+          "source": "            errors=\"replace\","
+        },
+        {
+          "line": 2331,
+          "source": "            if env_node and os.path.isfile(env_node) and os.access(env_node, os.X_OK):"
+        },
+        {
+          "line": 2332,
+          "source": "                return env_node"
+        },
+        {
+          "line": 2333,
+          "source": "        # find_node_executable() prefers the managed $HERMES_HOME/node tree,"
+        },
+        {
+          "line": 2334,
+          "source": "        # which is not on PATH \u2014 a bare which() would declare \"node not found\""
+        },
+        {
+          "line": 2335,
+          "source": "        # and exit on an install whose only Node is the one Hermes installed,"
+        },
+        {
+          "line": 2336,
+          "source": "        # and would pick a system Node over the managed one when both exist."
+        },
+        {
+          "line": 2337,
+          "source": "        from hermes_constants import find_node_executable"
+        },
+        {
+          "line": 5780,
+          "source": ""
+        },
+        {
+          "line": 5781,
+          "source": "# Stamp file recording the checkout fingerprint the bytecode cache was last"
+        },
+        {
+          "line": 5782,
+          "source": "# validated against. Lives next to the checkout (NOT in HERMES_HOME) because"
+        },
+        {
+          "line": 5783,
+          "source": "# __pycache__ is per-checkout state shared by every profile."
+        },
+        {
+          "line": 5784,
+          "source": "_BYTECODE_FINGERPRINT_FILE = \".bytecode-fingerprint\""
+        },
+        {
+          "line": 5785,
+          "source": ""
+        },
+        {
+          "line": 5786,
+          "source": ""
+        },
+        {
+          "line": 5944,
+          "source": ""
+        },
+        {
+          "line": 5945,
+          "source": "def _web_ui_stamp_path() -> Path:"
+        },
+        {
+          "line": 5946,
+          "source": "    \"\"\"Return the path to the web UI build stamp file under $HERMES_HOME.\"\"\""
+        },
+        {
+          "line": 5947,
+          "source": "    from hermes_constants import get_hermes_home"
+        },
+        {
+          "line": 5948,
+          "source": "    return get_hermes_home() / \"web-ui-build-stamp.json\""
+        },
+        {
+          "line": 5949,
+          "source": ""
+        },
+        {
+          "line": 5950,
+          "source": ""
+        },
+        {
+          "line": 6490,
+          "source": "#     stamp matches, making repeated launches fast"
+        },
+        {
+          "line": 6491,
+          "source": "#"
+        },
+        {
+          "line": 6492,
+          "source": "# Stamp file: $HERMES_HOME/desktop-build-stamp.json"
+        },
+        {
+          "line": 6493,
+          "source": "# Schema:"
+        },
+        {
+          "line": 6494,
+          "source": "#   {"
+        },
+        {
+          "line": 6495,
+          "source": "#     \"contentHash\": \"<sha256 hex of source files>\","
+        },
+        {
+          "line": 6496,
+          "source": "#     \"sourceMode\": true | false,"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\config.py",
+      "sha256": "adf517e1b49b19a39ef062a6562e4a1e0600c9c64cc9823ca10626155c2f60b6",
+      "excerpts": [
+        {
+          "line": 183,
+          "source": "# * ``SHELL`` \u2014 what subprocess uses with ``shell=True`` (we try to"
+        },
+        {
+          "line": 184,
+          "source": "#   avoid that, but defense in depth)."
+        },
+        {
+          "line": 185,
+          "source": "# * ``HERMES_HOME`` / ``HERMES_PROFILE`` / ``HERMES_CONFIG`` /"
+        },
+        {
+          "line": 186,
+          "source": "#   ``HERMES_ENV`` \u2014 Hermes runtime location flags. Writing these into"
+        },
+        {
+          "line": 187,
+          "source": "#   ``.env`` would relocate state in ways the user did not request from"
+        },
+        {
+          "line": 188,
+          "source": "#   the dashboard. ``config.yaml`` is the supported surface for these."
+        },
+        {
+          "line": 189,
+          "source": "#"
+        },
+        {
+          "line": 215,
+          "source": "    # NOT a HERMES_* blanket: integration credentials (HERMES_GEMINI_*,"
+        },
+        {
+          "line": 216,
+          "source": "    # HERMES_LANGFUSE_*, HERMES_SPOTIFY_*, ...) ARE allowed."
+        },
+        {
+          "line": 217,
+          "source": "    \"HERMES_HOME\", \"HERMES_PROFILE\", \"HERMES_CONFIG\", \"HERMES_ENV\","
+        },
+        {
+          "line": 218,
+          "source": "})"
+        },
+        {
+          "line": 219,
+          "source": ""
+        },
+        {
+          "line": 220,
+          "source": ""
+        },
+        {
+          "line": 221,
+          "source": "def _reject_denylisted_env_var(key: str) -> None:"
+        },
+        {
+          "line": 230,
+          "source": "            \"Names that influence subprocess execution (LD_PRELOAD, \""
+        },
+        {
+          "line": 231,
+          "source": "            \"PYTHONPATH, PATH, EDITOR, ...) or Hermes runtime location \""
+        },
+        {
+          "line": 232,
+          "source": "            \"(HERMES_HOME, HERMES_PROFILE, ...) cannot be persisted via \""
+        },
+        {
+          "line": 233,
+          "source": "            \"the env writer. If you really need this, edit \""
+        },
+        {
+          "line": 234,
+          "source": "            \"~/.hermes/.env directly.\""
+        },
+        {
+          "line": 235,
+          "source": "        )"
+        },
+        {
+          "line": 236,
+          "source": ""
+        },
+        {
+          "line": 389,
+          "source": ""
+        },
+        {
+          "line": 390,
+          "source": "    Two signals: the HERMES_MANAGED env var (set by the systemd service),"
+        },
+        {
+          "line": 391,
+          "source": "    or a .managed marker file in HERMES_HOME (set by the NixOS activation"
+        },
+        {
+          "line": 392,
+          "source": "    script, so interactive shells also see it)."
+        },
+        {
+          "line": 393,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 394,
+          "source": "    return get_managed_system() is not None"
+        },
+        {
+          "line": 395,
+          "source": ""
+        },
+        {
+          "line": 417,
+          "source": "    This is the parent of ``hermes_cli/`` \u2014 i.e. the git checkout for source"
+        },
+        {
+          "line": 418,
+          "source": "    installs, ``/opt/hermes`` inside the published image. It is a property of"
+        },
+        {
+          "line": 419,
+          "source": "    the running interpreter, NOT of ``$HERMES_HOME``, which is why a"
+        },
+        {
+          "line": 420,
+          "source": "    code-scoped stamp here is immune to two installs sharing one data"
+        },
+        {
+          "line": 421,
+          "source": "    directory."
+        },
+        {
+          "line": 422,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 423,
+          "source": "    if project_root is not None:"
+        },
+        {
+          "line": 433,
+          "source": "    1. Code-scoped stamp ``<install tree>/.install_method`` (next to the"
+        },
+        {
+          "line": 434,
+          "source": "       running code) \u2014 the authoritative marker."
+        },
+        {
+          "line": 435,
+          "source": "    2. Legacy home-scoped stamp ``$HERMES_HOME/.install_method`` \u2014 read for"
+        },
+        {
+          "line": 436,
+          "source": "       backward compatibility, but a ``docker`` value is IGNORED when we are"
+        },
+        {
+          "line": 437,
+          "source": "       not actually running inside a container (see below)."
+        },
+        {
+          "line": 438,
+          "source": "    3. HERMES_MANAGED env / .managed marker (NixOS managed mode)"
+        },
+        {
+          "line": 439,
+          "source": "    4. /nix/store/ path detection -> 'nix' (nix run / nix profile install)"
+        },
+        {
+          "line": 444,
+          "source": "    --------------------------------------------------------------------------"
+        },
+        {
+          "line": 445,
+          "source": "    The install method describes *the binary that is running*, but"
+        },
+        {
+          "line": 446,
+          "source": "    ``$HERMES_HOME`` is a shared DATA directory \u2014 the Docker docs deliberately"
+        },
+        {
+          "line": 447,
+          "source": "    bind-mount it (``~/.hermes:/opt/data``) so config/sessions/memory persist"
+        },
+        {
+          "line": 448,
+          "source": "    and can be shared with a host-side Desktop/CLI install. When a"
+        },
+        {
+          "line": 449,
+          "source": "    containerised gateway and a host install share one ``$HERMES_HOME``, a"
+        },
+        {
+          "line": 450,
+          "source": "    home-scoped stamp is a single slot describing two different installs:"
+        },
+        {
+          "line": 451,
+          "source": "    the container stamps ``docker`` on every boot, the host install then reads"
+        },
+        {
+          "line": 452,
+          "source": "    ``docker`` and ``hermes update`` refuses to run (\"doesn't apply inside the"
+        },
+        {
+          "line": 453,
+          "source": "    Docker container\") even though the host binary is a perfectly updatable"
+        },
+        {
+          "line": 481,
+          "source": "    supported_methods = {\"apt\", \"docker\", \"nix\", \"nixos\", \"home-manager\", \"git\", \"unknown\"}"
+        },
+        {
+          "line": 482,
+          "source": ""
+        },
+        {
+          "line": 483,
+          "source": "    # 1. Code-scoped stamp \u2014 authoritative, immune to shared $HERMES_HOME."
+        },
+        {
+          "line": 484,
+          "source": "    try:"
+        },
+        {
+          "line": 485,
+          "source": "        method = (root / \".install_method\").read_text(encoding=\"utf-8\").strip().lower()"
+        },
+        {
+          "line": 486,
+          "source": "        if method in supported_methods:"
+        },
+        {
+          "line": 487,
+          "source": "            return method"
+        },
+        {
+          "line": 491,
+          "source": "    # 2. Legacy home-scoped stamp \u2014 back-compat. Ignore a ``docker`` value"
+        },
+        {
+          "line": 492,
+          "source": "    #    when we are not actually containerised: that is the signature of a"
+        },
+        {
+          "line": 493,
+          "source": "    #    host install whose shared $HERMES_HOME was stamped by a co-located"
+        },
+        {
+          "line": 494,
+          "source": "    #    container, and honouring it wrongly blocks ``hermes update``."
+        },
+        {
+          "line": 495,
+          "source": "    try:"
+        },
+        {
+          "line": 496,
+          "source": "        method = ("
+        },
+        {
+          "line": 497,
+          "source": "            (get_hermes_home() / \".install_method\")"
+        },
+        {
+          "line": 550,
+          "source": ""
+        },
+        {
+          "line": 551,
+          "source": "    The stamp lives in the install tree (``<install tree>/.install_method``),"
+        },
+        {
+          "line": 552,
+          "source": "    not in ``$HERMES_HOME``, so that two installs sharing one data directory"
+        },
+        {
+          "line": 553,
+          "source": "    do not overwrite each other's marker. See ``detect_install_method`` for"
+        },
+        {
+          "line": 554,
+          "source": "    the full rationale."
+        },
+        {
+          "line": 555,
+          "source": ""
+        },
+        {
+          "line": 556,
+          "source": "    Best-effort: if the install tree is read-only (e.g. the immutable"
+        },
+        {
+          "line": 637,
+          "source": "    switch to ``:latest`` / ``:main`` for rolling updates.  See available"
+        },
+        {
+          "line": 638,
+          "source": "    tags at https://hub.docker.com/r/nousresearch/hermes-agent/tags"
+        },
+        {
+          "line": 639,
+          "source": "  \u2022 Your config and session history live under ``$HERMES_HOME`` (``/opt/data``"
+        },
+        {
+          "line": 640,
+          "source": "    in the container, typically bind-mounted from the host) and persist"
+        },
+        {
+          "line": 641,
+          "source": "    across image upgrades \u2014 re-pulling doesn't lose any state."
+        },
+        {
+          "line": 642,
+          "source": "  \u2022 Running a fork?  Build your own image with this repo's ``Dockerfile``"
+        },
+        {
+          "line": 643,
+          "source": "    and replace the ``docker pull`` step with your build/push pipeline.\"\"\""
+        },
+        {
+          "line": 672,
+          "source": ""
+        },
+        {
+          "line": 673,
+          "source": "def get_container_exec_info() -> Optional[dict]:"
+        },
+        {
+          "line": 674,
+          "source": "    \"\"\"Read container mode metadata from HERMES_HOME/.container-mode."
+        },
+        {
+          "line": 675,
+          "source": ""
+        },
+        {
+          "line": 676,
+          "source": "    Returns a dict with keys: backend, container_name, exec_user, hermes_bin"
+        },
+        {
+          "line": 677,
+          "source": "    or None if container mode is not active, we're already inside the"
+        },
+        {
+          "line": 678,
+          "source": "    container, or HERMES_DEV=1 is set."
+        },
+        {
+          "line": 741,
+          "source": "    Docker containers running Hermes commonly set these to map the in-container"
+        },
+        {
+          "line": 742,
+          "source": "    user to a host user so volume-mounted state files end up with the right"
+        },
+        {
+          "line": 743,
+          "source": "    ownership. The entrypoint chowns the top-level HERMES_HOME once, but"
+        },
+        {
+          "line": 744,
+          "source": "    subdirectories created at runtime by ``ensure_hermes_home()`` (especially"
+        },
+        {
+          "line": 745,
+          "source": "    for profile namespaces under ``profiles/<name>/``) need the same chown"
+        },
+        {
+          "line": 746,
+          "source": "    or they land as ``root:root`` and block subsequent uid-mapped workers"
+        },
+        {
+          "line": 747,
+          "source": "    with ``PermissionError [Errno 13]``. See #34107."
+        },
+        {
+          "line": 802,
+          "source": "    share state with the gateway service."
+        },
+        {
+          "line": 803,
+          "source": ""
+        },
+        {
+          "line": 804,
+          "source": "    The mode can be overridden via the HERMES_HOME_MODE environment variable"
+        },
+        {
+          "line": 805,
+          "source": "    (e.g. HERMES_HOME_MODE=0701) for deployments where a web server (nginx,"
+        },
+        {
+          "line": 806,
+          "source": "    caddy, etc.) needs to traverse HERMES_HOME to reach a served subdirectory."
+        },
+        {
+          "line": 807,
+          "source": "    The execute-only bit on a directory permits cd-through without exposing"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\hermes_constants.py",
+      "sha256": "3b10042e0b6127236706b17e8ba3c80f972eb16d95a5442f9ac24d543c8b156f",
+      "excerpts": [
+        {
+          "line": 15,
+          "source": "_profile_fallback_warned: bool = False"
+        },
+        {
+          "line": 16,
+          "source": "_UNSET = object()"
+        },
+        {
+          "line": 17,
+          "source": "_HERMES_HOME_OVERRIDE: ContextVar[str | object] = ContextVar("
+        },
+        {
+          "line": 18,
+          "source": "    \"_HERMES_HOME_OVERRIDE\", default=_UNSET"
+        },
+        {
+          "line": 19,
+          "source": ")"
+        },
+        {
+          "line": 20,
+          "source": ""
+        },
+        {
+          "line": 21,
+          "source": "# \u2500\u2500 TUI busy-indicator styles \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+        },
+        {
+          "line": 22,
+          "source": "# Single source of truth shared by the CLI /indicator command, the TUI"
+        },
+        {
+          "line": 35,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 36,
+          "source": "    value: str | object = _UNSET if path is None else str(path)"
+        },
+        {
+          "line": 37,
+          "source": "    return _HERMES_HOME_OVERRIDE.set(value)"
+        },
+        {
+          "line": 38,
+          "source": ""
+        },
+        {
+          "line": 39,
+          "source": ""
+        },
+        {
+          "line": 40,
+          "source": "def reset_hermes_home_override(token: Token) -> None:"
+        },
+        {
+          "line": 41,
+          "source": "    \"\"\"Restore the previous context-local Hermes home override.\"\"\""
+        },
+        {
+          "line": 42,
+          "source": "    _HERMES_HOME_OVERRIDE.reset(token)"
+        },
+        {
+          "line": 43,
+          "source": ""
+        },
+        {
+          "line": 44,
+          "source": ""
+        },
+        {
+          "line": 45,
+          "source": "def get_hermes_home_override() -> str | None:"
+        },
+        {
+          "line": 46,
+          "source": "    \"\"\"Return the active context-local Hermes home override, if any.\"\"\""
+        },
+        {
+          "line": 47,
+          "source": "    override = _HERMES_HOME_OVERRIDE.get()"
+        },
+        {
+          "line": 48,
+          "source": "    if override is _UNSET or not override:"
+        },
+        {
+          "line": 49,
+          "source": "        return None"
+        },
+        {
+          "line": 50,
+          "source": "    return str(override)"
+        },
+        {
+          "line": 51,
+          "source": ""
+        },
+        {
+          "line": 61,
+          "source": ""
+        },
+        {
+          "line": 62,
+          "source": "def _hermes_home_from_env() -> Path:"
+        },
+        {
+          "line": 63,
+          "source": "    \"\"\"Resolve HERMES_HOME from the process environment only."
+        },
+        {
+          "line": 64,
+          "source": ""
+        },
+        {
+          "line": 65,
+          "source": "    Reads the ``HERMES_HOME`` env var, falling back to the platform-native"
+        },
+        {
+          "line": 66,
+          "source": "    default.  Deliberately ignores the context-local override installed by"
+        },
+        {
+          "line": 67,
+          "source": "    :func:`set_hermes_home_override`, so this reflects the process/launch"
+        },
+        {
+          "line": 68,
+          "source": "    scope rather than a per-task profile.  Shared by :func:`get_hermes_home`"
+        },
+        {
+          "line": 69,
+          "source": "    and :func:`get_process_hermes_home` so the two never drift."
+        },
+        {
+          "line": 70,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 71,
+          "source": "    val = os.environ.get(\"HERMES_HOME\", \"\").strip()"
+        },
+        {
+          "line": 72,
+          "source": "    if val:"
+        },
+        {
+          "line": 73,
+          "source": "        return Path(val)"
+        },
+        {
+          "line": 74,
+          "source": "    return _get_platform_default_hermes_home()"
+        },
+        {
+          "line": 75,
+          "source": ""
+        },
+        {
+          "line": 78,
+          "source": "    \"\"\"Warn once when falling back to the default home while a profile is active."
+        },
+        {
+          "line": 79,
+          "source": ""
+        },
+        {
+          "line": 80,
+          "source": "    Guard: if a non-default profile is sticky-active but ``HERMES_HOME`` is"
+        },
+        {
+          "line": 81,
+          "source": "    unset, the fallback to the default profile is almost certainly wrong."
+        },
+        {
+          "line": 82,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 83,
+          "source": "    global _profile_fallback_warned"
+        },
+        {
+          "line": 84,
+          "source": "    if _profile_fallback_warned:"
+        },
+        {
+          "line": 98,
+          "source": "        # on consoles where a StreamHandler is already attached."
+        },
+        {
+          "line": 99,
+          "source": "        msg = ("
+        },
+        {
+          "line": 100,
+          "source": "            f\"[HERMES_HOME fallback] HERMES_HOME is unset but active \""
+        },
+        {
+          "line": 101,
+          "source": "            f\"profile is {active!r}. Falling back to {fallback_home}, which \""
+        },
+        {
+          "line": 102,
+          "source": "            f\"is the DEFAULT profile \u2014 not {active!r}. Any data this \""
+        },
+        {
+          "line": 103,
+          "source": "            f\"process writes will land in the wrong profile. The \""
+        },
+        {
+          "line": 104,
+          "source": "            f\"subprocess spawner should pass HERMES_HOME explicitly \""
+        },
+        {
+          "line": 105,
+          "source": "            f\"(see issue #18594).\""
+        },
+        {
+          "line": 106,
+          "source": "        )"
+        },
+        {
+          "line": 107,
+          "source": "        try:"
+        },
+        {
+          "line": 108,
+          "source": "            sys.stderr.write(msg + \"\\n\")"
+        },
+        {
+          "line": 112,
+          "source": ""
+        },
+        {
+          "line": 113,
+          "source": ""
+        },
+        {
+          "line": 114,
+          "source": "def get_hermes_home() -> Path:"
+        },
+        {
+          "line": 115,
+          "source": "    \"\"\"Return the Hermes home directory (default: platform-native path)."
+        },
+        {
+          "line": 116,
+          "source": ""
+        },
+        {
+          "line": 117,
+          "source": "    Resolution order: context-local override (see"
+        },
+        {
+          "line": 118,
+          "source": "    :func:`set_hermes_home_override`) \u2192 ``HERMES_HOME`` env var \u2192 the"
+        },
+        {
+          "line": 119,
+          "source": "    platform-native default.  This is the single source of truth \u2014 all other"
+        },
+        {
+          "line": 120,
+          "source": "    copies should import this."
+        },
+        {
+          "line": 121,
+          "source": ""
+        },
+        {
+          "line": 122,
+          "source": "    When ``HERMES_HOME`` is unset but an ``active_profile`` file indicates"
+        },
+        {
+          "line": 123,
+          "source": "    a non-default profile is active, logs a loud one-shot warning to"
+        },
+        {
+          "line": 124,
+          "source": "    ``errors.log`` so cross-profile data corruption is diagnosable instead"
+        },
+        {
+          "line": 125,
+          "source": "    of silent.  Behavior is unchanged otherwise \u2014 we still return"
+        },
+        {
+          "line": 126,
+          "source": "    the platform-native default \u2014 because raising here would brick 30+ module-level"
+        },
+        {
+          "line": 127,
+          "source": "    callers that import this at load time.  Subprocess spawners are"
+        },
+        {
+          "line": 128,
+          "source": "    expected to propagate ``HERMES_HOME`` explicitly (see the systemd"
+        },
+        {
+          "line": 129,
+          "source": "    template in ``hermes_cli/gateway.py`` and the kanban dispatcher in"
+        },
+        {
+          "line": 130,
+          "source": "    ``hermes_cli/kanban_db.py``).  See https://github.com/NousResearch/hermes-agent/issues/18594."
+        },
+        {
+          "line": 131,
+          "source": "    \"\"\""
+        },
+        {
+          "line": 132,
+          "source": "    override = get_hermes_home_override()"
+        },
+        {
+          "line": 134,
+          "source": "        return Path(override)"
+        },
+        {
+          "line": 135,
+          "source": ""
+        },
+        {
+          "line": 136,
+          "source": "    if not os.environ.get(\"HERMES_HOME\", \"\").strip():"
+        },
+        {
+          "line": 137,
+          "source": "        _warn_profile_fallback_once()"
+        },
+        {
+          "line": 138,
+          "source": ""
+        },
+        {
+          "line": 139,
+          "source": "    return _hermes_home_from_env()"
+        },
+        {
+          "line": 140,
+          "source": ""
+        },
+        {
+          "line": 157,
+          "source": "    Unlike :func:`get_hermes_home`, this never follows the context-local"
+        },
+        {
+          "line": 158,
+          "source": "    override set by :func:`set_hermes_home_override`.  It resolves only the"
+        },
+        {
+          "line": 159,
+          "source": "    process ``HERMES_HOME`` env var (falling back to the platform default),"
+        },
+        {
+          "line": 160,
+          "source": "    so it reflects the scope the process was launched under **as long as"
+        },
+        {
+          "line": 161,
+          "source": "    nothing mutates ``os.environ`` in-process**."
+        },
+        {
+          "line": 162,
+          "source": ""
+        },
+        {
+          "line": 163,
+          "source": "    Use this for machine/process-level dashboard-owned assets \u2014 theme YAML,"
+        },
+        {
+          "line": 172,
+          "source": ""
+        },
+        {
+          "line": 173,
+          "source": "# Process-level memo for get_default_hermes_root(). The function resolves"
+        },
+        {
+          "line": 174,
+          "source": "# HERMES_HOME against the native home on every call (~80us of path"
+        },
+        {
+          "line": 175,
+          "source": "# resolution), and it is called at 31+ sites \u2014 every _load_global_auth_store()"
+        },
+        {
+          "line": 176,
+          "source": "# (per provider row in the /model picker), kanban, backup, gateway, update."
+        },
+        {
+          "line": 177,
+          "source": "# Its result depends only on (HERMES_HOME, platform native home), which are"
+        },
+        {
+          "line": 178,
+          "source": "# compared for free on each call, so the memo is freshness-correct even if a"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\cron\\jobs.py",
+      "sha256": "deb393b7a86aa1790ca78cb41a946d21c992282b97b6ad08c6923ea5d6dd75f8",
+      "excerpts": [
+        {
+          "line": 67,
+          "source": ""
+        },
+        {
+          "line": 68,
+          "source": "# Cron is per-profile by design (issue #4707). Each profile owns its own cron"
+        },
+        {
+          "line": 69,
+          "source": "# store under its own HERMES_HOME, and a profile-scoped gateway runs that"
+        },
+        {
+          "line": 70,
+          "source": "# profile's jobs under that same HERMES_HOME \u2014 so a job authored in profile"
+        },
+        {
+          "line": 71,
+          "source": "# `coder` lives in `~/.hermes/profiles/coder/cron/jobs.json` and executes with"
+        },
+        {
+          "line": 72,
+          "source": "# `coder`'s `.env`, `config.yaml`, and skills. We deliberately anchor on"
+        },
+        {
+          "line": 73,
+          "source": "# `get_hermes_home()` (the active profile home), NOT `get_default_hermes_root()`"
+        },
+        {
+          "line": 74,
+          "source": "# (the shared root). Anchoring at the root would funnel every profile's jobs"
+        },
+        {
+          "line": 75,
+          "source": "# into one shared `jobs.json` and run them under whatever HERMES_HOME the"
+        },
+        {
+          "line": 76,
+          "source": "# ticker process happens to have \u2014 leaking config/credentials/skills across"
+        },
+        {
+          "line": 77,
+          "source": "# profiles (the security boundary #4707 was filed for). Do NOT change this to"
+        },
+        {
+          "line": 78,
+          "source": "# the default root: that re-breaks per-profile isolation. See also the dynamic"
+        },
+        {
+          "line": 79,
+          "source": "# `_get_hermes_home()` / `_get_lock_paths()` resolution in cron/scheduler.py."
+        },
+        {
+          "line": 149,
+          "source": "       the documented process-wide compatibility surface; honor it;"
+        },
+        {
+          "line": 150,
+          "source": "    3. the ACTIVE profile home, resolved fresh via get_hermes_home()"
+        },
+        {
+          "line": 151,
+          "source": "       (context-local override, then the HERMES_HOME env var) \u2014 so a test"
+        },
+        {
+          "line": 152,
+          "source": "       or embedder that re-points HERMES_HOME after this module was"
+        },
+        {
+          "line": 153,
+          "source": "       imported reads/writes ITS OWN store, not whatever jobs.json the"
+        },
+        {
+          "line": 154,
+          "source": "       import happened to freeze (the filed incident: fixtures that patched"
+        },
+        {
+          "line": 155,
+          "source": "       the env too late silently rewrote the user's real jobs file);"
+        },
+        {
+          "line": 156,
+          "source": "    4. the import-time constants (home unchanged since import \u2014 the common"
+        },
+        {
+          "line": 3434,
+          "source": "                # Durably claim a one-shot for the DURATION of its run before"
+        },
+        {
+          "line": 3435,
+          "source": "                # returning it as due, so a second scheduler process (gateway +"
+        },
+        {
+          "line": 3436,
+          "source": "                # desktop both run in-process 60s tickers on one HERMES_HOME)"
+        },
+        {
+          "line": 3437,
+          "source": "                # cannot re-dispatch it while the first run is still in flight"
+        },
+        {
+          "line": 3438,
+          "source": "                # (#59229). A plain one-shot's due-state is not resolved until"
+        },
+        {
+          "line": 3439,
+          "source": "                # mark_job_run() completes it minutes later, so advancing"
+        },
+        {
+          "line": 3440,
+          "source": "                # next_run_at by a fixed window is not enough \u2014 a job that outlives"
+        },
+        {
+          "line": 3557,
+          "source": "    \"\"\"Reduce one job skill reference to the bare name the curator matches on."
+        },
+        {
+          "line": 3558,
+          "source": ""
+        },
+        {
+          "line": 3559,
+          "source": "    A job may store an absolute path under ``HERMES_HOME/skills`` or an"
+        },
+        {
+          "line": 3560,
+          "source": "    external skills dir; the scheduler resolves those through"
+        },
+        {
+          "line": 3561,
+          "source": "    ``normalize_skill_lookup_name`` before handing them to ``skill_view``."
+        },
+        {
+          "line": 3562,
+          "source": "    The curator compares this set against bare skill names, so it has to"
+        },
+        {
+          "line": 3563,
+          "source": "    resolve them the same way \u2014 otherwise a path-referencing job's skill"
+        }
+      ]
+    }
+  ],
+  "launchers": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\gateway-service\\Hermes_Gateway.cmd",
+      "sha256": "3ab7b855fdf064339ff56806e32a4e13f7161b29ff8fa5eaa26a96dabcdd3cb6",
+      "gateway_run": true,
+      "root_home_literal": true,
+      "profile_default": false,
+      "other_profile_argument": false,
+      "sets_hermes_home": true,
+      "script_paths": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\gateway-service\\Hermes_Gateway.vbs",
+      "sha256": "4d3da12431ddc9ace470c4acee391b8444fd4f44cb4abaf71bb734893115df53",
+      "gateway_run": true,
+      "root_home_literal": true,
+      "profile_default": false,
+      "other_profile_argument": false,
+      "sets_hermes_home": true,
+      "script_paths": []
+    }
+  ],
+  "profiles_default_exists": false
+}

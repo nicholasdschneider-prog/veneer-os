@@ -117,23 +117,45 @@
       "state_delta_receipt": "item09-accounting-sharon-state-delta.json"
     },
     "tripower-consulting": {
-      "status": "observing",
+      "status": "verified",
       "observation_start": "2026-10-16T15:10:41.7404830-04:00",
       "not_before_utc": "2026-10-16T19:25:41.740483+00:00",
       "stop_receipt": "item09-tripower-consulting-stop.json",
       "observe_probe": "item09-tripower-consulting-observe.ps1",
       "custody_receipt": "item09-tripower-consulting-custody.json",
-      "final_state_probe": "item09-tripower-consulting-final-state.ps1"
+      "final_state_probe": "item09-tripower-consulting-final-state.ps1",
+      "confirmed_at": "2026-10-16T15:26:11.0338865-04:00",
+      "final_receipt": "item09-tripower-consulting-final.json",
+      "post_receipt": "item09-tripower-consulting-post.json",
+      "state_delta_receipt": "item09-tripower-consulting-state-delta.json"
+    },
+    "default": {
+      "status": "retained_dependency",
+      "reason": "Default aliases the built-in root home; root LTL 9b03a939ef99 is enabled/HOLD. Idle prerequisite unmet; task and launchers untouched.",
+      "alias_receipt": "item09-default-alias-review.json",
+      "held_cron_receipt": "item09-default-held-ltl.json"
     }
   },
-  "next_profile": "default",
+  "next_profile": null,
   "archive": {
     "controller_pid": 19500,
     "controller_created": "2026-10-16T12:47:43Z",
     "state": "hashing_unverified",
-    "files_hashed": 1740000,
-    "errors": 3188,
+    "files_hashed": 1840000,
+    "errors": 3213,
     "sqlite_integrity_ok": 199,
     "supervisor_lock_custody_receipt": "supervisor-lock-custody.json"
-  }
+  },
+  "phase2_disposition": "GO list handled with conditional exceptions: item7 and item9 default retained",
+  "handled_items": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ]
 }
