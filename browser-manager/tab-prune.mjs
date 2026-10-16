@@ -20,6 +20,33 @@ export function tabsToClose(targets) {
 }
 
 /**
+ * Session restore opens tabs for a moment after DevTools answers, so a fresh
+ * copy is pruned only once its page count has held still for `stableMs`, or
+ * after `maxMs` either way. Returns the last count seen (null if never read).
+ */
+export async function waitForStableTabs(port, { stableMs = 500, maxMs = 3000, intervalMs = 100, fetchImpl = fetch } = {}) {
+  const deadline = Date.now() + maxMs;
+  let last = null;
+  let since = Date.now();
+  while (Date.now() < deadline) {
+    let count;
+    try {
+      const listed = await fetchImpl(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(1000) });
+      if (!listed.ok) return last;
+      count = (await listed.json()).filter((t) => t && t.type === 'page').length;
+    } catch {
+      // DevTools was already answering when this is called, so a failure means
+      // the list is unreachable, not that restore is still running.
+      return last;
+    }
+    if (count !== last) { last = count; since = Date.now(); }
+    else if (Date.now() - since >= stableMs) return count;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return last;
+}
+
+/**
  * Best effort and bounded: a page that will not close (a stuck dialog, a slow
  * beforeunload) stays open, and the browser stop that follows ends it anyway.
  * Never throws.

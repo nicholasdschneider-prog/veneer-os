@@ -16,7 +16,7 @@ import { blockPasskeys, browserSocketUrl, passkeysAllowed } from './webauthn.mjs
 import { createDockerBackend } from './backends/docker.mjs';
 import { createNativeBackend } from './backends/native.mjs';
 import { installTypeOfServiceGuard } from './type-of-service-guard.mjs';
-import { pruneTabs } from './tab-prune.mjs';
+import { pruneTabs, waitForStableTabs } from './tab-prune.mjs';
 
 // Before any request: an undici TOS EINVAL must fail one request, not the manager.
 installTypeOfServiceGuard();
@@ -597,6 +597,7 @@ async function cloneAndStartLocked(source, sourceMeta, target, name, labels = []
       generation: 1,
     });
     await backend.start(target);
+    await trimInheritedTabs(target);
     await armPasskeyBlock(target);
     console.log(`[veneer-browser] opened copy ${target.key.slice(0, 10)} of ${source.key.slice(0, 10)}`);
     return profile;
@@ -608,6 +609,18 @@ async function cloneAndStartLocked(source, sourceMeta, target, name, labels = []
     fs.rmSync(target.root, { recursive: true, force: true });
     throw error;
   }
+}
+
+// A fresh copy restores whatever tabs its saved profile had, which can be dozens
+// from before turn-end pruning existed. Only this first start is trimmed; a
+// reopen of an existing copy restores what the bot left. Never fails the open.
+async function trimInheritedTabs(s) {
+  try {
+    const port = await cdpPort(s);
+    await waitForStableTabs(port);
+    const pruned = await pruneTabs(port);
+    if (pruned.closed || pruned.failed) console.log(`[veneer-browser] trimmed ${pruned.closed} inherited tab(s) in ${s.key.slice(0, 10)}${pruned.failed ? `, ${pruned.failed} would not close` : ''}`);
+  } catch { /* best effort */ }
 }
 
 // One browser-level DevTools session per running working copy, keyed by scope,

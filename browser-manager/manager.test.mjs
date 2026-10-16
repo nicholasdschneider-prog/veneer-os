@@ -1232,6 +1232,38 @@ test('a paused native copy keeps only its last-used tab and reopens without an e
   assert.equal(await native.call(`/v1/profiles/native-tabs?projectId=${projectId}`, { method: 'DELETE' }).then((r) => r.status), 200);
 });
 
+test('a fresh native copy drops tabs inherited from its saved profile, but a reopen keeps what it has', async () => {
+  const source = native.scope('native-source');
+  // The saved profile still carries tabs from before turn-end pruning existed.
+  fs.writeFileSync(path.join(source.chromeDir, 'fake-tabs.json'), JSON.stringify([
+    { id: 'inbox', type: 'page', url: 'https://mail.google.com/mail/u/0/' },
+    { id: 'blank-a', type: 'page', url: 'about:blank' },
+    { id: 'stale-order', type: 'page', url: 'https://admin.shopify.com/orders/1' },
+  ]));
+  try {
+    const opened = await native.call('/v1/profiles/native-source/open', {
+      method: 'POST',
+      body: JSON.stringify({ projectId, cloneProfileId: 'native-fresh', purpose: 'agent' }),
+    });
+    assert.equal(opened.status, 200, native.output);
+    const work = native.scope('native-fresh');
+    const closedLog = path.join(work.chromeDir, 'fake-closed.log');
+    assert.deepEqual(fs.readFileSync(closedLog, 'utf8').trim().split('\n').sort(), ['blank-a', 'stale-order']);
+    assert.match(native.output, /trimmed 2 inherited tab\(s\)/);
+
+    await native.call('/v1/profiles/native-fresh/stop', { method: 'POST', body: JSON.stringify({ projectId }) });
+    fs.rmSync(closedLog);
+    const started = await native.call('/v1/profiles/native-fresh/start', { method: 'POST', body: JSON.stringify({ projectId }) });
+    assert.equal(started.status, 200, native.output);
+    assert.equal(fs.existsSync(closedLog), false);
+
+    await native.call('/v1/profiles/native-fresh/stop', { method: 'POST', body: JSON.stringify({ projectId }) });
+    await native.call(`/v1/profiles/native-fresh?projectId=${projectId}`, { method: 'DELETE' });
+  } finally {
+    fs.rmSync(path.join(source.chromeDir, 'fake-tabs.json'), { force: true });
+  }
+});
+
 test('reaps a native process record whose browser died while the manager was down', async () => {
   const opened = await native.call('/v1/profiles/native-source/open', {
     method: 'POST',

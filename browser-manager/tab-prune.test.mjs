@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isBlankPage, pruneTabs, tabsToClose } from './tab-prune.mjs';
+import { isBlankPage, pruneTabs, tabsToClose, waitForStableTabs } from './tab-prune.mjs';
 
 const page = (id, url) => ({ id, type: 'page', url });
 
@@ -32,4 +32,19 @@ test('pruning is best effort: failed closes are counted and a dead port never th
   assert.deepEqual(await pruneTabs(9, { fetchImpl }), { closed: 1, failed: 1 });
   assert.equal(calls.some((url) => url.endsWith('/keep')), false);
   assert.deepEqual(await pruneTabs(9, { fetchImpl: async () => { throw new Error('down'); } }), { closed: 0, failed: 0 });
+});
+
+test('waits for restored tabs to stop appearing, and gives up at once on an unreachable list', async () => {
+  const counts = [1, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+  let call = 0;
+  const fetchImpl = async () => ({ ok: true, json: async () => Array.from({ length: counts[Math.min(call++, counts.length - 1)] }, (_, i) => page(String(i), 'https://x.example')) });
+  assert.equal(await waitForStableTabs(9, { stableMs: 30, intervalMs: 10, maxMs: 2000, fetchImpl }), 5);
+  const started = Date.now();
+  assert.equal(await waitForStableTabs(9, { fetchImpl: async () => { throw new Error('refused'); } }), null);
+  assert.ok(Date.now() - started < 500);
+  let grows = 0;
+  const growing = async () => ({ ok: true, json: async () => Array.from({ length: ++grows }, (_, i) => page(String(i), 'https://x.example')) });
+  const bounded = Date.now();
+  await waitForStableTabs(9, { stableMs: 1000, intervalMs: 10, maxMs: 200, fetchImpl: growing });
+  assert.ok(Date.now() - bounded < 600);
 });
