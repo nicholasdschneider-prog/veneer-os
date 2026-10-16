@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-16T13:37:28.886240+00:00",
+  "checks": {
+    "disabled": true,
+    "last_run_unchanged": true,
+    "execution_ids_unchanged": true,
+    "all_unfinished_zero": true,
+    "full_cycle": true,
+    "local_state_unchanged": true
+  },
+  "state_delta": "No local file hash, mtime or incident/claim metadata change. No authoritative remote incident count available."
+}

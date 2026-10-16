@@ -1,0 +1,42 @@
+{
+  "candidates": [
+    {
+      "path": "C:\\Users\\nicho\\.hermes\\scripts\\check_martine_reply.py",
+      "path_literals": []
+    }
+  ],
+  "resolution_source": [
+    {
+      "line": 3710,
+      "code": "    scripts_dir = _get_hermes_home() / \"scripts\""
+    },
+    {
+      "line": 3813,
+      "code": "            cwd=_script_cwd,"
+    },
+    {
+      "line": 3987,
+      "code": "    script_path = job.get(\"script\")"
+    },
+    {
+      "line": 4837,
+      "code": "        script_path = job.get(\"script\")"
+    },
+    {
+      "line": 5066,
+      "code": "    script_path = job.get(\"script\")"
+    },
+    {
+      "line": 5147,
+      "code": "    # Resolve workdir BEFORE set_session_vars so we can pass it as cwd=,"
+    },
+    {
+      "line": 5177,
+      "code": "        cwd=_job_workdir or \"\","
+    },
+    {
+      "line": 5188,
+      "code": "    # set_session_vars(cwd=...) above. Here we only handle the"
+    }
+  ]
+}

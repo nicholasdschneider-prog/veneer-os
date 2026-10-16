@@ -1,0 +1,7 @@
+{
+  "state": "read-only scan timed out after 240 seconds",
+  "job_invoked": false,
+  "source_changed": false,
+  "consumer_absence_proven": false,
+  "next_step": "Use a bounded scan of active task/cron script dependencies; do not treat this timeout as approval to disable Lippert."
+}

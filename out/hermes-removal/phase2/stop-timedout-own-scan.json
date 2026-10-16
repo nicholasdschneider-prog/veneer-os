@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-16T09:44:36.2065784-04:00",
+  "process_id": 18704,
+  "purpose": "Own read-only source scan cleanup after SSH timeout",
+  "source_sha256": "d9d48bb33c822072f6ff4f6c5c6f342896b328aab3d47d858a3b9992796d25eb",
+  "still_running": false,
+  "hermes_job_invoked": false
+}

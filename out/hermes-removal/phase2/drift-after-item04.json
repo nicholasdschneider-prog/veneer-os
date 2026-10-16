@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-16T09:40:34.3557697-04:00",
+  "baseline": "2026-10-16T08:40:11.5624493-04:00",
+  "baseline_note": "Completion Mirror was disabled before baseline",
+  "cron": {
+    "changed": [
+      {
+        "id": "305da2ff8a02",
+        "before": true,
+        "after": false
+      },
+      {
+        "id": "330388e25e93",
+        "before": true,
+        "after": false
+      },
+      {
+        "id": "394f30773d39",
+        "before": true,
+        "after": false
+      },
+      {
+        "id": "b2b5b67f02c0",
+        "before": true,
+        "after": false
+      },
+      {
+        "id": "d68cb0c1ae05",
+        "before": true,
+        "after": false
+      }
+    ],
+    "added": [],
+    "removed": []
+  },
+  "tasks": {
+    "changed": [
+      {
+        "name": "Hermes_CS_Tim_Watchdog",
+        "before": true,
+        "after": false
+      }
+    ],
+    "added": [],
+    "removed": []
+  },
+  "startup": {
+    "changed": [],
+    "added": [
+      "Hermes_Gateway_cs-tim.vbs.disabled-20261016"
+    ],
+    "removed": [
+      "Hermes_Gateway_cs-tim.vbs"
+    ]
+  },
+  "checks": {
+    "only_expected_cron_changes": true,
+    "only_tim_watchdog_change": true,
+    "all_changed_flags_disabled": true,
+    "only_tim_launcher_rename": true,
+    "no_added_removed_jobs_tasks": true
+  },
+  "result": "PASS: HOLD and Tier C states unchanged"
+}
