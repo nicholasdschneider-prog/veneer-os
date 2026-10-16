@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-16T09:53:29.6807848-04:00",
+  "archive": [
+    {
+      "write_bytes": 2286,
+      "created": "2026-10-16T08:47:43.6215740-04:00",
+      "pid": 19500,
+      "name": "python.exe",
+      "read_bytes": 1042529
+    },
+    {
+      "write_bytes": 98204013369,
+      "created": "2026-10-16T08:47:43.7450500-04:00",
+      "pid": 18796,
+      "name": "Robocopy.exe",
+      "read_bytes": 98204013369
+    }
+  ],
+  "remaining_encoded_python_probes": [],
+  "free_bytes": 565357830144
+}

@@ -1,0 +1,119 @@
+{
+  "at": "2026-10-16T13:53:27.563938+00:00",
+  "files": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\vendor-email-watch-100118388.json",
+      "exists": true,
+      "bytes": 279,
+      "mtime_ns": 1787578828001443500,
+      "sha256": "ad936a3d8282d3e1e3124f316047933d07143f5518a3ef508ac0f3cf2aaf934d",
+      "fields": {
+        "order_number": {
+          "type": "str",
+          "value_sha256": "575732fcbaaced4b85c6e4b69039d268b0fe263ec70010d998b2a2e74c3ab2ed"
+        },
+        "vendor": {
+          "type": "str",
+          "value_sha256": "6b97ea5fde8de78b123fa9cbc114c19cd72615358eeba6c95edae4f3e3647e52"
+        },
+        "account": {
+          "type": "str",
+          "value_sha256": "e6c160ca5a1a7aef3c062220b796ea1b09de14fb0a52469ddd240db06a9144bd"
+        },
+        "thread_id": {
+          "type": "str",
+          "value_sha256": "79ca7d799af54044b8635c9aea1ed0fa22f1ad297ace7cf621773e42353a5b8c"
+        },
+        "sent_message_id": {
+          "type": "str",
+          "value_sha256": "79ca7d799af54044b8635c9aea1ed0fa22f1ad297ace7cf621773e42353a5b8c"
+        },
+        "sent_internal_date": {
+          "type": "int",
+          "value_sha256": "82a210d150a1e3cc098af81027ff226114168532ea479b13cd0ab8e05221cec2"
+        },
+        "reported_message_ids": {
+          "type": "list",
+          "value_sha256": "ee9a118ba26d452c619d33c2eacd7ae2423bbb838723586557d2e21209938a3e",
+          "count": 1,
+          "ids": [
+            "1a033e4429f5eee8"
+          ]
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\technical-incidents\\dometic-reply-watcher-101592515.json",
+      "exists": true,
+      "bytes": 502,
+      "mtime_ns": 1789931833278043200,
+      "sha256": "02cf8e6c2aab2f15781bee0a4bd7de107e08738d0f1534d43c1fbd4f96167688",
+      "fields": {
+        "fingerprint": {
+          "type": "str",
+          "value_sha256": "4099b0f2cbb08af63e91d383f12d7034c916d389de84592005b15efe4a55fc5a",
+          "value": "ab4e23e77323b5744da84e71196e1e414328fad1a4787cacc3feb2a1766a80e3"
+        },
+        "first_seen_at": {
+          "type": "str",
+          "value_sha256": "6737aac75fa66a076910e85ada7653024a20edb8506e4b88e0c2c3e4fd48b02d"
+        },
+        "last_seen_at": {
+          "type": "str",
+          "value_sha256": "db5f60a7389dad0ec81c25e7accbeb90947ed2fdd38a28b5fce389bf3b9f0d07",
+          "value": "2026-09-20T18:16:13.880177+00:00"
+        },
+        "manager_escalation_required": {
+          "type": "bool",
+          "value_sha256": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"
+        },
+        "occurrence_count": {
+          "type": "int",
+          "value_sha256": "4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce"
+        },
+        "owner_profile": {
+          "type": "str",
+          "value_sha256": "1df7f0d5243522892642f9c232a36f2c0ad9f8b1d6eac51310ec1af433e032bd"
+        },
+        "reason": {
+          "type": "str",
+          "value_sha256": "946fff5c404f8927d2479f1f2328b1d35317b2b5acbb82991f9a92a7afedb06e"
+        },
+        "resolved_at": {
+          "type": "str",
+          "value_sha256": "c21fe14c751ca8229ea52152674c052db3d234fce76f58e7835378034a1823a5"
+        },
+        "source": {
+          "type": "str",
+          "value_sha256": "0ee6037fdc99fe6d43d0bca34e33c8590d2965cf509712a98595a0de2faebe51"
+        },
+        "status": {
+          "type": "str",
+          "value_sha256": "0772fde17309bd271c343f359e848907b3a93b420878fd1e0b68bbdadcd98eda",
+          "value": "resolved"
+        },
+        "technical_card_id": {
+          "type": "str",
+          "value_sha256": "8ab9c1ec569c401ae8767bf474f050aa849e5b51fc1999ecaf60dab35c0787de"
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\manual-dometic-watch-100120323-100120506.json",
+      "exists": true,
+      "bytes": 297,
+      "mtime_ns": 1792157857245953900,
+      "sha256": "9c2f81a6af2fb67e6a1ad464fc91ea5d12a66475ae452461aecad7d3f5b0fee8",
+      "fields": {
+        "100120323": {
+          "type": "str",
+          "value_sha256": "e962258c2d3cae0c52dbae792a0627f4fdcc0e66ac4af39bd36384fd1bce50bf"
+        },
+        "100120506": {
+          "type": "str",
+          "value_sha256": "d01bca4d1baa0260b3515d3b5ae5ffaedfc9ef6b682fb454ca06d942baa51ac8"
+        }
+      }
+    }
+  ]
+}

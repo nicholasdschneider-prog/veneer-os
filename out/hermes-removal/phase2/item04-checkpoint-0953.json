@@ -1,0 +1,28 @@
+{
+  "so": {
+    "at": "2026-10-16T13:53:25.327719+00:00",
+    "elapsed_seconds": 927.849216,
+    "checks": {
+      "disabled": true,
+      "last_run_unchanged": true,
+      "execution_ids_unchanged": true,
+      "all_unfinished_zero": true,
+      "full_interval_elapsed": false
+    },
+    "complete": false
+  },
+  "manual": {
+    "at": "2026-10-16T13:53:26.461773+00:00",
+    "elapsed_seconds": 927.766982,
+    "checks": {
+      "disabled": true,
+      "last_run_unchanged": true,
+      "execution_ids_unchanged": true,
+      "all_unfinished_zero": true,
+      "full_interval_elapsed": true
+    },
+    "complete": true
+  },
+  "state_unchanged": true,
+  "cursor_fingerprint_delta": "No file or per-field hash, cursor ID or fingerprint changes."
+}

@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-16T09:53:28.6932127-04:00",
+  "status": {
+    "status.json": {
+      "state": "running",
+      "started": "2026-10-16T12:47:43.738037+00:00",
+      "final_seal": false,
+      "note": "Held writers remain live; this is a recovery baseline, not a quiescent final seal."
+    }
+  },
+  "processes": [
+    {
+      "parent": 8172,
+      "pid": 19500,
+      "name": "python.exe",
+      "created": "2026-10-16T08:47:43.6215740-04:00"
+    },
+    {
+      "parent": 19500,
+      "pid": 18796,
+      "name": "Robocopy.exe",
+      "created": "2026-10-16T08:47:43.7450500-04:00"
+    }
+  ],
+  "stderr": null,
+  "files": [
+    {
+      "bytes": 8840,
+      "name": "archive-pc.py"
+    },
+    {
+      "bytes": 0,
+      "name": "exclusions.jsonl"
+    },
+    {
+      "bytes": 0,
+      "name": "reparse.jsonl"
+    },
+    {
+      "bytes": 0,
+      "name": "robocopy-local-hermes.log"
+    },
+    {
+      "bytes": 2087,
+      "name": "scope.json"
+    },
+    {
+      "bytes": 199,
+      "name": "status.json"
+    }
+  ]
+}
