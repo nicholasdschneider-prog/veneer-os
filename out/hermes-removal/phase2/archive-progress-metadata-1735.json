@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-16T17:35:16.1037733-04:00",
+  "controller": {
+    "expected_source_path": true,
+    "created": "2026-10-16T08:47:43.6215740-04:00",
+    "pid": 19500,
+    "name": "python.exe",
+    "parent": 8172
+  },
+  "source_sha256": "53A757C5504592F6E39FEF2D6BDBAD472321FFF8974A96234236E12B705C03FC",
+  "manifest_reported_bytes": 835775213,
+  "manifest_open_stream_bytes": 835770570,
+  "free_bytes": 526961938432,
+  "archive_changed_by_probe": false
+}

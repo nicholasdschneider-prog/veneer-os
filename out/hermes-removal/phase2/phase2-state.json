@@ -141,16 +141,16 @@
     "controller_pid": 19500,
     "controller_created": "2026-10-16T12:47:43Z",
     "state": "hashing_unverified",
-    "files_hashed": 2480000,
-    "errors": 3216,
+    "files_hashed": 2660000,
+    "errors": 3217,
     "sqlite_integrity_ok": 199,
     "supervisor_lock_custody_receipt": "supervisor-lock-custody.json",
-    "bytes_hashed": 117166960192,
-    "status_receipt": "archive-status-1705.json",
-    "progress_metadata_receipt": "archive-progress-metadata-1705.json",
+    "bytes_hashed": 122736784072,
+    "status_receipt": "archive-status-1735.json",
+    "progress_metadata_receipt": "archive-progress-metadata-1735.json",
     "source_sha256": "53A757C5504592F6E39FEF2D6BDBAD472321FFF8974A96234236E12B705C03FC",
-    "last_checked_at": "2026-10-16T17:07:30.8080778-04:00",
-    "manifest_bytes_observed": 782278855
+    "last_checked_at": "2026-10-16T17:35:16.1037733-04:00",
+    "manifest_bytes_observed": 835770570
   },
   "phase2_disposition": "GO list handled with conditional exceptions: item7 and item9 default retained",
   "handled_items": [
