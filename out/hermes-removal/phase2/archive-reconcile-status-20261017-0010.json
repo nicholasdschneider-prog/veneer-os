@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-17T00:10:15.2708342-04:00",
+  "state": {
+    "error-reconciliation.json": {
+      "at": "2026-10-16T22:08:28.121511+00:00",
+      "original_errors": 3220,
+      "extended_paths": 3219,
+      "source_hash_matches": 3219,
+      "custody_lock_hash": "c734f9bd92fd5082d1c4d70f905a7fe37a8f6b61801209cbc4796314d84ccf88",
+      "unresolved": []
+    },
+    "status.json": {
+      "state": "sqlite_header_verification",
+      "at": "2026-10-17T04:09:53.133586+00:00",
+      "files_headers_checked": 2590000,
+      "sqlite_found": 282,
+      "sqlite_integrity_ok": 282,
+      "errors": 0,
+      "elapsed_seconds": 21685.01152880001
+    }
+  },
+  "processes": [
+    {
+      "parent": 15524,
+      "pid": 2032,
+      "created": "2026-10-16T18:08:03.6473960-04:00"
+    }
+  ],
+  "source_sha256": "DC06932A9396508C621BC57C71654160E7DA9FE781180C4049672E29E4F9EC1F",
+  "files": [
+    {
+      "bytes": 250,
+      "name": "error-reconciliation.json"
+    },
+    {
+      "bytes": 1568597,
+      "name": "manifest-addendum.jsonl"
+    },
+    {
+      "bytes": 0,
+      "name": "sqlite-all-checks.jsonl"
+    },
+    {
+      "bytes": 241,
+      "name": "status.json"
+    }
+  ]
+}
