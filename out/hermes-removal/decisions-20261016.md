@@ -27,3 +27,7 @@
 - Phase 2 complete except item 7 (SHADOW lane, skipped) and the held business jobs. Item 9: ten idle gateways verified stopped; `default` profile retained because it aliases root where the held LTL cron lives.
 - Archive hashing at 2.66M of 2.78M files, 3,217 errors, not verified; verdict and error list pending controller completion.
 - Remaining on the PC: ervp-manager, ervp-orders, hermesops gateways (host the five held jobs), Brain backup, vault drift, SHADOW lane, Startup launchers for those. Nothing further until BUILD863 repairs (Nick-started turn) and Boris acceptance.
+
+## 2026-10-17 12:05 ET check
+- Phase 2 final report: out/hermes-removal/phase2/final-report.md. PC recovery baseline verified 00:41 ET (2,757,421 files, 468 SQLite OK, 0 errors after reconcile); credentials excluded; not a quiescent seal.
+- Boris thread unchanged; BUILD863 repairs still await a Nick-started turn. Fourth-mailbox decision still open. No live flips, no further stops.
