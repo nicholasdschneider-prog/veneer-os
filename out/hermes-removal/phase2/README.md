@@ -18,11 +18,11 @@ Authority: Nick’s October 16 SSH stop approval in chat fce19860, followed by t
 
 ## PC-only archive
 
-The six-root PC-only recovery baseline at `C:\Users\nicho\backups\hermes-final-20261016` completed its original controller at 17:54:29 ET: 2,754,201 files hashed / 128,659,422,699 bytes. Its preserved verification.json reported needs_review with 3,220 errors. Exact-path read-only audit established that all 3,219 hashing failures were present/readable with Windows extended-length paths; their source files also exist. The sole Robocopy failure log identifies the 37-byte dashboard supervisor.lock. All 199 original SQLite snapshots passed integrity_check and all six original restore samples matched.
+The sanitized six-root PC-only recovery baseline at `C:\Users\nicho\backups\hermes-final-20261016` is **verified after reconciliation**, with independent read-back completed October 17 at 00:41:26 ET. It contains **2,757,421 manifested files / 128,730,613,278 bytes**. All file headers were inspected regardless of extension; **468/468 SQLite copies passed integrity_check**, including 269 with nonstandard extensions, and all original 199 snapshots are covered. **8/8 restore samples** matched manifest hashes and sizes; original/addendum manifest and ACL metadata checksums match. No unresolved errors remain. See [archive-verification.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-verification.md) and [archive-final-readback.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-final-readback.json).
 
-The original PID 19500 has exited; its source SHA-256 still matches the retained script. A new isolated PC-only reconciliation process PID 2032, created 18:08:03.6473960 ET, is running archive-reconcile.py (SHA-256 DC06932A9396508C621BC57C71654160E7DA9FE781180C4049672E29E4F9EC1F). It hashed all 3,219 extended-path files and confirmed all source hashes match. The separately preserved 37-byte supervisor.lock was copied with its expected hash into the previously missing archive path after both the approved dashboard observation and original controller completion. No archive payload was overwritten or deleted. Original manifest/report remain intact; 3,220 records are in a new PC-only manifest addendum under reconcile-20261016.
+The original controller finished October 16 at 17:54:29 ET, and reconciliation PID 2032 finished October 17 at 00:32:28 ET; both are absent. All 3,219 Windows long-path hashing errors were reconciled with source hash matches. The missing 37-byte supervisor.lock was restored from its separately preserved PC custody copy after the approved dashboard observation and controller completion. Existing payload, original manifest and original needs_review report remain intact; a new 3,220-record manifest addendum carries the reconciled records. No deletion, overwrite, Hermes job, production restart or held-item stop was performed. No archive body or full manifest was copied to this Mac.
 
-The reconciliation is now auditing the header of EVERY manifested archive file, independent of extension, and running read-only immutable integrity_check for every SQLite copy detected. At 00:10 ET October 17 it had checked 2,590,000 headers, found 282 SQLite databases, passed all 282 integrity checks and recorded zero verification errors so far. It must also validate the original manifest checksum, known-database coverage, original/new restore samples and ACL metadata. The archive remains **NOT verified**, and no final quiescent seal is claimed while held writers remain live. Credentials/configuration remain excluded by metadata; original PC/account custody and reauthentication are required. No archive body or manifest contents were copied to this Mac; only metadata receipts are retained here. Use archive-reconcile-status.ps1 at the next wake; never relaunch the existing reconciliation blindly or modify its destination while it runs.
+This is a verified **sanitized recovery baseline**, not a final quiescent seal: held writers remain live, secrets/configuration were excluded by metadata, original PC/account custody and reauthentication remain necessary, and external reparse targets were inventoried rather than followed. Both manifests and documented recovery limitations must be retained. All HOLD/Tier C states remain as recorded in Phase 2. No archive observation is pending for this verified baseline; final refresh/seal remains gated on the coordinator’s owner-approved cutover.
 
 The initial SSH-child launch exited when its SSH session ended; its unverified directory was preserved under `hermes-final-20261016.incomplete-0847`. Review also found auth/config backup filename variants, so exclusions were broadened and checked before the WMI launch. No secret values were read or displayed. The incomplete directory is retained, not a usable recovery archive.
 
@@ -34,7 +34,7 @@ Phase 2 GO list is handled with conditional exceptions: item 7 Lippert remains e
 
 Default aliases the built-in root home per static profiles.py source; no independent profiles/default directory exists. Generic Hermes_Gateway task launches from root, whose LTL 9b03a939ef99 remains enabled. A scheduler-locked READ confirmed unchanged job file hash, enabled flag, last run and zero unfinished. The idle prerequisite fails; default task/launchers were retained and no process was started or stopped. Accounting-migration gateway was outside the approved item 9 gateway list and remains untouched; item 6 only retired its monitor cron.
 
-Continue the PC-only reconciliation check at the next persisted wake. Inspect PID 2032 identity, source hash and reconcile-20261016/status.json/failure.json/verification.json first. While it runs, do not change its archive tree or relaunch. After completion, inspect every final check/error and independently verify the reconciliation result before a separate archive-verification report. No final quiescent seal while held writers remain live. Keep every HOLD and Tier C item; no new cutover clearance exists.
+Archive reconciliation and independent verification are complete; see archive-verification.md. Do not relaunch either completed controller or repeat any completed effect. Final quiescent sealing remains held for owner-approved cutover; retain brain/vault and every HOLD/Tier C item.
 
 See final-report.md for the complete items 1–9 result and receipt index. phase2-state.json records exact dispositions; audit-expected.json records only actual authorized changes. No business job, deletion, application source change, build or restart was performed.
 
@@ -48,9 +48,9 @@ Item 9 order remains cs-mallory → cs-jasmine → cs-rae → cs-ali → cs-joe 
 
 Items 1–6 and 8 are verified complete; 7 remains skipped/unchanged. Coordinator notified of item 8 completion and first idle stop. Never repeat those completed effects. HOLD and Tier C states passed source-qualified file+ID comparisons; the QA duplicate ID caused an audit false alarm, not an actual auth re-enable. For drift checks include expected task arguments `task:ERVP Hermes Dashboard`, `task:Hermes_cs_mallory_Watchdog`, `task:Hermes_cs_jasmine_Watchdog` and Startup arguments `startup:Hermes_Gateway_cs-mallory.vbs`, `startup:Hermes_Gateway_cs-jasmine.vbs` in addition to the prior cron IDs; add only each subsequent profile’s actual authorized changes.
 
-Archive controller remains running/unverified. Check status/source identity each wake; inspect final error list only when available, never relaunch blindly. Reconcile the supervisor custody file only after controller completion. Keep brain/vault and all other held jobs/gateways. Persist every pending observation/archive wake.
+Archive baseline verification is complete. Original reports and all reconciliation evidence remain preserved; do not relaunch the completed controllers. Keep brain/vault and all other held jobs/gateways for owner-approved final cutover.
 
-Keep the original full GO/HOLD list and never run business scripts or delete files. No application source changes, build or production restart are involved. Send complete items1–9 results to fce19860 using request_key `hermes-pc-operator-phase2`, with a separate archive verification report when actually verified.
+Keep the original full GO/HOLD list and never run business scripts or delete files. No application source changes, build or production restart are involved. Send complete items1–9 results to fce19860 using request_key `hermes-pc-operator-phase2`, with the separate verified baseline result in archive-verification.md.
 
 ## Artifacts
 
@@ -63,6 +63,8 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [archive-error-review.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-error-review.ps1)
 - [archive-exact-error-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-exact-error-audit.json)
 - [archive-exact-error-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-exact-error-audit.ps1)
+- [archive-final-readback.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-final-readback.json)
+- [archive-final-readback.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-final-readback.ps1)
 - [archive-launch-command.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-launch-command.ps1)
 - [archive-launch-wmi.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-launch-wmi.ps1)
 - [archive-locked-path-review.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-locked-path-review.json)
@@ -90,6 +92,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [archive-reconcile-status-1940.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-reconcile-status-1940.json)
 - [archive-reconcile-status-2010.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-reconcile-status-2010.json)
 - [archive-reconcile-status-20261017-0010.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-reconcile-status-20261017-0010.json)
+- [archive-reconcile-status-20261017-0040.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-reconcile-status-20261017-0040.json)
 - [archive-reconcile-status-2040.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-reconcile-status-2040.json)
 - [archive-reconcile-status-2110.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-reconcile-status-2110.json)
 - [archive-reconcile-status-2140.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-reconcile-status-2140.json)
@@ -130,6 +133,7 @@ Keep the original full GO/HOLD list and never run business scripts or delete fil
 - [archive-status-wmi.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status-wmi.json)
 - [archive-status.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status.json)
 - [archive-status.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-status.ps1)
+- [archive-verification.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/archive-verification.md)
 - [audit-drift.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/audit-drift.py)
 - [audit-expected.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/audit-expected.json)
 - [cron-control.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2/cron-control.py)

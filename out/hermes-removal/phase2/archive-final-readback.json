@@ -1,0 +1,2420 @@
+{
+  "at": "2026-10-17T04:41:26.483658+00:00",
+  "state": "verified_reconciled_baseline",
+  "metadata_readback_only": true,
+  "manifests": [
+    {
+      "file": "manifest.jsonl",
+      "records": 2754201,
+      "bytes": 128659422699,
+      "sha256": "73890273bc519830796e3cb45fc05dfe7f994d8a76fcd7484808406dcbff57c8"
+    },
+    {
+      "file": "manifest-addendum.jsonl",
+      "records": 3220,
+      "bytes": 71190579,
+      "sha256": "49d5b253589a4f5eb506ceb9c38d05c0fe1f30636dc0332e5fd15f6257c1537b"
+    }
+  ],
+  "payload_bytes": 128730613278,
+  "files_verified": 2757421,
+  "root_labels": [
+    "brain-ops",
+    "dot-hermes",
+    "legacy-data",
+    "local-hermes",
+    "obsidian-brain",
+    "worktrees"
+  ],
+  "sqlite_checks": 468,
+  "sqlite_integrity_ok": 468,
+  "nonstandard_sqlite": 269,
+  "known_sqlite_covered": 199,
+  "all_sqlite_in_manifests": true,
+  "restores": [
+    {
+      "path": "mirror\\brain-ops\\accounting-session-20260730-redacted.jsonl",
+      "hash_and_bytes_match_manifest": true
+    },
+    {
+      "path": "mirror\\dot-hermes\\kanban.db",
+      "hash_and_bytes_match_manifest": true
+    },
+    {
+      "path": "mirror\\legacy-data\\Hermes\\2026-07-03.md",
+      "hash_and_bytes_match_manifest": true
+    },
+    {
+      "path": "mirror\\local-hermes\\.codex_gpt55_autoraise_notice",
+      "hash_and_bytes_match_manifest": true
+    },
+    {
+      "path": "mirror\\obsidian-brain\\Backup Status.json",
+      "hash_and_bytes_match_manifest": true
+    },
+    {
+      "path": "mirror\\worktrees\\t_14c058c8\\.bytecode-fingerprint",
+      "hash_and_bytes_match_manifest": true
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_05b9743f\\repo\\dist\\public\\widgets\\audio\\orderops\\v2026-07-29-voicemail-text-email-first-option-c-nova\\approved-ervp-voicemail-text-email-first-option-c-nova.mp3",
+      "hash_and_bytes_match_manifest": true
+    },
+    {
+      "path": "mirror\\local-hermes\\services\\dashboard\\supervisor.lock",
+      "hash_and_bytes_match_manifest": true
+    }
+  ],
+  "acl_hashes_match": true,
+  "original_manifest_hash_matches_original_report": true,
+  "original_errors_resolved": 3220,
+  "final_seal": false,
+  "limitations": [
+    "Held writers remain live; refresh and seal after final cutover.",
+    "Credentials/configuration excluded by metadata; original PC/account custody required.",
+    "External reparse targets are inventoried, not followed."
+  ],
+  "pc_receipt": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\reconcile-20261016\\operator-readback.json",
+  "sqlite_metadata": [
+    {
+      "path": "mirror\\local-hermes\\kanban.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\state.db.pre-update-emergency-2026-08-14T12-08-19-219Z.bak",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\state.db.pre-update-emergency-2026-08-20T16-03-04-735Z.bak",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\state.db.pre-update-emergency-2026-08-20T16-03-56-144Z.bak",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\kanban.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_86999875\\kanban-before-reconciliation.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\accounting-migration\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\cs-tim\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\cust-service\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-dev\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-dev2\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-manager\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-ops\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-orders\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-qa\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-qa2\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_e9c1596c\\offline-canaries\\ervp-research\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\BrowsingTopicsSiteData",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\MediaDeviceSalts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\browser_auth\\shopify-chrome\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\cron\\notepad.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\BrowsingTopicsSiteData",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\GPUPersistentCache\\DawnGraphiteCache\\MNIWWJ6LYBXKQS7RZ2KZNUZ3QHFNW4K3\\cache.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\work\\chargebacks\\t_be613dc0\\chrome-fedex-cdp2\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-sharon\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-sharon\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-sharon\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-sharon\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-ali\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-ali\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-ali\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\BrowsingTopicsSiteData",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\GPUPersistentCache\\DawnGraphiteCache\\WRJTYMYAB73RC6HTXXLKRS2FEZVUG6PP\\cache.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\lippert-chrome\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\BrowsingTopicsSiteData",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\MediaDeviceSalts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\GPUPersistentCache\\DawnGraphiteCache\\WRJTYMYAB73RC6HTXXLKRS2FEZVUG6PP\\cache.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\browser_auth\\quarantine\\t_7f183f6c-unverified-lippert-chrome-1785160473\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-jasmine\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-joe\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-joe\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-joe\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-mallory\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-mallory\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-mallory\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-rae\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-rae\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-rae\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-tim\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-tim\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-tim\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cs-tim\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cust-service\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cust-service\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cust-service\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\cust-service\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\deliverables\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\deliverables\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\deliverables\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev2\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev2\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev2\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev2\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev2\\state-snapshots\\20260717-131038-pre-update\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\state\\owner.sqlite3",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev3\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev3\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev3\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-dev3\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\kanban.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\state-snapshots\\20260722-172210-pre-update\\kanban.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\state-snapshots\\20260722-172210-pre-update\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\state-snapshots\\20260722-172210-pre-update\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\state-snapshots\\20260722-172210-pre-update\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-manager\\state-snapshots\\20260722-172210-pre-update\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-media\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-media\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-media\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\HistoryEmbeddings",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\MediaDeviceSalts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Collaboration\\MessageDB",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\DataSharing\\DataSharingDB",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\browser_auth\\archer-shopify-chrome\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-ops\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\cache\\incident-20260731-pre-session-reset-state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\cron\\notepad.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\state\\safe-vendor-poller.sqlite3",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa2\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa2\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa2\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-qa2\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-research\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-research\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-research\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-research\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-storefront\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-storefront\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-storefront\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-storefront\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-vendor-next\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-vendor-next\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-vendor-next\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\evidence\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\evidence\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\evidence\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\HubApps Icons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\load_statistics.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Collections\\collectionsSQLite",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\EdgeHubAppUsage\\EdgeHubAppUsageSQLite.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\HubApps Icons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\load_statistics.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Collections\\collectionsSQLite",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\EdgeHubAppUsage\\EdgeHubAppUsageSQLite.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-2\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\HubApps Icons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\load_statistics.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Collections\\collectionsSQLite",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\EdgeHubAppUsage\\EdgeHubAppUsageSQLite.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-3\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\HubApps Icons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\load_statistics.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Collections\\collectionsSQLite",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\EdgeHubAppUsage\\EdgeHubAppUsageSQLite.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\HubApps Icons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\load_statistics.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Collections\\collectionsSQLite",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\EdgeHubAppUsage\\EdgeHubAppUsageSQLite.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-gl002-two\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\HubApps Icons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\load_statistics.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Collections\\collectionsSQLite",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\EdgeHubAppUsage\\EdgeHubAppUsageSQLite.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-corrected\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\HubApps Icons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\load_statistics.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Collections\\collectionsSQLite",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\EdgeHubAppUsage\\EdgeHubAppUsageSQLite.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\declarative_performance_observer.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\Storage\\ext\\ihmafllikibpmigkcoadcmckbfhibefp\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\edge-label-profile-glass-official\\Nurturing\\campaign_history",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\orchestration\\fixtures\\live-router\\kanban.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops\\workspace\\t_cfc76834\\backup-prechange\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops-2\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops-2\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops-2\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops-2\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\hermesops-2\\cron\\notepad.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\first_party_sets.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Account Web Data",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Affiliation Database",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\BrowsingTopicsSiteData",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\DIPS",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Favicons",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\heavy_ad_intervention_opt_out.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\History",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\HistoryEmbeddings",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\InterestGroups",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\MediaDeviceSalts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Network Action Predictor",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\PrivateAggregation",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\ServerCertificate",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Shortcuts",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Top Sites",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Network\\Reporting and NEL",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\SharedStorage",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Network\\Device Bound Sessions",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\Storage\\ext\\nmmhkkegccagdldgiimedpiccmgmieda\\def\\Shared Dictionary\\db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\Default\\WebStorage\\QuotaManager",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\GPUPersistentCache\\DawnGraphiteCache\\MNIWWJ6LYBXKQS7RZ2KZNUZ3QHFNW4K3\\cache.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\mphealth\\shopify-debug-chrome\\segmentation_platform\\ukm_db",
+      "integrity_ok": true,
+      "nonstandard_extension": true
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\nick\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\nick\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\nick\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\nick\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\qa-review\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\qa-review\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\qa-review\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\research-analysis\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\research-analysis\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\research-analysis\\verification_evidence.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\research-analysis\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\tripower-consulting\\projects.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\tripower-consulting\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\tripower-consulting\\cron\\executions.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\tripower-consulting\\home\\.openclaw\\memory\\main.sqlite",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    },
+    {
+      "path": "mirror\\local-hermes\\state-snapshots\\20260608-195719-pre-update\\state.db",
+      "integrity_ok": true,
+      "nonstandard_extension": false
+    }
+  ]
+}

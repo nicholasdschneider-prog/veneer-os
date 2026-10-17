@@ -1,0 +1,197 @@
+{
+  "at": "2026-10-17T00:40:16.9761123-04:00",
+  "state": {
+    "error-reconciliation.json": {
+      "at": "2026-10-16T22:08:28.121511+00:00",
+      "original_errors": 3220,
+      "extended_paths": 3219,
+      "source_hash_matches": 3219,
+      "custody_lock_hash": "c734f9bd92fd5082d1c4d70f905a7fe37a8f6b61801209cbc4796314d84ccf88",
+      "unresolved": []
+    },
+    "status.json": {
+      "state": "verified_reconciled_baseline",
+      "at": "2026-10-17T04:32:28.535053+00:00",
+      "original_manifest_preserved": true,
+      "original_verification_preserved": true,
+      "original_manifest_sha256": "73890273bc519830796e3cb45fc05dfe7f994d8a76fcd7484808406dcbff57c8",
+      "manifest_addendum_sha256": "49d5b253589a4f5eb506ceb9c38d05c0fe1f30636dc0332e5fd15f6257c1537b",
+      "original_manifest_files": 2754201,
+      "addendum_files": 3220,
+      "files_header_checked": 2757421,
+      "sqlite_databases": 468,
+      "sqlite_integrity_ok": 468,
+      "nonstandard_sqlite": 269,
+      "missing_known_sqlite": [],
+      "header_errors": [],
+      "unresolved_original_errors": [],
+      "restore_sample": [
+        {
+          "path": "mirror\\brain-ops\\accounting-session-20260730-redacted.jsonl",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\dot-hermes\\kanban.db",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\legacy-data\\Hermes\\2026-07-03.md",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\local-hermes\\.codex_gpt55_autoraise_notice",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\obsidian-brain\\Backup Status.json",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\worktrees\\t_14c058c8\\.bytecode-fingerprint",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_05b9743f\\repo\\dist\\public\\widgets\\audio\\orderops\\v2026-07-29-voicemail-text-email-first-option-c-nova\\approved-ervp-voicemail-text-email-first-option-c-nova.mp3",
+          "original_sample": false,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\local-hermes\\services\\dashboard\\supervisor.lock",
+          "original_sample": false,
+          "hash_matches": true,
+          "bytes_match": true
+        }
+      ],
+      "acl_export_ok": true,
+      "original_acl_sha256": "62e42ee0af486f88c1d7a4962e53f3668c52431bce7773e57f7155e1ca98b431",
+      "lock_acl_sha256": "333bd759ec46e5d184dc3f3886f5b593c301330dd6883f6dab4c984810d0ffa7",
+      "final_seal": false,
+      "limitations": [
+        "Held writers remain live; refresh and seal after final cutover.",
+        "Credentials/configuration excluded by metadata; original PC/account custody required.",
+        "External reparse targets are inventoried, not followed."
+      ]
+    },
+    "verification.json": {
+      "state": "verified_reconciled_baseline",
+      "at": "2026-10-17T04:32:28.535053+00:00",
+      "original_manifest_preserved": true,
+      "original_verification_preserved": true,
+      "original_manifest_sha256": "73890273bc519830796e3cb45fc05dfe7f994d8a76fcd7484808406dcbff57c8",
+      "manifest_addendum_sha256": "49d5b253589a4f5eb506ceb9c38d05c0fe1f30636dc0332e5fd15f6257c1537b",
+      "original_manifest_files": 2754201,
+      "addendum_files": 3220,
+      "files_header_checked": 2757421,
+      "sqlite_databases": 468,
+      "sqlite_integrity_ok": 468,
+      "nonstandard_sqlite": 269,
+      "missing_known_sqlite": [],
+      "header_errors": [],
+      "unresolved_original_errors": [],
+      "restore_sample": [
+        {
+          "path": "mirror\\brain-ops\\accounting-session-20260730-redacted.jsonl",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\dot-hermes\\kanban.db",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\legacy-data\\Hermes\\2026-07-03.md",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\local-hermes\\.codex_gpt55_autoraise_notice",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\obsidian-brain\\Backup Status.json",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\worktrees\\t_14c058c8\\.bytecode-fingerprint",
+          "original_sample": true,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\local-hermes\\kanban\\boards\\nick-work\\workspaces\\t_05b9743f\\repo\\dist\\public\\widgets\\audio\\orderops\\v2026-07-29-voicemail-text-email-first-option-c-nova\\approved-ervp-voicemail-text-email-first-option-c-nova.mp3",
+          "original_sample": false,
+          "hash_matches": true,
+          "bytes_match": true
+        },
+        {
+          "path": "mirror\\local-hermes\\services\\dashboard\\supervisor.lock",
+          "original_sample": false,
+          "hash_matches": true,
+          "bytes_match": true
+        }
+      ],
+      "acl_export_ok": true,
+      "original_acl_sha256": "62e42ee0af486f88c1d7a4962e53f3668c52431bce7773e57f7155e1ca98b431",
+      "lock_acl_sha256": "333bd759ec46e5d184dc3f3886f5b593c301330dd6883f6dab4c984810d0ffa7",
+      "final_seal": false,
+      "limitations": [
+        "Held writers remain live; refresh and seal after final cutover.",
+        "Credentials/configuration excluded by metadata; original PC/account custody required.",
+        "External reparse targets are inventoried, not followed."
+      ]
+    }
+  },
+  "processes": [],
+  "source_sha256": "DC06932A9396508C621BC57C71654160E7DA9FE781180C4049672E29E4F9EC1F",
+  "files": [
+    {
+      "bytes": 250,
+      "name": "error-reconciliation.json"
+    },
+    {
+      "bytes": 59,
+      "name": "lock-acl-command.log"
+    },
+    {
+      "bytes": 342,
+      "name": "lock-acl.txt"
+    },
+    {
+      "bytes": 1568597,
+      "name": "manifest-addendum.jsonl"
+    },
+    {
+      "bytes": 81265,
+      "name": "sqlite-all-checks.jsonl"
+    },
+    {
+      "bytes": 2720,
+      "name": "status.json"
+    },
+    {
+      "bytes": 2720,
+      "name": "verification.json"
+    }
+  ]
+}
