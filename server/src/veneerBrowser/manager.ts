@@ -28,7 +28,7 @@ import { canSendToConversation } from '../conversations/access.js';
 import { isEmployee } from '../bots/employeeAccess.js';
 import { ReadUrlSchema, readBrowserUrl, readUrlFailure, type ReadUrlResult } from './readUrl.js';
 import { ScriptSchema, runBrowserScript, scriptFailure, scriptMutates, scriptReadsPage, type ScriptResult } from './script.js';
-import { hasLiveSecretField } from './secretFill.js';
+import { clearSecretFields, hasLiveSecretField, signInHoldsBrowser } from './secretFill.js';
 import {
   isVeneerBrowserRemoteError,
   type RemoteDownload,
@@ -2211,7 +2211,7 @@ export class VeneerBrowserManager {
     // The chat's bot sessions (coordination threads, bot lane) share its browser.
     if (this.db.prepare('SELECT 1 FROM pending_turns WHERE conversation_id = ? OR conversation_id IN (SELECT conversation_id FROM coordination_lanes WHERE owner_id = ?)').get(row.conversation_id, row.conversation_id)) return 'active_turn';
     if (this.captureGrantActive(row.conversation_id)) return 'capture';
-    if (hasLiveSecretField(row.conversation_id)) return 'sign_in';
+    if (signInHoldsBrowser(row.conversation_id)) return 'sign_in';
     if (this.holdState(row).active) return 'keep_open';
     if (!immediate) {
       const lastUsed = Date.parse(row.last_used_at ?? row.created_at);
@@ -2257,6 +2257,8 @@ export class VeneerBrowserManager {
         return;
       }
       this.recordRetention(current, 'suspended');
+      // The page holding the filled field is gone with the browser.
+      clearSecretFields(current.conversation_id);
       this.db.prepare(`UPDATE veneer_browser_clone_sessions SET status = 'stopped', stopped_at = ?
         WHERE conversation_id = ? AND clone_profile_id = ?`).run(now(), current.conversation_id, current.clone_profile_id);
       this.audit(current.project_id, this.auditProfileId(current), immediate ? 'clone.turn_end_suspended' : 'clone.idle_suspended', null, current.conversation_id);

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import { normalizeAgentBrowserArgs } from '../src/mcp/agentBrowser.js';
 import { VeneerBrowserManager } from '../src/veneerBrowser/manager.js';
-import { clearSecretFields, rememberSecretField } from '../src/veneerBrowser/secretFill.js';
+import { clearSecretFields, hasLiveSecretField, rememberSecretField, SIGN_IN_HOLD_MS } from '../src/veneerBrowser/secretFill.js';
 import { answerDialog, assertVeneerRunArgs, commandFor, hasDialogInJson, rejectLoopbackUrl } from '../src/veneerBrowser/mcp.js';
 import { pointerCommands, pointerSummary } from '../src/veneerBrowser/pointer.js';
 import { VeneerBrowserRemoteError, type VeneerBrowserRemote } from '../src/veneerBrowser/remoteClient.js';
@@ -841,6 +841,28 @@ describe('Veneer Browser manager', () => {
     expect(closeBrowserSession).not.toHaveBeenCalled();
     expect(remote.suspend).not.toHaveBeenCalled();
     clearSecretFields('conv-1');
+  });
+
+  it('lets an unfinished sign-in hold the browser only briefly after the turn, then pauses it and drops the guard', async () => {
+    const id = await idleReadOnlyCopy();
+    const filled = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(filled);
+    rememberSecretField('conv-1', '@e9');
+    try {
+      await manager.releaseAtTurnEnd('conv-1');
+      expect(remote.suspend).not.toHaveBeenCalled();
+      db.prepare("INSERT INTO pending_turns(conversation_id,prompt) VALUES('conv-1','working')").run();
+      vi.mocked(Date.now).mockReturnValue(filled + SIGN_IN_HOLD_MS + 1000);
+      await manager.reconcile();
+      expect(remote.suspend).not.toHaveBeenCalled();
+      db.prepare("DELETE FROM pending_turns WHERE conversation_id = 'conv-1'").run();
+      await manager.reconcile();
+      expect(remote.suspend).toHaveBeenCalledWith('project-1', id, '2026-09-01T00:00:00Z');
+      expect(hasLiveSecretField('conv-1')).toBe(false);
+    } finally {
+      vi.mocked(Date.now).mockRestore();
+      clearSecretFields('conv-1');
+    }
   });
 
   it('releases the browser the moment its turn ends, keeping the copy for the next turn', async () => {

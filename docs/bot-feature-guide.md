@@ -34,6 +34,17 @@ sentences with no internal ids or REPLY TO prefixes (the server rejects obvious 
 lane rules say to end an answer with choices or a decision card. Migration 0187 adds
 `cs_ticket_messages.choices_json`. Deployment pending a Nick-approved window (web, runner).
 
+## Sign-in holds end after ten minutes — October 19, 2026
+
+Build #876. A filled secret with no later navigation used to keep a browser from pausing
+forever (`sign_in` retention), so two Sage Lippert chats held ERVP browser slots for days and
+Maya saw "4/4 slots occupied". A sign-in now holds the browser only while the chat's turn is
+running or for ten minutes after the fill (`SIGN_IN_HOLD_MS` in
+`server/src/veneerBrowser/secretFill.ts`); then the normal turn-end and idle sweep pause it.
+The secret readback guard itself still lasts until the page changes, and pausing the browser
+clears it, because the page holding the field is gone. keep_open remains the only way to hold
+a page across turns.
+
 ## Leaner Veneer Browser — October 16, 2026
 
 Build #865, approved by Nick. A working copy used to restore every tab from its last session

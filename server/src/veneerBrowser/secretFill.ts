@@ -135,6 +135,14 @@ const guardedFields = new Map<string, Set<string>>();
  * wait for a real page change.
  */
 const submittedFields = new Set<string>();
+/** When each chat last filled a secret; a sign-in holds the browser only briefly. */
+const filledAt = new Map<string, number>();
+/**
+ * How long an unfinished sign-in keeps a browser from pausing once the bot's
+ * turn is over. Without a limit, a fill with no later navigation held a
+ * browser slot for days.
+ */
+export const SIGN_IN_HOLD_MS = 10 * 60_000;
 /** One chat cannot fill more than a handful of secret fields before navigating. */
 const MAX_GUARDED_FIELDS = 20;
 
@@ -155,13 +163,24 @@ export function rememberSecretField(conversationId: string, target: string): voi
   }
   refs.add(normalizeRef(target));
   guardedFields.set(conversationId, refs);
+  filledAt.set(conversationId, Date.now());
   submittedFields.delete(conversationId);
 }
 
 /** Called for every tool that invalidates refs; the guard has nothing to guard after one. */
 export function clearSecretFields(conversationId: string): void {
   guardedFields.delete(conversationId);
+  filledAt.delete(conversationId);
   submittedFields.delete(conversationId);
+}
+
+/**
+ * True while a recent, live secret fill should keep this chat's browser from
+ * pausing. The readback guard itself (hasLiveSecretField) does not expire.
+ */
+export function signInHoldsBrowser(conversationId: string, now = Date.now()): boolean {
+  if (!hasLiveSecretField(conversationId)) return false;
+  return now - (filledAt.get(conversationId) ?? 0) < SIGN_IN_HOLD_MS;
 }
 
 /** A successful click or key press after the fill: treat the form as submitted. */
