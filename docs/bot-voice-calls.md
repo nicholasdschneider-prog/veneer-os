@@ -57,6 +57,10 @@ The runtime vault needs these names; never paste their values into chat or sourc
 | `LIVEKIT_API_KEY` | LiveKit project API key |
 | `LIVEKIT_API_SECRET` | Matching LiveKit secret |
 | `OPENAI_API_KEY` | OpenAI API access |
+| `XAI_API_KEY` | Optional xAI API access for Grok voice |
+| `VOICE_PROVIDER` | Optional `openai` or `grok`; read at each call start |
+
+Provider (2026-10-19): with `VOICE_PROVIDER` unset, calls use Grok (`grok-voice-3.0` through `@livekit/agents-plugin-xai`, server VAD with 700 ms silence) once `XAI_API_KEY` exists, and OpenAI otherwise. Only the selected provider's key is required. Marin maps to Grok's Ara and Cedar to Rex. Each call logs `[voice] call <id> provider=<p> first_audio n=… first=…ms median=…ms p90=…ms`, measured from the caller going quiet (or the greeting request) to the agent's first audio. Listen playback and voice briefings still use OpenAI.
 
 All four names were present during this build. The implementation uses the existing LiveKit Agents OpenAI Realtime integration (`gpt-realtime`, Marin, server voice activity detection). See the [OpenAI Realtime documentation](https://developers.openai.com/api/docs/guides/realtime) and [LiveKit OpenAI integration](https://docs.livekit.io/agents/models/realtime/plugins/openai/). API usage is separately metered; this change purchases no account or plan. Configuration errors point to Settings → Credentials and explain missing names or an invalid project URL.
 

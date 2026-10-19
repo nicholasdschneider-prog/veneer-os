@@ -4,6 +4,7 @@
  */
 import { initializeLogger, llm, voice } from '@livekit/agents';
 import { realtime } from '@livekit/agents-plugin-openai';
+import { realtime as xaiRealtime } from '@livekit/agents-plugin-xai';
 import { Room, RoomEvent } from '@livekit/rtc-node';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -11,6 +12,7 @@ import { z } from 'zod';
 import { applyVoicePreferenceResult, voicePreferenceToolSchema, voicePreferencesSchema, voiceStyleInstructions, voiceGreetingInstructions } from './preferences.js';
 import { voiceFailureCode } from './failure.js';
 import { callVoiceSchema } from './voices.js';
+import { grokVoice, voiceProviderSchema } from './provider.js';
 import { NoticeQueue } from './noticeQueue.js';
 
 initializeLogger({ pretty: false, level: 'silent' });
@@ -77,7 +79,7 @@ process.on('message', (raw: unknown) => {
   if (message.type !== 'start' || started) return;
   started = true;
   void (async () => {
-    const config = z.object({ url: z.string(), token: z.string(), apiKey: z.string(),
+    const config = z.object({ url: z.string(), token: z.string(), apiKey: z.string(), provider: voiceProviderSchema.default('openai'),
       voice: callVoiceSchema.default('marin'),
       preferences: voicePreferencesSchema.default({}), instructions: z.string(),
       // Absent on a phone call: the callee joins over the phone bridge under an identity we do not choose.
@@ -89,7 +91,14 @@ process.on('message', (raw: unknown) => {
         // A running pre-deployment parent only supplied opening for decision calls.
         // New parents always send the explicit flag, including false for reminders.
         decisionCall:config.decisionCall??!!config.opening })).parse(message);
-    const model = new realtime.RealtimeModel({ apiKey: config.apiKey, model: 'gpt-realtime', voice: config.voice,
+    // The xAI plugin's declared options drop most OpenAI fields it forwards, so type them as OpenAI's.
+    const grokOptions: ConstructorParameters<typeof realtime.RealtimeModel>[0] = { apiKey: config.apiKey, model: 'grok-voice-3.0', voice: grokVoice(config.voice),
+      // xAI offers only server VAD. Its plugin default ends a turn after 200 ms of silence,
+      // which answers over a caller who pauses mid-thought; wait longer, as semantic_vad does below.
+      turnDetection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 700, create_response: true, interrupt_response: true },
+      inputAudioTranscription: { model: 'grok-transcribe' }, maxSessionDuration: 50 * 60 * 1000 };
+    const model = config.provider === 'grok' ? new xaiRealtime.RealtimeModel(grokOptions)
+    : new realtime.RealtimeModel({ apiKey: config.apiKey, model: 'gpt-realtime', voice: config.voice,
       // OpenAI owns interruption onset in this pipeline; AgentSession's local
       // minimum-duration/word settings do not gate server speech_started events.
       // Near-field filtering suits phone/headset mics. A higher onset threshold
@@ -168,9 +177,11 @@ process.on('message', (raw: unknown) => {
       execute: async () => { endRequested = true;const generation=++endGeneration;setTimeout(()=>{if(generation===endGeneration)hangUp();}, 12_000).unref(); return { ok: true, note: 'The call ends after your goodbye, when the caller is done.' }; } });
     agent = new voice.Agent({ instructions: config.instructions + voiceStyleInstructions(config.preferences, config.opening), tools });
     let callerTurn=0;
+    // Perceived latency: from the caller going quiet (or the greeting request) to the agent's first audio.
+    let awaitingAudioSince: number | null = null;
     const pendingCallerTurns:number[]=[];
     const transcribedItems=new Set<string>();
-    session.on(voice.AgentSessionEventTypes.UserStateChanged,event=>{notices.noteSpeech();lastSpeechAt=Date.now();if(event.newState==='speaking'){endRequested=false;endGeneration++;callerTurn++;pendingCallerTurns.push(callerTurn);send({type:'caller_turn',turn:callerTurn});}});
+    session.on(voice.AgentSessionEventTypes.UserStateChanged,event=>{notices.noteSpeech();lastSpeechAt=Date.now();if(event.newState==='speaking')awaitingAudioSince=null;else if(event.oldState==='speaking')awaitingAudioSince=Date.now();if(event.newState==='speaking'){endRequested=false;endGeneration++;callerTurn++;pendingCallerTurns.push(callerTurn);send({type:'caller_turn',turn:callerTurn});}});
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed,event=>{
       if(!event.isFinal || (event.itemId && transcribedItems.has(event.itemId)))return;
       if(event.itemId)transcribedItems.add(event.itemId);
@@ -186,6 +197,7 @@ process.on('message', (raw: unknown) => {
     session.on(voice.AgentSessionEventTypes.AgentStateChanged, event => {
       notices.noteSpeech(); lastSpeechAt = Date.now();
       send({ type: 'state', state: event.newState });
+      if (event.newState === 'speaking' && awaitingAudioSince !== null) { send({ type: 'first_audio', ms: Date.now() - awaitingAudioSince }); awaitingAudioSince = null; }
       if (endRequested && event.newState === 'listening') {const generation=endGeneration;setTimeout(() => { if (generation===endGeneration && session?.agentState === 'listening') hangUp(); }, 1200).unref();}
     });
     session.on(voice.AgentSessionEventTypes.Error, fail);
@@ -195,7 +207,7 @@ process.on('message', (raw: unknown) => {
     await session.start({ agent, room, inputOptions: { ...(config.participantIdentity ? { participantIdentity: config.participantIdentity } : {}),
       textEnabled: false, videoEnabled: false, closeOnDisconnect: true }, record: false });
     // The short opening of a call the bot placed is not restarted by pickup noise.
-    const greet = () => session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences), allowInterruptions: true });
+    const greet = () => { awaitingAudioSince = Date.now(); return session?.generateReply({ instructions: config.opening ?? voiceGreetingInstructions(config.preferences), allowInterruptions: true }); };
     if (config.phone) {
       // On the phone the callee speaks first ("hello") and the agent answers with its opening.
       // If they pick up and say nothing, open after a short wait instead of leaving dead air.

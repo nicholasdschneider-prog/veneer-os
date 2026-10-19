@@ -429,6 +429,23 @@ describe('live voice lifecycle', () => {
       secrets.LIVEKIT_URL=url; expect(service.configuration().ready).toBe(false);
     }
   });
+  it('picks Grok once its key exists, honors VOICE_PROVIDER and logs first-audio latency', async () => {
+    expect(service.configuration().ready).toBe(true);
+    secrets.XAI_API_KEY='test-xai';
+    await service.start(1);
+    expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start')).toMatchObject({provider:'grok',apiKey:'test-xai'});
+    const info=vi.spyOn(console,'info').mockImplementation(()=>{});
+    child.emit('message',{type:'first_audio',ms:640}); child.emit('message',{type:'first_audio',ms:910.4});
+    service.end(1,undefined,'ended',Date.now(),'client_hangup');
+    expect(info.mock.calls.flat().join('\n')).toMatch(/provider=grok first_audio n=2 first=640ms median=910ms/);
+    info.mockRestore();
+    secrets.VOICE_PROVIDER='openai'; child.send.mockClear();
+    await service.start(1);
+    expect(child.send.mock.calls.map(a=>a[0]).find(m=>m.type==='start')).toMatchObject({provider:'openai',apiKey:'test-openai'});
+    service.end(1);
+    secrets.VOICE_PROVIDER='grok'; delete secrets.XAI_API_KEY;
+    expect(service.configuration()).toEqual({ready:false,missing:['XAI_API_KEY'],invalidUrl:false});
+  });
   it('scopes calls to one user, refuses overlap and keeps credentials out of status', async () => {
     const call = await service.start(1);
     expect(call.url).toBe(secrets.LIVEKIT_URL);

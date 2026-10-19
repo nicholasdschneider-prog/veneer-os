@@ -14,6 +14,7 @@ import type { UserRow } from '../db/db.js';
 import { voiceFailureMessage } from './failure.js';
 import { phoneBusy, ensurePhoneReservation, releaseUnstartedPhone, markPhoneDispatch, markPhoneAccepted, releaseEndedPhone } from './phoneReservation.js';
 import { callVoice } from './voices.js';
+import { selectVoiceProvider, VOICE_PROVIDER_KEYS, type VoiceProvider } from './provider.js';
 import { ensureSip, phoneConfigured, phoneRoomName, phoneRoomToken, sipUriFor, twilioProvider, PHONE_ENDED, PHONE_MAX_SECONDS, type PhoneProvider } from './phone.js';
 
 /** How long the service waits for the worker to confirm a history insert before re-sending the same cursor, and how often. */
@@ -30,6 +31,8 @@ interface Call {
   replyNotice: { id: string; cursor: number; count: number; sentAt: number; attempts: number; failed: boolean; fallback: boolean } | null;
   bot: { conversationId: string; name: string } | null; decisionId: string | null; checking: boolean; discussionRevision?: number; faults: number;
   incoming: boolean; closeReason: string | null; callerWords: string[];
+  /** Model provider and how long each spoken answer took to start, for comparing providers. */
+  provider: VoiceProvider; firstAudioMs: number[];
   /** Set when the person is on their phone instead of in the browser. */
   phone: { logId: string; sid: string | null; polling: boolean; lastPoll: number } | null;
 }
@@ -45,7 +48,7 @@ export interface CallOptions { hotline?: boolean; timezone?: string; contextConv
 /** Why the browser ended a call. Anything else is recorded as "client". */
 export const CLIENT_END_REASONS = ['hangup', 'standby', 'mic_lost', 'room_disconnected', 'call_missing', 'call_failed', 'refresh_failed', 'heartbeat_failed', 'pagehide', 'unmount', 'start_failed', 'agent_ended'] as const;
 const FAULT_LIMIT = 10;
-const SECRET_NAMES = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'OPENAI_API_KEY'] as const;
+const SECRET_NAMES = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET'] as const;
 const SHARED_RULES = VOICE_PREFERENCE_RULES + `Speak conversationally, briefly, and discuss one item at a time. Let the user interrupt.
 Never invent tickets, decisions, completed work, or a personal history.
 The user may think aloud. Only deliver a decision when they explicitly tell you their decision for the specific item.
@@ -88,6 +91,14 @@ Recording the answer: when it includes numbers, amounts, sizes, names or anythin
 Use answer_choice only when what the caller said matches every amount, weight, dimension, quantity and recipient in that option. If any value they gave differs from the options (they say 8 ounces and the options say 24 or 32), never pick the nearest option: mention the difference in passing and record their own words with answer_custom. A mumble, a fragment, "mhm", "it's something" or an unfinished sentence is not an answer and not agreement: ask again in a few words. Never state the caller's choice for them.
 If the caller says they cannot answer now, need to look at it, or will do it at their computer: call stop_calling and tell them it stays on their desk and you will not call about it again. That records no answer. This stops reminders about that question, not the caller's ability to discuss another topic or give instructions. End the call only when they are done.
 If the caller wants to talk about something else, stay on and help as on any call; do not rush them off. Call end_call once they are done. Never record an answer from silence, a question, or thinking aloud.\n` : ''}` + SHARED_RULES;
+}
+
+/** Time from the caller finishing (or the greeting being requested) to the agent's first audio. */
+export function firstAudioSummary(samples: number[]) {
+  if (!samples.length) return 'first_audio n=0';
+  const sorted = [...samples].sort((a, b) => a - b);
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  return `first_audio n=${sorted.length} first=${samples[0]}ms median=${at(0.5)}ms p90=${at(0.9)}ms`;
 }
 
 export class LiveVoiceService {
@@ -207,7 +218,8 @@ export class LiveVoiceService {
     finally { call.checking = false; }
   }
   configuration() {
-    const missing = SECRET_NAMES.filter(name => !this.ctx.doppler?.get(name));
+    const get = (name: string) => this.ctx.doppler?.get(name);
+    const missing: string[] = [...SECRET_NAMES, VOICE_PROVIDER_KEYS[selectVoiceProvider(get)]].filter(name => !get(name));
     let invalidUrl = false;
     const value = this.ctx.doppler?.get('LIVEKIT_URL');
     if (value) {
@@ -245,11 +257,12 @@ export class LiveVoiceService {
     let setupError: string | null = null;
     try {
       await this.ctx.doppler.refresh();
-      if (!this.configuration().ready) throw new Error('Finish LiveKit and OpenAI setup before calling.');
+      if (!this.configuration().ready) throw new Error('Finish LiveKit and voice provider setup before calling.');
       if (options.phone && (!phoneConfigured(this.ctx.doppler) || !options.botConversationId || options.hotline)) { setupError = 'Phone calling is not set up.'; throw new Error(setupError); }
       const sip = options.phone ? await ensureSip(this.ctx) : null;
       const get = (name: typeof SECRET_NAMES[number]) => this.ctx.doppler.get(name)!;
       const url = get('LIVEKIT_URL');
+      const provider = selectVoiceProvider(name => this.ctx.doppler.get(name));
       const workspace = new VoiceWorkspace(this.ctx, userId, options.botConversationId ?? null);
       const hotline = options.hotline ? new QuestionHotline(this.ctx,userId,options.timezone) : null;
       if(hotline && options.botConversationId) throw new Error('Hotline cannot be pinned to a bot.');
@@ -291,7 +304,7 @@ export class LiveVoiceService {
         lastSeen: Date.now(), expiresAt: Date.now() + 55 * 60_000, createdAt: Date.now(), ready: false,
         seenKeys: new Set(workspace.blockers().map(q => `q:${q.requestId}`)), replies: 0, workStatus: null, replyNotice: null, checking: false, faults: 0,
         bot: bot ? { conversationId: bot.conversationId, name: bot.name } : null, decisionId: options.decisionId ?? null,
-        incoming: incoming && !!bot, closeReason: null, callerWords: [],
+        incoming: incoming && !!bot, closeReason: null, callerWords: [], provider, firstAudioMs: [],
         phone: options.phone ? { logId: options.phone.logId, sid: null, polling: false, lastPoll: 0 } : null };
       // A phone call is capped well below the browser limit.
       if (call.phone) call.expiresAt = Date.now() + (PHONE_MAX_SECONDS + 60) * 1000;
@@ -318,6 +331,7 @@ export class LiveVoiceService {
         }
         if(call.incoming && message.type==='caller_final' && typeof message.turn==='number' && typeof message.text==='string') { call.consent.finish(message.turn,message.text); call.callerWords.push(message.text.slice(0,2000)); }
         if (message.type === 'ready') { call.state = 'listening'; call.ready = true; }
+        if (message.type === 'first_audio' && typeof message.ms === 'number' && Number.isFinite(message.ms) && call.firstAudioMs.length < 500) call.firstAudioMs.push(Math.max(0, Math.round(message.ms)));
         if (message.type === 'notice_ack' && call.replyNotice && message.noticeId === call.replyNotice.id) {
           if (message.applied === true || (call.replyNotice.fallback && message.retained === true)) { call.replies = call.replyNotice.count; call.replyNotice = null; }
           else call.replyNotice.failed = true;
@@ -402,7 +416,7 @@ export class LiveVoiceService {
       child.on('error', failed); child.on('exit', failed);
       const catalog = workspace.decisionCatalog();
       const history = workspace.history(6).map(item => ({ ...item, text: item.text.slice(0,600) }));
-      child.send({ type: 'start', url, token: workerToken, apiKey: get('OPENAI_API_KEY'), ...(call.phone ? { phone: true } : { participantIdentity }),
+      child.send({ type: 'start', url, token: workerToken, provider, apiKey: this.ctx.doppler.get(VOICE_PROVIDER_KEYS[provider])!, ...(call.phone ? { phone: true } : { participantIdentity }),
         preferences: readVoicePreferences(this.ctx.db, userId),
         voice: callVoice(bot?.conversationId),
         mode: hotline ? 'hotline' : bot ? 'bot' : 'coordinator', agentName: hotline ? 'Question hotline' : bot?.name ?? 'Henry',
@@ -446,6 +460,7 @@ export class LiveVoiceService {
     finishVoiceSession(this.ctx.db, call.id, endedAt, finalOutcome, why);
     // Categories only: never call content, tokens or transcripts.
     console.info(`[voice] call ${call.id} ${finalOutcome} (${why}) after ${Math.round((endedAt - call.createdAt) / 1000)}s`);
+    console.info(`[voice] call ${call.id} provider=${call.provider} ${firstAudioSummary(call.firstAudioMs)}`);
     this.calls.delete(userId);
     if (call.phone) {
       if (call.phone.sid) void this.phoneProvider.hangUp(call.phone.sid);
