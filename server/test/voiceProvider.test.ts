@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { grokVoice, selectVoiceProvider } from '../src/voice/provider.js';
+import { grokVoice, selectVoiceProvider, spokenDispatchResult } from '../src/voice/provider.js';
 describe('live voice provider selection', () => {
   it('uses VOICE_PROVIDER when valid, else Grok only once its key exists', () => {
     const pick = (values: Record<string, string>) => selectVoiceProvider(name => values[name]);
@@ -12,5 +12,14 @@ describe('live voice provider selection', () => {
   it('maps each install voice to a Grok voice', () => {
     expect(grokVoice('marin')).toBe('ara');
     expect(grokVoice('cedar')).toBe('rex');
+  });
+  it('drops only an already-announced successful Grok dispatch', () => {
+    const ok = { ok: true, disposition: 'steered' };
+    expect(spokenDispatchResult('grok', true, ok)).toBeUndefined();
+    expect(spokenDispatchResult('grok', false, ok)).toBe(ok);
+    expect(spokenDispatchResult('openai', true, ok)).toBe(ok);
+    const failed = { error: 'Chat unavailable' };
+    expect(spokenDispatchResult('grok', true, failed)).toBe(failed);
+    expect(spokenDispatchResult('grok', true, { ok: false })).toEqual({ ok: false });
   });
 });

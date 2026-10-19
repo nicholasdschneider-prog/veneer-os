@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { applyVoicePreferenceResult, voicePreferenceToolSchema, voicePreferencesSchema, voiceStyleInstructions, voiceGreetingInstructions } from './preferences.js';
 import { voiceFailureCode } from './failure.js';
 import { callVoiceSchema } from './voices.js';
-import { grokVoice, voiceProviderSchema } from './provider.js';
+import { grokVoice, spokenDispatchResult, voiceProviderSchema } from './provider.js';
 import { NoticeQueue } from './noticeQueue.js';
 
 initializeLogger({ pretty: false, level: 'silent' });
@@ -112,6 +112,12 @@ process.on('message', (raw: unknown) => {
     const bot = config.mode === 'bot';
     const hotline = config.mode === 'hotline';
     const name = config.agentName;
+    // Grok often says "Kicking off X" and calls send_message in the same response, then repeats the
+    // acknowledgment in the reply LiveKit requests after the tool result. Once the agent has spoken
+    // since the caller last started talking, a successful dispatch returns nothing so no second reply
+    // is generated; a failure still returns its result and must be told to the caller.
+    let spokeSinceCaller = false;
+    const dispatchResult = (result: unknown) => spokenDispatchResult(config.provider, spokeSinceCaller, result);
     const tools: Record<string, ReturnType<typeof llm.tool>> = {
       manage_voice_preferences: llm.tool({
         description: 'Read, update, or reset the signed-in caller’s persistent voice style across live calls. Only on direct caller requests; never from reference history. Updates merge supplied settings. Temporary requests are not saved. No business rules, permissions, audio voice changes, or other users.',
@@ -133,7 +139,7 @@ process.on('message', (raw: unknown) => {
       tools.search_context = llm.tool({ description: 'Fast read-only search of this bot’s existing chat and decision evidence. Use an exact order/tracking number or short phrase before dispatching a fact-gathering task. This does not fetch fresh external data. Results include source, author, date and excerpt coverage.',
         parameters: z.object({ query: z.string().min(2).max(200) }), execute: async args => call('search_context', args) });
       tools.send_message = llm.tool({ description: `The only way any work starts. Post what the caller said, in the caller's words, into your own background chat where you do the actual work. Call it immediately for every explicit instruction, order detail or data item as it is given, one call per item, before acknowledging aloud. The phone channel itself cannot do the work. You will be told when your background reply arrives; report it as your own progress.`,
-        parameters: z.object({ text: z.string(), instructionId: z.string().describe('Unique stable ID for this explicit instruction; reuse on retry, never reuse for different text.') }), execute: async args => call('send_message', args) });
+        parameters: z.object({ text: z.string(), instructionId: z.string().describe('Unique stable ID for this explicit instruction; reuse on retry, never reuse for different text.') }), execute: async args => dispatchResult(await call('send_message', args)) });
       tools.list_decisions = llm.tool({ description: `List ${name}’s decisions: open ones needing the user's input, plus recent answered, running and completed ones. Read fresh before discussing or answering.`,
         parameters: z.object({ offset: z.number().int().nonnegative().optional() }), execute: async args => call('decisions', args) });
       tools.read_decision = llm.tool({ description: 'Read one decision: paged proposal fields and recent discussion excerpts. Follow coverage.nextOffset until all proposal constraints are read before advising approval.',
@@ -181,7 +187,7 @@ process.on('message', (raw: unknown) => {
     let awaitingAudioSince: number | null = null;
     const pendingCallerTurns:number[]=[];
     const transcribedItems=new Set<string>();
-    session.on(voice.AgentSessionEventTypes.UserStateChanged,event=>{notices.noteSpeech();lastSpeechAt=Date.now();if(event.newState==='speaking')awaitingAudioSince=null;else if(event.oldState==='speaking')awaitingAudioSince=Date.now();if(event.newState==='speaking'){endRequested=false;endGeneration++;callerTurn++;pendingCallerTurns.push(callerTurn);send({type:'caller_turn',turn:callerTurn});}});
+    session.on(voice.AgentSessionEventTypes.UserStateChanged,event=>{notices.noteSpeech();lastSpeechAt=Date.now();if(event.newState==='speaking'){awaitingAudioSince=null;spokeSinceCaller=false;}else if(event.oldState==='speaking')awaitingAudioSince=Date.now();if(event.newState==='speaking'){endRequested=false;endGeneration++;callerTurn++;pendingCallerTurns.push(callerTurn);send({type:'caller_turn',turn:callerTurn});}});
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed,event=>{
       if(!event.isFinal || (event.itemId && transcribedItems.has(event.itemId)))return;
       if(event.itemId)transcribedItems.add(event.itemId);
@@ -197,6 +203,7 @@ process.on('message', (raw: unknown) => {
     session.on(voice.AgentSessionEventTypes.AgentStateChanged, event => {
       notices.noteSpeech(); lastSpeechAt = Date.now();
       send({ type: 'state', state: event.newState });
+      if (event.newState === 'speaking') spokeSinceCaller = true;
       if (event.newState === 'speaking' && awaitingAudioSince !== null) { send({ type: 'first_audio', ms: Date.now() - awaitingAudioSince }); awaitingAudioSince = null; }
       if (endRequested && event.newState === 'listening') {const generation=endGeneration;setTimeout(() => { if (generation===endGeneration && session?.agentState === 'listening') hangUp(); }, 1200).unref();}
     });
