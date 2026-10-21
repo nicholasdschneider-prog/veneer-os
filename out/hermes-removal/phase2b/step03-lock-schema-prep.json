@@ -1,0 +1,356 @@
+{
+  "at": "2026-10-21T14:26:01.021268+00:00",
+  "source": [
+    {
+      "path": "C:\\Users\\nicho\\ervp-vendor-automation\\owner_policy_orchestration.py",
+      "lock_functions": [],
+      "file_assignments": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\ervp-vendor-automation\\production_owner_policy_cycle.py",
+      "lock_functions": [],
+      "file_assignments": [
+        "PROFILE = Path('C:/Users/nicho/AppData/Local/hermes/profiles/ervp-orders')"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\ervp-vendor-automation\\vendor_communications.py",
+      "lock_functions": [],
+      "file_assignments": [
+        "DEFAULT_DB_PATH = Path(os.environ.get('VENDOR_GOVERNANCE_DB') or Path(__file__).resolve().parent / 'state' / 'vendor-governance.sqlite3')"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\orders_bot_worker.py",
+      "lock_functions": [
+        {
+          "name": "_lock_owner_path",
+          "line": 163,
+          "body_sha256": "5b0f48c0324735fbd828ee0646c0620eb6d2f74b109eaba00e76edbdf90f0331",
+          "lock_statements": []
+        },
+        {
+          "name": "directory_lock",
+          "line": 168,
+          "body_sha256": "3a97bba4c0f45a3816d35c12606fe1c776a5cc3a17c0d8c8a63a8caceed1091c",
+          "lock_statements": [
+            "STATE_DIR.mkdir(parents=True, exist_ok=True)",
+            "lock_dir.mkdir()",
+            "lock_dir.rmdir()",
+            "lock_dir.rmdir()"
+          ]
+        }
+      ],
+      "file_assignments": []
+    }
+  ],
+  "state_schema": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\owner-policy-candidates.json",
+      "exists": true,
+      "bytes": 271919,
+      "sha256": "e36a059753f024527431286c9ff63a645e3195478277160c8fb5582f2971a85c",
+      "mtime_ns": 1789742817617541200,
+      "shape": {
+        "type": "dict",
+        "top_keys": [
+          "candidates",
+          "checkpoint",
+          "generated_at",
+          "source"
+        ],
+        "rows": null
+      },
+      "fields": {
+        "candidates": {
+          "type": "list",
+          "count": 78,
+          "sha256": "0f90927fb31b848b9932dba784f3a4c1329ab9522868e7d75b5a227bd1aa1d58"
+        },
+        "checkpoint": {
+          "type": "str",
+          "count": null,
+          "sha256": "c910b7b44a7b7f2a0b3b1307da0685f0aedbc7eea3e9b4d675656de152626471"
+        },
+        "generated_at": {
+          "type": "str",
+          "count": null,
+          "sha256": "cc10a47f1aef97f4a61a83b9afa1144f62260690f89186dc0c84c68d7a4394f7"
+        },
+        "source": {
+          "type": "str",
+          "count": null,
+          "sha256": "fa3b21cac40d182c9b380a0f176dbb0e09127a30a61f2a2ac7600d6b08fdc61b"
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\owner-policy-last-scan.json",
+      "exists": true,
+      "bytes": 82,
+      "sha256": "a6e34c788a1aba3780c1935cbcd417324b64f6bdc5caf6decec840f6718353cc",
+      "mtime_ns": 1792591870350087100,
+      "shape": {
+        "type": "dict",
+        "top_keys": [
+          "at",
+          "status"
+        ],
+        "rows": null
+      },
+      "fields": {
+        "at": {
+          "type": "str",
+          "count": null,
+          "sha256": "d5b1d36be44d5d99469ccf2dbe6fc0193e7ca98fbddda972d7035eb3b4f7edf2"
+        },
+        "status": {
+          "type": "str",
+          "count": null,
+          "sha256": "40f327893fed77f538a34e363af02926df7449f0ef3abbbfa6f36037dddac90f"
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\commands.json",
+      "exists": true,
+      "bytes": 93166992,
+      "sha256": "f16c1ce9ec73ba4ea9d5bd3d360b24e8024651b215b95a3c42eee52479805877",
+      "mtime_ns": 1789600682947215600,
+      "shape": {
+        "type": "dict",
+        "top_keys": [
+          "commands"
+        ],
+        "rows": null
+      },
+      "fields": {
+        "commands": {
+          "type": "list",
+          "count": 843,
+          "sha256": "731a1a965e3820550ed7997c444e2d7fb2371f769ba2e9e96121ebc527989a80"
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\ervp-vendor-automation\\state\\vendor-order-runs.json",
+      "exists": true,
+      "bytes": 15550061,
+      "sha256": "ccd4b7b1eaaa1d638d3f147b6886f199ed06361808312939a6021f72b772c14e",
+      "mtime_ns": 1792591870271940900,
+      "shape": {
+        "type": "dict",
+        "top_keys": [
+          "fingerprints",
+          "orders",
+          "runs"
+        ],
+        "rows": null
+      },
+      "fields": {
+        "fingerprints": {
+          "type": "dict",
+          "count": 694,
+          "sha256": "f6abafbe6e9308c5d8d899ef9f38043e8edb0c150d975cece59414f9197b61a4"
+        },
+        "orders": {
+          "type": "dict",
+          "count": 1803,
+          "sha256": "e241911bc65e92be3199ecdf921e454444c98ed1d0dc4a05e4634823d2b6f7bc"
+        },
+        "runs": {
+          "type": "list",
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\ervp-vendor-automation\\memory\\dometic-pending-verification.json",
+      "exists": true,
+      "bytes": 65176,
+      "sha256": "eac0eed1bcdcda6657cb8ad211aac7175e39aef549b5794c8a47c2bb6fd28834",
+      "mtime_ns": 1792591915968012400,
+      "shape": {
+        "type": "dict",
+        "top_keys": [
+          "active_pending_count",
+          "active_pending_pos",
+          "cadence",
+          "next_check_at",
+          "pending",
+          "updated_at"
+        ],
+        "rows": null
+      },
+      "fields": {
+        "active_pending_count": {
+          "type": "int",
+          "count": null,
+          "sha256": "c6f3ac57944a531490cd39902d0f777715fd005efac9a30622d5f5205e7f6894"
+        },
+        "active_pending_pos": {
+          "type": "list",
+          "count": 33,
+          "sha256": "17d8456cd36922188d06672ecea041d849453a4edafcc38ba6476b89eb1479e1"
+        },
+        "cadence": {
+          "type": "str",
+          "count": null,
+          "sha256": "cf27083a566fd2e9086f4789279bbebcb3308dadb019b813e44f542a320f556c"
+        },
+        "next_check_at": {
+          "type": "str",
+          "count": null,
+          "sha256": "304cad8d7b46ef0e10acba4af67ea0dac395827a4933ba833d581df70ca4e9f6"
+        },
+        "pending": {
+          "type": "dict",
+          "count": 33,
+          "sha256": "b878bc5bff5a2392cb3c0d8c1577adbe20f2153485a0c12d7ba78d3407d5d0a3"
+        },
+        "updated_at": {
+          "type": "str",
+          "count": null,
+          "sha256": "543093ac022a64913f975a1ca1d9abdd8b2748c4da8ee7fbe13a2c0e0662fdb3"
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\owner-policy-lane\\owner-policy-lane.json",
+      "exists": true,
+      "bytes": 231434,
+      "sha256": "a9873ed9a00cb2e54b2f9d06dfc85c04c424f0a5993dacc75254f455c1cff427",
+      "mtime_ns": 1789742818168117400,
+      "shape": {
+        "type": "dict",
+        "top_keys": [
+          "groups",
+          "processed_slots"
+        ],
+        "rows": null
+      },
+      "fields": {
+        "groups": {
+          "type": "dict",
+          "count": 393,
+          "sha256": "59f3f0549ca8efe9e6d00b6e814e5f6d346f0ad2efe98ab477eef028d4de3b3a"
+        },
+        "processed_slots": {
+          "type": "list",
+          "count": 192,
+          "sha256": "a7d7303fcc2f4cd3b2c7a27f4a4fc8246496f3567457ee804c3b51ff3579c299"
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\owner-policy-lane\\owner-policy-lane.pre-catchup-recovery-20260816T112042Z.json",
+      "exists": true,
+      "bytes": 18338,
+      "sha256": "43212de0636edf7c6b78d5ac22e29a7ca0f49f9858c9611006bf5dd5998e6909",
+      "mtime_ns": 1786878970329743300,
+      "shape": {
+        "type": "dict",
+        "top_keys": [
+          "groups",
+          "processed_slots"
+        ],
+        "rows": null
+      },
+      "fields": {
+        "groups": {
+          "type": "dict",
+          "count": 26,
+          "sha256": "d55208dbb6b4cc83ef030f87e5ea7e673357cc8ca26e981ba6eb4dd833db9fb2"
+        },
+        "processed_slots": {
+          "type": "list",
+          "count": 192,
+          "sha256": "5c82cbc523a9ab670da2393de01b3c61f4729e4fd15b1af65ea564866ddc8ebd"
+        }
+      }
+    }
+  ],
+  "governance_db": {
+    "path": "C:\\Users\\nicho\\ervp-vendor-automation\\state\\vendor-governance.sqlite3",
+    "exists": true,
+    "tables": [
+      {
+        "name": "governance_workflows",
+        "columns": [
+          "id",
+          "order_number",
+          "vendor",
+          "latest_vendor_date",
+          "customer_email",
+          "customer_phone",
+          "status",
+          "requested_at",
+          "response",
+          "response_at",
+          "reminder_at",
+          "ticket_at",
+          "updated_at"
+        ],
+        "count": 13
+      },
+      {
+        "name": "governance_reply_events",
+        "columns": [
+          "id",
+          "workflow_id",
+          "inbound_message_id",
+          "reply_text",
+          "result_json",
+          "created_at"
+        ],
+        "count": 16
+      },
+      {
+        "name": "governance_outbox",
+        "columns": [
+          "id",
+          "idempotency_key",
+          "adapter",
+          "topic",
+          "aggregate_type",
+          "aggregate_id",
+          "payload_json",
+          "status",
+          "created_at",
+          "claimed_at",
+          "delivered_at",
+          "receipt_id"
+        ],
+        "count": 467
+      },
+      {
+        "name": "governance_audit",
+        "columns": [
+          "sequence",
+          "aggregate_type",
+          "aggregate_id",
+          "action",
+          "details_json",
+          "created_at"
+        ],
+        "count": 255
+      },
+      {
+        "name": "lippert_notification_workflows",
+        "columns": [
+          "id",
+          "order_number",
+          "confirmation_id",
+          "identity_json",
+          "custom_queued_at",
+          "tracking_number",
+          "tracking_queued_at"
+        ],
+        "count": 203
+      }
+    ]
+  },
+  "scope": "read-only preliminary schema, NOT final drained custody",
+  "no_job_invoked": true
+}

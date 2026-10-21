@@ -1,0 +1,5103 @@
+{
+  "at": "2026-10-21T14:24:59.439910+00:00",
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\ervp-vendor-automation\\production_owner_policy_cycle.py",
+      "exists": true,
+      "sha256": "07f17c7917c66a28d9a058f36f9b060862e2e40b830232924e0fb54c189445f1",
+      "bytes": 7269,
+      "script_names": [
+        "dometic-session-refresh.py"
+      ],
+      "state_names": [
+        "d4b-cookies.json",
+        "vendor-order-runs.json"
+      ],
+      "locking_terms": [],
+      "imports": [
+        "from __future__ import annotations",
+        "import json",
+        "import os",
+        "from pathlib import Path",
+        "import subprocess",
+        "import sys",
+        "from typing import Any"
+      ],
+      "calls": [
+        "Path",
+        "Path(__file__).resolve",
+        "RuntimeError",
+        "SystemExit",
+        "communications.get",
+        "completed.stdout.strip",
+        "completed.stdout.strip().splitlines",
+        "cookie_path.read_text",
+        "cookie_state.get",
+        "int",
+        "json.dumps",
+        "json.loads",
+        "key.removeprefix",
+        "key.removeprefix('export ').strip",
+        "line.split",
+        "line.startswith",
+        "lippert_reconciliation.get",
+        "load_protected_environment",
+        "main",
+        "os.environ.get",
+        "os.environ.setdefault",
+        "owner.get",
+        "path.is_file",
+        "path.read_text",
+        "path.read_text(encoding='utf-8').splitlines",
+        "payload.get",
+        "print",
+        "raw.strip",
+        "reconcile_dometic_pending",
+        "reconcile_lippert_pending",
+        "reconcile_stale_pending",
+        "reconciliation.get",
+        "run_owner_policy",
+        "run_scheduled",
+        "session.get",
+        "stale_reconciliation.get",
+        "str",
+        "subprocess.run",
+        "time",
+        "type",
+        "value.strip",
+        "value.strip().strip",
+        "{'vendor_runs': ['node', str(ORDEROPS_REPO / 'scripts' / 'sync-vendor-order-runs-to-db.cjs'), '--source', str(ROOT / 'state' / 'vendor-order-runs.json')], 'orders_bot_activity': ['node', str(ORDEROPS_REPO / 'scripts' / 'sync-orders-bot-activity-to-db.cjs')]}.items"
+      ],
+      "file_path_literals": [
+        "dometic-session-refresh.py",
+        "vendor-order-runs.json"
+      ],
+      "path_assignments": [
+        "ROOT = Path(__file__).resolve().parent",
+        "refreshed = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'dometic-session-refresh.py')], cwd=str(ROOT), text=True, capture_output=True, timeout=120)"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_production_owner_policy_cycle.cmd",
+      "exists": true,
+      "sha256": "6263d6a7368fdc31ab9b4ddd9f1a6e23b671b4f8b11e71c77d8f25c069a46cf1",
+      "bytes": 534,
+      "script_names": [
+        "production_owner_policy_cycle.py"
+      ],
+      "state_names": [],
+      "locking_terms": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_Direct_Shopify-silent.vbs",
+      "exists": true,
+      "sha256": "a85e9e3351132c9a180639fab534fb97707fc18e91f55cc02627312405ffc6fc",
+      "bytes": 587,
+      "script_names": [
+        "run_production_owner_policy_cycle.cmd"
+      ],
+      "state_names": [],
+      "locking_terms": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_All_Order_Review-silent.vbs",
+      "exists": true,
+      "sha256": "8810e55b2f922fcd1333af98c477cc6c634e9032cafde07f05703f2058bc7a6a",
+      "bytes": 557,
+      "script_names": [
+        "run_every_order_review.cmd"
+      ],
+      "state_names": [],
+      "locking_terms": []
+    }
+  ],
+  "bounded_state_listing": [
+    {
+      "directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state",
+      "entries": [
+        {
+          "name": "gateway.heartbeat",
+          "is_dir": false,
+          "bytes": 122
+        },
+        {
+          "name": "gateway.lifecycle.json",
+          "is_dir": false,
+          "bytes": 146
+        },
+        {
+          "name": "ltl-tracking-live-enabled",
+          "is_dir": false,
+          "bytes": 116
+        },
+        {
+          "name": "manual-dometic-watch-100120323-100120506.json",
+          "is_dir": false,
+          "bytes": 297
+        },
+        {
+          "name": "orders-bot",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "orders-bot-approvals",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "safe-vendor-poller.sqlite3",
+          "is_dir": false,
+          "bytes": 81920
+        },
+        {
+          "name": "safe-vendor-poller.sqlite3-shm",
+          "is_dir": false,
+          "bytes": 32768
+        },
+        {
+          "name": "safe-vendor-poller.sqlite3-wal",
+          "is_dir": false,
+          "bytes": 0
+        },
+        {
+          "name": "technical-incidents",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "vendor-attention-queue.json",
+          "is_dir": false,
+          "bytes": 664100
+        },
+        {
+          "name": "vendor-email-watch-100118388.json",
+          "is_dir": false,
+          "bytes": 279
+        }
+      ]
+    },
+    {
+      "directory": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot",
+      "entries": [
+        {
+          "name": "catchup-live-candidates.json",
+          "is_dir": false,
+          "bytes": 174644
+        },
+        {
+          "name": "command-015102c5d6b14c2d8afb0a7c5e3a677c.log",
+          "is_dir": false,
+          "bytes": 2783
+        },
+        {
+          "name": "command-015d92ca83554b2db54c28680144f659.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-01aacb96499e46e19cb799649b456067.log",
+          "is_dir": false,
+          "bytes": 6736
+        },
+        {
+          "name": "command-01e11e5dd7054233bc9f042b1d914499.log",
+          "is_dir": false,
+          "bytes": 5073
+        },
+        {
+          "name": "command-01f1f852db86438fb570bd6ce30f5d05.log",
+          "is_dir": false,
+          "bytes": 3180
+        },
+        {
+          "name": "command-02a4f4bbe137488184e1c917c45117bd.log",
+          "is_dir": false,
+          "bytes": 5191
+        },
+        {
+          "name": "command-0305d618b37641419fbe118a1ed2d357.log",
+          "is_dir": false,
+          "bytes": 415
+        },
+        {
+          "name": "command-032bd839e774484db81f798451993e31.log",
+          "is_dir": false,
+          "bytes": 4042
+        },
+        {
+          "name": "command-032ecfa037e74cbba2019171b912209c.log",
+          "is_dir": false,
+          "bytes": 5130
+        },
+        {
+          "name": "command-033bddb0eebf40a9ad1ecb7cfd6f7901.log",
+          "is_dir": false,
+          "bytes": 5536
+        },
+        {
+          "name": "command-0343b06be1144d1a8676614adaedaf80.log",
+          "is_dir": false,
+          "bytes": 6693
+        },
+        {
+          "name": "command-03578b8bd6134eaaa1bdd653b1849bfb.log",
+          "is_dir": false,
+          "bytes": 2903
+        },
+        {
+          "name": "command-038d95e6047b4e59811dd5d1c2556464.log",
+          "is_dir": false,
+          "bytes": 2000
+        },
+        {
+          "name": "command-03b533baf47b4962b19bf336a7cbc740.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-03d093396ced46aa9010b4f37f582290.log",
+          "is_dir": false,
+          "bytes": 846
+        },
+        {
+          "name": "command-040a53b477424740b8282d28755587c9.log",
+          "is_dir": false,
+          "bytes": 4581
+        },
+        {
+          "name": "command-0419fefffcfd4e6c9b7f6067445fdd39.log",
+          "is_dir": false,
+          "bytes": 2073
+        },
+        {
+          "name": "command-046fd6d7e78346168a905ef2b9fa4fbb.log",
+          "is_dir": false,
+          "bytes": 1926
+        },
+        {
+          "name": "command-04f94397ae6a4072977ce65deae20628.log",
+          "is_dir": false,
+          "bytes": 7237
+        },
+        {
+          "name": "command-0617b07ab2574b209bbcfe455ebc9e63.log",
+          "is_dir": false,
+          "bytes": 6755
+        },
+        {
+          "name": "command-063654e0490d4d8b9028a4d22b5c2635.log",
+          "is_dir": false,
+          "bytes": 7174
+        },
+        {
+          "name": "command-066d14c0355a43be86b858c5d6ccf7a2.log",
+          "is_dir": false,
+          "bytes": 829
+        },
+        {
+          "name": "command-0690e833da5045d78cfd4fb1e9bb821d.log",
+          "is_dir": false,
+          "bytes": 906
+        },
+        {
+          "name": "command-0771f1a453a54334bef36d9df5f5250d.log",
+          "is_dir": false,
+          "bytes": 4804
+        },
+        {
+          "name": "command-07794df044b84848adaac9d00943402a.log",
+          "is_dir": false,
+          "bytes": 1934
+        },
+        {
+          "name": "command-07ccba9a419e4ad6bb077b749fb846e3.log",
+          "is_dir": false,
+          "bytes": 1604
+        },
+        {
+          "name": "command-07fe383b08104a8d9af67a4e4f8e103f.log",
+          "is_dir": false,
+          "bytes": 4943
+        },
+        {
+          "name": "command-08118398356747c2b056e1ee9404858f.log",
+          "is_dir": false,
+          "bytes": 7424
+        },
+        {
+          "name": "command-086e45c541d54ceb9c623a37cde0c535.log",
+          "is_dir": false,
+          "bytes": 4455
+        },
+        {
+          "name": "command-089007ccacc44e53885c1eec35d1a4a4.log",
+          "is_dir": false,
+          "bytes": 2860
+        },
+        {
+          "name": "command-092272f906ed4cf0bfdf3856bd4859b8.log",
+          "is_dir": false,
+          "bytes": 7183
+        },
+        {
+          "name": "command-094491e3ad7f4bbba5e4a485427e933f.log",
+          "is_dir": false,
+          "bytes": 2364
+        },
+        {
+          "name": "command-0960d40ab7c2471f8fc5732805d5e119.log",
+          "is_dir": false,
+          "bytes": 6672
+        },
+        {
+          "name": "command-097a28b1c9fe4274aa0416edf2e3191e.log",
+          "is_dir": false,
+          "bytes": 7047
+        },
+        {
+          "name": "command-09a3e3752e924d78b9dd4ecf003cabf0.log",
+          "is_dir": false,
+          "bytes": 5112
+        },
+        {
+          "name": "command-09ef97eaffe14ca4a27a07ae46a554e2.log",
+          "is_dir": false,
+          "bytes": 6382
+        },
+        {
+          "name": "command-0a7c209609be4c92a47b17c6ed785bbf.log",
+          "is_dir": false,
+          "bytes": 5045
+        },
+        {
+          "name": "command-0aa79ee0b3804da5a882c4b1f6f334d1.log",
+          "is_dir": false,
+          "bytes": 3690
+        },
+        {
+          "name": "command-0ac799fa66474fe3b889c64777e21c89.log",
+          "is_dir": false,
+          "bytes": 2072
+        },
+        {
+          "name": "command-0ad1fd5b475d42559a77c81a29606047.log",
+          "is_dir": false,
+          "bytes": 7679
+        },
+        {
+          "name": "command-0b430f907c464b0483605e09c7e5f0dd.log",
+          "is_dir": false,
+          "bytes": 7107
+        },
+        {
+          "name": "command-0b9ab8b1d1c74d7cbdd5f3f2835fcafc.log",
+          "is_dir": false,
+          "bytes": 1834
+        },
+        {
+          "name": "command-0bc26b082da742e9a1cba4f83c012fb2.log",
+          "is_dir": false,
+          "bytes": 2826
+        },
+        {
+          "name": "command-0cc0fee0b2cf46a8ade15a61a803a60d.log",
+          "is_dir": false,
+          "bytes": 7259
+        },
+        {
+          "name": "command-0d61b776357a4c648c3ac02f7d145a19.log",
+          "is_dir": false,
+          "bytes": 6574
+        },
+        {
+          "name": "command-0dca029ca9a1460d9999f9254628cee5.log",
+          "is_dir": false,
+          "bytes": 7219
+        },
+        {
+          "name": "command-0dfd140510f143a0804acb10ca057bba.log",
+          "is_dir": false,
+          "bytes": 2778
+        },
+        {
+          "name": "command-0e10da7da0ba43f8b7d93b9c83aa3fbd.log",
+          "is_dir": false,
+          "bytes": 5091
+        },
+        {
+          "name": "command-0e1261a3791041a497a315464ad8372e.log",
+          "is_dir": false,
+          "bytes": 5085
+        },
+        {
+          "name": "command-0efaee3d279149ad90ec2b3e7b6486c0.log",
+          "is_dir": false,
+          "bytes": 1824
+        },
+        {
+          "name": "command-0f0650a3f2634459bf87c3b75ac1f9e1.log",
+          "is_dir": false,
+          "bytes": 5126
+        },
+        {
+          "name": "command-0f602f2e669f42b4b5412234fa608398.log",
+          "is_dir": false,
+          "bytes": 4653
+        },
+        {
+          "name": "command-0f750a69a56142c58555fc14d35ed2fa.log",
+          "is_dir": false,
+          "bytes": 2766
+        },
+        {
+          "name": "command-1014076cc969423d98615ebf64f93e3f.log",
+          "is_dir": false,
+          "bytes": 4936
+        },
+        {
+          "name": "command-1020fdadf3c440c395c708e78e416c7e.log",
+          "is_dir": false,
+          "bytes": 4956
+        },
+        {
+          "name": "command-1060578ac2f0451daef15bd32bb5260e.log",
+          "is_dir": false,
+          "bytes": 6692
+        },
+        {
+          "name": "command-1060c9ecf41348328f3e520333bb5aa4.log",
+          "is_dir": false,
+          "bytes": 4070
+        },
+        {
+          "name": "command-108893f5b7174af6b73ead9d5224f49a.log",
+          "is_dir": false,
+          "bytes": 1615
+        },
+        {
+          "name": "command-113aa278f4f5439d962c07095b05020d.log",
+          "is_dir": false,
+          "bytes": 7140
+        },
+        {
+          "name": "command-1148d3d904a4496faffa312c742f9f7c.log",
+          "is_dir": false,
+          "bytes": 5148
+        },
+        {
+          "name": "command-11f45cd7ca23441cbbf15a3f04c47a9f.log",
+          "is_dir": false,
+          "bytes": 5535
+        },
+        {
+          "name": "command-122a9f36423b41389bc5cf1baff9e64d.log",
+          "is_dir": false,
+          "bytes": 824
+        },
+        {
+          "name": "command-12646ed7328b45408d1e5a0d0e8d2c0b.log",
+          "is_dir": false,
+          "bytes": 1834
+        },
+        {
+          "name": "command-12a2704b819c4ad7a79802dd9291648a.log",
+          "is_dir": false,
+          "bytes": 4963
+        },
+        {
+          "name": "command-1346938ddb19470eb577d0dfb23ab149.log",
+          "is_dir": false,
+          "bytes": 835
+        },
+        {
+          "name": "command-1374126d50534b8a84d73d78e248e7c0.log",
+          "is_dir": false,
+          "bytes": 1591
+        },
+        {
+          "name": "command-13cdc030d41342839accfdf37f33e39a.log",
+          "is_dir": false,
+          "bytes": 2079
+        },
+        {
+          "name": "command-13d0c455dd5a4024aabbb0f37900b21a.log",
+          "is_dir": false,
+          "bytes": 4907
+        },
+        {
+          "name": "command-13d0dfd8d5fa467994df4a2d07ee95cb.log",
+          "is_dir": false,
+          "bytes": 3979
+        },
+        {
+          "name": "command-14595153488b4611a84c2f5ac07ebcee.log",
+          "is_dir": false,
+          "bytes": 7179
+        },
+        {
+          "name": "command-1461390169ef4519b5baeffd465e0fc5.log",
+          "is_dir": false,
+          "bytes": 4863
+        },
+        {
+          "name": "command-1471ce171bcf408a88f382f23c7b1636.log",
+          "is_dir": false,
+          "bytes": 6767
+        },
+        {
+          "name": "command-14a3f5acb8e942c29594a3ce5ac1704a.log",
+          "is_dir": false,
+          "bytes": 2216
+        },
+        {
+          "name": "command-14b230e901d348528ed15d406c421662.log",
+          "is_dir": false,
+          "bytes": 1926
+        },
+        {
+          "name": "command-14f8200dff7646a494f151ed01ddc6b2.log",
+          "is_dir": false,
+          "bytes": 4073
+        },
+        {
+          "name": "command-154da923347b447ca24c9f9d7f9240bd.log",
+          "is_dir": false,
+          "bytes": 5983
+        },
+        {
+          "name": "command-15c7bb28712a4a538d57e9cc805f013d.log",
+          "is_dir": false,
+          "bytes": 8173
+        },
+        {
+          "name": "command-15d888bfd5a24392b6a25d8081a3d170.log",
+          "is_dir": false,
+          "bytes": 4841
+        },
+        {
+          "name": "command-15dbaca13ac84f8abb69ec694d43305c.log",
+          "is_dir": false,
+          "bytes": 915
+        },
+        {
+          "name": "command-1618db229a344e5a91c4a62a8f730c18.log",
+          "is_dir": false,
+          "bytes": 1853
+        },
+        {
+          "name": "command-16b6ef6bdcbb44fe9444ab7c0e64d782.log",
+          "is_dir": false,
+          "bytes": 300
+        },
+        {
+          "name": "command-17c8815c85354d638865bd2ac72d574b.log",
+          "is_dir": false,
+          "bytes": 2400
+        },
+        {
+          "name": "command-17ff835457b74c15beb0382ab3b10c34.log",
+          "is_dir": false,
+          "bytes": 4008
+        },
+        {
+          "name": "command-180ba9e149ab4faeaf5963247ccc7ec0.log",
+          "is_dir": false,
+          "bytes": 2849
+        },
+        {
+          "name": "command-185f7256771345d189ce1f95cc58523c.log",
+          "is_dir": false,
+          "bytes": 5161
+        },
+        {
+          "name": "command-186640936d8b467e97fb74cc35e4f0fa.log",
+          "is_dir": false,
+          "bytes": 8997
+        },
+        {
+          "name": "command-189282a3387a4f13bb67bd11f5bf97d9.log",
+          "is_dir": false,
+          "bytes": 3541
+        },
+        {
+          "name": "command-189d460030674c94b6550d8e7f99f758.log",
+          "is_dir": false,
+          "bytes": 7205
+        },
+        {
+          "name": "command-191a1f183bf341d4bb1a9b74c0fb7105.log",
+          "is_dir": false,
+          "bytes": 7692
+        },
+        {
+          "name": "command-198bbe870273403fa18c1031da51d23e.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-19b7a28398714510801b6ecd8b6d33f8.log",
+          "is_dir": false,
+          "bytes": 4678
+        },
+        {
+          "name": "command-1a368180947543ca9ce8cffb3df7be11.log",
+          "is_dir": false,
+          "bytes": 4842
+        },
+        {
+          "name": "command-1a51fa0a7009470ab56d7cf20ee70c33.log",
+          "is_dir": false,
+          "bytes": 7125
+        },
+        {
+          "name": "command-1a75db5b9913480ca7afe923382137cf.log",
+          "is_dir": false,
+          "bytes": 1963
+        },
+        {
+          "name": "command-1ac9c6f410fa4eeda02aec7322ed632d.log",
+          "is_dir": false,
+          "bytes": 4055
+        },
+        {
+          "name": "command-1afc1dd523454cfc8605eab638ea65aa.log",
+          "is_dir": false,
+          "bytes": 5135
+        },
+        {
+          "name": "command-1b3b1eeb0e37497b90547e3fc48aac15.log",
+          "is_dir": false,
+          "bytes": 2776
+        },
+        {
+          "name": "command-1b96ea592cf74d438d1233adf8451d9b.log",
+          "is_dir": false,
+          "bytes": 5124
+        },
+        {
+          "name": "command-1ba02bd44fa844b39e43a079010475d2.log",
+          "is_dir": false,
+          "bytes": 1413
+        },
+        {
+          "name": "command-1bbae2a11b0549d8bcf52d2f85098999.log",
+          "is_dir": false,
+          "bytes": 7260
+        },
+        {
+          "name": "command-1bce0d6bdd9a415c90754e2c53458deb.log",
+          "is_dir": false,
+          "bytes": 5192
+        },
+        {
+          "name": "command-1be6e227e20249f695b8db317fecdff1.log",
+          "is_dir": false,
+          "bytes": 2067
+        },
+        {
+          "name": "command-1c90ca39fb0249fba01e2adbaca76147.log",
+          "is_dir": false,
+          "bytes": 1604
+        },
+        {
+          "name": "command-1c9cff3fc43043048fda7c3ac6a1b02a.log",
+          "is_dir": false,
+          "bytes": 7190
+        },
+        {
+          "name": "command-1cd62bea4fdc432a94e37f8a8fc39d24.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-1d9fd8b9237f4dbfbb3d99545e1844e7.log",
+          "is_dir": false,
+          "bytes": 6919
+        },
+        {
+          "name": "command-1dd3f431da094414ac15011629f67ef6.log",
+          "is_dir": false,
+          "bytes": 6826
+        },
+        {
+          "name": "command-1ebf0c9bab794bb8994fc255e4fb8c88.log",
+          "is_dir": false,
+          "bytes": 2419
+        },
+        {
+          "name": "command-1edc5fc7898341bb96ab0f946bf9b94b.log",
+          "is_dir": false,
+          "bytes": 5009
+        },
+        {
+          "name": "command-1f019eefc09f45efbf29ccb502569a24.log",
+          "is_dir": false,
+          "bytes": 2847
+        },
+        {
+          "name": "command-1fc9bb61e6ba4d6e9e450dca9fdf8f2a.log",
+          "is_dir": false,
+          "bytes": 491
+        },
+        {
+          "name": "command-204602ab3b274df8bfa01478e047326b.log",
+          "is_dir": false,
+          "bytes": 7178
+        },
+        {
+          "name": "command-20468cc1eaa8412c9b9d43ee06ee79da.log",
+          "is_dir": false,
+          "bytes": 491
+        },
+        {
+          "name": "command-2082a1e5b76e475fa811152adb9d8d1c.log",
+          "is_dir": false,
+          "bytes": 4955
+        },
+        {
+          "name": "command-209db7c960cb40809d719a45e88a3428.log",
+          "is_dir": false,
+          "bytes": 7050
+        },
+        {
+          "name": "command-2188eb2121f44fabbdbcff9e0fda56e8.log",
+          "is_dir": false,
+          "bytes": 5160
+        },
+        {
+          "name": "command-218eb08f9baa4452ab409c3e30951895.log",
+          "is_dir": false,
+          "bytes": 7034
+        },
+        {
+          "name": "command-2195f7f9589145d78b62fdee9dd151c0.log",
+          "is_dir": false,
+          "bytes": 913
+        },
+        {
+          "name": "command-21b34adc3c814691963ceefa190f70c6.log",
+          "is_dir": false,
+          "bytes": 4870
+        },
+        {
+          "name": "command-21cbe6f66211421f9162d341aca988db.log",
+          "is_dir": false,
+          "bytes": 2771
+        },
+        {
+          "name": "command-21f1e61769e0427e8c0407dfefff3d08.log",
+          "is_dir": false,
+          "bytes": 2778
+        },
+        {
+          "name": "command-2221e47fefa245c88a434e67e1485001.log",
+          "is_dir": false,
+          "bytes": 191
+        },
+        {
+          "name": "command-22982fc4b4094a4da88e2a01e5c519d6.log",
+          "is_dir": false,
+          "bytes": 3979
+        },
+        {
+          "name": "command-2356b9e01c7341cd978d9f152b9a527b.log",
+          "is_dir": false,
+          "bytes": 1793
+        },
+        {
+          "name": "command-24470bc7fddb4eb8b01bdf79f526c384.log",
+          "is_dir": false,
+          "bytes": 5016
+        },
+        {
+          "name": "command-2452229c11984f1887c7b6ac716a7d65.log",
+          "is_dir": false,
+          "bytes": 7102
+        },
+        {
+          "name": "command-2457c05068ab4d24bba4c60ac48242ea.log",
+          "is_dir": false,
+          "bytes": 1964
+        },
+        {
+          "name": "command-2490fc4b2ee144288157c760a59a70c2.log",
+          "is_dir": false,
+          "bytes": 5031
+        },
+        {
+          "name": "command-24d283415cd84ded9bec7eb59a0786e9.log",
+          "is_dir": false,
+          "bytes": 2339
+        },
+        {
+          "name": "command-24d598853a4d4dba8ba23c6a7b2c680c.log",
+          "is_dir": false,
+          "bytes": 8377
+        },
+        {
+          "name": "command-25354dbfefb747f7b069fb414daa0916.log",
+          "is_dir": false,
+          "bytes": 4726
+        },
+        {
+          "name": "command-257ad15c9da44256b2eade067d3c9320.log",
+          "is_dir": false,
+          "bytes": 5336
+        },
+        {
+          "name": "command-25dc647c31944b84bfa75fb994ff6727.log",
+          "is_dir": false,
+          "bytes": 169
+        },
+        {
+          "name": "command-25f77ceb7ed0440da47c150cb179e179.log",
+          "is_dir": false,
+          "bytes": 910
+        },
+        {
+          "name": "command-260ab398e2134c4ea3d0823a53eefd22.log",
+          "is_dir": false,
+          "bytes": 2511
+        },
+        {
+          "name": "command-265b23954ce146c3bc1c647e8eda826d.log",
+          "is_dir": false,
+          "bytes": 2774
+        },
+        {
+          "name": "command-26c8488ce39549a1b108b84120e6e8cf.log",
+          "is_dir": false,
+          "bytes": 5771
+        },
+        {
+          "name": "command-27671d7426cb4632ac10545d99e6cfbb.log",
+          "is_dir": false,
+          "bytes": 6637
+        },
+        {
+          "name": "command-281ddb93bb284da6a64dc2fdc9d8d33d.log",
+          "is_dir": false,
+          "bytes": 4048
+        },
+        {
+          "name": "command-28408faba7174d69b4c7f3219108609c.log",
+          "is_dir": false,
+          "bytes": 909
+        },
+        {
+          "name": "command-2a0fcb528a78424eafce4099bf211232.log",
+          "is_dir": false,
+          "bytes": 5663
+        },
+        {
+          "name": "command-2a13eaf5c49a4abd8345212dfcf02e90.log",
+          "is_dir": false,
+          "bytes": 7189
+        },
+        {
+          "name": "command-2a5425197309440eb1f5bbb3533ec701.log",
+          "is_dir": false,
+          "bytes": 902
+        },
+        {
+          "name": "command-2aa0a7fef9d6475b9a62bf094d83d872.log",
+          "is_dir": false,
+          "bytes": 932
+        },
+        {
+          "name": "command-2af3133b5e3548538c2531e2440b0bb6.log",
+          "is_dir": false,
+          "bytes": 5125
+        },
+        {
+          "name": "command-2c38e62d944e4feeb261bae6593f3f31.log",
+          "is_dir": false,
+          "bytes": 3108
+        },
+        {
+          "name": "command-2c6475646c024062a7921c1d30f3a599.log",
+          "is_dir": false,
+          "bytes": 8388
+        },
+        {
+          "name": "command-2c7f32b3d8004478880d5db482eb969e.log",
+          "is_dir": false,
+          "bytes": 7118
+        },
+        {
+          "name": "command-2c9220800ff64c64ace92079cf70e40a.log",
+          "is_dir": false,
+          "bytes": 1980
+        },
+        {
+          "name": "command-2d353afc19b84faf83031454872c1187.log",
+          "is_dir": false,
+          "bytes": 6265
+        },
+        {
+          "name": "command-2d65902df6a04099b1f9de2d63280bca.log",
+          "is_dir": false,
+          "bytes": 6816
+        },
+        {
+          "name": "command-2d7fa4fc94424a749d77033305a20487.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-2dccbcf96f4a41a68e0ee1166b53a68c.log",
+          "is_dir": false,
+          "bytes": 5026
+        },
+        {
+          "name": "command-2dd5cdcfb5f2450eb726f2091c987b3c.log",
+          "is_dir": false,
+          "bytes": 7207
+        },
+        {
+          "name": "command-2deeb496061042c694013d2da5916067.log",
+          "is_dir": false,
+          "bytes": 5140
+        },
+        {
+          "name": "command-2e0f54752ee84133ab0d71bad8ee6164.log",
+          "is_dir": false,
+          "bytes": 5031
+        },
+        {
+          "name": "command-2e11f23c2eca4516a2e240aba0de857f.log",
+          "is_dir": false,
+          "bytes": 4896
+        },
+        {
+          "name": "command-2efa574cb1224b729ac7a4a95c41fcf6.log",
+          "is_dir": false,
+          "bytes": 2055
+        },
+        {
+          "name": "command-2efceb5a3a6848efbf7dc5c7d1cdeaf9.log",
+          "is_dir": false,
+          "bytes": 5275
+        },
+        {
+          "name": "command-2f6d79c680224fd8b3bf0d35efc99d13.log",
+          "is_dir": false,
+          "bytes": 4026
+        },
+        {
+          "name": "command-2f72e7e3e79a4b65a3b1ce0c722c583b.log",
+          "is_dir": false,
+          "bytes": 1986
+        },
+        {
+          "name": "command-2f9203e7c95e4b41bd13606844a2684f.log",
+          "is_dir": false,
+          "bytes": 4856
+        },
+        {
+          "name": "command-3091119235484b86a720ea2c14116cdc.log",
+          "is_dir": false,
+          "bytes": 931
+        },
+        {
+          "name": "command-30e788d16ff54299864ca15cbd7a8c96.log",
+          "is_dir": false,
+          "bytes": 2047
+        },
+        {
+          "name": "command-313411b633c84d5dbf8c10cb0852992c.log",
+          "is_dir": false,
+          "bytes": 7023
+        },
+        {
+          "name": "command-31688bef88de49e0969b3f2673328177.log",
+          "is_dir": false,
+          "bytes": 6728
+        },
+        {
+          "name": "command-319c60a27e7b46119e371ee2f95c8452.log",
+          "is_dir": false,
+          "bytes": 6740
+        },
+        {
+          "name": "command-31f2467394ab4e2e918ea10b68638def.log",
+          "is_dir": false,
+          "bytes": 7552
+        },
+        {
+          "name": "command-31f5fc79728c423c8315508569bcbf41.log",
+          "is_dir": false,
+          "bytes": 2391
+        },
+        {
+          "name": "command-321d832dc5d74b4a9fee94d9e6afda7d.log",
+          "is_dir": false,
+          "bytes": 5762
+        },
+        {
+          "name": "command-326532d4782542c59cbc40fb6a3513fc.log",
+          "is_dir": false,
+          "bytes": 7163
+        },
+        {
+          "name": "command-32cac8c58cf0431eab82617f6800c7c5.log",
+          "is_dir": false,
+          "bytes": 4949
+        },
+        {
+          "name": "command-32e70cfe0ec34c039d9534160a185f66.log",
+          "is_dir": false,
+          "bytes": 846
+        },
+        {
+          "name": "command-331ef9317daa41da95776544c7be1bf6.log",
+          "is_dir": false,
+          "bytes": 4031
+        },
+        {
+          "name": "command-33b625464e674ae1b5f2a2230f9f9be5.log",
+          "is_dir": false,
+          "bytes": 6958
+        },
+        {
+          "name": "command-33f26bd690cf493e8d815809941386f2.log",
+          "is_dir": false,
+          "bytes": 835
+        },
+        {
+          "name": "command-3415a9d5c9884dc689716e4d6b1c95de.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-3457403ad10146f89c57175663c71ebc.log",
+          "is_dir": false,
+          "bytes": 911
+        },
+        {
+          "name": "command-34b9d2eb968c4499a51930d96e9fc6c0.log",
+          "is_dir": false,
+          "bytes": 1909
+        },
+        {
+          "name": "command-34ce83ab8a9849b888ec2b26df7b6333.log",
+          "is_dir": false,
+          "bytes": 6439
+        },
+        {
+          "name": "command-35159df1bb944bc0819c528c06cfeb3f.log",
+          "is_dir": false,
+          "bytes": 7830
+        },
+        {
+          "name": "command-35848fb9978d44d8b8531828e0f080ef.log",
+          "is_dir": false,
+          "bytes": 6366
+        },
+        {
+          "name": "command-3592746515f94f77b7a5e3acc646044b.log",
+          "is_dir": false,
+          "bytes": 6680
+        },
+        {
+          "name": "command-36ddbcc72c85445198fdff555ce8e7f4.log",
+          "is_dir": false,
+          "bytes": 7144
+        },
+        {
+          "name": "command-370c03bf584e4af4a48d37dcea5166e2.log",
+          "is_dir": false,
+          "bytes": 4047
+        },
+        {
+          "name": "command-37320e99b9af4ac8b96e6b26f97cefa3.log",
+          "is_dir": false,
+          "bytes": 3038
+        },
+        {
+          "name": "command-375870b67986449797afa6021b5c81e4.log",
+          "is_dir": false,
+          "bytes": 2498
+        },
+        {
+          "name": "command-379894de8de64fbba536e9181b2e214b.log",
+          "is_dir": false,
+          "bytes": 7055
+        },
+        {
+          "name": "command-37de2967043a43ca81df5268b96521b1.log",
+          "is_dir": false,
+          "bytes": 5192
+        },
+        {
+          "name": "command-391c37f2518e4ce48cad5dd414cc759e.log",
+          "is_dir": false,
+          "bytes": 1973
+        },
+        {
+          "name": "command-39e7060f3f414ea081104c8ff6a81cac.log",
+          "is_dir": false,
+          "bytes": 918
+        },
+        {
+          "name": "command-3a2ffc0aa985448db8f7f1f51ee4bcd5.log",
+          "is_dir": false,
+          "bytes": 5769
+        },
+        {
+          "name": "command-3a3c7774af8c4f81903f3b473f4d22b2.log",
+          "is_dir": false,
+          "bytes": 5122
+        },
+        {
+          "name": "command-3a9490c7ac0b45038d89fde1501a8eb2.log",
+          "is_dir": false,
+          "bytes": 3592
+        },
+        {
+          "name": "command-3ac63a3d6d584032a82101944828d247.log",
+          "is_dir": false,
+          "bytes": 6967
+        },
+        {
+          "name": "command-3ae2749bd6e546cdb2265d4cc2755473.log",
+          "is_dir": false,
+          "bytes": 4008
+        },
+        {
+          "name": "command-3b070eb0f4e34c688b2e8661ab8c70b8.log",
+          "is_dir": false,
+          "bytes": 2857
+        },
+        {
+          "name": "command-3b4691d0a38e4adb89e7ba9e066f87e0.log",
+          "is_dir": false,
+          "bytes": 7255
+        },
+        {
+          "name": "command-3b4ae92af600452b9bcd3d05bbf6a6ec.log",
+          "is_dir": false,
+          "bytes": 4942
+        },
+        {
+          "name": "command-3b706e448b5245adba8541280ed4c4be.log",
+          "is_dir": false,
+          "bytes": 7285
+        },
+        {
+          "name": "command-3c936654c0e041338f911d2f6e0279e6.log",
+          "is_dir": false,
+          "bytes": 5093
+        },
+        {
+          "name": "command-3d3bc47c557b47018acb609788a2c18f.log",
+          "is_dir": false,
+          "bytes": 2061
+        },
+        {
+          "name": "command-3d47e087667b43539176a0feee0389b0.log",
+          "is_dir": false,
+          "bytes": 4720
+        },
+        {
+          "name": "command-3db88e15188c4b32a55f852394b4a1af.log",
+          "is_dir": false,
+          "bytes": 2097
+        },
+        {
+          "name": "command-3e74e78362c64465bfb267f8401733cd.log",
+          "is_dir": false,
+          "bytes": 889
+        },
+        {
+          "name": "command-3ea198ee79db4f5eb526e91cbe30e235.log",
+          "is_dir": false,
+          "bytes": 2061
+        },
+        {
+          "name": "command-3f00a9fe20be4c09a0e79a8800537db0.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-3f2682dbb5c54217a027ad6e0ea4e55e.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-3f44e62dbae74222872894d20ed3ff57.log",
+          "is_dir": false,
+          "bytes": 7241
+        },
+        {
+          "name": "command-3fdcc51c66a443ffb3662067a19dad8d.log",
+          "is_dir": false,
+          "bytes": 3968
+        },
+        {
+          "name": "command-400560c98f4e45d1bb4006c1ea7b8be7.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-4024158025624058967215cb640002c0.log",
+          "is_dir": false,
+          "bytes": 2569
+        },
+        {
+          "name": "command-406453239f9e460caa8c4b93c84c3fee.log",
+          "is_dir": false,
+          "bytes": 4018
+        },
+        {
+          "name": "command-40dc460e02374799ba05c778563d8446.log",
+          "is_dir": false,
+          "bytes": 2449
+        },
+        {
+          "name": "command-41566e5874f9420d949229bd332659fb.log",
+          "is_dir": false,
+          "bytes": 2210
+        },
+        {
+          "name": "command-419c57367cb7445590294934b2f3039a.log",
+          "is_dir": false,
+          "bytes": 7107
+        },
+        {
+          "name": "command-41b7eba624144663b4b71a57ed53b54b.log",
+          "is_dir": false,
+          "bytes": 4803
+        },
+        {
+          "name": "command-41f735af0e6443e5a191ee957c89a588.log",
+          "is_dir": false,
+          "bytes": 4623
+        },
+        {
+          "name": "command-42434b167d664142a1d533183e7a8836.log",
+          "is_dir": false,
+          "bytes": 908
+        },
+        {
+          "name": "command-42fb464f057048e29d17a3a4911dfcd8.log",
+          "is_dir": false,
+          "bytes": 6684
+        },
+        {
+          "name": "command-432cb9f4e94847b49006a4811aa8c31f.log",
+          "is_dir": false,
+          "bytes": 4939
+        },
+        {
+          "name": "command-437480d34967435cb87d5110b1dc327d.log",
+          "is_dir": false,
+          "bytes": 7512
+        },
+        {
+          "name": "command-437eef215a3a483fb3c56eee5df68a2c.log",
+          "is_dir": false,
+          "bytes": 1956
+        },
+        {
+          "name": "command-43a053a914244cfe8f595cf4e4efe53f.log",
+          "is_dir": false,
+          "bytes": 7191
+        },
+        {
+          "name": "command-43f3f9963fb54e1495fb27ba2a9e1359.log",
+          "is_dir": false,
+          "bytes": 5158
+        },
+        {
+          "name": "command-43f65b57a7744928a678b86e3b052579.log",
+          "is_dir": false,
+          "bytes": 4936
+        },
+        {
+          "name": "command-44c08a5623234788a8008f03504e9d75.log",
+          "is_dir": false,
+          "bytes": 3968
+        },
+        {
+          "name": "command-452466e6c33b4774a9b58799130e25c7.log",
+          "is_dir": false,
+          "bytes": 818
+        },
+        {
+          "name": "command-45252cc21e484d028ed91ce3bcbe42b4.log",
+          "is_dir": false,
+          "bytes": 2724
+        },
+        {
+          "name": "command-4573b58109ee4f31a2fe37d010e49127.log",
+          "is_dir": false,
+          "bytes": 5038
+        },
+        {
+          "name": "command-458d54bcb1bd47199268d46933e21296.log",
+          "is_dir": false,
+          "bytes": 4890
+        },
+        {
+          "name": "command-45d0dfba7f9b4d048d17da0e5930780a.log",
+          "is_dir": false,
+          "bytes": 5390
+        },
+        {
+          "name": "command-45e82ca3ddee4cdab038bfc17f6f9129.log",
+          "is_dir": false,
+          "bytes": 5131
+        },
+        {
+          "name": "command-464580d6459b4c83b76fc8241974533c.log",
+          "is_dir": false,
+          "bytes": 4865
+        },
+        {
+          "name": "command-468e9f570452490e98b1c74fcf7b24c7.log",
+          "is_dir": false,
+          "bytes": 5017
+        },
+        {
+          "name": "command-468f739e4c4f44258dececd977f55850.log",
+          "is_dir": false,
+          "bytes": 1669
+        },
+        {
+          "name": "command-477fa3dc1abb449c9e03794193565321.log",
+          "is_dir": false,
+          "bytes": 2929
+        },
+        {
+          "name": "command-4791ec3bae594a9fb326fa85a5865e1a.log",
+          "is_dir": false,
+          "bytes": 7238
+        },
+        {
+          "name": "command-47c9df97c40d4fd38e039b9aef673a6a.log",
+          "is_dir": false,
+          "bytes": 7138
+        },
+        {
+          "name": "command-48a547d8937f4883b46383ace89d0e54.log",
+          "is_dir": false,
+          "bytes": 6672
+        },
+        {
+          "name": "command-49133a08aafa40eab27fe5d79d568291.log",
+          "is_dir": false,
+          "bytes": 4055
+        },
+        {
+          "name": "command-4918af15032141c394c306eb4a0f8538.log",
+          "is_dir": false,
+          "bytes": 5735
+        },
+        {
+          "name": "command-493df72f4e2840828e4bb349751122c8.log",
+          "is_dir": false,
+          "bytes": 3108
+        },
+        {
+          "name": "command-4981e7ab7b00468499d8712459c55a6a.log",
+          "is_dir": false,
+          "bytes": 4789
+        },
+        {
+          "name": "command-49aeb1c1f3534665bd9188a9c0335265.log",
+          "is_dir": false,
+          "bytes": 5125
+        },
+        {
+          "name": "command-49cd00ed1e5b4b8681f528bdf14a866f.log",
+          "is_dir": false,
+          "bytes": 5472
+        },
+        {
+          "name": "command-49f58ba52ac14b0494fe283234497c33.log",
+          "is_dir": false,
+          "bytes": 28636
+        },
+        {
+          "name": "command-4a91880deced4b568f95ea3d6152263b.log",
+          "is_dir": false,
+          "bytes": 6852
+        },
+        {
+          "name": "command-4ae7835e4442462b98123d2817c07bd7.log",
+          "is_dir": false,
+          "bytes": 6996
+        },
+        {
+          "name": "command-4b0b452027e949b8a0e9f44726da6f08.log",
+          "is_dir": false,
+          "bytes": 2879
+        },
+        {
+          "name": "command-4b1bd42349d745a3ba93914e73014f19.log",
+          "is_dir": false,
+          "bytes": 2076
+        },
+        {
+          "name": "command-4b3b7dc728734c64a4f6e1cd7f1058cd.log",
+          "is_dir": false,
+          "bytes": 7144
+        },
+        {
+          "name": "command-4b7e94a781d04a8884d55baef3c46ea5.log",
+          "is_dir": false,
+          "bytes": 4968
+        },
+        {
+          "name": "command-4c64565fd2e945ccb90d6d5b54ad2bbf.log",
+          "is_dir": false,
+          "bytes": 4955
+        },
+        {
+          "name": "command-4cb2dedbbed14bc994225c8e7fddaa0d.log",
+          "is_dir": false,
+          "bytes": 25214
+        },
+        {
+          "name": "command-4d0a6e31cb5d4c12af2f1e0effaa5a18.log",
+          "is_dir": false,
+          "bytes": 903
+        },
+        {
+          "name": "command-4d4102cf4699409c838288357bbbdf44.log",
+          "is_dir": false,
+          "bytes": 2917
+        },
+        {
+          "name": "command-4d6a0e091dd34928ac9bba3ec33f1874.log",
+          "is_dir": false,
+          "bytes": 289
+        },
+        {
+          "name": "command-4dc1fb9d113d47869d9fb7a759dae0cc.log",
+          "is_dir": false,
+          "bytes": 7187
+        },
+        {
+          "name": "command-4dd094881353425eacdd13fce08c96a7.log",
+          "is_dir": false,
+          "bytes": 4895
+        },
+        {
+          "name": "command-4dd0bfcfdd734443976cd7c7f8c0c4be.log",
+          "is_dir": false,
+          "bytes": 7152
+        },
+        {
+          "name": "command-4e452dc1cacf4604b5914556d65740fb.log",
+          "is_dir": false,
+          "bytes": 659
+        },
+        {
+          "name": "command-4e9eaac49ddf4747abcbc8354f34db17.log",
+          "is_dir": false,
+          "bytes": 7074
+        },
+        {
+          "name": "command-4eefec975989476292b1edc6dae804b7.log",
+          "is_dir": false,
+          "bytes": 2796
+        },
+        {
+          "name": "command-4f277a567e7b4f419c3e98a05b6b20ca.log",
+          "is_dir": false,
+          "bytes": 2511
+        },
+        {
+          "name": "command-4f6fd12e23e14958a9e6edf64300dd83.log",
+          "is_dir": false,
+          "bytes": 7168
+        },
+        {
+          "name": "command-505b8bfc75bc4af2b20233161ad5173b.log",
+          "is_dir": false,
+          "bytes": 4937
+        },
+        {
+          "name": "command-50e0f999eec64920ac4112fe6d9c8cd8.log",
+          "is_dir": false,
+          "bytes": 5473
+        },
+        {
+          "name": "command-510a0edc6a8547dd855e7a450d8e0a75.log",
+          "is_dir": false,
+          "bytes": 8098
+        },
+        {
+          "name": "command-510d8b7da9db41768f45650c2c60310a.log",
+          "is_dir": false,
+          "bytes": 1987
+        },
+        {
+          "name": "command-5121f035d6b34d5eb2f03901b78e16c8.log",
+          "is_dir": false,
+          "bytes": 916
+        },
+        {
+          "name": "command-5132e942b9d24df8801709bfa6df9d9a.log",
+          "is_dir": false,
+          "bytes": 5127
+        },
+        {
+          "name": "command-516346c80378431b8676feac8eaaf116.log",
+          "is_dir": false,
+          "bytes": 3155
+        },
+        {
+          "name": "command-518cc251e76d44018d1b0e16f3ff63ad.log",
+          "is_dir": false,
+          "bytes": 7002
+        },
+        {
+          "name": "command-51fb495855704d14a897d2bfce7b3f08.log",
+          "is_dir": false,
+          "bytes": 5536
+        },
+        {
+          "name": "command-522505c9276f4db989e6dd967cecdeab.log",
+          "is_dir": false,
+          "bytes": 8025
+        },
+        {
+          "name": "command-5252b9706c694cb3b4e35667a455543a.log",
+          "is_dir": false,
+          "bytes": 1967
+        },
+        {
+          "name": "command-525f2427eb2e4a0a94309426e865cebc.log",
+          "is_dir": false,
+          "bytes": 5193
+        },
+        {
+          "name": "command-53474af0c3014e8c8f1b53e6f8c21030.log",
+          "is_dir": false,
+          "bytes": 820
+        },
+        {
+          "name": "command-538c9b4351a74be4a4c5bcab766998df.log",
+          "is_dir": false,
+          "bytes": 1016
+        },
+        {
+          "name": "command-53b325e8fda043bf9d73ef10171b8a76.log",
+          "is_dir": false,
+          "bytes": 2753
+        },
+        {
+          "name": "command-53d87caa8ddb4b639cec0be52400b996.log",
+          "is_dir": false,
+          "bytes": 1987
+        },
+        {
+          "name": "command-5481c2dbc6cf4c8fa0f47f69e7bcb2e3.log",
+          "is_dir": false,
+          "bytes": 5787
+        },
+        {
+          "name": "command-54ee02c1fa4a4fd09716d77934d0d29d.log",
+          "is_dir": false,
+          "bytes": 7180
+        },
+        {
+          "name": "command-5532364deef74ca39e1e49e414730cdd.log",
+          "is_dir": false,
+          "bytes": 5169
+        },
+        {
+          "name": "command-557f5c78ed7e429498ca1de13adc3769.log",
+          "is_dir": false,
+          "bytes": 902
+        },
+        {
+          "name": "command-55b5e64994c94db8903e0fb3ee371bb9.log",
+          "is_dir": false,
+          "bytes": 6794
+        },
+        {
+          "name": "command-55b71174bc18481cbe4d09ad94d66dc0.log",
+          "is_dir": false,
+          "bytes": 4048
+        },
+        {
+          "name": "command-55c393600b87413d9804e801eda8e4bd.log",
+          "is_dir": false,
+          "bytes": 4937
+        },
+        {
+          "name": "command-5608c6ff366a48fd9dc1bb0c4232d959.log",
+          "is_dir": false,
+          "bytes": 3617
+        },
+        {
+          "name": "command-561ca8f93667489691c3a4100964a57d.log",
+          "is_dir": false,
+          "bytes": 5132
+        },
+        {
+          "name": "command-565c3b2090c544f587e5fda7b8528e43.log",
+          "is_dir": false,
+          "bytes": 5473
+        },
+        {
+          "name": "command-568609e159ba47a283ac639a0c83f587.log",
+          "is_dir": false,
+          "bytes": 7107
+        },
+        {
+          "name": "command-56c7d0c839104125b3c2b8c951c448fe.log",
+          "is_dir": false,
+          "bytes": 7019
+        },
+        {
+          "name": "command-57389ed3df204d1d83070e7d9b69ad72.log",
+          "is_dir": false,
+          "bytes": 5803
+        },
+        {
+          "name": "command-574241c368354340a95d5f1e89de9661.log",
+          "is_dir": false,
+          "bytes": 3976
+        },
+        {
+          "name": "command-57475147d47b47919a9e857b4c18e6bb.log",
+          "is_dir": false,
+          "bytes": 5536
+        },
+        {
+          "name": "command-57cf81b1e3cf43c79e64d9503d05a835.log",
+          "is_dir": false,
+          "bytes": 4939
+        },
+        {
+          "name": "command-5855122cf8a141b1915e15e939916905.log",
+          "is_dir": false,
+          "bytes": 3032
+        },
+        {
+          "name": "command-58c2e15ffd554f788badcc11f49822e7.log",
+          "is_dir": false,
+          "bytes": 6849
+        },
+        {
+          "name": "command-58f00fd3b5a8497693c285d200de04bc.log",
+          "is_dir": false,
+          "bytes": 4035
+        },
+        {
+          "name": "command-59128d0ef9d14d6ea1329c2124dda05a.log",
+          "is_dir": false,
+          "bytes": 6970
+        },
+        {
+          "name": "command-59153fac65164283b79f658d7aa92ead.log",
+          "is_dir": false,
+          "bytes": 6636
+        },
+        {
+          "name": "command-59312ca2a0454acaac2ff2ce7e146f1d.log",
+          "is_dir": false,
+          "bytes": 5023
+        },
+        {
+          "name": "command-596c98f7a6014b198cf9af103476bb9d.log",
+          "is_dir": false,
+          "bytes": 2223
+        },
+        {
+          "name": "command-5981ab57a9da4a7e8f17ee7354774f4e.log",
+          "is_dir": false,
+          "bytes": 659
+        },
+        {
+          "name": "command-5985a7c4bf7645639b494311802cabf4.log",
+          "is_dir": false,
+          "bytes": 7481
+        },
+        {
+          "name": "command-5a30f25ef6ac42d6a2ef16d0e0472efc.log",
+          "is_dir": false,
+          "bytes": 6787
+        },
+        {
+          "name": "command-5a40d4132979444899378e7aac5a04b5.log",
+          "is_dir": false,
+          "bytes": 7135
+        },
+        {
+          "name": "command-5a90244bf4f840f584955c64a96a982a.log",
+          "is_dir": false,
+          "bytes": 5153
+        },
+        {
+          "name": "command-5b0c27358d95446baf0a28042e82437e.log",
+          "is_dir": false,
+          "bytes": 4671
+        },
+        {
+          "name": "command-5b7fe428562b4bac9a13c49984d5ce17.log",
+          "is_dir": false,
+          "bytes": 7163
+        },
+        {
+          "name": "command-5c5d65337be5434d9573d15ed45e73ab.log",
+          "is_dir": false,
+          "bytes": 4919
+        },
+        {
+          "name": "command-5c844974a0a145c086d8357a0045653f.log",
+          "is_dir": false,
+          "bytes": 6806
+        },
+        {
+          "name": "command-5c88d18c75d141c7ab1993c3b2576fa5.log",
+          "is_dir": false,
+          "bytes": 643
+        },
+        {
+          "name": "command-5ccfb208bda6445784de34d28681c308.log",
+          "is_dir": false,
+          "bytes": 5745
+        },
+        {
+          "name": "command-5cd2fc94ac954514bdffd9664e7ac112.log",
+          "is_dir": false,
+          "bytes": 907
+        },
+        {
+          "name": "command-5d1682fe1cd54322a8f7262cf734e07d.log",
+          "is_dir": false,
+          "bytes": 7007
+        },
+        {
+          "name": "command-5d288bf889054bdda629268878bc5726.log",
+          "is_dir": false,
+          "bytes": 828
+        },
+        {
+          "name": "command-5d5cd9bfe3e346e58420f1ae2bdae78a.log",
+          "is_dir": false,
+          "bytes": 4441
+        },
+        {
+          "name": "command-5d9bd98d33e64192b54990ee34a0c69b.log",
+          "is_dir": false,
+          "bytes": 6812
+        },
+        {
+          "name": "command-5e1a9850b7ce4c60b6b2a602683e417a.log",
+          "is_dir": false,
+          "bytes": 2499
+        },
+        {
+          "name": "command-5e6c9961832c4c92ae5c3d3af86a11d2.log",
+          "is_dir": false,
+          "bytes": 1471
+        },
+        {
+          "name": "command-5eb82426c679449da3bee1d31ebfa4ef.log",
+          "is_dir": false,
+          "bytes": 810
+        },
+        {
+          "name": "command-5eb9b236aa1540c49003f8d4cc4dd18f.log",
+          "is_dir": false,
+          "bytes": 2781
+        },
+        {
+          "name": "command-5ed6fed2edba42c1b3d5853010306924.log",
+          "is_dir": false,
+          "bytes": 4856
+        },
+        {
+          "name": "command-5eefb5ab318548268895ceeb8903d6e7.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-5fa6571b17dc4966bad4c944ec5bda2c.log",
+          "is_dir": false,
+          "bytes": 896
+        },
+        {
+          "name": "command-5fff830c990b40988abfa8f3a17ed8c9.log",
+          "is_dir": false,
+          "bytes": 4696
+        },
+        {
+          "name": "command-609290c501574849ba4dcf05c0c6a388.log",
+          "is_dir": false,
+          "bytes": 5154
+        },
+        {
+          "name": "command-6099b49111bf48be8d00a18c517a85c0.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-60c237c43286426d812a12e6a5932bcb.log",
+          "is_dir": false,
+          "bytes": 4772
+        },
+        {
+          "name": "command-60d588a2c7594c9399344a17ea17ff05.log",
+          "is_dir": false,
+          "bytes": 4857
+        },
+        {
+          "name": "command-60d825c64e1b4c20b7651ba90a80ee9d.log",
+          "is_dir": false,
+          "bytes": 906
+        },
+        {
+          "name": "command-6153db443f1f480689fa6d6015d5d560.log",
+          "is_dir": false,
+          "bytes": 3805
+        },
+        {
+          "name": "command-617cb378abc743ff983f74382a3aac98.log",
+          "is_dir": false,
+          "bytes": 4940
+        },
+        {
+          "name": "command-61f4e2868d5b42f480954541a0f5e4f5.log",
+          "is_dir": false,
+          "bytes": 6527
+        },
+        {
+          "name": "command-62a8fd32740346579301ec777c3122aa.log",
+          "is_dir": false,
+          "bytes": 6821
+        },
+        {
+          "name": "command-62d46a2efd194995b15fc29c0889b94c.log",
+          "is_dir": false,
+          "bytes": 903
+        },
+        {
+          "name": "command-62e755dc83a4460386819f7b9ed8f5d4.log",
+          "is_dir": false,
+          "bytes": 1052
+        },
+        {
+          "name": "command-631f6ee7e5894d4b87489720ab03097a.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-654d372cc46e44cca65c00a4ec83eb0b.log",
+          "is_dir": false,
+          "bytes": 2791
+        },
+        {
+          "name": "command-65823039d95c453bae8c89678d3dea9b.log",
+          "is_dir": false,
+          "bytes": 48
+        },
+        {
+          "name": "command-65f8ba51f56a4c7aa8b86d7e38105775.log",
+          "is_dir": false,
+          "bytes": 2785
+        },
+        {
+          "name": "command-661679730cb044259364337693ff77bc.log",
+          "is_dir": false,
+          "bytes": 4865
+        },
+        {
+          "name": "command-661dc325cd45418ca31d998b5394e1fd.log",
+          "is_dir": false,
+          "bytes": 7215
+        },
+        {
+          "name": "command-66a98ba052b640bc8717a712cf77d1d6.log",
+          "is_dir": false,
+          "bytes": 4514
+        },
+        {
+          "name": "command-6813f89cff9843c2a7a8f470f987f8e7.log",
+          "is_dir": false,
+          "bytes": 4649
+        },
+        {
+          "name": "command-69584dd7661c4d04a85c82808da68725.log",
+          "is_dir": false,
+          "bytes": 5414
+        },
+        {
+          "name": "command-6a1863335e3e4129bbd92973a4fc1322.log",
+          "is_dir": false,
+          "bytes": 2968
+        },
+        {
+          "name": "command-6a28e2bd2688448c906baeb506a9eb9b.log",
+          "is_dir": false,
+          "bytes": 7142
+        },
+        {
+          "name": "command-6a3b00a39c674e809d59cdc0a9c8f08b.log",
+          "is_dir": false,
+          "bytes": 4587
+        },
+        {
+          "name": "command-6a911b224ace4dd6b995176a7ebfcec6.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-6abf48ce730a4eb6be8ab7d09e8655f9.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-6b990bc0fe66418e9f696814262827d4.log",
+          "is_dir": false,
+          "bytes": 7208
+        },
+        {
+          "name": "command-6ba1b8b95bcd474485826e957a5d26cc.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-6bb683c8a8484c79999fa4d4273db7c4.log",
+          "is_dir": false,
+          "bytes": 2063
+        },
+        {
+          "name": "command-6bcd486fe071455d9705ca714c0e34ac.log",
+          "is_dir": false,
+          "bytes": 6726
+        },
+        {
+          "name": "command-6c8089950cb248de9d01df8858ac8c76.log",
+          "is_dir": false,
+          "bytes": 3592
+        },
+        {
+          "name": "command-6cf25d6520e6477a9fcf47b216dc61cc.log",
+          "is_dir": false,
+          "bytes": 2908
+        },
+        {
+          "name": "command-6cfe3ea5b43c416a93a4aedb5a78db1c.log",
+          "is_dir": false,
+          "bytes": 1918
+        },
+        {
+          "name": "command-6d1ac4e0c4174f0292066a18ad86bcec.log",
+          "is_dir": false,
+          "bytes": 6762
+        },
+        {
+          "name": "command-6d5528b2c503422d8af98baf94465f28.log",
+          "is_dir": false,
+          "bytes": 8575
+        },
+        {
+          "name": "command-6d86c4fc45264e869dc2809cde1c11bb.log",
+          "is_dir": false,
+          "bytes": 5781
+        },
+        {
+          "name": "command-6d9db731f5d442b58b3e0c8da56bf07f.log",
+          "is_dir": false,
+          "bytes": 5151
+        },
+        {
+          "name": "command-6dcf0a0ac7b64627998ceb7ff91d1bc2.log",
+          "is_dir": false,
+          "bytes": 8646
+        },
+        {
+          "name": "command-6dd41156b6274778b623c5ad60accde6.log",
+          "is_dir": false,
+          "bytes": 5121
+        },
+        {
+          "name": "command-6e2f7f08650d4b79b9a38a3115431266.log",
+          "is_dir": false,
+          "bytes": 5003
+        },
+        {
+          "name": "command-6e38c8f8f7f4491d8686f11010998c21.log",
+          "is_dir": false,
+          "bytes": 2513
+        },
+        {
+          "name": "command-6e409fb1d7214f879dda55fe380245e3.log",
+          "is_dir": false,
+          "bytes": 6751
+        },
+        {
+          "name": "command-6ec88cd43649462faa8ef813158afe57.log",
+          "is_dir": false,
+          "bytes": 923
+        },
+        {
+          "name": "command-6ecd3bc81140441ca35191c965fe13af.log",
+          "is_dir": false,
+          "bytes": 4858
+        },
+        {
+          "name": "command-6ecec043e5bc4166bf140f6c6e194c74.log",
+          "is_dir": false,
+          "bytes": 4951
+        },
+        {
+          "name": "command-6eda13dc7bbc4787aa21946ad735f012.log",
+          "is_dir": false,
+          "bytes": 4884
+        },
+        {
+          "name": "command-6f2503c9e1844992988e8146adaec06b.log",
+          "is_dir": false,
+          "bytes": 4938
+        },
+        {
+          "name": "command-6f27f40d55be43799a19466f6a1dd0cc.log",
+          "is_dir": false,
+          "bytes": 8418
+        },
+        {
+          "name": "command-6f964959e658462ab15e686277b6d39f.log",
+          "is_dir": false,
+          "bytes": 5154
+        },
+        {
+          "name": "command-6fef4e872b2c4fcd8ea2d5cdd7af86ea.log",
+          "is_dir": false,
+          "bytes": 2804
+        },
+        {
+          "name": "command-6ffc1bc12e494e6084f4882200b2e321.log",
+          "is_dir": false,
+          "bytes": 4902
+        },
+        {
+          "name": "command-702f3ce3b30f40c385e99445becfc02e.log",
+          "is_dir": false,
+          "bytes": 5621
+        },
+        {
+          "name": "command-7047a7a71b264b8d932625cb0cbe1c16.log",
+          "is_dir": false,
+          "bytes": 4935
+        },
+        {
+          "name": "command-70532023fd454a678b33bfe162da25fe.log",
+          "is_dir": false,
+          "bytes": 4857
+        },
+        {
+          "name": "command-7096d755528448dcae4d5b3b523eb6f0.log",
+          "is_dir": false,
+          "bytes": 7301
+        },
+        {
+          "name": "command-70bc3c93089142849b6ca686418fcd4b.log",
+          "is_dir": false,
+          "bytes": 4840
+        },
+        {
+          "name": "command-7109027cab314b2e8bdb55ffe1c60dd2.log",
+          "is_dir": false,
+          "bytes": 904
+        },
+        {
+          "name": "command-714e5283be2c44ef88c4cb9b60f22143.log",
+          "is_dir": false,
+          "bytes": 5122
+        },
+        {
+          "name": "command-71791efde73c46008eae1eba786b367d.log",
+          "is_dir": false,
+          "bytes": 4966
+        },
+        {
+          "name": "command-71def739f3fe41f18e5fddba87f2aeb7.log",
+          "is_dir": false,
+          "bytes": 4856
+        },
+        {
+          "name": "command-720e9cda98314c8a850b20dd40a0d849.log",
+          "is_dir": false,
+          "bytes": 4944
+        },
+        {
+          "name": "command-7282188c42c14287a43fd2b021e20ebe.log",
+          "is_dir": false,
+          "bytes": 7196
+        },
+        {
+          "name": "command-728941fd75164e7681268aa81f578b2c.log",
+          "is_dir": false,
+          "bytes": 5762
+        },
+        {
+          "name": "command-729cf790bed7496da4063e02bd56051c.log",
+          "is_dir": false,
+          "bytes": 6256
+        },
+        {
+          "name": "command-72a6b11da1d94789b612d22502d9ca06.log",
+          "is_dir": false,
+          "bytes": 7183
+        },
+        {
+          "name": "command-72e4473cd31d4457a12fe0569fc110e1.log",
+          "is_dir": false,
+          "bytes": 7263
+        },
+        {
+          "name": "command-7302a275a81e4c50938f5fba15ff2bd4.log",
+          "is_dir": false,
+          "bytes": 6798
+        },
+        {
+          "name": "command-735cf0e046ea472d8aebfc5b92a41baf.log",
+          "is_dir": false,
+          "bytes": 4936
+        },
+        {
+          "name": "command-73a88fe4f50b4052bb4dd6984eaf2b22.log",
+          "is_dir": false,
+          "bytes": 7518
+        },
+        {
+          "name": "command-74332664fccf4af4a496162eb78f82d6.log",
+          "is_dir": false,
+          "bytes": 2454
+        },
+        {
+          "name": "command-7489997a82324e05b3ec98db8a49fbf5.log",
+          "is_dir": false,
+          "bytes": 4941
+        },
+        {
+          "name": "command-74ac3124c7fd498e890137d60073dbf7.log",
+          "is_dir": false,
+          "bytes": 4062
+        },
+        {
+          "name": "command-7509f33eeeb948118b2972ede5fa8bea.log",
+          "is_dir": false,
+          "bytes": 2483
+        },
+        {
+          "name": "command-752f90e2da4540c9a9d743c04a6fe30d.log",
+          "is_dir": false,
+          "bytes": 5161
+        },
+        {
+          "name": "command-755088d9d3cc486cb07d255f04b391ec.log",
+          "is_dir": false,
+          "bytes": 5383
+        },
+        {
+          "name": "command-7551e495401b4545bfa95fcb6b012903.log",
+          "is_dir": false,
+          "bytes": 7120
+        },
+        {
+          "name": "command-77508d93c5df46cba596118463283bbe.log",
+          "is_dir": false,
+          "bytes": 7155
+        },
+        {
+          "name": "command-7783f8f806b242a08362e9cac21447cd.log",
+          "is_dir": false,
+          "bytes": 4657
+        },
+        {
+          "name": "command-78545c08d5774c5cbc44f2578e80418e.log",
+          "is_dir": false,
+          "bytes": 4916
+        },
+        {
+          "name": "command-7863a125a5214e9f9e00e5e1273dc93b.log",
+          "is_dir": false,
+          "bytes": 1807
+        },
+        {
+          "name": "command-7886e899ba81437da9d5fe2ad59d4b0c.log",
+          "is_dir": false,
+          "bytes": 896
+        },
+        {
+          "name": "command-78ac5b76de22463094ba3c0c125e0275.log",
+          "is_dir": false,
+          "bytes": 7165
+        },
+        {
+          "name": "command-78d49d4fdbd74ac8916a30ed543bae73.log",
+          "is_dir": false,
+          "bytes": 7196
+        },
+        {
+          "name": "command-78e1c17cd9f64d14ba2f811ffb6ac2a0.log",
+          "is_dir": false,
+          "bytes": 931
+        },
+        {
+          "name": "command-7908dab81318440aa0769ee2777b950a.log",
+          "is_dir": false,
+          "bytes": 3944
+        },
+        {
+          "name": "command-79a8794121194b1e8ddf025ad7b6b8e8.log",
+          "is_dir": false,
+          "bytes": 7052
+        },
+        {
+          "name": "command-79dbe28ca0c54c6f989ee6ebd2320d02.log",
+          "is_dir": false,
+          "bytes": 1545
+        },
+        {
+          "name": "command-7a002d5472b349fbb07c2ceedbf18cb7.log",
+          "is_dir": false,
+          "bytes": 4042
+        },
+        {
+          "name": "command-7a23f2f9ce364d8c96ff88bb7f1b4eee.log",
+          "is_dir": false,
+          "bytes": 6761
+        },
+        {
+          "name": "command-7a9872e3611b4418a3a424d33bb04b0d.log",
+          "is_dir": false,
+          "bytes": 6787
+        },
+        {
+          "name": "command-7a9bf8d71b7643309688fb6f7587ffe4.log",
+          "is_dir": false,
+          "bytes": 7232
+        },
+        {
+          "name": "command-7b26f7674f94464fb8220548a05393f0.log",
+          "is_dir": false,
+          "bytes": 2072
+        },
+        {
+          "name": "command-7b3ff316f8d747e58cfb0190273999c9.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-7bb4fcf38aa6411ebf8e07907023eac1.log",
+          "is_dir": false,
+          "bytes": 5362
+        },
+        {
+          "name": "command-7ca5407e8d644d509f2fdd6747dee526.log",
+          "is_dir": false,
+          "bytes": 7237
+        },
+        {
+          "name": "command-7ce40e3d82d443ec90f678aef0086ce5.log",
+          "is_dir": false,
+          "bytes": 6391
+        },
+        {
+          "name": "command-7cedc81cc30646ca9cb02386f01234d6.log",
+          "is_dir": false,
+          "bytes": 1699
+        },
+        {
+          "name": "command-7d05553f15f34390b8b8b4152b31e072.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-7e353480d23b4003a0d35416e2a4ca04.log",
+          "is_dir": false,
+          "bytes": 6968
+        },
+        {
+          "name": "command-7e56eb0ceec44bf78c5c308615a4d566.log",
+          "is_dir": false,
+          "bytes": 3907
+        },
+        {
+          "name": "command-7e93db44e17242729ecdfb59d4da46df.log",
+          "is_dir": false,
+          "bytes": 4592
+        },
+        {
+          "name": "command-7eb6b72fe9114caba14790b1262724bb.log",
+          "is_dir": false,
+          "bytes": 5126
+        },
+        {
+          "name": "command-7f497ce0611f40c180dc53379aeae2c7.log",
+          "is_dir": false,
+          "bytes": 5300
+        },
+        {
+          "name": "command-7f60df8c18c448d689ee2513cb3769b9.log",
+          "is_dir": false,
+          "bytes": 2223
+        },
+        {
+          "name": "command-7fbbea59574c4b35832a91be5d871719.log",
+          "is_dir": false,
+          "bytes": 21356
+        },
+        {
+          "name": "command-80c83b7c905a426080547f532a7a632b.log",
+          "is_dir": false,
+          "bytes": 4929
+        },
+        {
+          "name": "command-81a634d73ac040ad9859a39526b69727.log",
+          "is_dir": false,
+          "bytes": 2364
+        },
+        {
+          "name": "command-81f7f49af89e43958d69890fd27636be.log",
+          "is_dir": false,
+          "bytes": 4055
+        },
+        {
+          "name": "command-82d35d2475bc4bd0831ee97fe42bfb9a.log",
+          "is_dir": false,
+          "bytes": 7156
+        },
+        {
+          "name": "command-830d3271f3a34413bbe370b4629f98af.log",
+          "is_dir": false,
+          "bytes": 6664
+        },
+        {
+          "name": "command-83b1f59ea7c942639dd3309a803a2b1d.log",
+          "is_dir": false,
+          "bytes": 5472
+        },
+        {
+          "name": "command-842cee52eb3e44d087030bd00bba0413.log",
+          "is_dir": false,
+          "bytes": 1203
+        },
+        {
+          "name": "command-843c9db1c1b9497591ce6aea3785e194.log",
+          "is_dir": false,
+          "bytes": 659
+        },
+        {
+          "name": "command-843f33a5bf30456d9999ac344a60fd6d.log",
+          "is_dir": false,
+          "bytes": 2783
+        },
+        {
+          "name": "command-8477b9113c354c9f85508e84acff35c2.log",
+          "is_dir": false,
+          "bytes": 6989
+        },
+        {
+          "name": "command-8477d087d2014443a19ffd1d33829677.log",
+          "is_dir": false,
+          "bytes": 4742
+        },
+        {
+          "name": "command-8484893c255943c4a64ae773f855c9d7.log",
+          "is_dir": false,
+          "bytes": 932
+        },
+        {
+          "name": "command-849f87cf495a4986b81c21e8b1344ffb.log",
+          "is_dir": false,
+          "bytes": 5122
+        },
+        {
+          "name": "command-84aad778e260462aa3faa329e88272cc.log",
+          "is_dir": false,
+          "bytes": 4845
+        },
+        {
+          "name": "command-84e96a5cec724cfe84f858b97ca13ae9.log",
+          "is_dir": false,
+          "bytes": 896
+        },
+        {
+          "name": "command-84f188557c444384b7038857082263bd.log",
+          "is_dir": false,
+          "bytes": 2852
+        },
+        {
+          "name": "command-8558653f82fd4aac821af9d99f9984d3.log",
+          "is_dir": false,
+          "bytes": 4927
+        },
+        {
+          "name": "command-85668a28b20841f9b1b553fa6d1ad4b8.log",
+          "is_dir": false,
+          "bytes": 5336
+        },
+        {
+          "name": "command-857a79849f9849bc93009caa9b5960c0.log",
+          "is_dir": false,
+          "bytes": 4512
+        },
+        {
+          "name": "command-872cbb00f1f24cd2b9ead2bc1e1a8a21.log",
+          "is_dir": false,
+          "bytes": 998
+        },
+        {
+          "name": "command-87897b588f784a55beb288560a9696b6.log",
+          "is_dir": false,
+          "bytes": 2511
+        },
+        {
+          "name": "command-87e0b8aa79f64bae9fa8a6d48273210a.log",
+          "is_dir": false,
+          "bytes": 5250
+        },
+        {
+          "name": "command-87f3b69518184eaba900e2a20008df52.log",
+          "is_dir": false,
+          "bytes": 2426
+        },
+        {
+          "name": "command-886a4dc604f14f8fae6e2b3501ef4de9.log",
+          "is_dir": false,
+          "bytes": 4698
+        },
+        {
+          "name": "command-887517c66b134a108145d8cc3747d82e.log",
+          "is_dir": false,
+          "bytes": 5785
+        },
+        {
+          "name": "command-88c740343171461a9bb0bba51fccfb7b.log",
+          "is_dir": false,
+          "bytes": 5191
+        },
+        {
+          "name": "command-88d2808dc3044b8d99d6069efb7453f1.log",
+          "is_dir": false,
+          "bytes": 5461
+        },
+        {
+          "name": "command-88f9336e93c346de9b8193ac7b9f0bfe.log",
+          "is_dir": false,
+          "bytes": 6811
+        },
+        {
+          "name": "command-8932fe9dddde4af482ece504bf3f53bb.log",
+          "is_dir": false,
+          "bytes": 2490
+        },
+        {
+          "name": "command-89d1e7b1f0504d3db0265ebe22a1dfaa.log",
+          "is_dir": false,
+          "bytes": 2098
+        },
+        {
+          "name": "command-8a159dba24f74c478794681b9eae30f7.log",
+          "is_dir": false,
+          "bytes": 5248
+        },
+        {
+          "name": "command-8a3c6b01c14642a28db6bf3583721513.log",
+          "is_dir": false,
+          "bytes": 6797
+        },
+        {
+          "name": "command-8a611ab73d4e448c8e09e63094842f53.log",
+          "is_dir": false,
+          "bytes": 5969
+        },
+        {
+          "name": "command-8ba232de1a7e4b2f8419dfed486cd262.log",
+          "is_dir": false,
+          "bytes": 5472
+        },
+        {
+          "name": "command-8bd00be60c64446d8665dd9a62ddcb6d.log",
+          "is_dir": false,
+          "bytes": 6431
+        },
+        {
+          "name": "command-8c35c0529f194313bda3e9f4aee36a1b.log",
+          "is_dir": false,
+          "bytes": 4893
+        },
+        {
+          "name": "command-8cbd6726d2004a95b6072b2be035de8b.log",
+          "is_dir": false,
+          "bytes": 7219
+        },
+        {
+          "name": "command-8cd27f173b5a4194a47ee00d09efb3b3.log",
+          "is_dir": false,
+          "bytes": 420
+        },
+        {
+          "name": "command-8cd5efe20312401ba1ab8520bc7a7149.log",
+          "is_dir": false,
+          "bytes": 1607
+        },
+        {
+          "name": "command-8d00288cbb2e44908869cb608b7e0616.log",
+          "is_dir": false,
+          "bytes": 2852
+        },
+        {
+          "name": "command-8d715d7fadab42f181cc052ea5f04e54.log",
+          "is_dir": false,
+          "bytes": 5969
+        },
+        {
+          "name": "command-8db367e1c5584b12953a6eb38131efa0.log",
+          "is_dir": false,
+          "bytes": 906
+        },
+        {
+          "name": "command-8e3616d5eeee480b94bdca0f80b6a928.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-8eff2229bae4422f8aa758f3acf86ec9.log",
+          "is_dir": false,
+          "bytes": 4478
+        },
+        {
+          "name": "command-902bae2b47d74f9891cad587e3234ffc.log",
+          "is_dir": false,
+          "bytes": 2223
+        },
+        {
+          "name": "command-908268649e604656b6f91b435d74f900.log",
+          "is_dir": false,
+          "bytes": 3985
+        },
+        {
+          "name": "command-90864f4dd1cc4dbb9f69f304fd940e6f.log",
+          "is_dir": false,
+          "bytes": 4800
+        },
+        {
+          "name": "command-91669d817b6e490b90c675a2001262f4.log",
+          "is_dir": false,
+          "bytes": 420
+        },
+        {
+          "name": "command-922a5e45727447f89e96d92121574e54.log",
+          "is_dir": false,
+          "bytes": 5854
+        },
+        {
+          "name": "command-925500eea7a140c69033bcb29f3d6080.log",
+          "is_dir": false,
+          "bytes": 5114
+        },
+        {
+          "name": "command-9256798734854b499fadab6510309f8b.log",
+          "is_dir": false,
+          "bytes": 8388
+        },
+        {
+          "name": "command-93787d951abe4de5bbf3a656dd206ec7.log",
+          "is_dir": false,
+          "bytes": 5636
+        },
+        {
+          "name": "command-93bedbd318c347da992b462acc395bb9.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-9432f70ec58246b3bc4fac816f5511ec.log",
+          "is_dir": false,
+          "bytes": 6723
+        },
+        {
+          "name": "command-94507e36357d4323a53ed8a6a1c49344.log",
+          "is_dir": false,
+          "bytes": 4027
+        },
+        {
+          "name": "command-9459643bffe6479b8ec2d1e35e5f4e0b.log",
+          "is_dir": false,
+          "bytes": 4019
+        },
+        {
+          "name": "command-949337ef5bae4fa28702aa49f50c7ddd.log",
+          "is_dir": false,
+          "bytes": 7032
+        },
+        {
+          "name": "command-9494f891e66c400da5ed7b6a9430409b.log",
+          "is_dir": false,
+          "bytes": 5194
+        },
+        {
+          "name": "command-94eae34066dd41849d59034be3ccb291.log",
+          "is_dir": false,
+          "bytes": 4453
+        },
+        {
+          "name": "command-94ef0864a69c42e09e4190570b183364.log",
+          "is_dir": false,
+          "bytes": 814
+        },
+        {
+          "name": "command-9545b6a52e884cd2ad485c46f4b41d19.log",
+          "is_dir": false,
+          "bytes": 5026
+        },
+        {
+          "name": "command-95b6858561274d478fb157aea1386a92.log",
+          "is_dir": false,
+          "bytes": 4031
+        },
+        {
+          "name": "command-95d66ee70f1b4ab4a348394f5fc335dd.log",
+          "is_dir": false,
+          "bytes": 821
+        },
+        {
+          "name": "command-973f0bc308fc44f4bc20a355a0a1e1d7.log",
+          "is_dir": false,
+          "bytes": 5132
+        },
+        {
+          "name": "command-979815e40ab24c77886d425341af9c26.log",
+          "is_dir": false,
+          "bytes": 7244
+        },
+        {
+          "name": "command-97aac26bd8984d35ba07bc61504c2c3d.log",
+          "is_dir": false,
+          "bytes": 4966
+        },
+        {
+          "name": "command-982301f0d8044ae9aa55731a1b5e737b.log",
+          "is_dir": false,
+          "bytes": 5720
+        },
+        {
+          "name": "command-9832dab487434b188c0e42468a8015e4.log",
+          "is_dir": false,
+          "bytes": 647
+        },
+        {
+          "name": "command-992957f79e3e471a9f58cf1471e47cd2.log",
+          "is_dir": false,
+          "bytes": 20965
+        },
+        {
+          "name": "command-992e22cf6c1242f2a0b2ecd1cacf955c.log",
+          "is_dir": false,
+          "bytes": 7349
+        },
+        {
+          "name": "command-99534ae2b7984dae99524528011dcc25.log",
+          "is_dir": false,
+          "bytes": 4938
+        },
+        {
+          "name": "command-996b8724f8f64c1fa7e289ad2a4d97bb.log",
+          "is_dir": false,
+          "bytes": 7170
+        },
+        {
+          "name": "command-998189ee30d64998a1f5f580b17950b5.log",
+          "is_dir": false,
+          "bytes": 8575
+        },
+        {
+          "name": "command-99982e5d6ef94de1a699e073e08ebc0d.log",
+          "is_dir": false,
+          "bytes": 4649
+        },
+        {
+          "name": "command-9ae93ce67e48425d95d7600545b703a6.log",
+          "is_dir": false,
+          "bytes": 4592
+        },
+        {
+          "name": "command-9b0ac2bb07fe4cb48009ff3e7903b5e2.log",
+          "is_dir": false,
+          "bytes": 7136
+        },
+        {
+          "name": "command-9b0cdf9fbeab4550adc1ed1105039354.log",
+          "is_dir": false,
+          "bytes": 4772
+        },
+        {
+          "name": "command-9b1ee18d82a7498e99187d7f757e1e0b.log",
+          "is_dir": false,
+          "bytes": 6998
+        },
+        {
+          "name": "command-9b6639899eb04aacbc019e034f932db4.log",
+          "is_dir": false,
+          "bytes": 4031
+        },
+        {
+          "name": "command-9b860ca17c6e4e95bd4d428da7e7fbde.log",
+          "is_dir": false,
+          "bytes": 4944
+        },
+        {
+          "name": "command-9b8f8a0840954c068df4038f6bd02307.log",
+          "is_dir": false,
+          "bytes": 2487
+        },
+        {
+          "name": "command-9b94ab77f1a14857b53f983a2b60583a.log",
+          "is_dir": false,
+          "bytes": 2504
+        },
+        {
+          "name": "command-9ca3606b51c64133ae3032a1715b145f.log",
+          "is_dir": false,
+          "bytes": 5473
+        },
+        {
+          "name": "command-9d580b511b1f412b88c539c426b76888.log",
+          "is_dir": false,
+          "bytes": 1211
+        },
+        {
+          "name": "command-9d79b48d588e4dab9be429e4e1e21095.log",
+          "is_dir": false,
+          "bytes": 8387
+        },
+        {
+          "name": "command-9d9f18e28a814400ae03db7dad6fa75e.log",
+          "is_dir": false,
+          "bytes": 5206
+        },
+        {
+          "name": "command-9da5b50a55ec4ba98aae07d2ed19d55b.log",
+          "is_dir": false,
+          "bytes": 6768
+        },
+        {
+          "name": "command-9deb07c78b4d4de98f896fa6bc55763f.log",
+          "is_dir": false,
+          "bytes": 907
+        },
+        {
+          "name": "command-9e8964a1822249d694162971e790f476.log",
+          "is_dir": false,
+          "bytes": 4973
+        },
+        {
+          "name": "command-9eb8d6f0e98c4b2988dcf64f9246fadf.log",
+          "is_dir": false,
+          "bytes": 3819
+        },
+        {
+          "name": "command-9ed076f7b618474983546211964ac28d.log",
+          "is_dir": false,
+          "bytes": 4837
+        },
+        {
+          "name": "command-9f057334ec434273aa19776c6a90c991.log",
+          "is_dir": false,
+          "bytes": 906
+        },
+        {
+          "name": "command-9f300450d7974309bc2ac7fb41ee26c0.log",
+          "is_dir": false,
+          "bytes": 4938
+        },
+        {
+          "name": "command-9fad18affb854ddd8d4d69edd9e4667a.log",
+          "is_dir": false,
+          "bytes": 4760
+        },
+        {
+          "name": "command-9fcf820e617b4618a6f32059b83656d1.log",
+          "is_dir": false,
+          "bytes": 2791
+        },
+        {
+          "name": "command-a04679c2208f40208ad9c97baa28b775.log",
+          "is_dir": false,
+          "bytes": 830
+        },
+        {
+          "name": "command-a059f5599fa74dcf931ab4fb8fd67661.log",
+          "is_dir": false,
+          "bytes": 2861
+        },
+        {
+          "name": "command-a0798cb505e842b9a68301f2b5818ecb.log",
+          "is_dir": false,
+          "bytes": 6764
+        },
+        {
+          "name": "command-a0dd6ab37f054cce93fc79b565b34e33.log",
+          "is_dir": false,
+          "bytes": 7183
+        },
+        {
+          "name": "command-a103f9754c9f492696bb54bf3b386f20.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-a1eb97d3f79e4cf1abdfcde30059401e.log",
+          "is_dir": false,
+          "bytes": 3030
+        },
+        {
+          "name": "command-a2300945a0b04e61b266d40ce239e99a.log",
+          "is_dir": false,
+          "bytes": 2350
+        },
+        {
+          "name": "command-a2aa353a89ad4c02a778528eeabe5943.log",
+          "is_dir": false,
+          "bytes": 816
+        },
+        {
+          "name": "command-a319f598d35d4495853c871a65dc6480.log",
+          "is_dir": false,
+          "bytes": 4075
+        },
+        {
+          "name": "command-a337526c3abe4bcd9f2d36cdf8553d07.log",
+          "is_dir": false,
+          "bytes": 5536
+        },
+        {
+          "name": "command-a3490cfb95804a66ba1a6d8abfde254b.log",
+          "is_dir": false,
+          "bytes": 6748
+        },
+        {
+          "name": "command-a36010c2a58b4034bf203ce80923d9ec.log",
+          "is_dir": false,
+          "bytes": 3473
+        },
+        {
+          "name": "command-a3a03eb0d7e343ef888236afd852398c.log",
+          "is_dir": false,
+          "bytes": 3209
+        },
+        {
+          "name": "command-a3a083504d8947ec8d1934b40954ea6f.log",
+          "is_dir": false,
+          "bytes": 5576
+        },
+        {
+          "name": "command-a47157e22d894110998e0a265463a24c.log",
+          "is_dir": false,
+          "bytes": 3200
+        },
+        {
+          "name": "command-a4a58322e7834d85bf68d839e11ddce6.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-a4e3c4023b744b8ab20f96b929a49d63.log",
+          "is_dir": false,
+          "bytes": 2785
+        },
+        {
+          "name": "command-a5201f4461c341e5bd8eb24e1e2ce930.log",
+          "is_dir": false,
+          "bytes": 5130
+        },
+        {
+          "name": "command-a555d20a4d734183aa07effea4a695bc.log",
+          "is_dir": false,
+          "bytes": 3791
+        },
+        {
+          "name": "command-a5730cf28d9a427c8b476a49b4ecc9f6.log",
+          "is_dir": false,
+          "bytes": 4944
+        },
+        {
+          "name": "command-a5f44ec57fc04bc4a9abbf2a0e8a9c48.log",
+          "is_dir": false,
+          "bytes": 4948
+        },
+        {
+          "name": "command-a6cba04b312d40cba182f28a48fb71bd.log",
+          "is_dir": false,
+          "bytes": 898
+        },
+        {
+          "name": "command-a76aa904060943108bf8eeb26d15f4b0.log",
+          "is_dir": false,
+          "bytes": 4945
+        },
+        {
+          "name": "command-a76f3e05dc5446779c26e88dd423e963.log",
+          "is_dir": false,
+          "bytes": 7225
+        },
+        {
+          "name": "command-a7b048d3616540ce84a74e06cf17ccde.log",
+          "is_dir": false,
+          "bytes": 1254
+        },
+        {
+          "name": "command-a7f766dd06734faa9e679d533e8750c1.log",
+          "is_dir": false,
+          "bytes": 5535
+        },
+        {
+          "name": "command-a86d2b5365b64bb989e1cd2840fd77df.log",
+          "is_dir": false,
+          "bytes": 7042
+        },
+        {
+          "name": "command-a90d8275e6b140a7b088aeed48d090c4.log",
+          "is_dir": false,
+          "bytes": 6420
+        },
+        {
+          "name": "command-a99ad5cf29cd439fa87bed97101192f6.log",
+          "is_dir": false,
+          "bytes": 904
+        },
+        {
+          "name": "command-a99df94c9a154d59b323959811f2144e.log",
+          "is_dir": false,
+          "bytes": 4659
+        },
+        {
+          "name": "command-aa2bcd5395c04d9ea0f580b4000e7b6d.log",
+          "is_dir": false,
+          "bytes": 4982
+        },
+        {
+          "name": "command-aa6ed2b7787d4451be6f206379b67fea.log",
+          "is_dir": false,
+          "bytes": 2210
+        },
+        {
+          "name": "command-ab31388929c54d61ae8be4d4e70dfae0.log",
+          "is_dir": false,
+          "bytes": 6766
+        },
+        {
+          "name": "command-ab6ddec446654c9188e71e0cc72936fa.log",
+          "is_dir": false,
+          "bytes": 4924
+        },
+        {
+          "name": "command-ab9ee9f4b7314872884c0172927b6902.log",
+          "is_dir": false,
+          "bytes": 4864
+        },
+        {
+          "name": "command-abd4f901968f43e2b0972214570ea2a3.log",
+          "is_dir": false,
+          "bytes": 1254
+        },
+        {
+          "name": "command-ac0e3fa5129742b5bddc79f5a6cfa1ee.log",
+          "is_dir": false,
+          "bytes": 6423
+        },
+        {
+          "name": "command-ac99952885684fa69290fe4de551ab22.log",
+          "is_dir": false,
+          "bytes": 825
+        },
+        {
+          "name": "command-ad466887628d412c973de551f46afa11.log",
+          "is_dir": false,
+          "bytes": 4820
+        },
+        {
+          "name": "command-ada61e81a4a6464ba2700a09df27b03c.log",
+          "is_dir": false,
+          "bytes": 4055
+        },
+        {
+          "name": "command-ade246b4347c48778e21becec5f9916f.log",
+          "is_dir": false,
+          "bytes": 5101
+        },
+        {
+          "name": "command-ae154833234c4f4dbdb4dc49ffa2a83e.log",
+          "is_dir": false,
+          "bytes": 1906
+        },
+        {
+          "name": "command-ae456300ef904dc28eef5e910b7b5af4.log",
+          "is_dir": false,
+          "bytes": 8425
+        },
+        {
+          "name": "command-ae5be0bec449449f954709a7d0ee346c.log",
+          "is_dir": false,
+          "bytes": 931
+        },
+        {
+          "name": "command-aeb47b026d7344e6a88ee12b5da1a3e8.log",
+          "is_dir": false,
+          "bytes": 6944
+        },
+        {
+          "name": "command-aec419f9f94c4a898c5537bd0ca0a19f.log",
+          "is_dir": false,
+          "bytes": 2717
+        },
+        {
+          "name": "command-aee5763a83784b6695badeb0e422ff9a.log",
+          "is_dir": false,
+          "bytes": 2449
+        },
+        {
+          "name": "command-af02e67ef46b427abc8cd410e3b916e0.log",
+          "is_dir": false,
+          "bytes": 4940
+        },
+        {
+          "name": "command-af5a54045beb44229a9bb60d864cb361.log",
+          "is_dir": false,
+          "bytes": 1413
+        },
+        {
+          "name": "command-afde3460e33b4b3595e001c333cf3e65.log",
+          "is_dir": false,
+          "bytes": 5399
+        },
+        {
+          "name": "command-b0202cdb74f04d63966b3471ee52f9e1.log",
+          "is_dir": false,
+          "bytes": 4967
+        },
+        {
+          "name": "command-b0313a4088b743f09fa1b72b52067adb.log",
+          "is_dir": false,
+          "bytes": 5121
+        },
+        {
+          "name": "command-b09cd16fd5f44e6e96dcd178a7fe0aa5.log",
+          "is_dir": false,
+          "bytes": 1807
+        },
+        {
+          "name": "command-b124ed79d744446b9f42cc91d07c4d8c.log",
+          "is_dir": false,
+          "bytes": 4730
+        },
+        {
+          "name": "command-b22b6f4c9acc4e66a885e9223dbbeb45.log",
+          "is_dir": false,
+          "bytes": 4677
+        },
+        {
+          "name": "command-b25b5e1586bf45a7a4ecd26a34cde73a.log",
+          "is_dir": false,
+          "bytes": 7008
+        },
+        {
+          "name": "command-b25ccf873a67477bbd63971407a79ec1.log",
+          "is_dir": false,
+          "bytes": 4929
+        },
+        {
+          "name": "command-b290909d831d4604986c97b72111da6c.log",
+          "is_dir": false,
+          "bytes": 903
+        },
+        {
+          "name": "command-b2c1aed893e6484f89b9ea88e5724f4e.log",
+          "is_dir": false,
+          "bytes": 4514
+        },
+        {
+          "name": "command-b32e522f924b429382c786a3cee3043e.log",
+          "is_dir": false,
+          "bytes": 906
+        },
+        {
+          "name": "command-b35f54f650b947e7a67f76a3d95f0429.log",
+          "is_dir": false,
+          "bytes": 4671
+        },
+        {
+          "name": "command-b379f4c978144d4295a6fe122cf9aaa2.log",
+          "is_dir": false,
+          "bytes": 4896
+        },
+        {
+          "name": "command-b3e4c33a0a664338983bf646bcd91c34.log",
+          "is_dir": false,
+          "bytes": 7144
+        },
+        {
+          "name": "command-b3fe41c14493418982a04b5a9d85da90.log",
+          "is_dir": false,
+          "bytes": 4883
+        },
+        {
+          "name": "command-b40fd823febf4cc9bf11fd6310b12daa.log",
+          "is_dir": false,
+          "bytes": 9045
+        },
+        {
+          "name": "command-b4593972d58b4223acfd0139c3dbfdaf.log",
+          "is_dir": false,
+          "bytes": 7107
+        },
+        {
+          "name": "command-b45cd2be22cc45db8fab4e25b78b15b9.log",
+          "is_dir": false,
+          "bytes": 6977
+        },
+        {
+          "name": "command-b4c7cd3faa5545bcb7e5c9f6d0da43c8.log",
+          "is_dir": false,
+          "bytes": 7209
+        },
+        {
+          "name": "command-b4ce6f4f9f6847f1baa0b97304b05b42.log",
+          "is_dir": false,
+          "bytes": 7542
+        },
+        {
+          "name": "command-b50699ba71ba4a58a2fa1fcc75855763.log",
+          "is_dir": false,
+          "bytes": 5535
+        },
+        {
+          "name": "command-b55db4b709e749ce8c1a196270b4b91d.log",
+          "is_dir": false,
+          "bytes": 912
+        },
+        {
+          "name": "command-b6461cd2820b459887bc855ff5652e4b.log",
+          "is_dir": false,
+          "bytes": 8043
+        },
+        {
+          "name": "command-b6bcd4e8306a4bfb9e9fd11b2ba77212.log",
+          "is_dir": false,
+          "bytes": 5060
+        },
+        {
+          "name": "command-b6c1002fe6b44b7b84db3a137019b39a.log",
+          "is_dir": false,
+          "bytes": 902
+        },
+        {
+          "name": "command-b6ca7b637fed479ca076af4e5f9c2436.log",
+          "is_dir": false,
+          "bytes": 5366
+        },
+        {
+          "name": "command-b6ec6c7faa8244bdb46e46794332d9c6.log",
+          "is_dir": false,
+          "bytes": 4578
+        },
+        {
+          "name": "command-b79df7d37ed64b989bd36531a4839dfa.log",
+          "is_dir": false,
+          "bytes": 7148
+        },
+        {
+          "name": "command-b7a33da4d2ed4408a511b8307ff32021.log",
+          "is_dir": false,
+          "bytes": 2003
+        },
+        {
+          "name": "command-b7b90b0b8cbf42e8ade7ed7a7adb929b.log",
+          "is_dir": false,
+          "bytes": 6762
+        },
+        {
+          "name": "command-b7e698c4301e4a48ba810be3840c4fea.log",
+          "is_dir": false,
+          "bytes": 2785
+        },
+        {
+          "name": "command-b8ecbc2b026b43699564e9f4bd188c0a.log",
+          "is_dir": false,
+          "bytes": 5123
+        },
+        {
+          "name": "command-b974b359d4eb4d769fabb8ba41901956.log",
+          "is_dir": false,
+          "bytes": 6784
+        },
+        {
+          "name": "command-b9a8fca54de746569f171035c8c5ec41.log",
+          "is_dir": false,
+          "bytes": 4873
+        },
+        {
+          "name": "command-b9cefd55f4724ff69d1321ac4ee4ded0.log",
+          "is_dir": false,
+          "bytes": 19270
+        },
+        {
+          "name": "command-ba038be41f8b409cb260c3b4314b2b4f.log",
+          "is_dir": false,
+          "bytes": 7247
+        },
+        {
+          "name": "command-bace8e53555a48cdbf7cd4ce35cef696.log",
+          "is_dir": false,
+          "bytes": 7228
+        },
+        {
+          "name": "command-bae33182142e4fc0b539a4c3177f3335.log",
+          "is_dir": false,
+          "bytes": 8173
+        },
+        {
+          "name": "command-bb3a5b4605fb482eb75d64f6eb72c544.log",
+          "is_dir": false,
+          "bytes": 2112
+        },
+        {
+          "name": "command-bb551f0a378c47e4be67ea3d01a3d459.log",
+          "is_dir": false,
+          "bytes": 6733
+        },
+        {
+          "name": "command-bbd88c1ad26049ddbef35821fde21c25.log",
+          "is_dir": false,
+          "bytes": 821
+        },
+        {
+          "name": "command-bc443d8cd9084f6e8e9ef9dd0456a777.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-bc463b07071143c18693062f35e1a29c.log",
+          "is_dir": false,
+          "bytes": 5803
+        },
+        {
+          "name": "command-bc79ad989ddd4ea2a596e5f647e4895d.log",
+          "is_dir": false,
+          "bytes": 2793
+        },
+        {
+          "name": "command-bcc1738f10ff45bda7e92e64b0d25f56.log",
+          "is_dir": false,
+          "bytes": 5014
+        },
+        {
+          "name": "command-bd1ec8b34ffa4d529eb9f1c2894de967.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-bd4da0a3cb53478990341b7410d67984.log",
+          "is_dir": false,
+          "bytes": 7172
+        },
+        {
+          "name": "command-bd53dc73da274d35a03f454ee0bbe91e.log",
+          "is_dir": false,
+          "bytes": 4621
+        },
+        {
+          "name": "command-bda69c8d41e04e8f8b71f85b07b644ed.log",
+          "is_dir": false,
+          "bytes": 4947
+        },
+        {
+          "name": "command-bddae02302e14681b404be9673506332.log",
+          "is_dir": false,
+          "bytes": 7142
+        },
+        {
+          "name": "command-be279187aa9047f79c3cebd157ea7ee9.log",
+          "is_dir": false,
+          "bytes": 4936
+        },
+        {
+          "name": "command-be761a420c35438cab81cb5a34e1ce89.log",
+          "is_dir": false,
+          "bytes": 7400
+        },
+        {
+          "name": "command-bedf923be3cb4cb2aecf0eb63ae57a1a.log",
+          "is_dir": false,
+          "bytes": 7259
+        },
+        {
+          "name": "command-bee4ddc954e645dda75074b3911e8cbc.log",
+          "is_dir": false,
+          "bytes": 2223
+        },
+        {
+          "name": "command-bf0173f1e6204cefbcfd4f34ad81b1b0.log",
+          "is_dir": false,
+          "bytes": 5728
+        },
+        {
+          "name": "command-bf5cb5c7d3204540b2523ad1ef7fc829.log",
+          "is_dir": false,
+          "bytes": 4197
+        },
+        {
+          "name": "command-c008bffcf9004de3b2f97b0e595015f3.log",
+          "is_dir": false,
+          "bytes": 4049
+        },
+        {
+          "name": "command-c08250971e234740b22127a665abe0c9.log",
+          "is_dir": false,
+          "bytes": 904
+        },
+        {
+          "name": "command-c111af9fbf03496580f66933e0ab78c3.log",
+          "is_dir": false,
+          "bytes": 4014
+        },
+        {
+          "name": "command-c187cb1ff51b424ab6bc01139fa6a895.log",
+          "is_dir": false,
+          "bytes": 5191
+        },
+        {
+          "name": "command-c1c7cd074fbb49fe8110f89f1c28ad81.log",
+          "is_dir": false,
+          "bytes": 4825
+        },
+        {
+          "name": "command-c1dcd6f6b0214367b03a85d678ccaab9.log",
+          "is_dir": false,
+          "bytes": 6799
+        },
+        {
+          "name": "command-c292c4405b0a45b2bcff96886bc79519.log",
+          "is_dir": false,
+          "bytes": 837
+        },
+        {
+          "name": "command-c2a759d3a88f49338bbc50033567d394.log",
+          "is_dir": false,
+          "bytes": 4883
+        },
+        {
+          "name": "command-c2bd9755e15e47b3b39e8a303bcea49b.log",
+          "is_dir": false,
+          "bytes": 7182
+        },
+        {
+          "name": "command-c3614af8bad04d8c9b9d220ef78e56ce.log",
+          "is_dir": false,
+          "bytes": 2791
+        },
+        {
+          "name": "command-c4207b18dc7346169712ea3ba6814535.log",
+          "is_dir": false,
+          "bytes": 2340
+        },
+        {
+          "name": "command-c4298813fbc540d28a07471adad9ec81.log",
+          "is_dir": false,
+          "bytes": 2468
+        },
+        {
+          "name": "command-c4ef71ad49274021a2242ef3dd3a27b6.log",
+          "is_dir": false,
+          "bytes": 3725
+        },
+        {
+          "name": "command-c4efd84194894ddcb850f2f60466c494.log",
+          "is_dir": false,
+          "bytes": 2350
+        },
+        {
+          "name": "command-c5a9f86ddc9d449890bd3a0ccbea052b.log",
+          "is_dir": false,
+          "bytes": 7202
+        },
+        {
+          "name": "command-c5c014fd2fb84f06853fb6eb8396ea4e.log",
+          "is_dir": false,
+          "bytes": 5785
+        },
+        {
+          "name": "command-c5d3eed3f87349368f88b47c9039188c.log",
+          "is_dir": false,
+          "bytes": 3592
+        },
+        {
+          "name": "command-c61e944fc1314e318dba841e0ee2c6a1.log",
+          "is_dir": false,
+          "bytes": 2511
+        },
+        {
+          "name": "command-c6328009e7bc4c1f822be39a13fc9117.log",
+          "is_dir": false,
+          "bytes": 5372
+        },
+        {
+          "name": "command-c64d6992bf64480d9b884b1df220bc2d.log",
+          "is_dir": false,
+          "bytes": 5744
+        },
+        {
+          "name": "command-c672b027abdf471cbcee44a993733c00.log",
+          "is_dir": false,
+          "bytes": 5035
+        },
+        {
+          "name": "command-c68a6daf57ad4456b7f2778485aa0938.log",
+          "is_dir": false,
+          "bytes": 2780
+        },
+        {
+          "name": "command-c72c97f0bea343a4b7b5cb0f0ce35e6e.log",
+          "is_dir": false,
+          "bytes": 637
+        },
+        {
+          "name": "command-c75c688b64d2496fabfdfa7473d2c1da.log",
+          "is_dir": false,
+          "bytes": 4940
+        },
+        {
+          "name": "command-c799cd54536b4e11a60aa86b91b65979.log",
+          "is_dir": false,
+          "bytes": 1203
+        },
+        {
+          "name": "command-c82791c52336443fad693850093e42b5.log",
+          "is_dir": false,
+          "bytes": 817
+        },
+        {
+          "name": "command-c84ae2b53ad54bcea44adbdf5edae4ed.log",
+          "is_dir": false,
+          "bytes": 6904
+        },
+        {
+          "name": "command-c871bb72bb164d4ca4605fc6e756be19.log",
+          "is_dir": false,
+          "bytes": 6483
+        },
+        {
+          "name": "command-c87f69f2dd944a1b818504608d853cfd.log",
+          "is_dir": false,
+          "bytes": 915
+        },
+        {
+          "name": "command-c8960b5d6eec4ef98f08263129079365.log",
+          "is_dir": false,
+          "bytes": 4817
+        },
+        {
+          "name": "command-c8b9586dacc84cd2825f37010735c301.log",
+          "is_dir": false,
+          "bytes": 2825
+        },
+        {
+          "name": "command-c8cffad68f4f4523b09b0110f9da7712.log",
+          "is_dir": false,
+          "bytes": 2035
+        },
+        {
+          "name": "command-c8ff42091f1f404dadd74c8633dd080c.log",
+          "is_dir": false,
+          "bytes": 6822
+        },
+        {
+          "name": "command-c9d1533f9d79478093533d1db1eba53c.log",
+          "is_dir": false,
+          "bytes": 6727
+        },
+        {
+          "name": "command-ca0270531f714a16bff27facdac5c8ac.log",
+          "is_dir": false,
+          "bytes": 2443
+        },
+        {
+          "name": "command-ca103f1ad1a3400280b12f7ceda80308.log",
+          "is_dir": false,
+          "bytes": 2883
+        },
+        {
+          "name": "command-ca40f14ed3b6452b84404e16d4982835.log",
+          "is_dir": false,
+          "bytes": 5745
+        },
+        {
+          "name": "command-cb0913ec73ce4c948bd65eb7f17ab93d.log",
+          "is_dir": false,
+          "bytes": 4819
+        },
+        {
+          "name": "command-cb5ed9bc55004e77bdb69442fdd8808e.log",
+          "is_dir": false,
+          "bytes": 659
+        },
+        {
+          "name": "command-cbe7f3c3e8bf4213b084c433e51020d0.log",
+          "is_dir": false,
+          "bytes": 5122
+        },
+        {
+          "name": "command-cc317263a4c449c887345275861e586e.log",
+          "is_dir": false,
+          "bytes": 4015
+        },
+        {
+          "name": "command-cc5795aeecbc4723973c0895c2e1146c.log",
+          "is_dir": false,
+          "bytes": 7150
+        },
+        {
+          "name": "command-cc6231615b9847858efab100c9a6a652.log",
+          "is_dir": false,
+          "bytes": 4948
+        },
+        {
+          "name": "command-cc6dfe804c784b81980d8a87dbd413e7.log",
+          "is_dir": false,
+          "bytes": 4884
+        },
+        {
+          "name": "command-cca3d4ca3e734485aa133fb32c45019b.log",
+          "is_dir": false,
+          "bytes": 2404
+        },
+        {
+          "name": "command-ccb9c783633b418b86458b8c473f1a4f.log",
+          "is_dir": false,
+          "bytes": 2908
+        },
+        {
+          "name": "command-cce7f5dc3e004ee6af2bcb90fce92d27.log",
+          "is_dir": false,
+          "bytes": 4861
+        },
+        {
+          "name": "command-ccf871ee2d004a459a707ddbcb8fad63.log",
+          "is_dir": false,
+          "bytes": 2489
+        },
+        {
+          "name": "command-cd2d1f690bb1443fbfe22050b20c5fe1.log",
+          "is_dir": false,
+          "bytes": 6986
+        },
+        {
+          "name": "command-cd8d1907aa5a479c89df9e04de83b9c5.log",
+          "is_dir": false,
+          "bytes": 7214
+        },
+        {
+          "name": "command-cdf10a55ae9d42d6a8e06db0c6e92784.log",
+          "is_dir": false,
+          "bytes": 7182
+        },
+        {
+          "name": "command-ce154255fc1248feb27a819ad8832685.log",
+          "is_dir": false,
+          "bytes": 3972
+        },
+        {
+          "name": "command-ce22cf4369514efcada1b021679e67fb.log",
+          "is_dir": false,
+          "bytes": 4950
+        },
+        {
+          "name": "command-ceadeef2fefe4444aa90bbb4c153ed21.log",
+          "is_dir": false,
+          "bytes": 819
+        },
+        {
+          "name": "command-d04383e4948749559a369a8beb7d706b.log",
+          "is_dir": false,
+          "bytes": 1607
+        },
+        {
+          "name": "command-d05f872f8c1244129e3f0981cb456161.log",
+          "is_dir": false,
+          "bytes": 7255
+        },
+        {
+          "name": "command-d09a71eb42134d4a8c203363e8ae2c7d.log",
+          "is_dir": false,
+          "bytes": 4938
+        },
+        {
+          "name": "command-d15d95eebe2143a19490a7be81713d42.log",
+          "is_dir": false,
+          "bytes": 5144
+        },
+        {
+          "name": "command-d186b07cd789452da6c0c5ca01c4f16f.log",
+          "is_dir": false,
+          "bytes": 5132
+        },
+        {
+          "name": "command-d395baf269464edcbe34174a9ba9d2bb.log",
+          "is_dir": false,
+          "bytes": 6983
+        },
+        {
+          "name": "command-d39ee98138e0431386c83935bb25e513.log",
+          "is_dir": false,
+          "bytes": 909
+        },
+        {
+          "name": "command-d4183b8adf694b43afc91e8cd03cced4.log",
+          "is_dir": false,
+          "bytes": 4843
+        },
+        {
+          "name": "command-d44937e59ad74caa9e5160fb3fa5da90.log",
+          "is_dir": false,
+          "bytes": 7050
+        },
+        {
+          "name": "command-d4bb866baef14c3f9a2e4958bb3094b8.log",
+          "is_dir": false,
+          "bytes": 7470
+        },
+        {
+          "name": "command-d4d7e62582234b7faf2255d4056ec04d.log",
+          "is_dir": false,
+          "bytes": 6629
+        },
+        {
+          "name": "command-d4e0cde3807d4603a96a921c4d3f093b.log",
+          "is_dir": false,
+          "bytes": 4915
+        },
+        {
+          "name": "command-d4ec107f42d54d6891d61688081e80f5.log",
+          "is_dir": false,
+          "bytes": 9120
+        },
+        {
+          "name": "command-d5694a2eeb6c43d0ac7d4f0a8b7037c2.log",
+          "is_dir": false,
+          "bytes": 5321
+        },
+        {
+          "name": "command-d64402afc50244cb844a5e1b58e323cb.log",
+          "is_dir": false,
+          "bytes": 2340
+        },
+        {
+          "name": "command-d658aa41ad0c4b0ead8daf36c1343ab1.log",
+          "is_dir": false,
+          "bytes": 4623
+        },
+        {
+          "name": "command-d6c641fee9004309b110c49c8fd68309.log",
+          "is_dir": false,
+          "bytes": 7256
+        },
+        {
+          "name": "command-d7359880d2f040f18ea273b61dfcde64.log",
+          "is_dir": false,
+          "bytes": 8236
+        },
+        {
+          "name": "command-d74c0b859bf1421590fbf209372f0392.log",
+          "is_dir": false,
+          "bytes": 4918
+        },
+        {
+          "name": "command-d78dc6a08e304309a1916c91ebcec7c5.log",
+          "is_dir": false,
+          "bytes": 7198
+        },
+        {
+          "name": "command-d7c02d1ab56a42e0a2312a23b4002559.log",
+          "is_dir": false,
+          "bytes": 4928
+        },
+        {
+          "name": "command-d84cf067127c4bea9ad592a8aeba7755.log",
+          "is_dir": false,
+          "bytes": 5777
+        },
+        {
+          "name": "command-d93b40d004ad46279a018994c27a5c13.log",
+          "is_dir": false,
+          "bytes": 2223
+        },
+        {
+          "name": "command-d9420cbdd3fd4c8392fab0979e8d24b9.log",
+          "is_dir": false,
+          "bytes": 4942
+        },
+        {
+          "name": "command-d98593f42c9e4d8292d45c562f5f06b1.log",
+          "is_dir": false,
+          "bytes": 2223
+        },
+        {
+          "name": "command-d9f544238444457ba92d7d522f8735a1.log",
+          "is_dir": false,
+          "bytes": 2184
+        },
+        {
+          "name": "command-db2f4cb6c5024c0bbdac033e0344b798.log",
+          "is_dir": false,
+          "bytes": 847
+        },
+        {
+          "name": "command-dc33859e65bc4417a5ed311093b74395.log",
+          "is_dir": false,
+          "bytes": 10157
+        },
+        {
+          "name": "command-dc36ef212bba49af8ec29693ce3768e4.log",
+          "is_dir": false,
+          "bytes": 4916
+        },
+        {
+          "name": "command-dcfe405fd9bd44c0bd735e6b9f2379a8.log",
+          "is_dir": false,
+          "bytes": 4950
+        },
+        {
+          "name": "command-dd13f592a5194d13be98b1f58806843c.log",
+          "is_dir": false,
+          "bytes": 5626
+        },
+        {
+          "name": "command-dd3dd8271f2545b5ae3f603cba575381.log",
+          "is_dir": false,
+          "bytes": 4657
+        },
+        {
+          "name": "command-dd690c791d6b4fdcabfe31e3a1c73762.log",
+          "is_dir": false,
+          "bytes": 7156
+        },
+        {
+          "name": "command-ddd8896e104340a2b303461e9bde9f95.log",
+          "is_dir": false,
+          "bytes": 4008
+        },
+        {
+          "name": "command-de3dfd07bc8b4abcbaf0b1a80058604f.log",
+          "is_dir": false,
+          "bytes": 6848
+        },
+        {
+          "name": "command-dec4c7fb88cd49a3b34e0160f885b928.log",
+          "is_dir": false,
+          "bytes": 6696
+        },
+        {
+          "name": "command-ded38787d46a41da82408e4c06c224f3.log",
+          "is_dir": false,
+          "bytes": 5007
+        },
+        {
+          "name": "command-df1f26019bf14ced8a1b3fc4e3d546b0.log",
+          "is_dir": false,
+          "bytes": 6541
+        },
+        {
+          "name": "command-df64e5f1b888419fb05143a8ae51183d.log",
+          "is_dir": false,
+          "bytes": 6612
+        },
+        {
+          "name": "command-df65435f728c47a184b83031a9bb2b96.log",
+          "is_dir": false,
+          "bytes": 4788
+        },
+        {
+          "name": "command-dfa0b3989ba940d3bb018adb44d48d7d.log",
+          "is_dir": false,
+          "bytes": 2487
+        },
+        {
+          "name": "command-dfdd25d877764278991cab054c03b458.log",
+          "is_dir": false,
+          "bytes": 5102
+        },
+        {
+          "name": "command-dfec7cac10a842d892119d0b8420756f.log",
+          "is_dir": false,
+          "bytes": 7138
+        },
+        {
+          "name": "command-e04c3d7612b44a20aa1cbceaf495d1f9.log",
+          "is_dir": false,
+          "bytes": 4765
+        },
+        {
+          "name": "command-e0e630e1d4904e0fbd1fb5143df4b8fe.log",
+          "is_dir": false,
+          "bytes": 152
+        },
+        {
+          "name": "command-e128f60b4f984d1a863fec844d57f530.log",
+          "is_dir": false,
+          "bytes": 5161
+        },
+        {
+          "name": "command-e12afb0c985942658ef74f22fb1a3d08.log",
+          "is_dir": false,
+          "bytes": 4058
+        },
+        {
+          "name": "command-e30679c630ac40c4b5aa84fd9a9506e5.log",
+          "is_dir": false,
+          "bytes": 5462
+        },
+        {
+          "name": "command-e3548ba6c62f4d2e928c657761e63119.log",
+          "is_dir": false,
+          "bytes": 7173
+        },
+        {
+          "name": "command-e3b94eb929eb42699ad7b52208cb184e.log",
+          "is_dir": false,
+          "bytes": 915
+        },
+        {
+          "name": "command-e4165bf1bd054bc5b1dafd3352eea05c.log",
+          "is_dir": false,
+          "bytes": 4919
+        },
+        {
+          "name": "command-e44e7abf7bd64c1f84295b4c92085f99.log",
+          "is_dir": false,
+          "bytes": 7143
+        },
+        {
+          "name": "command-e4a00f315a704f26b527e2e9a9331302.log",
+          "is_dir": false,
+          "bytes": 6933
+        },
+        {
+          "name": "command-e4bde1858a3e467a85874a6a228271a0.log",
+          "is_dir": false,
+          "bytes": 4841
+        },
+        {
+          "name": "command-e4c22ae629114e4eba8e01f242cbab8e.log",
+          "is_dir": false,
+          "bytes": 5782
+        },
+        {
+          "name": "command-e5449b198b8845879dfc28a81755a4a1.log",
+          "is_dir": false,
+          "bytes": 6786
+        },
+        {
+          "name": "command-e5c2a1a5a9134351b3ae730c6e07a0f9.log",
+          "is_dir": false,
+          "bytes": 4949
+        },
+        {
+          "name": "command-e675dc091953441c9ae035da4dd4ebe9.log",
+          "is_dir": false,
+          "bytes": 1617
+        },
+        {
+          "name": "command-e6b5f4691d8b43ea95036874fe1f0d2f.log",
+          "is_dir": false,
+          "bytes": 1970
+        },
+        {
+          "name": "command-e7a86a2171614b069932d0888133b797.log",
+          "is_dir": false,
+          "bytes": 5473
+        },
+        {
+          "name": "command-e7ae8688e3654207a14305fe09509167.log",
+          "is_dir": false,
+          "bytes": 1660
+        },
+        {
+          "name": "command-e7c103518f724dbd8c904e3582c9769e.log",
+          "is_dir": false,
+          "bytes": 2756
+        },
+        {
+          "name": "command-e7e6b87214ec4cb083ea0d8bc81b78c5.log",
+          "is_dir": false,
+          "bytes": 1694
+        },
+        {
+          "name": "command-e7eca15f9aa744d9bb8848a6d9155087.log",
+          "is_dir": false,
+          "bytes": 7201
+        },
+        {
+          "name": "command-e8b736bbd58d4da3b8a8d970cb99aae9.log",
+          "is_dir": false,
+          "bytes": 4773
+        },
+        {
+          "name": "command-e954bdba56d84f68b36627201309d8a7.log",
+          "is_dir": false,
+          "bytes": 4859
+        },
+        {
+          "name": "command-e9630d9b2c944f61a3a79381ae60629b.log",
+          "is_dir": false,
+          "bytes": 7144
+        },
+        {
+          "name": "command-e974e47fc46444ef9782973e62c3f3ac.log",
+          "is_dir": false,
+          "bytes": 7116
+        },
+        {
+          "name": "command-ea0031451f52413690bf16310e12a4f5.log",
+          "is_dir": false,
+          "bytes": 7194
+        },
+        {
+          "name": "command-ea48b77271b74046bb708c0b772bb690.log",
+          "is_dir": false,
+          "bytes": 5561
+        },
+        {
+          "name": "command-eaa196b123ce4e77b76f53ee875642bd.log",
+          "is_dir": false,
+          "bytes": 1973
+        },
+        {
+          "name": "command-eab2fbe1801d492fb23d19dcfeb46e46.log",
+          "is_dir": false,
+          "bytes": 23759
+        },
+        {
+          "name": "command-ead7831b4a77484b91e9687264370074.log",
+          "is_dir": false,
+          "bytes": 1858
+        },
+        {
+          "name": "command-eb391385735746659e1e4ef968b76087.log",
+          "is_dir": false,
+          "bytes": 1858
+        },
+        {
+          "name": "command-eb680617ca3e4b0b9bfffe46d0e89041.log",
+          "is_dir": false,
+          "bytes": 5105
+        },
+        {
+          "name": "command-eba8fa061cf84e55b0993c61350d80e1.log",
+          "is_dir": false,
+          "bytes": 2391
+        },
+        {
+          "name": "command-ec6898a79ea54213b5f05b3ab9dd0572.log",
+          "is_dir": false,
+          "bytes": 2174
+        },
+        {
+          "name": "command-ec68af0326bb49c79443ce7eda0dc966.log",
+          "is_dir": false,
+          "bytes": 7142
+        },
+        {
+          "name": "command-ec85a85f3c0e49c397ecddb483892a7e.log",
+          "is_dir": false,
+          "bytes": 2775
+        },
+        {
+          "name": "command-ecb6781387254df1aa35dd9cce1b2799.log",
+          "is_dir": false,
+          "bytes": 7234
+        },
+        {
+          "name": "command-ed4b138dd3e244d4a8b4e6e97a5f1e24.log",
+          "is_dir": false,
+          "bytes": 6820
+        },
+        {
+          "name": "command-edab7372f7fb4136b7218dc967131b3a.log",
+          "is_dir": false,
+          "bytes": 6826
+        },
+        {
+          "name": "command-ee239951694841048090bd6ee71348e5.log",
+          "is_dir": false,
+          "bytes": 2480
+        },
+        {
+          "name": "command-ee683e170e904c48b2232ee5692d9a64.log",
+          "is_dir": false,
+          "bytes": 4513
+        },
+        {
+          "name": "command-ee98fcc3d1dd481282f6c0bf6ec227a7.log",
+          "is_dir": false,
+          "bytes": 4621
+        },
+        {
+          "name": "command-eeaed8d0fafc4806b22f7ee184e1a6b2.log",
+          "is_dir": false,
+          "bytes": 4557
+        },
+        {
+          "name": "command-eef9fc48ca4546a9bd567bb0117e4bfa.log",
+          "is_dir": false,
+          "bytes": 4930
+        },
+        {
+          "name": "command-eefeaae108984752b93cae2095a2c28a.log",
+          "is_dir": false,
+          "bytes": 5536
+        },
+        {
+          "name": "command-ef333ffa8d164d9b87280bf51fa72bf7.log",
+          "is_dir": false,
+          "bytes": 7174
+        },
+        {
+          "name": "command-ef454a0eb76541249f7da4ec627ad317.log",
+          "is_dir": false,
+          "bytes": 4870
+        },
+        {
+          "name": "command-ef742d0cbb7541a5a9ee2bb6ef86a1cc.log",
+          "is_dir": false,
+          "bytes": 3678
+        },
+        {
+          "name": "command-efc3e3f589764c69b5f25bc948b97db0.log",
+          "is_dir": false,
+          "bytes": 900
+        },
+        {
+          "name": "command-f02bbd43e8924ec8bb79a197ba4b5833.log",
+          "is_dir": false,
+          "bytes": 5520
+        },
+        {
+          "name": "command-f034d9e901cb4b17a2598c61d1d3020c.log",
+          "is_dir": false,
+          "bytes": 906
+        },
+        {
+          "name": "command-f0797baba7b84e7d8432358f182f1674.log",
+          "is_dir": false,
+          "bytes": 669
+        },
+        {
+          "name": "command-f128eb86113c4c329f593c8e1c092b4f.log",
+          "is_dir": false,
+          "bytes": 5891
+        },
+        {
+          "name": "command-f14a57bccbbc4414a91e504940230fcd.log",
+          "is_dir": false,
+          "bytes": 26770
+        },
+        {
+          "name": "command-f15b3148f8d14bacb480ae4972211f7a.log",
+          "is_dir": false,
+          "bytes": 4852
+        },
+        {
+          "name": "command-f27b6e75708a4ef991101022ff6e41df.log",
+          "is_dir": false,
+          "bytes": 7229
+        },
+        {
+          "name": "command-f2de07ae886e492ebc47f9782bab915b.log",
+          "is_dir": false,
+          "bytes": 7175
+        },
+        {
+          "name": "command-f2fe40cc5df94fa5987014d763a5a3a8.log",
+          "is_dir": false,
+          "bytes": 4863
+        },
+        {
+          "name": "command-f3ad07c49fb845b78685cd8da9be01d2.log",
+          "is_dir": false,
+          "bytes": 4928
+        },
+        {
+          "name": "command-f3c68349a99a4cb2a5ae83beaeae6485.log",
+          "is_dir": false,
+          "bytes": 7185
+        },
+        {
+          "name": "command-f3fe92a8a85b43a38907f5af30a6731a.log",
+          "is_dir": false,
+          "bytes": 4497
+        },
+        {
+          "name": "command-f44f056b3f8c4d1f925384570eb0c3ce.log",
+          "is_dir": false,
+          "bytes": 2807
+        },
+        {
+          "name": "command-f488a62907cd4b1e80deb5697ca39e30.log",
+          "is_dir": false,
+          "bytes": 5429
+        },
+        {
+          "name": "command-f526e0d4dbd4460aab405422adc8ba0d.log",
+          "is_dir": false,
+          "bytes": 1368
+        },
+        {
+          "name": "command-f6064b9bd8ec4e6cac633989ef81d3b4.log",
+          "is_dir": false,
+          "bytes": 2891
+        },
+        {
+          "name": "command-f7458d4d5a184eb3a7c1d89dc814f1a2.log",
+          "is_dir": false,
+          "bytes": 6854
+        },
+        {
+          "name": "command-f7bc98b08fa848eea84873141c071ecc.log",
+          "is_dir": false,
+          "bytes": 4876
+        },
+        {
+          "name": "command-f7edf34198b34c929771d575bea613ee.log",
+          "is_dir": false,
+          "bytes": 6653
+        },
+        {
+          "name": "command-f7f2d57da92c4103b0850dcf2179e5d3.log",
+          "is_dir": false,
+          "bytes": 909
+        },
+        {
+          "name": "command-f81abe842e9646fabf0d0dec11a1cabd.log",
+          "is_dir": false,
+          "bytes": 5021
+        },
+        {
+          "name": "command-f91b4b2ed52d4bf58ffe8945e6ebca3c.log",
+          "is_dir": false,
+          "bytes": 8117
+        },
+        {
+          "name": "command-f94d327153a4493797af18e2e70531c2.log",
+          "is_dir": false,
+          "bytes": 4950
+        },
+        {
+          "name": "command-f98fc59af9da4d66869088d14363612c.log",
+          "is_dir": false,
+          "bytes": 4653
+        },
+        {
+          "name": "command-f9ca9b6d9e4f4f51bdf96d8f6f130e96.log",
+          "is_dir": false,
+          "bytes": 5398
+        },
+        {
+          "name": "command-fa305b563fac43599a0a5ca40e9e7617.log",
+          "is_dir": false,
+          "bytes": 6683
+        },
+        {
+          "name": "command-fa9c3ec52a4f4b41a12313ab778727ac.log",
+          "is_dir": false,
+          "bytes": 2262
+        },
+        {
+          "name": "command-fad41613d805400a9798bd7fbccda221.log",
+          "is_dir": false,
+          "bytes": 908
+        },
+        {
+          "name": "command-fb3a309dfe5949f5ac66166467e1e0d1.log",
+          "is_dir": false,
+          "bytes": 3991
+        },
+        {
+          "name": "command-fb4f190d2f454240b7c68116e2459faa.log",
+          "is_dir": false,
+          "bytes": 7219
+        },
+        {
+          "name": "command-fb6a7b3e091b4022b12500a4e7093c6d.log",
+          "is_dir": false,
+          "bytes": 7980
+        },
+        {
+          "name": "command-fbc949d1c33c41d694bbc3031e6b651b.log",
+          "is_dir": false,
+          "bytes": 7344
+        },
+        {
+          "name": "command-fbd93511c2664e1488871c57f4b216a8.log",
+          "is_dir": false,
+          "bytes": 4095
+        },
+        {
+          "name": "command-fc0d0b22ca454a4d97e1f3e30b7bf3d1.log",
+          "is_dir": false,
+          "bytes": 2788
+        },
+        {
+          "name": "command-fc1f7c82364e41299a146f263515f573.log",
+          "is_dir": false,
+          "bytes": 5178
+        },
+        {
+          "name": "command-fc71b585f01a48b3a674df9d676bfd7e.log",
+          "is_dir": false,
+          "bytes": 1614
+        },
+        {
+          "name": "command-fcfeb836c3fd488fb156afeaffe16076.log",
+          "is_dir": false,
+          "bytes": 3180
+        },
+        {
+          "name": "command-fd079825c0094b5d88818a790cb5216c.log",
+          "is_dir": false,
+          "bytes": 2210
+        },
+        {
+          "name": "command-fd9f7a393c4641d0aeaa180364de6084.log",
+          "is_dir": false,
+          "bytes": 932
+        },
+        {
+          "name": "command-fdff186dea754b87a1a7e9174ed3a5d4.log",
+          "is_dir": false,
+          "bytes": 7157
+        },
+        {
+          "name": "command-fe79d0fda10147f69861bab6dfdb6a50.log",
+          "is_dir": false,
+          "bytes": 5014
+        },
+        {
+          "name": "command-fe7c18372f094eff929fe4060abd88a8.log",
+          "is_dir": false,
+          "bytes": 4880
+        },
+        {
+          "name": "command-ff7f4bff295740d8a23d9e65b44b5b9e.log",
+          "is_dir": false,
+          "bytes": 7109
+        },
+        {
+          "name": "commands.json",
+          "is_dir": false,
+          "bytes": 93166992
+        },
+        {
+          "name": "direct-exact-100118588-20260826T194558Z.json",
+          "is_dir": false,
+          "bytes": 4194
+        },
+        {
+          "name": "direct-exact-100118918-20260826T203940Z.json",
+          "is_dir": false,
+          "bytes": 3752
+        },
+        {
+          "name": "direct-exact-100118918-20260826T204810Z.json",
+          "is_dir": false,
+          "bytes": 3956
+        },
+        {
+          "name": "direct-exact-100119091-dometic-20260819T204734Z.json",
+          "is_dir": false,
+          "bytes": 4724
+        },
+        {
+          "name": "direct-exact-100119091-dometic-20260819T212609Z.json",
+          "is_dir": false,
+          "bytes": 4812
+        },
+        {
+          "name": "direct-exact-100119454-20260822T141234Z.json",
+          "is_dir": false,
+          "bytes": 3360
+        },
+        {
+          "name": "direct-exact-100119454-20260822T142405Z.json",
+          "is_dir": false,
+          "bytes": 3360
+        },
+        {
+          "name": "direct-exact-100119543-20260827T004139Z.json",
+          "is_dir": false,
+          "bytes": 3552
+        },
+        {
+          "name": "direct-exact-100119585-20260827T030327Z.json",
+          "is_dir": false,
+          "bytes": 3528
+        },
+        {
+          "name": "direct-exact-100120046-lippert-20260820T201239Z.json",
+          "is_dir": false,
+          "bytes": 3338
+        },
+        {
+          "name": "direct-exact-100120441-20260819T191529Z.json",
+          "is_dir": false,
+          "bytes": 4738
+        },
+        {
+          "name": "direct-exact-100120441-20260819T191957Z.json",
+          "is_dir": false,
+          "bytes": 4942
+        },
+        {
+          "name": "direct-exact-100120441-20260819T193038Z.json",
+          "is_dir": false,
+          "bytes": 5146
+        },
+        {
+          "name": "direct-exact-100120441-20260819T193442Z.json",
+          "is_dir": false,
+          "bytes": 5350
+        },
+        {
+          "name": "direct-exact-100120441-lippert-20260819T220301Z.json",
+          "is_dir": false,
+          "bytes": 5350
+        },
+        {
+          "name": "direct-exact-100120441-lippert-20260819T220712Z.json",
+          "is_dir": false,
+          "bytes": 5554
+        },
+        {
+          "name": "direct-exact-100120441-lippert-20260820T014743Z.json",
+          "is_dir": false,
+          "bytes": 5758
+        },
+        {
+          "name": "direct-exact-100120475-dometic-20260819T221116Z.json",
+          "is_dir": false,
+          "bytes": 231
+        },
+        {
+          "name": "direct-exact-100120479-dometic-20260819T215621Z.json",
+          "is_dir": false,
+          "bytes": 3454
+        },
+        {
+          "name": "direct-exact-100120479-dometic-20260819T215713Z.json",
+          "is_dir": false,
+          "bytes": 3538
+        },
+        {
+          "name": "direct-exact-100120483-dometic-20260819T215457Z.json",
+          "is_dir": false,
+          "bytes": 3676
+        },
+        {
+          "name": "direct-exact-100120505-dometic-20260819T215305Z.json",
+          "is_dir": false,
+          "bytes": 3636
+        },
+        {
+          "name": "direct-exact-100120506-dometic-20260819T215254Z.json",
+          "is_dir": false,
+          "bytes": 231
+        },
+        {
+          "name": "direct-exact-100120507-dometic-20260819T215135Z.json",
+          "is_dir": false,
+          "bytes": 3536
+        },
+        {
+          "name": "direct-exact-100120521-dometic-20260819T215008Z.json",
+          "is_dir": false,
+          "bytes": 3408
+        },
+        {
+          "name": "direct-exact-100120526-dometic-20260819T214842Z.json",
+          "is_dir": false,
+          "bytes": 3490
+        },
+        {
+          "name": "direct-exact-100120549-dometic-20260819T214711Z.json",
+          "is_dir": false,
+          "bytes": 3700
+        },
+        {
+          "name": "direct-exact-100120590-dometic-20260819T214535Z.json",
+          "is_dir": false,
+          "bytes": 3376
+        },
+        {
+          "name": "direct-exact-100120698-20260831T160234Z.json",
+          "is_dir": false,
+          "bytes": 3314
+        },
+        {
+          "name": "direct-exact-100120714-20260822T141216Z.json",
+          "is_dir": false,
+          "bytes": 3388
+        },
+        {
+          "name": "direct-exact-100120714-20260822T143014Z.json",
+          "is_dir": false,
+          "bytes": 3388
+        },
+        {
+          "name": "direct-exact-100120723-20260822T145617Z.json",
+          "is_dir": false,
+          "bytes": 3342
+        },
+        {
+          "name": "direct-exact-100120766-20260824T184133Z.json",
+          "is_dir": false,
+          "bytes": 3320
+        },
+        {
+          "name": "direct-exact-100120766-20260824T184223Z.json",
+          "is_dir": false,
+          "bytes": 3320
+        },
+        {
+          "name": "direct-exact-100120766-20260824T184431Z.json",
+          "is_dir": false,
+          "bytes": 3320
+        },
+        {
+          "name": "direct-exact-100120766-20260824T185543Z.json",
+          "is_dir": false,
+          "bytes": 3520
+        },
+        {
+          "name": "direct-exact-100120766-20260824T185758Z.json",
+          "is_dir": false,
+          "bytes": 3520
+        },
+        {
+          "name": "direct-exact-100120794-20260825T142204Z.json",
+          "is_dir": false,
+          "bytes": 3356
+        },
+        {
+          "name": "direct-exact-100120802-20260825T134122Z.json",
+          "is_dir": false,
+          "bytes": 3312
+        },
+        {
+          "name": "direct-exact-100120802-20260825T134148Z.json",
+          "is_dir": false,
+          "bytes": 3312
+        },
+        {
+          "name": "direct-exact-100120802-20260825T134326Z.json",
+          "is_dir": false,
+          "bytes": 3312
+        },
+        {
+          "name": "direct-exact-100120803-20260825T140248Z.json",
+          "is_dir": false,
+          "bytes": 3320
+        },
+        {
+          "name": "direct-exact-100120855-20260825T135725Z.json",
+          "is_dir": false,
+          "bytes": 3516
+        },
+        {
+          "name": "events.jsonl",
+          "is_dir": false,
+          "bytes": 713238
+        },
+        {
+          "name": "every-order-review.json",
+          "is_dir": false,
+          "bytes": 2287814
+        },
+        {
+          "name": "every-order-review.log",
+          "is_dir": false,
+          "bytes": 4671338
+        },
+        {
+          "name": "exact-100119529-candidate.json",
+          "is_dir": false,
+          "bytes": 4390
+        },
+        {
+          "name": "exact-100120258-owner-policy-candidate.json",
+          "is_dir": false,
+          "bytes": 4004
+        },
+        {
+          "name": "exact-100120258-owner-policy-result.json",
+          "is_dir": false,
+          "bytes": 349
+        },
+        {
+          "name": "exact-catchup-100119693-20260827T140317Z.json",
+          "is_dir": false,
+          "bytes": 3388
+        },
+        {
+          "name": "exact-catchup-100119709-20260827T140651Z.json",
+          "is_dir": false,
+          "bytes": 3354
+        },
+        {
+          "name": "exact-catchup-100119745-20260827T141510Z.json",
+          "is_dir": false,
+          "bytes": 3488
+        },
+        {
+          "name": "exact-catchup-100119761-20260827T142354Z.json",
+          "is_dir": false,
+          "bytes": 3380
+        },
+        {
+          "name": "exact-catchup-100119790-20260827T143033Z.json",
+          "is_dir": false,
+          "bytes": 3316
+        },
+        {
+          "name": "exact-catchup-100119824-20260827T143513Z.json",
+          "is_dir": false,
+          "bytes": 3322
+        },
+        {
+          "name": "exact-catchup-100119860-20260827T143951Z.json",
+          "is_dir": false,
+          "bytes": 3340
+        },
+        {
+          "name": "exact-catchup-100119882-20260827T144442Z.json",
+          "is_dir": false,
+          "bytes": 3316
+        },
+        {
+          "name": "exact-catchup-100119901-20260827T144916Z.json",
+          "is_dir": false,
+          "bytes": 3302
+        },
+        {
+          "name": "exact-catchup-100119914-20260827T145355Z.json",
+          "is_dir": false,
+          "bytes": 3350
+        },
+        {
+          "name": "exact-catchup-100119921-20260827T145835Z.json",
+          "is_dir": false,
+          "bytes": 3364
+        },
+        {
+          "name": "exact-catchup-100119945-20260827T150121Z.json",
+          "is_dir": false,
+          "bytes": 3384
+        },
+        {
+          "name": "exact-catchup-100119957-20260827T150254Z.json",
+          "is_dir": false,
+          "bytes": 3318
+        },
+        {
+          "name": "exact-catchup-100119965-20260827T150929Z.json",
+          "is_dir": false,
+          "bytes": 3332
+        },
+        {
+          "name": "exact-catchup-100120368-20260827T151421Z.json",
+          "is_dir": false,
+          "bytes": 3630
+        },
+        {
+          "name": "exact-catchup-100120368-20260827T152255Z.json",
+          "is_dir": false,
+          "bytes": 3718
+        },
+        {
+          "name": "exact-catchup-100120408-20260827T151549Z.json",
+          "is_dir": false,
+          "bytes": 3360
+        },
+        {
+          "name": "exact-catchup-100120434-20260827T152638Z.json",
+          "is_dir": false,
+          "bytes": 3938
+        },
+        {
+          "name": "exact-catchup-100120434-20260827T154208Z.json",
+          "is_dir": false,
+          "bytes": 4142
+        },
+        {
+          "name": "exact-catchup-100120434-20260827T154416Z.json",
+          "is_dir": false,
+          "bytes": 4102
+        },
+        {
+          "name": "exact-catchup-100120447-20260827T153021Z.json",
+          "is_dir": false,
+          "bytes": 3300
+        },
+        {
+          "name": "exact-catchup-100120491-20260827T154857Z.json",
+          "is_dir": false,
+          "bytes": 3372
+        },
+        {
+          "name": "exact-catchup-100120510-20260827T155420Z.json",
+          "is_dir": false,
+          "bytes": 3318
+        },
+        {
+          "name": "exact-catchup-100120598-20260827T155854Z.json",
+          "is_dir": false,
+          "bytes": 4342
+        },
+        {
+          "name": "exact-catchup-100120604-20260827T160235Z.json",
+          "is_dir": false,
+          "bytes": 3716
+        },
+        {
+          "name": "exact-catchup-100120698-20260827T161344Z.json",
+          "is_dir": false,
+          "bytes": 3718
+        },
+        {
+          "name": "exact-catchup-100120702-20260827T161730Z.json",
+          "is_dir": false,
+          "bytes": 3766
+        },
+        {
+          "name": "exact-catchup-100120702-20260827T162138Z.json",
+          "is_dir": false,
+          "bytes": 3970
+        },
+        {
+          "name": "exact-catchup-100120754-20260827T162914Z.json",
+          "is_dir": false,
+          "bytes": 3354
+        },
+        {
+          "name": "exact-catchup-100120755-20260827T163039Z.json",
+          "is_dir": false,
+          "bytes": 3358
+        },
+        {
+          "name": "exact-catchup-100120755-20260827T163741Z.json",
+          "is_dir": false,
+          "bytes": 3358
+        },
+        {
+          "name": "exact-catchup-100120755-20260827T163908Z.json",
+          "is_dir": false,
+          "bytes": 3358
+        },
+        {
+          "name": "exact-catchup-100120760-20260827T164534Z.json",
+          "is_dir": false,
+          "bytes": 3726
+        },
+        {
+          "name": "exact-catchup-100120907-20260827T164944Z.json",
+          "is_dir": false,
+          "bytes": 3372
+        },
+        {
+          "name": "exact-catchup-100120908-20260827T170037Z.json",
+          "is_dir": false,
+          "bytes": 3372
+        },
+        {
+          "name": "exact-catchup-100120916-20260827T170506Z.json",
+          "is_dir": false,
+          "bytes": 3970
+        },
+        {
+          "name": "exact-catchup-100120951-20260827T170622Z.json",
+          "is_dir": false,
+          "bytes": 3464
+        },
+        {
+          "name": "exact-catchup-100120951-20260827T170917Z.json",
+          "is_dir": false,
+          "bytes": 3548
+        },
+        {
+          "name": "exact-catchup-100120955-20260827T171119Z.json",
+          "is_dir": false,
+          "bytes": 3466
+        },
+        {
+          "name": "exact-catchup-100120957-20260827T191249Z.json",
+          "is_dir": false,
+          "bytes": 3460
+        },
+        {
+          "name": "exact-catchup-100120957-20260827T191441Z.json",
+          "is_dir": false,
+          "bytes": 3544
+        },
+        {
+          "name": "exact-claim-active.json",
+          "is_dir": false,
+          "bytes": 896
+        },
+        {
+          "name": "exact-no-eta-100119023-20260826T212040Z.json",
+          "is_dir": false,
+          "bytes": 3742
+        },
+        {
+          "name": "exact-no-eta-100119529-20260826T230700Z.json",
+          "is_dir": false,
+          "bytes": 4186
+        },
+        {
+          "name": "exact-timing-override-100119232-20260826T214519Z.json",
+          "is_dir": false,
+          "bytes": 3582
+        },
+        {
+          "name": "exact-timing-override-100119587-20260827T111933Z.json",
+          "is_dir": false,
+          "bytes": 3550
+        },
+        {
+          "name": "exact-timing-override-100119587-20260827T112411Z.json",
+          "is_dir": false,
+          "bytes": 3754
+        },
+        {
+          "name": "final-dometic-remediation-reset-20260826.json",
+          "is_dir": false,
+          "bytes": 655
+        },
+        {
+          "name": "immutable-approvals",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "immutable-execution-manifests",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "lippert-backlog-enumeration.json",
+          "is_dir": false,
+          "bytes": 285467
+        },
+        {
+          "name": "lippert-catchup-28-controller.stderr.log",
+          "is_dir": false,
+          "bytes": 0
+        },
+        {
+          "name": "lippert-catchup-28-controller.stdout.log",
+          "is_dir": false,
+          "bytes": 3598
+        },
+        {
+          "name": "lippert-catchup-28-live.json",
+          "is_dir": false,
+          "bytes": 230478
+        },
+        {
+          "name": "lippert-catchup-8-live.json",
+          "is_dir": false,
+          "bytes": 322674
+        },
+        {
+          "name": "lippert-catchup-9-live.json",
+          "is_dir": false,
+          "bytes": 23505
+        },
+        {
+          "name": "live-catchup-audit.json",
+          "is_dir": false,
+          "bytes": 73138
+        },
+        {
+          "name": "manual-catchup-100121018-20260830T203618Z.json",
+          "is_dir": false,
+          "bytes": 3740
+        },
+        {
+          "name": "manual-catchup-100121018-20260830T204101Z.json",
+          "is_dir": false,
+          "bytes": 3740
+        },
+        {
+          "name": "manual-catchup-100121022-20260830T204602Z.json",
+          "is_dir": false,
+          "bytes": 3708
+        },
+        {
+          "name": "manual-catchup-100121022-20260830T205035Z.json",
+          "is_dir": false,
+          "bytes": 3708
+        },
+        {
+          "name": "manual-catchup-100121038-20260830T205536Z.json",
+          "is_dir": false,
+          "bytes": 5686
+        },
+        {
+          "name": "manual-catchup-100121038-20260830T210549Z.json",
+          "is_dir": false,
+          "bytes": 5686
+        },
+        {
+          "name": "owner-policy-candidates.json",
+          "is_dir": false,
+          "bytes": 271919
+        },
+        {
+          "name": "owner-policy-lane",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "owner-policy-last-scan.json",
+          "is_dir": false,
+          "bytes": 82
+        },
+        {
+          "name": "owner-policy-target-retries-result.json",
+          "is_dir": false,
+          "bytes": 285
+        },
+        {
+          "name": "owner-policy-target-retries.json",
+          "is_dir": false,
+          "bytes": 16392
+        },
+        {
+          "name": "partial-exact-100118863-20260826T202157Z.json",
+          "is_dir": false,
+          "bytes": 231
+        },
+        {
+          "name": "post-catchup-live-candidates.json",
+          "is_dir": false,
+          "bytes": 80477
+        },
+        {
+          "name": "producer-scheduler.log",
+          "is_dir": false,
+          "bytes": 30237875
+        },
+        {
+          "name": "producer.log",
+          "is_dir": false,
+          "bytes": 202
+        },
+        {
+          "name": "replacement-sku-remediation-reset-20260826.json",
+          "is_dir": false,
+          "bytes": 1289
+        },
+        {
+          "name": "scheduler.log",
+          "is_dir": false,
+          "bytes": 288717
+        },
+        {
+          "name": "scheduler.log.1",
+          "is_dir": false,
+          "bytes": 2097283
+        },
+        {
+          "name": "scheduler.log.2",
+          "is_dir": false,
+          "bytes": 2097197
+        },
+        {
+          "name": "STOP",
+          "is_dir": false,
+          "bytes": 143
+        },
+        {
+          "name": "STOP.released-20260818T063513Z.bak",
+          "is_dir": false,
+          "bytes": 68
+        },
+        {
+          "name": "STOP.released-after-kanban-triage-20260818T2023Z.bak",
+          "is_dir": false,
+          "bytes": 324
+        },
+        {
+          "name": "STOP.released-after-stale-watchdog-20260818T2020Z.bak",
+          "is_dir": false,
+          "bytes": 161
+        },
+        {
+          "name": "STOP.released-dead-critical-lock-20260818T2018Z.bak",
+          "is_dir": false,
+          "bytes": 178
+        },
+        {
+          "name": "STOP.released-scope-isolation-20260818T160405.bak",
+          "is_dir": false,
+          "bytes": 135
+        },
+        {
+          "name": "STOP.released-single-producer-20260818T063958Z.bak",
+          "is_dir": false,
+          "bytes": 68
+        },
+        {
+          "name": "STOP.released-verified-no-submit-resume-20260818T2012Z.bak",
+          "is_dir": false,
+          "bytes": 136
+        },
+        {
+          "name": "t_f79f3885-live-full-snapshot.json",
+          "is_dir": false,
+          "bytes": 130376
+        },
+        {
+          "name": "t_f79f3885-live-target-snapshot.json",
+          "is_dir": false,
+          "bytes": 3580
+        },
+        {
+          "name": "t_f79f3885-owner-gate-drain-last-result.json",
+          "is_dir": false,
+          "bytes": 251
+        },
+        {
+          "name": "vendor-failure-watchdog-state.json",
+          "is_dir": false,
+          "bytes": 21599
+        }
+      ]
+    },
+    {
+      "directory": "C:\\Users\\nicho\\ervp-vendor-automation\\state",
+      "entries": [
+        {
+          "name": "100120134-producer-preflight.json",
+          "is_dir": false,
+          "bytes": 87553
+        },
+        {
+          "name": "100120134-target-snapshot.json",
+          "is_dir": false,
+          "bytes": 3235
+        },
+        {
+          "name": "diagnostic-exact-100120794-after-classifier-fix.json",
+          "is_dir": false,
+          "bytes": 3356
+        },
+        {
+          "name": "diagnostic-exact-100120794.json",
+          "is_dir": false,
+          "bytes": 3354
+        },
+        {
+          "name": "dometic-approval-consumed",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "dometic-auto-order-state.json",
+          "is_dir": false,
+          "bytes": 903234
+        },
+        {
+          "name": "dometic-catchup-controller.stderr.log",
+          "is_dir": false,
+          "bytes": 525
+        },
+        {
+          "name": "dometic-catchup-controller.stdout.log",
+          "is_dir": false,
+          "bytes": 5113
+        },
+        {
+          "name": "dometic-catchup-progress.json",
+          "is_dir": false,
+          "bytes": 5567
+        },
+        {
+          "name": "dometic-catchup-resume.stderr.log",
+          "is_dir": false,
+          "bytes": 529
+        },
+        {
+          "name": "dometic-catchup-resume.stdout.log",
+          "is_dir": false,
+          "bytes": 16325
+        },
+        {
+          "name": "dometic-catchup-review-candidates",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "orders-bot-approvals",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "owner-policy-source-blocked.json",
+          "is_dir": false,
+          "bytes": 12187
+        },
+        {
+          "name": "reconcile-100119994-history.json",
+          "is_dir": false,
+          "bytes": 0
+        },
+        {
+          "name": "reconcile-100119994-shopify.json",
+          "is_dir": false,
+          "bytes": 0
+        },
+        {
+          "name": "reconciliation-backups",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "shipstation-vendor-hold-retry.json",
+          "is_dir": false,
+          "bytes": 8494
+        },
+        {
+          "name": "t_2c626fd2-dometic-review-candidates-frozen-20260805T121505Z",
+          "is_dir": true,
+          "bytes": null
+        },
+        {
+          "name": "vendor-governance.sqlite3",
+          "is_dir": false,
+          "bytes": 761856
+        },
+        {
+          "name": "vendor-order-runs.json",
+          "is_dir": false,
+          "bytes": 15550061
+        }
+      ]
+    }
+  ],
+  "no_job_invoked": true,
+  "limit": "max30 exact referenced scripts, depth2; no broad source traversal"
+}

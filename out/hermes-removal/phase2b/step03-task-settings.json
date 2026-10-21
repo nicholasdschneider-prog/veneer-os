@@ -1,0 +1,47 @@
+{
+  "read_only": true,
+  "running_instances": [
+    {
+      "instance_guid": "{AB736A35-A588-4CF4-9622-CD44FF87C0BA}",
+      "current_action": "C:\\Windows\\System32\\wscript.exe",
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "engine_pid": 17540,
+      "state": 4
+    }
+  ],
+  "tasks": [
+    {
+      "action_workdirs": [
+        null
+      ],
+      "enabled": true,
+      "last_run": "2026-10-21T10:22:01.0000000-04:00",
+      "execution_time_limit": "PT72H",
+      "next_run": "2026-10-21T10:27:00.0000000-04:00",
+      "state": "Ready",
+      "name": "ERVP_Orders_Bot_All_Order_Review",
+      "last_result": 0,
+      "action_executables": [
+        "C:\\Windows\\System32\\wscript.exe"
+      ],
+      "multiple_instances": "IgnoreNew"
+    },
+    {
+      "action_workdirs": [
+        null
+      ],
+      "enabled": true,
+      "last_run": "2026-10-21T10:26:01.0000000-04:00",
+      "execution_time_limit": "PT72H",
+      "next_run": "2026-10-21T10:41:00.0000000-04:00",
+      "state": "Running",
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "last_result": 267009,
+      "action_executables": [
+        "C:\\Windows\\System32\\wscript.exe"
+      ],
+      "multiple_instances": "IgnoreNew"
+    }
+  ],
+  "at": "2026-10-21T14:26:49.7669198Z"
+}

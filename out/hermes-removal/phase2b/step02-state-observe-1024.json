@@ -1,0 +1,265 @@
+{
+  "absent_exact_paths": [
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\state\\orders-bot\\commands.json",
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\state\\vendor-order-runs.json",
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\state\\orders-bot\\vendor-failure-watchdog-state.json",
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\vendor-order-runs.json",
+    "C:\\Users\\nicho\\.hermes\\state\\orders-bot\\commands.json",
+    "C:\\Users\\nicho\\.hermes\\state\\vendor-order-runs.json",
+    "C:\\Users\\nicho\\.hermes\\state\\orders-bot\\vendor-failure-watchdog-state.json"
+  ],
+  "at": "2026-10-21T14:24:39.553513+00:00",
+  "references": [
+    {
+      "profile": "ervp-orders",
+      "id": "ce09b813238c",
+      "script_names": [
+        "vendor_failure_watchdog.py"
+      ]
+    },
+    {
+      "profile": "ervp-orders",
+      "id": "b95f03d799dc",
+      "script_names": [
+        "ltl_tracking_cleanup.py"
+      ]
+    },
+    {
+      "profile": "root",
+      "id": "9b03a939ef99",
+      "script_names": [
+        "ltl-tracking-cleanup.py"
+      ]
+    },
+    {
+      "profile": "ervp-dev2",
+      "id": "9868ee5f2643",
+      "script_names": [
+        "lippert_final_tracking_shadow.py"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\vendor_failure_watchdog.py",
+      "referenced_scripts": [],
+      "state_filenames": [
+        "commands.json",
+        "vendor-failure-watchdog-state.json",
+        "vendor-order-runs.json"
+      ],
+      "locking_mentions": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ltl_tracking_cleanup.py",
+      "referenced_scripts": [],
+      "state_filenames": [
+        "graphql.json",
+        "ltl-tracking-cleanup.lock"
+      ],
+      "locking_mentions": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\scripts\\lippert_final_tracking_shadow.py",
+      "referenced_scripts": [
+        "lippert_final_tracking.py"
+      ],
+      "state_filenames": [],
+      "locking_mentions": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\ltl-tracking-cleanup.py",
+      "state_filenames": [
+        "graphql.json",
+        "response.json"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\vendor_failure_watchdog.py",
+      "bytes": 11735,
+      "mtime_ns": 1787667013547203400,
+      "sha256": "fbd3e4496abf98371ad88b85373a4941c416292b9483538a8f148581ce18c88f"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ltl_tracking_cleanup.py",
+      "bytes": 11153,
+      "mtime_ns": 1788460988722695500,
+      "sha256": "2072cbf54cbddd97cb5b9e5c515716e5f29b2e7ad9213e21ba05beaea4273572"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\gateway.heartbeat",
+      "bytes": 122,
+      "mtime_ns": 1792592659857313800,
+      "sha256": "76e67b1e53cd156be510d27f896efa588dea53c886dd4477304e1a26a412a9fb"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\gateway.lifecycle.json",
+      "bytes": 146,
+      "mtime_ns": 1792581151046488900,
+      "sha256": "e2441e3d76fee577159b3ecf1d261cf52bddb2d071dd84cf17cd99da109be558",
+      "field_hashes": {
+        "phase": "79d116a0c160c52732ff18be65ce4681d3bdf027cafd522cd1e076e816304379",
+        "pid": "26592e039e159e4c2cc767fc9014ba6ec5d08278a941da930293a050c841b663",
+        "start_time": "112e8f0289e273ae345cae7cd9b9d489010447c7a2e6f225972a9654327ede24",
+        "started_at": "64675224fa1005f9783aca5a27463ea7032773894df8dfa5367c236172766bf5",
+        "prior_unclean_exit": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\ltl-tracking-live-enabled",
+      "bytes": 116,
+      "mtime_ns": 1788461515387139600,
+      "sha256": "c1aa0c36e21fcffc4eb91ab0f49852bf2c4eb12d30e945be5d0c5125623f4185"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\manual-dometic-watch-100120323-100120506.json",
+      "bytes": 297,
+      "mtime_ns": 1792157857245953900,
+      "sha256": "9c2f81a6af2fb67e6a1ad464fc91ea5d12a66475ae452461aecad7d3f5b0fee8",
+      "field_hashes": {
+        "100120323": "e962258c2d3cae0c52dbae792a0627f4fdcc0e66ac4af39bd36384fd1bce50bf",
+        "100120506": "d01bca4d1baa0260b3515d3b5ae5ffaedfc9ef6b682fb454ca06d942baa51ac8"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\safe-vendor-poller.sqlite3",
+      "bytes": 81920,
+      "mtime_ns": 1788431778090972800,
+      "sha256": "9bf589acf364a6db585ceb1efd9f6ed1fbfe696aa3e2170ae4401166793f3267",
+      "tables": {
+        "lease": 0,
+        "poll_runs": 566
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\safe-vendor-poller.sqlite3-shm",
+      "bytes": 32768,
+      "mtime_ns": 1792592679467221500,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\safe-vendor-poller.sqlite3-wal",
+      "bytes": 0,
+      "mtime_ns": 1792160439699441500,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\vendor-attention-queue.json",
+      "bytes": 664100,
+      "mtime_ns": 1788431778073454400,
+      "sha256": "b7ac92079d1af25c7d08f81787949d92e0d08b10db22352977bcd121a211ecc3",
+      "field_hashes": {
+        "rows": "bf2b4c831601733589b88fbbb30f640ed12457dde6b874e52827c9491e044566",
+        "updated_at": "8918c9d2e09511b7d842767a1fe32647ce2def2c549ad04784d644a602dbe827"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\vendor-email-watch-100118388.json",
+      "bytes": 279,
+      "mtime_ns": 1787578828001443500,
+      "sha256": "ad936a3d8282d3e1e3124f316047933d07143f5518a3ef508ac0f3cf2aaf934d",
+      "field_hashes": {
+        "order_number": "575732fcbaaced4b85c6e4b69039d268b0fe263ec70010d998b2a2e74c3ab2ed",
+        "vendor": "6b97ea5fde8de78b123fa9cbc114c19cd72615358eeba6c95edae4f3e3647e52",
+        "account": "e6c160ca5a1a7aef3c062220b796ea1b09de14fb0a52469ddd240db06a9144bd",
+        "thread_id": "79ca7d799af54044b8635c9aea1ed0fa22f1ad297ace7cf621773e42353a5b8c",
+        "sent_message_id": "79ca7d799af54044b8635c9aea1ed0fa22f1ad297ace7cf621773e42353a5b8c",
+        "sent_internal_date": "82a210d150a1e3cc098af81027ff226114168532ea479b13cd0ab8e05221cec2",
+        "reported_message_ids": "ee9a118ba26d452c619d33c2eacd7ae2423bbb838723586557d2e21209938a3e"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\scripts\\lippert_final_tracking_shadow.py",
+      "bytes": 557,
+      "mtime_ns": 1784642166962174500,
+      "sha256": "6651154c3d21fded75d93f99541f8718f3fe80c50ad671e47cc19de97c351f6b"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\state\\owner.sqlite3",
+      "bytes": 57344,
+      "mtime_ns": 1787327088029873800,
+      "sha256": "ee74a631ea53e7f0d310866564517100a0f74d211cc7662c6275b5ed5bf14b4e",
+      "tables": {
+        "singleton_lock": 0,
+        "processed_messages": 0,
+        "operations": 0,
+        "runs": 117
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\state\\owner.sqlite3-shm",
+      "bytes": 32768,
+      "mtime_ns": 1792592679482910400,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\state\\owner.sqlite3-wal",
+      "bytes": 0,
+      "mtime_ns": 1792160396050971800,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\reports\\shadow-latest.json",
+      "bytes": 432,
+      "mtime_ns": 1787327088026871300,
+      "sha256": "6826a7946c826b459479c708771604da8ab24cdf2879007d2531387200eef725",
+      "field_hashes": {
+        "schema": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+        "run_id": "ed5b05868ebd9a8fb93976c5ad83d429a39b69b074c4054e05ffac56ed22b5ba",
+        "started_at": "edcf66cf02fae4bbb21f9c318a314a517836328d40d97364563118e4c5b3885a",
+        "mode": "c567c11479e70f7d9fe7ae931d7c8c7f3f349f1d7483e4f0897e20453d2c3dda",
+        "production_writes": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+        "auth": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "source_roles": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "shopify_pages": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+        "placeholder_orders": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+        "would_write": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "skips": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "errors": "38caf31963edb88cad477f5ca46a28c93e2283b6402e365212d1808a2f99da03",
+        "finished_at": "edcf66cf02fae4bbb21f9c318a314a517836328d40d97364563118e4c5b3885a",
+        "status": "4d01709fcd599118652e3b27bd0ca97c802f832183d01f76a034755f2bc62fa3"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\reports\\verification-evidence.json",
+      "bytes": 2250,
+      "mtime_ns": 1784644129317204300,
+      "sha256": "7cb5745bfbbc442f954d1682e8c44018caa718ddcfd4d44d9af4205b914baddc",
+      "field_hashes": {
+        "captured_at_utc": "0bab614f6f10484dce4ef80a74e405ef5a4c6d3ec7461b3a33ca0f120bcfd09c",
+        "phase": "cb7e95f8e29399c2b07267a706ea6979c95b9b05c32e2f9b86715578c1f447d2",
+        "final_tracking_owner": "3060f4a8d5b7c3284fd9ff676764ed3597b295be5d741e64c28a1bb47e18b81b",
+        "execution_evidence": "9c56e9b5da30a1eaf953253aa523b6183fffd36603b91bda8666d044ab3d082c",
+        "latest_shadow_reconciliation": "c14a894dfb199eb314cf03b4f2618598d539e183e91dbe60243206a7e5a5b745",
+        "ownership_census": "525c22dfd03cae97c1ae11f8ec3fef94819df630bf492def4235eee7202f06ff",
+        "verification": "dfc8a38cb1f1f26a87b6f30290ebd364a872b226bac64f7dbdff71fdbf4a862a"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\commands.json",
+      "bytes": 93166992,
+      "mtime_ns": 1789600682947215600,
+      "sha256": "f16c1ce9ec73ba4ea9d5bd3d360b24e8024651b215b95a3c42eee52479805877"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\vendor-failure-watchdog-state.json",
+      "bytes": 21599,
+      "mtime_ns": 1792591730617532700,
+      "sha256": "4a29405f6f97208cde5f46de10c8c6ebda399bcee67cf9c685398c3489e07553",
+      "field_hashes": {
+        "seen_command_ids": "89d2e82ddb4d9dac3c08215c47d836d905852e97f2ee077c720b852285ad6e45"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\ltl-tracking-cleanup.py",
+      "bytes": 11547,
+      "mtime_ns": 1784566054220059200,
+      "sha256": "d1a1314748e7f378a23429d09b40e0ffc2d8cce291d255ac412f821492591219"
+    }
+  ],
+  "contents_stay_pc": true,
+  "no_job_invoked": true,
+  "scope_limit": "bounded top-level profile state and known Lippert workspace; remote business state not queried"
+}

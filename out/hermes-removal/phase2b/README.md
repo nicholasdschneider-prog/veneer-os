@@ -24,7 +24,9 @@ Step 2 all four crons disabled once at 14:08:55–58Z under .jobs.lock, each wit
 | 9b03a939ef99 | 2026-10-21T14:08:57.316482+00:00 | 2026-10-22T02:08:57.316482+00:00 |
 | 9868ee5f2643 | 2026-10-21T14:08:58.163113+00:00 | 2026-10-21T14:23:58.163113+00:00 |
 
-Next wake after 14:23:58.164Z: read all four existing step02-<ID>-read.ps1 probes into NEW receipts. Vendor alert can pass its 1-minute window; Lippert can pass 15 minutes. LTL needs the full 720 minutes, ending 2026-10-22 02:08:57.317Z (Oct21 22:08:57 ET); do not begin step3 mutations before both LTL jobs pass. Require disabled, unchanged last_run/recent IDs/counts and zero selected/ALL-profile unfinished work. Re-run step02-state.ps1 into a distinct observation receipt; report every delta. No repeat disables. Bounded read-only source/lock/schema preparation for step3 can proceed during this wait, but never execute the cycle or query a mailbox.
+At 10:24:38 ET, vendor alerts and Lippert PASSED their full 1/15-minute intervals (940 seconds elapsed). All four readbacks remain disabled, unchanged last_run/recent IDs/counts, selected and ALL-profile unfinished0. Both LTL checks are interim only: full720-minute deadlines remain 2026-10-22 02:08:56–57Z (Oct21 22:08:56–57 ET). No Step3 mutation until both pass. Current state comparison: gateway heartbeat SHA/mtime changed; owner.sqlite3-shm and safe-vendor-poller.sqlite3-shm changed mtime only, identical SHA; all other captured file metadata/field hashes unchanged. See step02-observation-1024.json.
+
+Step3 bounded read-only preparation found actual stores and source lock protocols, but is NOT final drained custody. See [step03-preparation.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-preparation.md). Direct was Running at10:26:49ET; no task was disabled or stopped. The lane directory lock does not prove full-cycle scheduler ownership, which still needs reconciliation before final custody and Direct disable. Never reuse that historical process identity or remove an existing lock. Next wake after02:09Z for final LTL readbacks/state comparison and then Step3 only if all pass.
 
 ## Remaining sequence
 
@@ -83,19 +85,24 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step02-9868ee5f2643-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9868ee5f2643-before.json)
 - [step02-9868ee5f2643-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9868ee5f2643-disable.json)
 - [step02-9868ee5f2643-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9868ee5f2643-disable.ps1)
+- [step02-9868ee5f2643-observe-1024.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9868ee5f2643-observe-1024.json)
 - [step02-9868ee5f2643-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9868ee5f2643-read.ps1)
 - [step02-9b03a939ef99-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9b03a939ef99-before.json)
 - [step02-9b03a939ef99-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9b03a939ef99-disable.json)
 - [step02-9b03a939ef99-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9b03a939ef99-disable.ps1)
+- [step02-9b03a939ef99-observe-1024.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9b03a939ef99-observe-1024.json)
 - [step02-9b03a939ef99-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-9b03a939ef99-read.ps1)
 - [step02-b95f03d799dc-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-b95f03d799dc-before.json)
 - [step02-b95f03d799dc-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-b95f03d799dc-disable.json)
 - [step02-b95f03d799dc-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-b95f03d799dc-disable.ps1)
+- [step02-b95f03d799dc-observe-1024.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-b95f03d799dc-observe-1024.json)
 - [step02-b95f03d799dc-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-b95f03d799dc-read.ps1)
 - [step02-ce09b813238c-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-ce09b813238c-before.json)
 - [step02-ce09b813238c-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-ce09b813238c-disable.json)
 - [step02-ce09b813238c-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-ce09b813238c-disable.ps1)
+- [step02-ce09b813238c-observe-1024.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-ce09b813238c-observe-1024.json)
 - [step02-ce09b813238c-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-ce09b813238c-read.ps1)
+- [step02-observation-1024.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-observation-1024.json)
 - [step02-path-discovery-expanded.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-path-discovery-expanded.json)
 - [step02-path-discovery.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-path-discovery.json)
 - [step02-path-discovery.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-path-discovery.ps1)
@@ -104,5 +111,17 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step02-state-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-state-before.json)
 - [step02-state-disable-delta.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-state-disable-delta.json)
 - [step02-state-disabled.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-state-disabled.json)
+- [step02-state-observe-1024.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-state-observe-1024.json)
 - [step02-state.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-state.ps1)
 - [step02-state.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step02-state.py)
+- [step03-lock-schema-prep-expanded.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep-expanded.json)
+- [step03-lock-schema-prep.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep.json)
+- [step03-lock-schema-prep.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep.ps1)
+- [step03-lock-schema-prep.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep.py)
+- [step03-preparation.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-preparation.md)
+- [step03-source-prep-expanded.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-source-prep-expanded.json)
+- [step03-source-prep.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-source-prep.json)
+- [step03-source-prep.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-source-prep.ps1)
+- [step03-source-prep.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-source-prep.py)
+- [step03-task-settings.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-task-settings.json)
+- [step03-task-settings.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-task-settings.ps1)
