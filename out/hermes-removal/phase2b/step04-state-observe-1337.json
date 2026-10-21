@@ -1,0 +1,154 @@
+{
+  "absent_exact_paths": [
+    "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain\\Generated\\Backup Manifest.json",
+    "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain\\Generated\\Hermes\\Hermes Export Manifest.json"
+  ],
+  "at": "2026-10-21T17:38:00.707331+00:00",
+  "job_script_names": [
+    "obsidian_vault_drift_monitor.py"
+  ],
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\Hermes_Brain_Backup-silent.vbs",
+      "file_paths": [
+        "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1"
+      ],
+      "state_names": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\obsidian_vault_drift_monitor.py",
+      "file_paths": [],
+      "state_names": [],
+      "calls": [
+        "'; '.join",
+        "_mtime",
+        "_sha256",
+        "alerts.append",
+        "check_profile_pointers",
+        "check_sentinel_drift",
+        "f.read",
+        "h.hexdigest",
+        "h.update",
+        "hashlib.sha256",
+        "iter",
+        "len",
+        "line.rstrip",
+        "line.startswith",
+        "line[len(b'OBSIDIAN_VAULT_PATH='):].decode",
+        "main",
+        "open",
+        "os.environ.get",
+        "os.path.getmtime",
+        "os.path.isfile",
+        "os.path.join",
+        "os.path.normcase",
+        "os.path.normpath",
+        "print",
+        "raw.split",
+        "stale.append",
+        "sys.exit"
+      ],
+      "path_assignments": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1",
+      "file_paths": [],
+      "state_names": [
+        "Manifest.json",
+        "Status.json",
+        "openclaw.json",
+        "state.db"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\Hermes_Brain_Backup-silent.vbs",
+      "bytes": 441,
+      "mtime_ns": 1789400846942890500,
+      "sha256": "f6366324be8a987e8d5b9a06419802f5e7d7ad2c4368eb6dea88405332e83f05"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\obsidian_vault_drift_monitor.py",
+      "bytes": 5424,
+      "mtime_ns": 1786378496191152400,
+      "sha256": "33cab8559f56c445e56603e002d7b67fbcd5e25def879bac9608d7290189ada8"
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1",
+      "bytes": 33044,
+      "mtime_ns": 1785020940931717400,
+      "sha256": "a75d4aa4e924f930d2fda8f6c2e265e280b4d47036e81da560c6aac61acdc0fa"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\state\\gateway.heartbeat",
+      "bytes": 119,
+      "mtime_ns": 1792604260824110000,
+      "sha256": "c7c9a383489f282357075bcfc464c3f894bdf9a0893dd25a185f9ddb6457aa92"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\state\\gateway.lifecycle.json",
+      "bytes": 144,
+      "mtime_ns": 1792581097517491300,
+      "sha256": "97d27a74635ee9feeca86bbe6d9820c6a56ef0b9f84e7af1b3c80c011f970e43",
+      "field_hashes": {
+        "phase": "79d116a0c160c52732ff18be65ce4681d3bdf027cafd522cd1e076e816304379",
+        "pid": "22860be73c246335d69f6c95c6b5f7593f90e47a94366f4a038661fd87983e3c",
+        "start_time": "370866e93ed7e9b0dbe18a79e617b4cd84e36c171efb2f22eb8ed1630cd1179a",
+        "started_at": "2078e91691bedbfda91fb845d8b5da53cdf26322d2072e5b7b566804a699a529",
+        "prior_unclean_exit": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain\\Backup Status.json",
+      "bytes": 718,
+      "mtime_ns": 1792596123001103300,
+      "sha256": "02414667accacacd232009f3f1a0d45a06177495c205944161666f4853edb801",
+      "field_hashes": {
+        "run_id": "2e36b1fc0ebf6dada205e832252c229ea84fa17843074e990d52211c608144a6",
+        "started_at": "748d795f9b05653b8d678e339481571b4705e8965e03c8917218bc5789f755f0",
+        "completed_at": "2f7781c11e7e82ed246937b4d12d1e3dbe9d0175bb5be069ca0a57c3ff62682b",
+        "local_hermes": "c48b5b1a9776c84602de2306d7903a7241158a5077e7a8519af75c33441b8334",
+        "remote_openclaw": "33d04bd775e7b6c6436742508b41fa693a15bd2c902fcd994253392abd717740",
+        "vault_publish": "33d04bd775e7b6c6436742508b41fa693a15bd2c902fcd994253392abd717740",
+        "remote_snapshot": "33d04bd775e7b6c6436742508b41fa693a15bd2c902fcd994253392abd717740",
+        "exported_files": "3c7217bd6d2c58c67e93c1b4a0c5d2f8bfd5cd46249df0f246307b1f859b9737",
+        "redactions": "8b940be7fb78aaa6b6567dd7a3987996947460df1c668e698eb92ca77e425349",
+        "errors": "ec52a7ecdec39ce80d85292fe8adc5be8fb3910a49445c84e1e594fabee17bb4"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261021T112023.log",
+      "bytes": 686,
+      "mtime_ns": 1792596123012110400,
+      "sha256": "935915b76b16e173b5157641bf5e7a977cfdc37ef144fb7abe32b07dc829e2c3"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261021T072023.log",
+      "bytes": 686,
+      "mtime_ns": 1792581766118419600,
+      "sha256": "694d032187d96463d23b2310aea1429a809c72623e6b61c800575ff01bf627b6"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261021T032022.log",
+      "bytes": 686,
+      "mtime_ns": 1792567258145416200,
+      "sha256": "3715f108a6ad55da2c8c443eda5f9d688e582cbd424adc22a850733e71e84bbf"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261020T232022.log",
+      "bytes": 686,
+      "mtime_ns": 1792552858053690200,
+      "sha256": "3c68414f8d5431258caa953d9ef59d5db81825ebfb694d6fbb50d891446d7923"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault\\brain-sync-20261020T192022.log",
+      "bytes": 686,
+      "mtime_ns": 1792538458405633100,
+      "sha256": "79e5546f29a1a27eb77eabb8697f02a87f693c7758c8048d674471d439395425"
+    }
+  ],
+  "no_job_invoked": true,
+  "contents_stay_pc": true,
+  "scope": "bounded exact launch chain max20 depth3 plus hermesops top-level state"
+}

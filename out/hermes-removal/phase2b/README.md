@@ -36,7 +36,9 @@ Step3 VERIFIED at17:04:59.8356174Z after946+seconds: both tasks disabled, last_r
 
 Step4 vault drift48352e1e4b39 disabled ONCE17:07:12.426231Z under scheduler lock with selected/ALLprofile unfinished0. Brain Backup disabled ONCE17:07:14.7951913Z with zero running scheduler instances/backup processes. Task XML preserved onPC with SHA91D19B86D22345D9A4E0530741E7C405D784E66EDB1044DB4939AD475AB872DF. Existing Brain last_run11:20:22ET/last_result1 retained; no repair or job execution. Source launcher leads to HermesBrainOps/Sync-HermesBrain.ps1. Bounded state includes vault Backup Status.json plus latest five backup-log hashes/mtimes. Two exact Generated manifest paths were absent (recorded, not treated as proof of missing archive scope). Before/disabled comparison: only live HermesOps heartbeat changed; captured backup status/logs/scripts and lifecycle unchanged.
 
-Next wake17:37:30Z: read vault via step04-vault-read.ps1 into NEW observationJSON; require elapsed>=1800, disabled, unchanged last_run/recent IDs/counts, selected+ALLprofile unfinished0. Recheck Brain via step04-brain-read.ps1 into NEW receipt: disabled, unchanged11:20:22ETlast_run, last_result1, no instances/processes. Brain full4h ends21:07:14.795192Z; do not begin step5 until that passes. Re-run step04-state.ps1 into NEW receipt; compare all hashes/mtime/field fingerprints to step04-state-disabled.json, preserve deltas. Keep separate22:09ETLTLconfirmation beforeseal. No repeat disables.
+At13:37:58ET vault drift PASSED its full30-minute interval after1845.797seconds: disabled, unchanged last_run/recent IDs/execution count, selected and ALLprofile unfinished0. Brain interim at13:37:59ET: disabled, unchanged11:20:22ET last_run and prior result1, zero running instances/processes; full4h still pending. State metadata at13:38ET: only live HermesOps heartbeat changed; all captured BackupStatus/logs/scripts/lifecycle hashes, mtimes and field fingerprints unchanged. See step04-observation-1337.json.
+
+Next wake21:07:30Z (17:07:30ET): run step04-brain-read.ps1 to NEW final receipt; require elapsed>=14400seconds since17:07:14.7951913Z, disabled, same last_run/result, zero instances/processes. Re-read vault to DISTINCT confirmation receipt and compare to disable receipt; re-run step04-state.ps1 into NEW final state receipt and report deltas versus step04-state-disabled.json. Only after Brain passes begin step5. Keep separate22:09ETLTLconfirmation beforeseal. No repeat disables/stops/custody; no job execution.
 
 ## Remaining sequence
 
@@ -158,11 +160,14 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step04-brain-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-before.json)
 - [step04-brain-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-disable.json)
 - [step04-brain-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-disable.ps1)
+- [step04-brain-observe-1337.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-observe-1337.json)
 - [step04-brain-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-read.ps1)
+- [step04-observation-1337.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-observation-1337.json)
 - [step04-state-before-expanded.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-before-expanded.json)
 - [step04-state-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-before.json)
 - [step04-state-disable-delta.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-disable-delta.json)
 - [step04-state-disabled.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-disabled.json)
+- [step04-state-observe-1337.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-observe-1337.json)
 - [step04-state-paths.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-paths.json)
 - [step04-state-paths.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-paths.ps1)
 - [step04-state.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state.ps1)
@@ -170,4 +175,5 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step04-vault-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-before.json)
 - [step04-vault-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-disable.json)
 - [step04-vault-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-disable.ps1)
+- [step04-vault-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-final.json)
 - [step04-vault-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-read.ps1)
