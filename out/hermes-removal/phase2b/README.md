@@ -70,7 +70,7 @@ Step6 PC-onlyincrementalrefresh launchedONCE viaWMI PID9904created2026-10-21T17:
 
 Controller preserves original manifests/reports/scope and priorchangedpayload versions, hashes sourcefiles under the approved sixroots/exclusions, makes consistentSQLite snapshots for every detectedheaderregardlessextension, runs incrementalrobocopy/E withoutPURGE ordelete, writescurrentmanifest+addendum, verifiesallSQLitecopies/restoreonefileeachroot/ACL/quiescence. A successful refresh produces refresh_verified_pending_operator_seal, NOT sealed. Independentreadback and lateLTLconfirmation stillrequired before phase3sealedverdict. Anyerrorrequiresinspection/reconciliation; no blind rerun or deletion. The original baseline report remains historical even as changed mirrorpaths refresh; previousversions are retained inquiescent/previous-payload.
 
-At18:02:05ET exactPID9904/creation/sourceSHA stillmatched, nofailure. Current source_hash_and_version_preservation progress230000files/8SQLite/9previousversions; free521769783296bytes. Open-stream directory size0 does not prove an empty stream; contents remainPC-only.
+At18:32:42ET exactPID9904/creation/sourceSHA stillmatched, nofailure. Current source_hash_and_version_preservation progress420000files/8SQLite/9previousversions; free521107783680bytes. Open-stream directory size0 does not prove an empty stream; contents remainPC-only.
 
 Nextarchivecheck30min: archive-quiescent-status.ps1 via phase2/run-probe.py NEWdistinctJSON; verifyPID9904creation/sourceSHA/status/failure/verification. Ifstillrunningrecordprogress/index/checksums,commitpush,persistnext30minwake. IfcompletedindependentlyreviewALLerrors/sourcecoverage/manifest+addendumSHA/SQLiteallheaders+integrity/6restores/ACL/quiescence before anyverifiedclaim. Pending lateLTLafter02:08:57ZOct22 remainsseparatewake, doesnotblockrefresh. No deletion authorized until actualsealverifies.
 
@@ -100,6 +100,7 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [archive-quiescent-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-preflight.ps1)
 - [archive-quiescent-status-1731.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1731.json)
 - [archive-quiescent-status-1801.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1801.json)
+- [archive-quiescent-status-1832.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1832.json)
 - [archive-quiescent-status-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-start.json)
 - [archive-quiescent-status.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status.ps1)
 - [archive-quiescent-upload.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-upload.json)
