@@ -1,6 +1,6 @@
 # Hermes Phase 2b — October 21 retirement
 
-Nick’s own October 21 decision in coordinator chat fce19860 releases the prior HOLD list: retire all remaining Hermes work. No Veneer lane is to go live, and PC retirement no longer waits for a cutover. The current detailed request authorizes Phases 2b and 3, with source-root deletion requiring a later confirmation through the coordinator.
+Nick’s own October 21 decision in coordinator chat fce19860 releases the prior HOLD list: retire all remaining Hermes work. No Veneer lane is to go live, and PC retirement no longer waits for a cutover. Nick’s October 21 “Delete it too” instruction, relayed in this thread, approves Phase 3 source-root deletion in advance. No further confirmation is required after the hard quiescent-seal gate passes. No deletion is authorized before that gate.
 
 ## Current checkpoint
 
@@ -15,6 +15,8 @@ Step 1 four manager crons disabled once under .jobs.lock at 13:30:16–18Z; ever
 
 Next wake after 14:00:18.885Z: run each existing step01-<ID>-read.ps1 into NEW step01-<ID>-final.json; compare to each disable receipt. Require full schedule elapsed, disabled flag, unchanged last_run/recent execution IDs/total count and zero unfinished selected/all-profile. Run step01-state.ps1 to step01-state-final.json and compare file hash/mtime; gateway heartbeat can change while gateway remains live. static-source-prep.ps1 records state field fingerprints and wrapper references without executing source; originals/customer bodies/secrets stay on PC. Preserve any delta and limits. Then step 2.
 
+At 09:49:22 ET, a new scheduler-locked checkpoint confirmed all four disabled, unchanged last_run/recent IDs/total execution counts and zero selected/all-profile unfinished executions. The first three full intervals passed; Archer remained short of its 30-minute interval. See step01-checkpoint-0949.json.
+
 ## Remaining sequence
 
 2. Disable orders vendor failure ce09b813238c, orders LTL b95f03d799dc, root LTL 9b03a939ef99, dev2 Lippert 9868ee5f2643 (unconditional now). Capture actual state first. Both LTL schedules are 720 minutes: observe their full interval before declaring them verified; never force a run.
@@ -22,7 +24,7 @@ Next wake after 14:00:18.885Z: run each existing step01-<ID>-read.ps1 into NEW s
 4. Disable hermesops vault drift and Brain Backup, preserving state and observing their actual cycles (vault30min, Brain task4h).
 5. Stop remaining gateways serially after watchdog disable and active launcher rename, exact fresh process identity/no in-flight checks, full15min no-relaunch each. Fresh baseline has default/root11592, hermesops7544, accounting-migration15872, orders20624; manager was not live in that inventory but its watchdog remains enabled. Re-discover, never reuse these PIDs blindly. Zero final Hermes processes/enabled cron/enabled tasks/activeStartup. Tier C untouched.
 6. Refresh six-root PC-only archive incrementally with no purge/delete, new manifest addendum, every SQLite integrity and restore test; record quiescent seal only after all writers stopped. Prior verified baseline remains preserved.
-Phase3 only after sealed verification: remove authorized scheduled task definitions, Startup launchers and VBS/CMD wrappers with original hash/removal receipt/recoverable archive provenance. Do not delete six roots; provide sizes and precise deletion plan preserving backups/, ervp-vendor-automation and orderops-src, then await Nick’s later confirmation through coordinator.
+Phase 3 is approved in advance, exclusively after all quiescent-seal checks pass and a sealed verdict is recorded under phase3/. Then remove tasks/launchers/wrappers and the authorized Hermes roots in the specified order, with original hashes and sizes before/after. Preserve backups/, ervp-vendor-automation, orderops-src, Tailscale, OpenSSH and all non-Hermes assets. See [Phase 3 authority and gated execution plan](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/README.md). If the seal fails, stop and report without deleting.
 
 ## Fresh inventory findings / scope checks
 
@@ -39,18 +41,23 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [static-source-prep.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/static-source-prep.json)
 - [static-source-prep.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/static-source-prep.ps1)
 - [step01-2a806c33e3f2-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-2a806c33e3f2-before.json)
+- [step01-2a806c33e3f2-checkpoint-0949.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-2a806c33e3f2-checkpoint-0949.json)
 - [step01-2a806c33e3f2-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-2a806c33e3f2-disable.json)
 - [step01-2a806c33e3f2-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-2a806c33e3f2-disable.ps1)
 - [step01-2a806c33e3f2-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-2a806c33e3f2-read.ps1)
 - [step01-59b1ee116748-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-59b1ee116748-before.json)
+- [step01-59b1ee116748-checkpoint-0949.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-59b1ee116748-checkpoint-0949.json)
 - [step01-59b1ee116748-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-59b1ee116748-disable.json)
 - [step01-59b1ee116748-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-59b1ee116748-disable.ps1)
 - [step01-59b1ee116748-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-59b1ee116748-read.ps1)
 - [step01-c94a14183a61-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-c94a14183a61-before.json)
+- [step01-c94a14183a61-checkpoint-0949.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-c94a14183a61-checkpoint-0949.json)
 - [step01-c94a14183a61-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-c94a14183a61-disable.json)
 - [step01-c94a14183a61-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-c94a14183a61-disable.ps1)
 - [step01-c94a14183a61-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-c94a14183a61-read.ps1)
+- [step01-checkpoint-0949.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-checkpoint-0949.json)
 - [step01-ece0db616afe-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-ece0db616afe-before.json)
+- [step01-ece0db616afe-checkpoint-0949.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-ece0db616afe-checkpoint-0949.json)
 - [step01-ece0db616afe-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-ece0db616afe-disable.json)
 - [step01-ece0db616afe-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-ece0db616afe-disable.ps1)
 - [step01-ece0db616afe-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step01-ece0db616afe-read.ps1)

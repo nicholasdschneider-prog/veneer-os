@@ -29,7 +29,11 @@
     }
   },
   "steps02_to06": "not started; source prep read-only",
-  "phase3": "not started; only after quiescent seal verifies",
-  "source_roots_deletion": "requires later Nick confirmation through coordinator",
-  "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00"
+  "phase3": "authorized, not started; hard seal gate pending",
+  "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
+  "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
+  "phase3_plan": "../phase3/README.md",
+  "latest_checkpoint": "step01-checkpoint-0949.json",
+  "latest_checkpoint_at": "2026-10-21T13:49:22.569998+00:00",
+  "latest_checkpoint_result": "all four disabled, unchanged last_run/recent IDs/total execution count, zero selected and all-profile unfinished; first three full intervals passed, Archer interval pending"
 }
