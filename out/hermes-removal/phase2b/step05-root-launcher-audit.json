@@ -1,0 +1,15 @@
+{
+  "sources": [
+    {
+      "sha256": "4D3DA12431DDC9ACE470C4ACEE391B8444FD4F44CB4ABAF71BB734893115DF53",
+      "business_terms": false,
+      "gateway_run": true,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\gateway-service\\Hermes_Gateway.vbs",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    }
+  ],
+  "read_only": true,
+  "at": "2026-10-21T20:53:18.2447022Z"
+}

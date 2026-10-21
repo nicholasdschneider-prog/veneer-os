@@ -1,0 +1,44 @@
+{
+  "launcher_home_lines": [
+    "env.Item(\"HERMES_HOME\") = \"C:\\Users\\nicho\\AppData\\Local\\hermes\"",
+    "env.Item(\"HERMES_PROFILE\") = \"default\""
+  ],
+  "runtime": [
+    {
+      "home": "C:\\Users\\nicho\\AppData\\Local\\hermes",
+      "gateway_state.json": {
+        "pid": 18612,
+        "start_time": null,
+        "active_agents": 0,
+        "updated_at": "2026-06-19T19:28:43.456102+00:00",
+        "mtime_ns": 1781897323457101500
+      }
+    },
+    {
+      "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager",
+      "gateway_state.json": {
+        "pid": 11592,
+        "start_time": 179258101964,
+        "active_agents": 0,
+        "updated_at": "2026-10-21T11:12:05.898294+00:00",
+        "mtime_ns": 1792581125899298000
+      },
+      "state/gateway.lifecycle.json": {
+        "phase": "running",
+        "pid": 11592,
+        "start_time": 1792581113.4019578,
+        "started_at": "2026-10-21T11:11:53.401957+00:00",
+        "mtime_ns": 1792581113402967900
+      },
+      "state/gateway.heartbeat": {
+        "pid": 11592,
+        "updated_at": "2026-10-21T20:53:27.118941+00:00",
+        "start_time": 1792581113.3603606,
+        "mtime_ns": 1792616007119968100
+      }
+    },
+    {
+      "home": "C:\\Users\\nicho\\.hermes"
+    }
+  ]
+}

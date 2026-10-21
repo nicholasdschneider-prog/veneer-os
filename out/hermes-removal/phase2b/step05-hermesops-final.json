@@ -1,0 +1,15 @@
+{
+  "profile": "hermesops",
+  "elapsed_seconds": 933.4740205999999,
+  "gateway_processes": [],
+  "checks": {
+    "no_enabled_cron": true,
+    "last_run_unchanged": true,
+    "no_profile_gateway": true,
+    "full15min": true,
+    "disabled": true,
+    "historical_hash_same": true,
+    "no_active_startup": true
+  },
+  "at": "2026-10-21T16:52:45.1953199-04:00"
+}

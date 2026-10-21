@@ -1,6 +1,6 @@
 {
   "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
-  "phase": "step05_hermesops_observing",
+  "phase": "step05_root_observing",
   "no_deletion_in_phase2b": true,
   "step01": {
     "ece0db616afe": {
@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "step05-hermesops-post-disable.json",
-  "latest_checkpoint_at": "2026-10-21T16:37:26.7101250-04:00",
-  "latest_checkpoint_result": "Orders verified941sec; HermesOps watchdogdisabled/exactPID7544stoppedonce/noinflight/postALLunfinished0/no relaunch pending15min",
+  "latest_checkpoint": "step05-root-post-disable.json",
+  "latest_checkpoint_at": "2026-10-21T16:54:10.1199711-04:00",
+  "latest_checkpoint_result": "HermesOps verified933sec; root taskdisabled/exactPID11592stoppedonce/noinflight/ALLunfinished0; pending15min",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -105,7 +105,7 @@
     "verified": true,
     "final_observation": "step03-observation-verdict.json"
   },
-  "steps05_to06": "manager/orders verified; HermesOps stopped observing; default/root,accounting-migration,DesktopUpdate next",
+  "steps05_to06": "manager/orders/hermesops verified; root stopped observing; accounting-migration/DesktopUpdate next",
   "step04": {
     "vault": {
       "disabled_at": "2026-10-21T17:07:12.426231+00:00",
@@ -150,7 +150,7 @@
       "final_observation": "step05-ervp-manager-final.json",
       "post_observation": "step05-ervp-manager-post.json"
     },
-    "shared_root_caution": "manager has no --profile gateway process; runtime pid11592 belongs root/default gateway; preserve until root step; manager disable/rename only if still absent",
+    "shared_root_caution": "root/default now explicitly retired exactPID11592 after its own fresh source/runtime/ledger checks; never repeat stop",
     "desktop_update": "approved infrastructure disable during Step5, original XML hash then remove Phase3",
     "orders": {
       "stop_receipt": "step05-ervp-orders-stop.json",
@@ -170,7 +170,20 @@
       "observe_probe": "step05-hermesops-observe.ps1",
       "post_disable": "step05-hermesops-post-disable.json",
       "stopped_pid": 7544,
-      "historical_startup_unchanged": true
+      "historical_startup_unchanged": true,
+      "verified": true,
+      "final_observation": "step05-hermesops-final.json",
+      "post_observation": "step05-hermesops-post.json"
+    },
+    "default": {
+      "stop_receipt": "step05-root-stop.json",
+      "observation_start": "2026-10-21T20:53:54.6361906Z",
+      "observe_not_before": "2026-10-21T21:08:54.636191Z",
+      "observe_probe": "step05-root-observe.ps1",
+      "post_disable": "step05-root-post-disable.json",
+      "stopped_pid": 11592,
+      "runtime_evidence": "step05-root-home-audit.json; manager runtime/heartbeat matchesPID; root gateway_state staleJune explicitly not used",
+      "no_active_startup": true
     }
   }
 }

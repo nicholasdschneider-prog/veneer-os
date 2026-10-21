@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-21T16:53:11.0744041-04:00",
+  "profile": "default",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-21T07:10:11.0000000-04:00",
+      "state": "Ready",
+      "name": "Hermes_Gateway",
+      "last_result": 0,
+      "enabled": true
+    }
+  ],
+  "startup": [],
+  "gateways": [
+    {
+      "parent": 7940,
+      "pid": 11592,
+      "created": "2026-10-21T07:10:19.6363930-04:00",
+      "name": "pythonw.exe",
+      "executable": "C:\\Users\\nicho\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\pythonw.exe"
+    }
+  ],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-06-19T19:28:43.456102+00:00",
+    "pid": 18612,
+    "active_agents": 0,
+    "start_time": null
+  },
+  "heartbeat_modified": null,
+  "default_alias_caution": false
+}
