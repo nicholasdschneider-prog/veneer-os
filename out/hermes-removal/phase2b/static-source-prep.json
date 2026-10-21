@@ -1,0 +1,172 @@
+{
+  "at": "2026-10-21T13:30:39.992392+00:00",
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\ervp_trending_12h.py",
+      "exists": true,
+      "sha256": "893f61a3f5717d3c608e41e309d9368459dc30bc77651fbc51f1926115ece3c5",
+      "referenced_script_names": [
+        "materialize_trending.py"
+      ],
+      "state_names": [],
+      "locking_mentions": [],
+      "imports": [
+        "import os",
+        "import runpy",
+        "import sys",
+        "from pathlib import Path"
+      ],
+      "literal_file_paths": [
+        "materialize_trending.py"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\returns_portal_watchdog.py",
+      "exists": true,
+      "sha256": "c6113ac6bc9556630c9e40ea64d91f77f6132d9e6efc9500e87eaf4e2319174e",
+      "referenced_script_names": [],
+      "state_names": [
+        "returns_portal_watchdog.json"
+      ],
+      "locking_mentions": [],
+      "imports": [
+        "from __future__ import annotations",
+        "import html",
+        "import json",
+        "import re",
+        "import shutil",
+        "import subprocess",
+        "import tempfile",
+        "import time",
+        "import urllib.error",
+        "import urllib.request",
+        "from pathlib import Path",
+        "from typing import Any"
+      ],
+      "literal_file_paths": [
+        "AppData/Local/hermes/profiles/ervp-manager/state/returns_portal_watchdog.json"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\cs_bot_health_watchdog.py",
+      "exists": true,
+      "sha256": "88f8c58bdecdeacf171b2204169aec477ef738f92099f97058a92557fe5a365d",
+      "referenced_script_names": [
+        "orderops_queue_counts.py"
+      ],
+      "state_names": [
+        "cs_bot_watchdog.json"
+      ],
+      "locking_mentions": [],
+      "imports": [
+        "from __future__ import annotations",
+        "import json",
+        "import os",
+        "from pathlib import Path",
+        "import subprocess",
+        "import time",
+        "import urllib.request"
+      ],
+      "literal_file_paths": [
+        "state/cs_bot_watchdog.json",
+        "scripts/orderops_queue_counts.py"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\archer_inbox_maintenance.py",
+      "exists": true,
+      "sha256": "e9904b20f3ef3dbf20cd4ea9e4d7dd3a5055605e5d1edf45d8843b921344dbeb",
+      "referenced_script_names": [
+        "archer_inbox_maintenance.py"
+      ],
+      "state_names": [],
+      "locking_mentions": [],
+      "imports": [
+        "import os",
+        "import runpy",
+        "import sys",
+        "from pathlib import Path"
+      ],
+      "literal_file_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-ops\\scripts\\archer_inbox_maintenance.py"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_production_owner_policy_cycle.cmd",
+      "exists": true,
+      "sha256": "6263d6a7368fdc31ab9b4ddd9f1a6e23b671b4f8b11e71c77d8f25c069a46cf1",
+      "referenced_script_names": [
+        "production_owner_policy_cycle.py"
+      ],
+      "state_names": [],
+      "locking_mentions": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_Direct_Shopify-silent.vbs",
+      "exists": true,
+      "sha256": "a85e9e3351132c9a180639fab534fb97707fc18e91f55cc02627312405ffc6fc",
+      "referenced_script_names": [
+        "run_production_owner_policy_cycle.cmd"
+      ],
+      "state_names": [],
+      "locking_mentions": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_All_Order_Review-silent.vbs",
+      "exists": true,
+      "sha256": "8810e55b2f922fcd1333af98c477cc6c634e9032cafde07f05703f2058bc7a6a",
+      "referenced_script_names": [
+        "run_every_order_review.cmd"
+      ],
+      "state_names": [],
+      "locking_mentions": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\ervp-vendor-automation\\production_owner_policy_cycle.py",
+      "exists": true,
+      "sha256": "07f17c7917c66a28d9a058f36f9b060862e2e40b830232924e0fb54c189445f1",
+      "referenced_script_names": [
+        "dometic-session-refresh.py"
+      ],
+      "state_names": [
+        "d4b-cookies.json",
+        "vendor-order-runs.json"
+      ],
+      "locking_mentions": [],
+      "imports": [
+        "from __future__ import annotations",
+        "import json",
+        "import os",
+        "from pathlib import Path",
+        "import subprocess",
+        "import sys",
+        "from typing import Any"
+      ],
+      "literal_file_paths": [
+        "d4b-cookies.json",
+        "dometic-session-refresh.py",
+        "vendor-order-runs.json"
+      ]
+    }
+  ],
+  "safe_state_field_fingerprints": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\state\\cs_bot_watchdog.json",
+      "fields_sha256": {
+        "cust-service": "5e45f0e8f007bc36f8b8fbd02f6c40a006e3cf0428e9817bcc115dde47059a60",
+        "cs-tim": "5e45f0e8f007bc36f8b8fbd02f6c40a006e3cf0428e9817bcc115dde47059a60"
+      }
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\state\\returns_portal_watchdog.json",
+      "fields_sha256": {
+        "healthy": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
+        "consecutive_failures": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+        "alerted": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+        "issues": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "checked_at": "64b02f0a3f6d400338c4e4d6221486ce7bfd4645aaad6b833ee22da74892626e"
+      }
+    }
+  ],
+  "no_job_invoked": true
+}

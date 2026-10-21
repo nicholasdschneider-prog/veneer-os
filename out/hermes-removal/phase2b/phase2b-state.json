@@ -1,0 +1,35 @@
+{
+  "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
+  "phase": "step01_observing",
+  "no_deletion_in_phase2b": true,
+  "step01": {
+    "ece0db616afe": {
+      "disabled_at": "2026-10-21T13:30:16.517761+00:00",
+      "observe_not_before": "2026-10-21T13:45:16.517761+00:00",
+      "disable_receipt": "step01-ece0db616afe-disable.json",
+      "read_probe": "step01-ece0db616afe-read.ps1"
+    },
+    "2a806c33e3f2": {
+      "disabled_at": "2026-10-21T13:30:17.292073+00:00",
+      "observe_not_before": "2026-10-21T13:35:17.292073+00:00",
+      "disable_receipt": "step01-2a806c33e3f2-disable.json",
+      "read_probe": "step01-2a806c33e3f2-read.ps1"
+    },
+    "59b1ee116748": {
+      "disabled_at": "2026-10-21T13:30:18.089462+00:00",
+      "observe_not_before": "2026-10-21T13:35:18.089462+00:00",
+      "disable_receipt": "step01-59b1ee116748-disable.json",
+      "read_probe": "step01-59b1ee116748-read.ps1"
+    },
+    "c94a14183a61": {
+      "disabled_at": "2026-10-21T13:30:18.884212+00:00",
+      "observe_not_before": "2026-10-21T14:00:18.884212+00:00",
+      "disable_receipt": "step01-c94a14183a61-disable.json",
+      "read_probe": "step01-c94a14183a61-read.ps1"
+    }
+  },
+  "steps02_to06": "not started; source prep read-only",
+  "phase3": "not started; only after quiescent seal verifies",
+  "source_roots_deletion": "requires later Nick confirmation through coordinator",
+  "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00"
+}

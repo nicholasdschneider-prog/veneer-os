@@ -1,0 +1,85 @@
+{
+  "at": "2026-10-21T13:29:55.029939+00:00",
+  "profile": "ervp-manager",
+  "job_references": [
+    {
+      "id": "ece0db616afe",
+      "referenced_paths": []
+    },
+    {
+      "id": "59b1ee116748",
+      "referenced_paths": []
+    },
+    {
+      "id": "2a806c33e3f2",
+      "referenced_paths": []
+    },
+    {
+      "id": "c94a14183a61",
+      "referenced_paths": []
+    }
+  ],
+  "files": [
+    {
+      "relative": "state\\accounting-inbox-monitor.json",
+      "bytes": 132,
+      "mtime_ns": 1783818454863480000,
+      "sha256": "bb154a7c9a5af919f0289c4a80118018dcb445d5c908c1f4915db42673c72ded"
+    },
+    {
+      "relative": "state\\cs_bot_watchdog.json",
+      "bytes": 353,
+      "mtime_ns": 1792589225448861500,
+      "sha256": "cc4a9a54358444999ecfd15b3aa4c76cc88f53d3e0c6f8706b4d5d2779a6172a"
+    },
+    {
+      "relative": "state\\gateway.heartbeat",
+      "bytes": 119,
+      "mtime_ns": 1792589381819870700,
+      "sha256": "d77792d6304267d70eacd06bdc7ae084da12872f2902e675ec364735d3eddb7e"
+    },
+    {
+      "relative": "state\\gateway.lifecycle.json",
+      "bytes": 146,
+      "mtime_ns": 1792581113402967900,
+      "sha256": "4e0683daa730d8843c9a0150333814c17a96dffb2e60873bfeec632989b768c5"
+    },
+    {
+      "relative": "state\\returns_portal_watchdog.json",
+      "bytes": 130,
+      "mtime_ns": 1792589053872375000,
+      "sha256": "dc3cff30f5b112134791f7a1712fbf6f88ea176d5a1e98ad14897ad13309cab9"
+    },
+    {
+      "relative": "scripts\\archer_inbox_maintenance.py",
+      "bytes": 670,
+      "mtime_ns": 1788461498746557800,
+      "sha256": "e9904b20f3ef3dbf20cd4ea9e4d7dd3a5055605e5d1edf45d8843b921344dbeb"
+    },
+    {
+      "relative": "scripts\\cs_bot_health_watchdog.py",
+      "bytes": 6249,
+      "mtime_ns": 1785530478837869200,
+      "sha256": "88f8c58bdecdeacf171b2204169aec477ef738f92099f97058a92557fe5a365d"
+    },
+    {
+      "relative": "scripts\\ervp_trending_12h.py",
+      "bytes": 1451,
+      "mtime_ns": 1788461063131005100,
+      "sha256": "893f61a3f5717d3c608e41e309d9368459dc30bc77651fbc51f1926115ece3c5"
+    },
+    {
+      "relative": "scripts\\returns_portal_watchdog.py",
+      "bytes": 7107,
+      "mtime_ns": 1789401580955804200,
+      "sha256": "c6113ac6bc9556630c9e40ea64d91f77f6132d9e6efc9500e87eaf4e2319174e"
+    },
+    {
+      "relative": "scripts\\test_returns_portal_watchdog.py",
+      "bytes": 3031,
+      "mtime_ns": 1785416492348713300,
+      "sha256": "d3e923cc63f740a2773c246f37977eb006adddcdb83d20ef6808de38de95a40c"
+    }
+  ],
+  "contents_stay_pc": true
+}
