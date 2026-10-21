@@ -1,0 +1,35 @@
+{
+  "sources": [
+    {
+      "sha256": "AC7E00CF4F5CA1A94A6F4D87016BA2858E26B6961D7588A33CA6A0C03608FFDA",
+      "business_terms": false,
+      "gateway_run": false,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.vbs",
+      "referenced_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.cmd"
+      ],
+      "watchdog": true,
+      "exists": true
+    },
+    {
+      "sha256": "81847565521BB8BB5A983EA31C1F6BC30BE30D575CC00E89C998D598BA785ADF",
+      "business_terms": false,
+      "gateway_run": true,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\gateway-service\\Hermes_Gateway_ervp-manager.vbs",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    },
+    {
+      "sha256": "2C30814FE1EB32D647C113D9BD2DF62B6135ED4DFEC95E45083FFBC21D0B2CBE",
+      "business_terms": false,
+      "gateway_run": false,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.cmd",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    }
+  ],
+  "read_only": true,
+  "at": "2026-10-21T19:50:06.6336018Z"
+}

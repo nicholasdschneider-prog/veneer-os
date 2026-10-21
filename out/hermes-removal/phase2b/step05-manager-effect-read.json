@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-21T19:50:46.6758927Z",
+  "last_run": "2026-10-21T15:50:01.0000000-04:00",
+  "task_enabled": true,
+  "launchers": [
+    {
+      "sha256": "5B6F1EECBEEEFC6A0BC15FD300C43A31DA6668077FA18DAB65446907D8205045",
+      "name": "Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130"
+    },
+    {
+      "sha256": "6A0ED801EEACEE8B9054F7389E51A1F72908AFC8F779788121D449F2CA92E806",
+      "name": "Hermes_Gateway_ervp-manager.vbs"
+    }
+  ],
+  "steps": {},
+  "journal_exists": false,
+  "task_state": "Ready"
+}

@@ -38,13 +38,21 @@ Step4 vault drift48352e1e4b39 disabled ONCE17:07:12.426231Z under scheduler lock
 
 At13:37:58ET vault drift PASSED its full30-minute interval after1845.797seconds: disabled, unchanged last_run/recent IDs/execution count, selected and ALLprofile unfinished0. Brain interim at13:37:59ET: disabled, unchanged11:20:22ET last_run and prior result1, zero running instances/processes; full4h still pending. State metadata at13:38ET: only live HermesOps heartbeat changed; all captured BackupStatus/logs/scripts/lifecycle hashes, mtimes and field fingerprints unchanged. See step04-observation-1337.json.
 
-Next wake21:07:30Z (17:07:30ET): run step04-brain-read.ps1 to NEW final receipt; require elapsed>=14400seconds since17:07:14.7951913Z, disabled, same last_run/result, zero instances/processes. Re-read vault to DISTINCT confirmation receipt and compare to disable receipt; re-run step04-state.ps1 into NEW final state receipt and report deltas versus step04-state-disabled.json. Only after Brain passes begin step5. Keep separate22:09ETLTLconfirmation beforeseal. No repeat disables/stops/custody; no job execution.
+New coordinator ruling: Brain disabled+no in-flight process is sufficient to proceed; full4h readback remains a confirmation folded into the seal, not a Step5 blocker. Fresh15:49ET Brain readback passed disabled/no inflight. Inventory beforeStep5 confirms zero enabledHermescrons.
+
+Step5 manager watchdog disabled19:55:38.0744641Z, active Startup Hermes_Gateway_ervp-manager.vbs renamed .disabled-20261021 with SHA6A0ED801EEACEE8B9054F7389E51A1F72908AFC8F779788121D449F2CA92E806 unchanged. No separate manager gateway was present; no business process was stopped. Runtime status points to shared rootPID11592, preserved until later root/default step. Historical disabledCMD remains untouched. Fresh post-disable preflight confirms no manager gateway, no enabled cron, ALLunfinished0. Original watchdog XML copied onPC/SHA C7603F292CC1F21FD1B64216774ED1D2425253023E1C509AF933CB40AEDAF4EF.
+
+The first isolated manager helper timed out without creating a mutation journal or changing watchdog/launcher. Source readbacks confirmed absence of effects; exact own PowerShellPID15004/creation/parent/encoded-command signature was checked and stopped (only our helper, no business process). Receipt step05-stop-own-helper.json. A replacement narrow script first stopped before mutation on a missing receipt directory; directory creation was corrected, then the current manager-disable.json records the sole actual watchdog disable/launcher rename. Do not repeat either effect. Avoid blindly rerunning the larger generic helper; its stalled invocation had no business effect.
+
+Next wake20:10:50Z: run step05-ervp-manager-observe.ps1 to NEW finalJSON, require ALL checks >=900sec, no profile gateway, watchdog disabled/last_run15:55:01ETunchanged, activeStartup absent/renamedSHA unchanged/no enabledcron. Re-run manager preflight into DISTINCT post-observationJSON ALLunfinished0/no enabledtaskdependency/no gateway; preserve originalpreflight. Compare historicaldisabledCMD hash. Ifpasses, begin ervp-orders fresh preflight/action audit/activeagents0/ALLunfinished0/freshPIDcreationparent/heartbeat; watchdogFIRST thenactiveStartupRename thenexactgatewaystopONCE;15minobs beforehermesops. Default/root and accounting-migration follow serially. Do not stop sharedroot duringmanagerstep.
+
+Keep separate Brain after21:07Z and LTL after02:08Z confirmations before seal verdict, not Step5 blockers. No deletion before verified quiescent seal.
 
 ## Remaining sequence
 
 2. Disable orders vendor failure ce09b813238c, orders LTL b95f03d799dc, root LTL 9b03a939ef99, dev2 Lippert 9868ee5f2643 (unconditional now). Capture actual state first. Both LTL schedules are720minutes, but the revised proceed gate is disabled+zero unfinished; preserve late full-cycle readback before seal, never force a run.
 3. VERIFIED: tasks disabled and drained, custody captured, full task-cycle observation passed. Revised sequence is disable task → natural drain/no kill → final custody; no lane-lock ownership requirement beyond no cycle alive. Never remove existing locks or invoke business helpers.
-4. Current: vault drift and Brain Backup disabled with receipts; observe vault30min and Brain4h before step5.
+4. Proceed gate VERIFIED: vault30min passed; Brain disabled/noinflight sufficient per new ruling. Brain4h retained as confirmation before seal.
 5. Stop remaining gateways serially after watchdog disable and active launcher rename, exact fresh process identity/no in-flight checks, full15min no-relaunch each. Fresh baseline has default/root11592, hermesops7544, accounting-migration15872, orders20624; manager was not live in that inventory but its watchdog remains enabled. Re-discover, never reuse these PIDs blindly. Zero final Hermes processes/enabled cron/enabled tasks/activeStartup. Tier C untouched.
 6. Refresh six-root PC-only archive incrementally with no purge/delete, new manifest addendum, every SQLite integrity and restore test; record quiescent seal only after all writers stopped. Prior verified baseline remains preserved.
 Phase 3 is approved in advance, exclusively after all quiescent-seal checks pass and a sealed verdict is recorded under phase3/. Then remove tasks/launchers/wrappers and the authorized Hermes roots in the specified order, with original hashes and sizes before/after. Preserve backups/, ervp-vendor-automation, orderops-src, Tailscale, OpenSSH and all non-Hermes assets. See [Phase 3 authority and gated execution plan](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/README.md). If the seal fails, stop and report without deleting.
@@ -59,8 +67,12 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 
 - [SHA256SUMS.txt](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/SHA256SUMS.txt)
 - [cron-control.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/cron-control.py)
+- [gateway-preflight-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-preflight-body.ps1)
+- [gateway-stop-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-stop-body.ps1)
 - [inventory-baseline.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-baseline.json)
 - [inventory-before-step03.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-step03.json)
+- [inventory-before-step05.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-step05.json)
+- [inventory-manager-pending.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-manager-pending.json)
 - [make-probe.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/make-probe.py)
 - [phase2b-state.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/phase2b-state.json)
 - [static-source-prep.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/static-source-prep.json)
@@ -162,6 +174,7 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step04-brain-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-disable.ps1)
 - [step04-brain-observe-1337.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-observe-1337.json)
 - [step04-brain-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-read.ps1)
+- [step04-brain-released-1549.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-released-1549.json)
 - [step04-observation-1337.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-observation-1337.json)
 - [step04-state-before-expanded.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-before-expanded.json)
 - [step04-state-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-before.json)
@@ -177,3 +190,25 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step04-vault-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-disable.ps1)
 - [step04-vault-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-final.json)
 - [step04-vault-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-read.ps1)
+- [step05-ervp-manager-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-observe.ps1)
+- [step05-ervp-manager-post-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-post-disable.json)
+- [step05-ervp-manager-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-preflight.json)
+- [step05-ervp-manager-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-preflight.ps1)
+- [step05-ervp-manager-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-stop.json)
+- [step05-ervp-manager-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-stop.ps1)
+- [step05-manager-after-timeout.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-after-timeout.json)
+- [step05-manager-cmd-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-cmd-audit.json)
+- [step05-manager-cmd-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-cmd-audit.ps1)
+- [step05-manager-disable-only.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-disable-only.ps1)
+- [step05-manager-effect-read.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-effect-read.json)
+- [step05-manager-effect-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-effect-read.ps1)
+- [step05-manager-effect-read2.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-effect-read2.json)
+- [step05-manager-effect-read2.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-effect-read2.ps1)
+- [step05-manager-launcher-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-launcher-audit.json)
+- [step05-manager-launcher-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-launcher-audit.ps1)
+- [step05-manager-recovery-read.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-recovery-read.json)
+- [step05-manager-recovery-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-recovery-read.ps1)
+- [step05-own-helper-identity.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-own-helper-identity.json)
+- [step05-own-helper-identity.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-own-helper-identity.ps1)
+- [step05-stop-own-helper.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-stop-own-helper.json)
+- [step05-stop-own-helper.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-stop-own-helper.ps1)

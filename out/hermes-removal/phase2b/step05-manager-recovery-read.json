@@ -1,0 +1,29 @@
+{
+  "launchers": [
+    {
+      "sha256": "5B6F1EECBEEEFC6A0BC15FD300C43A31DA6668077FA18DAB65446907D8205045",
+      "name": "Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130"
+    },
+    {
+      "sha256": "6A0ED801EEACEE8B9054F7389E51A1F72908AFC8F779788121D449F2CA92E806",
+      "name": "Hermes_Gateway_ervp-manager.vbs"
+    }
+  ],
+  "steps": {},
+  "last_run": "2026-10-21T15:50:01.0000000-04:00",
+  "operation_receipt_exists": false,
+  "at": "2026-10-21T19:54:14.2952837Z",
+  "journal_exists": false,
+  "task_enabled": true,
+  "task_state": "Ready",
+  "operation_processes": [
+    {
+      "name": "powershell.exe",
+      "pid": 15004,
+      "cpu_user": 1093750,
+      "parent": 6444,
+      "created": "2026-10-21T15:50:20.7569780-04:00",
+      "cpu_kernel": 1250000
+    }
+  ]
+}

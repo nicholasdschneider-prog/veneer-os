@@ -1,0 +1,11 @@
+{
+  "manager_task_still_enabled": true,
+  "journal_absent": true,
+  "command_sha256": "E825B42A21E10785F55920A9D604EB43230D17A64A08162EE0DB7399F52D9A3D",
+  "parent": 6444,
+  "launcher_unchanged": true,
+  "at": "2026-10-21T19:55:05.1045272Z",
+  "stopped_own_isolated_helper": 15004,
+  "no_business_process_targeted": true,
+  "created": "2026-10-21T15:50:20.7569780-04:00"
+}

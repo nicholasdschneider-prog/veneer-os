@@ -1,0 +1,1 @@
+$p=Get-CimInstance Win32_Process -Filter 'ProcessId=15004';@{exists=($null -ne $p);name=$p.Name;parent=$p.ParentProcessId;created=$p.CreationDate.ToString('o');encoded=([string]$p.CommandLine -match '-EncodedCommand\s+WwBDAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0');command_prefix=([string]$p.CommandLine).Substring(0,55)}|ConvertTo-Json

@@ -1,0 +1,17 @@
+{
+  "task_disabled_at": "2026-10-21T19:55:38.0744641Z",
+  "xml_sha256": "C7603F292CC1F21FD1B64216774ED1D2425253023E1C509AF933CB40AEDAF4EF",
+  "profile": "ervp-manager",
+  "process_stops": [],
+  "task_enabled": false,
+  "observation_start": "2026-10-21T19:55:38.6963352Z",
+  "started_at": "2026-10-21T19:55:37.9947065Z",
+  "last_run": "2026-10-21T15:55:01.0000000-04:00",
+  "shared_root_preserved": true,
+  "manager_profile_gateway_absent": true,
+  "launcher": {
+    "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.vbs.disabled-20261021",
+    "sha256": "6A0ED801EEACEE8B9054F7389E51A1F72908AFC8F779788121D449F2CA92E806",
+    "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.vbs"
+  }
+}

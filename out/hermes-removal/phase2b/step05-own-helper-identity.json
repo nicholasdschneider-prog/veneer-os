@@ -1,0 +1,8 @@
+{
+  "name": "powershell.exe",
+  "command_prefix": "powershell  -NoProfile -NonInteractive -EncodedCommand ",
+  "encoded": true,
+  "parent": 6444,
+  "created": "2026-10-21T15:50:20.7569780-04:00",
+  "exists": true
+}
