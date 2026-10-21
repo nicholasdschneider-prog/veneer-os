@@ -38,3 +38,7 @@
 - PC operator sent phase 2b GO (all remaining crons/tasks/gateways → zero Hermes processes), then quiescent archive seal, then phase-3 plan (tasks/launchers removed; data-root deletion needs Nick's confirmation via this chat).
 - Boris, Sage (final policy-cycle delta to adopt read-only), Archer notified.
 - 2026-10-21 (later, Nick traveling): "Delete it too" — phase-3 deletion of the Hermes data roots APPROVED in advance, gated only on a verified quiescent archive seal. Operator instructed (request_key hermes-pc-operator-phase3-delete-approved-20261021); keeps backups/, ervp-vendor-automation, orderops-src, Tailscale/SSH.
+
+## 2026-10-21 15:50 ET check
+- Phase 2b: steps 1–3 verified (all 9 crons + both Windows tasks disabled; Direct_Shopify/All_Order_Review drained and captured). Step 4: vault verified; Brain Backup disabled, 4h window released by coordinator. Step 5 (gateways) and step 6 (seal) released to proceed now.
+- Sage delta forwarded (step03-sage-pending-delta.json: 94 unresolved rows, outbox 417 delivered/50 failed_ambiguous, 33 Dometic pending-active).
