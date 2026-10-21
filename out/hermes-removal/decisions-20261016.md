@@ -37,3 +37,4 @@
 - BUILD863 repairs cancelled; ORDEROPS_HERMES_LANE_* set to off on Railway (--skip-deploys). Lane code stays inert.
 - PC operator sent phase 2b GO (all remaining crons/tasks/gateways → zero Hermes processes), then quiescent archive seal, then phase-3 plan (tasks/launchers removed; data-root deletion needs Nick's confirmation via this chat).
 - Boris, Sage (final policy-cycle delta to adopt read-only), Archer notified.
+- 2026-10-21 (later, Nick traveling): "Delete it too" — phase-3 deletion of the Hermes data roots APPROVED in advance, gated only on a verified quiescent archive seal. Operator instructed (request_key hermes-pc-operator-phase3-delete-approved-20261021); keeps backups/, ervp-vendor-automation, orderops-src, Tailscale/SSH.
