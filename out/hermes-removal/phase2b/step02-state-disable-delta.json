@@ -1,0 +1,69 @@
+{
+  "at": "2026-10-21T14:08:59.040413+00:00",
+  "delta": {
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\state\\owner.sqlite3-shm": {
+      "before": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\state\\owner.sqlite3-shm",
+        "bytes": 32768,
+        "mtime_ns": 1792591727562965600,
+        "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+      },
+      "after": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\workspace\\lippert-final-tracking-owner\\state\\owner.sqlite3-shm",
+        "bytes": 32768,
+        "mtime_ns": 1792591738962345800,
+        "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+      }
+    },
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\gateway.heartbeat": {
+      "before": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\gateway.heartbeat",
+        "bytes": 122,
+        "mtime_ns": 1792591699307345200,
+        "sha256": "45b17aafe3f6c8c02d5e2ddb9275d32b8f985c16aca567cad588d1461ace1fce"
+      },
+      "after": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\gateway.heartbeat",
+        "bytes": 120,
+        "mtime_ns": 1792591729320966800,
+        "sha256": "7e4f1ad04d98996986dfe86b0ed33433f6f54b941a3f7695a76e111f84a71c01"
+      }
+    },
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\vendor-failure-watchdog-state.json": {
+      "before": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\vendor-failure-watchdog-state.json",
+        "bytes": 21599,
+        "mtime_ns": 1792591610563650500,
+        "sha256": "4a29405f6f97208cde5f46de10c8c6ebda399bcee67cf9c685398c3489e07553",
+        "field_hashes": {
+          "seen_command_ids": "89d2e82ddb4d9dac3c08215c47d836d905852e97f2ee077c720b852285ad6e45"
+        }
+      },
+      "after": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\orders-bot\\vendor-failure-watchdog-state.json",
+        "bytes": 21599,
+        "mtime_ns": 1792591730617532700,
+        "sha256": "4a29405f6f97208cde5f46de10c8c6ebda399bcee67cf9c685398c3489e07553",
+        "field_hashes": {
+          "seen_command_ids": "89d2e82ddb4d9dac3c08215c47d836d905852e97f2ee077c720b852285ad6e45"
+        }
+      }
+    },
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\safe-vendor-poller.sqlite3-shm": {
+      "before": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\safe-vendor-poller.sqlite3-shm",
+        "bytes": 32768,
+        "mtime_ns": 1792591727552966000,
+        "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+      },
+      "after": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\state\\safe-vendor-poller.sqlite3-shm",
+        "bytes": 32768,
+        "mtime_ns": 1792591738952346000,
+        "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+      }
+    }
+  },
+  "scope_limit": "bounded top-level profile state and known Lippert workspace; remote business state not queried",
+  "no_job_invoked": true
+}

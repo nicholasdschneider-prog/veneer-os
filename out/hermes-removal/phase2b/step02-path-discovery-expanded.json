@@ -1,0 +1,27 @@
+[
+  {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\vendor_failure_watchdog.py",
+    "path_literals": [
+      "state/orders-bot/commands.json",
+      "state/vendor-order-runs.json",
+      "state/orders-bot/vendor-failure-watchdog-state.json"
+    ],
+    "path_assignments": []
+  },
+  {
+    "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ltl_tracking_cleanup.py",
+    "path_literals": [
+      "ltl-tracking-cleanup.lock",
+      "/graphql.json"
+    ],
+    "path_assignments": [
+      "PROFILE_ROOT = Path(__file__).resolve().parent.parent",
+      "LOCK_PATH = PROFILE_ROOT / 'state' / 'ltl-tracking-cleanup.lock'"
+    ]
+  },
+  {
+    "root_job_script_paths": [
+      "C:/Users/nicho/ltl-tracking-cleanup.py"
+    ]
+  }
+]

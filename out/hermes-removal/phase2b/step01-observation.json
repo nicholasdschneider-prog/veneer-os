@@ -1,0 +1,66 @@
+{
+  "ece0db616afe": {
+    "elapsed_seconds": 2209.615304,
+    "checks": {
+      "full_interval": true,
+      "disabled": true,
+      "last_run": true,
+      "ids": true,
+      "count": true,
+      "all_unfinished_zero": true,
+      "unfinished_zero": true
+    }
+  },
+  "2a806c33e3f2": {
+    "elapsed_seconds": 2209.693045,
+    "checks": {
+      "full_interval": true,
+      "disabled": true,
+      "last_run": true,
+      "ids": true,
+      "count": true,
+      "all_unfinished_zero": true,
+      "unfinished_zero": true
+    }
+  },
+  "59b1ee116748": {
+    "elapsed_seconds": 2209.683789,
+    "checks": {
+      "full_interval": true,
+      "disabled": true,
+      "last_run": true,
+      "ids": true,
+      "count": true,
+      "all_unfinished_zero": true,
+      "unfinished_zero": true
+    }
+  },
+  "c94a14183a61": {
+    "elapsed_seconds": 2209.654835,
+    "checks": {
+      "full_interval": true,
+      "disabled": true,
+      "last_run": true,
+      "ids": true,
+      "count": true,
+      "all_unfinished_zero": true,
+      "unfinished_zero": true
+    }
+  },
+  "state_delta": {
+    "state\\gateway.heartbeat": {
+      "before": {
+        "relative": "state\\gateway.heartbeat",
+        "bytes": 121,
+        "mtime_ns": 1792589441876877700,
+        "sha256": "8571a8380642a3cb93233aa4dbd5a3a813f23960764a6c61645e03ec8c6e47a7"
+      },
+      "after": {
+        "relative": "state\\gateway.heartbeat",
+        "bytes": 122,
+        "mtime_ns": 1792591603281799300,
+        "sha256": "fe56a15b13ff2db192aa5b0f9e6755a9fa3d270606bb46bc2eb41628446b2d93"
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-21T14:07:32.961801+00:00",
+  "profile": "root",
+  "id": "9b03a939ef99",
+  "operation": "read",
+  "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\cron\\jobs.json",
+  "before": {
+    "id": "9b03a939ef99",
+    "name": "LTL Tracking Mapper",
+    "enabled": true,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 720,
+      "display": "every 720m"
+    },
+    "last_run_at": "2026-06-20T02:28:29.384543-04:00",
+    "next_run_at": "2026-06-20T14:28:29.384543-04:00",
+    "last_status": "ok",
+    "failure_streak": null
+  },
+  "after": {
+    "id": "9b03a939ef99",
+    "name": "LTL Tracking Mapper",
+    "enabled": true,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 720,
+      "display": "every 720m"
+    },
+    "last_run_at": "2026-06-20T02:28:29.384543-04:00",
+    "next_run_at": "2026-06-20T14:28:29.384543-04:00",
+    "last_status": "ok",
+    "failure_streak": null
+  },
+  "before_sha256": "b6cb9c783170e30c3ccaa40a5199ccef3f0ef03dfd1620c1251f03a9a295fda7",
+  "after_sha256": "b6cb9c783170e30c3ccaa40a5199ccef3f0ef03dfd1620c1251f03a9a295fda7",
+  "ledger": {
+    "exists": true,
+    "recent": [],
+    "unfinished_all_profile": 0,
+    "unfinished": 0,
+    "active": [],
+    "total_executions": 0
+  },
+  "no_job_invoked": true,
+  "scheduler_lock": "msvcrt byte 0 .jobs.lock acquired"
+}

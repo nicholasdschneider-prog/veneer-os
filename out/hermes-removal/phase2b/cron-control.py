@@ -34,7 +34,7 @@ with lock.open('a+b') as f:
   if len(selected)!=1 or type(selected[0].get('enabled')) is not bool:raise RuntimeError('Ambiguous job or invalid enabled state')
   j=selected[0];before=metadata(j);preledger=ledger();before_hash=hashlib.sha256(raw).hexdigest()
   if mode=='disable':
-   if preledger.get('unfinished',0) or preledger.get('error'):raise RuntimeError('In-flight or unreadable ledger; no mutation')
+   if preledger.get('unfinished',0) or preledger.get('unfinished_all_profile',0) or preledger.get('error') or not preledger.get('exists'):raise RuntimeError('In-flight or unreadable ledger; no mutation')
    if j['enabled'] is not True:raise RuntimeError('Already disabled: inspect existing receipt before any mutation')
    backup=pathlib.Path(r'C:\Users\nicho\backups\hermes-phase2b-20261021')/profile
    backup.mkdir(parents=True,exist_ok=True)
