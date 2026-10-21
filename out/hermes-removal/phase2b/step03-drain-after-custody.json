@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-21T16:50:36.8829014Z",
+  "running_instances": [],
+  "cycle_process_tree": [],
+  "tasks": [
+    {
+      "last_run": "2026-10-21T12:41:01.0000000-04:00",
+      "state": "Disabled",
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "enabled": false
+    },
+    {
+      "last_run": "2026-10-21T12:47:01.0000000-04:00",
+      "state": "Disabled",
+      "name": "ERVP_Orders_Bot_All_Order_Review",
+      "enabled": false
+    }
+  ],
+  "drained": true,
+  "no_process_stop": true,
+  "launchers": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_Direct_Shopify-silent.vbs",
+      "sha256": "A85E9E3351132C9A180639FAB534FB97707FC18E91F55CC02627312405FFC6FC",
+      "referenced_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_production_owner_policy_cycle.cmd"
+      ]
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_All_Order_Review-silent.vbs",
+      "sha256": "8810E55B2F922FCD1333AF98C477CC6C634E9032CAFDE07F05703F2058BC7A6A",
+      "referenced_paths": [
+        "C:\\Users\\nicho\\ervp-vendor-automation\\scripts\\run_every_order_review.cmd"
+      ]
+    }
+  ]
+}

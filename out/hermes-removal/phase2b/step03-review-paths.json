@@ -1,0 +1,24 @@
+[
+  {
+    "path": "C:\\Users\\nicho\\ervp-vendor-automation\\scripts\\run_every_order_review.cmd",
+    "python_names": [
+      "every_order_review.py"
+    ]
+  },
+  {
+    "path": "C:\\Users\\nicho\\ervp-vendor-automation\\every_order_review.py",
+    "state_names": [
+      "every-order-review.json",
+      "orders.json",
+      "owner-policy-candidates.json",
+      "vendor-order-runs.json"
+    ],
+    "file_assignments": [
+      "ROOT = Path(__file__).resolve().parent",
+      "ORDERS_BOT_STATE = PROFILE / 'state' / 'orders-bot'",
+      "STATE_PATH = ORDERS_BOT_STATE / 'every-order-review.json'",
+      "CANDIDATE_PATH = ORDERS_BOT_STATE / 'owner-policy-candidates.json'",
+      "VENDOR_RUN_PATH = ROOT / 'state' / 'vendor-order-runs.json'"
+    ]
+  }
+]

@@ -1,4 +1,6 @@
-# Step 3 read-only preparation — not a final custody receipt
+# Step 3 read-only preparation — historical
+
+Superseded in part by the October21 coordinator ruling: disable tasks first, drain naturally, then final custody; no lane-lock ownership reconciliation required beyond no cycle process alive. No lock may be removed. Final task disable/drain/custody receipts are indexed in README.md. The preliminary counts and source findings below remain historical, not current approval gates.
 
 No task mutation, helper execution, customer/mailbox query or source edit occurred. These snapshots were taken while tasks remain live and must not be used as the final adoption delta.
 

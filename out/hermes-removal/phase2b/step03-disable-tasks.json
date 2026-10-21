@@ -1,0 +1,39 @@
+{
+  "before_process_tree": [],
+  "started_at": "2026-10-21T16:49:11.8242216Z",
+  "effects": [
+    {
+      "disabled_at": "2026-10-21T16:49:12.6996855Z",
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "last_result": 0,
+      "last_run": "2026-10-21T12:41:01.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    },
+    {
+      "disabled_at": "2026-10-21T16:49:13.3415295Z",
+      "name": "ERVP_Orders_Bot_All_Order_Review",
+      "last_result": 0,
+      "last_run": "2026-10-21T12:47:01.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    }
+  ],
+  "after_process_tree": [],
+  "no_process_stop": true,
+  "finished_at": "2026-10-21T16:49:13.4135607Z",
+  "tasks": [
+    {
+      "before_enabled": true,
+      "before_state": "Ready",
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "xml_sha256": "73c882a298be00000e85e4084e896fa772a76e5d2e5a42264897c92da37c0c11"
+    },
+    {
+      "before_enabled": true,
+      "before_state": "Ready",
+      "name": "ERVP_Orders_Bot_All_Order_Review",
+      "xml_sha256": "209abab5c3b3297eb12733a4b09ed12c99b724fc7e38188894efc5c02bb54527"
+    }
+  ]
+}
