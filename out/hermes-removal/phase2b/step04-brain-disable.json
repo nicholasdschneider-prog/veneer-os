@@ -1,0 +1,13 @@
+{
+  "before_enabled": true,
+  "disabled_at": "2026-10-21T17:07:14.7951913Z",
+  "xml_sha256": "91D19B86D22345D9A4E0530741E7C405D784E66EDB1044DB4939AD475AB872DF",
+  "state": "Disabled",
+  "no_inflight": true,
+  "last_result": 1,
+  "xml_path": "C:\\Users\\nicho\\backups\\hermes-phase2b-20261021\\step04\\Hermes_Brain_Backup-before.xml",
+  "started_at": "2026-10-21T17:07:14.0780408Z",
+  "last_run": "2026-10-21T11:20:22.0000000-04:00",
+  "enabled": false,
+  "no_job_invoked": true
+}

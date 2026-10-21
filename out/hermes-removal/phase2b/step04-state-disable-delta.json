@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-21T17:07:15.561632+00:00",
+  "delta": {
+    "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\state\\gateway.heartbeat": {
+      "before": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\state\\gateway.heartbeat",
+        "bytes": 121,
+        "mtime_ns": 1792602369849397400,
+        "sha256": "efa6c388b42ae715361dfb2b852c1609fbf9b05a82ab1509d9fe381cf5ac8a93"
+      },
+      "after": {
+        "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\state\\gateway.heartbeat",
+        "bytes": 121,
+        "mtime_ns": 1792602429901009900,
+        "sha256": "08b5831fb23c45aaadba07c5c825badb87283655f4a27b5d467603f44ae8ff7b"
+      }
+    }
+  },
+  "limitation": "bounded local retained metadata; no job executed; earlier Brain last_result1 preserved, not repaired"
+}

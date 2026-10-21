@@ -1,0 +1,39 @@
+{
+  "brain_path_lines": [
+    "[string]$VaultPath = 'C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain',",
+    "[string]$ProfilesRoot = 'C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles',",
+    "[string]$RemoteBackupRoot = '/Users/archerclawdington/.openclaw/backups/hermes-brain-vault'",
+    "$generatedPath = Join-Path $VaultPath $generatedName",
+    "$nextPath = Join-Path $VaultPath $nextName",
+    "$logRoot = 'C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-logs\\brain-vault'",
+    "$versionRoot = 'C:\\Users\\nicho\\AppData\\Local\\hermes\\backup-versions\\brain-vault'",
+    "$logPath = Join-Path $logRoot \"brain-sync-$runId.log\"",
+    "$environmentPath = Join-Path $profileDirectory.FullName '.env'",
+    "$hermesRoot = Join-Path $nextPath 'Hermes\\Profiles'",
+    "$statePath = Join-Path $profileDir.FullName 'state.db'",
+    "$skillsPath = Join-Path $profileDir.FullName 'skills'",
+    "$relativeSkillPath = Get-RelativePath -Base $profileDir.FullName -Path $_.FullName",
+    "$libraryRelativePath = $null",
+    "$libraryRelativePath = Get-RelativePath -Base $nextPath -Path $libraryDestination",
+    "$hermesManifestPath = Join-Path $nextPath 'Hermes\\Hermes Export Manifest.json'",
+    "$remoteWorkspaceRoot = $RemoteWorkspace.Substring(0, $RemoteWorkspace.LastIndexOf('/'))",
+    "$relativeRemotePath = $remoteCorePath.Substring($remoteWorkspaceRoot.Length).TrimStart('/')",
+    "$localCorePath = Join-Path (Join-Path (Join-Path $remoteStage $workspaceName) 'core') $pathParts[-1]",
+    "$relativeMemoryPath = $remoteMemoryFile.Substring($remoteMemoryRoot.Length).TrimStart('/')",
+    "$localMemoryPath = Join-Path (Join-Path (Join-Path $remoteStage $workspaceName) 'memory') $relativeMemoryPath",
+    "$sftpBatchPath = Join-Path $remoteStage 'sftp-batch.txt'",
+    "$relativeMemoryPath = Get-RelativePath -Base $memoryStage -Path $file.FullName",
+    "$relativeSkillPath = Get-RelativePath -Base $skillStage -Path $_.FullName",
+    "$openClawManifestPath = Join-Path $openClawTarget 'OpenClaw Export Manifest.json'",
+    "$statusPath = Join-Path $openClawTarget 'OpenClaw Source Status.md'",
+    "$manifestPath = Join-Path $nextPath 'Backup Manifest.json'",
+    "$versionPath = Join-Path $versionRoot \"Generated-$runId\"",
+    "$statusPath = Join-Path $VaultPath 'Backup Status.json'"
+  ],
+  "vault_assignments": [
+    "ERVP_PROFILES = ['accounting-migration', 'ervp-manager', 'ervp-ops', 'ervp-qa', 'ervp-qa2', 'ervp-research', 'evidence', 'hermesops', 'nick', 'qa-review', 'research-analysis']",
+    "SENTINEL_FILENAME = 'HERMES_HANDOFFS.md'",
+    "stale_profiles = check_profile_pointers()",
+    "env_path = os.path.join(PROFILES_DIR, profile, '.env')"
+  ]
+}

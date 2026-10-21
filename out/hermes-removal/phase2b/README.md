@@ -32,13 +32,17 @@ Step3 tasks disabled ONCE: Direct16:49:12.6996855Z; All_Order_Review16:49:13.341
 
 Final custody captured in PC-only backups/hermes-phase2b-20261021/step03/final-custody. Eight original state files plus consistent vendor-governance.sqlite3 snapshot retained; SQLite integrity OK. All_Order_Review every-order-review.json ledger/checkpoint preserved. Sanitized candidates78, commands843, lane groups393 and source hashes/mtimes retained. Outbox467 rows:417delivered/50failed_ambiguous. Dometic pending file active_count33; vendor ledger separately has6Lippert submitted_pending_verification+2needs_manual_reconcile, and additional unresolved Dometic statuses. These are historical stored outcomes, not evidence of live processes; nothing was cleared or retried. See step03-sage-pending-delta.json and full sanitized metadata receipts. Customer bodies and database payload stay PC.
 
-Next task-cycle observation after17:04:13.342Z (15minutes): run step03-drain.ps1 to NEW final receipt; compare disabled states and last_run to step03-disable-tasks.json and require no running instances/processes. Then Step4 capture vault/Brain state, disable once with no in-flight work, observe actual cycles. Preserve separate late LTL confirmation before seal.
+Step3 VERIFIED at17:04:59.8356174Z after946+seconds: both tasks disabled, last_run unchanged, no COM scheduler instances or cycle process tree. Final observation receipt step03-observation-verdict.json. No stop, kill or custody capture repeated.
+
+Step4 vault drift48352e1e4b39 disabled ONCE17:07:12.426231Z under scheduler lock with selected/ALLprofile unfinished0. Brain Backup disabled ONCE17:07:14.7951913Z with zero running scheduler instances/backup processes. Task XML preserved onPC with SHA91D19B86D22345D9A4E0530741E7C405D784E66EDB1044DB4939AD475AB872DF. Existing Brain last_run11:20:22ET/last_result1 retained; no repair or job execution. Source launcher leads to HermesBrainOps/Sync-HermesBrain.ps1. Bounded state includes vault Backup Status.json plus latest five backup-log hashes/mtimes. Two exact Generated manifest paths were absent (recorded, not treated as proof of missing archive scope). Before/disabled comparison: only live HermesOps heartbeat changed; captured backup status/logs/scripts and lifecycle unchanged.
+
+Next wake17:37:30Z: read vault via step04-vault-read.ps1 into NEW observationJSON; require elapsed>=1800, disabled, unchanged last_run/recent IDs/counts, selected+ALLprofile unfinished0. Recheck Brain via step04-brain-read.ps1 into NEW receipt: disabled, unchanged11:20:22ETlast_run, last_result1, no instances/processes. Brain full4h ends21:07:14.795192Z; do not begin step5 until that passes. Re-run step04-state.ps1 into NEW receipt; compare all hashes/mtime/field fingerprints to step04-state-disabled.json, preserve deltas. Keep separate22:09ETLTLconfirmation beforeseal. No repeat disables.
 
 ## Remaining sequence
 
 2. Disable orders vendor failure ce09b813238c, orders LTL b95f03d799dc, root LTL 9b03a939ef99, dev2 Lippert 9868ee5f2643 (unconditional now). Capture actual state first. Both LTL schedules are720minutes, but the revised proceed gate is disabled+zero unfinished; preserve late full-cycle readback before seal, never force a run.
-3. Current: tasks disabled and drained, custody captured. Complete task-cycle observation before step4. Revised sequence is disable task → natural drain/no kill → final custody; no lane-lock ownership requirement beyond no cycle alive. Never remove existing locks or invoke business helpers.
-4. Disable hermesops vault drift and Brain Backup, preserving state and observing their actual cycles (vault30min, Brain task4h).
+3. VERIFIED: tasks disabled and drained, custody captured, full task-cycle observation passed. Revised sequence is disable task → natural drain/no kill → final custody; no lane-lock ownership requirement beyond no cycle alive. Never remove existing locks or invoke business helpers.
+4. Current: vault drift and Brain Backup disabled with receipts; observe vault30min and Brain4h before step5.
 5. Stop remaining gateways serially after watchdog disable and active launcher rename, exact fresh process identity/no in-flight checks, full15min no-relaunch each. Fresh baseline has default/root11592, hermesops7544, accounting-migration15872, orders20624; manager was not live in that inventory but its watchdog remains enabled. Re-discover, never reuse these PIDs blindly. Zero final Hermes processes/enabled cron/enabled tasks/activeStartup. Tier C untouched.
 6. Refresh six-root PC-only archive incrementally with no purge/delete, new manifest addendum, every SQLite integrity and restore test; record quiescent seal only after all writers stopped. Prior verified baseline remains preserved.
 Phase 3 is approved in advance, exclusively after all quiescent-seal checks pass and a sealed verdict is recorded under phase3/. Then remove tasks/launchers/wrappers and the authorized Hermes roots in the specified order, with original hashes and sizes before/after. Preserve backups/, ervp-vendor-automation, orderops-src, Tailscale, OpenSSH and all non-Hermes assets. See [Phase 3 authority and gated execution plan](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/README.md). If the seal fails, stop and report without deleting.
@@ -133,10 +137,12 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step03-drain-before-custody.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-drain-before-custody.json)
 - [step03-drain.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-drain.ps1)
 - [step03-final-delta.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-final-delta.json)
+- [step03-final-observation.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-final-observation.json)
 - [step03-lock-schema-prep-expanded.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep-expanded.json)
 - [step03-lock-schema-prep.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep.json)
 - [step03-lock-schema-prep.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep.ps1)
 - [step03-lock-schema-prep.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-lock-schema-prep.py)
+- [step03-observation-verdict.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-observation-verdict.json)
 - [step03-preparation.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-preparation.md)
 - [step03-review-paths.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-review-paths.json)
 - [step03-review-paths.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-review-paths.ps1)
@@ -149,3 +155,19 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step03-task-settings.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-task-settings.ps1)
 - [step03-vendor-projection.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-vendor-projection.json)
 - [step03-vendor-projection.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step03-vendor-projection.ps1)
+- [step04-brain-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-before.json)
+- [step04-brain-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-disable.json)
+- [step04-brain-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-disable.ps1)
+- [step04-brain-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-read.ps1)
+- [step04-state-before-expanded.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-before-expanded.json)
+- [step04-state-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-before.json)
+- [step04-state-disable-delta.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-disable-delta.json)
+- [step04-state-disabled.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-disabled.json)
+- [step04-state-paths.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-paths.json)
+- [step04-state-paths.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state-paths.ps1)
+- [step04-state.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state.ps1)
+- [step04-state.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-state.py)
+- [step04-vault-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-before.json)
+- [step04-vault-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-disable.json)
+- [step04-vault-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-disable.ps1)
+- [step04-vault-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-read.ps1)

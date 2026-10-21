@@ -1,0 +1,138 @@
+{
+  "at": "2026-10-21T17:07:12.426231+00:00",
+  "profile": "hermesops",
+  "id": "48352e1e4b39",
+  "operation": "disable",
+  "file": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\cron\\jobs.json",
+  "before": {
+    "id": "48352e1e4b39",
+    "name": "Obsidian vault drift monitor",
+    "enabled": true,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 30,
+      "display": "every 30m"
+    },
+    "last_run_at": "2026-10-21T12:44:11.043004-04:00",
+    "next_run_at": "2026-10-21T13:14:11.043004-04:00",
+    "last_status": "ok",
+    "failure_streak": 0
+  },
+  "after": {
+    "id": "48352e1e4b39",
+    "name": "Obsidian vault drift monitor",
+    "enabled": false,
+    "state": "scheduled",
+    "schedule": {
+      "kind": "interval",
+      "minutes": 30,
+      "display": "every 30m"
+    },
+    "last_run_at": "2026-10-21T12:44:11.043004-04:00",
+    "next_run_at": "2026-10-21T13:14:11.043004-04:00",
+    "last_status": "ok",
+    "failure_streak": 0
+  },
+  "before_sha256": "1a3f06c06f280f67683e958dd7b2275296cfadb6935d742d7bac240a90f8c6d9",
+  "after_sha256": "700a12f9384538520d531ccc60882b67f85ac3148eff2a9dab30150248e03d1d",
+  "ledger": {
+    "exists": true,
+    "recent": [
+      {
+        "id": "3b342967ccce4738936276ad3a50ea43",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T12:44:10.912425-04:00",
+        "started_at": "2026-10-21T12:44:10.944349-04:00",
+        "finished_at": "2026-10-21T12:44:11.047004-04:00"
+      },
+      {
+        "id": "f8cb0e587cdb422981aa0dbab8e64fc5",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T12:14:10.205534-04:00",
+        "started_at": "2026-10-21T12:14:10.237695-04:00",
+        "finished_at": "2026-10-21T12:14:10.339696-04:00"
+      },
+      {
+        "id": "dda18dcdb45a4dd5928295aafa2abbd1",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T11:44:09.542150-04:00",
+        "started_at": "2026-10-21T11:44:09.575750-04:00",
+        "finished_at": "2026-10-21T11:44:09.679347-04:00"
+      },
+      {
+        "id": "c2b11b10d7604d9ab85cc4988695ab24",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T11:14:08.810228-04:00",
+        "started_at": "2026-10-21T11:14:08.844229-04:00",
+        "finished_at": "2026-10-21T11:14:08.948809-04:00"
+      },
+      {
+        "id": "1c732561798344f1a15617d9724f6575",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T10:44:08.105424-04:00",
+        "started_at": "2026-10-21T10:44:08.137422-04:00",
+        "finished_at": "2026-10-21T10:44:08.248589-04:00"
+      },
+      {
+        "id": "4661c09692df461cb2f9088d2899ff03",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T10:14:07.383511-04:00",
+        "started_at": "2026-10-21T10:14:07.419618-04:00",
+        "finished_at": "2026-10-21T10:14:07.523244-04:00"
+      },
+      {
+        "id": "5c176c463ddb411380d27e11f598cc53",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T09:44:06.749688-04:00",
+        "started_at": "2026-10-21T09:44:06.788688-04:00",
+        "finished_at": "2026-10-21T09:44:06.902688-04:00"
+      },
+      {
+        "id": "fbd9e1fe321b4fdfbdd7215dcc5a1195",
+        "job_id": "48352e1e4b39",
+        "pid": 7544,
+        "process_id": "9ee37b12b57d4253b3f8aad1198bcc8d",
+        "process_started_at": 179258102085,
+        "status": "completed",
+        "claimed_at": "2026-10-21T09:14:05.715832-04:00",
+        "started_at": "2026-10-21T09:14:05.931618-04:00",
+        "finished_at": "2026-10-21T09:14:06.248010-04:00"
+      }
+    ],
+    "unfinished_all_profile": 0,
+    "unfinished": 0,
+    "active": [],
+    "total_executions": 1000
+  },
+  "no_job_invoked": true,
+  "scheduler_lock": "msvcrt byte 0 .jobs.lock acquired"
+}

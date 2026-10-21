@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-21T17:05:39.996597+00:00",
+  "job_script_names": [
+    "obsidian_vault_drift_monitor.py"
+  ],
+  "sources": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\Hermes_Brain_Backup-silent.vbs",
+      "file_paths": [
+        "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1"
+      ],
+      "state_names": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\obsidian_vault_drift_monitor.py",
+      "file_paths": [],
+      "state_names": [],
+      "path_assignments": []
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1",
+      "file_paths": [],
+      "state_names": [
+        "Manifest.json",
+        "Status.json",
+        "openclaw.json",
+        "state.db"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\Hermes_Brain_Backup-silent.vbs",
+      "bytes": 441,
+      "mtime_ns": 1789400846942890500,
+      "sha256": "f6366324be8a987e8d5b9a06419802f5e7d7ad2c4368eb6dea88405332e83f05"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\obsidian_vault_drift_monitor.py",
+      "bytes": 5424,
+      "mtime_ns": 1786378496191152400,
+      "sha256": "33cab8559f56c445e56603e002d7b67fbcd5e25def879bac9608d7290189ada8"
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesBrainOps\\Sync-HermesBrain.ps1",
+      "bytes": 33044,
+      "mtime_ns": 1785020940931717400,
+      "sha256": "a75d4aa4e924f930d2fda8f6c2e265e280b4d47036e81da560c6aac61acdc0fa"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\state\\gateway.heartbeat",
+      "bytes": 121,
+      "mtime_ns": 1792602339834651200,
+      "sha256": "cee09a0e97c316be486f602777712de46a56571a1cef4297a6efd867fbda0e87"
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\state\\gateway.lifecycle.json",
+      "bytes": 144,
+      "mtime_ns": 1792581097517491300,
+      "sha256": "97d27a74635ee9feeca86bbe6d9820c6a56ef0b9f84e7af1b3c80c011f970e43",
+      "field_hashes": {
+        "phase": "79d116a0c160c52732ff18be65ce4681d3bdf027cafd522cd1e076e816304379",
+        "pid": "22860be73c246335d69f6c95c6b5f7593f90e47a94366f4a038661fd87983e3c",
+        "start_time": "370866e93ed7e9b0dbe18a79e617b4cd84e36c171efb2f22eb8ed1630cd1179a",
+        "started_at": "2078e91691bedbfda91fb845d8b5da53cdf26322d2072e5b7b566804a699a529",
+        "prior_unclean_exit": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+      }
+    }
+  ],
+  "no_job_invoked": true,
+  "contents_stay_pc": true,
+  "scope": "bounded exact launch chain max20 depth3 plus hermesops top-level state"
+}

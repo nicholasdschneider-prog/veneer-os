@@ -1,6 +1,6 @@
 {
   "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
-  "phase": "step03_observing",
+  "phase": "step04_observing",
   "no_deletion_in_phase2b": true,
   "step01": {
     "ece0db616afe": {
@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "step03-sage-pending-delta.json",
-  "latest_checkpoint_at": "2026-10-21T16:50:33.120463+00:00",
-  "latest_checkpoint_result": "both business tasks disabled and drained, final PC custody+sanitized pending delta captured; task interval observation pending",
+  "latest_checkpoint": "step04-state-disabled.json",
+  "latest_checkpoint_at": "2026-10-21T17:07:14.7951913Z",
+  "latest_checkpoint_result": "Step3 verified; vault and Brain disabled once, no inflight; only heartbeat delta; 30min and4h observations pending",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -77,7 +77,6 @@
     }
   },
   "step02_full_observation_not_before": "2026-10-22T02:08:57.316482+00:00",
-  "steps03_to06": "not started; read-only preparation permitted",
   "step03_preparation": {
     "source": "step03-source-prep-expanded.json",
     "schema": "step03-lock-schema-prep-expanded.json",
@@ -101,6 +100,27 @@
     "sanitized_delta": "step03-final-delta.json",
     "pending_handoff": "step03-sage-pending-delta.json",
     "observe_not_before": "2026-10-21T17:04:13.342Z",
-    "remaining": "after15min taskinterval readback unchanged last_run/disabled/no running instances or cycle process; then step4"
+    "remaining": "none; Step3 verified",
+    "verified": true,
+    "final_observation": "step03-observation-verdict.json"
+  },
+  "steps05_to06": "not started; serial after Step4 observations",
+  "step04": {
+    "vault": {
+      "disabled_at": "2026-10-21T17:07:12.426231+00:00",
+      "observe_not_before": "2026-10-21T17:37:12.426231+00:00",
+      "disable_receipt": "step04-vault-disable.json",
+      "read_probe": "step04-vault-read.ps1"
+    },
+    "brain": {
+      "disabled_at": "2026-10-21T17:07:14.7951913Z",
+      "observe_not_before": "2026-10-21T21:07:14.795191+00:00",
+      "disable_receipt": "step04-brain-disable.json",
+      "read_probe": "step04-brain-read.ps1",
+      "prior_last_result": 1,
+      "prior_last_run": "2026-10-21T11:20:22.0000000-04:00"
+    },
+    "state_receipt": "step04-state-disabled.json",
+    "full_observation_not_before": "2026-10-21T21:07:14.795191+00:00"
   }
 }
