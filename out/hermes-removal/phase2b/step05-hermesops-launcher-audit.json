@@ -1,0 +1,24 @@
+{
+  "sources": [
+    {
+      "sha256": "B3872142CCF22A9D6C841E0C155BA3B747B29F5283692FE128E444F087E445A1",
+      "business_terms": false,
+      "gateway_run": true,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\ensure-gateway.vbs",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    },
+    {
+      "sha256": "1FB19C20EEAE8DCEC7B88B297685BCC0A3A3C19E28FFAA59B045152A94C86427",
+      "business_terms": false,
+      "gateway_run": true,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\gateway-service\\Hermes_Gateway_hermesops.vbs",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    }
+  ],
+  "read_only": true,
+  "at": "2026-10-21T20:37:00.9439602Z"
+}

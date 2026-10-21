@@ -48,7 +48,11 @@ Manager VERIFIED16:20:07ET after1468.375seconds: all observation checks passed, 
 
 Orders watchdog disabled20:20:58.1987309Z FIRST, activeStartupVBS renamed .disabled-20261021 SHA9982A6C6D18B6C1B46DCE4E34F0C7895701BC789CB5C3B75387656284138702B, exactgatewayPID20624/parent19060/creation07:12:25.8271720ET stoppedONCE20:20:58.8628469Z. Fresh preflight plus immediate checks activeagents0/ALLunfinished0/noenabledcron/nochildwork/freshheartbeat/exactidentity passed. Task/sourceaction audit confirms gateway-only chain; disabled business dependencies untouched. TaskXML PCcopy SHA48D835A5880D21DD7EAA076D78C5A9D4A821F761B23D56E6F4C8BBF07C818581. Post-disable preflight no gateway/no enabled taskdependency/ALLunfinished0. HistoricaldisabledCMD unchanged. No process other than exact Orders gateway targeted.
 
-Next wake20:36:10Z: run step05-ervp-orders-observe.ps1 to NEWfinalJSON require all checks>=900sec/no relaunch/watchdogdisabled+last_run16:20:01ETunchanged/renamedhashsame/noenabledcron. Re-run existing Orders preflight to DISTINCTpostJSON ALLunfinished0/no enabledtaskdependency/no gateway, historicaldisabledCMD metadata/hash unchanged vsoriginalpreflight. Ifpasses markOrdersverified, nextHermesOps with fresh explicitpreflight/fullinventory/actionaudit/PIDparentcreation/activeagents0/ALLunfinished0/heartbeat. Disablewatchdogfirst,renameactiveStartup,stopexactfreshgatewayONCE,15minobservebeforedefault/root. Do not reuse historical identities or repeat stops. Accounting-migration/DesktopUpdate follow.
+Orders VERIFIED16:36:40ET after941.528seconds: all observation checks passed, post-observation preflight ALLunfinished0/no enabledcron/taskdependency/no profilegateway. HistoricaldisabledCMD metadata/hash unchanged.
+
+HermesOps dedicatedwatchdog disabledFIRST20:37:11.0576916Z, exactgatewayPID7544/parent7852/creation07:10:20.8495980ET stoppedONCE20:37:11.7212993Z. Source actionensure-gateway.vbs audited gateway-only; freshpreflight+immediatechecks activeagents0/nochildwork/noenabledcron/ALLunfinished0/heartbeat/exactidentity passed. No activeStartup existed; historicaldisabledVBS untouched/hashFF557BD8EF35DC35D99E6BC250588E5B7DE6B86B13A97FA28862950E1FBB1FAD. HermesOps2watchdogalreadydisabledTierCuntouched. OriginalwatchdogXML PCcopySHA2D70608CFC708830B2FE29609AD004A248212106191E95CC493D721A22B6AC38. Post-disablepreflight no gateway/noenabledtaskdependency/ALLunfinished0/historicalstartupentiremetadataunchanged.
+
+Next wake20:52:25Z: run step05-hermesops-observe.ps1 to NEWfinalJSON require ALLchecks>=900sec/no relaunch/watchdogdisabled+last_run16:34:58ETunchanged/noactiveStartup/historicaldisabledSHAunchanged/noenabledcron. Re-run existingHermesOpspreflight to DISTINCTpostJSON ALLunfinished0/no enabledtaskdeps/nogateway/historicalstartupmetadatahashsame. Ifpasses nextDEFAULT/ROOT alias, thenaccounting-migration serial15min each. Genericpreflight currentlymapsdefaultto profiles/default incorrectly, so prepare explicitroot-aware probe/rootHERMES_HOME processidentity/taskactions audit. Retireauthorizedrootonlyafterfreshnoenabledrootcron/ALLunfinished0/activeagents0/heartbeat; watchdog/taskdisablefirst,activeStartupRename,stopexactrootgatewayONCE. Do not usemanagerPIDstateasidentityorcopyprofiles/default assumptions. HistoricalDesktopUpdateinfrastructuredisable/exportXMLhashbeforeStep5zeroenabledverdict. Brain4hconfirmation becomeseligible21:07:14.795Z; capture at/afterthen duringnextgatewaywake, nojobrun. LateLTLconfirmation02:08:57Z retainedbeforeseal.
 
 Keep separate Brain after21:07Z and LTL after02:08Z confirmations before seal verdict, not Step5 blockers. No deletion before verified quiescent seal.
 
@@ -74,6 +78,7 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [gateway-preflight-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-preflight-body.ps1)
 - [gateway-stop-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-stop-body.ps1)
 - [inventory-baseline.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-baseline.json)
+- [inventory-before-hermesops.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-hermesops.json)
 - [inventory-before-orders.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-orders.json)
 - [inventory-before-step03.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-step03.json)
 - [inventory-before-step05.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-step05.json)
@@ -203,11 +208,21 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step05-ervp-manager-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-preflight.ps1)
 - [step05-ervp-manager-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-stop.json)
 - [step05-ervp-manager-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-stop.ps1)
+- [step05-ervp-orders-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-final.json)
 - [step05-ervp-orders-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-observe.ps1)
 - [step05-ervp-orders-post-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-post-disable.json)
+- [step05-ervp-orders-post.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-post.json)
 - [step05-ervp-orders-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-preflight.json)
 - [step05-ervp-orders-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-preflight.ps1)
 - [step05-ervp-orders-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-stop.json)
+- [step05-hermesops-launcher-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-launcher-audit.json)
+- [step05-hermesops-launcher-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-launcher-audit.ps1)
+- [step05-hermesops-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-observe.ps1)
+- [step05-hermesops-post-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-post-disable.json)
+- [step05-hermesops-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-preflight.json)
+- [step05-hermesops-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-preflight.ps1)
+- [step05-hermesops-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-stop.json)
+- [step05-hermesops-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-stop.ps1)
 - [step05-manager-after-timeout.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-after-timeout.json)
 - [step05-manager-cmd-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-cmd-audit.json)
 - [step05-manager-cmd-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-manager-cmd-audit.ps1)
