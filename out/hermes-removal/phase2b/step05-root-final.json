@@ -1,0 +1,14 @@
+{
+  "profile": "default",
+  "elapsed_seconds": 932.1538396,
+  "gateway_processes": [],
+  "checks": {
+    "no_active_root_startup": true,
+    "last_run_unchanged": true,
+    "task_disabled": true,
+    "full15min": true,
+    "no_enabled_root_cron": true,
+    "no_root_gateway": true
+  },
+  "at": "2026-10-21T17:09:26.7900302-04:00"
+}

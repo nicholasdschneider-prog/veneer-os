@@ -1,0 +1,24 @@
+{
+  "sources": [
+    {
+      "sha256": "81FCF79447AF20BE0AC58114C18CEBE11EFE1FE9B42C47B97C8BFCA2CE7D4A1B",
+      "business_terms": false,
+      "gateway_run": true,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\scripts\\ensure-gateway.vbs",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    },
+    {
+      "sha256": "DF3A8D3FC12D20499FEC084D81B9384FC144BF6E0181DA8640614BE8597580FC",
+      "business_terms": false,
+      "gateway_run": true,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\gateway-service\\Hermes_Gateway_accounting-migration.vbs",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    }
+  ],
+  "read_only": true,
+  "at": "2026-10-21T21:09:35.3818480Z"
+}

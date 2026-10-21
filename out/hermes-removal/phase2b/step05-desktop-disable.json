@@ -1,0 +1,14 @@
+{
+  "script_sha256": "B02FB7FA2F88616774EBD077A7E0CF11F88CAEF55870BBA8B7195ABD9AFC7ECC",
+  "last_run": "2026-08-05T23:59:00.0000000-04:00",
+  "enabled": false,
+  "started_at": "2026-10-21T21:10:16.8841746Z",
+  "xml_path": "C:\\Users\\nicho\\backups\\hermes-phase2b-20261021\\step05\\desktop-update\\task-before.xml",
+  "xml_sha256": "42437C8A8FF623E599003BBCC430A38BEFDACAE7DF9D26EF1CE31238769027C9",
+  "no_job_invoked": true,
+  "last_result": 0,
+  "name": "HermesDesktopUpdate-20260805",
+  "no_inflight": true,
+  "script": "C:\\Users\\nicho\\AppData\\Local\\hermes\\update-backups\\run-desktop-update-20260805.py",
+  "disabled_at": "2026-10-21T21:10:17.0007151Z"
+}

@@ -56,9 +56,17 @@ HermesOps VERIFIED16:52:45ET after933.474seconds: all observation checks passed,
 
 Root/default actualhome C:/Users/nicho/AppData/Local/hermes confirmed by sourceHERMES_HOME/defaultHERMES_PROFILE. Rootgateway_state.json is staleJunePID18612 and was NOT used as current work proof. Matching manager runtimePID11592/activeagents0 and fresh heartbeatPID11592, nochildwork, exactprocessPID11592/parent7940/creation07:10:19.6363930ET, root+managerledgersALLunfinished0/noenabledcron passed. RootHermes_Gatewaytask disabledFIRST20:53:53.9757914Z; exactPID11592 stoppedONCE20:53:54.6361906Z. NoactiveRootStartup existed, no launcher rename. TaskXML PCcopySHAFE6E8F7E8AB9AC52133F917CEF61F9CCBA0EF656AE3E4E0C2B02AC2DD53361C8. Post-disable rootpreflight no gateway/noenabledtask/noenabledcron/ALLunfinished0. No otherprocess targeted.
 
-Next wake21:09:10Z: run step05-root-observe.ps1 NEWfinalJSON allchecks>=900sec/no rootgateway/taskdisabled+last_run07:10:11ETunchanged/noactiveRootStartup/noenabledrootcron. Re-run explicitrootpreflight DISTINCTpostJSON ALLunfinished0/nogateway/taskdisabled. Manageralreadyretired doNOTrepeatrootstop. ALSO Brainfull4h noweligible: runstep04-brain-read.ps1 NEWfinalJSON comparestep04-brain-disable.json elapsed>=14400,disabled/samelast_run11:20:22ET/result1/noinflight; recordconfirmationbeforeseal. Thenaccounting-migration freshpreflight/actionaudit/exactPIDparentcreation/activeagents0/ALLunfinished0/heartbeat,watchdogdisableFIRST/activeStartupRename/exactgatewayStopONCE/15minobserve. HistoricalDesktopUpdateinfrastructurestillneedsdisable/exportXMLhash beforeStep5zerostate. LateLTL02:08:57Zconfirmationretainedbeforeseal.
+Root/default VERIFIED17:09:26ET after932.153seconds: all observationchecks passed, explicitpostpreflightALLunfinished0/no rootgateway/taskdisabled/no enabledrootcron. Brain4h confirmationPASSED21:09:30Z after14535.511seconds: disabled/same11:20:22ETlast_run/result1/no instances/processes; recorded step04-brain-final-verdict.json, no job run.
 
-Keep separate Brain after21:07Z and LTL after02:08Z confirmations before seal verdict, not Step5 blockers. No deletion before verified quiescent seal.
+Accounting-migration watchdogdisabledFIRST21:09:55.9602491Z, activeStartupVBSrenamed.disabled-20261021 SHA0C925C80BDA0D82E49FA7A5F7C792E667C813F38DC1B93138C71E392C76F5359, exactPID15872/parent14348/creation07:10:49.2157360ETstoppedONCE21:09:56.6490934Z. Freshactiveagents0/nochildwork/noenabledcron/ALLunfinished0/heartbeat+identitychecks;sourcegatewayonlyactionaudit. TaskXMLPCcopySHA13C581337D49EAFFD8B7F6A9A25CE1D66A5073CDB10726DE1CAA7BB0519C9900. Postno gateway/taskdependency/ALLunfinished0. HistoricaldisabledCMDuntouched.
+
+HermesDesktopUpdate-20260805 infrastructuretask disabledONCE21:10:17.0007151Z afterReady/no instances/processes; originalXMLPCcopySHA42437C8A8FF623E599003BBCC430A38BEFDACAE7DF9D26EF1CE31238769027C9, updaterScriptSHAB02FB7FA2F88616774EBD077A7E0CF11F88CAEF55870BBA8B7195ABD9AFC7ECC. Last_runAug5/result0 preserved. No update executed.
+
+Fresh INTERIM globalinventory shows zeroenabledHermescron, zeroenabledHermestasks, zeroHermes-relatedprocesses, zeroactiveHermesStartup. RemainingactiveStartupWisprFlow+Tailscale untouched. This is NOT finalStep5 verdict untilaccounting15minpasses. No deletion has occurred.
+
+Next wake21:25:10Z: runstep05-accounting-migration-observe.ps1 NEWfinalJSON ALLchecks>=900sec/no relaunch/watchdogdisabled+last_run17:05:48ETsame/renamedSHA/noenabledcron;existingaccountingpreflight DISTINCTpostJSON ALLunfinished0/nogateway/noenableddeps/historicaldisabledCMDentiremetadatahashsamevsoriginal. Freshglobalinventory+broaderreadonlyprocess/task/launcherclassification and ledger checks, allzero before Step5report request_keyhermes-pc-operator-phase2b. RecheckDesktopdisabled/hash/last_run and preserveTierC. ThenBEGIN6quiescentPC-onlysixrootsincrementalarchive preservingbaseline/addendum/EVERYSQLiteincludingnonstandardintegrity+restore, nooverwriteblind/no deletion. LateLTLconfirmation02:08:57ZOct22 stillrequiredBEFOREsealverdict; doNOTwaitto startarchiveprep/copy onthatclock. BrainconfirmationDONE. No source deletion untilactualverifiedquiescentsealrecordedphase3.
+
+Brain four-hour confirmation is verified. Keep the separate LTL after02:08Z confirmation before seal verdict; it does not block archive preparation. No deletion before verified quiescent seal.
 
 ## Remaining sequence
 
@@ -81,7 +89,9 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [cron-control.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/cron-control.py)
 - [gateway-preflight-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-preflight-body.ps1)
 - [gateway-stop-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-stop-body.ps1)
+- [inventory-all-stopped-interim.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-all-stopped-interim.json)
 - [inventory-baseline.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-baseline.json)
+- [inventory-before-accounting.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-accounting.json)
 - [inventory-before-hermesops.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-hermesops.json)
 - [inventory-before-orders.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-orders.json)
 - [inventory-before-root.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-root.json)
@@ -187,6 +197,8 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step04-brain-before.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-before.json)
 - [step04-brain-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-disable.json)
 - [step04-brain-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-disable.ps1)
+- [step04-brain-final-verdict.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-final-verdict.json)
+- [step04-brain-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-final.json)
 - [step04-brain-observe-1337.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-observe-1337.json)
 - [step04-brain-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-read.ps1)
 - [step04-brain-released-1549.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-brain-released-1549.json)
@@ -205,6 +217,16 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step04-vault-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-disable.ps1)
 - [step04-vault-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-final.json)
 - [step04-vault-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-read.ps1)
+- [step05-accounting-launcher-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-launcher-audit.json)
+- [step05-accounting-launcher-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-launcher-audit.ps1)
+- [step05-accounting-migration-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-observe.ps1)
+- [step05-accounting-migration-post-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-post-disable.json)
+- [step05-accounting-migration-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-preflight.json)
+- [step05-accounting-migration-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-preflight.ps1)
+- [step05-accounting-migration-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-stop.json)
+- [step05-accounting-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-stop.ps1)
+- [step05-desktop-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-desktop-disable.json)
+- [step05-desktop-disable.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-desktop-disable.ps1)
 - [step05-ervp-manager-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-final.json)
 - [step05-ervp-manager-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-observe.ps1)
 - [step05-ervp-manager-post-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-manager-post-disable.json)
@@ -247,12 +269,14 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step05-orders-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-orders-stop.ps1)
 - [step05-own-helper-identity.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-own-helper-identity.json)
 - [step05-own-helper-identity.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-own-helper-identity.ps1)
+- [step05-root-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-final.json)
 - [step05-root-home-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-home-audit.json)
 - [step05-root-home-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-home-audit.ps1)
 - [step05-root-launcher-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-launcher-audit.json)
 - [step05-root-launcher-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-launcher-audit.ps1)
 - [step05-root-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-observe.ps1)
 - [step05-root-post-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-post-disable.json)
+- [step05-root-post.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-post.json)
 - [step05-root-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-preflight.json)
 - [step05-root-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-preflight.ps1)
 - [step05-root-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-stop.json)
