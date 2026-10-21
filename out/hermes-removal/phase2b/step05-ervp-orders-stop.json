@@ -1,0 +1,24 @@
+{
+  "observation_start": "2026-10-21T20:20:58.8628469Z",
+  "watchdog": "Hermes_ERVP_Orders_Watchdog",
+  "expected_pid": 20624,
+  "started_at": "2026-10-21T20:20:58.1624729Z",
+  "task_enabled": false,
+  "xml_sha256": "48D835A5880D21DD7EAA076D78C5A9D4A821F761B23D56E6F4C8BBF07C818581",
+  "launcher": {
+    "new": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.vbs.disabled-20261021",
+    "sha256": "9982A6C6D18B6C1B46DCE4E34F0C7895701BC789CB5C3B75387656284138702B",
+    "old": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.vbs"
+  },
+  "parent": 19060,
+  "created": "2026-10-21T07:12:25.8271720-04:00",
+  "no_inflight": {
+    "child_workers": 0,
+    "active_agents": 0,
+    "unfinished_all_profile": 0
+  },
+  "last_run": "2026-10-21T16:20:01.0000000-04:00",
+  "stopped_at": "2026-10-21T20:20:58.8628469Z",
+  "profile": "ervp-orders",
+  "watchdog_disabled_at": "2026-10-21T20:20:58.1987309Z"
+}

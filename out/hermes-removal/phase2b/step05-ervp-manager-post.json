@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-21T16:20:09.0295629-04:00",
+  "profile": "ervp-manager",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "Hermes_ERVP_Manager_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-21T15:55:01.0000000-04:00",
+      "next_run": "2026-10-21T16:25:00.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    }
+  ],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130",
+      "sha256": "5B6F1EECBEEEFC6A0BC15FD300C43A31DA6668077FA18DAB65446907D8205045",
+      "name": "Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130",
+      "bytes": 335,
+      "active": false
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.vbs.disabled-20261021",
+      "sha256": "6A0ED801EEACEE8B9054F7389E51A1F72908AFC8F779788121D449F2CA92E806",
+      "name": "Hermes_Gateway_ervp-manager.vbs.disabled-20261021",
+      "bytes": 416,
+      "active": false
+    }
+  ],
+  "gateways": [],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-21T11:12:05.898294+00:00",
+    "pid": 11592,
+    "active_agents": 0,
+    "start_time": 179258101964
+  },
+  "heartbeat_modified": "2026-10-21T20:19:56.1062934Z",
+  "default_alias_caution": false
+}

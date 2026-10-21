@@ -1,6 +1,6 @@
 {
   "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
-  "phase": "step05_manager_observing",
+  "phase": "step05_orders_observing",
   "no_deletion_in_phase2b": true,
   "step01": {
     "ece0db616afe": {
@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "step05-ervp-manager-stop.json",
-  "latest_checkpoint_at": "2026-10-21T19:55:38.6963352Z",
-  "latest_checkpoint_result": "manager watchdogdisabled/activeStartup renamed/hashsame/no separate profileprocess/sharedrootretained/ALLunfinished0; observe15min",
+  "latest_checkpoint": "step05-ervp-orders-post-disable.json",
+  "latest_checkpoint_at": "2026-10-21T16:21:08.0940442-04:00",
+  "latest_checkpoint_result": "manager verified1468sec; orders watchdogdisabled/StartupRenamed/exactPID20624stoppedonce/noinflight/postALLunfinished0; pending15min",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -105,7 +105,7 @@
     "verified": true,
     "final_observation": "step03-observation-verdict.json"
   },
-  "steps05_to06": "manager watchdog/Startup retired; no separate manager gateway; 15min observation before orders",
+  "steps05_to06": "manager verified; orders stopped/observing; hermesops/default/accounting-migration/DesktopUpdate next serially",
   "step04": {
     "vault": {
       "disabled_at": "2026-10-21T17:07:12.426231+00:00",
@@ -145,9 +145,20 @@
       "observe_probe": "step05-ervp-manager-observe.ps1",
       "post_disable": "step05-ervp-manager-post-disable.json",
       "no_process_stopped": true,
-      "shared_root_retained": true
+      "shared_root_retained": true,
+      "verified": true,
+      "final_observation": "step05-ervp-manager-final.json",
+      "post_observation": "step05-ervp-manager-post.json"
     },
     "shared_root_caution": "manager has no --profile gateway process; runtime pid11592 belongs root/default gateway; preserve until root step; manager disable/rename only if still absent",
-    "desktop_update": "approved infrastructure disable during Step5, original XML hash then remove Phase3"
+    "desktop_update": "approved infrastructure disable during Step5, original XML hash then remove Phase3",
+    "orders": {
+      "stop_receipt": "step05-ervp-orders-stop.json",
+      "observation_start": "2026-10-21T20:20:58.8628469Z",
+      "observe_not_before": "2026-10-21T20:35:58.862847Z",
+      "observe_probe": "step05-ervp-orders-observe.ps1",
+      "post_disable": "step05-ervp-orders-post-disable.json",
+      "stopped_pid": 20624
+    }
   }
 }

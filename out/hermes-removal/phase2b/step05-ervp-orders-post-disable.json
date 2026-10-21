@@ -1,0 +1,72 @@
+{
+  "at": "2026-10-21T16:21:08.0940442-04:00",
+  "profile": "ervp-orders",
+  "home": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders",
+  "home_exists": true,
+  "enabled_cron_ids": [],
+  "tasks": [
+    {
+      "name": "ERVP_Dometic_Safe_Poller",
+      "last_result": 267014,
+      "last_run": "2026-08-18T02:36:01.0000000-04:00",
+      "next_run": "2026-10-21T16:36:00.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    },
+    {
+      "name": "ERVP_Orders_Bot_Placement",
+      "last_result": 0,
+      "last_run": "2026-09-18T14:37:01.0000000-04:00",
+      "next_run": "2026-10-21T16:22:00.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    },
+    {
+      "name": "ERVP_Orders_Bot_Producer",
+      "last_result": 0,
+      "last_run": "2026-08-20T14:15:01.0000000-04:00",
+      "next_run": "2026-10-21T16:30:00.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    },
+    {
+      "name": "Hermes_ERVP_Orders_Watchdog",
+      "last_result": 0,
+      "last_run": "2026-10-21T16:20:01.0000000-04:00",
+      "next_run": "2026-10-21T16:25:00.0000000-04:00",
+      "state": "Disabled",
+      "enabled": false
+    }
+  ],
+  "startup": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.cmd.disabled-20260722-153130",
+      "sha256": "D9866DBAF1DD0A294BFDC0888B635DD910E3D01791AD93BA508B42ED53426694",
+      "name": "Hermes_Gateway_ervp-orders.cmd.disabled-20260722-153130",
+      "bytes": 327,
+      "active": false
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.vbs.disabled-20261021",
+      "sha256": "9982A6C6D18B6C1B46DCE4E34F0C7895701BC789CB5C3B75387656284138702B",
+      "name": "Hermes_Gateway_ervp-orders.vbs.disabled-20261021",
+      "bytes": 414,
+      "active": false
+    }
+  ],
+  "gateways": [],
+  "gateway_children": [],
+  "ledger": {
+    "exists": true,
+    "unfinished_all_profile": 0,
+    "active_metadata": []
+  },
+  "runtime_status": {
+    "updated_at": "2026-10-21T11:12:43.066067+00:00",
+    "pid": 20624,
+    "active_agents": 0,
+    "start_time": 179258114583
+  },
+  "heartbeat_modified": "2026-10-21T20:20:31.8613317Z",
+  "default_alias_caution": false
+}

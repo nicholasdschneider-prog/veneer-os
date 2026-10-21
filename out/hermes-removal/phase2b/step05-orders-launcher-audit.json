@@ -1,0 +1,37 @@
+{
+  "sources": [
+    {
+      "sha256": "33430F61700115D408BF625C5E2C750D1B388CFF14660A94C0DD0563895B79AF",
+      "business_terms": false,
+      "gateway_run": false,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.vbs",
+      "referenced_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.cmd"
+      ],
+      "watchdog": true,
+      "exists": true
+    },
+    {
+      "sha256": "B9065220711A2837B4FD0E9C373400A840AAAD8BC74EA12F628FDC7347EECE1E",
+      "business_terms": false,
+      "gateway_run": true,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\gateway-service\\Hermes_Gateway_ervp-orders.vbs",
+      "referenced_paths": [],
+      "watchdog": false,
+      "exists": true
+    },
+    {
+      "sha256": "7E771AAAFAD3F3AD15E9A04976D78560290F92C21316E8541D22AB84D77BC252",
+      "business_terms": false,
+      "gateway_run": false,
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.cmd",
+      "referenced_paths": [
+        "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\windowless_gateway_watchdog.py"
+      ],
+      "watchdog": true,
+      "exists": true
+    }
+  ],
+  "read_only": true,
+  "at": "2026-10-21T20:20:28.5385551Z"
+}
