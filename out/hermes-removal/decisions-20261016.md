@@ -31,3 +31,9 @@
 ## 2026-10-17 12:05 ET check
 - Phase 2 final report: out/hermes-removal/phase2/final-report.md. PC recovery baseline verified 00:41 ET (2,757,421 files, 468 SQLite OK, 0 errors after reconcile); credentials excluded; not a quiescent seal.
 - Boris thread unchanged; BUILD863 repairs still await a Nick-started turn. Fourth-mailbox decision still open. No live flips, no further stops.
+
+## 2026-10-21 — Nick: retire everything
+- Nick (own turn): "Literally none of those are needed anymore or are covered already by Veneer." All seven held jobs RETIRE outright: Trending, both LTL mappers, All_Order_Review, Direct_Shopify policy cycle, vendor-failure alerts, returns watchdog, Archer material-alert (fourth mailbox DROPPED).
+- BUILD863 repairs cancelled; ORDEROPS_HERMES_LANE_* set to off on Railway (--skip-deploys). Lane code stays inert.
+- PC operator sent phase 2b GO (all remaining crons/tasks/gateways → zero Hermes processes), then quiescent archive seal, then phase-3 plan (tasks/launchers removed; data-root deletion needs Nick's confirmation via this chat).
+- Boris, Sage (final policy-cycle delta to adopt read-only), Archer notified.
