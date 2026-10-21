@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-21T17:25:26.9471216-04:00",
+  "elapsed_seconds": 930.2980282,
+  "checks": {
+    "renamed_hash_same": true,
+    "last_run_unchanged": true,
+    "no_profile_gateway": true,
+    "full15min": true,
+    "disabled": true,
+    "no_enabled_cron": true,
+    "active_startup_absent": true
+  },
+  "profile": "accounting-migration",
+  "shared_root_not_targeted": true,
+  "gateway_processes": []
+}

@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-21T21:29:57.7064080Z",
+  "launch": {
+    "source": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\archive-quiescent.py",
+    "created": "2026-10-21T17:29:48.0318450-04:00",
+    "return_value": 0,
+    "started_at": "2026-10-21T21:29:47.9841569Z",
+    "state": "started_not_verified",
+    "pid": 9904,
+    "source_sha256": "E8B3E57274661D3F4214E5386B074AE280FF48C15A899C36BABA9424EFC51D4C"
+  },
+  "files": [
+    {
+      "bytes": 20480,
+      "name": "operator-index.sqlite3"
+    },
+    {
+      "bytes": 12824,
+      "name": "operator-index.sqlite3-journal"
+    },
+    {
+      "bytes": 501,
+      "name": "original-records.json"
+    },
+    {
+      "bytes": 154,
+      "name": "quiescence.json"
+    },
+    {
+      "bytes": 2087,
+      "name": "scope.json"
+    },
+    {
+      "bytes": 98,
+      "name": "status.json"
+    }
+  ],
+  "processes": [
+    {
+      "parent": 3640,
+      "pid": 9904,
+      "created": "2026-10-21T17:29:48.0318450-04:00",
+      "name": "python.exe"
+    }
+  ],
+  "free_bytes": 523513950208,
+  "state": {
+    "quiescence.json": {
+      "value": [
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-21T21:29:49.4102573Z"
+        }
+      ],
+      "Count": 1
+    },
+    "status.json": {
+      "state": "starting",
+      "at": "2026-10-21T21:29:48.131840+00:00",
+      "final_seal": false
+    }
+  },
+  "source_sha256": "E8B3E57274661D3F4214E5386B074AE280FF48C15A899C36BABA9424EFC51D4C"
+}

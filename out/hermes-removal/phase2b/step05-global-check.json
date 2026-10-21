@@ -1,0 +1,159 @@
+{
+  "at": "2026-10-21T21:26:19.204645+00:00",
+  "ledgers": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-ali\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-jasmine\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-joe\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-mallory\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-rae\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cust-service\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\deliverables\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev2\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-dev3\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-media\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-ops\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-qa\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-qa2\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-research\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-storefront\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-vendor-next\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\evidence\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops-2\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\mphealth\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\nick\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\qa-review\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\research-analysis\\cron\\executions.db",
+      "unfinished": 0
+    },
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\tripower-consulting\\cron\\executions.db",
+      "unfinished": 0
+    }
+  ],
+  "all_unfinished": 0,
+  "seal_directory_exists": false,
+  "old_baseline_state": "verified_reconciled_baseline",
+  "old_manifest_sha256": "73890273bc519830796e3cb45fc05dfe7f994d8a76fcd7484808406dcbff57c8",
+  "source_roots": [
+    {
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes",
+      "exists": true
+    },
+    {
+      "path": "C:\\Users\\nicho\\.hermes",
+      "exists": true
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesBrainOps",
+      "exists": true
+    },
+    {
+      "path": "C:\\Users\\nicho\\HermesLegacyData",
+      "exists": true
+    },
+    {
+      "path": "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain",
+      "exists": true
+    },
+    {
+      "path": "C:\\Users\\nicho\\.worktrees",
+      "exists": true
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "guard": {
+    "enabled_tasks": 0,
+    "processes": 0,
+    "active_startup": 0,
+    "enabled_cron": 0,
+    "at": "2026-10-21T21:29:20.1193411Z"
+  },
+  "syntax_ok": true,
+  "seal_dir_absent": true,
+  "source_sha256": "e8b3e57274661d3f4214e5386b074ae280ff48c15a899c36baba9424efc51d4c"
+}

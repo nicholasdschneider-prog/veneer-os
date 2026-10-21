@@ -64,7 +64,15 @@ HermesDesktopUpdate-20260805 infrastructuretask disabledONCE21:10:17.0007151Z af
 
 Fresh INTERIM globalinventory shows zeroenabledHermescron, zeroenabledHermestasks, zeroHermes-relatedprocesses, zeroactiveHermesStartup. RemainingactiveStartupWisprFlow+Tailscale untouched. This is NOT finalStep5 verdict untilaccounting15minpasses. No deletion has occurred.
 
-Next wake21:25:10Z: runstep05-accounting-migration-observe.ps1 NEWfinalJSON ALLchecks>=900sec/no relaunch/watchdogdisabled+last_run17:05:48ETsame/renamedSHA/noenabledcron;existingaccountingpreflight DISTINCTpostJSON ALLunfinished0/nogateway/noenableddeps/historicaldisabledCMDentiremetadatahashsamevsoriginal. Freshglobalinventory+broaderreadonlyprocess/task/launcherclassification and ledger checks, allzero before Step5report request_keyhermes-pc-operator-phase2b. RecheckDesktopdisabled/hash/last_run and preserveTierC. ThenBEGIN6quiescentPC-onlysixrootsincrementalarchive preservingbaseline/addendum/EVERYSQLiteincludingnonstandardintegrity+restore, nooverwriteblind/no deletion. LateLTLconfirmation02:08:57ZOct22 stillrequiredBEFOREsealverdict; doNOTwaitto startarchiveprep/copy onthatclock. BrainconfirmationDONE. No source deletion untilactualverifiedquiescentsealrecordedphase3.
+Step5 VERIFIED at17:25ET: accountingfullobservation930.298secALLcheckspassed/postALLunfinished0/no gateway/deps/historicaldisabledCMDunchanged. Finalglobalinventoryzeroenabledcron/tasks/Hermesprocess/activeHermesStartup; all31root/profileexecutionledgersunfinished0. DesktopUpdate task remainsdisabled. WisprFlow/Tailscale/SSH/sharedruntimes untouched. FormalStep5report sentcoordinatorrequest_keyhermes-pc-operator-phase2b; see [step05-report.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-report.md).
+
+Step6 PC-onlyincrementalrefresh launchedONCE viaWMI PID9904created2026-10-21T17:29:48.0318450-04:00, source C:/Users/nicho/backups/hermes-final-20261016/archive-quiescent.py SHA E8B3E57274661D3F4214E5386B074AE280FF48C15A899C36BABA9424EFC51D4C. Refreshdirquiescent-20261021. PCsyntax/read-onlyguard verifiedzeroall/sourcehash beforelaunch; initialstatusstarting/indexloading/liveidentitymatched/free523513950208bytes. DoNOTrelaunch or editcontroller whilelive. Source/body/manifestsremainPC-only.
+
+Controller preserves original manifests/reports/scope and priorchangedpayload versions, hashes sourcefiles under the approved sixroots/exclusions, makes consistentSQLite snapshots for every detectedheaderregardlessextension, runs incrementalrobocopy/E withoutPURGE ordelete, writescurrentmanifest+addendum, verifiesallSQLitecopies/restoreonefileeachroot/ACL/quiescence. A successful refresh produces refresh_verified_pending_operator_seal, NOT sealed. Independentreadback and lateLTLconfirmation stillrequired before phase3sealedverdict. Anyerrorrequiresinspection/reconciliation; no blind rerun or deletion. The original baseline report remains historical even as changed mirrorpaths refresh; previousversions are retained inquiescent/previous-payload.
+
+At17:30:54ET exactPID9904/creation/sourceSHA stillmatched, nofailure, baselineindex1,016,643,584bytes; sourceinventory/version streamsopened before first10kprogressupdate, free522496737280bytes. Open-stream directory size0 does not prove an empty stream; contents remainPC-only.
+
+Nextarchivecheck30min: archive-quiescent-status.ps1 via phase2/run-probe.py NEWdistinctJSON; verifyPID9904creation/sourceSHA/status/failure/verification. Ifstillrunningrecordprogress/index/checksums,commitpush,persistnext30minwake. IfcompletedindependentlyreviewALLerrors/sourcecoverage/manifest+addendumSHA/SQLiteallheaders+integrity/6restores/ACL/quiescence before anyverifiedclaim. Pending lateLTLafter02:08:57ZOct22 remainsseparatewake, doesnotblockrefresh. No deletion authorized until actualsealverifies.
 
 Brain four-hour confirmation is verified. Keep the separate LTL after02:08Z confirmation before seal verdict; it does not block archive preparation. No deletion before verified quiescent seal.
 
@@ -86,6 +94,16 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 ## Artifacts
 
 - [SHA256SUMS.txt](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/SHA256SUMS.txt)
+- [archive-quiescent-launch.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-launch.json)
+- [archive-quiescent-launch.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-launch.ps1)
+- [archive-quiescent-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-preflight.json)
+- [archive-quiescent-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-preflight.ps1)
+- [archive-quiescent-status-1731.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1731.json)
+- [archive-quiescent-status-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-start.json)
+- [archive-quiescent-status.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status.ps1)
+- [archive-quiescent-upload.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-upload.json)
+- [archive-quiescent-upload.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-upload.ps1)
+- [archive-quiescent.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent.py)
 - [cron-control.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/cron-control.py)
 - [gateway-preflight-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-preflight-body.ps1)
 - [gateway-stop-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-stop-body.ps1)
@@ -98,6 +116,7 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [inventory-before-step03.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-step03.json)
 - [inventory-before-step05.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-before-step05.json)
 - [inventory-manager-pending.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-manager-pending.json)
+- [inventory-step05-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/inventory-step05-final.json)
 - [make-probe.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/make-probe.py)
 - [phase2b-state.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/phase2b-state.json)
 - [static-source-prep.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/static-source-prep.json)
@@ -219,8 +238,10 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step04-vault-read.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step04-vault-read.ps1)
 - [step05-accounting-launcher-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-launcher-audit.json)
 - [step05-accounting-launcher-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-launcher-audit.ps1)
+- [step05-accounting-migration-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-final.json)
 - [step05-accounting-migration-observe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-observe.ps1)
 - [step05-accounting-migration-post-disable.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-post-disable.json)
+- [step05-accounting-migration-post.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-post.json)
 - [step05-accounting-migration-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-preflight.json)
 - [step05-accounting-migration-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-preflight.ps1)
 - [step05-accounting-migration-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-accounting-migration-stop.json)
@@ -242,6 +263,9 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step05-ervp-orders-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-preflight.json)
 - [step05-ervp-orders-preflight.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-preflight.ps1)
 - [step05-ervp-orders-stop.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-ervp-orders-stop.json)
+- [step05-global-check.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-global-check.json)
+- [step05-global-check.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-global-check.ps1)
+- [step05-global-check.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-global-check.py)
 - [step05-hermesops-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-final.json)
 - [step05-hermesops-launcher-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-launcher-audit.json)
 - [step05-hermesops-launcher-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-hermesops-launcher-audit.ps1)
@@ -269,6 +293,7 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [step05-orders-stop.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-orders-stop.ps1)
 - [step05-own-helper-identity.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-own-helper-identity.json)
 - [step05-own-helper-identity.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-own-helper-identity.ps1)
+- [step05-report.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-report.md)
 - [step05-root-final.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-final.json)
 - [step05-root-home-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-home-audit.json)
 - [step05-root-home-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/step05-root-home-audit.ps1)
