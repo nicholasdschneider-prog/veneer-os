@@ -1,0 +1,20 @@
+{
+  "source_sha256": "62FCE3B2D550D87258E6CB696C4112E0FAA300085C266D68A4BF5B3251F09C13",
+  "state": {
+    "status.json": {
+      "state": "measuring",
+      "root": "local-hermes",
+      "files": 1660097,
+      "at": "2026-10-22T13:55:39.128251+00:00",
+      "deletion": false
+    }
+  },
+  "processes": [
+    {
+      "parent": 12112,
+      "pid": 21104,
+      "created": "2026-10-22T09:50:58.4951730-04:00"
+    }
+  ],
+  "at": "2026-10-22T13:55:40.1955998Z"
+}

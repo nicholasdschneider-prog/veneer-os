@@ -1,0 +1,311 @@
+{
+  "at": "2026-10-22T13:45:29.2494156Z",
+  "free_bytes": 478332747776,
+  "refresh_source_sha256": "FA41B3287CDF40841F23729964D28342AF5A7A3D42F43E8993100356BF2F2A65",
+  "processes": [],
+  "reconcile_source_sha256": "3402F9E5ACD3B2DD84DC65929344B43780CE2458D868D1383E0186C6EE3BD816",
+  "state": {
+    "verification.json": {
+      "state": "refresh_verified_pending_operator_seal",
+      "at": "2026-10-22T13:36:50.030229+00:00",
+      "files": 2759192,
+      "bytes": 128748216736,
+      "source_files": 2758807,
+      "previous_versions": 2253,
+      "roots": [
+        {
+          "root": "local-hermes",
+          "robocopy_exit": 3
+        },
+        {
+          "root": "dot-hermes",
+          "robocopy_exit": 0
+        },
+        {
+          "root": "brain-ops",
+          "robocopy_exit": 0
+        },
+        {
+          "root": "legacy-data",
+          "robocopy_exit": 0
+        },
+        {
+          "root": "obsidian-brain",
+          "robocopy_exit": 3
+        },
+        {
+          "root": "worktrees",
+          "robocopy_exit": 0
+        }
+      ],
+      "sqlite_databases": 1410,
+      "sqlite_integrity_ok": 1410,
+      "source_sqlite_snapshots": 468,
+      "mirror_sqlite_databases": 468,
+      "reconciled_reused_files": 2386571,
+      "original_attempt_preserved": true,
+      "nonstandard_sqlite": 575,
+      "original_records_preserved": true,
+      "missing_source_files": [],
+      "errors": [],
+      "restore_sample": [
+        {
+          "path": "mirror\\brain-ops\\accounting-session-20260730-redacted.jsonl",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\dot-hermes\\kanban.db",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\legacy-data\\Hermes\\2026-07-03.md",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\local-hermes\\.codex_gpt55_autoraise_notice",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\obsidian-brain\\Backup Status.json",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\worktrees\\t_14c058c8\\.bytecode-fingerprint",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        }
+      ],
+      "manifest_sha256": "e315a27507da08bf5d3de7dc50cda93f919aa91fd151a72ea74c7c8a459ff3c1",
+      "manifest_addendum_sha256": "4b97cde074658c1e072b4449811a76fbd82f6bce5cd461b3d2fd496b0b00733c",
+      "acl_export_ok": true,
+      "quiescence_checks": [
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T04:54:06.7315136Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T05:58:39.0945607Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:19:47.5950939Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:19:50.0886890Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:20:01.7545104Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:20:52.3360097Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:23:17.2090566Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T13:36:49.2385677Z"
+        }
+      ],
+      "baseline_correction_sha256": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f",
+      "baseline_correction_count": 1,
+      "both_stopped_attempts_preserved": true,
+      "final_seal": false,
+      "pending": [
+        "Independent operator readback before sealed verdict; Brain and late LTL confirmations already verified."
+      ],
+      "limitations": "Excluded by metadata; original PC/account retained. Reauthentication required."
+    },
+    "status.json": {
+      "state": "refresh_verified_pending_operator_seal",
+      "at": "2026-10-22T13:36:50.030229+00:00",
+      "files": 2759192,
+      "bytes": 128748216736,
+      "source_files": 2758807,
+      "previous_versions": 2253,
+      "roots": [
+        {
+          "root": "local-hermes",
+          "robocopy_exit": 3
+        },
+        {
+          "root": "dot-hermes",
+          "robocopy_exit": 0
+        },
+        {
+          "root": "brain-ops",
+          "robocopy_exit": 0
+        },
+        {
+          "root": "legacy-data",
+          "robocopy_exit": 0
+        },
+        {
+          "root": "obsidian-brain",
+          "robocopy_exit": 3
+        },
+        {
+          "root": "worktrees",
+          "robocopy_exit": 0
+        }
+      ],
+      "sqlite_databases": 1410,
+      "sqlite_integrity_ok": 1410,
+      "source_sqlite_snapshots": 468,
+      "mirror_sqlite_databases": 468,
+      "reconciled_reused_files": 2386571,
+      "original_attempt_preserved": true,
+      "nonstandard_sqlite": 575,
+      "original_records_preserved": true,
+      "missing_source_files": [],
+      "errors": [],
+      "restore_sample": [
+        {
+          "path": "mirror\\brain-ops\\accounting-session-20260730-redacted.jsonl",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\dot-hermes\\kanban.db",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\legacy-data\\Hermes\\2026-07-03.md",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\local-hermes\\.codex_gpt55_autoraise_notice",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\obsidian-brain\\Backup Status.json",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        },
+        {
+          "path": "mirror\\worktrees\\t_14c058c8\\.bytecode-fingerprint",
+          "hash_matches": true,
+          "bytes_match": true,
+          "sqlite_integrity_ok": true
+        }
+      ],
+      "manifest_sha256": "e315a27507da08bf5d3de7dc50cda93f919aa91fd151a72ea74c7c8a459ff3c1",
+      "manifest_addendum_sha256": "4b97cde074658c1e072b4449811a76fbd82f6bce5cd461b3d2fd496b0b00733c",
+      "acl_export_ok": true,
+      "quiescence_checks": [
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T04:54:06.7315136Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T05:58:39.0945607Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:19:47.5950939Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:19:50.0886890Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:20:01.7545104Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:20:52.3360097Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T06:23:17.2090566Z"
+        },
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-22T13:36:49.2385677Z"
+        }
+      ],
+      "baseline_correction_sha256": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f",
+      "baseline_correction_count": 1,
+      "both_stopped_attempts_preserved": true,
+      "final_seal": false,
+      "pending": [
+        "Independent operator readback before sealed verdict; Brain and late LTL confirmations already verified."
+      ],
+      "limitations": "Excluded by metadata; original PC/account retained. Reauthentication required."
+    }
+  }
+}

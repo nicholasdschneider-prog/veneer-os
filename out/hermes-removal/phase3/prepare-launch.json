@@ -1,0 +1,12 @@
+{
+  "pid": 21104,
+  "deletion": false,
+  "state": "launched",
+  "parent": 12112,
+  "source_sha256": "62FCE3B2D550D87258E6CB696C4112E0FAA300085C266D68A4BF5B3251F09C13",
+  "at": "2026-10-22T13:50:58.3420606Z",
+  "created": "2026-10-22T09:50:58.4951730-04:00",
+  "return_value": 0,
+  "launch_attempts": 1,
+  "source": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\prepare-phase3.py"
+}

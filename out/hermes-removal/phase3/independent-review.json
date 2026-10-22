@@ -1,0 +1,65 @@
+{
+  "at": "2026-10-22T13:48:27.906819+00:00",
+  "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
+  "attempt": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-r3-20261022",
+  "independent_archive_review_passed": true,
+  "files": 2759192,
+  "bytes": 128748216736,
+  "source_rows": 2758807,
+  "source_rows_seen": 2758807,
+  "source_sqlite": 468,
+  "root_counts": {
+    "brain-ops": 26,
+    "dot-hermes": 7,
+    "legacy-data": 1605,
+    "local-hermes": 2734997,
+    "obsidian-brain": 3985,
+    "worktrees": 18572
+  },
+  "manifest_hashes": {
+    "manifest-current.jsonl": "e315a27507da08bf5d3de7dc50cda93f919aa91fd151a72ea74c7c8a459ff3c1",
+    "manifest-addendum.jsonl": "4b97cde074658c1e072b4449811a76fbd82f6bce5cd461b3d2fd496b0b00733c",
+    "baseline-corrections.jsonl": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f"
+  },
+  "verification_sha256": "a735f32067711579eaddb280cffd90e203d90f8adf339c7d8e2391a694cac4d3",
+  "sqlite_reported_checks": 1410,
+  "sqlite_headers_independently_confirmed": 1410,
+  "sqlite_reported_all_integrity_ok": true,
+  "restores_rechecked": [
+    {
+      "path": "mirror\\brain-ops\\accounting-session-20260730-redacted.jsonl",
+      "hash_and_size_match": true,
+      "sqlite_integrity_ok": true
+    },
+    {
+      "path": "mirror\\dot-hermes\\kanban.db",
+      "hash_and_size_match": true,
+      "sqlite_integrity_ok": true
+    },
+    {
+      "path": "mirror\\legacy-data\\Hermes\\2026-07-03.md",
+      "hash_and_size_match": true,
+      "sqlite_integrity_ok": true
+    },
+    {
+      "path": "mirror\\local-hermes\\.codex_gpt55_autoraise_notice",
+      "hash_and_size_match": true,
+      "sqlite_integrity_ok": true
+    },
+    {
+      "path": "mirror\\obsidian-brain\\Backup Status.json",
+      "hash_and_size_match": true,
+      "sqlite_integrity_ok": true
+    },
+    {
+      "path": "mirror\\worktrees\\t_14c058c8\\.bytecode-fingerprint",
+      "hash_and_size_match": true,
+      "sqlite_integrity_ok": true
+    }
+  ],
+  "acl_metadata_present": true,
+  "original_manifest_hashes_unchanged": true,
+  "reserved_correction_exact": true,
+  "fresh_quiescence_required": true,
+  "sealed": false
+}

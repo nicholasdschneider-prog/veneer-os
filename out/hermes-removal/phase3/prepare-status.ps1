@@ -1,0 +1,3 @@
+$ErrorActionPreference='Stop';$b='C:\Users\nicho\backups\hermes-final-20261016';$d=Join-Path $b 'phase3-custody-20261022';$s=@{}
+foreach($n in @('status.json','failure.json')){if(Test-Path (Join-Path $d $n)){$s[$n]=Get-Content (Join-Path $d $n) -Raw|ConvertFrom-Json}}
+@{at=(Get-Date).ToUniversalTime().ToString('o');state=$s;processes=@(Get-CimInstance Win32_Process|Where-Object{$_.CommandLine -match 'hermes-final-20261016\\prepare-phase3\.py'}|ForEach-Object{@{pid=$_.ProcessId;parent=$_.ParentProcessId;created=$_.CreationDate.ToString('o')}});source_sha256=(Get-FileHash (Join-Path $b 'prepare-phase3.py')).Hash}|ConvertTo-Json -Depth 15

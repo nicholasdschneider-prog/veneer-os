@@ -1,6 +1,6 @@
 # Phase2b artifact index
 
-Operator scripts and metadata receipts only. Archive payload and full manifests stay on the PC.
+Operator artifacts and metadata receipts only; archive bodies and full manifests stay on the PC.
 
 - [README.md](./README.md)
 - [archive-failure-audit.json](./archive-failure-audit.json)
@@ -60,6 +60,7 @@ Operator scripts and metadata receipts only. Archive payload and full manifests 
 - [archive-r3-status-0812.json](./archive-r3-status-0812.json)
 - [archive-r3-status-0843.json](./archive-r3-status-0843.json)
 - [archive-r3-status-0914.json](./archive-r3-status-0914.json)
+- [archive-r3-status-0945.json](./archive-r3-status-0945.json)
 - [archive-r3-status-first.json](./archive-r3-status-first.json)
 - [archive-r3-status-launched.json](./archive-r3-status-launched.json)
 - [archive-r3-status.ps1](./archive-r3-status.ps1)
