@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-22T04:50:44.0194178Z",
+  "free_bytes": 478694526976,
+  "refresh_source_sha256": null,
+  "processes": [],
+  "reconcile_source_sha256": "3402F9E5ACD3B2DD84DC65929344B43780CE2458D868D1383E0186C6EE3BD816",
+  "state": {
+    "status.json": {
+      "state": "reconciled_ready",
+      "at": "2026-10-22T04:34:34.248956+00:00",
+      "final_seal": false,
+      "original_attempt_preserved": true,
+      "both_stopped_attempts_preserved": true,
+      "committed_index_rows": 2380000,
+      "matched_committed": 2380000,
+      "inventory_rows": 2386571,
+      "recovered_tail_rows": 6571,
+      "reconciled_rows": 2386571,
+      "prior_version_count": 372,
+      "snapshot_count": 259,
+      "correction_count": 1,
+      "correction_sha256": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f",
+      "source_files_audited": 2758807,
+      "unresolved": [],
+      "not_launched": true
+    }
+  }
+}

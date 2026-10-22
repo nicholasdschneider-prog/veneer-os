@@ -26,3 +26,5 @@ Report Phase 2b after step 5 and again after verified step 6 under request_key h
 The accepted NOT_VERIFIED verdict remains in force. The coordinator authorized an isolated path-access repair and reconciled resume, launched once at00:51:44Z Oct22 after all captured snapshots, prior versions and inventory-tail records reconciled. See the Phase2b repair receipts. This is not a sealed verdict; no deletion has started. A complete refreshed archive, independent readback and late LTL confirmation must pass before the gate changes.
 
 The repaired refresh also failed at04:08:18Z October22 on a reserved-name NUL baseline-hash mismatch. Both attempts and all source roots are retained. See seal-failure.md and seal-verdict.json: NOT_VERIFIED, deletion_permitted=false. No automatic retry is armed.
+
+The coordinator subsequently authorized scoped reserved-name corrections and one more refresh. Reconciliation and preflight passed; R3 refresh launched once at04:54:05Z October22. The failed verdict remains the deletion gate until a complete independently verified seal replaces it. See Phase2b current records.

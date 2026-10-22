@@ -1,0 +1,12 @@
+{
+  "no_stop_performed": true,
+  "possible_timedout_read_helpers": [
+    {
+      "encoded_wrapper": true,
+      "parent": 7408,
+      "pid": 2992,
+      "created": "2026-10-22T00:51:00.5998770-04:00"
+    }
+  ],
+  "at": "2026-10-22T04:55:13.2031287Z"
+}

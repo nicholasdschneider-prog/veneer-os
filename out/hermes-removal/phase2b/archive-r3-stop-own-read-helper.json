@@ -1,0 +1,12 @@
+{
+  "pid": 2992,
+  "stopped": true,
+  "parent": 7408,
+  "parent_name": "cmd.exe",
+  "absent": false,
+  "exact_wrapper_match": true,
+  "own_read_helper_only": true,
+  "at": "2026-10-22T04:56:17.6295912Z",
+  "created": "2026-10-22T00:51:00.5998770-04:00",
+  "grandparent_name": null
+}

@@ -1,0 +1,11 @@
+$ErrorActionPreference='Stop'
+$p=Get-CimInstance Win32_Process -Filter 'ProcessId=2992'
+if(-not $p){@{already_absent=$true;stopped=$false}|ConvertTo-Json;exit}
+$parent=Get-CimInstance Win32_Process -Filter 'ProcessId=7408'
+$grandparent=Get-CimInstance Win32_Process -Filter "ProcessId=$($parent.ParentProcessId)"
+if($p.CreationDate.ToString('o') -ne '2026-10-22T00:51:00.5998770-04:00' -or $p.ParentProcessId -ne 7408 -or $p.Name -ne 'powershell.exe' -or $p.CommandLine -notlike '*-EncodedCommand WwBDAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwA9AE4AZQB3AC0ATwBiAGoAZQBjAHQAIABUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcAKAAkAGYAYQBsAHMAZQApADsAJABQAHIAbwBnAHIAZQBzAHMAUAByAGUAZgBlAHIAZQBuAGMAZQA9ACcAUwBpAGwAZQBuAHQAbAB5AEMAbwBuAHQAaQBuAHUAZQAnADsAJABFAHIAcgBvAHIAQQBjAHQAaQBvAG4AUAByAGUAZgBlAHIAZQBuAGMAZQA9ACcAUwB0AG8AcAAnADsAJABiAD0AWwBDAG8AbgB2AGUAcgB0AF0AOgA6AEYAcgBvAG0AQgBhAHMAZQA2ADQAUwB0AHIAaQBuAGcAKABbAEMAbwBuAHMAbwBsAGUAXQA6ADoASQBuAC4AUgBlAGEAZABUAG8ARQBuAGQAKAApACkAOwAkAG0APQBOAGUAdwAtAE8AYgBqAGUAYwB0ACAASQBPAC4ATQBlAG0AbwByAHkAUwB0AHIAZQBhAG0AKAAsACQAYgApADsAJABnAD0ATgBlAHcALQBPAGIAagBlAGMAdAAgAEkATwAuAEMAbwBtAHAAcgBlAHMAcwBpAG8AbgAuAEcAegBpAHAAUwB0AHIAZQBhAG0AKAAkAG0ALABbAEkATwAuAEMAbwBtAHAAcgBlAHMAcwBpAG8AbgAuAEMAbwBtAHAAcgBlAHMAcwBpAG8AbgBNAG8AZABlAF0AOgA6AEQAZQBjAG8AbQBwAHIAZQBzAHMAKQA7ACQAcgA9AE4AZQB3AC0ATwBiAGoAZQBjAHQAIABJAE8ALgBTAHQAcgBlAGEAbQBSAGUAYQBkAGUAcgAoACQAZwApADsAdAByAHkAIAB7ACAAJgAgACgAWwBzAGMAcgBpAHAAdABiAGwAbwBjAGsAXQA6ADoAQwByAGUAYQB0AGUAKAAkAHIALgBSAGUAYQBkAFQAbwBFAG4AZAAoACkAKQApACAAfQAgAGMAYQB0AGMAaAAgAHsAIABbAEMAbwBuAHMAbwBsAGUAXQA6ADoARQByAHIAbwByAC4AVwByAGkAdABlAEwAaQBuAGUAKAAkAF8ALgBFAHgAYwBlAHAAdABpAG8AbgAuAE0AZQBzAHMAYQBnAGUAKQA7AGUAeABpAHQAIAAxACAAfQA=' -or $parent.Name -ne 'cmd.exe'){throw 'Own helper identity mismatch: no stop'}
+if(@(Get-CimInstance Win32_Process|Where-Object{$_.ParentProcessId -eq 2992}).Count){throw 'Read helper unexpectedly has child work'}
+$proof=@{pid=2992;parent=7408;parent_name=$parent.Name;grandparent_name=$grandparent.Name;created=$p.CreationDate.ToString('o');exact_wrapper_match=$true;own_read_helper_only=$true;at=(Get-Date).ToUniversalTime().ToString('o')}
+Stop-Process -Id 2992 -ErrorAction Stop
+$proof.stopped=$true;$proof.absent=($null -eq (Get-CimInstance Win32_Process -Filter 'ProcessId=2992'))
+$proof|ConvertTo-Json

@@ -9,6 +9,12 @@ def sha(p):
  with open(ext(p),'rb') as f:
   for block in iter(lambda:f.read(1024*1024),b''):h.update(block)
  return h.hexdigest()
+def validate_prior(key,baseline,actual,corrections):
+ if actual==baseline:return actual
+ row=corrections.get(key)
+ if not row or row['baseline_sha256']!=baseline or row['sha256']!=actual:raise RuntimeError('Unapproved prior baseline payload hash mismatch')
+ return actual
+
 def write(n,v):
  p=R/n;tmp=R/(n+'.next');tmp.write_text(json.dumps(v,indent=2)+'\n',encoding='utf8');os.replace(tmp,p)
 def status(state,**v):write('status.json',{'state':state,'at':now(),'final_seal':False,**v})
@@ -134,7 +140,7 @@ def main():
       actual_prior=sha(history)
       if actual_prior!=prior:
        correction=corrections.get(key)
-       if not correction or correction['baseline_sha256']!=prior or correction['sha256']!=actual_prior:raise RuntimeError('Unapproved prior baseline payload hash mismatch')
+       validate_prior(key,prior,actual_prior,corrections)
        prior=actual_prior
        with (R/'applied-corrections.jsonl').open('a') as applied:applied.write(json.dumps({'path':key,'correction_sha256':reconciliation['correction_sha256'],'baseline_sha256':correction['baseline_sha256'],'verified_prior_sha256':actual_prior})+'\n')
       if header(history)==b'SQLite format 3\x00' and not sqlcheck(history):raise RuntimeError('Historical SQLite integrity failure')

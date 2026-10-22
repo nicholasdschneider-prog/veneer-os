@@ -1,0 +1,3 @@
+$ErrorActionPreference='Stop'
+$from=[DateTimeOffset]::Parse('2026-10-22T04:50:40Z').UtcDateTime;$to=[DateTimeOffset]::Parse('2026-10-22T04:51:10Z').UtcDateTime
+@{at=(Get-Date).ToUniversalTime().ToString('o');possible_timedout_read_helpers=@(Get-CimInstance Win32_Process|Where-Object{$_.Name -eq 'powershell.exe' -and $_.CreationDate.ToUniversalTime() -ge $from -and $_.CreationDate.ToUniversalTime() -le $to}|ForEach-Object{@{pid=$_.ProcessId;parent=$_.ParentProcessId;created=$_.CreationDate.ToString('o');encoded_wrapper=($_.CommandLine -match 'EncodedCommand WwBDAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwA9')}});no_stop_performed=$true}|ConvertTo-Json -Depth 5

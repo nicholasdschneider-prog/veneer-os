@@ -1,0 +1,20 @@
+{
+  "source_sha256": "fa41b3287cdf40841f23729964d28342af5a7a3d42f43e8993100356bf2f2a65",
+  "reconciliation_rows": 2386571,
+  "correction_count": 1,
+  "correction_sha256": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f",
+  "negative_unapproved_mismatch_checks": 3,
+  "original_records_preserved": true,
+  "snapshot_checks_all259_ok": true,
+  "reserved_source_mirror_history54bytes_sha_match": true,
+  "path_access_regression_integrity_ok": true,
+  "sqlite_header_detection_ok": true,
+  "guard": {
+    "enabled_tasks": 0,
+    "processes": 0,
+    "active_startup": 0,
+    "enabled_cron": 0,
+    "at": "2026-10-22T04:53:25.2487046Z"
+  },
+  "launched": false
+}

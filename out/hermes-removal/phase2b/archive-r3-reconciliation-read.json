@@ -1,0 +1,74 @@
+{
+  "state": "reconciled_ready",
+  "at": "2026-10-22T04:34:26.895516+00:00",
+  "original_attempt_preserved": true,
+  "both_stopped_attempts_preserved": true,
+  "committed_index_rows": 2380000,
+  "matched_committed": 2380000,
+  "inventory_rows": 2386571,
+  "recovered_tail_rows": 6571,
+  "reconciled_rows": 2386571,
+  "prior_version_count": 372,
+  "recovered_unjournaled_history": [
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\workspace\\NUL",
+      "previous_payload": "quiescent-resume-20261021\\previous-payload\\local-hermes\\profiles\\ervp-orders\\workspace\\NUL",
+      "sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "recovered_unjournaled_copy": true
+    }
+  ],
+  "snapshot_count": 259,
+  "correction_count": 1,
+  "correction_sha256": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f",
+  "source_files_audited": 2758807,
+  "unresolved": [],
+  "not_launched": true,
+  "snapshot_integrity_all_ok": true,
+  "correction_rows": [
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\workspace\\NUL",
+      "reserved_basename": true,
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extended_read_sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "extended_read_bytes": 54,
+      "mirror_sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "history": [
+        {
+          "path": "quiescent-resume-20261021\\previous-payload\\local-hermes\\profiles\\ervp-orders\\workspace\\NUL",
+          "sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+          "bytes": 54
+        }
+      ],
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\workspace\\NUL",
+      "supersedes_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "bytes": 54,
+      "reason": "Reserved-device/empty-hash baseline bookkeeping correction; extended-handle evidence"
+    }
+  ],
+  "actual_correction_sha256": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f",
+  "checksum_file": "684d652d831c70c071ea264f18c6db98deabd45a0f3b113829a576982b57a80f  baseline-corrections.jsonl\n",
+  "audit_summary": {
+    "source_files_scanned": 2758807,
+    "baseline_empty_rows_audited": 5887,
+    "excluded_credentials_not_read": true
+  },
+  "reserved_rows": [
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\workspace\\NUL",
+      "reserved_basename": true,
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extended_read_sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "extended_read_bytes": 54,
+      "mirror_sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "history": [
+        {
+          "path": "quiescent-resume-20261021\\previous-payload\\local-hermes\\profiles\\ervp-orders\\workspace\\NUL",
+          "sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+          "bytes": 54
+        }
+      ],
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\workspace\\NUL"
+    }
+  ]
+}
