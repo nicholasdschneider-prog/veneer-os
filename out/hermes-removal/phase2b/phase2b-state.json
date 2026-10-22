@@ -1,6 +1,6 @@
 {
   "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
-  "phase": "step06_refresh_complete_independent_review_passed_recovery_preparation_pending",
+  "phase": "step06_verified_quiescent_seal_phase3_authorized",
   "no_deletion_in_phase2b": true,
   "step01": {
     "ece0db616afe": {
@@ -28,13 +28,13 @@
       "read_probe": "step01-c94a14183a61-read.ps1"
     }
   },
-  "phase3": "approved in advance; blocked until complete verified quiescent seal; no deletion",
+  "phase3": "Sealed verified; advance-approved deletion may execute under exact KEEP/order",
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "../phase3/prepare-status-checkpoint.json",
-  "latest_checkpoint_at": "2026-10-22T13:55:40.1955998Z",
-  "latest_checkpoint_result": "R3complete2759192files/all1410SQLite/sixrestores/ACLpass;independentreviewpass,freshzeroquiescence+31ledgers0;recoveryprep21104measuring,sealnotyetrecorded/nodeletion",
+  "latest_checkpoint": "../phase3/seal-verdict.json",
+  "latest_checkpoint_at": "2026-10-22T14:09:19.756701+00:00",
+  "latest_checkpoint_result": "AllsealchecksPASSED/PCverdictrecorded;deletionauthorizedadvance,no deletionyet",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -213,7 +213,7 @@
     "reported_request_key": "hermes-pc-operator-phase2b"
   },
   "step06": {
-    "state": "failed_not_sealed",
+    "state": "VERIFIED_QUIESCENT_SEAL",
     "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
     "refresh_directory": "quiescent-20261021",
     "source": "archive-quiescent.py",
@@ -457,13 +457,14 @@
       "refresh_parent": 14180,
       "refresh_launch": "archive-r3-launch.json",
       "refresh_preflight": "archive-r3-preflight.json",
-      "state": "refresh_complete_review_passed_not_sealed",
+      "state": "sealed_verified",
       "free_bytes": 482178297856,
       "timedout_read_helper": "PID2992 exactcreation/parent/wrapper verified, own helper stopped once; final read confirms absent, no business process targeted",
       "helper_cleanup_receipt": "archive-r3-helper-final.json",
       "correction_application_receipt": "archive-r3-correction-applied.json",
       "refresh_controller_absent": true,
-      "independent_review": "../phase3/independent-review.json"
+      "independent_review": "../phase3/independent-review.json",
+      "sealed_verdict": "../phase3/seal-verdict.json"
     }
   },
   "late_ltl_confirmation_verified": "step02-late-ltl-verdict.json",
@@ -483,6 +484,9 @@
       "files": 1660097,
       "at": "2026-10-22T13:55:39.128251+00:00",
       "deletion": false
-    }
+    },
+    "state": "verified_complete",
+    "plan": "../phase3/deletion-plan-reviewed.json",
+    "plan_sha256": "af23f0db6e18bbc240aafe4f3fd474d43f1e56cbe133f4afc546c12a375c28b7"
   }
 }

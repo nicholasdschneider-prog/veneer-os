@@ -1,0 +1,148 @@
+{
+  "source_sha256": "62FCE3B2D550D87258E6CB696C4112E0FAA300085C266D68A4BF5B3251F09C13",
+  "state": {
+    "status.json": {
+      "state": "ready_for_seal",
+      "at": "2026-10-22T13:58:28.016349+00:00",
+      "plan_sha256": "af23f0db6e18bbc240aafe4f3fd474d43f1e56cbe133f4afc546c12a375c28b7",
+      "deletion": false,
+      "tasks": 25,
+      "startups": 23,
+      "wrappers": 31,
+      "roots": [
+        {
+          "path": "C:\\Users\\nicho\\AppData\\Local\\hermes",
+          "label": "local-hermes",
+          "bytes": 129418156292,
+          "files": 2785823,
+          "directories": 259138,
+          "reparse_points": [
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\hermes",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\hermes-tui",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\ui-tui",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\web",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\web",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\bootstrap-installer",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\apps\\bootstrap-installer",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\ink",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\ui-tui\\packages\\hermes-ink",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\root-tests",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\tests-js",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\node_modules\\@hermes\\shared",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\hermes-agent\\apps\\shared",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\hermes",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\apps\\desktop",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\hermes-tui",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\ui-tui",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\web",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\web",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\bootstrap-installer",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\apps\\bootstrap-installer",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\ink",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\ui-tui\\packages\\hermes-ink",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\root-tests",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\tests-js",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\node_modules\\@hermes\\shared",
+              "target": "\\\\?\\C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\.worktrees\\desktop-stale-runtime-recovery\\apps\\shared",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\workspace\\orderops-main-qa-20260727\\node_modules",
+              "target": "\\\\?\\C:\\Users\\nicho\\elkhart-orderops-fix\\node_modules",
+              "kind": "directory"
+            },
+            {
+              "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\workspace\\orderops-shopify-containment-20260727\\node_modules",
+              "target": "\\\\?\\C:\\Users\\nicho\\elkhart-orderops-fix\\node_modules",
+              "kind": "directory"
+            }
+          ]
+        },
+        {
+          "path": "C:\\Users\\nicho\\.hermes",
+          "label": "dot-hermes",
+          "bytes": 309667,
+          "files": 8,
+          "directories": 18,
+          "reparse_points": []
+        },
+        {
+          "path": "C:\\Users\\nicho\\HermesBrainOps",
+          "label": "brain-ops",
+          "bytes": 1747995,
+          "files": 26,
+          "directories": 2,
+          "reparse_points": []
+        },
+        {
+          "path": "C:\\Users\\nicho\\HermesLegacyData",
+          "label": "legacy-data",
+          "bytes": 155312482,
+          "files": 1608,
+          "directories": 2331,
+          "reparse_points": []
+        },
+        {
+          "path": "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain",
+          "label": "obsidian-brain",
+          "bytes": 55135400,
+          "files": 3978,
+          "directories": 3362,
+          "reparse_points": []
+        },
+        {
+          "path": "C:\\Users\\nicho\\.worktrees",
+          "label": "worktrees",
+          "bytes": 332816845,
+          "files": 18872,
+          "directories": 1991,
+          "reparse_points": []
+        }
+      ],
+      "free_bytes_before": 475980918784
+    }
+  },
+  "processes": [],
+  "at": "2026-10-22T14:07:27.2080229Z"
+}

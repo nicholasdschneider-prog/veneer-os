@@ -1,0 +1,37 @@
+{
+  "verdict": "NOT_VERIFIED",
+  "sealed": false,
+  "deletion_permitted": false,
+  "at": "2026-10-22T04:14:35.941949+00:00",
+  "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
+  "attempt": "quiescent-resume-20261021",
+  "controller_pid": 14696,
+  "controller_live": false,
+  "failure_at": "2026-10-22T04:08:18.927227+00:00",
+  "error_type": "RuntimeError",
+  "sqlite_error": null,
+  "sqlite_error_code": null,
+  "diagnosis": "Prior baseline payload hash mismatch at reserved NUL filename; extended source/mirror/preserved-history hashes match, historical baseline hash differs; normal stat ambiguous. No attribution of cause.",
+  "completed_checks": [
+    "Step5 shutdown and31ledger verification",
+    "Brain4h confirmation",
+    "late LTL full720min confirmations",
+    "failed-attempt reconciliation1121082records/66snapshot integrity/77version hashes",
+    "repaired SQLite path-access preflight"
+  ],
+  "incomplete_checks": [
+    "six-root incremental refresh",
+    "full current manifest/addendum",
+    "every archive SQLite integrity verification",
+    "restore samples",
+    "ACL metadata",
+    "independent final quiescence seal review"
+  ],
+  "source_deletion": "NOT STARTED; all six source roots retained",
+  "authority": "Advance deletion approved, contingent on verified quiescent seal; gate failed so no deletion",
+  "receipts": [
+    "../phase2b/archive-resume-status-20261022-0013.json",
+    "../phase2b/archive-resume-failure-audit-final.json",
+    "../phase2b/step02-late-ltl-verdict.json"
+  ]
+}

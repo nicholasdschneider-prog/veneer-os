@@ -312,3 +312,4 @@ Operator artifacts and metadata receipts only; archive bodies and full manifests
 - [step05-root-stop.ps1](./step05-root-stop.ps1)
 - [step05-stop-own-helper.json](./step05-stop-own-helper.json)
 - [step05-stop-own-helper.ps1](./step05-stop-own-helper.ps1)
+- [step06-report.md](./step06-report.md)

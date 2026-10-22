@@ -1,6 +1,6 @@
-# Hermes Phase 3 — approved, seal pending
+# Hermes Phase 3 — seal verified, removal authorized
 
-Nick’s explicit October 21 instruction in chat fce19860, “Delete it too,” was relayed by the coordinator in this thread. Source deletion is approved in advance; no further confirmation is required after the gate passes. This record is an authorization and plan, **not a sealed verdict**. No deletion has started.
+Nick’s explicit October 21 instruction in chat fce19860, “Delete it too,” was relayed by the coordinator in this thread. Source deletion is approved in advance; no further confirmation is required after the gate passes. The quiescent seal is now VERIFIED and recorded in seal-verdict.json and onPC. All required checks passed. Removal is authorized under the exact plan; no deletion had started at seal recording.
 
 ## Mandatory gate
 
@@ -32,3 +32,7 @@ The coordinator subsequently authorized scoped reserved-name corrections and one
 ## Current completion checkpoint
 
 R3 completed successfully13:36:50Z October22. Independent archive review and freshzeroquiescence/31ledgers0 passed. Removal recovery preparation is running separately (PID21104, prepare-launch.json); the current gate remains NOT_VERIFIED until that preparation is reviewed and the sealed verdict is recorded. Deletion has NOT started. Preserve ERVP_Dometic_Inventory: its action is outside Hermes. See independent-review.json and inventory-pre-seal.json. delete-sealed.py is a reviewed local draft only.
+
+## Current sealed verdict
+
+VERIFIED_QUIESCENT_SEAL: all incomplete_checks passed; PC seal file hash matches local receipt. See seal-verdict.json, record-seal.json and deletion-plan.md. Next action: the advance-approved removal in the recorded order, with per-effect journals, hashes, sizes and KEEP protection. No further approval is required.
