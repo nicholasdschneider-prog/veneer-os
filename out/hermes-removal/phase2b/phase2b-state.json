@@ -1,6 +1,6 @@
 {
   "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
-  "phase": "step06_authorized_repair_resumed_not_sealed",
+  "phase": "step06_repair_failed_no_seal_no_deletion",
   "no_deletion_in_phase2b": true,
   "step01": {
     "ece0db616afe": {
@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "archive-resume-status-2342.json",
-  "latest_checkpoint_at": "2026-10-22T03:42:51.8378346Z",
-  "latest_checkpoint_result": "exactPIDcreationparent/sourceSHA match; source2220000/SQLite219/priorversions309/no failure; lateLTL verified; not sealed",
+  "latest_checkpoint": "archive-resume-failure-audit-final.json",
+  "latest_checkpoint_at": "2026-10-22T04:14:35.941949+00:00",
+  "latest_checkpoint_result": "resumecontroller exited00:08:18ET Prior baseline payload hash mismatch on reservedNULpath; source/mirror/history extendedhashesmatch eachother butnotbaseline; stopped/no retry/no deletion",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -105,7 +105,7 @@
     "verified": true,
     "final_observation": "step03-observation-verdict.json"
   },
-  "steps05_to06": "Step5 verified/reported; failed attempt preserved; reconciled resume launched once",
+  "steps05_to06": "Step5 verified/reported; repaired Step6 failed, no seal or deletion",
   "step04": {
     "vault": {
       "disabled_at": "2026-10-21T17:07:12.426231+00:00",
@@ -257,8 +257,8 @@
       "controller_pid": 14696,
       "controller_created": "2026-10-21T20:51:44.2121200-04:00",
       "refresh_directory": "quiescent-resume-20261021",
-      "latest_status": "archive-resume-status-2342.json",
-      "state": "running_not_sealed",
+      "latest_status": "archive-resume-status-20261022-0013.json",
+      "state": "failed_not_sealed",
       "original_attempt_preserved": true,
       "reconciled_rows": 1121082,
       "recovered_tail_rows": 1082,
@@ -267,14 +267,14 @@
       "unresolved": [],
       "launch_attempts": 1,
       "latest_progress": {
-        "state": "source_hash_and_version_preservation",
-        "at": "2026-10-22T03:41:46.188251+00:00",
+        "state": "failed",
+        "at": "2026-10-22T04:08:18.931141+00:00",
         "final_seal": false,
-        "files": 2220000,
-        "sqlite_found": 219,
-        "previous_versions": 309
+        "error_type": "RuntimeError"
       },
-      "free_bytes": 483717476352
+      "free_bytes": 481025220608,
+      "failure_audit": "archive-resume-failure-audit-final.json",
+      "controller_absent": true
     }
   },
   "late_ltl_confirmation_verified": "step02-late-ltl-verdict.json"

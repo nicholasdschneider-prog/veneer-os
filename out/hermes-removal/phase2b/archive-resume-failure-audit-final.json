@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-22T04:14:35.941949+00:00",
+  "failure": {
+    "at": "2026-10-22T04:08:18.927227+00:00",
+    "error_type": "RuntimeError",
+    "message": "Prior baseline payload hash mismatch"
+  },
+  "committed_source_rows": 2380000,
+  "recorded_versions": 371,
+  "resume_history_files": 295,
+  "unrecorded_preserved_history": [
+    {
+      "path": "mirror\\local-hermes\\profiles\\ervp-orders\\workspace\\NUL",
+      "history_bytes": 54,
+      "normal_stat_bytes": 0,
+      "history_sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "current_mirror_sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "history_matches_current_mirror": true,
+      "source_sha256": "63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22",
+      "source_bytes": 54
+    }
+  ],
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\nicho\\backups\\hermes-final-20261016\\archive-quiescent-resume.py\", line 191, in <module>\n    try:main()\n        ~~~~^^\n  File \"C:\\Users\\nicho\\backups\\hermes-final-20261016\\archive-quiescent-resume.py\", line 125, in main\n    if sha(history)!=prior:raise RuntimeError('Prior baseline payload hash mismatch')\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Prior baseline payload hash mismatch\n",
+  "read_only": true,
+  "relaunch": false,
+  "deletion": false
+}

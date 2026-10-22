@@ -2,20 +2,22 @@
   "verdict": "NOT_VERIFIED",
   "sealed": false,
   "deletion_permitted": false,
-  "at": "2026-10-22T00:41:57.530868+00:00",
+  "at": "2026-10-22T04:14:35.941949+00:00",
   "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
-  "attempt": "quiescent-20261021",
-  "controller_pid": 9904,
+  "attempt": "quiescent-resume-20261021",
+  "controller_pid": 14696,
   "controller_live": false,
-  "failure_at": "2026-10-22T00:22:56.985979+00:00",
-  "error_type": "OperationalError",
-  "sqlite_error": "SQLITE_CANTOPEN",
-  "sqlite_error_code": 14,
-  "diagnosis": "265-character SQLite snapshot destination fails normal/extended readonly URI; existing152-character Windows short-path alias passes integrity_check. Snapshot content corruption not indicated by this probe.",
+  "failure_at": "2026-10-22T04:08:18.927227+00:00",
+  "error_type": "RuntimeError",
+  "sqlite_error": null,
+  "sqlite_error_code": null,
+  "diagnosis": "Prior baseline payload hash mismatch at reserved NUL filename; extended source/mirror/preserved-history hashes match, historical baseline hash differs; normal stat ambiguous. No attribution of cause.",
   "completed_checks": [
     "Step5 shutdown and31ledger verification",
-    "Brain4hconfirmation",
-    "partial source hash/SQLite snapshot/version preservation"
+    "Brain4h confirmation",
+    "late LTL full720min confirmations",
+    "failed-attempt reconciliation1121082records/66snapshot integrity/77version hashes",
+    "repaired SQLite path-access preflight"
   ],
   "incomplete_checks": [
     "six-root incremental refresh",
@@ -23,15 +25,13 @@
     "every archive SQLite integrity verification",
     "restore samples",
     "ACL metadata",
-    "independent final quiescence seal review",
-    "late LTL confirmation"
+    "independent final quiescence seal review"
   ],
   "source_deletion": "NOT STARTED; all six source roots retained",
   "authority": "Advance deletion approved, contingent on verified quiescent seal; gate failed so no deletion",
   "receipts": [
-    "../phase2b/archive-quiescent-status-2040.json",
-    "../phase2b/archive-failure-audit.json",
-    "../phase2b/archive-sqlite-failure-audit.json",
-    "../phase2b/archive-longpath-readonly-probe.json"
+    "../phase2b/archive-resume-status-20261022-0013.json",
+    "../phase2b/archive-resume-failure-audit-final.json",
+    "../phase2b/step02-late-ltl-verdict.json"
   ]
 }

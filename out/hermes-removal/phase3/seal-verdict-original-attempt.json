@@ -1,0 +1,37 @@
+{
+  "verdict": "NOT_VERIFIED",
+  "sealed": false,
+  "deletion_permitted": false,
+  "at": "2026-10-22T00:41:57.530868+00:00",
+  "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
+  "attempt": "quiescent-20261021",
+  "controller_pid": 9904,
+  "controller_live": false,
+  "failure_at": "2026-10-22T00:22:56.985979+00:00",
+  "error_type": "OperationalError",
+  "sqlite_error": "SQLITE_CANTOPEN",
+  "sqlite_error_code": 14,
+  "diagnosis": "265-character SQLite snapshot destination fails normal/extended readonly URI; existing152-character Windows short-path alias passes integrity_check. Snapshot content corruption not indicated by this probe.",
+  "completed_checks": [
+    "Step5 shutdown and31ledger verification",
+    "Brain4hconfirmation",
+    "partial source hash/SQLite snapshot/version preservation"
+  ],
+  "incomplete_checks": [
+    "six-root incremental refresh",
+    "full current manifest/addendum",
+    "every archive SQLite integrity verification",
+    "restore samples",
+    "ACL metadata",
+    "independent final quiescence seal review",
+    "late LTL confirmation"
+  ],
+  "source_deletion": "NOT STARTED; all six source roots retained",
+  "authority": "Advance deletion approved, contingent on verified quiescent seal; gate failed so no deletion",
+  "receipts": [
+    "../phase2b/archive-quiescent-status-2040.json",
+    "../phase2b/archive-failure-audit.json",
+    "../phase2b/archive-sqlite-failure-audit.json",
+    "../phase2b/archive-longpath-readonly-probe.json"
+  ]
+}

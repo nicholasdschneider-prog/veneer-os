@@ -9,3 +9,11 @@ The committed operator index contains1,120,000 files and47SQLite entries. The in
 The hard gate remains closed: six-root refresh, complete manifest/addendum, every SQLite check, restore samples, ACL checks, final quiescence readback and lateLTLconfirmation must all pass before any deletion. The original deletion approval requires no further confirmation once those checks actually pass, but it authorizes no deletion now.
 
 [Machine-readable verdict](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/seal-verdict.json). [Read-only path probe](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-longpath-readonly-probe.json). [Failure and receipt index](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/README.md).
+
+## Authorized repair also stopped — October22 00:08ET
+
+The preserved first attempt was reconciled and the approved repaired controller launched once. PID14696 is now absent with unchanged source hash. It stopped on Prior baseline payload hash mismatch at the reserved-name path profiles/ervp-orders/workspace/NUL. Extended-length reads of source, mirror and newly preserved history agree (54bytes, SHA63a1626b4d619d0a6614f871440e7f72c64347101e40e7ea87082676d5b0ec22); the historical baseline manifest records the empty-file SHA. Normal-path metadata reports0bytes. This is evidence of reserved-name access ambiguity and historical divergence, not proof of when or why the difference arose.
+
+The finite read-only audit found2,380,000 committed source rows,371version records and295 new prior-history files. One copied history file was not journaled before the hash check halted; it remains preserved. No payload was repaired, no controller was relaunched and no file was deleted. Both attempts and all six source roots remain. Brain and late LTL confirmations passed, but the refresh, manifests, complete integrity/restore/ACL and independent seal checks remain incomplete. The gate is NOT_VERIFIED. Under the explicit instruction to stop on another failed check, no automatic retry is armed.
+
+See [failure audit](../phase2b/archive-resume-failure-audit-final.json) and [current verdict](./seal-verdict.json).
