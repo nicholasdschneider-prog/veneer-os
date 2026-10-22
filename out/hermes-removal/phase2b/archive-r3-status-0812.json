@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-22T12:12:23.1223368Z",
+  "free_bytes": 473617084416,
+  "refresh_source_sha256": "FA41B3287CDF40841F23729964D28342AF5A7A3D42F43E8993100356BF2F2A65",
+  "processes": [
+    {
+      "parent": 14180,
+      "pid": 16716,
+      "created": "2026-10-22T00:54:05.2285330-04:00",
+      "name": "python.exe"
+    }
+  ],
+  "reconcile_source_sha256": "3402F9E5ACD3B2DD84DC65929344B43780CE2458D868D1383E0186C6EE3BD816",
+  "state": {
+    "status.json": {
+      "state": "archive_hash_header_verification",
+      "at": "2026-10-22T12:10:53.517709+00:00",
+      "final_seal": false,
+      "files": 2300000,
+      "bytes": 110529801766,
+      "sqlite_found": 219,
+      "sqlite_integrity_ok": 219,
+      "errors": 0
+    }
+  }
+}
