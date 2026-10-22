@@ -70,7 +70,7 @@ Step6 PC-onlyincrementalrefresh launchedONCE viaWMI PID9904created2026-10-21T17:
 
 Controller preserves original manifests/reports/scope and priorchangedpayload versions, hashes sourcefiles under the approved sixroots/exclusions, makes consistentSQLite snapshots for every detectedheaderregardlessextension, runs incrementalrobocopy/E withoutPURGE ordelete, writescurrentmanifest+addendum, verifiesallSQLitecopies/restoreonefileeachroot/ACL/quiescence. A successful refresh produces refresh_verified_pending_operator_seal, NOT sealed. Independentreadback and lateLTLconfirmation stillrequired before phase3sealedverdict. Anyerrorrequiresinspection/reconciliation; no blind rerun or deletion. The original baseline report remains historical even as changed mirrorpaths refresh; previousversions are retained inquiescent/previous-payload.
 
-At 19:38:42 ET, PID 9904, creation time and source SHA still match; no failure is reported. Source hashing and version preservation have reached 840,000 files, with 8 SQLite databases and 9 previous versions. Free space: 522,642,509,824 bytes. A directory-reported size of zero for an open stream does not prove it is empty; contents remain PC-only.
+At 20:09:13 ET on October 21, PID 9904, creation time and source SHA still match; no failure is reported. Source hashing and version preservation have reached 1,040,000 files, with 20 SQLite databases and 21 previous versions. Free space: 521,960,034,304 bytes. A directory-reported size of zero for an open stream does not prove it is empty; contents remain PC-only.
 
 Nextarchivecheck30min: archive-quiescent-status.ps1 via phase2/run-probe.py NEWdistinctJSON; verifyPID9904creation/sourceSHA/status/failure/verification. Ifstillrunningrecordprogress/index/checksums,commitpush,persistnext30minwake. IfcompletedindependentlyreviewALLerrors/sourcecoverage/manifest+addendumSHA/SQLiteallheaders+integrity/6restores/ACL/quiescence before anyverifiedclaim. Pending lateLTLafter02:08:57ZOct22 remainsseparatewake, doesnotblockrefresh. No deletion authorized until actualsealverifies.
 
@@ -103,6 +103,7 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [archive-quiescent-status-1832.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1832.json)
 - [archive-quiescent-status-1903.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1903.json)
 - [archive-quiescent-status-1938.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1938.json)
+- [archive-quiescent-status-2009.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-2009.json)
 - [archive-quiescent-status-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-start.json)
 - [archive-quiescent-status.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status.ps1)
 - [archive-quiescent-upload.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-upload.json)
