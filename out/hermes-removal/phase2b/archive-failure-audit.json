@@ -1,0 +1,70 @@
+{
+  "at": "2026-10-22T00:40:53.619063+00:00",
+  "indexed_files": 1120000,
+  "indexed_sqlite": 47,
+  "last_index_rows": [
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\cache\\computer_use\\elements_e4296306d5774b18975b4e5601408e80.json",
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cache\\computer_use\\elements_e4296306d5774b18975b4e5601408e80.json",
+      "bytes": 42117,
+      "mtime_ns": 1790094397640810900,
+      "sqlite": 0,
+      "snapshot": null
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\cache\\computer_use\\elements_cb3ebc859f6e4952a772d52d3202a96c.json",
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cache\\computer_use\\elements_cb3ebc859f6e4952a772d52d3202a96c.json",
+      "bytes": 1088,
+      "mtime_ns": 1788185182189686300,
+      "sqlite": 0,
+      "snapshot": null
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\cache\\computer_use\\elements_c647ab4124554812b1978292527fad66.json",
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\cache\\computer_use\\elements_c647ab4124554812b1978292527fad66.json",
+      "bytes": 44516,
+      "mtime_ns": 1789666993839967800,
+      "sqlite": 0,
+      "snapshot": null
+    }
+  ],
+  "inventory_tail_metadata": [
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Web Applications\\Manifest Resources\\mpnpojknpmmopombnjdcgaaiekajbnjb\\Icons\\96.png",
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Web Applications\\Manifest Resources\\mpnpojknpmmopombnjdcgaaiekajbnjb\\Icons\\96.png",
+      "bytes": 1517,
+      "sqlite": false,
+      "snapshot": null
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Web Applications\\Manifest Resources\\mpnpojknpmmopombnjdcgaaiekajbnjb\\Trusted Icons\\Icons\\192.png",
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Web Applications\\Manifest Resources\\mpnpojknpmmopombnjdcgaaiekajbnjb\\Trusted Icons\\Icons\\192.png",
+      "bytes": 1234,
+      "sqlite": false,
+      "snapshot": null
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\WebStorage\\QuotaManager",
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\WebStorage\\QuotaManager",
+      "bytes": 40960,
+      "sqlite": true,
+      "snapshot": "quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\WebStorage\\QuotaManager"
+    },
+    {
+      "path": "mirror\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\extensions_crx_cache\\metadata.json",
+      "source": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\extensions_crx_cache\\metadata.json",
+      "bytes": 13,
+      "sqlite": false,
+      "snapshot": null
+    }
+  ],
+  "last_source_directory_neighbors": [
+    {
+      "name": "metadata.json",
+      "bytes": 13,
+      "sqlite_header": false
+    }
+  ],
+  "no_job_invoked": true,
+  "no_payload_modified": true
+}

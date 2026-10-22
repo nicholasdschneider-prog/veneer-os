@@ -1,0 +1,57 @@
+{
+  "at": "2026-10-22T00:41:27.939827+00:00",
+  "snapshot_files": 66,
+  "latest_snapshots": [
+    {
+      "snapshot": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\GPUPersistentCache\\DawnGraphiteCache\\MNIWWJ6LYBXKQS7RZ2KZNUZ3QHFNW4K3\\cache.db",
+      "bytes": 12288,
+      "error_type": "OperationalError",
+      "sqlite_error_code": 14,
+      "sqlite_error_name": "SQLITE_CANTOPEN",
+      "message": "unable to open database file"
+    },
+    {
+      "snapshot": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\WebStorage\\QuotaManager",
+      "bytes": 40960,
+      "quick_check_ok": true
+    },
+    {
+      "snapshot": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Shared Dictionary\\db",
+      "bytes": 45056,
+      "quick_check_ok": true
+    },
+    {
+      "snapshot": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Network\\Reporting and NEL",
+      "bytes": 36864,
+      "quick_check_ok": true
+    },
+    {
+      "snapshot": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\Network\\Device Bound Sessions",
+      "bytes": 20480,
+      "quick_check_ok": true
+    }
+  ],
+  "latest_snapshot_directories": [
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\GPUPersistentCache\\DawnGraphiteCache\\MNIWWJ6LYBXKQS7RZ2KZNUZ3QHFNW4K3",
+      "mtime_ns": 1792628576983744000
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\GPUPersistentCache\\DawnGraphiteCache",
+      "mtime_ns": 1792628576965572700
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\GPUPersistentCache",
+      "mtime_ns": 1792628576964569400
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile",
+      "mtime_ns": 1792628576964569400
+    },
+    {
+      "path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-20261021\\sqlite-current\\local-hermes\\profiles\\accounting-migration\\evidence\\chargebacks-2026-07-16\\100117908\\chrome-capture-profile\\Default\\WebStorage",
+      "mtime_ns": 1792628576953569700
+    }
+  ],
+  "read_only": true
+}

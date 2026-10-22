@@ -70,11 +70,9 @@ Step6 PC-onlyincrementalrefresh launchedONCE viaWMI PID9904created2026-10-21T17:
 
 Controller preserves original manifests/reports/scope and priorchangedpayload versions, hashes sourcefiles under the approved sixroots/exclusions, makes consistentSQLite snapshots for every detectedheaderregardlessextension, runs incrementalrobocopy/E withoutPURGE ordelete, writescurrentmanifest+addendum, verifiesallSQLitecopies/restoreonefileeachroot/ACL/quiescence. A successful refresh produces refresh_verified_pending_operator_seal, NOT sealed. Independentreadback and lateLTLconfirmation stillrequired before phase3sealedverdict. Anyerrorrequiresinspection/reconciliation; no blind rerun or deletion. The original baseline report remains historical even as changed mirrorpaths refresh; previousversions are retained inquiescent/previous-payload.
 
-At 20:09:13 ET on October 21, PID 9904, creation time and source SHA still match; no failure is reported. Source hashing and version preservation have reached 1,040,000 files, with 20 SQLite databases and 21 previous versions. Free space: 521,960,034,304 bytes. A directory-reported size of zero for an open stream does not prove it is empty; contents remain PC-only.
+At20:40ET the controller was found exited. Status/failure records show failed20:22:56ET with OperationalError; sourceSHA unchanged. NOSEAL/NO DELETION. Read-only audit found committedindex1,120,000files/47SQLite, inventory tail beyond that transaction,66snapshotfiles. The newest snapshot cache.db path265characters returns SQLITE_CANTOPEN14 under normal and extendedURI; its existing152-character Windows8.3shortURI passes integrity_check. This is a proven path-access problem for that snapshot, not a full archive verification. No diagnostic changed payload or ran a business job. No controller relaunched. Preserve failedattempt/index/inventory/snapshots/versions; do not blindretry or overwrite. The stream beyond the committedindex must be reconciled before any future resumable repair.
 
-Nextarchivecheck30min: archive-quiescent-status.ps1 via phase2/run-probe.py NEWdistinctJSON; verifyPID9904creation/sourceSHA/status/failure/verification. Ifstillrunningrecordprogress/index/checksums,commitpush,persistnext30minwake. IfcompletedindependentlyreviewALLerrors/sourcecoverage/manifest+addendumSHA/SQLiteallheaders+integrity/6restores/ACL/quiescence before anyverifiedclaim. Pending lateLTLafter02:08:57ZOct22 remainsseparatewake, doesnotblockrefresh. No deletion authorized until actualsealverifies.
-
-Brain four-hour confirmation is verified. Keep the separate LTL after02:08Z confirmation before seal verdict; it does not block archive preparation. No deletion before verified quiescent seal.
+Hardseal gate failed: all sixsource roots retained, Phase3 deletionNOTSTARTED. Recorded [seal-failure.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/seal-failure.md) and [seal-verdict.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/seal-verdict.json). Reported coordinator. LateLTL22:09ETconfirmation remains pending but cannot itself verify this failedrefresh. No routine livecontrollerpoll is needed while controller is absent; any follow-up must inspect source/coordination and failedattempt metadata, not relaunchblindly.
 
 ## Remaining sequence
 
@@ -94,6 +92,11 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 ## Artifacts
 
 - [SHA256SUMS.txt](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/SHA256SUMS.txt)
+- [archive-failure-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-failure-audit.json)
+- [archive-failure-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-failure-audit.ps1)
+- [archive-failure-audit.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-failure-audit.py)
+- [archive-longpath-readonly-probe.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-longpath-readonly-probe.json)
+- [archive-longpath-readonly-probe.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-longpath-readonly-probe.ps1)
 - [archive-quiescent-launch.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-launch.json)
 - [archive-quiescent-launch.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-launch.ps1)
 - [archive-quiescent-preflight.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-preflight.json)
@@ -104,11 +107,15 @@ Coordinator reports are required under request_key hermes-pc-operator-phase2b af
 - [archive-quiescent-status-1903.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1903.json)
 - [archive-quiescent-status-1938.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-1938.json)
 - [archive-quiescent-status-2009.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-2009.json)
+- [archive-quiescent-status-2040.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-2040.json)
 - [archive-quiescent-status-start.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status-start.json)
 - [archive-quiescent-status.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-status.ps1)
 - [archive-quiescent-upload.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-upload.json)
 - [archive-quiescent-upload.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent-upload.ps1)
 - [archive-quiescent.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-quiescent.py)
+- [archive-sqlite-failure-audit.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-sqlite-failure-audit.json)
+- [archive-sqlite-failure-audit.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-sqlite-failure-audit.ps1)
+- [archive-sqlite-failure-audit.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/archive-sqlite-failure-audit.py)
 - [cron-control.py](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/cron-control.py)
 - [gateway-preflight-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-preflight-body.ps1)
 - [gateway-stop-body.ps1](/Users/archerclawdington/veneer-os/out/hermes-removal/phase2b/gateway-stop-body.ps1)

@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-22T00:40:17.1528864Z",
+  "launch": {
+    "source": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\archive-quiescent.py",
+    "created": "2026-10-21T17:29:48.0318450-04:00",
+    "return_value": 0,
+    "started_at": "2026-10-21T21:29:47.9841569Z",
+    "state": "started_not_verified",
+    "pid": 9904,
+    "source_sha256": "E8B3E57274661D3F4214E5386B074AE280FF48C15A899C36BABA9424EFC51D4C"
+  },
+  "files": [
+    {
+      "bytes": 1051570,
+      "name": "exclusions.jsonl"
+    },
+    {
+      "bytes": 87,
+      "name": "failure.json"
+    },
+    {
+      "bytes": 1608744960,
+      "name": "operator-index.sqlite3"
+    },
+    {
+      "bytes": 501,
+      "name": "original-records.json"
+    },
+    {
+      "bytes": 154,
+      "name": "quiescence.json"
+    },
+    {
+      "bytes": 653,
+      "name": "reparse.jsonl"
+    },
+    {
+      "bytes": 2087,
+      "name": "scope.json"
+    },
+    {
+      "bytes": 540025032,
+      "name": "source-inventory.jsonl"
+    },
+    {
+      "bytes": 133,
+      "name": "status.json"
+    },
+    {
+      "bytes": 27726,
+      "name": "versions.jsonl"
+    }
+  ],
+  "processes": [],
+  "free_bytes": 509525852160,
+  "state": {
+    "quiescence.json": {
+      "value": [
+        {
+          "enabled_tasks": 0,
+          "processes": 0,
+          "active_startup": 0,
+          "enabled_cron": 0,
+          "at": "2026-10-21T21:29:49.4102573Z"
+        }
+      ],
+      "Count": 1
+    },
+    "status.json": {
+      "state": "failed",
+      "at": "2026-10-22T00:22:56.986951+00:00",
+      "final_seal": false,
+      "error_type": "OperationalError"
+    },
+    "failure.json": {
+      "at": "2026-10-22T00:22:56.985979+00:00",
+      "error_type": "OperationalError"
+    }
+  },
+  "source_sha256": "E8B3E57274661D3F4214E5386B074AE280FF48C15A899C36BABA9424EFC51D4C"
+}

@@ -1,6 +1,6 @@
 {
   "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
-  "phase": "step06_refresh_running",
+  "phase": "step06_failed_no_seal_no_deletion",
   "no_deletion_in_phase2b": true,
   "step01": {
     "ece0db616afe": {
@@ -28,13 +28,13 @@
       "read_probe": "step01-c94a14183a61-read.ps1"
     }
   },
-  "phase3": "authorized, not started; hard seal gate pending",
+  "phase3": "authorized but blocked by failed quiescent seal; no deletion",
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "archive-quiescent-status-2009.json",
-  "latest_checkpoint_at": "2026-10-22T00:09:13.3556180Z",
-  "latest_checkpoint_result": "Controller identity/source SHA unchanged; source hash/version preservation1040000files/20SQLite/21previousversions; nofailure/unsealed",
+  "latest_checkpoint": "archive-longpath-readonly-probe.json",
+  "latest_checkpoint_at": "2026-10-22T00:41:57.530868+00:00",
+  "latest_checkpoint_result": "refreshfailed20:22:56ET OperationalError; read-onlyprobe proves longpathSQLiteURI accessissue,8.3aliasintegrityOK; no seal/no deletion/no relaunch",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -213,7 +213,7 @@
     "reported_request_key": "hermes-pc-operator-phase2b"
   },
   "step06": {
-    "state": "running_not_sealed",
+    "state": "failed_not_sealed",
     "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
     "refresh_directory": "quiescent-20261021",
     "source": "archive-quiescent.py",
@@ -221,7 +221,7 @@
     "controller_pid": 9904,
     "controller_created": "2026-10-21T17:29:48.0318450-04:00",
     "launch_receipt": "archive-quiescent-launch.json",
-    "latest_status": "archive-quiescent-status-2009.json",
+    "latest_status": "archive-quiescent-status-2040.json",
     "no_relaunch": "Inspect exact process+creation+sourceSHA/status before action; never modify a live controller",
     "pending": [
       "source hash/previous version preparation",
@@ -232,15 +232,20 @@
       "late LTL confirmation after2026-10-22T02:08:57Z",
       "independent final readback/quiescent seal verdict under phase3"
     ],
-    "latest_at": "2026-10-22T00:09:13.3556180Z",
+    "latest_at": "2026-10-22T00:40:17.1528864Z",
     "latest_progress": {
-      "state": "source_hash_and_version_preservation",
-      "at": "2026-10-22T00:08:10.314298+00:00",
+      "state": "failed",
+      "at": "2026-10-22T00:22:56.986951+00:00",
       "final_seal": false,
-      "files": 1040000,
-      "sqlite_found": 20,
-      "previous_versions": 21
+      "error_type": "OperationalError"
     },
-    "free_bytes": 521960034304
+    "free_bytes": 509525852160,
+    "failure_diagnosis": {
+      "receipt": "archive-longpath-readonly-probe.json",
+      "error": "SQLITE_CANTOPEN14 for265character destination path; normal and extended URI fail, existing152character Windows8.3shortURI passes integrity_check",
+      "controller_absent": true,
+      "not_relaunched": true,
+      "action": "Stop and report failed seal; no deletion. Any repair/resume must preserve failed attempt and reconcile source/index state before new launch."
+    }
   }
 }
