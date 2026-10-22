@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "archive-r3-status-0057.json",
-  "latest_checkpoint_at": "2026-10-22T04:56:22.7922511Z",
-  "latest_checkpoint_result": "reserved correction one row verified;2386571 reconciled/259SQLite/372versions;preflightpassed;R3refresh16716launchedONCE/exactidentity/hash/no failure",
+  "latest_checkpoint": "archive-r3-status-0127.json",
+  "latest_checkpoint_at": "2026-10-22T05:27:31.1332805Z",
+  "latest_checkpoint_result": "R3 exactidentity/hash/no failure;source2530000/265SQLite/381versions;exactNULcorrectionappliedverified;not sealed",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -284,15 +284,14 @@
       "reconcile_created": "2026-10-22T00:17:56.9798770-04:00",
       "reconcile_parent": 7040,
       "directory": "quiescent-r3-20261022",
-      "latest_receipt": "archive-r3-status-0057.json",
+      "latest_receipt": "archive-r3-status-0127.json",
       "latest_progress": {
-        "state": "resume_reusing_or_hashing_source",
-        "at": "2026-10-22T04:56:20.498689+00:00",
+        "state": "source_hash_and_version_preservation",
+        "at": "2026-10-22T05:26:46.735495+00:00",
         "final_seal": false,
-        "files": 350000,
-        "sqlite_found": 8,
-        "previous_versions": 372,
-        "reconciled_source_rows": 2386571
+        "files": 2530000,
+        "sqlite_found": 265,
+        "previous_versions": 381
       },
       "refresh_source_local_draft": "archive-quiescent-r3.py",
       "refresh_uploaded": true,
@@ -316,9 +315,10 @@
       "refresh_launch": "archive-r3-launch.json",
       "refresh_preflight": "archive-r3-preflight.json",
       "state": "running_not_sealed",
-      "free_bytes": 478514192384,
+      "free_bytes": 476283621376,
       "timedout_read_helper": "PID2992 exactcreation/parent/wrapper verified, own helper stopped once; final read confirms absent, no business process targeted",
-      "helper_cleanup_receipt": "archive-r3-helper-final.json"
+      "helper_cleanup_receipt": "archive-r3-helper-final.json",
+      "correction_application_receipt": "archive-r3-correction-applied.json"
     }
   },
   "late_ltl_confirmation_verified": "step02-late-ltl-verdict.json"
