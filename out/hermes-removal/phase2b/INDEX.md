@@ -48,6 +48,7 @@ Operator scripts and metadata receipts only. Archive payload and full manifests 
 - [archive-r3-status-0158.json](./archive-r3-status-0158.json)
 - [archive-r3-status-0229.json](./archive-r3-status-0229.json)
 - [archive-r3-status-0301.json](./archive-r3-status-0301.json)
+- [archive-r3-status-0333.json](./archive-r3-status-0333.json)
 - [archive-r3-status-first.json](./archive-r3-status-first.json)
 - [archive-r3-status-launched.json](./archive-r3-status-launched.json)
 - [archive-r3-status.ps1](./archive-r3-status.ps1)
