@@ -3,7 +3,15 @@
 Operator artifacts and metadata receipts only; archive bodies and full manifests stay on the PC.
 
 - [README.md](./README.md)
+- [delete-journal-checkpoint.json](./delete-journal-checkpoint.json)
+- [delete-journal-first.json](./delete-journal-first.json)
+- [delete-journal-read.ps1](./delete-journal-read.ps1)
+- [delete-launch.json](./delete-launch.json)
+- [delete-launch.ps1](./delete-launch.ps1)
 - [delete-sealed.py](./delete-sealed.py)
+- [delete-status-checkpoint.json](./delete-status-checkpoint.json)
+- [delete-status-first.json](./delete-status-first.json)
+- [delete-status.ps1](./delete-status.ps1)
 - [deletion-plan-reviewed.json](./deletion-plan-reviewed.json)
 - [deletion-plan.md](./deletion-plan.md)
 - [independent-review.json](./independent-review.json)

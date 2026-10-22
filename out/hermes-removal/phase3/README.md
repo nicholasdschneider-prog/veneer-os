@@ -36,3 +36,9 @@ R3 completed successfully13:36:50Z October22. Independent archive review and fre
 ## Current sealed verdict
 
 VERIFIED_QUIESCENT_SEAL: all incomplete_checks passed; PC seal file hash matches local receipt. See seal-verdict.json, record-seal.json and deletion-plan.md. Next action: the advance-approved removal in the recorded order, with per-effect journals, hashes, sizes and KEEP protection. No further approval is required.
+
+## Removal in progress
+
+Advance-approved removal launched ONCE14:11:28Z, PID19668/parent17912/created2026-10-22T10:11:28.7076610-04:00, PC remove-phase3.py SHA57B37931C72003E56CF07A3D4340C71D1F3F0047AB3F007A86F1E870B83E09BB. Hard verified seal and both manifest/plan SHA gates passed inside the controller before any effect. PCjournalphase3-delete-20261022. Do not replay or edit the running controller.
+
+Journal confirms25Hermes task registrations,23Startup launchers,31wrappers and four roots removed: .worktrees,HermesLegacyData,.hermes,HermesBrainOps. All recorded after-sizes0/errors[]; no retained entries at this checkpoint. MainAppData/Local/hermes root and verifiedObsidianVaults/Hermes Brain remain pending in the same controller. Root measurement can precede the next status update; source journal is authoritative. Keep archive/recoverycopies, repos, Tailscale/SSH/sharedruntimes, independentERVP_Dometic_Inventory and non-Hermes items untouched. Final free-space/KEEP/quiescence/leftovers checks pending.

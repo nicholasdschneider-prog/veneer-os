@@ -1,6 +1,6 @@
 {
   "authority": "Nick October21 own-turn retirement decision in fce19860; current explicit Phase2b GO",
-  "phase": "step06_verified_quiescent_seal_phase3_authorized",
+  "phase": "phase3_deletion_running_after_verified_seal",
   "no_deletion_in_phase2b": true,
   "step01": {
     "ece0db616afe": {
@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "../phase3/seal-verdict.json",
-  "latest_checkpoint_at": "2026-10-22T14:09:19.756701+00:00",
-  "latest_checkpoint_result": "AllsealchecksPASSED/PCverdictrecorded;deletionauthorizedadvance,no deletionyet",
+  "latest_checkpoint": "../phase3/delete-journal-checkpoint.json",
+  "latest_checkpoint_at": "2026-10-22T14:14:14.427898+00:00",
+  "latest_checkpoint_result": "Sealedgatepassed;Phase3controller19668exactidentity/hash;25tasks23Startup31wrappers4rootsremoved/noerrorsorretainedresults;local-hermesandvaultpending",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -476,7 +476,7 @@
     "parent": 12112,
     "source_sha256": "62FCE3B2D550D87258E6CB696C4112E0FAA300085C266D68A4BF5B3251F09C13",
     "pc_directory": "phase3-custody-20261022",
-    "deletion_started": false,
+    "deletion_started": true,
     "pending": "Exact sizes, worktree ownership and task/Startup recovery custody; then fresh quiescence + sealed verdict before deletion",
     "latest_progress": {
       "state": "measuring",
@@ -488,5 +488,23 @@
     "state": "verified_complete",
     "plan": "../phase3/deletion-plan-reviewed.json",
     "plan_sha256": "af23f0db6e18bbc240aafe4f3fd474d43f1e56cbe133f4afc546c12a375c28b7"
+  },
+  "phase3_deletion": {
+    "launch_receipt": "../phase3/delete-launch.json",
+    "pid": 19668,
+    "parent": 17912,
+    "created": "2026-10-22T10:11:28.7076610-04:00",
+    "source_sha256": "57B37931C72003E56CF07A3D4340C71D1F3F0047AB3F007A86F1E870B83E09BB",
+    "pc_directory": "phase3-delete-20261022",
+    "latest_status": "../phase3/delete-status-checkpoint.json",
+    "latest_journal": "../phase3/delete-journal-checkpoint.json",
+    "completed_effects": {
+      "task": 25,
+      "startup": 23,
+      "wrapper": 31,
+      "root": 4
+    },
+    "retained_results": [],
+    "remaining": "local-hermes then verified obsidian-brain; final independent KEEP/zero-Hermes/free-space checks"
   }
 }

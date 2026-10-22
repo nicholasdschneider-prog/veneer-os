@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-22T14:13:42.9200072Z",
+  "free_bytes": 476142125056,
+  "processes": [
+    {
+      "parent": 17912,
+      "pid": 19668,
+      "created": "2026-10-22T10:11:28.7076610-04:00"
+    }
+  ],
+  "has_final_report": false,
+  "state": {
+    "status.json": {
+      "state": "deleting_root",
+      "root": "brain-ops",
+      "at": "2026-10-22T14:12:57.756425+00:00",
+      "before": {
+        "bytes": 1747995,
+        "files": 26,
+        "links": [],
+        "errors": [],
+        "exists": true
+      }
+    }
+  },
+  "source_sha256": "57B37931C72003E56CF07A3D4340C71D1F3F0047AB3F007A86F1E870B83E09BB"
+}

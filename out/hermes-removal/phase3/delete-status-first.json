@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-22T14:11:46.5255533Z",
+  "free_bytes": 475743744000,
+  "processes": [
+    {
+      "parent": 17912,
+      "pid": 19668,
+      "created": "2026-10-22T10:11:28.7076610-04:00"
+    }
+  ],
+  "has_final_report": false,
+  "state": {
+    "status.json": {
+      "state": "deleting_infrastructure",
+      "at": "2026-10-22T14:11:29.434047+00:00",
+      "sealed": true
+    }
+  },
+  "source_sha256": "57B37931C72003E56CF07A3D4340C71D1F3F0047AB3F007A86F1E870B83E09BB"
+}

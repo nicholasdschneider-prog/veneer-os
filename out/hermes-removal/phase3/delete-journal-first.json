@@ -1,0 +1,222 @@
+{
+  "at": "2026-10-22T14:12:22.553167+00:00",
+  "journal_entries": 41,
+  "completed_effects": {
+    "task": 20
+  },
+  "retained_results": [],
+  "latest_journal_entry": {
+    "at": "2026-10-22T14:12:21.676438+00:00",
+    "stage": "task",
+    "intent": {
+      "task_path": "\\",
+      "name": "Hermes_HermesOps2_Watchdog",
+      "bytes": 1405,
+      "sha256": "4C33D966FA5DF7E07CCFB2E4DBB6C1CFF19FA12ED8A2C059001D1C46366CCB44",
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-20.xml",
+      "kind": "task"
+    }
+  },
+  "results": [
+    {
+      "stage": "task",
+      "name": "ERVP Hermes Dashboard",
+      "original_xml_sha256": "3B64A78A7B5FFE979ADEC48ACBC535025CD3C896036584BB31E3139868764570",
+      "bytes_before": 1645,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-0.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Dometic_Safe_Poller",
+      "original_xml_sha256": "D25D0F18BDFDBD53AE78217DB4C060F4C51E05675A9B738C17C4C2AD1AFCE153",
+      "bytes_before": 1423,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-1.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_All_Order_Review",
+      "original_xml_sha256": "1415F1F29D850233B7C778BE52625BD8E7D71A5BF792399F63B7799C8E1EDE7C",
+      "bytes_before": 1418,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-2.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "original_xml_sha256": "D538C698F769BD1116E5FAB142E5181343D98BF7406B839BF07E2DFF832273C4",
+      "bytes_before": 1415,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-3.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_Placement",
+      "original_xml_sha256": "0847EC67FDA2428E025169624D0AC18A458E95642B500ADFF4EE87BA9DBF5D3D",
+      "bytes_before": 2002,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-4.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_Producer",
+      "original_xml_sha256": "607215E3C6BBC8BE5F05A3F64E1D5D19C1D2076AE7A382CB5EE19414B8035E7F",
+      "bytes_before": 1412,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-5.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "HermesDesktopUpdate-20260805",
+      "original_xml_sha256": "B674A00EFF0CF8252D46ADD81C1CBBD58BC621CDECC34FC9BDB1359A30DA0486",
+      "bytes_before": 1312,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-6.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Accounting_Migration_Watchdog",
+      "original_xml_sha256": "B455342F08A769C63EE502C86EEA29B15B97ACD005C9EE92289A2129B168A3D6",
+      "bytes_before": 1748,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-7.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Accounting_Sharon_Watchdog",
+      "original_xml_sha256": "4874692D1EA6263D1EE214C612D8AE8771A1F15BBEE2707E03A337C83B302F6C",
+      "bytes_before": 1398,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-8.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Brain_Backup",
+      "original_xml_sha256": "6047835A04EFD018FA604A350B626C6441EE12C2B4FA8440D50EE5EA57978027",
+      "bytes_before": 1724,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-9.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_ali_Watchdog",
+      "original_xml_sha256": "E8EFB278E5BBB7F3ECC9F2039B0148D94FC116A922FC1E8FD84744AD4F7D3A80",
+      "bytes_before": 1839,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-10.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_jasmine_Watchdog",
+      "original_xml_sha256": "82CE1D9B01025DC97E2B4561E6C28C9ABF297AD3F6A823568CF169B206843C28",
+      "bytes_before": 1855,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-11.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_mallory_Watchdog",
+      "original_xml_sha256": "78EF488D93FC51FB522AB9A4106F42C8417BFD7C198C58CFC84358A86D12E2A4",
+      "bytes_before": 1855,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-12.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_rae_Watchdog",
+      "original_xml_sha256": "6A338F3AAE7B38DF45DF3BA4B784DEBB82A764A157574908F4BCFC9FA4287DBF",
+      "bytes_before": 1839,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-13.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_CS_Tim_Watchdog",
+      "original_xml_sha256": "1B0265DD04795C9E86D2D58A67702C07EFAAAD3D82E4062BBD86983741838707",
+      "bytes_before": 1766,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-14.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_ERVP_Manager_Watchdog",
+      "original_xml_sha256": "D99C4D50109D97A5B9151BC1ADECD6FF7C3496BC316CD39172481DD85E1E66B2",
+      "bytes_before": 1477,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-15.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_ERVP_Orders_Watchdog",
+      "original_xml_sha256": "526C81FACC194A99C58F9FE9682A9FC50DD75F3CE09DBF51BA78B56D067B7D08",
+      "bytes_before": 1618,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-16.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Gateway",
+      "original_xml_sha256": "E637FD5E9551EAB664F48D86DFF2BF9808C1B606876868B9ED040B895BBD7683",
+      "bytes_before": 1308,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-17.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Gateway_cust-service",
+      "original_xml_sha256": "0B7BAD6E7E5B152606B1EEA0600262BDF7983F9071C8D4FBDF4A2E34F1792F65",
+      "bytes_before": 1279,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-18.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Gianna_Watchdog",
+      "original_xml_sha256": "04483EA320D5D0D14670DA7CFF0C528A919EACC7C3149CF3BE9879F239B3246D",
+      "bytes_before": 2011,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-19.xml",
+      "errors": [],
+      "exists_after": false
+    }
+  ]
+}
