@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "archive-resume-status-2154.json",
-  "latest_checkpoint_at": "2026-10-22T01:54:22.1089402Z",
-  "latest_checkpoint_result": "exactPIDcreationparent/sourceSHA match; source1530000/SQLite205/priorversions270/no failure; not sealed",
+  "latest_checkpoint": "archive-resume-status-2209.json",
+  "latest_checkpoint_at": "2026-10-22T02:09:30.7258141Z",
+  "latest_checkpoint_result": "lateLTL both full720min passed; exact controlleridentity/hash, source1630000/SQLite208/versions273/no failure; not sealed",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -54,8 +54,8 @@
       "observe_not_before": "2026-10-22T02:08:56.489140+00:00",
       "disable_receipt": "step02-b95f03d799dc-disable.json",
       "read_probe": "step02-b95f03d799dc-read.ps1",
-      "latest_observation": "step02-b95f03d799dc-observe-1024.json",
-      "full_interval_verified": false
+      "latest_observation": "step02-b95f03d799dc-late-final.json",
+      "full_interval_verified": true
     },
     "9b03a939ef99": {
       "profile": "root",
@@ -63,8 +63,8 @@
       "observe_not_before": "2026-10-22T02:08:57.316482+00:00",
       "disable_receipt": "step02-9b03a939ef99-disable.json",
       "read_probe": "step02-9b03a939ef99-read.ps1",
-      "latest_observation": "step02-9b03a939ef99-observe-1024.json",
-      "full_interval_verified": false
+      "latest_observation": "step02-9b03a939ef99-late-final.json",
+      "full_interval_verified": true
     },
     "9868ee5f2643": {
       "profile": "ervp-dev2",
@@ -91,7 +91,7 @@
     "brain": "disabled+no inflight sufficient to proceed to Step5; full4h confirmation retained before seal, no downstream dependency"
   },
   "step02_proceed_gate_verified": true,
-  "late_ltl_confirmation_pending": "2026-10-22T02:09:10Z; must pass before seal verdict",
+  "late_ltl_confirmation_pending": false,
   "step03": {
     "tasks_disabled": "step03-disable-tasks.json",
     "no_cycle_alive_before_and_after_custody": true,
@@ -257,7 +257,7 @@
       "controller_pid": 14696,
       "controller_created": "2026-10-21T20:51:44.2121200-04:00",
       "refresh_directory": "quiescent-resume-20261021",
-      "latest_status": "archive-resume-status-2154.json",
+      "latest_status": "archive-resume-status-2209.json",
       "state": "running_not_sealed",
       "original_attempt_preserved": true,
       "reconciled_rows": 1121082,
@@ -268,13 +268,14 @@
       "launch_attempts": 1,
       "latest_progress": {
         "state": "source_hash_and_version_preservation",
-        "at": "2026-10-22T01:53:35.655789+00:00",
+        "at": "2026-10-22T02:08:57.240461+00:00",
         "final_seal": false,
-        "files": 1530000,
-        "sqlite_found": 205,
-        "previous_versions": 270
+        "files": 1630000,
+        "sqlite_found": 208,
+        "previous_versions": 273
       },
-      "free_bytes": 490035007488
+      "free_bytes": 489582174208
     }
-  }
+  },
+  "late_ltl_confirmation_verified": "step02-late-ltl-verdict.json"
 }

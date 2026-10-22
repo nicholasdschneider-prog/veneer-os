@@ -1,0 +1,32 @@
+{
+  "verified": true,
+  "jobs": {
+    "b95f03d799dc": {
+      "elapsed_seconds": 43233.542336,
+      "full720min": true,
+      "disabled": true,
+      "last_run_unchanged": true,
+      "recent_execution_ids_unchanged": true,
+      "execution_count_unchanged": true,
+      "selected_unfinished_zero": true,
+      "all_profile_unfinished_zero": true,
+      "read_only": true,
+      "scheduler_locked": true
+    },
+    "9b03a939ef99": {
+      "elapsed_seconds": 43232.674107,
+      "full720min": true,
+      "disabled": true,
+      "last_run_unchanged": true,
+      "recent_execution_ids_unchanged": true,
+      "execution_count_unchanged": true,
+      "selected_unfinished_zero": true,
+      "all_profile_unfinished_zero": true,
+      "read_only": true,
+      "scheduler_locked": true
+    }
+  },
+  "archive_sealed": false,
+  "deletion_permitted": false,
+  "note": "Late LTL confirmation is a seal input only. Repaired refresh remains pending."
+}
