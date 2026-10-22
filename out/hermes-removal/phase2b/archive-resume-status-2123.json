@@ -1,0 +1,37 @@
+{
+  "source_sha256": "6328A72B667B621D04511B2214DC7D77A60E3F3DB8D0F78CF746C5819A20924C",
+  "state": {
+    "status.json": {
+      "state": "source_hash_and_version_preservation",
+      "at": "2026-10-22T01:22:40.268377+00:00",
+      "final_seal": false,
+      "files": 1330000,
+      "sqlite_found": 192,
+      "previous_versions": 256
+    },
+    "reconcile-status.json": {
+      "state": "reconciled_ready",
+      "at": "2026-10-22T00:49:16.647833+00:00",
+      "original_attempt_preserved": true,
+      "committed_index_rows": 1120000,
+      "inventory_rows": 1121082,
+      "matched_committed": 1120000,
+      "recovered_tail_rows": 1082,
+      "reconciled_rows": 1121082,
+      "snapshot_count": 66,
+      "prior_version_count": 77,
+      "unresolved": [],
+      "not_launched": true
+    }
+  },
+  "processes": [
+    {
+      "parent": 1888,
+      "pid": 14696,
+      "created": "2026-10-21T20:51:44.2121200-04:00",
+      "name": "python.exe"
+    }
+  ],
+  "free_bytes": 492129423360,
+  "at": "2026-10-22T01:23:20.9080844Z"
+}

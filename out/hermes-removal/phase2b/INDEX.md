@@ -38,6 +38,7 @@ Operator scripts and metadata receipts only. Archive payload and full manifests 
 - [archive-resume-reconcile-upload.ps1](./archive-resume-reconcile-upload.ps1)
 - [archive-resume-reconcile.py](./archive-resume-reconcile.py)
 - [archive-resume-status-2055.json](./archive-resume-status-2055.json)
+- [archive-resume-status-2123.json](./archive-resume-status-2123.json)
 - [archive-resume-status-first.json](./archive-resume-status-first.json)
 - [archive-resume-status.ps1](./archive-resume-status.ps1)
 - [archive-resume-upload.json](./archive-resume-upload.json)
