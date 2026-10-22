@@ -32,9 +32,9 @@
   "source_roots_deletion": "APPROVED IN ADVANCE: Nick Oct21 own words Delete it too, relayed in this thread; execute only after verified quiescent seal; no further confirmation required",
   "step01_full_observation_not_before": "2026-10-21T14:00:18.884212+00:00",
   "phase3_plan": "../phase3/README.md",
-  "latest_checkpoint": "archive-resume-status-2240.json",
-  "latest_checkpoint_at": "2026-10-22T02:40:55.3222228Z",
-  "latest_checkpoint_result": "exactPIDcreationparent/sourceSHA match; source1830000/SQLite213/priorversions284/no failure; lateLTL verified; not sealed",
+  "latest_checkpoint": "archive-resume-status-2311.json",
+  "latest_checkpoint_at": "2026-10-22T03:11:57.6040648Z",
+  "latest_checkpoint_result": "exactPIDcreationparent/sourceSHA match; source2020000/SQLite213/priorversions284/no failure; lateLTL verified; not sealed",
   "step01_verified": true,
   "step01_observation_receipt": "step01-observation.json",
   "step01_state_delta": "gateway.heartbeat only in bounded metadata; captured scripts and other state hashes/mtime unchanged; no remote mailbox assertion",
@@ -257,7 +257,7 @@
       "controller_pid": 14696,
       "controller_created": "2026-10-21T20:51:44.2121200-04:00",
       "refresh_directory": "quiescent-resume-20261021",
-      "latest_status": "archive-resume-status-2240.json",
+      "latest_status": "archive-resume-status-2311.json",
       "state": "running_not_sealed",
       "original_attempt_preserved": true,
       "reconciled_rows": 1121082,
@@ -268,13 +268,13 @@
       "launch_attempts": 1,
       "latest_progress": {
         "state": "source_hash_and_version_preservation",
-        "at": "2026-10-22T02:40:25.846886+00:00",
+        "at": "2026-10-22T03:10:37.309096+00:00",
         "final_seal": false,
-        "files": 1830000,
+        "files": 2020000,
         "sqlite_found": 213,
         "previous_versions": 284
       },
-      "free_bytes": 484528099328
+      "free_bytes": 485335523328
     }
   },
   "late_ltl_confirmation_verified": "step02-late-ltl-verdict.json"
