@@ -1,0 +1,17 @@
+{
+  "source_sha256": "6328A72B667B621D04511B2214DC7D77A60E3F3DB8D0F78CF746C5819A20924C",
+  "preflight_sha256": "2D579F655496AE8D24EFB33C54592DDD3BB9023DA27886FAD2619C84FD80C1D0",
+  "pid": 14696,
+  "at": "2026-10-22T00:51:44.1717874Z",
+  "resume_directory": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-resume-20261021",
+  "final_seal": false,
+  "launch_attempts": 1,
+  "return_value": 0,
+  "reconciliation_sha256": "5E5F8B51D4B08F15B6E377DF2D8D9378A4C098304DEBEE657A0E6623CA119647",
+  "parent": 1888,
+  "original_attempt_preserved": true,
+  "created": "2026-10-21T20:51:44.2121200-04:00",
+  "source": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\archive-quiescent-resume.py",
+  "state": "launched",
+  "reconciled_rows": 1121082
+}

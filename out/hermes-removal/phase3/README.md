@@ -20,3 +20,7 @@ Record bytes before/after every step and free disk space before/after the full d
 Keep C:\Users\nicho\backups\, including the sealed archive, hermes-phase2-20261016 and hermes-retirement-20261013. The incomplete-0847 directory may be removed under the user’s permission, but no removal is necessary for this plan. Keep ervp-vendor-automation, orderops-src, Tailscale, OpenSSH and everything outside the explicit Hermes scope. Keep shared Python/uv runtimes; Hermes-private virtual environments inside removed roots may go with those roots. No job execution, application source modification, build, production restart or PC reboot is authorized.
 
 Report Phase 2b after step 5 and again after verified step 6 under request_key hermes-pc-operator-phase2b. Report the exact deletion plan and final Phase 3 outcome to coordinator fce19860 under request_key hermes-pc-operator-phase3, with sealed archive path, authoritative manifest SHA-256, space recovered, every removal and any leftovers. No deletion has been executed by this plan.
+
+## Repair checkpoint
+
+The accepted NOT_VERIFIED verdict remains in force. The coordinator authorized an isolated path-access repair and reconciled resume, launched once at00:51:44Z Oct22 after all captured snapshots, prior versions and inventory-tail records reconciled. See the Phase2b repair receipts. This is not a sealed verdict; no deletion has started. A complete refreshed archive, independent readback and late LTL confirmation must pass before the gate changes.

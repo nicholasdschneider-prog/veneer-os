@@ -74,6 +74,14 @@ At20:40ET the controller was found exited. Status/failure records show failed20:
 
 Hardseal gate failed: all sixsource roots retained, Phase3 deletionNOTSTARTED. Recorded [seal-failure.md](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/seal-failure.md) and [seal-verdict.json](/Users/archerclawdington/veneer-os/out/hermes-removal/phase3/seal-verdict.json). Reported coordinator. LateLTL22:09ETconfirmation remains pending but cannot itself verify this failedrefresh. No routine livecontrollerpoll is needed while controller is absent; any follow-up must inspect source/coordination and failedattempt metadata, not relaunchblindly.
 
+## Authorized repair and current resume
+
+The coordinator accepted NOT_VERIFIED/no deletion and explicitly authorized this isolated operator repair. The failed quiescent-20261021 attempt remains preserved. Reconciliation matched all 1,120,000 committed index rows against 1,121,082 inventory records, recovered the 1,082 uncommitted tail records, verified all 66 captured SQLite snapshots and all 77 prior-version hashes, and reported no unresolved gaps. New operator index and reconciliation records are in PC-only quiescent-resume-20261021.
+
+The repair verifies Windows 8.3 aliases against file identity before SQLite access. Where unavailable for a long path, extended-length file handles copy into a short isolated custody path with SHA-256 comparison. New SQLite snapshot destinations are flat, bounded paths. Preflight passed the exact previously failing 265-character snapshot through both the verified short alias and a forced no-8.3 fallback, plus a new consistent-backup integrity check. The quiescence readback was zero enabled cron/tasks, processes and active Startup launchers. No Hermes job ran.
+
+The new launch journal records ONE refresh launch at 2026-10-22T00:51:44Z, PID14696, created2026-10-21T20:51:44.2121200-04:00, sourceSHA6328A72B667B621D04511B2214DC7D77A60E3F3DB8D0F78CF746C5819A20924C. Readback at00:52:30Z matches identity/hash, source resume progress120000files/7SQLite/77previousversions, no failure, free507850444800bytes. Never replay this launch or edit the live controller. The failed attempt, captured snapshots and prior versions remain untouched. Same six roots, exclusions and no-purge copy policy apply; all verification gates remain pending. The historical NOT_VERIFIED verdict still blocks deletion until a new complete independent seal passes. Keep the separate22:09ET LTL confirmation before the seal, plus30-minute refresh checks.
+
 ## Remaining sequence
 
 2. Disable orders vendor failure ce09b813238c, orders LTL b95f03d799dc, root LTL 9b03a939ef99, dev2 Lippert 9868ee5f2643 (unconditional now). Capture actual state first. Both LTL schedules are720minutes, but the revised proceed gate is disabled+zero unfinished; preserve late full-cycle readback before seal, never force a run.

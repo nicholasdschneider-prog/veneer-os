@@ -1,0 +1,22 @@
+{
+  "source_sha256": "6328A72B667B621D04511B2214DC7D77A60E3F3DB8D0F78CF746C5819A20924C",
+  "state": {
+    "reconcile-status.json": {
+      "state": "reconciled_ready",
+      "at": "2026-10-22T00:49:16.647833+00:00",
+      "original_attempt_preserved": true,
+      "committed_index_rows": 1120000,
+      "inventory_rows": 1121082,
+      "matched_committed": 1120000,
+      "recovered_tail_rows": 1082,
+      "reconciled_rows": 1121082,
+      "snapshot_count": 66,
+      "prior_version_count": 77,
+      "unresolved": [],
+      "not_launched": true
+    }
+  },
+  "processes": [],
+  "free_bytes": 507909988352,
+  "at": "2026-10-22T00:49:16.8649231Z"
+}

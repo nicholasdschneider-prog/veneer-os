@@ -1,0 +1,20 @@
+{
+  "syntax_ok": true,
+  "guard": {
+    "enabled_tasks": 0,
+    "processes": 0,
+    "active_startup": 0,
+    "enabled_cron": 0,
+    "at": "2026-10-22T00:49:46.0224560Z"
+  },
+  "source_sha256": "6328a72b667b621d04511b2214dc7d77a60e3f3db8d0f78cf746c5819a20924c",
+  "reconciled_rows": 1121082,
+  "unresolved": [],
+  "all66captured_snapshots_integrity_ok": true,
+  "prior_versions_verified": 77,
+  "failed_265char_snapshot_short_alias_ok": true,
+  "forced_no_8dot3_extended_handle_copy_ok": true,
+  "short_destination_backup_integrity_ok": true,
+  "preflight_copy": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\quiescent-resume-20261021\\preflight-backup.sqlite3",
+  "launched": false
+}

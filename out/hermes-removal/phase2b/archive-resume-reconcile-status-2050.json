@@ -1,0 +1,22 @@
+{
+  "source_sha256": null,
+  "state": {
+    "reconcile-status.json": {
+      "state": "reconciling_inventory",
+      "at": "2026-10-22T00:47:46.418826+00:00",
+      "stream_rows": 1120000,
+      "matched": 1120000,
+      "recovered": 0
+    }
+  },
+  "processes": [
+    {
+      "parent": 16656,
+      "pid": 8920,
+      "created": "2026-10-21T20:46:32.3916410-04:00",
+      "name": "python.exe"
+    }
+  ],
+  "free_bytes": 507910529024,
+  "at": "2026-10-22T00:48:21.3323783Z"
+}
