@@ -45,3 +45,8 @@
 
 ## 2026-10-21 22:50 ET check
 - Step 5 done: zero Hermes processes/crons/tasks/launchers. Step 6 first seal attempt FAILED 20:22 ET (SQLITE_CANTOPEN on a 265-char snapshot path; content not corrupt, short-path alias passes). Operator reconciled 1,121,082 rows + 66 snapshots and relaunched a repaired controller (PID 14696, 20:51 ET); at 22:40 ET 1.83M files, 213 SQLite, no failures, not sealed. Deletion correctly NOT started. Phase 3 remains gated on a verified seal.
+
+## 2026-10-22 — COMPLETE
+- Seal VERIFIED_QUIESCENT_SEAL 10:09 ET (2,759,192 files, 128.7 GB, 1,410 SQLite OK, 6 restore samples) after three refresh attempts. Phase 3 removal complete 10:25 ET: 25 tasks, 23 launchers, 31 wrappers, six roots deleted; C: free 443.07 → 564.93 GiB (+121.86 GiB). Independent SSH readback 12:5x ET: all six roots absent, zero Hermes tasks, archive present.
+- Kept on PC: C:\Users\nicho\backups\hermes-final-20261016 (manifest SHA e315a275…, addendum 4b97cde0…; credentials excluded), phase2/retirement backups, ervp-vendor-automation, orderops-src, Tailscale/OpenSSH.
+- Veneer: BUILD863 lane code inert (flags off); nothing replaces the retired jobs by Nick's decision. Hermes retirement CLOSED.
