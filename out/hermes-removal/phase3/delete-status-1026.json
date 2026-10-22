@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-22T14:26:20.2753531Z",
+  "free_bytes": 606591213568,
+  "processes": [],
+  "has_final_report": true,
+  "state": {
+    "status.json": {
+      "state": "removal_complete",
+      "at": "2026-10-22T14:25:29.187486+00:00",
+      "seal_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-sealed-verdict-20261022.json",
+      "manifest_sha256": "e315a27507da08bf5d3de7dc50cda93f919aa91fd151a72ea74c7c8a459ff3c1",
+      "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
+      "free_bytes_before": 475743752192,
+      "free_bytes_after": 606591369216,
+      "kept_task": {
+        "name": "ERVP_Dometic_Inventory",
+        "exists": true,
+        "enabled": false
+      },
+      "no_reboot": true,
+      "no_business_job_run": true
+    }
+  },
+  "source_sha256": "57B37931C72003E56CF07A3D4340C71D1F3F0047AB3F007A86F1E870B83E09BB"
+}

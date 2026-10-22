@@ -349,4 +349,4 @@ New PC-only prepare-phase3.py launched ONCE PID21104/parent12112/created2026-10-
 
 All Step6 checks passed and the sealed verdict was recorded locally and onPC before any deletion. See step06-report.md and ../phase3/seal-verdict.json. Authoritative current manifest SHAe315a27507da08bf5d3de7dc50cda93f919aa91fd151a72ea74c7c8a459ff3c1. Advance-approved Phase3 deletion may proceed under the exact order/KEEP plan; no deletion had started at seal recording. Earlier failed verdicts remain preserved as history.
 
-Phase3 removal now executing under the verified seal.25tasks/23Startup/31wrappers/four smaller roots removed without errors; mainAppData root and vault pending. See ../phase3/README.md and deletion journal receipts. Never repeat earlier effects.
+Phase3 removal VERIFIED complete October22 14:25:29Z.25tasks/23Startup/31wrappers/all six roots removed; independent final archive/KEEP/zero-Hermes checks passed with no errors or approved-scope leftovers. Free space increased130847617024bytes. See [final Phase3 report](../phase3/final-report.md). No controller or observation remains pending.

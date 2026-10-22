@@ -1,0 +1,883 @@
+{
+  "at": "2026-10-22T14:28:43.508465+00:00",
+  "journal_entries": 202,
+  "completed_effects": {
+    "task": 25,
+    "startup": 23,
+    "wrapper": 31,
+    "root": 6
+  },
+  "retained_results": [],
+  "latest_journal_entry": {
+    "at": "2026-10-22T14:25:28.109633+00:00",
+    "result": {
+      "stage": "root",
+      "label": "obsidian-brain",
+      "path": "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain",
+      "bytes_before": 55135400,
+      "files_before": 3978,
+      "bytes_after": 0,
+      "files_after": 0,
+      "exists_after": false,
+      "errors": []
+    }
+  },
+  "results": [
+    {
+      "stage": "task",
+      "name": "ERVP Hermes Dashboard",
+      "original_xml_sha256": "3B64A78A7B5FFE979ADEC48ACBC535025CD3C896036584BB31E3139868764570",
+      "bytes_before": 1645,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-0.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Dometic_Safe_Poller",
+      "original_xml_sha256": "D25D0F18BDFDBD53AE78217DB4C060F4C51E05675A9B738C17C4C2AD1AFCE153",
+      "bytes_before": 1423,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-1.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_All_Order_Review",
+      "original_xml_sha256": "1415F1F29D850233B7C778BE52625BD8E7D71A5BF792399F63B7799C8E1EDE7C",
+      "bytes_before": 1418,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-2.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_Direct_Shopify",
+      "original_xml_sha256": "D538C698F769BD1116E5FAB142E5181343D98BF7406B839BF07E2DFF832273C4",
+      "bytes_before": 1415,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-3.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_Placement",
+      "original_xml_sha256": "0847EC67FDA2428E025169624D0AC18A458E95642B500ADFF4EE87BA9DBF5D3D",
+      "bytes_before": 2002,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-4.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "ERVP_Orders_Bot_Producer",
+      "original_xml_sha256": "607215E3C6BBC8BE5F05A3F64E1D5D19C1D2076AE7A382CB5EE19414B8035E7F",
+      "bytes_before": 1412,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-5.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "HermesDesktopUpdate-20260805",
+      "original_xml_sha256": "B674A00EFF0CF8252D46ADD81C1CBBD58BC621CDECC34FC9BDB1359A30DA0486",
+      "bytes_before": 1312,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-6.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Accounting_Migration_Watchdog",
+      "original_xml_sha256": "B455342F08A769C63EE502C86EEA29B15B97ACD005C9EE92289A2129B168A3D6",
+      "bytes_before": 1748,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-7.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Accounting_Sharon_Watchdog",
+      "original_xml_sha256": "4874692D1EA6263D1EE214C612D8AE8771A1F15BBEE2707E03A337C83B302F6C",
+      "bytes_before": 1398,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-8.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Brain_Backup",
+      "original_xml_sha256": "6047835A04EFD018FA604A350B626C6441EE12C2B4FA8440D50EE5EA57978027",
+      "bytes_before": 1724,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-9.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_ali_Watchdog",
+      "original_xml_sha256": "E8EFB278E5BBB7F3ECC9F2039B0148D94FC116A922FC1E8FD84744AD4F7D3A80",
+      "bytes_before": 1839,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-10.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_jasmine_Watchdog",
+      "original_xml_sha256": "82CE1D9B01025DC97E2B4561E6C28C9ABF297AD3F6A823568CF169B206843C28",
+      "bytes_before": 1855,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-11.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_mallory_Watchdog",
+      "original_xml_sha256": "78EF488D93FC51FB522AB9A4106F42C8417BFD7C198C58CFC84358A86D12E2A4",
+      "bytes_before": 1855,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-12.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_cs_rae_Watchdog",
+      "original_xml_sha256": "6A338F3AAE7B38DF45DF3BA4B784DEBB82A764A157574908F4BCFC9FA4287DBF",
+      "bytes_before": 1839,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-13.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_CS_Tim_Watchdog",
+      "original_xml_sha256": "1B0265DD04795C9E86D2D58A67702C07EFAAAD3D82E4062BBD86983741838707",
+      "bytes_before": 1766,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-14.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_ERVP_Manager_Watchdog",
+      "original_xml_sha256": "D99C4D50109D97A5B9151BC1ADECD6FF7C3496BC316CD39172481DD85E1E66B2",
+      "bytes_before": 1477,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-15.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_ERVP_Orders_Watchdog",
+      "original_xml_sha256": "526C81FACC194A99C58F9FE9682A9FC50DD75F3CE09DBF51BA78B56D067B7D08",
+      "bytes_before": 1618,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-16.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Gateway",
+      "original_xml_sha256": "E637FD5E9551EAB664F48D86DFF2BF9808C1B606876868B9ED040B895BBD7683",
+      "bytes_before": 1308,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-17.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Gateway_cust-service",
+      "original_xml_sha256": "0B7BAD6E7E5B152606B1EEA0600262BDF7983F9071C8D4FBDF4A2E34F1792F65",
+      "bytes_before": 1279,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-18.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Gianna_Watchdog",
+      "original_xml_sha256": "04483EA320D5D0D14670DA7CFF0C528A919EACC7C3149CF3BE9879F239B3246D",
+      "bytes_before": 2011,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-19.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_HermesOps2_Watchdog",
+      "original_xml_sha256": "4C33D966FA5DF7E07CCFB2E4DBB6C1CFF19FA12ED8A2C059001D1C46366CCB44",
+      "bytes_before": 1405,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-20.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_HermesOps_Watchdog",
+      "original_xml_sha256": "C423F1ECFB91EC0BD2E3B47ED2CA6314E7FFA51C125F16FDE0934938B0E07373",
+      "bytes_before": 1991,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-21.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_MPHealth_Watchdog",
+      "original_xml_sha256": "53CE82BD88D449FC72FE1118E305C69526D1DB6BEE69AA275B7896B88A029C4B",
+      "bytes_before": 1500,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-22.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "Hermes_Nick_Watchdog",
+      "original_xml_sha256": "8719CF0206B2A878A93D8342D5A08AADED294922DFF44578671D67A8094CAB56",
+      "bytes_before": 1827,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-23.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "task",
+      "name": "OrderOps_Order_Completion_Mirror",
+      "original_xml_sha256": "3101FED6BA0BB8F6DE2C31CCFDFE7F6C6F46B13CD1FF7C50FFE3519D95DE0C69",
+      "bytes_before": 1694,
+      "bytes_after": 0,
+      "archive_path": "C:\\Users\\nicho\\backups\\hermes-final-20261016\\phase3-custody-20261022\\task-24.xml",
+      "errors": [],
+      "exists_after": false
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\ERVP_Hermes_Dashboard.cmd.disabled-windowless-20260724",
+      "sha256": "107b10d93cf0b7bb0b15a80587111c806c21235c6b221d84c7647b1a7c2dffc5",
+      "bytes_before": 258,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\ERVP_Hermes_Dashboard.cmd.disabled-windowless-20260724",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_accounting-migration.cmd.disabled-20260722-153130",
+      "sha256": "5bb377bb22a09d62eea6fe8b1a88428343755d5a1875fcdda2ddee3f8f998098",
+      "bytes_before": 444,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_accounting-migration.cmd.disabled-20260722-153130",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_accounting-migration.vbs.disabled-20261021",
+      "sha256": "0c925c80bda0d82e49fa7a5f7c792e667c813f38dc1b93138c71e392c76f5359",
+      "bytes_before": 432,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_accounting-migration.vbs.disabled-20261021",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_accounting-sharon.vbs.disabled",
+      "sha256": "cf6b603a7a82503b6780474c678247556f5191eca86f828878dcd586e95bbc97",
+      "bytes_before": 516,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_accounting-sharon.vbs.disabled",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-ali.vbs.disabled-20261016",
+      "sha256": "fb0abcc1d62178b8a0cf842eaa01f624872b23b0f056c44fdbb2b42b71ce44c0",
+      "bytes_before": 240,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-ali.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-jasmine.vbs.disabled-20261016",
+      "sha256": "038430b725b5113065553d0403828471701ac818491caa716d6a54ac774248fc",
+      "bytes_before": 488,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-jasmine.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-joe.vbs.disabled-20261016",
+      "sha256": "7337a2ffe9d8309bea38b2a9516ab109dd7e47d5eb811e1e07f7a943f1814f91",
+      "bytes_before": 897,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-joe.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-mallory.vbs.disabled-20261016",
+      "sha256": "bc869989c28314c4951b79184f59fc36683eaeeda3a5ba5ebffee1dd94ec58c5",
+      "bytes_before": 488,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-mallory.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-rae.vbs.disabled-20261016",
+      "sha256": "8557610e330fe9dddec5f5aaca4e01ea5ae3b850bc248802d0e2da24cafb46f6",
+      "bytes_before": 472,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-rae.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.cmd.disabled-20260720",
+      "sha256": "1383c1c0010c754b395ae0bb421f486b3f5ab57387ee3171fce5e131342fb90c",
+      "bytes_before": 311,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-tim.cmd.disabled-20260720",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.cmd.rollback-20260720",
+      "sha256": "e13af5025ec2063747d822daa6a5a887d1d45b596ec8a9ba0d42edc4c4377b92",
+      "bytes_before": 426,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-tim.cmd.rollback-20260720",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs.disabled-20260724-120734",
+      "sha256": "9dbb36ca29db5a41111634d69bea7f2e53c8363ce7c9223898ed84cadaa382c5",
+      "bytes_before": 464,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-tim.vbs.disabled-20260724-120734",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cs-tim.vbs.disabled-20261016",
+      "sha256": "41a00ee6c553b611d9ead5a093a54b54ef6fec14b9ac2eb581c096ea9e85cad4",
+      "bytes_before": 472,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cs-tim.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_cust-service.vbs.disabled-t_73a06450-20260723-124208",
+      "sha256": "f794eeb4df55d09e1f445cb35b16a0445c7ab41557fd89073ee14576dd3b132c",
+      "bytes_before": 500,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_cust-service.vbs.disabled-t_73a06450-20260723-124208",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130",
+      "sha256": "5b6f1eecbeeefc6a0bc15fd300c43a31da6668077fa18dab65446907d8205045",
+      "bytes_before": 335,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_ervp-manager.cmd.disabled-20260722-153130",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-manager.vbs.disabled-20261021",
+      "sha256": "6a0ed801eeacee8b9054f7389e51a1f72908afc8f779788121d449f2ca92e806",
+      "bytes_before": 416,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_ervp-manager.vbs.disabled-20261021",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.cmd.disabled-20260722-153130",
+      "sha256": "d9866dbaf1dd0a294bfdc0888b635dd910e3d01791ad93ba508b42ed53426694",
+      "bytes_before": 327,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_ervp-orders.cmd.disabled-20260722-153130",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_ervp-orders.vbs.disabled-20261021",
+      "sha256": "9982a6c6d18b6c1b46dce4e34f0c7895701bc789cb5c3b75387656284138702b",
+      "bytes_before": 414,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_ervp-orders.vbs.disabled-20261021",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_hermesops.vbs.disabled-20260724-111603",
+      "sha256": "ff557bd8ef35dc35d99e6bc250588e5b7de6b86b13a97fa28862950e1fbb1fad",
+      "bytes_before": 484,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_hermesops.vbs.disabled-20260724-111603",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_mphealth.cmd.disabled-20260722-153130",
+      "sha256": "4e1f7e47478a943eb342c20e39243ccb43d880864287c784831371acc51c964d",
+      "bytes_before": 305,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_mphealth.cmd.disabled-20260722-153130",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_mphealth.vbs.disabled-20260724-111603",
+      "sha256": "08552f55a9d09ca17886a3402bea5ed1e5f4b41004e3ece12aa9e55433094de4",
+      "bytes_before": 408,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_mphealth.vbs.disabled-20260724-111603",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_tripower-consulting.cmd.disabled-20260722-153130",
+      "sha256": "f83268123c7d2bc11826636853f850d68d319e8430db974052d540c444302e6f",
+      "bytes_before": 363,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_tripower-consulting.cmd.disabled-20260722-153130",
+      "errors": []
+    },
+    {
+      "stage": "startup",
+      "path": "C:\\Users\\nicho\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Hermes_Gateway_tripower-consulting.vbs.disabled-20261016",
+      "sha256": "e84ddd539bb6f69650f89e6b70caf0c4a1e10a7ff28a5f739921e55b8dac7407",
+      "bytes_before": 430,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "phase3-custody-20261022\\startup\\Hermes_Gateway_tripower-consulting.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-migration\\scripts\\ensure-gateway.vbs",
+      "sha256": "81fcf79447af20be0ac58114c18cebe11efe1fe9b42c47b97c8bfca2ce7d4a1b",
+      "bytes_before": 2404,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\accounting-migration\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\scripts\\ensure-gateway.vbs",
+      "sha256": "e345ba4bbb38d44380e57cd450a984a159330bb626c3be257d5ff232ae1563df",
+      "bytes_before": 2462,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\accounting-sharon\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\accounting-sharon\\scripts\\t_a1dd1b3e-restart.cmd",
+      "sha256": "4844974ddb467b9dc9975f81919e2ca50829fe94212d0ac9a99ec12cf396c3db",
+      "bytes_before": 526,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\accounting-sharon\\scripts\\t_a1dd1b3e-restart.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-ali\\scripts\\ensure-gateway.vbs",
+      "sha256": "7d959c8958103cc73efae41bae3b596ddb32e75b9119e24e9aaed984e890c6cb",
+      "bytes_before": 2244,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\cs-ali\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-jasmine\\scripts\\ensure-gateway.vbs",
+      "sha256": "f2731af1745cd7c894e57bdb58dbf2dcc0887b65ae3cc09a12f590f39a9cae93",
+      "bytes_before": 2217,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\cs-jasmine\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-mallory\\scripts\\ensure-gateway.vbs",
+      "sha256": "144cf9d43e4f0c0ffba9524f44493933682046e9bb59bf2f1f9bbc2205f3dab7",
+      "bytes_before": 2217,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\cs-mallory\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-rae\\scripts\\ensure-gateway.vbs",
+      "sha256": "94bc1b4ee482bcf98db41c50062a5323172c088b95f46dc487c14a9248edbd81",
+      "bytes_before": 2189,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\cs-rae\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\scripts\\ensure-gateway.cmd",
+      "sha256": "c0057f2d83d42f929274548fcef2f8cce3587e5eca30921e7df1c7b6310ff11e",
+      "bytes_before": 574,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\cs-tim\\scripts\\ensure-gateway.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\cs-tim\\scripts\\ensure-gateway.vbs",
+      "sha256": "2d2ce6e6e69b98db1484c56424a21a3f7fc8c46fe05a03cc3baac6b48f9c9137",
+      "bytes_before": 2119,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\cs-tim\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.cmd",
+      "sha256": "2c30814fe1eb32d647c113d9bd2df62b6135ed4dfec95e45083ffbc21d0b2cbe",
+      "bytes_before": 641,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.vbs",
+      "sha256": "ac7e00cf4f5ca1a94a6f4d87016ba2858e26b6961d7588a33ca6a0c03608ffda",
+      "bytes_before": 353,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-manager\\scripts\\ensure-manager-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.cmd",
+      "sha256": "7e771aaafad3f3ad15e9a04976d78560290f92c21316e8541d22ab84d77bc252",
+      "bytes_before": 436,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.vbs",
+      "sha256": "33430f61700115d408bf625c5e2c750d1b388cff14660a94c0dd0563895b79af",
+      "bytes_before": 373,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\ensure-orders-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_orders_bot_worker.cmd",
+      "sha256": "93a19eda71300af61e43cd9acda1abc5ec5c5a02d94c68725267d2966bb6c31b",
+      "bytes_before": 646,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\run_orders_bot_worker.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_orders_bot_worker_hidden.vbs",
+      "sha256": "27ba5861acc74d43d4f335f2929b0b16a64d4d2432b0756fcba6355da7d808e8",
+      "bytes_before": 314,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\run_orders_bot_worker_hidden.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_owner_policy_cycle.cmd",
+      "sha256": "00ea038f618cb92fd9b845bf1b1b3fa778c7a7df4f4e74453c6892e93df775d6",
+      "bytes_before": 384,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\run_owner_policy_cycle.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_production_owner_policy_cycle.cmd",
+      "sha256": "6263d6a7368fdc31ab9b4ddd9f1a6e23b671b4f8b11e71c77d8f25c069a46cf1",
+      "bytes_before": 534,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\run_production_owner_policy_cycle.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_safe_vendor_poller.cmd",
+      "sha256": "2c960bfb3aec5949ac95c916ab5e385fc1f8013c0eea9a8a3fac5ea52fbb4d81",
+      "bytes_before": 275,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\run_safe_vendor_poller.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\ervp-orders\\scripts\\run_safe_vendor_poller_hidden.vbs",
+      "sha256": "83a9e7ba2ab258b267b7c86ea2c1d6ddd23124b0ee24a894789d8e5f756b29c8",
+      "bytes_before": 213,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\ervp-orders\\scripts\\run_safe_vendor_poller_hidden.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\ensure-gateway.cmd",
+      "sha256": "0dfc634dccb04aa49951b394881c4dd91b0a63673cffbc28478dcc143a9dce7d",
+      "bytes_before": 567,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\hermesops\\scripts\\ensure-gateway.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops\\scripts\\ensure-gateway.vbs",
+      "sha256": "b3872142ccf22a9d6c841e0c155ba3b747b29f5283692fe128e444f087e445a1",
+      "bytes_before": 1328,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\hermesops\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops-2\\scripts\\ensure-gateway.cmd",
+      "sha256": "372ae1be847ea8949b8843b82e11b09b7e048ceaefdede96a948f0f4556f6e27",
+      "bytes_before": 486,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\hermesops-2\\scripts\\ensure-gateway.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\hermesops-2\\scripts\\ensure-gateway.vbs",
+      "sha256": "3382383e89d03bae51fb89d35363c377f4b3b687b381d401fa4ccace946f1552",
+      "bytes_before": 1670,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\hermesops-2\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\mphealth\\scripts\\ensure-gateway.cmd",
+      "sha256": "d8ed4922d3750e0b174718cca78c6be0e60e6554f13e6ae454341f2c18fb41e1",
+      "bytes_before": 580,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\mphealth\\scripts\\ensure-gateway.cmd",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\mphealth\\scripts\\ensure-gateway.vbs",
+      "sha256": "ae8ec49a20eb19ae3a64b8b51c6b87d391e7c43967ab06388adb2adef29014df",
+      "bytes_before": 1323,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\mphealth\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\profiles\\nick\\scripts\\ensure-gateway.vbs",
+      "sha256": "547d20dda05d01c65a00e995a55a6c16c9e9a35c6a682866168b31a801d4ae6f",
+      "bytes_before": 2403,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\profiles\\nick\\scripts\\ensure-gateway.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_All_Order_Review-silent.vbs",
+      "sha256": "8810e55b2f922fcd1333af98c477cc6c634e9032cafde07f05703f2058bc7a6a",
+      "bytes_before": 557,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\services\\ERVP_Orders_Bot_All_Order_Review-silent.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\ERVP_Orders_Bot_Direct_Shopify-silent.vbs",
+      "sha256": "a85e9e3351132c9a180639fab534fb97707fc18e91f55cc02627312405ffc6fc",
+      "bytes_before": 587,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\services\\ERVP_Orders_Bot_Direct_Shopify-silent.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\Hermes_Brain_Backup-silent.vbs",
+      "sha256": "f6366324be8a987e8d5b9a06419802f5e7d7ad2c4368eb6dea88405332e83f05",
+      "bytes_before": 441,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\services\\Hermes_Brain_Backup-silent.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\OrderOps_Order_Completion_Mirror-silent.vbs",
+      "sha256": "c3113b8c5b550b6e3c927516253bf03a4315521ea7012894d039028975760fa5",
+      "bytes_before": 552,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\services\\OrderOps_Order_Completion_Mirror-silent.vbs",
+      "errors": []
+    },
+    {
+      "stage": "wrapper",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes\\services\\dashboard\\dashboard_supervisor.vbs.disabled-20261016",
+      "sha256": "a18ddaa136fde639e1ac306fc298a0804cf295ef6ceec055a5ace5b9ed2435ab",
+      "bytes_before": 762,
+      "bytes_after": 0,
+      "exists_after": false,
+      "archive_path": "mirror\\local-hermes\\services\\dashboard\\dashboard_supervisor.vbs.disabled-20261016",
+      "errors": []
+    },
+    {
+      "stage": "root",
+      "label": "worktrees",
+      "path": "C:\\Users\\nicho\\.worktrees",
+      "bytes_before": 332816845,
+      "files_before": 18872,
+      "bytes_after": 0,
+      "files_after": 0,
+      "exists_after": false,
+      "errors": []
+    },
+    {
+      "stage": "root",
+      "label": "legacy-data",
+      "path": "C:\\Users\\nicho\\HermesLegacyData",
+      "bytes_before": 155312482,
+      "files_before": 1608,
+      "bytes_after": 0,
+      "files_after": 0,
+      "exists_after": false,
+      "errors": []
+    },
+    {
+      "stage": "root",
+      "label": "dot-hermes",
+      "path": "C:\\Users\\nicho\\.hermes",
+      "bytes_before": 309667,
+      "files_before": 8,
+      "bytes_after": 0,
+      "files_after": 0,
+      "exists_after": false,
+      "errors": []
+    },
+    {
+      "stage": "root",
+      "label": "brain-ops",
+      "path": "C:\\Users\\nicho\\HermesBrainOps",
+      "bytes_before": 1747995,
+      "files_before": 26,
+      "bytes_after": 0,
+      "files_after": 0,
+      "exists_after": false,
+      "errors": []
+    },
+    {
+      "stage": "root",
+      "label": "local-hermes",
+      "path": "C:\\Users\\nicho\\AppData\\Local\\hermes",
+      "bytes_before": 129418123915,
+      "files_before": 2785792,
+      "bytes_after": 0,
+      "files_after": 0,
+      "exists_after": false,
+      "errors": []
+    },
+    {
+      "stage": "root",
+      "label": "obsidian-brain",
+      "path": "C:\\Users\\nicho\\ObsidianVaults\\Hermes Brain",
+      "bytes_before": 55135400,
+      "files_before": 3978,
+      "bytes_after": 0,
+      "files_after": 0,
+      "exists_after": false,
+      "errors": []
+    }
+  ]
+}

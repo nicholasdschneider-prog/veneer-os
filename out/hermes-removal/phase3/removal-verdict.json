@@ -1,0 +1,38 @@
+{
+  "verdict": "VERIFIED_REMOVAL_COMPLETE",
+  "at": "2026-10-22T14:29:22.494046+00:00",
+  "checks": {
+    "controller_exited": true,
+    "controller_source_unchanged": true,
+    "complete_no_errors": true,
+    "exact_counts": true,
+    "six_roots_absent": true,
+    "keep_paths_present": true,
+    "kept_startup_hashes_unchanged": true,
+    "external_target_present": true,
+    "manifest_unchanged": true,
+    "addendum_unchanged": true,
+    "seal_unchanged": true,
+    "both_failed_attempts_preserved": true,
+    "no_hermes_processes": true,
+    "no_hermes_cron_or_tasks": true,
+    "kept_task_unchanged": true,
+    "no_hermes_startup": true,
+    "inventory_no_errors": true,
+    "ssh_tailscale_running": true
+  },
+  "incomplete_checks": [],
+  "leftovers_in_approved_scope": [],
+  "free_bytes_before": 475743752192,
+  "free_bytes_after": 606591369216,
+  "free_bytes_increase": 130847617024,
+  "counts": {
+    "task": 25,
+    "startup": 23,
+    "wrapper": 31,
+    "root": 6
+  },
+  "manifest_sha256": "e315a27507da08bf5d3de7dc50cda93f919aa91fd151a72ea74c7c8a459ff3c1",
+  "archive_root": "C:\\Users\\nicho\\backups\\hermes-final-20261016",
+  "standalone_helper_outside_scope_retained": true
+}
