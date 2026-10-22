@@ -43,6 +43,7 @@ Operator scripts and metadata receipts only. Archive payload and full manifests 
 - [archive-resume-status-2209.json](./archive-resume-status-2209.json)
 - [archive-resume-status-2240.json](./archive-resume-status-2240.json)
 - [archive-resume-status-2311.json](./archive-resume-status-2311.json)
+- [archive-resume-status-2342.json](./archive-resume-status-2342.json)
 - [archive-resume-status-first.json](./archive-resume-status-first.json)
 - [archive-resume-status.ps1](./archive-resume-status.ps1)
 - [archive-resume-upload.json](./archive-resume-upload.json)
