@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-22T04:18:40.6353010Z",
+  "free_bytes": 478696955904,
+  "refresh_source_sha256": null,
+  "processes": [
+    {
+      "parent": 7040,
+      "pid": 20500,
+      "created": "2026-10-22T00:17:56.9798770-04:00",
+      "name": "python.exe"
+    }
+  ],
+  "reconcile_source_sha256": "3402F9E5ACD3B2DD84DC65929344B43780CE2458D868D1383E0186C6EE3BD816",
+  "state": {
+    "status.json": {
+      "state": "reserved_source_audit",
+      "at": "2026-10-22T04:18:40.150742+00:00",
+      "final_seal": false,
+      "files": 130000,
+      "candidates": 0,
+      "corrections": 0
+    }
+  }
+}
