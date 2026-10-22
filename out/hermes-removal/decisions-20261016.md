@@ -42,3 +42,6 @@
 ## 2026-10-21 15:50 ET check
 - Phase 2b: steps 1–3 verified (all 9 crons + both Windows tasks disabled; Direct_Shopify/All_Order_Review drained and captured). Step 4: vault verified; Brain Backup disabled, 4h window released by coordinator. Step 5 (gateways) and step 6 (seal) released to proceed now.
 - Sage delta forwarded (step03-sage-pending-delta.json: 94 unresolved rows, outbox 417 delivered/50 failed_ambiguous, 33 Dometic pending-active).
+
+## 2026-10-21 22:50 ET check
+- Step 5 done: zero Hermes processes/crons/tasks/launchers. Step 6 first seal attempt FAILED 20:22 ET (SQLITE_CANTOPEN on a 265-char snapshot path; content not corrupt, short-path alias passes). Operator reconciled 1,121,082 rows + 66 snapshots and relaunched a repaired controller (PID 14696, 20:51 ET); at 22:40 ET 1.83M files, 213 SQLite, no failures, not sealed. Deletion correctly NOT started. Phase 3 remains gated on a verified seal.
