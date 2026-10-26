@@ -205,14 +205,33 @@ it('keeps held orders in the original pending batch, excludes full scans, and pr
  db.prepare("UPDATE bot_decisions SET state='decided' WHERE id=?").run(decision);
  scheduler.tick();expect(posts).toHaveLength(2);expect(posts[1]!.text).toContain(held.id);
 });
-it('refreshes holds for scheduled full scans and rejects unmapped or workload scope without inferring disjointness',()=>{
+it('refreshes holds for scheduled full scans and holds an unmapped card only on its own order number',()=>{
  const {decision}=heldQuestion();db.prepare("UPDATE scheduled_tasks SET next_run_at='2000-01-01T00:00:00Z'").run();
  scheduler.tick();expect(posts).toHaveLength(1);expect(posts[0]!.text).toContain('100122466');startDone(posts[0]!.id);
  db.prepare("UPDATE bot_decisions SET proposal_json=? WHERE id=?").run(JSON.stringify({blocks_scope:'task',as_of:{orders:[{order_number:'999'}]}}),decision);
- acceptPurchaseEvent(db,source,event());scheduler.tick();expect(posts).toHaveLength(1);
- expect(readPurchaseEvent(db,source,(db.prepare('SELECT event_id FROM purchase_event_receipts').get() as {event_id:string}).event_id).decision_holds.dispatch_blocked).toBe(true);
- db.prepare("UPDATE bot_decisions SET proposal_json=? WHERE id=?").run(JSON.stringify({blocks_scope:'workload',as_of:{orders:[{order_number:'100122466'}]}}),decision);
- scheduler.tick();expect(posts).toHaveLength(1);
+ const other=event();acceptPurchaseEvent(db,source,other);scheduler.tick();expect(posts).toHaveLength(2);
+ expect(posts[1]!.text).toContain(other.id);expect(posts[1]!.text).toContain('"order_number":"999"');
+ expect(readPurchaseEvent(db,source,other.id).decision_holds).toMatchObject({dispatch_blocked:false,unresolved_scope_decisions:[],held_orders:[{decision_id:decision,order_number:'999',order_id:null}]});
+});
+it('holds a workload card only on the orders it lists, by order_id when present',()=>{
+ const {decision}=heldQuestion();const heldId=crypto.randomUUID();
+ db.prepare("UPDATE bot_decisions SET proposal_json=? WHERE id=?").run(JSON.stringify({blocks_scope:'workload',as_of:{orders:[{order_number:'100122626',order_id:heldId},{order_number:'100122627'}]}}),decision);
+ const held=event(heldId),other=event();acceptPurchaseEvent(db,source,held);acceptPurchaseEvent(db,source,other);scheduler.tick();
+ expect(posts).toHaveLength(1);expect(posts[0]!.text).toContain(other.id);expect(posts[0]!.text).not.toContain(held.id);expect(posts[0]!.text).toContain('100122627');
+ const holds=readPurchaseEvent(db,source,held.id);
+ expect(holds.decision_holds).toMatchObject({dispatch_blocked:false,held_orders:[{order_number:'100122626',order_id:heldId},{order_number:'100122627',order_id:null}]});
+ expect(holds.delivery).toMatchObject({status:'blocked',blocked_reason:'NATIVE_DECISION_HOLD'});
+ expect(readPurchaseEvent(db,source,other.id).delivery.status).not.toBe('blocked');
+});
+it('still blocks dispatch for unparseable cards',()=>{
+ const {decision}=heldQuestion();
+ for(const proposal of ['not json',JSON.stringify({blocks_scope:'workload'}),JSON.stringify({as_of:{orders:[]}}),
+  JSON.stringify({as_of:{orders:[{order_number:'#100122794'}]}}),JSON.stringify({as_of:{orders:[{order_number:'100122794',order_id:'x'}]}}),
+  JSON.stringify({question:'Hold order #100122794?'}),JSON.stringify({as_of:{orders:Array.from({length:101},(_,i)=>({order_number:String(100000+i)}))}})]){
+  db.prepare("UPDATE bot_decisions SET proposal_json=? WHERE id=?").run(proposal,decision);
+  const p=event();acceptPurchaseEvent(db,source,p);scheduler.tick();expect(posts).toHaveLength(0);
+  expect(readPurchaseEvent(db,source,p.id).decision_holds).toMatchObject({dispatch_blocked:true,unresolved_scope_decisions:[decision]});
+ }
 });
 it('does not count held hints against the eight-order bound or launch held-only pending batches',()=>{
  const {orderId}=heldQuestion();acceptPurchaseEvent(db,source,event(orderId));for(let i=0;i<4;i++)scheduler.tick();expect(posts).toHaveLength(0);

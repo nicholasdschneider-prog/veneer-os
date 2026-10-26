@@ -1,7 +1,9 @@
 import type Database from 'better-sqlite3';
 
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Current original task-owner questions, never a keyword consent/authority parser.
- * Unknown scope stops dispatch. Reviewed source identity mapping is not eligibility.
+ * Unparseable scope stops dispatch. Reviewed source identity mapping is not eligibility.
  */
 export function purchaseDecisionHolds(db: Database.Database, taskId: string) {
   const ownerReady=!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='purchase_task_decision_owners'").get();
@@ -18,18 +20,21 @@ export function purchaseDecisionHolds(db: Database.Database, taskId: string) {
     {id:string;version:number;proposal_json:string}[];
   const source = db.prepare('SELECT source_id FROM purchase_event_bindings WHERE task_id=?').get(taskId) as {source_id:string}|undefined;
   const ready=!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='purchase_order_scopes'").get();
-  const held: {decision_id:string;version:number;order_number:string;order_id:string}[]=[];
+  // order_id is null when the card names only an order number; the worker skips it by number.
+  const held: {decision_id:string;version:number;order_number:string;order_id:string|null}[]=[];
   const unresolved:string[]=[];
   for(const q of questions) {
     let p:any;try{p=JSON.parse(q.proposal_json);}catch{unresolved.push(q.id);continue;}
     // Only structured declared roots. Never extract order numbers from question prose.
-    const roots=p.as_of?.orders;
-    if(p.blocks_scope==='workload' || !Array.isArray(roots) || !roots.length || roots.length>100) {unresolved.push(q.id);continue;}
+    // A task or workload card holds only the orders it lists, never the whole lane.
+    const roots=p?.as_of?.orders;
+    if(!Array.isArray(roots) || !roots.length || roots.length>100) {unresolved.push(q.id);continue;}
+    const valid=roots.every((root:any)=>typeof root?.order_number==='string' && /^\d{1,30}$/.test(root.order_number)
+      && (root.order_id===undefined || root.order_id===null || (typeof root.order_id==='string' && UUID.test(root.order_id))));
+    if(!valid) {unresolved.push(q.id);continue;}
     for(const root of roots) {
-      if(typeof root?.order_number!=='string' || !/^\d{1,30}$/.test(root.order_number)) {unresolved.push(q.id);continue;}
-      const mapping=ready && source ? db.prepare('SELECT order_id FROM purchase_order_scopes WHERE source_id=? AND order_number=?').get(source.source_id,root.order_number) as {order_id:string}|undefined : undefined;
-      if(!mapping) {unresolved.push(q.id);continue;}
-      held.push({decision_id:q.id,version:q.version,order_number:root.order_number,order_id:mapping.order_id});
+      const mapping=!root.order_id && ready && source ? db.prepare('SELECT order_id FROM purchase_order_scopes WHERE source_id=? AND order_number=?').get(source.source_id,root.order_number) as {order_id:string}|undefined : undefined;
+      held.push({decision_id:q.id,version:q.version,order_number:root.order_number,order_id:root.order_id ?? mapping?.order_id ?? null});
     }
   }
   return {held_orders:held,unresolved_scope_decisions:[...new Set(unresolved)],dispatch_blocked:unresolved.length>0};
