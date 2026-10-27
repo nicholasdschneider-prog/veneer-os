@@ -13,6 +13,7 @@ import { guardConnectionErrors } from './channels/connectionErrors.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import { compressJson } from './net/compressJson.js';
 import { loadEnvFile } from './envFile.js';
 import { installTypeOfServiceGuard } from './net/typeOfServiceGuard.js';
 import { logRunningRelease, runningRelease } from './release.js';
@@ -222,6 +223,7 @@ app.use('/webhooks/composio', createComposioWebhookRouter(ctx));
 // AutoShip verifier (option A): its own Cloudflare Access application and
 // service identity, mounted ahead of the human /api identity gate so the
 // service JWT is accepted here and nowhere else. Disabled (404) unless configured.
+app.use('/api', compressJson());
 app.use('/api/autoship/candidates', autoshipCandidateRoutes(ctx));
 app.use('/api/cs/merge-authorization', mergeAuthorizationServiceRoutes(ctx));
 app.use('/api/routine-message/verifier', routineVerifierRoutes(ctx));

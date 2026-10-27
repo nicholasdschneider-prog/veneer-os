@@ -98,6 +98,9 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
     '/',
     run(async (req, res) => {
       const a = actor(req);
+      // Revalidated rather than unstored: an unchanged poll gets a bodiless 304
+      // against the ETag instead of resending a multi-megabyte list.
+      res.set('Cache-Control', 'private, no-cache');
       const selected = typeof req.query.business === 'string' ? req.query.business : null;
       const inTeam = (id: string) => !selected || s.chat(a, id).business_team_id === selected;
       // One chat's own questions, for the conversation page's poller: the full
