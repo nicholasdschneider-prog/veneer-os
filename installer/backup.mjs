@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { loadEnvFile } from './env.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -20,10 +21,43 @@ export function backupsToRemove(entries, keep) {
     .map((entry) => entry.name);
 }
 
+async function sha256(file) {
+  const hash = createHash('sha256');
+  for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
+export async function retainRecoveryCopy(archive, recoveryDir) {
+  fs.mkdirSync(recoveryDir, { recursive: true, mode: 0o700 });
+  if (fs.realpathSync(path.dirname(archive)) === fs.realpathSync(recoveryDir)) {
+    throw new Error('Recovery directory must differ from the primary backup directory.');
+  }
+  const target = path.join(recoveryDir, path.basename(archive));
+  const temporary = `${target}.${process.pid}.partial`;
+  try {
+    fs.copyFileSync(archive, temporary, fs.constants.COPYFILE_EXCL);
+    fs.chmodSync(temporary, 0o600);
+    if (await sha256(archive) !== await sha256(temporary)) throw new Error('Recovery copy checksum mismatch.');
+    const fd = fs.openSync(temporary, 'r');
+    try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    fs.renameSync(temporary, target);
+    // Publish and verify the replacement before removing older recovery copies.
+    for (const entry of fs.readdirSync(recoveryDir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name !== path.basename(target) && /^veneer-pro-\d{8}T\d{6}Z\.tar\.gz$/.test(entry.name)) {
+        fs.unlinkSync(path.join(recoveryDir, entry.name));
+      }
+    }
+    return target;
+  } finally {
+    fs.rmSync(temporary, { force: true });
+  }
+}
+
 export async function createBackup({
   dataDir = process.env.DATA_DIR || path.join(os.homedir(), '.local', 'share', 'veneer-pro'),
   backupDir = process.env.VP_BACKUP_DIR || path.join(os.homedir(), '.local', 'share', 'veneer-pro-backups'),
   keep = Number(process.env.VP_BACKUP_KEEP || 7),
+  recoveryDir = process.env.VP_BACKUP_RECOVERY_DIR || null,
   now = new Date(),
 } = {}) {
   if (!Number.isSafeInteger(keep) || keep < 1 || keep > 100) throw new Error('VP_BACKUP_KEEP must be from 1 to 100.');
@@ -68,6 +102,7 @@ export async function createBackup({
     }
     execFileSync('tar', ['-C', workDir, '-czf', archive, 'data'], { stdio: 'ignore' });
     fs.chmodSync(archive, 0o600);
+    if (recoveryDir) await retainRecoveryCopy(archive, recoveryDir);
     const entries = fs.readdirSync(backupDir, { withFileTypes: true })
       .filter((entry) => entry.isFile())
       .map((entry) => ({ name: entry.name, mtimeMs: fs.statSync(path.join(backupDir, entry.name)).mtimeMs }));
