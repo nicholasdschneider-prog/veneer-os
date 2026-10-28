@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { CustomerThreadSection, groupRows, TaskPane, TasksBoard, ThreadBody } from './TasksBoard';
-import { cleanTaskTitle, CUSTOMER_THREAD_KEY, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, type BoardRow, type TaskEvent } from '@/lib/tasks';
+import { CustomerThreadSection, groupRows, TaskAnswer, TaskPane, TasksBoard, ThreadBody } from './TasksBoard';
+import { activityLine, cleanTaskTitle, taskAnswers, CUSTOMER_THREAD_KEY, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, type BoardRow, type TaskEvent } from '@/lib/tasks';
 
 vi.mock('@/lib/tasks', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/tasks')>()), tasksApi: { board: () => new Promise(() => {}), task: () => new Promise(() => {}), mark: vi.fn(), discuss: vi.fn(), customerThread: () => new Promise(() => {}) } }));
 vi.mock('@/components/BotComposer', () => ({ BotComposer: ({ botName }: { botName: string }) => <div data-testid="composer">composer for {botName}</div> }));
@@ -65,5 +65,30 @@ describe('tasks board', () => {
     expect(html).not.toContain('raw');
     expect(html).toContain('Show earlier message');
     expect(html).not.toContain('On Wed wrote');
+  });
+  it('shows only the bot answer for each round; the wake prompt, skill text and tool steps fold under Show steps', () => {
+    const turn = { name: 'Assistant', at: '2026-10-28T18:52:00Z', key: 'l:t1', items: [
+      { kind: 'user', key: 'u', text: 'Hey, can you pick this back up for me? Nicholas wrote on task…' },
+      { kind: 'user', key: 's', text: 'Base directory for this skill: /Users/x/.claude/skills/ervp-cs' },
+      { kind: 'tool', key: 'b', label: 'Using Bash', ok: true, running: false, inputPreview: '', resultPreview: '' },
+      { kind: 'assistant', key: 'a1', markdown: 'Checking Jim’s two tickets.' },
+      { kind: 'assistant', key: 'a2', markdown: 'Both things are closed in OrderOps.' },
+    ] };
+    const answers = taskAnswers([turn, { ...turn, key: 'l:t2', items: [turn.items[0]!] }]);
+    expect(answers.map((a) => a.markdown)).toEqual(['Both things are closed in OrderOps.']);
+    const html = renderToStaticMarkup(<TaskAnswer bot="Tess" answer={answers[0] as never} />);
+    expect(html).toContain('Both things are closed in OrderOps.');
+    expect(html).toContain('Show steps');
+    expect(html).not.toContain('Base directory for this skill');
+    expect(html).not.toContain('pick this back up');
+    expect(html).not.toContain('Checking Jim');
+  });
+  it('says in one plain line what the bot is doing on the task', () => {
+    expect(activityLine(undefined, 'Tess')).toBe('');
+    expect(activityLine({ state: 'idle' }, 'Tess')).toBe('');
+    expect(activityLine({ state: 'working' }, 'Tess')).toBe('Tess is replying…');
+    expect(activityLine({ state: 'waiting' }, 'Tess')).toBe('Tess is reading your note…');
+    expect(activityLine({ state: 'waiting', reason: 'tasks', others: 2 }, 'Tess')).toBe('Waiting: Tess is busy on 2 other tasks');
+    expect(activityLine({ state: 'waiting', reason: 'main_chat' }, 'Tess')).toBe("Waiting: Tess's main chat is busy");
   });
 });

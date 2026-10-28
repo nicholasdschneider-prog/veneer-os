@@ -206,6 +206,18 @@ describe('shared Tasks capability', () => {
       expect(noisy.rows.some((r) => r.title.includes('Assistant ↔ Assistant'))).toBe(false);
       const discuss = await callApi({})(`/api/conversations/${OWNER}/tasks/${payload.created[0]!.id}/discuss`, { method: 'POST', body: JSON.stringify({ text: 'Looks good, send it.', request_key: 'd1' }) });
       expect(discuss).toMatchObject({ duplicate: false });
+      // The pane's one line: reading the note while it waits, replying while the task chat works,
+      // and naming what holds it when two other tasks are working.
+      const first = payload.created[0]!;
+      const activity = async () => ((await callApi({})(`/api/conversations/${OWNER}/tasks/${first.id}`)) as { activity: unknown }).activity;
+      expect(await activity()).toEqual({ state: 'waiting' });
+      laneStatus.set(first.task_conversation_id, 'working');
+      expect(await activity()).toEqual({ state: 'working' });
+      laneStatus.delete(first.task_conversation_id);
+      for (const t of payload.created.slice(1)) laneStatus.set(t.task_conversation_id, 'working');
+      expect(await activity()).toEqual({ state: 'waiting', reason: 'tasks', others: 2 });
+      db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE wake_key LIKE ?").run(`bot-task:${first.id}:%`);
+      expect(await activity()).toEqual({ state: 'idle' });
     });
   });
 });

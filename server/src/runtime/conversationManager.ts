@@ -7,7 +7,7 @@ import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js
 import { coordinationLane, coordinationFamily } from '../coordination/store.js';
 import { BOT_LANE_RULES, hasBotLane, botLaneOfConversation, spliceSurfacedNotices, surfacedRows, takeSurfacedContext } from '../coordination/botLane.js';
 import { createCsTicketService } from '../csTickets/service.js';
-import { createTaskService, TASK_CAP_PER_OWNER } from '../tasks/service.js';
+import { createTaskService, isHumanTaskNoteWake, TASK_CAP_PER_OWNER } from '../tasks/service.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 import { candidateWakeAllowed, startQueuedCandidate } from '../botWorkflows/autoshipCandidates.js';
 import {HistoryPages,type HistoryPage} from './historyPages.js';
@@ -1458,9 +1458,16 @@ export function createConversationManager({
     // A registered bot's human chat never waits behind its bot sessions.
     if (taskLane && lane) {
       // Task chats of one bot run in parallel up to the cap; the bot's human chat still goes first.
-      const ownerBusy = entryFor(lane.owner_id).turn || entryFor(lane.owner_id).maintenance;
-      const running = family.filter(id => id !== conv.id && id !== lane.owner_id && (entryFor(id).turn || entryFor(id).maintenance)).length;
-      if (ownerBusy || running >= TASK_CAP_PER_OWNER) return;
+      // A human's note on a task skips that line: it waits only for other human notes at the cap,
+      // never behind the bot's main chat, huddles, coordination or automated task work.
+      if (entry.queue[0]?.origin?.humanTaskNote) {
+        const notes = family.filter(id => id !== conv.id && id !== lane.owner_id && entryFor(id).turn?.origin?.humanTaskNote).length;
+        if (notes >= TASK_CAP_PER_OWNER) return;
+      } else {
+        const ownerBusy = entryFor(lane.owner_id).turn || entryFor(lane.owner_id).maintenance;
+        const running = family.filter(id => id !== conv.id && id !== lane.owner_id && (entryFor(id).turn || entryFor(id).maintenance)).length;
+        if (ownerBusy || running >= TASK_CAP_PER_OWNER) return;
+      }
     } else if (!humanFirst(conv.id) && family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;
     // Human work already waiting always goes first; workers never preempt it.
     if (lane && entryFor(lane.owner_id).queue.length) return;
@@ -2252,7 +2259,7 @@ export function createConversationManager({
       const name = assistantNameFor(conv);
       const origin: MessageOrigin = resultReply
         ? { kind: 'result_reply', from: resultReply.reply.display_name, to: name }
-        : { kind: 'wakeup', from: name, to: name };
+        : { kind: 'wakeup', from: name, to: name, ...(isHumanTaskNoteWake(db, wakeupId) ? { humanTaskNote: true as const } : {}) };
       // A scheduler retry must not dismiss a newer human question.
       const newResultReply = !!resultReply && !findInboundReceiptStmt.get(`wakeup:${wakeupId}`);
       const posted = enqueueMessage(conv, text, newResultReply, {

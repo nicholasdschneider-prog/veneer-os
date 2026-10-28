@@ -63,13 +63,29 @@ export interface CustomerThread {
   added?: number;
   error: string | null;
 }
+/** What the bot is doing on a task right now; the pane shows one plain line. */
+export interface TaskActivity { state: 'idle' | 'waiting' | 'working'; reason?: 'tasks' | 'main_chat'; others?: number }
+export function activityLine(a: TaskActivity | undefined, bot: string): string {
+  if (!a || a.state === 'idle') return '';
+  if (a.state === 'working') return `${bot} is replying…`;
+  if (a.reason === 'tasks') return `Waiting: ${bot} is busy on ${a.others ?? 2} other tasks`;
+  if (a.reason === 'main_chat') return `Waiting: ${bot}'s main chat is busy`;
+  return `${bot} is reading your note…`;
+}
+/** The bot's answer for each round: its last message in the turn. Wake prompts, skill text and tool steps stay behind "Show steps". */
+export function taskAnswers<T extends { key: string; at: string; items: Array<{ kind: string; markdown?: string }> }>(turns: T[]): Array<{ key: string; at: string; markdown: string; turn: T }> {
+  return turns.flatMap((turn) => {
+    const last = [...turn.items].reverse().find((i) => i.kind === 'assistant' && (i.markdown ?? '').trim());
+    return last ? [{ key: turn.key, at: turn.at, markdown: last.markdown!, turn }] : [];
+  });
+}
 /** Once the human opens the customer thread, keep it open for other tasks in this browser session. */
 export const CUSTOMER_THREAD_KEY = 'veneer.tasks.customer-thread';
 export function customerThreadPreferred(): boolean { try { return sessionStorage.getItem(CUSTOMER_THREAD_KEY) === 'open'; } catch { return false; } }
 export function rememberCustomerThread(open: boolean): void { try { if (open) sessionStorage.setItem(CUSTOMER_THREAD_KEY, 'open'); else sessionStorage.removeItem(CUSTOMER_THREAD_KEY); } catch { /* ignore */ } }
 export const tasksApi = {
   board: (conversationId: string, signal?: AbortSignal) => requestJson<Board>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks`, { signal }),
-  task: (conversationId: string, taskId: string) => requestJson<{ task: BotTask; events: TaskEvent[]; bot_name: string }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}`),
+  task: (conversationId: string, taskId: string) => requestJson<{ task: BotTask; events: TaskEvent[]; bot_name: string; activity?: TaskActivity }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}`),
   mark: (conversationId: string, body: { kind: 'task' | 'thread' | 'handoff'; id: string; mark: 'done' | 'reviewed' }) =>
     requestJson(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/mark`, { method: 'POST', body: JSON.stringify(body) }),
   customerThread: (conversationId: string, taskId: string, refresh = false) =>

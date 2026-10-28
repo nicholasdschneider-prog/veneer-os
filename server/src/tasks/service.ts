@@ -20,6 +20,12 @@ export const TASK_STATUSES = ['up_next', 'working', 'needs_input', 'ready_for_re
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 export const TASK_SOURCES = ['human_dump', 'existing_case', 'bot', 'import'] as const;
 export const TASK_CAP_PER_OWNER = 2;
+/** A human's note typed on a task (discuss is human-only); it runs ahead of the bot's other work. */
+export const HUMAN_TASK_NOTE_WAKE = /^bot-task:[^:]+:discuss:/;
+export function isHumanTaskNoteWake(db: Database.Database, wakeupId: string): boolean {
+  const row = db.prepare('SELECT wake_key FROM conversation_wakeups WHERE id=?').get(wakeupId) as { wake_key: string } | undefined;
+  return Boolean(row && HUMAN_TASK_NOTE_WAKE.test(row.wake_key));
+}
 export interface BotTaskRow {
   id: string;
   owner_conversation_id: string;

@@ -5,11 +5,12 @@ import { BotComposer } from '@/components/BotComposer';
 import { ChatDecisionCard } from '@/components/chat/ChatDecisionCard';
 import { ChatTasksToggle } from '@/components/chat/ChatTasksToggle';
 import { CoordinationTurn, coordinationItems, type CoordinationView } from '@/components/chat/Coordination';
+import { Markdown } from '@/components/Markdown';
 import { CHAT_DECISIONS_CHANGED } from '@/components/chat/OpenQuestionsPanel';
 import { api } from '@/lib/api';
 import { botsApi, type BotDecision } from '@/lib/bots';
 import { splitAttachmentFooter } from '@/lib/botComposer';
-import { BOARD_GROUPS, cleanTaskTitle, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, tasksApi, type Board, type BoardGroup, type BoardRow, type BotTask, type CustomerThread as CustomerThreadData, type TaskEvent } from '@/lib/tasks';
+import { activityLine, BOARD_GROUPS, cleanTaskTitle, taskAnswers, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, tasksApi, type Board, type BoardGroup, type BoardRow, type BotTask, type CustomerThread as CustomerThreadData, type TaskActivity, type TaskEvent } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
 
 /**
@@ -107,7 +108,7 @@ export function TasksBoard({ conversationId, taskId = null, onNavigate }: { conv
 
 /** One task, in place: its status, its open question, its conversation, and a composer that speaks to it alone. */
 export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { conversationId: string; taskId: string; onNavigate: (hash: string) => void; onChanged: () => Promise<void> }) {
-  const [detail, setDetail] = useState<{ task: BotTask; events: TaskEvent[]; bot_name: string } | null>(null);
+  const [detail, setDetail] = useState<{ task: BotTask; events: TaskEvent[]; bot_name: string; activity?: TaskActivity } | null>(null);
   const [decision, setDecision] = useState<BotDecision | null>(null);
   const [view, setView] = useState<CoordinationView | null>(null);
   const [error, setError] = useState('');
@@ -151,7 +152,8 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
   const t = detail?.task;
   const bot = detail?.bot_name || 'The bot';
   const turns = view ? coordinationItems(view) : [];
-  const stream = interleaveDiscussion(turns, detail?.events ?? []);
+  const stream = interleaveDiscussion(taskAnswers(turns), detail?.events ?? []);
+  const activity = activityLine(detail?.activity, bot);
   const brief = t?.brief.trim() ?? '';
   const short = brief.length > 280 ? `${brief.slice(0, 280).trimEnd()}…` : brief;
   const files = (detail?.events ?? []).flatMap((e) => (Array.isArray(e.payload.attachments) ? (e.payload.attachments as { name: string; reference?: string }[]) : []));
@@ -174,12 +176,13 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conversation with {bot} on this task</h3>
           {detail && stream.length === 0 && <p className="text-muted-foreground">{bot} hasn't started on this yet.{t?.status_line ? ` ${/[.?!]$/.test(t.status_line) ? t.status_line : `${t.status_line}.`}` : ''}</p>}
           {stream.map((item) => item.kind === 'turn'
-            ? <CoordinationTurn key={item.turn.key} turn={item.turn} />
+            ? <TaskAnswer key={item.turn.key} bot={bot} answer={item.turn} />
             : <div key={item.event.id} className="space-y-1 rounded-lg bg-muted/50 p-3">
                 <p className="font-medium">{String(item.event.payload.by ?? 'You')} → {bot}</p>
                 <p className="whitespace-pre-wrap break-words">{String(item.event.payload.text ?? '')}</p>
                 {Array.isArray(item.event.payload.attachments) && (item.event.payload.attachments as { name: string }[]).length > 0 && <p className="text-xs text-muted-foreground">Files: {(item.event.payload.attachments as { name: string }[]).map((a) => a.name).join(', ')}</p>}
               </div>)}
+          {activity && <p role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-muted-foreground"><span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden="true" />{activity}</p>}
         </section>
         {t && (brief || files.length > 0 || t.resources.length > 0 || (detail?.events.length ?? 0) > 0) && <details className="rounded-lg border bg-background">
           <summary className="cursor-pointer p-2 text-xs font-medium">Details{detail?.events.length ? ` · ${detail.events.length} events` : ''}</summary>
@@ -200,6 +203,17 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
       </div>
     </section>
   );
+}
+
+/** One round of the bot's work shown as its answer; everything it did to get there folds under "Show steps". */
+export function TaskAnswer({ bot, answer }: { bot: string; answer: ReturnType<typeof taskAnswers<ReturnType<typeof coordinationItems>[number]>>[number] }) {
+  const [steps, setSteps] = useState(false);
+  return <div className="space-y-1">
+    <p className="font-medium">{bot}</p>
+    <Markdown markdown={answer.markdown} />
+    <button type="button" className="min-h-9 text-xs text-muted-foreground underline-offset-2 hover:underline" aria-expanded={steps} onClick={() => setSteps(!steps)}>{steps ? 'Hide steps' : 'Show steps'}</button>
+    {steps && <div className="rounded-lg border p-2 text-xs"><CoordinationTurn turn={answer.turn} /></div>}
+  </div>;
 }
 
 /** A customer photo; if OrderOps was busy it offers a retry instead of a broken image. */

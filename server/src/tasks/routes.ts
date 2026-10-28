@@ -6,7 +6,7 @@ import { canViewConversation, canViewCoordinationPair } from '../conversations/a
 import { BotError, createBotService } from '../bots/service.js';
 import { botLabel, botLaneOwnerOfThread } from '../coordination/botLane.js';
 import type { CoordinationThread } from '../coordination/store.js';
-import { createTaskService, type TaskActor } from './service.js';
+import { createTaskService, TASK_CAP_PER_OWNER, type TaskActor } from './service.js';
 import { createCsTicketService, presentMessage } from '../csTickets/service.js';
 import { attachmentPath, classifyCaseKey, createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
 import { cleanBody } from '../csTickets/body.js';
@@ -46,6 +46,27 @@ export function createTasksRouter(ctx: AppContext) {
     log: { info: () => {}, warn: (m) => console.warn(m) },
   });
   const THREAD_FRESH_MS = 90_000;
+  /**
+   * What the bot is doing on one task, for the pane's one-line indicator: replying (its task chat
+   * has a live turn), or waiting on a note (pending wake or queued message) and what holds it.
+   * A failed runner call reads as idle; the indicator is a hint, never a source of truth.
+   */
+  type Activity = { state: 'idle' | 'waiting' | 'working'; reason?: 'tasks' | 'main_chat'; others?: number };
+  async function taskActivity(t: { id: string; owner_conversation_id: string; task_conversation_id: string | null }): Promise<Activity> {
+    if (!t.task_conversation_id || !ctx.manager) return { state: 'idle' };
+    try {
+      if (await ctx.manager.statusOf(t.task_conversation_id) === 'working') return { state: 'working' };
+      const note = db.prepare("SELECT 1 FROM conversation_wakeups WHERE conversation_id=? AND wake_key LIKE ? AND status='pending'").get(t.owner_conversation_id, `bot-task:${t.id}:%`);
+      const queued = typeof ctx.manager.queueSnapshot === 'function' ? (await ctx.manager.queueSnapshot(t.task_conversation_id)).messages : [];
+      if (!note && !queued.length) return { state: 'idle' };
+      const humanNote = Boolean(db.prepare("SELECT 1 FROM conversation_wakeups WHERE conversation_id=? AND wake_key LIKE ? AND status='pending'").get(t.owner_conversation_id, `bot-task:${t.id}:discuss:%`)) || queued.some((m) => m.origin?.humanTaskNote);
+      const peers = (db.prepare("SELECT task_conversation_id AS id FROM bot_tasks WHERE owner_conversation_id=? AND id<>? AND status IN ('working','needs_input') AND task_conversation_id IS NOT NULL LIMIT 20").all(t.owner_conversation_id, t.id) as { id: string }[]);
+      const others = (await Promise.all(peers.map((p) => ctx.manager.statusOf(p.id)))).filter((st) => st === 'working').length;
+      if (others >= TASK_CAP_PER_OWNER) return { state: 'waiting', reason: 'tasks', others };
+      if (!humanNote && await ctx.manager.statusOf(t.owner_conversation_id) === 'working') return { state: 'waiting', reason: 'main_chat' };
+      return { state: 'waiting' };
+    } catch { return { state: 'idle' }; }
+  }
   // Photos and PDFs already fetched for the pane, newest last; bounded so a long thread cannot grow memory.
   const fileCache = new Map<string, { type: string; bytes: Buffer }>();
   const FILE_CACHE_BYTES = 48 * 1024 * 1024;
@@ -168,12 +189,12 @@ export function createTasksRouter(ctx: AppContext) {
     visibleChat(req, req.params.id!);
     res.json(tasks.discuss(actor(req), req.params.taskId!, req.body));
   }));
-  router.get('/conversations/:id/tasks/:taskId', run((req, res) => {
+  router.get('/conversations/:id/tasks/:taskId', run(async (req, res) => {
     if (req.agentConversationId) throw new BotError(403, 'The board is a human view');
     visibleChat(req, req.params.id!);
     const t = tasks.read(req.params.taskId!);
     if (!t || t.owner_conversation_id !== req.params.id) throw new BotError(404, 'Task not found');
-    res.json({ task: tasks.listForOwner(req.params.id!).find((x) => x.id === t.id), events: tasks.events(t.id, 50), bot_name: botLabel(db, req.params.id!) });
+    res.json({ task: tasks.listForOwner(req.params.id!).find((x) => x.id === t.id), events: tasks.events(t.id, 50), bot_name: botLabel(db, req.params.id!), activity: await taskActivity(t) });
   }));
   /** The real customer thread behind a task, read through the OrderOps mirror by ticket code only. Errors are plain messages. */
   router.get('/conversations/:id/tasks/:taskId/customer-thread', run(async (req, res) => {

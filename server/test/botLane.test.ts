@@ -24,6 +24,8 @@ import {
 } from '../src/coordination/botLane.js';
 import { canSendToConversation, canViewConversation } from '../src/conversations/access.js';
 import { createConversationManager } from '../src/runtime/conversationManager.js';
+import { createTaskService } from '../src/tasks/service.js';
+import type { UserRow } from '../src/db/db.js';
 import { mintAgentToken, resolveAgentTokenContext } from '../src/runtime/agentTokens.js';
 import { createConversationWakeupScheduler } from '../src/scheduled/wakeups.js';
 import type { ConversationEvent } from '../src/runtime/events.js';
@@ -202,6 +204,46 @@ describe('human priority and lane parity', () => {
     expect(turns).toHaveLength(3);
     expect(turns[2]!.spec.nativeSessionId).toBe(lane.native_session_id);
     turns[2]!.finish();
+    await tick();
+  });
+
+  it('runs a human note on a task at once, while the bot is busy elsewhere; automated task work still waits', async () => {
+    const { turns, adapter } = fakeProvider();
+    const { manager } = managerWith(adapter);
+    const lane = enable();
+    const user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
+    const made = createTaskService(db).intake({ user, conversationId: 'clara' }, { items: [1, 2, 3, 4].map((n) => ({ title: `Case ${n}`, case_key: `C${n}` })), source: 'human_dump' }).created;
+    const chat = (n: number) => row(made[n]!.task_conversation_id!);
+    const noteWake = (n: number) => {
+      const id = crypto.randomUUID();
+      db.prepare("INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,1,?,'note',datetime('now'))").run(id, 'clara', `bot-task:${made[n]!.id}:discuss:${id}`);
+      return id;
+    };
+    // The bot is busy: its bot lane runs a huddle wake and its main chat runs a human turn.
+    manager.deliverWakeup(lane, 'Huddle post', 'w-huddle', 1);
+    await tick();
+    manager.postMessage(row('clara'), 'Human in the main chat');
+    await tick();
+    expect(turns).toHaveLength(2);
+    // Automated task work waits behind the busy main chat.
+    expect(manager.deliverWakeup(chat(0), 'Start this task', 'w-start', 1).disposition).toBe('queued');
+    await tick();
+    expect(turns).toHaveLength(2);
+    // Human notes on two tasks start right away.
+    manager.deliverWakeup(chat(1), 'Nick wrote on task', noteWake(1), 1);
+    manager.deliverWakeup(chat(2), 'Nick wrote on task', noteWake(2), 1);
+    await tick();
+    expect(turns.map((t) => t.spec.nativeSessionId).slice(2)).toEqual([chat(1).native_session_id, chat(2).native_session_id]);
+    expect(manager.queueSnapshot(chat(0).id).messages).toHaveLength(1);
+    // A third note waits for one of the two notes to finish, not for the main chat.
+    manager.deliverWakeup(chat(3), 'Nick wrote on task', noteWake(3), 1);
+    await tick();
+    expect(turns).toHaveLength(4);
+    turns[2]!.finish();
+    await tick();
+    expect(turns).toHaveLength(5);
+    expect(turns[4]!.spec.nativeSessionId).toBe(chat(3).native_session_id);
+    for (const t of turns) t.finish();
     await tick();
   });
 

@@ -29,6 +29,8 @@ export interface MessageOrigin {
   sourceConversationTitle?: string;
   /** Sender's class for a bot message; absent means informational. */
   priority?: 'urgent';
+  /** Scheduling marker: a human's note on a task, which runs ahead of the bot's other work. */
+  humanTaskNote?: true;
   /** Viewer-authorized source metadata. Never persist this presentation view. */
   sourceChat?: {
     id: string;
