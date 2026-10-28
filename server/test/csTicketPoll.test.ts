@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { UserRow } from '../src/db/db.js';
 import { createCsTicketService } from '../src/csTickets/service.js';
-import { AUTH_BLOCK_MS, createTicketPoller, mapOrderOpsMessage, mirrorRequestUrl, ORDEROPS_ORIGIN, POLL_INTERVAL_MS, type OrderOpsMessage } from '../src/csTickets/poll.js';
+import { AUTH_BLOCK_MS, classifyCaseKey, createTicketPoller, mapOrderOpsMessage, mirrorRequestUrl, ORDEROPS_ORIGIN, POLL_INTERVAL_MS, type OrderOpsMessage } from '../src/csTickets/poll.js';
+import { createTaskService } from '../src/tasks/service.js';
 
 const migrations = fileURLToPath(new URL('../src/db/migrations', import.meta.url));
 const OWNER = '11111111-1111-4111-8111-111111111111', TEAM = 'team';
@@ -28,13 +29,13 @@ describe('OrderOps ticket mirror poll', () => {
     db.prepare('INSERT INTO business_teams(id,name,owner_id) VALUES(?,?,1)').run(TEAM, 'ERVP');
     db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES(?,1,1,'Miles','codex','n','team',?)").run(OWNER, TEAM);
     db.prepare("INSERT INTO bot_registrations(conversation_id,name,registered_by) VALUES(?,'Miles',1)").run(OWNER);
-    db.prepare('INSERT INTO cs_ticket_owners(conversation_id) VALUES(?)').run(OWNER);
     user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
     tickets = createCsTicketService(db);
     clock = Date.parse('2026-10-16T17:05:00Z');
   });
   afterEach(() => db.close());
   const mirrored = () => {
+    db.prepare('INSERT OR IGNORE INTO cs_ticket_owners(conversation_id) VALUES(?)').run(OWNER);
     const r = tickets.sync({ user, conversationId: OWNER }, { ticket_id: 'OO-1001', subject: 'Cracked skylight', messages: [
       { external_id: 'oo-m0', direction: 'in', author: 'customer', author_label: 'Pat Rivera', body: 'It arrived cracked.', at: '2026-10-16T12:00:00Z' },
     ] });
@@ -51,6 +52,41 @@ describe('OrderOps ticket mirror poll', () => {
     expect(() => mirrorRequestUrl('/api/cs/conversations/OO-1001')).toThrow(/not allowed/);
     expect(() => mirrorRequestUrl('/api/cs/leases/OO-1001/claim')).toThrow(/not allowed/);
     expect(() => mirrorRequestUrl('/api/cs/conversations/../../admin/messages')).toThrow(/not allowed/);
+    expect(mirrorRequestUrl('/api/cs/conversations?search=VKNA4G&limit=5')).toContain('search=VKNA4G');
+    expect(() => mirrorRequestUrl('/api/cs/conversations?search=VKNA4G&limit=5', 'POST')).toThrow(/read-only/);
+    expect(() => mirrorRequestUrl('/api/cs/conversations?search=x&limit=500')).toThrow(/not allowed/);
+  });
+
+  it('tells ticket codes from order numbers and conversation ids', () => {
+    expect(classifyCaseKey('VKNA4G')).toBe('ticket_code');
+    expect(classifyCaseKey('fwdr22')).toBe('ticket_code');
+    expect(classifyCaseKey('100122214')).toBe('order_number');
+    expect(classifyCaseKey('53edc425-5a23-40c9-93c5-da838d1529a8')).toBe('uuid');
+    expect(classifyCaseKey('cb-4521')).toBe('other');
+    expect(classifyCaseKey(null)).toBe('other');
+  });
+
+  it('links a task to its OrderOps ticket by exact code, reads the thread on demand, and keeps polling it while the task is open', async () => {
+    const tasks = createTaskService(db);
+    const task = tasks.create({ user, conversationId: OWNER }, { title: 'Peter Williams lost shipment', case_key: 'YL4YNP' }).task;
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+      calls.push(String(url));
+      if (String(url).includes('search=')) return jsonResponse({ conversations: [{ id: 'conv-1', ticketNumber: 'YL4YNPX', subject: 'wrong' }, { id: 'conv-2', ticketNumber: 'YL4YNP', subject: 'A shipment from order #100122104 is on the way', customer: { name: 'Peter Williams', email: 'pw@example.test' } }] });
+      return jsonResponse([oo({ id: 'm1', body: 'Are you able to determine if the shipment is lost?', fromName: 'Peter Williams', createdAt: '2026-10-27T19:22:00Z' })]);
+    }) as unknown as typeof fetch;
+    const p = poller(fetchImpl);
+    const found = await p.findConversation('YL4YNP');
+    expect(found).toMatchObject({ id: 'conv-2', ticketNumber: 'YL4YNP' });
+    const ticket = tickets.linkTaskTicket(task, found!);
+    expect(ticket).toMatchObject({ task_id: task.id, orderops_ticket_id: 'conv-2', customer_name: 'Peter Williams', ticket_conversation_id: null });
+    expect(await p.readNow(ticket.id)).toEqual({ added: 1, error: null });
+    expect(tickets.messages(ticket.id).map((m) => m.body)).toEqual(['Are you able to determine if the shipment is lost?']);
+    expect(pendingWakes().filter((w) => w.wake_key.startsWith('cs-ticket:'))).toEqual([]); // a task-linked ticket has no ticket chat, so no ticket wake
+    expect(tickets.pollCandidates(25).map((t) => t.id)).toEqual([ticket.id]); // polled although the owner is not an enrolled ticket owner
+    tasks.mark({ user }, OWNER, { kind: 'task', id: task.id, mark: 'done' });
+    expect(tickets.pollCandidates(25)).toEqual([]);
+    expect(await p.findConversation('NOPE99')).toBeNull();
   });
 
   it('maps OrderOps rows onto the ticket record and drops internal notes', () => {

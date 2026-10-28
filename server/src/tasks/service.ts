@@ -54,6 +54,7 @@ export const StatusInput = z.object({
   status: z.enum(TASK_STATUSES),
   status_line: bounded(240).min(1),
   resources: z.array(resource).max(8).optional(),
+  case_key: bounded(200).min(1).optional(),
   completion: z.object({ verified_by_readback: z.boolean(), readback: bounded(1000).min(1), unknown_effects: z.boolean() }).strict().optional(),
 }).strict();
 export const DiscussInput = z.object({ text: z.string().trim().min(1).max(12000), request_key: bounded(200).min(1), attachments: z.array(z.object({ name: bounded(300).min(1), reference: bounded(2000).optional() }).strict()).max(12).optional() }).strict();
@@ -190,6 +191,12 @@ export function createTaskService(db: Database.Database) {
       const p = StatusInput.parse(raw);
       const t = botTask(actor, p.task_id);
       if (/[a-f0-9]{32,}/i.test(p.status_line)) throw new BotError(400, `Rewrite the status line. ${TASK_STYLE}`);
+      if (p.case_key && p.case_key !== t.case_key) {
+        const clash = db.prepare("SELECT id,title FROM bot_tasks WHERE owner_conversation_id=? AND case_key=? AND status<>'done' AND id<>?").get(t.owner_conversation_id, p.case_key, t.id) as { id: string; title: string } | undefined;
+        if (clash) throw new BotError(409, `Another open task already carries case ${p.case_key}: "${clash.title}". Add this direction to that task instead of changing this one.`);
+        db.prepare('UPDATE bot_tasks SET case_key=? WHERE id=?').run(p.case_key, t.id);
+        event(t.id, 'case_key', { from: t.case_key, to: p.case_key }, actor);
+      }
       let status = p.status; let line = p.status_line; let closedBy: 'auto' | null = null; let refused: string | null = null;
       if (status === 'done') {
         const card = openDecision(t.id);

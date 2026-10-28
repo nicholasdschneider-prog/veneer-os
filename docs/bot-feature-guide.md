@@ -21,7 +21,12 @@ the bot's tasks, its own open questions, coordination threads, handed-off chats,
 and (chief of staff only) other bots' questions; rows open the existing card, thread or chat; a task
 row opens a pane inside the board (build #910): status, the open question card, the task chat's
 transcript interleaved with the human's notes, Details (brief, case, files, history) and a full
-composer whose send wakes the task chat with any attachments. After a
+composer whose send wakes the task chat with any attachments. Build #911 adds a collapsed
+"Customer thread" in the pane: the real OrderOps thread (customer left, us right) read through the
+read-only mirror by ticket code only (never order number), linked via `cs_tickets.task_id`
+(migration 0189), refreshed on open and every two minutes while the task is open; the open state is
+remembered per browser session; `set_task_status` accepts `case_key` so a bot can add the ticket
+code. After a
 restart, working tasks are asked once per boot to reconcile against their sources before anything
 is rescheduled. Task chats of one bot run concurrently up to the cap in `conversationManager`
 (human chat first). No Make tab; no CS consolidation; identities unchanged. Deployment pending a

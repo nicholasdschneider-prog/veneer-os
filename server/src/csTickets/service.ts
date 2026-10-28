@@ -31,6 +31,7 @@ export interface CsTicketRow {
   last_inbound_at: string | null;
   last_polled_at: string | null;
   last_poll_error: string | null;
+  task_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -139,9 +140,31 @@ export function createCsTicketService(db: Database.Database) {
     messages: messagesOf,
     /** Tickets the server-side OrderOps poll should read: owned, not done, with a ticket chat; least recently read first. */
     pollCandidates(limit: number): CsTicketRow[] {
-      return db.prepare(`SELECT t.* FROM cs_tickets t JOIN cs_ticket_owners o ON o.conversation_id=t.owner_conversation_id AND o.enabled=1
-        JOIN bot_registrations r ON r.conversation_id=o.conversation_id AND r.active=1
-        WHERE t.status<>'done' AND t.ticket_conversation_id IS NOT NULL ORDER BY t.last_polled_at IS NOT NULL, t.last_polled_at, t.created_at LIMIT ?`).all(limit) as CsTicketRow[];
+      // Enrolled owners' ticket chats, plus tickets shown in an open task's pane (customer thread), whoever owns the task.
+      return db.prepare(`SELECT t.* FROM cs_tickets t
+        LEFT JOIN cs_ticket_owners o ON o.conversation_id=t.owner_conversation_id AND o.enabled=1
+        LEFT JOIN bot_registrations r ON r.conversation_id=o.conversation_id AND r.active=1
+        LEFT JOIN bot_tasks k ON k.id=t.task_id
+        WHERE (t.status<>'done' AND t.ticket_conversation_id IS NOT NULL AND r.conversation_id IS NOT NULL)
+           OR (t.task_id IS NOT NULL AND k.status<>'done')
+        ORDER BY t.last_polled_at IS NOT NULL, t.last_polled_at, t.created_at LIMIT ?`).all(limit) as CsTicketRow[];
+    },
+    /** The mirrored ticket behind a task's customer thread; created on first open, never given a ticket chat or a wake. */
+    ticketForTask(taskId: string): CsTicketRow | undefined {
+      return db.prepare('SELECT * FROM cs_tickets WHERE task_id=?').get(taskId) as CsTicketRow | undefined;
+    },
+    linkTaskTicket(task: { id: string; owner_conversation_id: string }, found: { id: string; ticketNumber: string; subject?: string; status?: string; customer?: { name?: string; email?: string; phone?: string } | null; customerName?: string; customerEmail?: string; customerPhone?: string }): CsTicketRow {
+      const owner = conversation(task.owner_conversation_id);
+      if (!owner?.business_team_id) throw new BotError(409, 'The owning bot must belong to a business');
+      const existing = db.prepare('SELECT * FROM cs_tickets WHERE team_id=? AND orderops_ticket_id=?').get(owner.business_team_id, found.id) as CsTicketRow | undefined;
+      if (existing) {
+        if (!existing.task_id) db.prepare('UPDATE cs_tickets SET task_id=? WHERE id=?').run(task.id, existing.id);
+        return ticketRow(existing.id)!;
+      }
+      const id = crypto.randomUUID();
+      db.prepare('INSERT INTO cs_tickets(id,team_id,orderops_ticket_id,owner_conversation_id,task_id,subject,customer_name,customer_email,customer_phone,summary) VALUES(?,?,?,?,?,?,?,?,?,?)')
+        .run(id, owner.business_team_id, found.id, owner.id, task.id, (found.subject ?? '').slice(0, 300), (found.customer?.name ?? found.customerName ?? '').slice(0, 200), (found.customer?.email ?? found.customerEmail ?? '').slice(0, 320), (found.customer?.phone ?? found.customerPhone ?? '').slice(0, 60), `OrderOps ticket ${found.ticketNumber}`);
+      return ticketRow(id)!;
     },
     /** Messages read from OrderOps by the poll: record them, and wake the ticket chat only for new inbound ones. */
     applyPolledMessages(ticketId: string, messages: SyncMessage[], now = new Date()): { added: number; inboundIds: string[]; woke: boolean } {

@@ -9,7 +9,7 @@ import { CHAT_DECISIONS_CHANGED } from '@/components/chat/OpenQuestionsPanel';
 import { api } from '@/lib/api';
 import { botsApi, type BotDecision } from '@/lib/bots';
 import { splitAttachmentFooter } from '@/lib/botComposer';
-import { BOARD_GROUPS, cleanTaskTitle, interleaveDiscussion, taskPaneHash, tasksApi, type Board, type BoardGroup, type BoardRow, type BotTask, type TaskEvent } from '@/lib/tasks';
+import { BOARD_GROUPS, cleanTaskTitle, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, tasksApi, type Board, type BoardGroup, type BoardRow, type BotTask, type CustomerThread as CustomerThreadData, type TaskEvent } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
 
 /**
@@ -169,6 +169,7 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 text-sm">
         {error && <p role="alert" className="text-destructive">{error}</p>}
         {decision && <ChatDecisionCard key={`${decision.id}:${decision.version}`} decision={decision} />}
+        {t && <CustomerThreadSection conversationId={conversationId} taskId={taskId} caseKey={t.case_key} bot={bot} />}
         <section aria-label={`Conversation with ${bot} on this task`} className="space-y-4">
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conversation with {bot} on this task</h3>
           {detail && stream.length === 0 && <p className="text-muted-foreground">{bot} hasn't started on this yet.{t?.status_line ? ` ${t.status_line}.` : ''}</p>}
@@ -199,4 +200,48 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
       </div>
     </section>
   );
+}
+
+/** The real OrderOps thread behind a task (customer on the left, us on the right), read-only, collapsed until the human wants it. */
+export function CustomerThreadSection({ conversationId, taskId, caseKey, bot }: { conversationId: string; taskId: string; caseKey: string | null; bot: string }) {
+  const [open, setOpen] = useState<boolean>(() => customerThreadPreferred());
+  const [data, setData] = useState<CustomerThreadData | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async (refresh = false) => {
+    setBusy(true);
+    try { setData(await tasksApi.customerThread(conversationId, taskId, refresh)); }
+    catch (e) { setData({ ticket: null, messages: [], checked_at: null, error: (e as Error).message }); }
+    finally { setBusy(false); }
+  }, [conversationId, taskId]);
+  useEffect(() => {
+    if (!open) return;
+    void load();
+    const timer = setInterval(() => void load(), 30000);
+    return () => clearInterval(timer);
+  }, [open, load]);
+  const toggle = () => { const next = !open; setOpen(next); rememberCustomerThread(next); };
+  return <section aria-label="Customer thread" className="rounded-xl border">
+    <div className="flex items-center justify-between gap-2 p-2">
+      <button type="button" className="min-h-9 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground" aria-expanded={open} onClick={toggle}>
+        Customer thread{caseKey ? ` · ${caseKey}` : ''} · {open ? 'Hide' : 'Show'}
+      </button>
+      {open && <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {data?.checked_at && <span>Checked OrderOps {ago(data.checked_at)} ago</span>}
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => void load(true)}>Refresh</Button>
+      </div>}
+    </div>
+    {open && <div className="space-y-2 border-t p-2">
+      {!data && <p className="text-xs text-muted-foreground">Reading the ticket from OrderOps…</p>}
+      {data?.error && !data.ticket && <p className="text-sm text-muted-foreground">{data.error.startsWith('No ticket code') ? `No ticket code on this task; ask ${bot} to add it.` : data.error}</p>}
+      {data?.ticket && <p className="text-xs text-muted-foreground">{data.ticket.subject || `Ticket ${data.ticket.code ?? ''}`} · {data.ticket.customer_name || data.ticket.customer_email || 'customer'}{data.error ? ` · last check failed: ${data.error}` : ''}</p>}
+      {data?.ticket && data.messages.length === 0 && <p className="text-sm text-muted-foreground">No messages on this ticket yet.</p>}
+      {data?.messages.map((m) => <div key={m.id} className={cn('flex', m.direction === 'in' ? 'justify-start' : 'justify-end')}>
+        <div className={cn('max-w-[85%] rounded-xl p-3 text-sm', m.direction === 'in' ? 'bg-muted' : 'bg-primary/10')}>
+          <p className="text-xs text-muted-foreground">{m.direction === 'in' ? (m.author_label || 'Customer') : (m.author_label || 'Us')} · {new Date(m.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}{m.channel ? ` · ${m.channel}` : ''}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
+          {m.attachments.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Attachments: {m.attachments.map((a) => a.name).join(', ')}</p>}
+        </div>
+      </div>)}
+    </div>}
+  </section>;
 }

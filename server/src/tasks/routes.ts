@@ -7,6 +7,9 @@ import { BotError, createBotService } from '../bots/service.js';
 import { botLabel, botLaneOwnerOfThread } from '../coordination/botLane.js';
 import type { CoordinationThread } from '../coordination/store.js';
 import { createTaskService, type TaskActor } from './service.js';
+import { createCsTicketService, presentMessage } from '../csTickets/service.js';
+import { classifyCaseKey, createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
+import { readSecretValue } from '../secrets/readSecret.js';
 
 /**
  * The CHAT | TASKS board for any bot chat, plus the bot tools behind it.
@@ -35,6 +38,13 @@ export function createTasksRouter(ctx: AppContext) {
   const db = ctx.db;
   const tasks = createTaskService(db);
   const bots = createBotService(db);
+  const csTickets = createCsTicketService(db);
+  // On-demand reads for the task pane's customer thread; same read-only principal as the mirror poll.
+  const mirror = createTicketPoller(db, {
+    readCredential: async () => (await readSecretValue({ db, projectDopplerCli: ctx.projectDopplerCli ?? null }, { name: MIRROR_SECRET.credential, project: MIRROR_SECRET.project, config: MIRROR_SECRET.config })).value,
+    log: { info: () => {}, warn: (m) => console.warn(m) },
+  });
+  const THREAD_FRESH_MS = 90_000;
   router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   const run = (fn: (req: express.Request, res: express.Response) => unknown) => (req: express.Request, res: express.Response, next: express.NextFunction) => {
     Promise.resolve().then(() => fn(req, res)).catch((e) => {
@@ -154,6 +164,30 @@ export function createTasksRouter(ctx: AppContext) {
     const t = tasks.read(req.params.taskId!);
     if (!t || t.owner_conversation_id !== req.params.id) throw new BotError(404, 'Task not found');
     res.json({ task: tasks.listForOwner(req.params.id!).find((x) => x.id === t.id), events: tasks.events(t.id, 50), bot_name: botLabel(db, req.params.id!) });
+  }));
+  /** The real customer thread behind a task, read through the OrderOps mirror by ticket code only. Errors are plain messages. */
+  router.get('/conversations/:id/tasks/:taskId/customer-thread', run(async (req, res) => {
+    if (req.agentConversationId) throw new BotError(403, 'The board is a human view');
+    visibleChat(req, req.params.id!);
+    const t = tasks.read(req.params.taskId!);
+    if (!t || t.owner_conversation_id !== req.params.id) throw new BotError(404, 'Task not found');
+    const reply = (body: Record<string, unknown>) => res.json({ ticket: null, messages: [], checked_at: null, error: null, ...body });
+    let ticket = csTickets.ticketForTask(t.id);
+    if (!ticket) {
+      const kind = classifyCaseKey(t.case_key);
+      if (kind === 'order_number') return reply({ error: 'No ticket code on this task (it carries an order number); ask the bot to add the OrderOps ticket code.' });
+      if (kind === 'other') return reply({ error: 'No ticket code on this task; ask the bot to add the OrderOps ticket code.' });
+      try {
+        const found = kind === 'uuid' ? { id: t.case_key!, ticketNumber: t.case_key! } : await mirror.findConversation(t.case_key!.toUpperCase());
+        if (!found) return reply({ error: `OrderOps has no ticket ${t.case_key}.` });
+        ticket = csTickets.linkTaskTicket(t, found);
+      } catch (e) { return reply({ error: `Could not reach OrderOps: ${(e as Error).message}` }); }
+    }
+    const stale = !ticket.last_polled_at || Date.now() - Date.parse(ticket.last_polled_at) > THREAD_FRESH_MS || req.query.refresh === '1';
+    const read = stale ? await mirror.readNow(ticket.id) : { added: 0, error: null };
+    const fresh = csTickets.read(ticket.id)!;
+    const messages = csTickets.messages(fresh.id).filter((m) => m.direction !== 'note').map(presentMessage);
+    res.json({ ticket: { id: fresh.id, orderops_ticket_id: fresh.orderops_ticket_id, code: t.case_key, subject: fresh.subject, customer_name: fresh.customer_name, customer_email: fresh.customer_email, customer_phone: fresh.customer_phone, status: fresh.status }, messages, checked_at: fresh.last_polled_at, added: read.added, error: read.error ?? fresh.last_poll_error ?? null });
   }));
   // Bot tools.
   router.post('/tasks', run((req, res) => res.json(tasks.create(actor(req), req.body))));

@@ -53,11 +53,25 @@ export interface Board {
   needs_you: number;
 }
 export interface TaskEvent { id: string; kind: string; at: string; payload: Record<string, unknown> }
+export interface CustomerThreadMessage { id: string; direction: 'in' | 'out' | 'note'; channel: string; author: string; author_label: string; body: string; attachments: { name: string; reference?: string }[]; at: string }
+export interface CustomerThread {
+  ticket: { id: string; orderops_ticket_id: string; code: string | null; subject: string; customer_name: string; customer_email: string; customer_phone: string; status: string } | null;
+  messages: CustomerThreadMessage[];
+  checked_at: string | null;
+  added?: number;
+  error: string | null;
+}
+/** Once the human opens the customer thread, keep it open for other tasks in this browser session. */
+export const CUSTOMER_THREAD_KEY = 'veneer.tasks.customer-thread';
+export function customerThreadPreferred(): boolean { try { return sessionStorage.getItem(CUSTOMER_THREAD_KEY) === 'open'; } catch { return false; } }
+export function rememberCustomerThread(open: boolean): void { try { if (open) sessionStorage.setItem(CUSTOMER_THREAD_KEY, 'open'); else sessionStorage.removeItem(CUSTOMER_THREAD_KEY); } catch { /* ignore */ } }
 export const tasksApi = {
   board: (conversationId: string, signal?: AbortSignal) => requestJson<Board>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks`, { signal }),
   task: (conversationId: string, taskId: string) => requestJson<{ task: BotTask; events: TaskEvent[]; bot_name: string }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}`),
   mark: (conversationId: string, body: { kind: 'task' | 'thread' | 'handoff'; id: string; mark: 'done' | 'reviewed' }) =>
     requestJson(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/mark`, { method: 'POST', body: JSON.stringify(body) }),
+  customerThread: (conversationId: string, taskId: string, refresh = false) =>
+    requestJson<CustomerThread>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}/customer-thread${refresh ? '?refresh=1' : ''}`),
   discuss: (conversationId: string, taskId: string, body: { text: string; request_key: string; attachments?: { name: string; reference: string }[] }) =>
     requestJson<{ event_id: string; duplicate: boolean }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}/discuss`, { method: 'POST', body: JSON.stringify(body) }),
 };

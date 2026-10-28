@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { groupRows, TaskPane, TasksBoard } from './TasksBoard';
-import { cleanTaskTitle, interleaveDiscussion, taskPaneHash, type BoardRow, type TaskEvent } from '@/lib/tasks';
+import { CustomerThreadSection, groupRows, TaskPane, TasksBoard } from './TasksBoard';
+import { cleanTaskTitle, CUSTOMER_THREAD_KEY, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, type BoardRow, type TaskEvent } from '@/lib/tasks';
 
-vi.mock('@/lib/tasks', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/tasks')>()), tasksApi: { board: () => new Promise(() => {}), task: () => new Promise(() => {}), mark: vi.fn(), discuss: vi.fn() } }));
+vi.mock('@/lib/tasks', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/tasks')>()), tasksApi: { board: () => new Promise(() => {}), task: () => new Promise(() => {}), mark: vi.fn(), discuss: vi.fn(), customerThread: () => new Promise(() => {}) } }));
 vi.mock('@/components/BotComposer', () => ({ BotComposer: ({ botName }: { botName: string }) => <div data-testid="composer">composer for {botName}</div> }));
 
 const row = (over: Partial<BoardRow>): BoardRow => ({ kind: 'task', id: 'a', group: 'working', title: 'T', status_line: 'Working', tag: 'case 1', href: '#/chat/x', updated_at: '2026-10-28T13:00:00Z', can_mark: true, ...over });
@@ -38,5 +38,20 @@ describe('tasks board', () => {
     expect(pane).toContain('composer for The bot');
     expect(pane).toContain('Conversation with The bot on this task');
     expect(pane).not.toContain('hasn&#x27;t started'); // not until the task has loaded
+  });
+  it('keeps the customer thread collapsed until the human opens it, then remembers that for the session', () => {
+    const store = new Map<string, string>();
+    (globalThis as { sessionStorage?: unknown }).sessionStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); }, removeItem: (k: string) => { store.delete(k); } };
+    expect(customerThreadPreferred()).toBe(false);
+    const closed = renderToStaticMarkup(<CustomerThreadSection conversationId="bot" taskId="t1" caseKey="VKNA4G" bot="Tess" />);
+    expect(closed).toContain('Customer thread · VKNA4G · Show');
+    expect(closed).not.toContain('Reading the ticket');
+    rememberCustomerThread(true);
+    expect(store.get(CUSTOMER_THREAD_KEY)).toBe('open');
+    const opened = renderToStaticMarkup(<CustomerThreadSection conversationId="bot" taskId="t2" caseKey={null} bot="Tess" />);
+    expect(opened).toContain('Customer thread · Hide');
+    expect(opened).toContain('Reading the ticket from OrderOps');
+    rememberCustomerThread(false);
+    expect(customerThreadPreferred()).toBe(false);
   });
 });

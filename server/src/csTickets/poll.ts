@@ -16,7 +16,18 @@ export const POLL_TIMEOUT_MS = 10_000;
 export const AUTH_BLOCK_MS = 15 * 60_000;
 export const CREDENTIAL_CACHE_MS = 10 * 60_000;
 const BACKOFF_MS = [60_000, 120_000, 240_000, 480_000, 30 * 60_000];
-const ALLOWED_PATHS = [/^\/api\/cs\/conversations\/[A-Za-z0-9_.:-]{1,100}\/messages$/, /^\/api\/cs\/leases\/capability$/];
+const ALLOWED_PATHS = [/^\/api\/cs\/conversations\/[A-Za-z0-9_.:-]{1,100}\/messages$/, /^\/api\/cs\/leases\/capability$/, /^\/api\/cs\/conversations\?search=[A-Za-z0-9_.:%-]{1,100}&limit=\d{1,2}$/];
+/** An OrderOps ticket code (VKNA4G), never an order number (100122214) and never a conversation uuid. */
+export const TICKET_CODE = /^[A-Z0-9]{5,8}$/;
+export const CONVERSATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function classifyCaseKey(key: string | null | undefined): 'uuid' | 'ticket_code' | 'order_number' | 'other' {
+  const k = (key ?? '').trim();
+  if (!k) return 'other';
+  if (CONVERSATION_UUID.test(k)) return 'uuid';
+  if (/^\d{6,}$/.test(k)) return 'order_number';
+  if (TICKET_CODE.test(k.toUpperCase()) && /[A-Z]/i.test(k)) return 'ticket_code';
+  return 'other';
+}
 const MAX_BODY = 4 * 1024 * 1024;
 
 /** The only requests the mirror may make: GET on an allowlisted path. Throws before any network call. */
@@ -103,7 +114,36 @@ export function createTicketPoller(db: Database.Database, deps: PollerDeps) {
     if (!Array.isArray(parsed)) throw new Error('OrderOps messages response was not a list');
     return parsed as OrderOpsMessage[];
   }
+  /** Find the OrderOps conversation for a ticket code; only an exact ticketNumber match counts. */
+  async function findConversation(code: string, bearer: string): Promise<{ id: string; ticketNumber: string; subject?: string; status?: string; customer?: { name?: string; email?: string; phone?: string } | null; customerName?: string; customerEmail?: string; customerPhone?: string } | null> {
+    const url = mirrorRequestUrl(`/api/cs/conversations?search=${encodeURIComponent(code)}&limit=5`);
+    const response = await doFetch(url, { method: 'GET', headers: { Authorization: `Bearer ${bearer}`, Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(POLL_TIMEOUT_MS), cache: 'no-store' });
+    if (response.status === 401 || response.status === 403) { await response.body?.cancel(); throw Object.assign(new Error(`OrderOps refused the mirror principal (${response.status})`), { auth: true }); }
+    if (!response.ok) { await response.body?.cancel(); throw new Error(`OrderOps returned ${response.status}`); }
+    const text = await response.text();
+    if (text.length > MAX_BODY) throw new Error('OrderOps response exceeds bound');
+    const parsed = JSON.parse(text) as { conversations?: unknown[] } | unknown[];
+    const list = (Array.isArray(parsed) ? parsed : parsed.conversations ?? []) as { id?: string; ticketNumber?: string }[];
+    const hit = list.find((c) => typeof c.ticketNumber === 'string' && c.ticketNumber.toUpperCase() === code.toUpperCase() && typeof c.id === 'string');
+    return (hit as ReturnType<typeof findConversation> extends Promise<infer R> ? R : never) ?? null;
+  }
   return {
+    findConversation: async (code: string) => findConversation(code, await credential()),
+    /** Read one ticket now (the task pane asked); records new messages with the usual dedupe. */
+    async readNow(ticketId: string): Promise<{ added: number; error: string | null }> {
+      const t = tickets.read(ticketId);
+      if (!t) return { added: 0, error: 'Ticket not found' };
+      try {
+        const messages = (await readMessages(t.orderops_ticket_id, await credential())).map(mapOrderOpsMessage).filter((m): m is SyncMessage => m !== null);
+        const r = tickets.applyPolledMessages(t.id, messages, new Date(now()));
+        return { added: r.added, error: null };
+      } catch (e) {
+        const err = e as Error & { auth?: boolean };
+        tickets.markPollError(t.id, err.message, new Date(now()));
+        if (err.auth) { authBlockedUntil = now() + AUTH_BLOCK_MS; cached = null; }
+        return { added: 0, error: err.message };
+      }
+    },
     /** Called often (the bot background loop ticks every few seconds); runs at most once per interval. */
     async tick(force = false): Promise<PollSummary> {
       const summary: PollSummary = { skipped: null, polled: 0, added: 0, woke: 0, errors: 0 };
