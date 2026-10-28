@@ -55,10 +55,10 @@ export interface Board {
 export interface TaskEvent { id: string; kind: string; at: string; payload: Record<string, unknown> }
 export const tasksApi = {
   board: (conversationId: string, signal?: AbortSignal) => requestJson<Board>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks`, { signal }),
-  task: (conversationId: string, taskId: string) => requestJson<{ task: BotTask; events: TaskEvent[] }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}`),
+  task: (conversationId: string, taskId: string) => requestJson<{ task: BotTask; events: TaskEvent[]; bot_name: string }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}`),
   mark: (conversationId: string, body: { kind: 'task' | 'thread' | 'handoff'; id: string; mark: 'done' | 'reviewed' }) =>
     requestJson(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/mark`, { method: 'POST', body: JSON.stringify(body) }),
-  discuss: (conversationId: string, taskId: string, body: { text: string; request_key: string }) =>
+  discuss: (conversationId: string, taskId: string, body: { text: string; request_key: string; attachments?: { name: string; reference: string }[] }) =>
     requestJson<{ event_id: string; duplicate: boolean }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}/discuss`, { method: 'POST', body: JSON.stringify(body) }),
 };
 /** Where the TASKS view of a chat lives; the toggle flips `view` and keeps the rest of the hash. */
@@ -72,3 +72,17 @@ export function tasksViewHash(conversationId: string, on: boolean): string {
   return `${base}${q ? `?${q}` : ''}`;
 }
 export const TASKS_VIEW_KEY = (id: string) => `veneer.tasks-view.${id}`;
+/** The board with one task open in its pane (or closed when taskId is null). */
+export function taskPaneHash(conversationId: string, taskId: string | null): string {
+  const base = tasksViewHash(conversationId, true);
+  const [path, query = ''] = base.split('?');
+  const params = new URLSearchParams(query);
+  if (taskId) params.set('task', taskId); else params.delete('task');
+  return `${path}?${params.toString()}`;
+}
+/** The task's own conversation plus the human's board notes, in time order, so the pane reads as one exchange. */
+export function interleaveDiscussion<T extends { at: string }>(turns: T[], events: TaskEvent[]): Array<{ kind: 'turn'; at: string; turn: T } | { kind: 'note'; at: string; event: TaskEvent }> {
+  const notes = events.filter((e) => e.kind === 'discussion').map((event) => ({ kind: 'note' as const, at: event.at.includes('T') ? event.at : `${event.at.replace(' ', 'T')}Z`, event }));
+  const all = [...turns.map((turn) => ({ kind: 'turn' as const, at: turn.at, turn })), ...notes];
+  return all.sort((a, b) => a.at.localeCompare(b.at));
+}

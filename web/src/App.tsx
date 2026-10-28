@@ -702,7 +702,7 @@ export function App() {
         >
           {chatId ? (
             tasksView ? (
-            <TasksBoard key={`tasks:${chatId}`} conversationId={chatId!} onNavigate={navigate} />
+            <TasksBoard key={`tasks:${chatId}`} conversationId={chatId!} taskId={params.get('task')} onNavigate={navigate} />
           ) : (
             <ChatWorkspace
               key={chatId === 'new' ? `${chatId}:${chatProjectId ?? ''}` : chatId}

@@ -217,50 +217,42 @@ export function CoordinationPanel({
                   </button>
                 </p>
               ))}
-            {coordinationItems(view).map((turn) => (
-              <section key={turn.key} className="space-y-3">
-                {turn.items.map((item) =>
-                  item.kind === 'user' ? (
-                    <div
-                      key={item.key}
-                      className="space-y-1 rounded-lg bg-muted/50 p-3"
-                    >
-                      <p className="font-medium">
-                        {item.origin?.from ?? 'Message'} → {turn.name}
-                      </p>
-                      <p className="whitespace-pre-wrap break-words">
-                        {item.text}
-                      </p>
-                    </div>
-                  ) : item.kind === 'assistant' ? (
-                    <div key={item.key} className="space-y-1">
-                      <p className="font-medium">{turn.name}</p>
-                      <Markdown markdown={item.markdown} />
-                    </div>
-                  ) : item.kind === 'tool' ? (
-                    <details key={item.key} className="text-muted-foreground">
-                      <summary className="cursor-pointer">
-                        {item.label} ·{' '}
-                        {item.running ? 'Working' : item.ok ? 'Done' : 'Failed'}
-                      </summary>
-                      <pre className="whitespace-pre-wrap break-words text-xs">
-                        {item.inputPreview}
-                        {'\n'}
-                        {item.resultPreview}
-                      </pre>
-                    </details>
-                  ) : item.kind === 'notice' ? (
-                    <p key={item.key} className="text-muted-foreground">
-                      {item.message}
-                    </p>
-                  ) : null,
-                )}
-              </section>
-            ))}
+            <CoordinationTurns view={view} />
             {!view.lanes.length && <p>No messages yet.</p>}
           </>
         )}
       </div>
     </section>
   );
+}
+
+/** One bot turn group rendered the way the coordination panel shows it; reused by the task pane. */
+export function CoordinationTurn({ turn }: { turn: ReturnType<typeof coordinationItems>[number] }) {
+  return (
+    <section key={turn.key} className="space-y-3">
+      {turn.items.map((item) =>
+        item.kind === 'user' ? (
+          <div key={item.key} className="space-y-1 rounded-lg bg-muted/50 p-3">
+            <p className="font-medium">{item.origin?.from ?? 'Message'} → {turn.name}</p>
+            <p className="whitespace-pre-wrap break-words">{item.text}</p>
+          </div>
+        ) : item.kind === 'assistant' ? (
+          <div key={item.key} className="space-y-1">
+            <p className="font-medium">{turn.name}</p>
+            <Markdown markdown={item.markdown} />
+          </div>
+        ) : item.kind === 'tool' ? (
+          <details key={item.key} className="text-muted-foreground">
+            <summary className="cursor-pointer">{item.label} · {item.running ? 'Working' : item.ok ? 'Done' : 'Failed'}</summary>
+            <pre className="whitespace-pre-wrap break-words text-xs">{item.inputPreview}{'\n'}{item.resultPreview}</pre>
+          </details>
+        ) : item.kind === 'notice' ? (
+          <p key={item.key} className="text-muted-foreground">{item.message}</p>
+        ) : null,
+      )}
+    </section>
+  );
+}
+export function CoordinationTurns({ view }: { view: CoordinationView }) {
+  return <>{coordinationItems(view).map((turn) => <CoordinationTurn key={turn.key} turn={turn} />)}</>;
 }

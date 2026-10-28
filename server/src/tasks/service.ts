@@ -56,7 +56,7 @@ export const StatusInput = z.object({
   resources: z.array(resource).max(8).optional(),
   completion: z.object({ verified_by_readback: z.boolean(), readback: bounded(1000).min(1), unknown_effects: z.boolean() }).strict().optional(),
 }).strict();
-export const DiscussInput = z.object({ text: z.string().trim().min(1).max(12000), request_key: bounded(200).min(1) }).strict();
+export const DiscussInput = z.object({ text: z.string().trim().min(1).max(12000), request_key: bounded(200).min(1), attachments: z.array(z.object({ name: bounded(300).min(1), reference: bounded(2000).optional() }).strict()).max(12).optional() }).strict();
 export const MarkInput = z.object({ kind: z.enum(['task', 'thread', 'handoff']), id: bounded(200).min(1), mark: z.enum(['done', 'reviewed']), request_key: bounded(200).optional() }).strict();
 
 const MAX_CONTEXT_EVENTS = 30;
@@ -213,10 +213,11 @@ export function createTaskService(db: Database.Database) {
       const t = humanTask(actor, id);
       const dup = db.prepare("SELECT id FROM bot_task_events WHERE task_id=? AND kind='discussion' AND json_extract(payload_json,'$.request_key')=?").get(t.id, p.request_key) as { id: string } | undefined;
       if (dup) return { event_id: dup.id, duplicate: true, task: present(t) };
-      const ev = event(t.id, 'discussion', { text: p.text, by: actor.user.display_name, request_key: p.request_key }, actor);
+      const files = (p.attachments ?? []).filter((a) => a.reference).map((a) => `- ${a.reference} (${a.name})`);
+      const ev = event(t.id, 'discussion', { text: p.text, by: actor.user.display_name, request_key: p.request_key, attachments: p.attachments ?? [] }, actor);
       if (t.status === 'done' || t.status === 'up_next') setStatusRow(t, 'working', `${actor.user.display_name} wrote on this task`);
       else if (t.status === 'ready_for_review') setStatusRow(t, 'working', `${actor.user.display_name} replied to the review`);
-      wake(t, `discuss:${ev}`, `${actor.user.display_name} wrote on task "${t.title}":\n${p.text}\n\nThis is direction within your existing authority, not a new approval for money or sends. Act on it in this task chat and update the board with set_task_status.`);
+      wake(t, `discuss:${ev}`, `${actor.user.display_name} wrote on task "${t.title}":\n${p.text}${files.length ? `\n\nAttached files (saved on this server; read them from these paths):\n${files.join('\n')}` : ''}\n\nThis is direction within your existing authority, not a new approval for money or sends. Act on it in this task chat and update the board with set_task_status.`);
       return { event_id: ev, duplicate: false, task: present(taskRow(t.id)!) };
     },
     /** Human marks: a task is done only when the human says so (or on verified auto-close); threads and handoffs get a mark row. */

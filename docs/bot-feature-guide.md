@@ -19,7 +19,9 @@ binds the card to the task and parks it in Needs input; the answer wakes the tas
 per chat) to see Ready for review / Needs input / Doing work / Up next and a Completed filter over
 the bot's tasks, its own open questions, coordination threads, handed-off chats, mirrored tickets
 and (chief of staff only) other bots' questions; rows open the existing card, thread or chat; a task
-row expands to its record, a discussion box that wakes the task chat, and Mark it done. After a
+row opens a pane inside the board (build #910): status, the open question card, the task chat's
+transcript interleaved with the human's notes, Details (brief, case, files, history) and a full
+composer whose send wakes the task chat with any attachments. After a
 restart, working tasks are asked once per boot to reconcile against their sources before anything
 is rescheduled. Task chats of one bot run concurrently up to the cap in `conversationManager`
 (human chat first). No Make tab; no CS consolidation; identities unchanged. Deployment pending a

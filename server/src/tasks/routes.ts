@@ -63,7 +63,8 @@ export function createTasksRouter(ctx: AppContext) {
       const group: BoardGroup = t.status === 'done' ? 'completed' : t.status;
       rows.push({ kind: 'task', id: t.id, group, title: t.title, status_line: t.status_line, tag: t.case_key ? `case ${t.case_key}` : t.source.replace('_', ' '), updated_at: t.updated_at,
         // The task chat is read in the owner chat's side panel (it renders a lane's transcript); a lane page on its own is blank.
-        href: t.open_decision ? `#/chat/${chat.id}?side=decision:${t.open_decision.id}` : t.thread_id ? `#/chat/${chat.id}?side=coordination:${t.thread_id}` : `#/chat/${chat.id}?view=tasks`,
+        // A task opens in the board's own pane (status, question card, the task chat's transcript, composer); never the bare lane page.
+        href: `#/chat/${chat.id}?view=tasks&task=${t.id}`,
         can_mark: group !== 'completed', task: t, ...(t.open_decision ? { decision_id: t.open_decision.id } : {}) });
     }
     // 2. The bot's own open questions not bound to a task.
@@ -152,7 +153,7 @@ export function createTasksRouter(ctx: AppContext) {
     visibleChat(req, req.params.id!);
     const t = tasks.read(req.params.taskId!);
     if (!t || t.owner_conversation_id !== req.params.id) throw new BotError(404, 'Task not found');
-    res.json({ task: tasks.listForOwner(req.params.id!).find((x) => x.id === t.id), events: tasks.events(t.id, 50) });
+    res.json({ task: tasks.listForOwner(req.params.id!).find((x) => x.id === t.id), events: tasks.events(t.id, 50), bot_name: botLabel(db, req.params.id!) });
   }));
   // Bot tools.
   router.post('/tasks', run((req, res) => res.json(tasks.create(actor(req), req.body))));

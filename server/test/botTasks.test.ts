@@ -125,6 +125,9 @@ describe('shared Tasks capability', () => {
     expect(tasks.discuss({ user }, t.task.id, { text: 'Use the restocking fee table from last month.', request_key: 'r1' }).duplicate).toBe(true);
     const wake = pendingWakes(OWNER).find((w) => w.wake_key === `bot-task:${t.task.id}:discuss:${d.event_id}`)!;
     expect(wake.reason).toContain('Nick wrote on task');
+    const withFile = tasks.discuss({ user }, t.task.id, { text: 'Here is the invoice.', request_key: 'r3', attachments: [{ name: 'invoice.pdf', reference: '/data/uploads/ab12/invoice.pdf' }] });
+    expect(pendingWakes(OWNER).find((w) => w.wake_key === `bot-task:${t.task.id}:discuss:${withFile.event_id}`)!.reason).toContain('- /data/uploads/ab12/invoice.pdf (invoice.pdf)');
+    expect(tasks.events(t.task.id).find((e) => e.id === withFile.event_id)!.payload).toMatchObject({ attachments: [{ name: 'invoice.pdf' }] });
     expect(tasks.contextBlock(lane)).toContain('discussion from Nick: Use the restocking fee table');
     const ali = db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow;
     expect(() => tasks.discuss({ user: ali }, t.task.id, { text: 'x', request_key: 'r2' })).toThrow(/not found/);

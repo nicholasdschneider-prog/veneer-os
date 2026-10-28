@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BotComposer } from '@/components/BotComposer';
+import { ChatDecisionCard } from '@/components/chat/ChatDecisionCard';
 import { ChatTasksToggle } from '@/components/chat/ChatTasksToggle';
+import { CoordinationTurn, coordinationItems, type CoordinationView } from '@/components/chat/Coordination';
 import { CHAT_DECISIONS_CHANGED } from '@/components/chat/OpenQuestionsPanel';
-import { BOARD_GROUPS, cleanTaskTitle, tasksApi, type Board, type BoardGroup, type BoardRow, type TaskEvent } from '@/lib/tasks';
+import { api } from '@/lib/api';
+import { botsApi, type BotDecision } from '@/lib/bots';
+import { splitAttachmentFooter } from '@/lib/botComposer';
+import { BOARD_GROUPS, cleanTaskTitle, interleaveDiscussion, taskPaneHash, tasksApi, type Board, type BoardGroup, type BoardRow, type BotTask, type TaskEvent } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
 
 /**
  * The TASKS view of a bot chat (shared Tasks capability): everything in flight
- * for this bot in one list, grouped by what the human has to do next. Rows open
- * the existing card, thread or chat; a task row expands to its record, a
- * discussion box, and Mark done. Status comes from source state, so coming back
- * hours later shows the truth, not the last chat claim.
+ * for this bot in one list, grouped by what the human has to do next. A task
+ * opens in a pane inside the board: its status, its open question card, the
+ * task chat's transcript interleaved with the human's notes, and a composer
+ * that speaks to that task only. Status comes from source state, so coming
+ * back hours later shows the truth, not the last chat claim.
  */
 const ago = (iso: string | null | undefined) => {
   if (!iso) return '';
@@ -27,11 +35,10 @@ export function groupRows(rows: BoardRow[], showCompleted: boolean): { id: Board
 }
 const dotColor: Record<BoardGroup, string> = { ready_for_review: 'bg-emerald-500', needs_input: 'bg-amber-500', working: 'bg-sky-500', up_next: 'bg-muted-foreground/40', completed: 'bg-muted-foreground/30' };
 
-export function TasksBoard({ conversationId, onNavigate }: { conversationId: string; onNavigate: (hash: string) => void }) {
+export function TasksBoard({ conversationId, taskId = null, onNavigate }: { conversationId: string; taskId?: string | null; onNavigate: (hash: string) => void }) {
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
-  const [open, setOpen] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
     abort.current?.abort();
@@ -52,8 +59,9 @@ export function TasksBoard({ conversationId, onNavigate }: { conversationId: str
     if (row.kind !== 'task' && row.kind !== 'thread' && row.kind !== 'handoff') return;
     try { await tasksApi.mark(conversationId, { kind: row.kind, id: row.id, mark: markKind }); await refresh(); } catch (e) { setError((e as Error).message); }
   };
-  return (
-    <section aria-label="Tasks" className="conversation-surface flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain bg-card">
+  const open = (row: BoardRow) => onNavigate(row.kind === 'task' ? taskPaneHash(conversationId, row.id) : row.href);
+  const list = (
+    <section aria-label="Tasks" className="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain">
       <header className="flex items-center justify-between gap-3 border-b px-3 py-2.5">
         <div className="min-w-0">
           <h1 className="truncate font-medium">{board?.chat.bot_name || board?.chat.title || 'Tasks'}</h1>
@@ -71,68 +79,124 @@ export function TasksBoard({ conversationId, onNavigate }: { conversationId: str
       {groups.map((g) => <section key={g.id} aria-label={g.label} className="px-3 pt-3">
         <h2 className="flex items-baseline gap-2 text-sm font-medium"><span>{g.label}</span><span className="text-xs text-muted-foreground">{g.rows.length}</span></h2>
         <ul className="mt-1 divide-y rounded-xl border">
-          {g.rows.map((row) => <li key={`${row.kind}:${row.id}`} data-row-kind={row.kind}>
+          {g.rows.map((row) => <li key={`${row.kind}:${row.id}`} data-row-kind={row.kind} aria-current={row.kind === 'task' && row.id === taskId ? 'true' : undefined} className={cn(row.kind === 'task' && row.id === taskId && 'bg-muted')}>
             <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 p-3">
               {row.can_mark ? <input type="checkbox" aria-label={`Mark ${row.title} done`} className="mt-1 size-4" checked={false} onChange={() => void mark(row, 'done')} />
                 : <span aria-hidden="true" className={cn('mt-1.5 size-2.5 rounded-full', dotColor[row.group])} />}
-              <button className="min-w-0 text-left" onClick={() => row.kind === 'task' ? setOpen(open === row.id ? null : row.id) : onNavigate(row.href)}>
+              <button className="min-w-0 text-left" onClick={() => open(row)}>
                 <span className="block font-medium leading-snug">{row.task ? cleanTaskTitle(row.title, row.task.case_key) : row.title}</span>
                 <span className="block truncate text-xs text-muted-foreground"><span className={cn(row.group === 'needs_input' && 'text-amber-700 dark:text-amber-300', row.group === 'ready_for_review' && 'text-emerald-700 dark:text-emerald-300')}>{row.status_line}</span></span>
                 <span className="block text-xs text-muted-foreground">{row.tag}</span>
               </button>
               <span className="text-xs text-muted-foreground">{ago(row.updated_at)}</span>
             </div>
-            {row.kind === 'task' && open === row.id && row.task && <TaskDetail conversationId={conversationId} row={row} onNavigate={onNavigate} onChanged={refresh} />}
           </li>)}
         </ul>
       </section>)}
       <div className="h-6" />
     </section>
   );
+  return (
+    <div className="flex h-full min-h-0 bg-card">
+      <div className={cn('min-h-0 min-w-0 flex-1 md:max-w-sm md:border-r', taskId && 'hidden md:block')}>{list}</div>
+      {taskId ? <TaskPane key={taskId} conversationId={conversationId} taskId={taskId} onNavigate={onNavigate} onChanged={refresh} />
+        : <div className="hidden min-w-0 flex-1 items-center justify-center p-6 text-sm text-muted-foreground md:flex">Open a task to read the bot's work on it and write to it there.</div>}
+    </div>
+  );
 }
 
-function TaskDetail({ conversationId, row, onNavigate, onChanged }: { conversationId: string; row: BoardRow; onNavigate: (hash: string) => void; onChanged: () => Promise<void> }) {
-  const task = row.task!;
-  const [events, setEvents] = useState<TaskEvent[]>([]);
-  const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
+/** One task, in place: its status, its open question, its conversation, and a composer that speaks to it alone. */
+export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { conversationId: string; taskId: string; onNavigate: (hash: string) => void; onChanged: () => Promise<void> }) {
+  const [detail, setDetail] = useState<{ task: BotTask; events: TaskEvent[]; bot_name: string } | null>(null);
+  const [decision, setDecision] = useState<BotDecision | null>(null);
+  const [view, setView] = useState<CoordinationView | null>(null);
+  const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const key = useRef(crypto.randomUUID());
-  useEffect(() => { tasksApi.task(conversationId, task.id).then((r) => setEvents(r.events)).catch(() => {}); }, [conversationId, task.id, task.updated_at]);
-  const send = async () => {
-    const body = text.trim();
-    if (!body || busy) return;
-    setBusy(true);
-    try { await tasksApi.discuss(conversationId, task.id, { text: body, request_key: key.current }); key.current = crypto.randomUUID(); setText(''); setNote('Sent to the bot for this task.'); await onChanged(); }
-    catch (e) { setNote((e as Error).message); }
-    finally { setBusy(false); }
-  };
-  const brief = task.brief.trim();
-  const short = brief.length > 280 ? `${brief.slice(0, 280).trimEnd()}…` : brief;
+  const [sending, setSending] = useState(false);
   const [more, setMore] = useState(false);
-  const chatHref = task.thread_id ? `#/chat/${conversationId}?side=coordination:${task.thread_id}` : null;
-  return <div className="space-y-3 border-t bg-muted/30 p-3 text-sm">
-    <p className="font-medium">{task.status_line || 'No status yet'}</p>
-    <div className="flex flex-wrap gap-2">
-      {task.open_decision && <Button size="sm" onClick={() => onNavigate(`#/chat/${conversationId}?side=decision:${task.open_decision!.id}`)}>Answer the question</Button>}
-      {chatHref && <Button size="sm" variant="outline" onClick={() => onNavigate(chatHref)}>Open task chat</Button>}
-      {task.status !== 'done' && <Button size="sm" variant="outline" onClick={async () => { await tasksApi.mark(conversationId, { kind: 'task', id: task.id, mark: 'done' }); await onChanged(); }}>Mark it done</Button>}
-    </div>
-    <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-      <label className="block text-xs font-medium">Write to the bot about this task
-        <textarea className="mt-1 block w-full rounded-lg border bg-background p-2 text-sm" rows={2} value={text} placeholder="Direction for this task only" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send(); } }} />
-      </label>
-      <div className="flex items-center gap-3"><Button type="submit" size="sm" disabled={busy || !text.trim()}>Send</Button>{note && <span role="status" className="text-xs text-muted-foreground">{note}</span>}</div>
-    </form>
-    {(brief || events.length > 0 || task.resources.length > 0) && <details className="rounded-lg border bg-background">
-      <summary className="cursor-pointer p-2 text-xs font-medium">Details{task.case_key ? ` · case ${task.case_key}` : ''}{events.length ? ` · ${events.length} events` : ''}</summary>
-      <div className="space-y-2 p-2 text-xs">
-        {brief && <p className="whitespace-pre-wrap">{more ? brief : short}{brief.length > 280 && <button type="button" className="ml-1 underline" onClick={() => setMore(!more)}>{more ? 'less' : 'more'}</button>}</p>}
-        {task.resources.length > 0 && <p className="text-muted-foreground">Uses: {task.resources.join(', ')}</p>}
-        {events.length > 0 && <ol className="divide-y">
-          {events.map((e) => <li key={e.id} className="py-1"><span className="text-muted-foreground">{ago(e.at)} ago · {e.kind}</span>{typeof e.payload.text === 'string' ? <p className="mt-0.5 whitespace-pre-wrap">{String(e.payload.by ?? '')}: {String(e.payload.text).slice(0, 400)}</p> : typeof e.payload.status_line === 'string' ? <p className="mt-0.5">{e.payload.status_line}</p> : null}</li>)}
-        </ol>}
+  const key = useRef(crypto.randomUUID());
+  const load = useCallback(async () => {
+    try {
+      const d = await tasksApi.task(conversationId, taskId);
+      setDetail(d);
+      setError('');
+      if (d.task.open_decision) {
+        const list = await botsApi.decisionsFor(conversationId).catch(() => ({ decisions: [] as BotDecision[] }));
+        setDecision(list.decisions.find((x) => x.id === d.task.open_decision!.id) ?? null);
+      } else setDecision(null);
+      if (d.task.thread_id) setView(await api.coordinationThread(d.task.thread_id).catch(() => null));
+    } catch (e) { setError((e as Error).message); }
+  }, [conversationId, taskId]);
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), 4000);
+    const onChange = () => void load();
+    window.addEventListener(CHAT_DECISIONS_CHANGED, onChange);
+    return () => { clearInterval(timer); window.removeEventListener(CHAT_DECISIONS_CHANGED, onChange); };
+  }, [load]);
+  const close = () => onNavigate(taskPaneHash(conversationId, null));
+  const send = async (text: string) => {
+    const { body, paths } = splitAttachmentFooter(text);
+    if ((!body && !paths.length) || sending) return;
+    setSending(true);
+    try {
+      await tasksApi.discuss(conversationId, taskId, { text: body || `Sent ${paths.length} file${paths.length === 1 ? '' : 's'}.`, request_key: key.current, ...(paths.length ? { attachments: paths.map((p) => ({ name: p.split('/').pop() || p, reference: p })) } : {}) });
+      key.current = crypto.randomUUID();
+      setNote('Sent to the bot for this task.');
+      await load();
+      await onChanged();
+    } catch (e) { setNote((e as Error).message); }
+    finally { setSending(false); }
+  };
+  const t = detail?.task;
+  const bot = detail?.bot_name || 'The bot';
+  const turns = view ? coordinationItems(view) : [];
+  const stream = interleaveDiscussion(turns, detail?.events ?? []);
+  const brief = t?.brief.trim() ?? '';
+  const short = brief.length > 280 ? `${brief.slice(0, 280).trimEnd()}…` : brief;
+  const files = (detail?.events ?? []).flatMap((e) => (Array.isArray(e.payload.attachments) ? (e.payload.attachments as { name: string; reference?: string }[]) : []));
+  return (
+    <section aria-label="Task" className="conversation-surface flex h-full min-h-0 min-w-0 flex-1 flex-col bg-card [overflow-wrap:anywhere]">
+      <header className="flex items-start gap-2 border-b px-3 py-2.5">
+        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Back to tasks" onClick={close}><ArrowLeft className="size-4" /></Button>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-medium leading-snug">{t ? cleanTaskTitle(t.title, t.case_key) : 'Task'}</h2>
+          <p className={cn('text-xs', t?.status === 'needs_input' ? 'text-amber-700 dark:text-amber-300' : t?.status === 'ready_for_review' ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground')}>{t?.status_line || (detail ? 'No status yet' : 'Loading…')}{t?.case_key ? ` · case ${t.case_key}` : ''}</p>
+        </div>
+        {t && t.status !== 'done' && <Button size="sm" variant="outline" onClick={async () => { await tasksApi.mark(conversationId, { kind: 'task', id: taskId, mark: 'done' }); await load(); await onChanged(); }}>Mark it done</Button>}
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Close task" onClick={close}><X className="size-4" /></Button>
+      </header>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 text-sm">
+        {error && <p role="alert" className="text-destructive">{error}</p>}
+        {decision && <ChatDecisionCard key={`${decision.id}:${decision.version}`} decision={decision} />}
+        <section aria-label={`Conversation with ${bot} on this task`} className="space-y-4">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conversation with {bot} on this task</h3>
+          {detail && stream.length === 0 && <p className="text-muted-foreground">{bot} hasn't started on this yet.{t?.status_line ? ` ${t.status_line}.` : ''}</p>}
+          {stream.map((item) => item.kind === 'turn'
+            ? <CoordinationTurn key={item.turn.key} turn={item.turn} />
+            : <div key={item.event.id} className="space-y-1 rounded-lg bg-muted/50 p-3">
+                <p className="font-medium">{String(item.event.payload.by ?? 'You')} → {bot}</p>
+                <p className="whitespace-pre-wrap break-words">{String(item.event.payload.text ?? '')}</p>
+                {Array.isArray(item.event.payload.attachments) && (item.event.payload.attachments as { name: string }[]).length > 0 && <p className="text-xs text-muted-foreground">Files: {(item.event.payload.attachments as { name: string }[]).map((a) => a.name).join(', ')}</p>}
+              </div>)}
+        </section>
+        {t && (brief || files.length > 0 || t.resources.length > 0 || (detail?.events.length ?? 0) > 0) && <details className="rounded-lg border bg-background">
+          <summary className="cursor-pointer p-2 text-xs font-medium">Details{detail?.events.length ? ` · ${detail.events.length} events` : ''}</summary>
+          <div className="space-y-2 p-2 text-xs">
+            {brief && <p className="whitespace-pre-wrap">{more ? brief : short}{brief.length > 280 && <button type="button" className="ml-1 underline" onClick={() => setMore(!more)}>{more ? 'less' : 'more'}</button>}</p>}
+            {t.resources.length > 0 && <p className="text-muted-foreground">Uses: {t.resources.join(', ')}</p>}
+            {files.length > 0 && <p className="text-muted-foreground">Files you sent: {files.map((f) => f.name).join(', ')}</p>}
+            {(detail?.events.length ?? 0) > 0 && <ol className="divide-y">
+              {detail!.events.map((e) => <li key={e.id} className="py-1"><span className="text-muted-foreground">{ago(e.at)} ago · {e.kind}</span>{typeof e.payload.status_line === 'string' ? <p className="mt-0.5">{e.payload.status_line}</p> : null}</li>)}
+            </ol>}
+          </div>
+        </details>}
       </div>
-    </details>}
-  </div>;
+      <div className="border-t p-2">
+        <p className="px-1 pb-1 text-xs font-medium">Write to {bot} about this task</p>
+        <BotComposer conversationId={conversationId} botName={bot} busy={sending} onSend={send} />
+        {note && <p role="status" className="px-1 pt-1 text-xs text-muted-foreground">{note}</p>}
+      </div>
+    </section>
+  );
 }
