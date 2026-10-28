@@ -202,6 +202,17 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
   );
 }
 
+/** A customer photo; if OrderOps was busy it offers a retry instead of a broken image. */
+function ThreadImage({ url, name }: { url: string; name: string }) {
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const src = attempt ? `${url}?retry=${attempt}` : url;
+  if (failed) return <button type="button" className="flex h-32 w-32 items-center justify-center rounded-lg border bg-background p-2 text-center text-xs text-muted-foreground sm:h-40 sm:w-40" onClick={() => { setFailed(false); setAttempt(attempt + 1); }}>{name} didn't load · Tap to retry</button>;
+  return <a href={src} target="_blank" rel="noreferrer" title={name} className="block">
+    <img src={src} alt={name} loading="lazy" onError={() => setFailed(true)} className="h-32 w-32 rounded-lg border bg-background object-cover sm:h-40 sm:w-40" />
+  </a>;
+}
+
 /** One customer-thread message: readable text, photos inline, PDFs as chips, quoted history folded. */
 export function ThreadBody({ message: m }: { message: CustomerThreadData['messages'][number] }) {
   const [earlier, setEarlier] = useState(false);
@@ -212,9 +223,7 @@ export function ThreadBody({ message: m }: { message: CustomerThreadData['messag
   return <>
     {text && <p className="mt-1 whitespace-pre-wrap break-words">{text}</p>}
     {images.length > 0 && <div className="mt-2 flex flex-wrap gap-2">
-      {images.map((f) => <a key={f.url} href={f.url!} target="_blank" rel="noreferrer" title={f.name} className="block">
-        <img src={f.url!} alt={f.name} loading="lazy" className="h-32 w-32 rounded-lg border bg-background object-cover sm:h-40 sm:w-40" />
-      </a>)}
+      {images.map((f) => <ThreadImage key={f.url} url={f.url!} name={f.name} />)}
     </div>}
     {others.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">
       {others.map((f, i) => f.url

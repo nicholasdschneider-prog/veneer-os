@@ -83,6 +83,22 @@ describe('OrderOps ticket mirror poll', () => {
     expect(methods).toEqual(['GET', 'GET']);
   });
 
+  it('fetches files one at a time, retries an OrderOps 429, and shares a fetch of the same file', async () => {
+    let active = 0, peak = 0, calls = 0, refused = false;
+    const fetchImpl = vi.fn(async () => {
+      calls++; active++; peak = Math.max(peak, active);
+      await new Promise((r) => setTimeout(r, 5));
+      active--;
+      if (!refused) { refused = true; return new Response('{}', { status: 429, headers: { 'Retry-After': '1' } }); }
+      return new Response(new Uint8Array([1, 2]), { headers: { 'Content-Type': 'image/png' } });
+    }) as unknown as typeof fetch;
+    const p = poller(fetchImpl);
+    const results = await Promise.all(['/objects/uploads/a.png', '/objects/uploads/b.png', '/objects/uploads/a.png', '/objects/uploads/c.png'].map((r) => p.fetchAttachment(r)));
+    expect(results.every((r) => 'type' in r && r.type === 'image/png')).toBe(true);
+    expect(peak).toBe(1);
+    expect(calls).toBe(4); // a (429, then retried), b, c; the second ask for a shared the first fetch
+  });
+
   it('shows live messages when the database is busy instead of recording a poll error', async () => {
     const t = mirrored().ticket;
     const fetchImpl = vi.fn(async () => jsonResponse([oo({ id: 'm-live', body: 'Here are the photos' })])) as unknown as typeof fetch;

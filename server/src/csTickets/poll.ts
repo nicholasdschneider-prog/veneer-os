@@ -27,6 +27,7 @@ export function attachmentPath(reference: string | undefined | null): string | n
   return ATTACHMENT_PATHS.some((re) => re.test(ref)) ? ref : null;
 }
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+const FILE_BUSY_RETRIES = 4;
 /** What the task pane may show inline; anything else stays a name. */
 export const SHOWABLE_TYPE = /^(image\/(jpeg|png|gif|webp|heic|heif)|application\/pdf)$/;
 /** SQLite said another writer holds the database; the read itself succeeded. */
@@ -145,6 +146,25 @@ export function createTicketPoller(db: Database.Database, deps: PollerDeps) {
     const hit = list.find((c) => typeof c.ticketNumber === 'string' && c.ticketNumber.toUpperCase() === code.toUpperCase() && typeof c.id === 'string');
     return (hit as ReturnType<typeof findConversation> extends Promise<infer R> ? R : never) ?? null;
   }
+  const inflightFiles = new Map<string, Promise<{ type: string; bytes: Buffer } | { error: string; status: number }>>();
+  let fileQueue: Promise<unknown> = Promise.resolve();
+  async function fetchFile(path: string): Promise<{ type: string; bytes: Buffer } | { error: string; status: number }> {
+    for (let attempt = 0; ; attempt++) {
+      const response = await doFetch(mirrorRequestUrl(path), { method: 'GET', headers: { Authorization: `Bearer ${await credential()}` }, redirect: 'error', signal: AbortSignal.timeout(20_000), cache: 'no-store' });
+      if (response.status === 429 && attempt < FILE_BUSY_RETRIES) {
+        await response.body?.cancel();
+        await sleep(Math.min(5, Math.max(1, Number(response.headers.get('retry-after')) || 1)) * 1000 * (attempt + 1));
+        continue;
+      }
+      if (!response.ok) { await response.body?.cancel(); return { error: response.status === 429 ? 'OrderOps is busy; try again in a moment' : `OrderOps returned ${response.status}`, status: response.status === 404 ? 404 : response.status === 429 ? 503 : 502 }; }
+      const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
+      if (!SHOWABLE_TYPE.test(type)) { await response.body?.cancel(); return { error: 'Only photos and PDFs are shown here', status: 415 }; }
+      if (Number(response.headers.get('content-length') ?? 0) > ATTACHMENT_MAX_BYTES) { await response.body?.cancel(); return { error: 'File is larger than 10 MB', status: 413 }; }
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length > ATTACHMENT_MAX_BYTES) return { error: 'File is larger than 10 MB', status: 413 };
+      return { type, bytes };
+    }
+  }
   return {
     findConversation: async (code: string) => findConversation(code, await credential()),
     /**
@@ -174,18 +194,22 @@ export function createTicketPoller(db: Database.Database, deps: PollerDeps) {
         }
       }
     },
-    /** Fetch one attachment file through the read-only principal; images and PDFs only, 10 MB cap. */
-    async fetchAttachment(reference: string): Promise<{ type: string; bytes: Buffer } | { error: string; status: number }> {
+    /**
+     * Fetch one attachment file through the read-only principal; images and PDFs only, 10 MB cap.
+     * OrderOps admits two requests at a time per principal and answers 429 beyond that, so files
+     * are fetched one at a time (leaving a slot for thread reads), a 429 is retried after its
+     * Retry-After, and concurrent asks for the same file share one fetch.
+     */
+    fetchAttachment(reference: string): Promise<{ type: string; bytes: Buffer } | { error: string; status: number }> {
       const path = attachmentPath(reference);
-      if (!path) return { error: 'This file is not stored in OrderOps', status: 404 };
-      const response = await doFetch(mirrorRequestUrl(path), { method: 'GET', headers: { Authorization: `Bearer ${await credential()}` }, redirect: 'error', signal: AbortSignal.timeout(20_000), cache: 'no-store' });
-      if (!response.ok) { await response.body?.cancel(); return { error: `OrderOps returned ${response.status}`, status: response.status === 404 ? 404 : 502 }; }
-      const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
-      if (!SHOWABLE_TYPE.test(type)) { await response.body?.cancel(); return { error: 'Only photos and PDFs are shown here', status: 415 }; }
-      if (Number(response.headers.get('content-length') ?? 0) > ATTACHMENT_MAX_BYTES) { await response.body?.cancel(); return { error: 'File is larger than 10 MB', status: 413 }; }
-      const bytes = Buffer.from(await response.arrayBuffer());
-      if (bytes.length > ATTACHMENT_MAX_BYTES) return { error: 'File is larger than 10 MB', status: 413 };
-      return { type, bytes };
+      if (!path) return Promise.resolve({ error: 'This file is not stored in OrderOps', status: 404 });
+      const pending = inflightFiles.get(path);
+      if (pending) return pending;
+      const job = fileQueue.then(() => fetchFile(path));
+      fileQueue = job.catch(() => undefined);
+      inflightFiles.set(path, job);
+      void job.finally(() => inflightFiles.delete(path)).catch(() => undefined);
+      return job;
     },
     /** Called often (the bot background loop ticks every few seconds); runs at most once per interval. */
     async tick(force = false): Promise<PollSummary> {
