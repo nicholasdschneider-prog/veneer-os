@@ -172,7 +172,7 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
         {t && <CustomerThreadSection conversationId={conversationId} taskId={taskId} caseKey={t.case_key} bot={bot} />}
         <section aria-label={`Conversation with ${bot} on this task`} className="space-y-4">
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conversation with {bot} on this task</h3>
-          {detail && stream.length === 0 && <p className="text-muted-foreground">{bot} hasn't started on this yet.{t?.status_line ? ` ${t.status_line}.` : ''}</p>}
+          {detail && stream.length === 0 && <p className="text-muted-foreground">{bot} hasn't started on this yet.{t?.status_line ? ` ${/[.?!]$/.test(t.status_line) ? t.status_line : `${t.status_line}.`}` : ''}</p>}
           {stream.map((item) => item.kind === 'turn'
             ? <CoordinationTurn key={item.turn.key} turn={item.turn} />
             : <div key={item.event.id} className="space-y-1 rounded-lg bg-muted/50 p-3">

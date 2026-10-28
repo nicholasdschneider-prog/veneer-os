@@ -27,11 +27,11 @@ export function ChatTasksToggle({ conversationId, view, onNavigate }: { conversa
     onNavigate(tasksViewHash(conversationId, next === 'tasks'));
   };
   return <div role="tablist" aria-label="Chat or tasks" className="flex shrink-0 items-center rounded-full border p-0.5">
-    <Button role="tab" aria-selected={view === 'chat'} variant={view === 'chat' ? 'secondary' : 'ghost'} size="sm" className="min-h-9 gap-1 rounded-full" onClick={() => go('chat')}>
-      <MessageSquare className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Chat</span>
+    <Button role="tab" aria-selected={view === 'chat'} variant={view === 'chat' ? 'secondary' : 'ghost'} size="sm" className="min-h-11 gap-1 rounded-full px-4 md:min-h-9 md:px-2.5" onClick={() => go('chat')}>
+      <MessageSquare className="size-4" aria-hidden="true" /><span>Chat</span>
     </Button>
-    <Button role="tab" aria-selected={view === 'tasks'} variant={view === 'tasks' ? 'secondary' : 'ghost'} size="sm" className="min-h-9 gap-1 rounded-full" onClick={() => go('tasks')}>
-      <ListChecks className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Tasks</span>
+    <Button role="tab" aria-selected={view === 'tasks'} variant={view === 'tasks' ? 'secondary' : 'ghost'} size="sm" className="min-h-11 gap-1 rounded-full px-4 md:min-h-9 md:px-2.5" onClick={() => go('tasks')}>
+      <ListChecks className="size-4" aria-hidden="true" /><span>Tasks</span>
       {count ? <span className="rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-black tabular-nums">{count}</span> : null}
     </Button>
   </div>;

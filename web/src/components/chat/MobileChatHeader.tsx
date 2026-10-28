@@ -13,6 +13,7 @@ export function MobileChatHeader({
   status,
   onBack,
   onComputer,
+  toolbar,
   children,
 }: {
   id: string;
@@ -20,6 +21,8 @@ export function MobileChatHeader({
   status?: string | null;
   onBack: () => void;
   onComputer?: () => void;
+  /** A full-width row under the title (e.g. the Chat | Tasks toggle), so the title never gets squeezed. */
+  toolbar?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -69,6 +72,7 @@ export function MobileChatHeader({
       ) : (
         <span />
       )}
+      {toolbar ? <div className="col-span-3 flex justify-center">{toolbar}</div> : null}
     </header>
   );
 }
