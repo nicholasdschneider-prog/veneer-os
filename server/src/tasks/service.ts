@@ -242,11 +242,12 @@ export function createTaskService(db: Database.Database) {
       const rows = db.prepare('SELECT kind,source_id,mark,created_at FROM bot_task_marks WHERE owner_conversation_id=?').all(ownerId) as { kind: string; source_id: string; mark: string; created_at: string }[];
       return new Map(rows.map((r) => [`${r.kind}:${r.source_id}`, { mark: r.mark, created_at: r.created_at }]));
     },
-    listForOwner(ownerId: string): (ReturnType<typeof present> & { open_decision: { id: string; version: number; question: string } | null })[] {
+    listForOwner(ownerId: string): (ReturnType<typeof present> & { open_decision: { id: string; version: number; question: string } | null; thread_id: string | null })[] {
       return (db.prepare('SELECT * FROM bot_tasks WHERE owner_conversation_id=? ORDER BY updated_at DESC').all(ownerId) as BotTaskRow[]).map((t) => {
         const d = openDecision(t.id);
         const q = d ? (JSON.parse(d.proposal_json) as { question?: string; review_summary?: { action_title?: string } }) : null;
-        return { ...present(t), open_decision: d ? { id: d.id, version: d.version, question: q?.review_summary?.action_title || q?.question || '' } : null };
+        const lane = t.task_conversation_id ? (db.prepare('SELECT thread_id FROM coordination_lanes WHERE conversation_id=?').get(t.task_conversation_id) as { thread_id: string } | undefined) : undefined;
+        return { ...present(t), open_decision: d ? { id: d.id, version: d.version, question: q?.review_summary?.action_title || q?.question || '' } : null, thread_id: lane?.thread_id ?? null };
       });
     },
     events(taskId: string, limit = MAX_CONTEXT_EVENTS) {

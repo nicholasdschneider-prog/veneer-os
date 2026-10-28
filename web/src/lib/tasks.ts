@@ -25,6 +25,13 @@ export interface BotTask {
   updated_at: string;
   closed_at: string | null;
   open_decision: { id: string; version: number; question: string } | null;
+  thread_id: string | null;
+}
+/** Bots often prefix a title with its case key; show the key once, as the tag. */
+export function cleanTaskTitle(title: string, caseKey: string | null): string {
+  let t = title.trim();
+  if (caseKey) { const re = new RegExp(`^(${caseKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[·:\\-–]\\s*)+`, 'i'); t = t.replace(re, ''); }
+  return t || title;
 }
 export interface BoardRow {
   kind: 'task' | 'decision' | 'question' | 'thread' | 'handoff' | 'ticket';

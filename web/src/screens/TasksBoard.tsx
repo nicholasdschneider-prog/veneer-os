@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChatTasksToggle } from '@/components/chat/ChatTasksToggle';
 import { CHAT_DECISIONS_CHANGED } from '@/components/chat/OpenQuestionsPanel';
-import { BOARD_GROUPS, tasksApi, type Board, type BoardGroup, type BoardRow, type TaskEvent } from '@/lib/tasks';
+import { BOARD_GROUPS, cleanTaskTitle, tasksApi, type Board, type BoardGroup, type BoardRow, type TaskEvent } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
 
 /**
@@ -76,7 +76,7 @@ export function TasksBoard({ conversationId, onNavigate }: { conversationId: str
               {row.can_mark ? <input type="checkbox" aria-label={`Mark ${row.title} done`} className="mt-1 size-4" checked={false} onChange={() => void mark(row, 'done')} />
                 : <span aria-hidden="true" className={cn('mt-1.5 size-2.5 rounded-full', dotColor[row.group])} />}
               <button className="min-w-0 text-left" onClick={() => row.kind === 'task' ? setOpen(open === row.id ? null : row.id) : onNavigate(row.href)}>
-                <span className="block font-medium leading-snug">{row.title}</span>
+                <span className="block font-medium leading-snug">{row.task ? cleanTaskTitle(row.title, row.task.case_key) : row.title}</span>
                 <span className="block truncate text-xs text-muted-foreground"><span className={cn(row.group === 'needs_input' && 'text-amber-700 dark:text-amber-300', row.group === 'ready_for_review' && 'text-emerald-700 dark:text-emerald-300')}>{row.status_line}</span></span>
                 <span className="block text-xs text-muted-foreground">{row.tag}</span>
               </button>
@@ -107,25 +107,32 @@ function TaskDetail({ conversationId, row, onNavigate, onChanged }: { conversati
     catch (e) { setNote((e as Error).message); }
     finally { setBusy(false); }
   };
+  const brief = task.brief.trim();
+  const short = brief.length > 280 ? `${brief.slice(0, 280).trimEnd()}…` : brief;
+  const [more, setMore] = useState(false);
+  const chatHref = task.thread_id ? `#/chat/${conversationId}?side=coordination:${task.thread_id}` : null;
   return <div className="space-y-3 border-t bg-muted/30 p-3 text-sm">
-    {task.brief && <p className="whitespace-pre-wrap">{task.brief}</p>}
-    {task.resources.length > 0 && <p className="text-xs text-muted-foreground">Uses: {task.resources.join(', ')}</p>}
+    <p className="font-medium">{task.status_line || 'No status yet'}</p>
     <div className="flex flex-wrap gap-2">
       {task.open_decision && <Button size="sm" onClick={() => onNavigate(`#/chat/${conversationId}?side=decision:${task.open_decision!.id}`)}>Answer the question</Button>}
-      {task.task_conversation_id && <Button size="sm" variant="outline" onClick={() => onNavigate(`#/chat/${task.task_conversation_id}`)}>Open task chat</Button>}
+      {chatHref && <Button size="sm" variant="outline" onClick={() => onNavigate(chatHref)}>Open task chat</Button>}
       {task.status !== 'done' && <Button size="sm" variant="outline" onClick={async () => { await tasksApi.mark(conversationId, { kind: 'task', id: task.id, mark: 'done' }); await onChanged(); }}>Mark it done</Button>}
     </div>
-    {events.length > 0 && <details className="rounded-lg border bg-background">
-      <summary className="cursor-pointer p-2 text-xs font-medium">History · {events.length}</summary>
-      <ol className="divide-y text-xs">
-        {events.map((e) => <li key={e.id} className="p-2"><span className="text-muted-foreground">{ago(e.at)} ago · {e.kind}</span>{typeof e.payload.text === 'string' ? <p className="mt-0.5 whitespace-pre-wrap">{String(e.payload.by ?? '')}: {e.payload.text}</p> : typeof e.payload.status_line === 'string' ? <p className="mt-0.5">{e.payload.status_line}</p> : null}</li>)}
-      </ol>
-    </details>}
     <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
       <label className="block text-xs font-medium">Write to the bot about this task
         <textarea className="mt-1 block w-full rounded-lg border bg-background p-2 text-sm" rows={2} value={text} placeholder="Direction for this task only" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send(); } }} />
       </label>
       <div className="flex items-center gap-3"><Button type="submit" size="sm" disabled={busy || !text.trim()}>Send</Button>{note && <span role="status" className="text-xs text-muted-foreground">{note}</span>}</div>
     </form>
+    {(brief || events.length > 0 || task.resources.length > 0) && <details className="rounded-lg border bg-background">
+      <summary className="cursor-pointer p-2 text-xs font-medium">Details{task.case_key ? ` · case ${task.case_key}` : ''}{events.length ? ` · ${events.length} events` : ''}</summary>
+      <div className="space-y-2 p-2 text-xs">
+        {brief && <p className="whitespace-pre-wrap">{more ? brief : short}{brief.length > 280 && <button type="button" className="ml-1 underline" onClick={() => setMore(!more)}>{more ? 'less' : 'more'}</button>}</p>}
+        {task.resources.length > 0 && <p className="text-muted-foreground">Uses: {task.resources.join(', ')}</p>}
+        {events.length > 0 && <ol className="divide-y">
+          {events.map((e) => <li key={e.id} className="py-1"><span className="text-muted-foreground">{ago(e.at)} ago · {e.kind}</span>{typeof e.payload.text === 'string' ? <p className="mt-0.5 whitespace-pre-wrap">{String(e.payload.by ?? '')}: {String(e.payload.text).slice(0, 400)}</p> : typeof e.payload.status_line === 'string' ? <p className="mt-0.5">{e.payload.status_line}</p> : null}</li>)}
+        </ol>}
+      </div>
+    </details>}
   </div>;
 }

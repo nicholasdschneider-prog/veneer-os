@@ -141,6 +141,7 @@ describe('shared Tasks capability', () => {
 
   describe('board and tools over HTTP', () => {
     let server: Server, url: string;
+    const laneStatus = new Map<string, 'working' | 'needs_you' | 'idle' | 'failed'>();
     beforeEach(async () => {
       const app = express();
       app.use(express.json());
@@ -151,7 +152,7 @@ describe('shared Tasks capability', () => {
         if (execution) req.agentExecutionConversationId = execution;
         next();
       });
-      app.use('/api', createTasksRouter({ db, manager: { statusOf: async () => 'idle' } } as unknown as AppContext));
+      app.use('/api', createTasksRouter({ db, manager: { statusOf: async (id: string) => laneStatus.get(id) ?? 'idle' } } as unknown as AppContext));
       server = app.listen(0, '127.0.0.1');
       await new Promise((resolve) => server.once('listening', resolve));
       url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -173,13 +174,33 @@ describe('shared Tasks capability', () => {
       db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id,origin_conversation_id) VALUES('h1',1,1,'Vendor quote','claude','n-h1','team',?,?)").run(TEAM, OWNER);
       const board = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { counts: Record<string, number>; needs_you: number; rows: { kind: string; group: string; title: string }[]; chat: { bot_name: string; registered: boolean } };
       expect(board.chat).toMatchObject({ bot_name: 'Clara', registered: true });
-      expect(board.counts).toMatchObject({ ready_for_review: 2, needs_input: 0, working: 2, up_next: 0, completed: 0 }); // the review freed a slot, so the queued chargeback started
-      expect(board.needs_you).toBe(2);
-      expect(board.rows.find((r) => r.kind === 'handoff')).toMatchObject({ title: 'Vendor quote', group: 'ready_for_review' });
-      await callApi({})(`/api/conversations/${OWNER}/tasks/mark`, { method: 'POST', body: JSON.stringify({ kind: 'handoff', id: 'h1', mark: 'done' }) });
-      const after = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { counts: Record<string, number> };
-      expect(after.counts.completed).toBe(1);
+      expect(board.counts).toMatchObject({ ready_for_review: 1, needs_input: 0, working: 2, up_next: 0, completed: 1 }); // the review freed a slot, so the queued chargeback started; a finished handoff is Completed, never review work
+      expect(board.needs_you).toBe(1);
+      expect(board.rows.find((r) => r.kind === 'handoff')).toMatchObject({ title: 'Vendor quote', group: 'completed' });
+      laneStatus.set('h1', 'needs_you');
+      const after = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { counts: Record<string, number>; rows: { kind: string; group: string }[] };
+      expect(after.rows.find((r) => r.kind === 'handoff')).toMatchObject({ group: 'needs_input' });
+      laneStatus.delete('h1');
       expect(await callApi({ 'x-test-bot': OWNER })(`/api/conversations/${OWNER}/tasks`)).toMatchObject({ error: expect.stringContaining('human') });
+      // Finished bot-to-bot automation never counts as review work: 400 idle trigger threads add nothing to Active, a stuck one shows once.
+      const insertConv = db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id,channel) VALUES(?,1,1,?,'claude',?,'team',?,'automation')");
+      const insertThread = db.prepare('INSERT INTO coordination_threads(id,left_id,right_id) VALUES(?,?,?)');
+      const insertLane = db.prepare('INSERT INTO coordination_lanes(conversation_id,thread_id,owner_id) VALUES(?,?,?)');
+      for (let i = 0; i < 400; i++) {
+        insertConv.run(`trig-${i}`, `CS · Half-hour queue trigger — run ${i}`, `n-trig-${i}`, TEAM);
+        const [left, right] = [OWNER, `trig-${i}`].sort();
+        insertThread.run(`thread-${i}`, left, right);
+        db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES(?,1,1,'Bot coordination','claude',?,'private',?)").run(`lane-${i}`, `n-lane-${i}`, TEAM);
+        insertLane.run(`lane-${i}`, `thread-${i}`, OWNER);
+      }
+      laneStatus.set('lane-7', 'needs_you');
+      const noisy = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { counts: Record<string, number>; needs_you: number; rows: { kind: string; group: string; title: string; tag: string }[] };
+      const threadRows = noisy.rows.filter((r) => r.kind === 'thread');
+      expect(threadRows.filter((r) => r.group !== 'completed')).toEqual([expect.objectContaining({ group: 'needs_input', title: 'CS · Half-hour queue trigger — run 7', tag: 'automation' })]);
+      expect(threadRows.filter((r) => r.group === 'completed').length).toBeLessThanOrEqual(20);
+      expect(noisy.counts.ready_for_review).toBe(1); // only the task the bot flagged for review
+      expect(noisy.needs_you).toBe(2);
+      expect(noisy.rows.some((r) => r.title.includes('Assistant ↔ Assistant'))).toBe(false);
       const discuss = await callApi({})(`/api/conversations/${OWNER}/tasks/${payload.created[0]!.id}/discuss`, { method: 'POST', body: JSON.stringify({ text: 'Looks good, send it.', request_key: 'd1' }) });
       expect(discuss).toMatchObject({ duplicate: false });
     });
