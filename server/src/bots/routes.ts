@@ -9,6 +9,7 @@ import {createOrganizationService,latestBotPreview} from './organization.js';
 import { createTeamService } from './teams.js';
 import { createChiefOfStaffService } from './chiefOfStaff.js';
 import { createCsTicketService } from '../csTickets/service.js';
+import { createTaskService } from '../tasks/service.js';
 import express from 'express';
 import { isUnread, markSeen } from '../conversations/unread.js';
 import { canViewConversation } from '../conversations/access.js';
@@ -32,6 +33,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   const chiefOfStaff = createChiefOfStaffService(ctx.db);
   const organization=createOrganizationService(ctx.db);
   const csTickets = createCsTicketService(ctx.db);
+  const tasks = createTaskService(ctx.db);
   router.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
@@ -260,6 +262,8 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
         const d = s.raise(actor(req), p);
         if (binding && !ctx.db.prepare('SELECT 1 FROM merge_intent_bindings WHERE decision_id=? AND decision_version=?').get(d.id, d.version)) merges.recordBinding(d.id, d.version, binding);
         if (ticket) csTickets.linkDecision(d.id, req.agentExecutionConversationId);
+        // A question raised from a task chat (shared Tasks) is bound to the task and parks it on the human.
+        tasks.linkDecision(d.id, req.agentExecutionConversationId);
         return d;
       })();
       res.json({ decision: raised });
@@ -344,6 +348,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
     const decision = s.choose(actor(req), req.params.id!, p.expected_version, p.request_key,
       p.choice_id, p.note, p.scope, p.expected_handling_revision);
     csTickets.decisionAnswered(req.params.id!);
+    tasks.decisionAnswered(req.params.id!);
     res.json({ decision });
   }));
   router.post('/decisions/:id/custom', run((req, res) => {
@@ -357,6 +362,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
     for (const [i, upload] of (p.evidence ?? []).entries()) s.addHumanEvidence(a, req.params.id!, p.expected_version, `${p.request_key}:evidence:${i}`, bindHumanEvidence(ctx, upload));
     const decision = s.answerCustom(a, req.params.id!, p.expected_version, p.request_key, p.text, p.expected_handling_revision);
     csTickets.decisionAnswered(req.params.id!);
+    tasks.decisionAnswered(req.params.id!);
     res.json({ decision });
   }));
   router.post(

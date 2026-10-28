@@ -9,6 +9,8 @@ import { startPhoneCall, tickBotCalls } from '../bots/botCalls.js';
 import { startCalendarReminderWorker } from '../calendarReminders/worker.js';
 import { escalateStaleDecisions, escalationEnabled } from '../bots/decisionEscalation.js';
 import { createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
+import { createTaskService } from '../tasks/service.js';
+import crypto from 'node:crypto';
 import { readSecretValue } from '../secrets/readSecret.js';
 export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics = createWebOperationMetrics()) {
   const stopReminders=startCalendarReminderWorker(ctx);
@@ -18,6 +20,10 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
     readCredential: async () => (await readSecretValue({ db: ctx.db, projectDopplerCli: ctx.projectDopplerCli ?? null }, { name: MIRROR_SECRET.credential, project: MIRROR_SECRET.project, config: MIRROR_SECRET.config })).value,
     log: { info: (m) => console.info(m), warn: (m) => console.warn(m) },
   });
+  // Shared Tasks: after a (re)start, working tasks reconcile against their sources before anything is rescheduled.
+  const taskService = createTaskService(ctx.db);
+  try { const woken = taskService.reconcileAfterRestart(crypto.randomUUID()); if (woken) console.info(`[tasks] ${woken} working task(s) asked to reconcile after restart`); } catch (e) { console.warn(`[tasks] restart reconciliation failed: ${(e as Error).message}`); }
+  let lastSchedule = 0;
   let busy = false,
     searchBusy = false;
   const tick = async () => {
@@ -37,6 +43,11 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
       for (const phone of calls.phones) void startPhoneCall(ctx, phone);
       await metrics.measureAsync('notifications', () => tickNotifications(ctx));
       await metrics.measureAsync('cs_ticket_poll', () => ticketPoller.tick());
+      if (Date.now() - lastSchedule > 30_000) {
+        lastSchedule = Date.now();
+        // Start queued tasks whose owner has a free slot and whose shared resources are free.
+        for (const { owner } of ctx.db.prepare("SELECT DISTINCT owner_conversation_id AS owner FROM bot_tasks WHERE status='up_next'").all() as { owner: string }[]) taskService.schedule(owner);
+      }
     } catch {
       console.warn('[bot-workflows] Background pass failed; retrying.');
     } finally {

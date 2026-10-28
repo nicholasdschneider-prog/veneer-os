@@ -4,6 +4,7 @@ import type { ConversationRow } from '../db/db.js';
 import type { ConversationEvent } from '../runtime/events.js';
 import { insertLaneConversation } from './store.js';
 import { createCsTicketService } from '../csTickets/service.js';
+import { createTaskService } from '../tasks/service.js';
 
 /** Bot traffic that runs in a registered bot's lane instead of its human chat:
  * routines, huddle wakes, question re-checks, decision handoffs between bots
@@ -126,6 +127,9 @@ export function wakeTarget(db: Database.Database, conv: ConversationRow, wakeId:
   // event wakes, human notes and decision answers land there, not in the human chat.
   const ticketChat = createCsTicketService(db).wakeTarget(conv.id, wakeKey);
   if (ticketChat) return ticketChat;
+  // A task (shared Tasks capability) likewise runs in its own task chat.
+  const taskChat = createTaskService(db).wakeTarget(conv.id, wakeKey);
+  if (taskChat) return taskChat;
   if (!isBotLaneWake(wakeKey) || !hasBotLane(db, conv.id)) return conv;
   return ensureBotLane(db, conv);
 }

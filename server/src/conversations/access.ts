@@ -80,7 +80,7 @@ export function canViewConversation(
         return Boolean(owner && canViewConversation(user, owner, db));
       }
       // A ticket chat (cs_tickets, Miles pilot) is likewise visible exactly where its owning bot's chat is.
-      const ticket = c.id ? db.prepare('SELECT owner_conversation_id FROM cs_tickets WHERE ticket_conversation_id=?').get(c.id) as {owner_conversation_id:string} | undefined : undefined;
+      const ticket = c.id ? (db.prepare('SELECT owner_conversation_id FROM cs_tickets WHERE ticket_conversation_id=?').get(c.id) ?? db.prepare('SELECT owner_conversation_id FROM bot_tasks WHERE task_conversation_id=?').get(c.id)) as {owner_conversation_id:string} | undefined : undefined;
       if (ticket) {
         const owner = db.prepare('SELECT * FROM conversations WHERE id=?').get(ticket.owner_conversation_id) as ConversationRow | undefined;
         return Boolean(owner && canViewConversation(user, owner, db));

@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import type { ConversationRow, UserRow } from '../db/db.js';
 import { canManageConversation, canViewConversation } from '../conversations/access.js';
-import { insertLaneConversation } from '../coordination/store.js';
+import { insertOwnerLane } from '../coordination/store.js';
 import { BotError } from '../bots/service.js';
 
 /**
@@ -117,11 +117,7 @@ export function createCsTicketService(db: Database.Database) {
     return t;
   }
   function createLane(owner: ConversationRow, t: CsTicketRow): string {
-    const laneId = insertLaneConversation(db, owner, ticketTitle(t));
-    const threadId = crypto.randomUUID();
-    const [left, right] = [owner.id, laneId].sort();
-    db.prepare('INSERT INTO coordination_threads(id,left_id,right_id) VALUES(?,?,?)').run(threadId, left, right);
-    db.prepare('INSERT INTO coordination_lanes(conversation_id,thread_id,owner_id) VALUES(?,?,?)').run(laneId, threadId, owner.id);
+    const laneId = insertOwnerLane(db, owner, ticketTitle(t));
     db.prepare('UPDATE cs_tickets SET ticket_conversation_id=? WHERE id=?').run(laneId, t.id);
     return laneId;
   }

@@ -7,6 +7,7 @@ import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js
 import { coordinationLane, coordinationFamily } from '../coordination/store.js';
 import { BOT_LANE_RULES, hasBotLane, botLaneOfConversation, spliceSurfacedNotices, surfacedRows, takeSurfacedContext } from '../coordination/botLane.js';
 import { createCsTicketService } from '../csTickets/service.js';
+import { createTaskService, TASK_CAP_PER_OWNER } from '../tasks/service.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 import { candidateWakeAllowed, startQueuedCandidate } from '../botWorkflows/autoshipCandidates.js';
 import {HistoryPages,type HistoryPage} from './historyPages.js';
@@ -1451,9 +1452,16 @@ export function createConversationManager({
     // A ticket chat (Miles pilot) is a lane of its owning bot, paired with that chat like a bot lane.
     const csTickets = createCsTicketService(db);
     const ticketLane = lane && !botLane ? csTickets.ticketOfLane(conv.id) : undefined;
+    const taskService = createTaskService(db);
+    const taskLane = lane && !botLane && !ticketLane ? taskService.taskOfLane(conv.id) : undefined;
     const family = coordinationFamily(db, conv.id);
     // A registered bot's human chat never waits behind its bot sessions.
-    if (!humanFirst(conv.id) && family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;
+    if (taskLane && lane) {
+      // Task chats of one bot run in parallel up to the cap; the bot's human chat still goes first.
+      const ownerBusy = entryFor(lane.owner_id).turn || entryFor(lane.owner_id).maintenance;
+      const running = family.filter(id => id !== conv.id && id !== lane.owner_id && (entryFor(id).turn || entryFor(id).maintenance)).length;
+      if (ownerBusy || running >= TASK_CAP_PER_OWNER) return;
+    } else if (!humanFirst(conv.id) && family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;
     // Human work already waiting always goes first; workers never preempt it.
     if (lane && entryFor(lane.owner_id).queue.length) return;
     const authority = lane ? db.prepare('SELECT * FROM conversations WHERE id=?').get(lane.owner_id) as ConversationRow | undefined : conv;
@@ -1475,7 +1483,7 @@ export function createConversationManager({
       const actor = {id:item.actorUserId ?? -1, botSession:true};
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string};
       // A bot lane's thread pairs the chat with its own session; its peer check is the chat itself.
-      const peer = botLane || ticketLane ? authority : db.prepare('SELECT * FROM conversations WHERE id=?').get(thread.left_id===authority.id ? thread.right_id : thread.left_id) as ConversationRow | undefined;
+      const peer = botLane || ticketLane || taskLane ? authority : db.prepare('SELECT * FROM conversations WHERE id=?').get(thread.left_id===authority.id ? thread.right_id : thread.left_id) as ConversationRow | undefined;
       if (!peer || !canViewConversation(actor,peer,db) || !canSendToConversation(actor,authority,db) || !sameBusiness(db,peer.id,authority)) {
         if (item.id!==null) deleteQueuedMessageStmt.run(item.id);
         clearPendingTurnStmt.run(conv.id);
@@ -1665,7 +1673,7 @@ export function createConversationManager({
     }
     const surfaced = !lane && !optional ? takeSurfacedContext(db, conv.id) : null;
     // The whole ticket record rides along every ticket-chat turn, so the bot never re-reads OrderOps for backstory.
-    const ticketRecord = ticketLane ? csTickets.contextBlock(conv.id) : null;
+    const ticketRecord = ticketLane ? csTickets.contextBlock(conv.id) : taskLane ? taskService.contextBlock(conv.id) : null;
     if (ticketRecord) memoryBlock = [ticketRecord, memoryBlock].filter(Boolean).join('\n\n');
     if (surfaced) {
       memoryBlock = [memoryBlock, surfaced].filter(Boolean).join('\n\n');
@@ -1741,6 +1749,9 @@ export function createConversationManager({
       spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
     } else if (ticketLane) {
       spawnConfig.developerInstructions = `${spawnConfig.developerInstructions ?? ''}\n\n${csTickets.laneRules(conv.id) ?? ''}`;
+      spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
+    } else if (taskLane) {
+      spawnConfig.developerInstructions = `${spawnConfig.developerInstructions ?? ''}\n\n${taskService.laneRules(conv.id) ?? ''}`;
       spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
     } else if (lane) {
       const thread = db.prepare('SELECT left_id,right_id FROM coordination_threads WHERE id=?').get(lane.thread_id) as {left_id:string;right_id:string};

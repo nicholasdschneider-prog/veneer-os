@@ -1,5 +1,6 @@
 import { ChatDecisionCard } from '../components/chat/ChatDecisionCard';
 import { OpenQuestionsButton, useChatDecisions } from '../components/chat/OpenQuestionsPanel';
+import { ChatTasksToggle } from '../components/chat/ChatTasksToggle';
 import { isResultReplyDelivery } from '../lib/threadReplies';
 import { markProgressNotes, markRepeatedReplies, notePreview } from '../lib/assistantNotes';
 import { CoordinationActivity } from '../components/chat/Coordination';
@@ -2534,6 +2535,7 @@ export function Chat({
         </div>
         {!isNew ? (
           <div className="flex shrink-0 items-center gap-1">
+            {openQuestionsButton && <ChatTasksToggle conversationId={conversationId} view="chat" onNavigate={onNavigate} />}
             {openQuestionsButton && <OpenQuestionsButton conversationId={conversationId} onNavigate={onNavigate} />}
             {sideChatButton && canSend ? (
               <Button

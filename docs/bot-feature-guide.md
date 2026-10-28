@@ -2,6 +2,29 @@
 
 Standing order from the owner, September 23, 2026: employees and bots must discover and know how to use capabilities as they ship. The owner should not have to teach or announce every release.
 
+## Shared Tasks: the CHAT | TASKS board for every bot — October 28, 2026
+
+Build #908, approved by Nick in Archer's chat (scope: `out/archer-tasks/scope-2026-10-28.md`,
+brief: `out/archer-tasks/build-brief-phase1.md`). One capability of the common bot runtime, live
+for every registered bot: `bot_tasks` + `bot_task_events` + `bot_task_marks` (migration 0188, plus
+a nullable `task_id` on decisions). A task is one unit of work with its own task chat (a lane of the
+bot's chat created by `insertOwnerLane`, visible where the owner is, same identity and tools), a
+status line, optional case key and shared resources. Bots use `intake_tasks` (split a dump into
+items, match open tasks by case key then equivalent title, create the rest, start up to two per
+bot, queue others with a visible reason including which task holds a shared resource),
+`create_task`, and `set_task_status` (done only with completion verified by readback, no open card,
+no UNKNOWN effect; otherwise the server keeps the task waiting). `raise_decision` from a task chat
+binds the card to the task and parks it in Needs input; the answer wakes the task chat
+(`wakeTarget`). Humans use the CHAT | TASKS toggle in every chat header (`?view=tasks`, remembered
+per chat) to see Ready for review / Needs input / Doing work / Up next and a Completed filter over
+the bot's tasks, its own open questions, coordination threads, handed-off chats, mirrored tickets
+and (chief of staff only) other bots' questions; rows open the existing card, thread or chat; a task
+row expands to its record, a discussion box that wakes the task chat, and Mark it done. After a
+restart, working tasks are asked once per boot to reconcile against their sources before anything
+is rescheduled. Task chats of one bot run concurrently up to the cap in `conversationManager`
+(human chat first). No Make tab; no CS consolidation; identities unchanged. Deployment pending a
+Nick-approved window (web + runner; migration 0188).
+
 ## Customer tickets owned inside Veneer: Miles pilot — October 16, 2026
 
 Build #866, directed by Nick on a call. One bot, Miles, owns his customer tickets start to

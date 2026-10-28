@@ -71,6 +71,18 @@ export function insertLaneConversation(
   return id;
 }
 
+/** A private work session owned by one bot chat (ticket chats, task chats): a lane
+ * whose thread pairs the owner with the lane itself, like a bot lane but without a
+ * bot_lanes row. Visible exactly where the owner is; runs under the owner's identity. */
+export function insertOwnerLane(db: Database.Database, owner: ConversationRow, title: string): string {
+  const laneId = insertLaneConversation(db, owner, title);
+  const threadId = crypto.randomUUID();
+  const [left, right] = [owner.id, laneId].sort();
+  db.prepare('INSERT INTO coordination_threads(id,left_id,right_id) VALUES(?,?,?)').run(threadId, left, right);
+  db.prepare('INSERT INTO coordination_lanes(conversation_id,thread_id,owner_id) VALUES(?,?,?)').run(laneId, threadId, owner.id);
+  return laneId;
+}
+
 /** Only called after both canonical conversations pass current send/view checks.
  * Workers are internal execution records, never new bot registrations or grants. */
 export function ensureCoordination(

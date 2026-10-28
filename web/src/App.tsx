@@ -22,6 +22,7 @@ import { ChatList } from './screens/ChatList';
 import { Todos } from './screens/Todos';
 import { Scheduled } from './screens/Scheduled';
 import { ChatWorkspace } from './components/chat/ChatWorkspace';
+import { TasksBoard } from './screens/TasksBoard';
 import { ProjectView } from './screens/ProjectView';
 import { Settings, type SettingsSection } from './screens/Settings';
 import { Files } from './screens/Files';
@@ -585,6 +586,8 @@ export function App() {
   const chatFocusMessageId = chatId ? params.get('message') : null;
   const artifactParam = chatId ? params.get('artifact') : null;
   const sideParam = chatId ? params.get('side') : null;
+  // ?view=tasks shows the chat's TASKS board (shared Tasks capability) in place of the transcript.
+  const tasksView = Boolean(chatId && chatId !== 'new' && params.get('view') === 'tasks');
   // Only an explicit #/project/:id route shows the standalone project view. A
   // chat opened from a project (?project=) keeps the expandable Chats list in
   // the sidebar — projects expand inline there, so there's no need to swap it
@@ -698,6 +701,9 @@ export function App() {
           sidebar={sidebar}
         >
           {chatId ? (
+            tasksView ? (
+            <TasksBoard key={`tasks:${chatId}`} conversationId={chatId!} onNavigate={navigate} />
+          ) : (
             <ChatWorkspace
               key={chatId === 'new' ? `${chatId}:${chatProjectId ?? ''}` : chatId}
               conversationId={chatId}
@@ -718,7 +724,7 @@ export function App() {
               onNavigate={navigate}
               onToast={showToast}
             />
-          ) : projectFilesId ? (
+          )) : projectFilesId ? (
             <FileBrowser
               title="Project files"
               fixedRoot={`project:${projectFilesId}`}
