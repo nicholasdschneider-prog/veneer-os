@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { CustomerThreadSection, groupRows, TaskPane, TasksBoard } from './TasksBoard';
+import { CustomerThreadSection, groupRows, TaskPane, TasksBoard, ThreadBody } from './TasksBoard';
 import { cleanTaskTitle, CUSTOMER_THREAD_KEY, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, type BoardRow, type TaskEvent } from '@/lib/tasks';
 
 vi.mock('@/lib/tasks', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/tasks')>()), tasksApi: { board: () => new Promise(() => {}), task: () => new Promise(() => {}), mark: vi.fn(), discuss: vi.fn(), customerThread: () => new Promise(() => {}) } }));
@@ -53,5 +53,17 @@ describe('tasks board', () => {
     expect(opened).toContain('Reading the ticket from OrderOps');
     rememberCustomerThread(false);
     expect(customerThreadPreferred()).toBe(false);
+  });
+  it('shows customer photos inline, PDFs as chips, and folds quoted history', () => {
+    const html = renderToStaticMarkup(<ThreadBody message={{ id: 'm1', direction: 'in', channel: 'email', author: 'customer', author_label: 'Judah', body: 'raw', text: 'Here is the board.', earlier: 'On Wed wrote: > hi', attachments: [], at: '2026-10-28T15:00:00Z', files: [
+      { name: 'IMG_4417.jpg', kind: 'image', url: '/api/x/files/m1/0' }, { name: 'label.pdf', kind: 'pdf', url: '/api/x/files/m1/1' }, { name: 'notes.docx', kind: 'file', url: null },
+    ] }} />);
+    expect(html).toContain('<img src="/api/x/files/m1/0" alt="IMG_4417.jpg"');
+    expect(html).toContain('PDF · label.pdf');
+    expect(html).toContain('notes.docx');
+    expect(html).toContain('Here is the board.');
+    expect(html).not.toContain('raw');
+    expect(html).toContain('Show earlier message');
+    expect(html).not.toContain('On Wed wrote');
   });
 });

@@ -202,6 +202,32 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
   );
 }
 
+/** One customer-thread message: readable text, photos inline, PDFs as chips, quoted history folded. */
+export function ThreadBody({ message: m }: { message: CustomerThreadData['messages'][number] }) {
+  const [earlier, setEarlier] = useState(false);
+  const text = m.text ?? m.body;
+  const files = m.files ?? m.attachments.map((a) => ({ name: a.name, kind: 'file' as const, url: null }));
+  const images = files.filter((f) => f.kind === 'image' && f.url);
+  const others = files.filter((f) => !(f.kind === 'image' && f.url));
+  return <>
+    {text && <p className="mt-1 whitespace-pre-wrap break-words">{text}</p>}
+    {images.length > 0 && <div className="mt-2 flex flex-wrap gap-2">
+      {images.map((f) => <a key={f.url} href={f.url!} target="_blank" rel="noreferrer" title={f.name} className="block">
+        <img src={f.url!} alt={f.name} loading="lazy" className="h-32 w-32 rounded-lg border bg-background object-cover sm:h-40 sm:w-40" />
+      </a>)}
+    </div>}
+    {others.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">
+      {others.map((f, i) => f.url
+        ? <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1 rounded-full border bg-background px-3 text-xs underline-offset-2 hover:underline">{f.kind === 'pdf' ? 'PDF' : 'File'} · {f.name}</a>
+        : <span key={`${f.name}-${i}`} className="inline-flex min-h-9 items-center rounded-full border px-3 text-xs text-muted-foreground">{f.name}</span>)}
+    </div>}
+    {m.earlier && <div className="mt-1">
+      <button type="button" className="min-h-9 text-xs text-muted-foreground underline-offset-2 hover:underline" aria-expanded={earlier} onClick={() => setEarlier(!earlier)}>{earlier ? 'Hide earlier message' : 'Show earlier message'}</button>
+      {earlier && <p className="mt-1 whitespace-pre-wrap break-words border-l-2 pl-2 text-xs text-muted-foreground">{m.earlier}</p>}
+    </div>}
+  </>;
+}
+
 /** The real OrderOps thread behind a task (customer on the left, us on the right), read-only, collapsed until the human wants it. */
 export function CustomerThreadSection({ conversationId, taskId, caseKey, bot }: { conversationId: string; taskId: string; caseKey: string | null; bot: string }) {
   const [open, setOpen] = useState<boolean>(() => customerThreadPreferred());
@@ -238,8 +264,7 @@ export function CustomerThreadSection({ conversationId, taskId, caseKey, bot }: 
       {data?.messages.map((m) => <div key={m.id} className={cn('flex', m.direction === 'in' ? 'justify-start' : 'justify-end')}>
         <div className={cn('max-w-[85%] rounded-xl p-3 text-sm', m.direction === 'in' ? 'bg-muted' : 'bg-primary/10')}>
           <p className="text-xs text-muted-foreground">{m.direction === 'in' ? (m.author_label || 'Customer') : (m.author_label || 'Us')} · {new Date(m.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}{m.channel ? ` · ${m.channel}` : ''}</p>
-          <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
-          {m.attachments.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Attachments: {m.attachments.map((a) => a.name).join(', ')}</p>}
+          <ThreadBody message={m} />
         </div>
       </div>)}
     </div>}

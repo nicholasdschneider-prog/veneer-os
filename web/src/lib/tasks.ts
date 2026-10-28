@@ -53,7 +53,9 @@ export interface Board {
   needs_you: number;
 }
 export interface TaskEvent { id: string; kind: string; at: string; payload: Record<string, unknown> }
-export interface CustomerThreadMessage { id: string; direction: 'in' | 'out' | 'note'; channel: string; author: string; author_label: string; body: string; attachments: { name: string; reference?: string }[]; at: string }
+export interface CustomerThreadFile { name: string; kind: 'image' | 'pdf' | 'file'; url: string | null }
+/** `text` is the body without quoted history or phone signatures; `earlier` is the folded quote. */
+export interface CustomerThreadMessage { id: string; direction: 'in' | 'out' | 'note'; channel: string; author: string; author_label: string; body: string; text?: string; earlier?: string; attachments: { name: string; reference?: string }[]; files?: CustomerThreadFile[]; at: string }
 export interface CustomerThread {
   ticket: { id: string; orderops_ticket_id: string; code: string | null; subject: string; customer_name: string; customer_email: string; customer_phone: string; status: string } | null;
   messages: CustomerThreadMessage[];

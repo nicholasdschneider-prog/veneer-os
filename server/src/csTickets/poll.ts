@@ -5,8 +5,9 @@ import { createCsTicketService, type SyncMessage } from './service.js';
  * Read-only OrderOps mirror for tickets owned inside Veneer (Miles pilot).
  * Every two minutes the web service reads the messages of each open owned
  * ticket with a dedicated principal and records what is new; a new customer
- * message wakes the ticket chat. The client can only GET the two allowlisted
- * paths, so OrderOps leases, assignment, statuses and sends are untouched.
+ * message wakes the ticket chat. The client can only GET allowlisted paths
+ * (messages, ticket search, attachment files), so OrderOps leases,
+ * assignment, statuses and sends are untouched.
  */
 export const ORDEROPS_ORIGIN = 'https://orderops-dev-web-production.up.railway.app';
 export const MIRROR_SECRET = { project: 'ervp', config: 'prd', credential: 'ORDEROPS_TICKET_MIRROR_BOT_CREDENTIAL' } as const;
@@ -16,7 +17,23 @@ export const POLL_TIMEOUT_MS = 10_000;
 export const AUTH_BLOCK_MS = 15 * 60_000;
 export const CREDENTIAL_CACHE_MS = 10 * 60_000;
 const BACKOFF_MS = [60_000, 120_000, 240_000, 480_000, 30 * 60_000];
-const ALLOWED_PATHS = [/^\/api\/cs\/conversations\/[A-Za-z0-9_.:-]{1,100}\/messages$/, /^\/api\/cs\/leases\/capability$/, /^\/api\/cs\/conversations\?search=[A-Za-z0-9_.:%-]{1,100}&limit=\d{1,2}$/];
+/** Attachment files a message points at: Gmail-proxied photos, stored blobs, and uploads. */
+const ATTACHMENT_PATHS = [/^\/api\/cs\/gmail-attachments\/[A-Za-z0-9_-]{1,200}\/[A-Za-z0-9_-]{1,1500}$/, /^\/api\/cs\/attachment-blobs\/[A-Za-z0-9_-]{1,200}$/, /^\/objects\/uploads\/[A-Za-z0-9_-]{1,200}(\.[A-Za-z0-9]{1,8})?$/];
+const ALLOWED_PATHS = [/^\/api\/cs\/conversations\/[A-Za-z0-9_.:-]{1,100}\/messages$/, /^\/api\/cs\/leases\/capability$/, /^\/api\/cs\/conversations\?search=[A-Za-z0-9_.:%-]{1,100}&limit=\d{1,2}$/, ...ATTACHMENT_PATHS];
+/** The OrderOps path of an attachment reference the mirror may fetch, or null (outside links, unknown shapes). */
+export function attachmentPath(reference: string | undefined | null): string | null {
+  let ref = (reference ?? '').trim();
+  if (ref.startsWith(ORDEROPS_ORIGIN)) ref = ref.slice(ORDEROPS_ORIGIN.length);
+  return ATTACHMENT_PATHS.some((re) => re.test(ref)) ? ref : null;
+}
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+/** What the task pane may show inline; anything else stays a name. */
+export const SHOWABLE_TYPE = /^(image\/(jpeg|png|gif|webp|heic|heif)|application\/pdf)$/;
+/** SQLite said another writer holds the database; the read itself succeeded. */
+export function isDatabaseBusy(e: unknown): boolean {
+  const err = e as { code?: string; message?: string };
+  return err?.code === 'SQLITE_BUSY' || /database is locked/i.test(err?.message ?? '');
+}
 /** An OrderOps ticket code (VKNA4G), never an order number (100122214) and never a conversation uuid. */
 export const TICKET_CODE = /^[A-Z0-9]{5,8}$/;
 export const CONVERSATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,6 +46,7 @@ export function classifyCaseKey(key: string | null | undefined): 'uuid' | 'ticke
   return 'other';
 }
 const MAX_BODY = 4 * 1024 * 1024;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** The only requests the mirror may make: GET on an allowlisted path. Throws before any network call. */
 export function mirrorRequestUrl(path: string, method = 'GET'): string {
@@ -129,20 +147,45 @@ export function createTicketPoller(db: Database.Database, deps: PollerDeps) {
   }
   return {
     findConversation: async (code: string) => findConversation(code, await credential()),
-    /** Read one ticket now (the task pane asked); records new messages with the usual dedupe. */
-    async readNow(ticketId: string): Promise<{ added: number; error: string | null }> {
+    /**
+     * Read one ticket now (the task pane asked); records new messages with the usual dedupe.
+     * If the save is blocked by another writer it retries once, then hands back the live
+     * messages so the pane still shows the thread; a busy database is not a poll error.
+     */
+    async readNow(ticketId: string): Promise<{ added: number; error: string | null; live?: SyncMessage[] }> {
       const t = tickets.read(ticketId);
       if (!t) return { added: 0, error: 'Ticket not found' };
+      let messages: SyncMessage[];
       try {
-        const messages = (await readMessages(t.orderops_ticket_id, await credential())).map(mapOrderOpsMessage).filter((m): m is SyncMessage => m !== null);
-        const r = tickets.applyPolledMessages(t.id, messages, new Date(now()));
-        return { added: r.added, error: null };
+        messages = (await readMessages(t.orderops_ticket_id, await credential())).map(mapOrderOpsMessage).filter((m): m is SyncMessage => m !== null);
       } catch (e) {
         const err = e as Error & { auth?: boolean };
-        tickets.markPollError(t.id, err.message, new Date(now()));
+        try { tickets.markPollError(t.id, err.message, new Date(now())); } catch (w) { if (!isDatabaseBusy(w)) throw w; }
         if (err.auth) { authBlockedUntil = now() + AUTH_BLOCK_MS; cached = null; }
         return { added: 0, error: err.message };
       }
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return { added: tickets.applyPolledMessages(t.id, messages, new Date(now())).added, error: null };
+        } catch (e) {
+          if (!isDatabaseBusy(e)) throw e;
+          if (attempt >= 1) { log.warn(`[cs-ticket-poll] ticket ${t.orderops_ticket_id}: database busy, showing live messages unsaved`); return { added: 0, error: null, live: messages }; }
+          await sleep(500);
+        }
+      }
+    },
+    /** Fetch one attachment file through the read-only principal; images and PDFs only, 10 MB cap. */
+    async fetchAttachment(reference: string): Promise<{ type: string; bytes: Buffer } | { error: string; status: number }> {
+      const path = attachmentPath(reference);
+      if (!path) return { error: 'This file is not stored in OrderOps', status: 404 };
+      const response = await doFetch(mirrorRequestUrl(path), { method: 'GET', headers: { Authorization: `Bearer ${await credential()}` }, redirect: 'error', signal: AbortSignal.timeout(20_000), cache: 'no-store' });
+      if (!response.ok) { await response.body?.cancel(); return { error: `OrderOps returned ${response.status}`, status: response.status === 404 ? 404 : 502 }; }
+      const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
+      if (!SHOWABLE_TYPE.test(type)) { await response.body?.cancel(); return { error: 'Only photos and PDFs are shown here', status: 415 }; }
+      if (Number(response.headers.get('content-length') ?? 0) > ATTACHMENT_MAX_BYTES) { await response.body?.cancel(); return { error: 'File is larger than 10 MB', status: 413 }; }
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length > ATTACHMENT_MAX_BYTES) return { error: 'File is larger than 10 MB', status: 413 };
+      return { type, bytes };
     },
     /** Called often (the bot background loop ticks every few seconds); runs at most once per interval. */
     async tick(force = false): Promise<PollSummary> {
@@ -164,6 +207,7 @@ export function createTicketPoller(db: Database.Database, deps: PollerDeps) {
         } catch (e) {
           const err = e as Error & { auth?: boolean };
           summary.errors++;
+          if (isDatabaseBusy(err)) { log.warn(`[cs-ticket-poll] ticket ${t.orderops_ticket_id}: database busy, retrying next round`); continue; }
           tickets.markPollError(t.id, err.message, new Date(now()));
           if (err.auth) {
             authBlockedUntil = now() + AUTH_BLOCK_MS;

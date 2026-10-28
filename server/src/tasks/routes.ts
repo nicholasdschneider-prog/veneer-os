@@ -8,7 +8,8 @@ import { botLabel, botLaneOwnerOfThread } from '../coordination/botLane.js';
 import type { CoordinationThread } from '../coordination/store.js';
 import { createTaskService, type TaskActor } from './service.js';
 import { createCsTicketService, presentMessage } from '../csTickets/service.js';
-import { classifyCaseKey, createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
+import { attachmentPath, classifyCaseKey, createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
+import { cleanBody } from '../csTickets/body.js';
 import { readSecretValue } from '../secrets/readSecret.js';
 
 /**
@@ -45,6 +46,15 @@ export function createTasksRouter(ctx: AppContext) {
     log: { info: () => {}, warn: (m) => console.warn(m) },
   });
   const THREAD_FRESH_MS = 90_000;
+  // Photos and PDFs already fetched for the pane, newest last; bounded so a long thread cannot grow memory.
+  const fileCache = new Map<string, { type: string; bytes: Buffer }>();
+  const FILE_CACHE_BYTES = 48 * 1024 * 1024;
+  const remember = (key: string, file: { type: string; bytes: Buffer }) => {
+    fileCache.delete(key); fileCache.set(key, file);
+    let total = [...fileCache.values()].reduce((n, f) => n + f.bytes.length, 0);
+    for (const k of fileCache.keys()) { if (total <= FILE_CACHE_BYTES) break; total -= fileCache.get(k)!.bytes.length; fileCache.delete(k); }
+  };
+  const fileKind = (name: string): 'image' | 'pdf' | 'file' => /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(name) ? 'image' : /\.pdf$/i.test(name) ? 'pdf' : 'file';
   router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   const run = (fn: (req: express.Request, res: express.Response) => unknown) => (req: express.Request, res: express.Response, next: express.NextFunction) => {
     Promise.resolve().then(() => fn(req, res)).catch((e) => {
@@ -186,8 +196,40 @@ export function createTasksRouter(ctx: AppContext) {
     const stale = !ticket.last_polled_at || Date.now() - Date.parse(ticket.last_polled_at) > THREAD_FRESH_MS || req.query.refresh === '1';
     const read = stale ? await mirror.readNow(ticket.id) : { added: 0, error: null };
     const fresh = csTickets.read(ticket.id)!;
-    const messages = csTickets.messages(fresh.id).filter((m) => m.direction !== 'note').map(presentMessage);
-    res.json({ ticket: { id: fresh.id, orderops_ticket_id: fresh.orderops_ticket_id, code: t.case_key, subject: fresh.subject, customer_name: fresh.customer_name, customer_email: fresh.customer_email, customer_phone: fresh.customer_phone, status: fresh.status }, messages, checked_at: fresh.last_polled_at, added: read.added, error: read.error ?? fresh.last_poll_error ?? null });
+    const base = `/api/conversations/${encodeURIComponent(req.params.id!)}/tasks/${encodeURIComponent(t.id)}/customer-thread/files`;
+    const shown = (m: { id: string; direction: string; channel: string; author: string; author_label: string; body: string; attachments: { name: string; reference?: string }[]; at: string }, saved: boolean) => {
+      const { text, earlier } = cleanBody(m.body);
+      return { ...m, text, earlier, files: m.attachments.map((a, i) => {
+        const kind = fileKind(a.name);
+        return { name: a.name, kind, url: saved && kind !== 'file' && attachmentPath(a.reference) ? `${base}/${encodeURIComponent(m.id)}/${i}` : null };
+      }) };
+    };
+    const saved = csTickets.messages(fresh.id).filter((m) => m.direction !== 'note').map(presentMessage);
+    // A busy database kept the newest read from saving: show it live, with saved rows for anything older.
+    const live = 'live' in read && read.live ? read.live.filter((m) => !saved.some((x) => x.external_id === m.external_id)).map((m) => ({ id: `live:${m.external_id}`, direction: m.direction, channel: m.channel ?? '', author: m.author, author_label: m.author_label ?? '', body: m.body, attachments: m.attachments ?? [], at: m.at })) : [];
+    const messages = [...saved.map((m) => shown(m, true)), ...live.map((m) => shown(m, false))].sort((a, b) => a.at.localeCompare(b.at));
+    res.json({ ticket: { id: fresh.id, orderops_ticket_id: fresh.orderops_ticket_id, code: t.case_key, subject: fresh.subject, customer_name: fresh.customer_name, customer_email: fresh.customer_email, customer_phone: fresh.customer_phone, status: fresh.status }, messages, checked_at: 'live' in read && read.live ? new Date().toISOString() : fresh.last_polled_at, added: read.added, error: stale ? read.error : fresh.last_poll_error ?? null });
+  }));
+  /** One photo or PDF from the customer thread, fetched through the read-only mirror. */
+  router.get('/conversations/:id/tasks/:taskId/customer-thread/files/:messageId/:index', run(async (req, res) => {
+    if (req.agentConversationId) throw new BotError(403, 'The board is a human view');
+    visibleChat(req, req.params.id!);
+    const t = tasks.read(req.params.taskId!);
+    if (!t || t.owner_conversation_id !== req.params.id) throw new BotError(404, 'Task not found');
+    const ticket = csTickets.ticketForTask(t.id);
+    const message = ticket ? csTickets.messages(ticket.id).find((m) => m.id === req.params.messageId && m.direction !== 'note') : undefined;
+    const attachment = message ? presentMessage(message).attachments[Number(req.params.index)] : undefined;
+    if (!attachment?.reference || !attachmentPath(attachment.reference)) throw new BotError(404, 'File not found');
+    const key = attachmentPath(attachment.reference)!;
+    let file = fileCache.get(key);
+    if (!file) {
+      const got = await mirror.fetchAttachment(attachment.reference);
+      if ('error' in got) throw new BotError(got.status, got.error);
+      file = got;
+    }
+    remember(key, file);
+    res.set({ 'Cache-Control': 'private, max-age=86400', 'Content-Type': file.type, 'Content-Length': String(file.bytes.length), 'Content-Disposition': `inline; filename="${attachment.name.replace(/[^A-Za-z0-9 ._()-]/g, '_')}"`, 'X-Content-Type-Options': 'nosniff' });
+    res.end(file.bytes);
   }));
   // Bot tools.
   router.post('/tasks', run((req, res) => res.json(tasks.create(actor(req), req.body))));

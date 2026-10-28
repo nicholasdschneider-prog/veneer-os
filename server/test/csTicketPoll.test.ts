@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { UserRow } from '../src/db/db.js';
 import { createCsTicketService } from '../src/csTickets/service.js';
-import { AUTH_BLOCK_MS, classifyCaseKey, createTicketPoller, mapOrderOpsMessage, mirrorRequestUrl, ORDEROPS_ORIGIN, POLL_INTERVAL_MS, type OrderOpsMessage } from '../src/csTickets/poll.js';
+import { attachmentPath, AUTH_BLOCK_MS, classifyCaseKey, createTicketPoller, mapOrderOpsMessage, mirrorRequestUrl, ORDEROPS_ORIGIN, POLL_INTERVAL_MS, type OrderOpsMessage } from '../src/csTickets/poll.js';
 import { createTaskService } from '../src/tasks/service.js';
+import { cleanBody } from '../src/csTickets/body.js';
 
 const migrations = fileURLToPath(new URL('../src/db/migrations', import.meta.url));
 const OWNER = '11111111-1111-4111-8111-111111111111', TEAM = 'team';
@@ -55,6 +56,58 @@ describe('OrderOps ticket mirror poll', () => {
     expect(mirrorRequestUrl('/api/cs/conversations?search=VKNA4G&limit=5')).toContain('search=VKNA4G');
     expect(() => mirrorRequestUrl('/api/cs/conversations?search=VKNA4G&limit=5', 'POST')).toThrow(/read-only/);
     expect(() => mirrorRequestUrl('/api/cs/conversations?search=x&limit=500')).toThrow(/not allowed/);
+  });
+
+  it('fetches attachment files only by GET on OrderOps attachment paths', async () => {
+    const gmail = `/api/cs/gmail-attachments/19fac4f7bf482bf5/${'ANGjdJ_BWZ2-x'.repeat(30)}`;
+    expect(mirrorRequestUrl(gmail)).toBe(`${ORDEROPS_ORIGIN}${gmail}`);
+    expect(mirrorRequestUrl('/objects/uploads/f5857974-3d75-43e0-a691-7fa5dc12907f.pdf')).toContain('/objects/uploads/');
+    expect(mirrorRequestUrl('/api/cs/attachment-blobs/abc-123')).toContain('attachment-blobs');
+    expect(() => mirrorRequestUrl(gmail, 'POST')).toThrow(/read-only/);
+    expect(() => mirrorRequestUrl('/api/cs/gmail-attachments/a/../../leases/x/claim')).toThrow(/not allowed/);
+    expect(() => mirrorRequestUrl('/objects/uploads/../private/x.pdf')).toThrow(/not allowed/);
+    expect(attachmentPath(`${ORDEROPS_ORIGIN}/objects/uploads/a1.jpg`)).toBe('/objects/uploads/a1.jpg');
+    expect(attachmentPath('https://files.example.test/2')).toBeNull();
+    expect(attachmentPath('https://photos.google.com/photo/AF1Qip')).toBeNull();
+    const methods: string[] = [];
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      methods.push(init?.method ?? 'GET');
+      if (String(url).endsWith('.pdf')) return new Response('<html>', { headers: { 'Content-Type': 'text/html' } });
+      return new Response(new Uint8Array([0xff, 0xd8, 0xff]), { headers: { 'Content-Type': 'image/jpeg' } });
+    }) as unknown as typeof fetch;
+    const p = poller(fetchImpl);
+    expect(await p.fetchAttachment(gmail)).toMatchObject({ type: 'image/jpeg', bytes: Buffer.from([0xff, 0xd8, 0xff]) });
+    expect(await p.fetchAttachment('/objects/uploads/x.pdf')).toEqual({ error: 'Only photos and PDFs are shown here', status: 415 });
+    expect(await p.fetchAttachment('https://files.example.test/2')).toMatchObject({ status: 404 });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(methods).toEqual(['GET', 'GET']);
+  });
+
+  it('shows live messages when the database is busy instead of recording a poll error', async () => {
+    const t = mirrored().ticket;
+    const fetchImpl = vi.fn(async () => jsonResponse([oo({ id: 'm-live', body: 'Here are the photos' })])) as unknown as typeof fetch;
+    const p = poller(fetchImpl);
+    const real = db.transaction.bind(db);
+    let busy = 2;
+    (db as { transaction: unknown }).transaction = ((fn: () => unknown) => () => { if (busy-- > 0) throw Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' }); return real(fn)(); }) as never;
+    const r = await p.readNow(t.id);
+    expect(r).toMatchObject({ added: 0, error: null });
+    expect(r.live?.map((m) => m.body)).toEqual(['Here are the photos']);
+    expect(tickets.read(t.id)?.last_poll_error).toBeNull();
+    expect(await p.readNow(t.id)).toEqual({ added: 1, error: null }); // the next read saves it
+    (db as { transaction: unknown }).transaction = real;
+  });
+
+  it('makes email bodies readable: no quoted history, signatures, image placeholders or HTML', () => {
+    const reply = 'Here is the board.\r\n[image: IMG_4417.jpg]\r\n\r\nSent from my iPhone\r\n\r\nOn Wed, Jul 29, 2026, 12:18 AM Judah Schrotenboer <judah@example.test>\r\nwrote:\r\n\r\n> Can you send a photo?\r\n> Thanks';
+    expect(cleanBody(reply)).toEqual({ text: 'Here is the board.', earlier: 'On Wed, Jul 29, 2026, 12:18 AM Judah Schrotenboer <judah@example.test>\nwrote:\n\n> Can you send a photo?\n> Thanks' });
+    expect(cleanBody('Any news?\n\nPeter WilliamsSent from my iPhone').text).toBe('Any news?\n\nPeter Williams');
+    expect(cleanBody('<div>Hi&nbsp;there<br>Line two</div><p>Bye &amp; thanks</p>').text).toBe('Hi there\nLine two\nBye & thanks');
+    expect(cleanBody('See <https://photos.google.com/photo/AF1> please').text).toBe('See https://photos.google.com/photo/AF1 please');
+    expect(cleanBody('Shipped today.\n\n[SMS delivery: delivered]').text).toBe('Shipped today.\n\n[SMS delivery: delivered]');
+    expect(cleanBody('Thanks\n\n-----Original Message-----\nFrom: a').earlier).toContain('Original Message');
+    expect(cleanBody('From: Pat\nSent: Monday\nhello')).toEqual({ text: '', earlier: 'From: Pat\nSent: Monday\nhello' });
+    expect(cleanBody('Plain message').text).toBe('Plain message');
   });
 
   it('tells ticket codes from order numbers and conversation ids', () => {
