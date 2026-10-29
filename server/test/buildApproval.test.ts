@@ -5,6 +5,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import {
   BUILD_APPROVERS_SETTING,
+  BUILD_REFUSAL,
+  claimBuildPass,
+  forwardBuildPass,
+  heldBuildPass,
+  mintBuildPass,
+  requestMayMintBuildPass,
   isReplyToTechnical,
   isTechnicalConversation,
   requestMayStartBuild,
@@ -101,5 +107,76 @@ describe('only Nick (or James on his behalf) starts code work', () => {
       "INSERT INTO agent_message_receipts (source_conversation_id, target_conversation_id, message_id, message_text, disposition) VALUES ('boris', 'tess', 'm1', 'please verify', 'delivered')",
     ).run();
     expect(isReplyToTechnical(db, 'tess', 'boris')).toBe(true);
+  });
+});
+
+describe('build passes carry Nick\'s approval to the chat that builds', () => {
+  const nickTurnIn = (id: string) => {
+    chat(id);
+    turn(id, 1, null);
+  };
+
+  it('mints only in an approver\'s own turn, never from a wake-up, bot message, member or queued build', () => {
+    nickTurnIn('archer');
+    chat('owner');
+    const pass = mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: 'queue the desk Tasks toggle fix', requestKey: 'k1' });
+    expect(pass).toMatchObject({ approver_user_id: 1, source_conversation_id: 'archer', target_conversation_id: 'owner' });
+    // A retry with the same key returns the same pass.
+    expect(mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: 'queue the desk Tasks toggle fix', requestKey: 'k1' }).id).toBe(pass.id);
+    expect(() => mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'elsewhere', note: 'other', requestKey: 'k1' })).toThrow();
+
+    for (const [id, actor, origin] of [
+      ['wake', 1, { kind: 'wakeup', from: 'Archer', to: 'Archer' }],
+      ['bot', 1, { kind: 'agent', from: 'Tess', to: 'Archer' }],
+      ['member', 2, null],
+      ['queued', 1, { kind: 'build_queue', from: 'Build queue', to: 'Platform Dev' }],
+    ] as const) {
+      chat(id);
+      turn(id, actor, origin);
+      expect(requestMayMintBuildPass(db, { agentConversationId: id })).toBe(false);
+      expect(() => mintBuildPass(db, { agentConversationId: id }, { targetConversationId: 'owner', note: 'x' })).toThrow(BUILD_REFUSAL);
+    }
+    expect(() => mintBuildPass(db, { user: { id: 1 } }, { targetConversationId: 'owner', note: 'x' })).toThrow();
+    expect(() => mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: '  ' })).toThrow();
+  });
+
+  it('redeems once, only in the chat it names, and not after it expires', () => {
+    nickTurnIn('archer');
+    chat('owner');
+    const pass = mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: 'build it' });
+    expect(claimBuildPass(db, 'archer', pass.id)).toBeUndefined();
+    expect(claimBuildPass(db, 'owner', 'wrong')).toBeUndefined();
+    expect(claimBuildPass(db, 'owner', pass.id)?.id).toBe(pass.id);
+    expect(claimBuildPass(db, 'owner', pass.id)).toBeUndefined();
+    expect(claimBuildPass(db, 'owner')).toBeUndefined();
+
+    const old = mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: 'stale' });
+    db.prepare("UPDATE build_passes SET expires_at = datetime('now', '-1 minute') WHERE id = ?").run(old.id);
+    expect(claimBuildPass(db, 'owner', old.id)).toBeUndefined();
+    expect(heldBuildPass(db, 'owner')).toBeUndefined();
+  });
+
+  it('claims the only pass without an id, but needs the id when a chat holds two', () => {
+    nickTurnIn('archer');
+    chat('owner');
+    const a = mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: 'a' });
+    expect(heldBuildPass(db, 'owner')?.id).toBe(a.id);
+    const b = mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: 'b' });
+    expect(claimBuildPass(db, 'owner')).toBeUndefined();
+    expect(claimBuildPass(db, 'owner', b.id)?.id).toBe(b.id);
+  });
+
+  it('forwards a held pass to one new owner, which alone can use it', () => {
+    nickTurnIn('archer');
+    chat('owner');
+    chat('pd', 'platform-dev');
+    const pass = mintBuildPass(db, { agentConversationId: 'archer' }, { targetConversationId: 'owner', note: 'build it' });
+    expect(() => forwardBuildPass(db, 'archer', 'pd', pass.id)).toThrow(BUILD_REFUSAL);
+    expect(forwardBuildPass(db, 'owner', 'pd', pass.id).target_conversation_id).toBe('pd');
+    // A retried send finds it already there.
+    expect(forwardBuildPass(db, 'owner', 'pd', pass.id).target_conversation_id).toBe('pd');
+    expect(claimBuildPass(db, 'owner', pass.id)).toBeUndefined();
+    expect(claimBuildPass(db, 'pd', pass.id)?.id).toBe(pass.id);
+    expect(() => forwardBuildPass(db, 'pd', 'owner', pass.id)).toThrow(BUILD_REFUSAL);
   });
 });

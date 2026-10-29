@@ -211,6 +211,27 @@ describe('build queue routes', () => {
     });
   });
 
+  it('lets a bot chat queue once with the build pass Nick sent it, and refuses without one', async () => {
+    const post = (buildPass?: string) => fetch(`${base}/api/build-queue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-agent': 'unfiled-chat' },
+      body: JSON.stringify({ sourceConversationId: 'unfiled-chat', title: 'Desk toggle', brief: 'Add the toggle.', ...(buildPass ? { buildPass } : {}) }),
+    });
+    expect((await post()).status).toBe(403);
+    db.prepare(
+      `INSERT INTO build_passes (id, source_conversation_id, source_turn_at, approver_user_id, target_conversation_id, scope_note, expires_at)
+       VALUES ('pass-1', 'archer', '2026-10-29 12:00:00', 1, 'unfiled-chat', 'queue the desk Tasks toggle fix', datetime('now', '+1 hour'))`,
+    ).run();
+    expect((await post('other-pass')).status).toBe(403);
+    const first = await post('pass-1');
+    expect(first.status).toBe(201);
+    const body = (await first.json()) as { job: { brief: string } };
+    expect(body.job.brief).toContain('Approved by Owner with build pass pass-1 from chat archer');
+    expect(db.prepare("SELECT used_at IS NOT NULL AS used, used_by_job_id FROM build_passes WHERE id = 'pass-1'").get()).toEqual({ used: 1, used_by_job_id: 10 });
+    expect((await post('pass-1')).status).toBe(403);
+    expect((await post()).status).toBe(403);
+  });
+
   it('reactivates an archived source chat before enqueueing it', async () => {
     const response = await fetch(`${base}/api/build-queue`, {
       method: 'POST',

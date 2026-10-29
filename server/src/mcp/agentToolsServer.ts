@@ -204,13 +204,21 @@ const TOOLS: ToolDef[] = [
   {
     name: 'send_message',
     description:
-      "Message another bot in a separate coordination thread. Its human conversation is not interrupted. Responses and progress stay in that thread. The result returns the thread id; read_coordination retrieves the exchange. This does not wait for a response. Send only to a chat that already owns the matter: a registered bot's standing chat, a chat already working on this same topic or build, a chat you handed off, or a chat you are already coordinating with. For new work that no existing chat is about, including a new request for Platform Dev, use handoff to start a new chat instead; never pick an unrelated chat just because it runs the right kind of agent.",
+      "Message another bot in a separate coordination thread. Its human conversation is not interrupted. Responses and progress stay in that thread. The result returns the thread id; read_coordination retrieves the exchange. This does not wait for a response. Send only to a chat that already owns the matter: a registered bot's standing chat, a chat already working on this same topic or build, a chat you handed off, or a chat you are already coordinating with. For new work that no existing chat is about, including a new request for Platform Dev, use handoff to start a new chat instead; never pick an unrelated chat just because it runs the right kind of agent. When Nick approved a build in this turn and another chat owns it, send it with build_approval_note so his approval travels with the message; do not ask him to repeat it in the other chat.",
     inputSchema: {
       type: 'object',
       properties: {
         conversationId: { type: 'string', description: 'The chat id.' },
         text: { type: 'string', description: 'The message to send.' },
         request_key: { type: 'string', description: 'Stable key for this exact message. Reuse on retry; never reuse for changed text.' },
+        build_approval_note: {
+          type: 'string',
+          description: "Only in a turn Nick (or James) started, after he approved a build that another chat will queue: quote exactly what he approved. Sends a one-time build pass with the message so the receiving chat can enqueue_build without asking him again. Refused from any other turn.",
+        },
+        build_pass: {
+          type: 'string',
+          description: 'Forward a build pass this chat already holds (from a [Build pass …] line) to the chat that will actually queue the build. Use instead of build_approval_note, never both.',
+        },
         priority: {
           type: 'string',
           enum: ['informational', 'urgent'],
@@ -286,7 +294,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'enqueue_build',
     description:
-      'Put shared software source or technical repair work into this workspace\'s durable build queue. Only a turn Nick started (or James on his behalf) can queue a build; from any other turn it is refused, so first look for a skill, config or manual fix, and if truly stuck raise_decision in one sentence. Project workspaces have independent queues; only an unfiled Platform Dev chat uses the Veneer Pro source queue. Call this early before changing shared software source, executable automation, dependencies, schemas, or deployment configuration unless the user explicitly says to start immediately, skip the line, or not use the queue. Do not use it for routine authorized bot training text, procedural documentation, task records, or isolated artifacts; coordinate overlapping file edits with their current owner and preserve current content. Training is not business approval. Mixed requests queue only the software portion. Do not use it for a standalone Veneer page or Mini App because those are isolated published deliverables; if the same request also changes shared software, queue that source work. Unfiled non-Platform-Dev chats cannot queue. Do not use it for purely read-only work. After enqueueing, do not change or validate the queued source work in the current turn; prepare that work read-only. Independent authorized business work may continue without a build slot. The queue itself starts a new turn in this chat when the slot is active, so never call `schedule_wakeup`, `schedule_task`, or any other timer to wait for your own build slot.',
+      'Put shared software source or technical repair work into this workspace\'s durable build queue. Only a turn Nick started (or James on his behalf) can queue a build, or a chat holding the build pass he sent with a handoff or message (pass its id as build_pass; it works once, for 24 hours); from any other turn it is refused, so first look for a skill, config or manual fix, and if truly stuck raise_decision in one sentence. Project workspaces have independent queues; only an unfiled Platform Dev chat uses the Veneer Pro source queue. Call this early before changing shared software source, executable automation, dependencies, schemas, or deployment configuration unless the user explicitly says to start immediately, skip the line, or not use the queue. Do not use it for routine authorized bot training text, procedural documentation, task records, or isolated artifacts; coordinate overlapping file edits with their current owner and preserve current content. Training is not business approval. Mixed requests queue only the software portion. Do not use it for a standalone Veneer page or Mini App because those are isolated published deliverables; if the same request also changes shared software, queue that source work. Unfiled non-Platform-Dev chats cannot queue. Do not use it for purely read-only work. After enqueueing, do not change or validate the queued source work in the current turn; prepare that work read-only. Independent authorized business work may continue without a build slot. The queue itself starts a new turn in this chat when the slot is active, so never call `schedule_wakeup`, `schedule_task`, or any other timer to wait for your own build slot.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -294,6 +302,10 @@ const TOOLS: ToolDef[] = [
         brief: {
           type: 'string',
           description: 'Self-contained implementation brief, including requirements and relevant decisions from this chat.',
+        },
+        build_pass: {
+          type: 'string',
+          description: 'The id from a [Build pass …] line Nick\'s approval sent to this chat. Needed only when this turn was not started by Nick.',
         },
       },
       required: ['title', 'brief'],
@@ -365,13 +377,21 @@ const TOOLS: ToolDef[] = [
   {
     name: 'handoff',
     description:
-      "Hand a task off to a NEW agent: this starts a fresh chat, fires the new agent off to work on its own, and returns the new chat's id. This is the way to give another kind of agent new work that no existing chat is about: for a Veneer software change, pass assistant 'platform-dev' and leave project unset, and the new chat is placed with the other Platform Dev chats. A chat's project folder is fixed, so this is also how to work in a different project: call list_projects, create_project natively if needed, then pass the exact project id to handoff. Never use browser automation to create or select a project. The new agent is told it was handed off from you and given the task as its first message, so the two chats stay traceable. It runs independently and does NOT reply here — afterwards use read_conversation(newChatId) to check its progress or result, or send_message(newChatId, …) to steer it. Leave provider/model/effort/assistant/project unset to use the default agent at its default thinking level. If the user asked for a SPECIFIC engine, model, or agent type, call list_agent_options first to resolve exactly what they meant.",
+      "Hand a task off to a NEW agent: this starts a fresh chat, fires the new agent off to work on its own, and returns the new chat's id. This is the way to give another kind of agent new work that no existing chat is about: for a Veneer software change, pass assistant 'platform-dev' and leave project unset, and the new chat is placed with the other Platform Dev chats. A chat's project folder is fixed, so this is also how to work in a different project: call list_projects, create_project natively if needed, then pass the exact project id to handoff. Never use browser automation to create or select a project. The new agent is told it was handed off from you and given the task as its first message, so the two chats stay traceable. It runs independently and does NOT reply here — afterwards use read_conversation(newChatId) to check its progress or result, or send_message(newChatId, …) to steer it. Leave provider/model/effort/assistant/project unset to use the default agent at its default thinking level. If the user asked for a SPECIFIC engine, model, or agent type, call list_agent_options first to resolve exactly what they meant. When Nick approved a build in this turn, add build_approval_note so the new chat may queue it once; a chat holding a build pass forwards it with build_pass.",
     inputSchema: {
       type: 'object',
       properties: {
         task: {
           type: 'string',
           description: "What the new agent should do — a clear, self-contained instruction. Becomes the new chat's first message.",
+        },
+        build_approval_note: {
+          type: 'string',
+          description: "Only in a turn Nick (or James) started, after he approved a build that another chat will queue: quote exactly what he approved. Sends a one-time build pass with the message so the receiving chat can enqueue_build without asking him again. Refused from any other turn.",
+        },
+        build_pass: {
+          type: 'string',
+          description: 'Forward a build pass this chat already holds (from a [Build pass …] line) to the chat that will actually queue the build. Use instead of build_approval_note, never both.',
         },
         provider: {
           type: 'string',
@@ -1097,7 +1117,7 @@ async function callTool(
       const conversationId = String(args.conversationId ?? '');
       const result = await callApi(`/api/conversations/${encodeURIComponent(conversationId)}/steer`, {
         method: 'POST',
-        body: JSON.stringify({ text: String(args.text ?? ''), ...(args.request_key ? {request_key:String(args.request_key)} : {}), ...(args.priority === 'urgent' || args.priority === 'informational' ? {priority:args.priority} : {}) }),
+        body: JSON.stringify({ text: String(args.text ?? ''), ...(args.request_key ? {request_key:String(args.request_key)} : {}), ...(args.build_approval_note !== undefined ? { build_approval_note: String(args.build_approval_note) } : {}), ...(args.build_pass !== undefined ? { build_pass: String(args.build_pass) } : {}), ...(args.priority === 'urgent' || args.priority === 'informational' ? {priority:args.priority} : {}) }),
       });
       if (result.coordinationThreadId) return {content:[{type:'text',text: `Message ${String(result.disposition)} in coordination thread ${String(result.coordinationThreadId)}. Use read_coordination with this thread id to read responses. The human conversation was not interrupted.`}]};
       const disposition = String(result.disposition ?? 'queued');
@@ -1191,6 +1211,7 @@ async function callTool(
           sourceConversationId: spawnConversationId,
           title: String(args.title ?? ''),
           brief: String(args.brief ?? ''),
+          ...(args.build_pass ? { buildPass: String(args.build_pass) } : {}),
         }),
       })) as {
         job: Record<string, unknown>;
@@ -1319,6 +1340,8 @@ async function callTool(
       if (args.effort !== undefined) body.effort = String(args.effort);
       if (args.assistant !== undefined && String(args.assistant).trim()) body.assistantSlug = String(args.assistant).trim();
       if (projectId) body.projectId = projectId;
+      if (args.build_approval_note !== undefined) body.build_approval_note = String(args.build_approval_note);
+      if (args.build_pass !== undefined) body.build_pass = String(args.build_pass);
       const { conversation } = (await callApi('/api/conversations', { method: 'POST', body: JSON.stringify(body) })) as {
         conversation: Record<string, unknown>;
       };

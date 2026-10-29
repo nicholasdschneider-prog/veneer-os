@@ -333,3 +333,51 @@ it('routes authenticated bot messages and replies to workers while human steerin
     await new Promise<void>((r, j) => server.close((e) => (e ? j(e) : r())));
   }
 });
+
+it("carries Nick's build approval with a bot message, and keeps bot-only messages out of technical chats", async () => {
+  let identity: { email: string; agentConversationId?: string } = { email: 'owner@example.com', agentConversationId: 'grant' };
+  let n = 0;
+  const queueMessage = vi.fn(async () => ({ messageId: ++n, disposition: 'queued', queue: { revision: 1, messages: [], failedTurn: null } }));
+  const ctx = {
+    db,
+    manager: { queueMessage, statusOf: async () => 'idle', snapshot: async () => [] },
+    resolveIdentity: async () => identity,
+  } as unknown as AppContext;
+  const pd = db.prepare("SELECT id FROM assistants WHERE slug='platform-dev'").get() as { id: number };
+  db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,channel,visibility) VALUES('pd',?,1,'pd','claude','session-pd','web','team')").run(pd.id);
+  const app = express();
+  app.use('/api', createApiRouter(ctx));
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>((r) => server.once('listening', r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const send = (id: string, extra: Record<string, string> = {}) =>
+    fetch(`${base}/api/conversations/${id}/steer`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'Please queue the toggle fix', ...extra }),
+    });
+  try {
+    // A wake-up cannot mint a pass.
+    db.prepare("INSERT INTO pending_turns(conversation_id,prompt,actor_user_id,origin_json,status) VALUES('grant','p',1,?,'pending')")
+      .run(JSON.stringify({ kind: 'wakeup', from: 'Grant', to: 'Grant' }));
+    expect((await send('clara', { build_approval_note: 'toggle fix' })).status).toBe(400);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM build_passes').get()).toEqual({ n: 0 });
+    // Nick's own turn can.
+    db.prepare("UPDATE pending_turns SET origin_json=NULL WHERE conversation_id='grant'").run();
+    expect((await send('clara', { build_approval_note: 'queue the desk Tasks toggle fix', request_key: 'k' })).status).toBe(200);
+    const text = (queueMessage.mock.calls as unknown as string[][]).at(-1)![1]!;
+    expect(text).toContain('[Build pass ');
+    expect(text).toContain('queue the desk Tasks toggle fix');
+    const pass = db.prepare("SELECT id,target_conversation_id,approver_user_id FROM build_passes").get() as { id: string; target_conversation_id: string; approver_user_id: number };
+    expect(pass).toMatchObject({ target_conversation_id: 'clara', approver_user_id: 1 });
+
+    // Clara, a bot, cannot message Platform Dev with new work on its own, but can forward the pass it holds.
+    identity = { email: 'owner@example.com', agentConversationId: 'clara' };
+    expect((await send('pd')).status).toBe(400);
+    expect((await send('pd', { build_pass: 'not-a-pass' })).status).toBe(400);
+    expect((await send('pd', { build_pass: pass.id })).status).toBe(200);
+    expect(db.prepare('SELECT target_conversation_id FROM build_passes WHERE id=?').get(pass.id)).toEqual({ target_conversation_id: 'pd' });
+  } finally {
+    server.close();
+  }
+});

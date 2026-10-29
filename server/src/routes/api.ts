@@ -1,5 +1,5 @@
 import { purchaseTimingSetupRoutes } from '../bots/purchaseTimingRoutes.js';
-import { BUILD_REFUSAL, isTechnicalConversation, requestMayStartBuild } from '../buildQueue/buildApproval.js';
+import { BUILD_REFUSAL, buildPassNotice, forwardBuildPass, heldBuildPass, isTechnicalConversation, mintBuildPass, requestMayMintBuildPass, requestMayStartBuild } from '../buildQueue/buildApproval.js';
 import { createJamesNotifyRouter } from '../jamesLink/notifyRoutes.js';
 import { currentJamesLink } from '../jamesLink/index.js';
 import { captureHumanMessage } from '../bots/humanMessages.js';
@@ -203,6 +203,10 @@ const CreateConversationSchema = z.object({
   // Set only by the handoff tool. The route verifies this against the
   // authenticated agent conversation before it records any parent link.
   originConversationId: z.string().trim().min(1).max(128).optional(),
+  // Handoff only: carry an approver's build yes to the new chat (mint one in
+  // the approver's own turn, or forward the pass this chat already holds).
+  build_approval_note: z.string().trim().min(1).max(2000).optional(),
+  build_pass: z.string().trim().min(1).max(100).optional(),
 });
 const ProjectWriteSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -2761,7 +2765,27 @@ export function createApiRouter(ctx: AppContext): Router {
     const slug = assistant.slug;
     // Starting a Platform Dev chat, or any handoff from a technical bot, starts
     // code work: only Nick's own turn (or James's link) may do it from an agent.
-    if (req.agentConversationId && (slug === 'platform-dev' || isTechnicalConversation(db, req.agentConversationId)) && !requestMayStartBuild(db, req)) {
+    const approvalNote = body.data.build_approval_note;
+    const carriedPass = body.data.build_pass;
+    if ((approvalNote || carriedPass) && !req.agentConversationId) {
+      res.status(400).json({ ok: false, error: 'Only a handoff from a chat carries a build pass' });
+      return;
+    }
+    if (approvalNote && carriedPass) {
+      res.status(400).json({ ok: false, error: 'Send either build_approval_note or build_pass, not both' });
+      return;
+    }
+    // A pass is checked here, before the chat exists, and minted or moved below.
+    const passReady = approvalNote
+      ? requestMayMintBuildPass(db, req)
+      : carriedPass
+        ? !!heldBuildPass(db, req.agentConversationId!, carriedPass)
+        : false;
+    if ((approvalNote || carriedPass) && !passReady) {
+      res.status(403).json({ ok: false, error: BUILD_REFUSAL });
+      return;
+    }
+    if (req.agentConversationId && (slug === 'platform-dev' || isTechnicalConversation(db, req.agentConversationId)) && !passReady && !requestMayStartBuild(db, req)) {
       res.status(403).json({ ok: false, error: BUILD_REFUSAL });
       return;
     }
@@ -2850,10 +2874,22 @@ export function createApiRouter(ctx: AppContext): Router {
     if (!req.agentConversationId) markSeen(db, req.user!.id, row.id);
     // Kick off LLM auto-titling (if enabled) in parallel with the first turn.
     void autoTitleConversation(row.id, body.data.firstMessage, prefs);
+    let firstMessage = body.data.firstMessage;
+    if (approvalNote || carriedPass) {
+      try {
+        const pass = approvalNote
+          ? mintBuildPass(db, req, { targetConversationId: row.id, note: approvalNote })
+          : forwardBuildPass(db, req.agentConversationId!, row.id, carriedPass);
+        firstMessage = `${firstMessage}\n\n${buildPassNotice(db, pass)}`;
+      } catch (err) {
+        res.status(403).json({ ok: false, error: (err as Error).message, conversationId: row.id });
+        return;
+      }
+    }
     void (async () => {
       const origin = agentMessageOrigin(req, row.id);
-      if (origin) await manager.postMessage(row.id, body.data.firstMessage, req.user!.id, origin);
-      else await manager.postMessage(row.id, body.data.firstMessage, req.user!.id);
+      if (origin) await manager.postMessage(row.id, firstMessage, req.user!.id, origin);
+      else await manager.postMessage(row.id, firstMessage, req.user!.id);
       res.json({ ok: true, conversation: await conversationView(ctx, row, req.user!) });
     })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });

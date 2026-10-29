@@ -114,6 +114,46 @@ afterAll(() => {
   db.close();
 });
 
+describe('handoff build passes', () => {
+  const handoffToPlatformDev = (extra: Record<string, string> = {}) =>
+    fetch(`${base}/api/conversations`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-test-conversation': 'other-chat' },
+      body: JSON.stringify({ firstMessage: 'Build the desk toggle', originConversationId: 'other-chat', assistantSlug: 'platform-dev', ...extra }),
+    }).then(async (response) => ({ status: response.status, body: (await response.json()) as Record<string, any> }));
+
+  it("opens Platform Dev with Nick's pass from his turn, and refuses a bot turn with or without a note", async () => {
+    expect((await handoffToPlatformDev()).status).toBe(403);
+    expect((await handoffToPlatformDev({ build_approval_note: 'desk toggle' })).status).toBe(403);
+    db.prepare("INSERT INTO pending_turns (conversation_id, prompt, actor_user_id, origin_json, status) VALUES ('other-chat', 'p', 1, ?, 'pending')")
+      .run(JSON.stringify({ kind: 'wakeup', from: 'Archer', to: 'Archer' }));
+    expect((await handoffToPlatformDev({ build_approval_note: 'desk toggle' })).status).toBe(403);
+    db.prepare("UPDATE pending_turns SET origin_json = NULL WHERE conversation_id = 'other-chat'").run();
+    const ok = await handoffToPlatformDev({ build_approval_note: 'queue the desk Tasks toggle fix' });
+    expect(ok.status).toBe(200);
+    const newId = ok.body.conversation.id as string;
+    expect(db.prepare('SELECT target_conversation_id, approver_user_id, used_at FROM build_passes WHERE target_conversation_id = ?').get(newId))
+      .toEqual({ target_conversation_id: newId, approver_user_id: 1, used_at: null });
+    const posted = postedMessages.find((args) => args[0] === newId);
+    expect(String(posted?.[1])).toContain('[Build pass ');
+    expect(String(posted?.[1])).toContain('queue the desk Tasks toggle fix');
+    db.prepare("DELETE FROM pending_turns WHERE conversation_id = 'other-chat'").run();
+  });
+
+  it('forwards a pass the chat holds, but not one it does not', async () => {
+    db.prepare(
+      `INSERT INTO build_passes (id, source_conversation_id, approver_user_id, target_conversation_id, scope_note, expires_at)
+       VALUES ('held', 'archer', 1, 'other-chat', 'held build', datetime('now', '+1 hour'))`,
+    ).run();
+    expect((await handoffToPlatformDev({ build_pass: 'missing' })).status).toBe(403);
+    const ok = await handoffToPlatformDev({ build_pass: 'held' });
+    expect(ok.status).toBe(200);
+    expect(db.prepare("SELECT target_conversation_id FROM build_passes WHERE id = 'held'").get())
+      .toEqual({ target_conversation_id: ok.body.conversation.id });
+    expect((await handoffToPlatformDev({ build_pass: 'held' })).status).toBe(403);
+  });
+});
+
 describe('handoff conversation origins', () => {
   it('uses a valid client id for optimistic sidebar reconciliation', async () => {
     const id = 'f2f95b9a-e219-4c4c-bb23-8e1b81f12d98';

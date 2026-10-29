@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { BUILD_REFUSAL, isReplyToTechnical, isTechnicalConversation, requestMayStartBuild } from '../buildQueue/buildApproval.js';
+import { BUILD_REFUSAL, buildPassNotice, forwardBuildPass, isReplyToTechnical, isTechnicalConversation, mintBuildPass, requestMayStartBuild } from '../buildQueue/buildApproval.js';
 import express from 'express';
 import type { AppContext } from '../context.js';
 import type { ConversationRow } from '../db/db.js';
@@ -217,7 +217,13 @@ export async function sendCoordination(
     !sameBusiness(ctx.db, source.id, target)
   )
     throw new Error('Conversation not available');
-  if (isTechnicalConversation(ctx.db, target.id) && !isTechnicalConversation(ctx.db, source.id) && !isReplyToTechnical(ctx.db, source.id, target.id) && !requestMayStartBuild(ctx.db, req))
+  const approvalNote = req.body.build_approval_note;
+  const passId = req.body.build_pass;
+  if (approvalNote !== undefined && typeof approvalNote !== 'string') throw new Error('build_approval_note must be text');
+  if (passId !== undefined && (typeof passId !== 'string' || !passId.trim())) throw new Error('build_pass must be a pass id');
+  if (approvalNote !== undefined && passId !== undefined) throw new Error('Send either build_approval_note or build_pass, not both');
+  const carriesPass = approvalNote !== undefined || passId !== undefined;
+  if (!carriesPass && isTechnicalConversation(ctx.db, target.id) && !isTechnicalConversation(ctx.db, source.id) && !isReplyToTechnical(ctx.db, source.id, target.id) && !requestMayStartBuild(ctx.db, req))
     throw new Error(BUILD_REFUSAL);
   if (req.agentExecutionConversationId) {
     const execution = coordinationLane(
@@ -239,6 +245,14 @@ export async function sendCoordination(
   if (priority !== undefined && priority !== 'urgent' && priority !== 'informational')
     throw new Error('priority must be informational or urgent');
   const urgent = priority === 'urgent';
+  // An approver's yes travels with the message: minted in their own turn, or
+  // forwarded by the chat that already holds it. Either way one build, once.
+  if (carriesPass) {
+    const pass = approvalNote !== undefined
+      ? mintBuildPass(ctx.db, req, { targetConversationId: target.id, note: approvalNote, requestKey: requestKey ?? null })
+      : forwardBuildPass(ctx.db, source.id, target.id, passId.trim());
+    text = `${text}\n\n${buildPassNotice(ctx.db, pass)}`;
+  }
   const { thread, lane } = ensureCoordination(ctx.db, source, target);
   const from = (
     ctx.db

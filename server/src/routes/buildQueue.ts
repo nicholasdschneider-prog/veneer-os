@@ -6,12 +6,14 @@ import { canManageConversation, canTrainBusinessBot, canViewConversation, sameBu
 import { createConversationReactivator } from './conversationActivity.js';
 import type { ConversationRow } from '../db/db.js';
 import type { MoveBuildActor } from '../buildQueue/coordinator.js';
-import { BUILD_REFUSAL, requestMayStartBuild } from '../buildQueue/buildApproval.js';
+import { approverName, BUILD_REFUSAL, claimBuildPass, requestMayStartBuild, settleBuildPass, type BuildPassRow } from '../buildQueue/buildApproval.js';
 
 const EnqueueSchema = z.object({
   sourceConversationId: z.string().trim().min(1).max(100),
   title: z.string().trim().min(1).max(200),
   brief: z.string().trim().min(1).max(100_000),
+  // A pass an approver sent with a handoff or message to this chat.
+  buildPass: z.string().trim().min(1).max(100).optional(),
 });
 const ResolveSchema = z.object({ action: z.enum(['retry', 'skip']) });
 const MoveTargetSchema = z.union([
@@ -133,18 +135,27 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
       res.status(404).json({ ok: false, error: 'Conversation not found' });
       return;
     }
+    // The chat's own approved turn needs no pass. Otherwise the chat must hold
+    // an approver's pass, sent to it by the chat where the approval was given.
+    let pass: BuildPassRow | undefined;
     if (!requestMayStartBuild(ctx.db, req)) {
-      res.status(403).json({ ok: false, error: BUILD_REFUSAL });
-      return;
+      if (req.agentConversationId === conv.id) pass = claimBuildPass(ctx.db, conv.id, body.data.buildPass ?? null);
+      if (!pass) {
+        res.status(403).json({ ok: false, error: BUILD_REFUSAL });
+        return;
+      }
     }
     // enqueue_build is fresh activity just like a prompt. Reactivate first so
     // the coordinator's active-conversation guard can reserve the workspace.
     const buildChat = conv;
-    const brief = body.data.brief;
+    const brief = pass
+      ? `${body.data.brief}\n\nApproved by ${approverName(ctx.db, pass.approver_user_id)} with build pass ${pass.id} from chat ${pass.source_conversation_id} at ${pass.source_turn_at ?? pass.created_at} UTC: "${pass.scope_note}"`
+      : body.data.brief;
     reactivateConversation(buildChat.id);
     void ctx.manager
       .enqueueBuild(buildChat.id, body.data.title, brief, req.user!.id)
       .then((result) => {
+        if (pass) settleBuildPass(ctx.db, pass.id, result.ok && result.disposition !== 'existing' ? Number(result.job.id) : null);
         if (!result.ok) {
           res.status(result.error === 'not_queueable' ? 400 : 404).json({
             ok: false,
@@ -156,7 +167,10 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
         }
         if (conv.business_team_id) ctx.db.prepare('INSERT INTO business_audit(team_id,actor_id,actor_chat,action,payload_json) VALUES(?,?,?,?,?)').run(
           conv.business_team_id, req.user!.id, req.agentConversationId ?? null, 'build.enqueued',
-          JSON.stringify({ jobId: result.job.id, conversationId: buildChat.id, disposition: result.disposition }),
+          JSON.stringify({
+            jobId: result.job.id, conversationId: buildChat.id, disposition: result.disposition,
+            ...(pass ? { buildPass: { id: pass.id, approverUserId: pass.approver_user_id, sourceConversationId: pass.source_conversation_id, sourceTurnAt: pass.source_turn_at } } : {}),
+          }),
         );
         res.status(result.disposition === 'enqueued' ? 201 : 200).json({
           ok: true,
@@ -165,7 +179,10 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
           disposition: result.disposition,
         });
       })
-      .catch((err: Error) => res.status(503).json({ ok: false, error: err.message }));
+      .catch((err: Error) => {
+        if (pass) settleBuildPass(ctx.db, pass.id, null);
+        res.status(503).json({ ok: false, error: err.message });
+      });
   });
 
   router.post('/recover', (req,res)=>{
