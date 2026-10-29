@@ -150,7 +150,8 @@ describe('shared Tasks capability', () => {
       app.use(express.json());
       app.use((req, _res, next) => {
         const bot = String(req.headers['x-test-bot'] ?? ''); const execution = String(req.headers['x-test-execution'] ?? '');
-        req.user = bot ? { ...user, botSession: true } as UserRow : user;
+        const as = req.headers['x-test-user'] ? db.prepare('SELECT * FROM users WHERE id=?').get(Number(req.headers['x-test-user'])) as UserRow : user;
+        req.user = bot ? { ...as, botSession: true } as UserRow : as;
         if (bot) req.agentConversationId = bot;
         if (execution) req.agentExecutionConversationId = execution;
         next();
@@ -218,6 +219,18 @@ describe('shared Tasks capability', () => {
       expect(await activity()).toEqual({ state: 'waiting', reason: 'tasks', others: 2 });
       db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE wake_key LIKE ?").run(`bot-task:${first.id}:%`);
       expect(await activity()).toEqual({ state: 'idle' });
+      // A teammate works the same shared bot's board: an outsider sees nothing, a member sees the
+      // same board and counts, writes notes under their own name and marks tasks done.
+      const ali = callApi({ 'x-test-user': '2' });
+      expect(await ali(`/api/conversations/${OWNER}/tasks`)).toMatchObject({ error: 'Chat not found' });
+      db.prepare("INSERT INTO business_team_members(team_id,user_id,role) VALUES(?,2,'member')").run(TEAM);
+      const shared = await ali(`/api/conversations/${OWNER}/tasks`) as unknown as { needs_you: number; counts: Record<string, number> };
+      const mine = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { needs_you: number; counts: Record<string, number> };
+      expect(shared.needs_you).toBe(mine.needs_you);
+      expect(shared.counts.working).toBe(mine.counts.working);
+      expect(await ali(`/api/conversations/${OWNER}/tasks/${payload.created[1]!.id}/discuss`, { method: 'POST', body: JSON.stringify({ text: 'I will take this one.', request_key: 'a1' }) })).toMatchObject({ duplicate: false });
+      expect(tasks.events(payload.created[1]!.id, 50).find((e) => e.kind === 'discussion')?.payload).toMatchObject({ by: 'Ali' });
+      expect(await ali(`/api/conversations/${OWNER}/tasks/mark`, { method: 'POST', body: JSON.stringify({ kind: 'task', id: payload.created[1]!.id, mark: 'done' }) })).not.toHaveProperty('error');
     });
   });
 });

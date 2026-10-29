@@ -28,6 +28,8 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/conversations\/[^/]+\/?$/,
     /^\/conversations\/[^/]+\/transcript\/?$/,
     /^\/generated-files(?:\/.*)?$/,
+    // A shared bot's CHAT | TASKS board, task panes and the customer thread behind a task.
+    /^\/conversations\/[^/]+\/tasks(?:\/[^/]+(?:\/customer-thread(?:\/files\/[^/]+\/\d+)?)?)?\/?$/,
   ].some(pattern => pattern.test(path));
   if (method === 'PUT') return /^\/bot-workflows\/bots\/[^/]+\/notifications\/?$/.test(path);
   if (method === 'DELETE') return /^\/bot-workflows\/push\/[^/]+\/?$/.test(path);
@@ -42,6 +44,8 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/live-voice\/calls(?:\/[^/]+\/(?:heartbeat|connected|end))?\/?$/,
     /^\/bots\/decisions\/[^/]+\/(answer|choice|custom|evidence|thread|handling|dismiss|reply|handoffs)\/?$/,
     /^\/conversations\/[^/]+\/messages\/?$/,
+    // Notes on a task and done/reviewed marks, attributed to the employee.
+    /^\/conversations\/[^/]+\/tasks\/(mark|[^/]+\/discuss)\/?$/,
   ].some(pattern => pattern.test(path));
   return false;
 }

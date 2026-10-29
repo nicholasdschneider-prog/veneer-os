@@ -373,6 +373,11 @@ describe("private team rooms", () => {
     ])
       expect(employeeRouteAllowed(method!, path!)).toBe(true);
     expect(employeeRouteAllowed("DELETE", "/team-rooms/room")).toBe(false);
+    // A shared bot's tasks: board, pane, customer thread and its files, notes and marks.
+    for (const [method, path] of [['GET', '/conversations/c1/tasks'], ['GET', '/conversations/c1/tasks/t1'], ['GET', '/conversations/c1/tasks/t1/customer-thread'], ['GET', '/conversations/c1/tasks/t1/customer-thread/files/m1/0'], ['POST', '/conversations/c1/tasks/t1/discuss'], ['POST', '/conversations/c1/tasks/mark']] as const)
+      expect(employeeRouteAllowed(method, path)).toBe(true);
+    expect(employeeRouteAllowed('POST', '/tasks/intake')).toBe(false);
+    expect(employeeRouteAllowed('POST', '/conversations/c1/tasks/t1')).toBe(false);
     expect(employeeRouteAllowed("POST", "/team-rooms/room/admin")).toBe(false);
   });
   it("maps bot room tools to the same authorized REST path", async () => {
