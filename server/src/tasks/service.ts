@@ -165,6 +165,32 @@ export function createTaskService(db: Database.Database) {
   return {
     taskOfLane,
     read: taskRow,
+    /** OrderOps shows the ticket complete: close the task unless a question is still open on it. */
+    closeFromSource(id: string, line: string): boolean {
+      const t = taskRow(id);
+      if (!t || t.status === 'done' || openDecision(t.id)) return false;
+      db.transaction(() => {
+        setStatusRow(t, 'done', line, { closed_by: 'auto' });
+        event(t.id, 'status', { from: t.status, to: 'done', status_line: line, source: 'orderops' });
+      })();
+      schedule(t.owner_conversation_id);
+      return true;
+    },
+    /** The task chat has never run a turn and no task wake was ever queued or delivered. */
+    neverStarted(id: string): boolean {
+      const t = taskRow(id);
+      if (!t?.task_conversation_id) return false;
+      if (db.prepare('SELECT 1 FROM turn_origins WHERE conversation_id=? LIMIT 1').get(t.task_conversation_id)) return false;
+      return !db.prepare("SELECT 1 FROM conversation_wakeups WHERE wake_key LIKE ? AND status IN ('pending','delivered') LIMIT 1").get(`bot-task:${t.id}:%`);
+    },
+    /** Ask the bot, once, to check an inherited task against the live ticket and update the board. */
+    recheck(id: string, code: string, statusLine: string): boolean {
+      const t = taskRow(id);
+      if (!t) return false;
+      const woke = wake(t, 'recheck', `Re-check this inherited task against the live OrderOps ticket ${code} (${statusLine}). Read the current thread, decide what, if anything, is still outstanding, and set_task_status truthfully: done only when the readback shows nothing is left; ready_for_review when a human should look; needs_input with raise_decision when a human must decide. Follow your customer service skill: no customer send, refund or order change outside its normal draft and approval flow.`);
+      if (woke) event(t.id, 'recheck', { code, status_line: statusLine });
+      return woke;
+    },
     resources,
     schedule,
     create(actor: TaskActor, raw: unknown) {

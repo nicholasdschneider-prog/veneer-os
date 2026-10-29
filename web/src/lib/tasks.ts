@@ -34,6 +34,8 @@ export function cleanTaskTitle(title: string, caseKey: string | null): string {
   return t || title;
 }
 export interface BoardRow {
+  /** Live OrderOps status for a task with a ticket code, e.g. "OrderOps: closed Oct 9". */
+  source_line?: string;
   kind: 'task' | 'decision' | 'question' | 'thread' | 'handoff' | 'ticket';
   id: string;
   group: BoardGroup;
@@ -85,7 +87,7 @@ export function customerThreadPreferred(): boolean { try { return sessionStorage
 export function rememberCustomerThread(open: boolean): void { try { if (open) sessionStorage.setItem(CUSTOMER_THREAD_KEY, 'open'); else sessionStorage.removeItem(CUSTOMER_THREAD_KEY); } catch { /* ignore */ } }
 export const tasksApi = {
   board: (conversationId: string, signal?: AbortSignal) => requestJson<Board>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks`, { signal }),
-  task: (conversationId: string, taskId: string) => requestJson<{ task: BotTask; events: TaskEvent[]; bot_name: string; activity?: TaskActivity }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}`),
+  task: (conversationId: string, taskId: string) => requestJson<{ task: BotTask; events: TaskEvent[]; bot_name: string; activity?: TaskActivity; source_line?: string | null }>(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/${encodeURIComponent(taskId)}`),
   mark: (conversationId: string, body: { kind: 'task' | 'thread' | 'handoff'; id: string; mark: 'done' | 'reviewed' }) =>
     requestJson(`/api/conversations/${encodeURIComponent(conversationId)}/tasks/mark`, { method: 'POST', body: JSON.stringify(body) }),
   customerThread: (conversationId: string, taskId: string, refresh = false) =>

@@ -7,6 +7,7 @@ import { BotError, createBotService } from '../bots/service.js';
 import { botLabel, botLaneOwnerOfThread } from '../coordination/botLane.js';
 import type { CoordinationThread } from '../coordination/store.js';
 import { createTaskService, TASK_CAP_PER_OWNER, type TaskActor } from './service.js';
+import { sourceLines } from './sourceStatus.js';
 import { createCsTicketService, presentMessage } from '../csTickets/service.js';
 import { attachmentPath, classifyCaseKey, createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
 import { cleanBody } from '../csTickets/body.js';
@@ -29,6 +30,8 @@ export interface BoardRow {
   href: string;
   updated_at: string;
   can_mark: boolean;
+  /** Live OrderOps status for a task with a ticket code, e.g. "OrderOps: closed Oct 9". */
+  source_line?: string;
   task?: ReturnType<typeof import('./service.js').present> & { open_decision: { id: string; version: number; question: string } | null; thread_id: string | null };
   decision_id?: string;
 }
@@ -100,13 +103,15 @@ export function createTasksRouter(ctx: AppContext) {
     const marks = tasks.marks(chat.id);
     const rows: BoardRow[] = [];
     // 1. The bot's own tasks.
-    for (const t of tasks.listForOwner(chat.id)) {
+    const ownTasks = tasks.listForOwner(chat.id);
+    const live = sourceLines(db, ownTasks.filter((t) => t.status !== 'done' || t.closed_by === 'auto').map((t) => t.id));
+    for (const t of ownTasks) {
       const group: BoardGroup = t.status === 'done' ? 'completed' : t.status;
       rows.push({ kind: 'task', id: t.id, group, title: t.title, status_line: t.status_line, tag: t.case_key ? `case ${t.case_key}` : t.source.replace('_', ' '), updated_at: t.updated_at,
         // The task chat is read in the owner chat's side panel (it renders a lane's transcript); a lane page on its own is blank.
         // A task opens in the board's own pane (status, question card, the task chat's transcript, composer); never the bare lane page.
         href: `#/chat/${chat.id}?view=tasks&task=${t.id}`,
-        can_mark: group !== 'completed', task: t, ...(t.open_decision ? { decision_id: t.open_decision.id } : {}) });
+        can_mark: group !== 'completed', task: t, ...(t.open_decision ? { decision_id: t.open_decision.id } : {}), ...(live.get(t.id) ? { source_line: live.get(t.id)! } : {}) });
     }
     // 2. The bot's own open questions not bound to a task.
     const boundIds = new Set((db.prepare('SELECT id FROM bot_decisions WHERE conversation_id=? AND task_id IS NOT NULL').all(chat.id) as { id: string }[]).map((r) => r.id));
@@ -194,7 +199,7 @@ export function createTasksRouter(ctx: AppContext) {
     visibleChat(req, req.params.id!);
     const t = tasks.read(req.params.taskId!);
     if (!t || t.owner_conversation_id !== req.params.id) throw new BotError(404, 'Task not found');
-    res.json({ task: tasks.listForOwner(req.params.id!).find((x) => x.id === t.id), events: tasks.events(t.id, 50), bot_name: botLabel(db, req.params.id!), activity: await taskActivity(t) });
+    res.json({ task: tasks.listForOwner(req.params.id!).find((x) => x.id === t.id), events: tasks.events(t.id, 50), bot_name: botLabel(db, req.params.id!), activity: await taskActivity(t), source_line: sourceLines(db, [t.id]).get(t.id) ?? null });
   }));
   /** The real customer thread behind a task, read through the OrderOps mirror by ticket code only. Errors are plain messages. */
   router.get('/conversations/:id/tasks/:taskId/customer-thread', run(async (req, res) => {

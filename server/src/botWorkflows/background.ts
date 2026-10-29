@@ -10,6 +10,7 @@ import { startCalendarReminderWorker } from '../calendarReminders/worker.js';
 import { escalateStaleDecisions, escalationEnabled } from '../bots/decisionEscalation.js';
 import { createTicketPoller, MIRROR_SECRET } from '../csTickets/poll.js';
 import { createTaskService } from '../tasks/service.js';
+import { createTaskSourceSweep, type OrderOpsTicket } from '../tasks/sourceStatus.js';
 import crypto from 'node:crypto';
 import { readSecretValue } from '../secrets/readSecret.js';
 export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics = createWebOperationMetrics()) {
@@ -23,6 +24,8 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
   // Shared Tasks: after a (re)start, working tasks reconcile against their sources before anything is rescheduled.
   const taskService = createTaskService(ctx.db);
   try { const woken = taskService.reconcileAfterRestart(crypto.randomUUID()); if (woken) console.info(`[tasks] ${woken} working task(s) asked to reconcile after restart`); } catch (e) { console.warn(`[tasks] restart reconciliation failed: ${(e as Error).message}`); }
+  // Live OrderOps status behind tasks with a ticket code: one read every 20 s through the same read-only mirror.
+  const sourceSweep = createTaskSourceSweep(ctx.db, { tasks: taskService, findConversation: async (code) => (await ticketPoller.findConversation(code)) as OrderOpsTicket | null });
   let lastSchedule = 0;
   let busy = false,
     searchBusy = false;
@@ -43,6 +46,7 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
       for (const phone of calls.phones) void startPhoneCall(ctx, phone);
       await metrics.measureAsync('notifications', () => tickNotifications(ctx));
       await metrics.measureAsync('cs_ticket_poll', () => ticketPoller.tick());
+      await metrics.measureAsync('task_source_status', () => sourceSweep.tick());
       if (Date.now() - lastSchedule > 30_000) {
         lastSchedule = Date.now();
         // Start queued tasks whose owner has a free slot and whose shared resources are free.
