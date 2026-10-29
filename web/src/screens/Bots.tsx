@@ -38,7 +38,6 @@ import {
   Users,
 } from 'lucide-react';
 import { useLiveVoice } from '@/components/VoiceProvider';
-import { sideChatHash } from '@/lib/sideChat';
 import {
   botsApi,
   decisionLabel,
@@ -712,20 +711,10 @@ export function Bots({
                     <span className="inline-flex items-center gap-2 text-sm font-medium"><BotAvatar id={d.conversation_id} name={d.bot_name} />{d.bot_name}</span>
                     <State state={d.state} label={decisionStatusLabel(d)} />
                   </div>
-                  {!embedded && <div className="mt-4 flex flex-wrap gap-2">
-                    {canCall && (
-                      <CallButton className="flex-1 sm:flex-none"
-                        onClick={() => liveVoice.open(d.conversation_id, d.id)}
-                      >Call {d.bot_name}</CallButton>
-                    )}
-                    <Button
-                      variant="outline"
-                      className="min-h-11 flex-1 sm:flex-none"
-                      onClick={() => onNavigate(sideChatHash(d.conversation_id, 'bots'))}
-                    >
-                      <MessageSquare className="size-4" />
-                      Side chat
-                    </Button>
+                  {!embedded && canCall && <div className="mt-4 flex flex-wrap gap-2">
+                    <CallButton className="flex-1 sm:flex-none"
+                      onClick={() => liveVoice.open(d.conversation_id, d.id)}
+                    >Call {d.bot_name}</CallButton>
                   </div>}
                   {embedded && !desk && <p className="mt-4 text-base font-medium">{d.proposal.question}</p>}
                   <details open={!embedded || desk} className={embedded && !desk ? "mt-3 rounded-xl border p-3" : undefined}>
@@ -1014,6 +1003,7 @@ export function Bots({
                           <p className="mb-1 text-xs font-medium text-muted-foreground">
                             {m.actor_conversation_id === d.conversation_id
                               ? d.bot_name
+                              : m.helper ? `${d.bot_name} · quick answer while busy`
                               : m.actor_conversation_id ? 'Investigating thread' : m.actor_name}{' '}
                             · <time dateTime={m.created_at.replace(" ", "T") + (/[zZ]|[+-]\d\d:\d\d$/.test(m.created_at) ? "" : "Z")}>{discussionTimestamp(m.created_at)}</time>
                           </p>

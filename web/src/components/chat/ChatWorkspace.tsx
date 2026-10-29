@@ -19,7 +19,6 @@ import { SplitView } from '../layout/SplitView';
 import { ArtifactPanel } from './ArtifactPanel';
 import { DesktopPanel, shouldDockDesktop, useFloatingDesktop } from '../desktop/FloatingDesktop';
 import { CitationPanel } from './CitationPanel';
-import { SideChatPanel } from './SideChatPanel';
 import { withSideParam } from '../../lib/sideChat';
 import { ConversationBrowserPanel } from '../browser/ConversationBrowserPanel';
 import type { Citation } from '../../lib/citations';
@@ -36,7 +35,7 @@ interface ChatWorkspaceProps {
   backHash?: string | null;
   focusMessageId?: string | null;
   artifactParam: string | null;
-  /** `side` query value: a side chat docked beside this one (see SideChatPanel). */
+  /** `side` query value: the open-questions or coordination panel docked beside this chat. */
   sideParam?: string | null;
   projectFilesId: string | null;
   projectFile: ProjectFileLocation | null;
@@ -118,15 +117,10 @@ export function ChatWorkspace({
   const previousArtifactParamRef = useRef<string | null>(artifactParam);
   const browserDismissedRef = useRef(rememberedConversationBrowserDismissal(conversationId));
   const desk = useQuestionDesk();
-  const globalSide = Boolean(desk.available && sideParam && !isNew && sideParam !== 'questions' && !sideParam.startsWith('decision:') && !sideParam.startsWith('coordination:'));
   const globalQuestion=Boolean(desk.available && sideParam && (sideParam==='questions'||sideParam.startsWith('decision:')));
-  const sideChatOpen = Boolean(sideParam && !isNew && !globalSide && !globalQuestion);
+  const sidePanelOpen = Boolean(sideParam && !isNew && !globalQuestion && (sideParam === 'questions' || sideParam.startsWith('decision:') || sideParam.startsWith('coordination:')));
   useEffect(()=>{if(globalQuestion)desk.adoptQuestion(sideParam?.startsWith('decision:') ? sideParam.slice('decision:'.length) : undefined);},[globalQuestion,sideParam,desk.adoptQuestion]);
-  useEffect(() => {
-    if (!globalSide || !sideParam) return;
-    desk.adoptSide({parentId:conversationId,agentName:'the agent',sideParam});
-  }, [globalSide,sideParam,conversationId,desk.adoptSide]);
-  const alternativePanelSelected = Boolean(artifactParam || projectFilesId || citations || sideChatOpen);
+  const alternativePanelSelected = Boolean(artifactParam || projectFilesId || citations || sidePanelOpen);
 
   useEffect(() => {
     if (restricted || isNew || projectBrowserId) return;
@@ -279,13 +273,8 @@ export function ChatWorkspace({
 
   const desktopPanelOpen = !restricted && shouldDockDesktop(desktopState, isDesktop);
   const conversationBrowserOpen = Boolean(projectBrowserId && !isNew);
-  const panelOpen = Boolean(sideChatOpen || conversationBrowserOpen || desktopPanelOpen || citations || projectFilesId || artifactParam);
-  const [agentName, setAgentName] = useState('the agent');
-  useEffect(() => {
-    if (!sideChatOpen) return;
-    void api.conversation(conversationId).then((r) => setAgentName(r.conversation.assistantName)).catch(() => undefined);
-  }, [conversationId, sideChatOpen]);
-  const closeSideChat = useCallback(() => {
+  const panelOpen = Boolean(sidePanelOpen || conversationBrowserOpen || desktopPanelOpen || citations || projectFilesId || artifactParam);
+  const closeSidePanel = useCallback(() => {
     replaceHash(withSideParam(window.location.hash, null), false);
   }, []);
   const deletable = Boolean(
@@ -306,8 +295,8 @@ export function ChatWorkspace({
       maxWidth={1200}
       detailMinWidth={300}
       separatorLabel={
-        sideChatOpen
-          ? 'Resize side chat'
+        sidePanelOpen
+          ? 'Resize side panel'
           : conversationBrowserOpen
           ? 'Resize Veneer Browser'
           : desktopPanelOpen
@@ -319,19 +308,10 @@ export function ChatWorkspace({
               : 'Resize artifact preview'
       }
       sidebar={
-        sideChatOpen && (sideParam === 'questions' || sideParam?.startsWith('decision:')) ? (
-          <OpenQuestionsPanel key={conversationId} conversationId={conversationId} decisionId={sideParam.startsWith('decision:') ? sideParam.slice('decision:'.length) : undefined} restricted={restricted} onClose={closeSideChat} onNavigate={onNavigate} />
-        ) : sideChatOpen && sideParam?.startsWith('coordination:') ? (
-          <CoordinationPanel threadId={sideParam.slice('coordination:'.length)} onClose={closeSideChat} onNavigate={onNavigate} />
-        ) : sideChatOpen && sideParam ? (
-          <SideChatPanel
-            parentId={conversationId}
-            agentName={agentName}
-            sideParam={sideParam}
-            onNavigate={onNavigate}
-            onToast={onToast}
-            onClose={closeSideChat}
-          />
+        sidePanelOpen && (sideParam === 'questions' || sideParam?.startsWith('decision:')) ? (
+          <OpenQuestionsPanel key={conversationId} conversationId={conversationId} decisionId={sideParam.startsWith('decision:') ? sideParam.slice('decision:'.length) : undefined} restricted={restricted} onClose={closeSidePanel} onNavigate={onNavigate} />
+        ) : sidePanelOpen && sideParam?.startsWith('coordination:') ? (
+          <CoordinationPanel threadId={sideParam.slice('coordination:'.length)} onClose={closeSidePanel} onNavigate={onNavigate} />
         ) : conversationBrowserOpen ? (
           <ConversationBrowserPanel conversationId={conversationId} onClose={closeConversationBrowser} onToast={onToast} />
         ) : desktopPanelOpen ? (
@@ -379,7 +359,6 @@ export function ChatWorkspace({
         onOpenCitations={openCitations}
         onOpenProjectFile={openProjectFile}
         onOpenBrowser={restricted ? undefined : openConversationBrowser}
-        sideChatButton={!restricted}
         onNavigate={onNavigate}
         onToast={onToast}
       />

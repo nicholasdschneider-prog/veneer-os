@@ -281,6 +281,7 @@ export function buildAgentRuntime({
     adapters,
     resolveWorkspace,
     transcriptArchive,
+    decisionHelpers: true,
     loadMemoryBlock: async (conv, prompt, { firstTurn }) => {
       const target = resolveWorkspace(conv);
       return buildRememberedContext({

@@ -6,6 +6,7 @@ import type http from 'node:http';
 import type Database from 'better-sqlite3';
 import { isMacOS } from '../platform.js';
 import { resolveAgentTokenContext } from '../runtime/agentTokens.js';
+import { isDecisionHelper } from '../bots/decisionHelper.js';
 import type { SecretAccessDeps } from '../secrets/readSecret.js';
 import type { VeneerBrowserManager, VeneerBrowserSessionView } from './manager.js';
 import { pointerCommands, pointerSummary } from './pointer.js';
@@ -733,6 +734,7 @@ export async function handleVeneerBrowserMcp(
   try {
     const conversationId = tokenContext.conversationId;
     if (tokenContext.spareRunId && name !== 'read_public') throw new Error('Optional batches use public research only; signed-in browser actions belong to ordinary work');
+    if (isDecisionHelper(db, conversationId) || isDecisionHelper(db, tokenContext.executionConversationId)) throw new Error('A card helper is read-only and has no browser');
     rejectLoopbackUrl(name, args);
     // Every one of these expires the refs the guard is holding, so the field it
     // was protecting no longer exists as far as the agent is concerned.

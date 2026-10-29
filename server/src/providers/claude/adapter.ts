@@ -250,7 +250,12 @@ export function createClaudeAdapter(opts: ClaudeAdapterOptions): ProviderAdapter
     // they can report success and end the turn even though nothing can wake it.
     // Veneer's durable agents MCP tools replace them for Claude and OpenRouter.
     args.push('--disallowedTools', INERT_PRINT_MODE_TOOLS);
-    if (spec.dangerous) {
+    if (spec.readOnly) {
+      // A read-only helper keeps only the file-reading built-ins. Its MCP set is
+      // narrowed by the caller and the Veneer API refuses its writes, so there
+      // is nothing left to approve and no human to ask.
+      args.push('--tools', 'Read,Grep,Glob', '--dangerously-skip-permissions');
+    } else if (spec.dangerous) {
       // Full Access: no approval round trip. Skips permissions entirely — no
       // --permission-prompt-tool/--permission-mode (they'd conflict).
       args.push('--dangerously-skip-permissions');

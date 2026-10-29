@@ -649,13 +649,19 @@ export function createBotService(source: Database.Database) {
       EXISTS (SELECT 1 FROM queued_messages q
         WHERE q.conversation_id=w.conversation_id AND q.discussion_message_id=e.id) AS queued,
       EXISTS (SELECT 1 FROM bot_decision_events delivery
-        WHERE delivery.request_key='discussion-delivery:' || e.id || ':cancelled') AS cancelled
+        WHERE delivery.request_key='discussion-delivery:' || e.id || ':cancelled') AS cancelled,
+      EXISTS (SELECT 1 FROM decision_helpers h WHERE h.decision_id=e.decision_id AND (
+        EXISTS (SELECT 1 FROM pending_turns hp WHERE hp.conversation_id=h.conversation_id AND hp.status='pending')
+        OR EXISTS (SELECT 1 FROM queued_messages hq WHERE hq.conversation_id=h.conversation_id))) AS helper_answering,
+      EXISTS (SELECT 1 FROM bot_decision_threads ht JOIN decision_helpers h ON h.conversation_id=ht.actor_conversation_id
+        WHERE ht.decision_id=e.decision_id AND ht.rowid > (SELECT rowid FROM bot_decision_threads WHERE id=e.id)) AS helper_answered
       FROM bot_decision_events e
       LEFT JOIN conversation_wakeups w ON w.id=e.id WHERE e.decision_id=? AND e.version=? AND e.kind='message'
       AND e.actor_conversation_id IS NULL AND NOT EXISTS (
         SELECT 1 FROM bot_decision_threads t WHERE t.decision_id=e.decision_id AND t.actor_conversation_id IS NOT NULL
+        AND t.actor_conversation_id NOT IN (SELECT conversation_id FROM decision_helpers)
         AND t.rowid > (SELECT rowid FROM bot_decision_threads WHERE id=e.id)) ORDER BY e.rowid DESC LIMIT 1`)
-      .get(d.id, d.version) as { status: string | null; responding: number; queued: number; cancelled: number } | undefined;
+      .get(d.id, d.version) as { status: string | null; responding: number; queued: number; cancelled: number; helper_answering: number; helper_answered: number } | undefined;
     return {
       ...d,
       answer_bridge: answerBridge,
@@ -666,10 +672,14 @@ export function createBotService(source: Database.Database) {
         catch { return 'decision_context_only'; }
       }),
       order_reference: orderReference(proposal, [proposal.question, proposal.recommendation, proposal.consequence, proposal.blocked_action, ...botReplies.map(r => r.text)], store),
+      // A read-only helper may answer a card question while the bot is busy;
+      // the bot itself still owes its own follow-up until it replies.
       reply_status: latestDiscussion
         ? latestDiscussion.status === 'cancelled' || latestDiscussion.cancelled ? 'not_delivered'
           : latestDiscussion.responding ? 'responding'
-            : latestDiscussion.status === 'pending' || latestDiscussion.queued ? 'queued' : 'awaiting_reply'
+            : latestDiscussion.helper_answering && !latestDiscussion.helper_answered ? 'helper_answering'
+              : latestDiscussion.helper_answered ? 'helper_answered'
+                : latestDiscussion.status === 'pending' || latestDiscussion.queued ? 'queued' : 'awaiting_reply'
         : null,
       answer: parse(d.answer_json),
       result: parse(d.result_json),
@@ -1154,7 +1164,7 @@ export function createBotService(source: Database.Database) {
       return {
         messages: db
           .prepare(
-            'SELECT t.*,u.display_name AS actor_name,i.version AS instruction_version FROM bot_decision_threads t JOIN users u ON u.id=t.actor_id LEFT JOIN bot_discussion_instructions i ON i.message_id=t.id WHERE decision_id=? ORDER BY t.rowid',
+            'SELECT t.*,u.display_name AS actor_name,i.version AS instruction_version,EXISTS(SELECT 1 FROM decision_helpers h WHERE h.conversation_id=t.actor_conversation_id) AS helper FROM bot_decision_threads t JOIN users u ON u.id=t.actor_id LEFT JOIN bot_discussion_instructions i ON i.message_id=t.id WHERE decision_id=? ORDER BY t.rowid',
           )
           .all(id),
         events,

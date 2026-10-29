@@ -6,7 +6,6 @@ import { BotAvatar } from './BotIdentity';
 import { Button } from './ui/button';
 import { Bots } from '@/screens/Bots';
 import { useLiveVoice } from './VoiceProvider';
-import { SideChatPanel } from './chat/SideChatPanel';
 import { Chat } from '@/screens/Chat';
 import { TasksBoard } from '@/screens/TasksBoard';
 import { TASKS_VIEW_KEY } from '@/lib/tasks';
@@ -16,10 +15,9 @@ import { DESK_DOCKED_QUERY, DeskSheetContext, deskSheetStyle } from '@/lib/chatV
 import { isTextEntryFocused } from '@/hooks/useDocumentScrollLock';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
-type Side = { parentId: string; agentName: string; sideParam: string };
 type Chief = { conversation_id: string; name: string | null; active: boolean };
 type Line = { decisions: BotDecision[]; sleeping: (BotDecision & { until: number })[]; selectedId: string | null; revision: number; showEvidence?: boolean };
-const DeskContext = createContext<{ adoptQuestion: (id?: string) => void; adoptSide: (side: Side) => void; available: boolean }>({ adoptQuestion: () => {}, adoptSide: () => {}, available: false });
+const DeskContext = createContext<{ adoptQuestion: (id?: string) => void; available: boolean }>({ adoptQuestion: () => {}, available: false });
 export const useQuestionDesk = () => useContext(DeskContext);
 const empty: Line = { decisions: [], sleeping: [], selectedId: null, revision: 0 };
 const navigate = (hash: string) => { window.location.hash = hash; };
@@ -78,12 +76,11 @@ function DeskSheet({ open, children }: { open: boolean; children: ReactNode }) {
 export function QuestionDesk({ children }: { children: ReactNode }) {
   const [line, setLine] = useState<Line>(empty);
   const [visited,setVisited]=useState<string[]>([]);
-  const [mode, setMode] = useState<'question'|'side'|'chief'|null>(null);
+  const [mode, setMode] = useState<'question'|'chief'|null>(null);
   // The owner's chief of staff bot: always reachable from the pill, and its
   // chat stays mounted once opened so a half-written message survives.
   const [chief, setChief] = useState<{ id: string; name: string } | null>(null);
   const [chiefOpened, setChiefOpened] = useState(false);
-  const [side, setSide] = useState<Side | null>(null);
   const [list, setList] = useState(false);
   const [later, setLater] = useState(false);
   const [calls, setCalls] = useState(false);
@@ -122,7 +119,7 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
       setLine(next); setLoaded(true); setError('');
     } catch(e) {
       if(alive.current && seq===serial.current) {
-        if(e instanceof ApiError && [401,403].includes(e.status)) { setLine(empty);setSide(null);setMode(null);setUserId(null);setChief(null); }
+        if(e instanceof ApiError && [401,403].includes(e.status)) { setLine(empty);setMode(null);setUserId(null);setChief(null); }
         setError('Questions could not refresh. Reconnect before answering.');setLoaded(true);
       }
     } finally {refreshing.current=false;clearTimeout(timeout);}
@@ -159,7 +156,6 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   };
   const actionRef=useRef(act);actionRef.current=act;
   const adoptQuestion=useRef((id?:string)=>{setMode('question');setList(!id);if(id)void actionRef.current('select',id);}).current;
-  const adoptSide = useRef((next: Side) => { setSide(next); setMode('side'); }).current;
   const total = line.decisions.length;
   const openChief = () => { setChiefOpened(true); setMode('chief'); };
   // The chief's CHAT | TASKS view lives in the desk, so switching never leaves the page you are on.
@@ -173,14 +169,13 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
     setChiefView(route.view);
     setChiefTask(route.view === 'tasks' ? route.taskId : null);
   };
-  return <DeskContext.Provider value={{adoptSide,adoptQuestion,available:true}}>
+  return <DeskContext.Provider value={{adoptQuestion,available:true}}>
     <div className="question-desktop-shell flex h-dvh min-w-0 isolate overflow-hidden">
       <div className="min-w-0 flex-1 overflow-hidden">{children}</div>
       <DeskSheet open={!!mode}>
         <header className="flex shrink-0 items-center gap-2 border-b p-2">
           <Button type="button" variant="ghost" aria-pressed={mode === 'question'} onClick={() => setMode('question')}><Hand className="size-4 shrink-0" /> Questions</Button>
           {chief && <Button type="button" variant="ghost" aria-pressed={mode === 'chief'} onClick={openChief}><MessageSquare className="size-4 shrink-0" /> {chief.name}</Button>}
-          {side && <Button type="button" variant="ghost" aria-pressed={mode === 'side'} onClick={() => setMode('side')}><MessageSquare className="size-4 shrink-0" /> Side chat</Button>}
           <div className="flex-1" />
           <Button type="button" variant="ghost" size="icon" aria-label="Collapse question desk" onClick={() => setMode(null)}><ChevronDown className="size-4" /></Button>
         </header>
@@ -209,15 +204,14 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
         </div>
         {chief && chiefOpened && <div className={mode === 'chief' ? 'min-h-0 flex-1' : 'hidden'}>
           <div className={chiefView === 'chat' ? 'h-full min-h-0' : 'hidden'}>
-            <Chat key={chief.id} conversationId={chief.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={deskNavigate} onToast={setNotice} sideChatButton={false} openQuestionsButton={false} />
+            <Chat key={chief.id} conversationId={chief.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={deskNavigate} onToast={setNotice} openQuestionsButton={false} />
           </div>
           {chiefView === 'tasks' && <div className="flex h-full min-h-0 flex-col"><TasksBoard compact conversationId={chief.id} taskId={chiefTask} onNavigate={deskNavigate} /></div>}
         </div>}
-        {side && <div className={mode === 'side' ? 'min-h-0 flex-1' : 'hidden'}><SideChatPanel key={`${side.parentId}:${side.sideParam}`} {...side} onSelect={value=>setSide(current=>current ? {...current,sideParam:value} : null)} onNavigate={navigate} onToast={setNotice} onClose={()=>setMode(null)} /></div>}
       </DeskSheet>
     </div>
     <BotCallRing enabled={userId !== null} />
-    {!mode && (chief || (loaded && (total > 0 || line.sleeping.length > 0 || side || (userId && error)))) && <DeskPill
+    {!mode && (chief || (loaded && (total > 0 || line.sleeping.length > 0 || (userId && error)))) && <DeskPill
       front={front ? { id: front.conversation_id, name: front.bot_name } : null}
       total={total}
       error={Boolean(error)}

@@ -44,6 +44,12 @@ export interface TurnSpec {
    * for Claude, or danger-full-access + never approvals for Codex.
    */
   dangerous?: boolean;
+  /**
+   * Read-only spawn (decision card helpers): Claude gets only Read/Grep/Glob
+   * built-ins, Codex a read-only sandbox with no approvals or client-hosted
+   * tools. Any approval request is declined without asking a human.
+   */
+  readOnly?: boolean;
 }
 
 export function deniedTurn(turnId: string, onEvent: (e: ConversationEvent) => void, message: string): TurnHandle {

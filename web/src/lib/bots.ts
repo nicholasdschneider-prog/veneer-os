@@ -95,7 +95,7 @@ export interface BotDecision {
   bot_name: string;
   assignee_name: string;
   order_reference?: { number: string; url: string | null; direct: boolean } | null;
-  reply_status?: 'queued' | 'not_delivered' | 'awaiting_reply' | 'responding' | null;
+  reply_status?: 'queued' | 'not_delivered' | 'awaiting_reply' | 'responding' | 'helper_answering' | 'helper_answered' | null;
 }
 export interface BusinessTeam { id: string; name: string; can_manage: boolean; members: { user_id: number; role: string; display_name: string; restricted?: boolean }[] }
 export interface Bot {
@@ -171,6 +171,8 @@ export interface BotThread {
     id: string;
     actor_name: string;
     actor_conversation_id: string | null;
+    /** A quick answer from the bot's read-only card helper while the bot was busy. */
+    helper?: number | boolean;
     text: string;
     created_at: string;
   }[];

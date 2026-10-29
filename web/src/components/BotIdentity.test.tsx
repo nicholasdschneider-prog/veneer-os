@@ -15,6 +15,14 @@ describe('ticket discussion activity', () => {
       expect(render(status)).not.toContain('is responding');
     }
   });
+  it('shows the card helper answering, then the bot picking it up later', () => {
+    const answering = renderToStaticMarkup(<BotWorkingIndicator name="Sage" replyStatus="helper_answering" />);
+    expect(answering).toContain('Sage is answering');
+    expect(answering).toContain('animate-bounce');
+    const answered = renderToStaticMarkup(<BotWorkingIndicator name="Sage" replyStatus="helper_answered" />);
+    expect(answered).toContain('Sage will pick this up after its current step');
+    expect(answered).not.toContain('animate-bounce');
+  });
   it('hides stale active claims when the status refresh fails', () => {
     const html = renderToStaticMarkup(<BotWorkingIndicator name="Grant" replyStatus="responding" unavailable />);
     expect(html).toContain('Ticket activity unavailable');

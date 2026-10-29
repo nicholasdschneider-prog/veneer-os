@@ -323,6 +323,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
     const spawnAccountId = spec.subscriptionAccountId ?? opts.getAccountId?.() ?? null;
     if (spec.subscriptionAccountId && (!opts.accountExists?.(spec.subscriptionAccountId) || (spec.subscriptionRevision && opts.accountRevisionFor?.(spec.subscriptionAccountId)!==spec.subscriptionRevision) || !spec.optionalDeadline || spec.optionalDeadline <= Date.now())) return deniedTurn(turnId,onEvent,'Optional subscription binding unavailable or expired');
     const client = clientFor(spec.dangerous ?? false, spawnAccountId,Boolean(spec.subscriptionAccountId),spec.subscriptionRevision);
+    const readOnly = Boolean(spec.readOnly) && !spec.dangerous;
     let settled = false;
     let nativeWorkFinished = false;
     let nativeTurnRequested = false;
@@ -1100,7 +1101,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         case 'item/tool/call': {
           if (msg.id === undefined) break;
           const tool = String(params.tool ?? '');
-          if (tool !== CODEX_BROWSER_TOOL_NAME) {
+          if (tool !== CODEX_BROWSER_TOOL_NAME || readOnly) {
             client.respond(msg.id, {
               success: false,
               contentItems: [{ type: 'inputText', text: `Unsupported client-hosted tool: ${tool}` }],
@@ -1249,6 +1250,10 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         }
         case 'mcpServer/elicitation/request': {
           if (msg.id === undefined) break;
+          if (readOnly) {
+            client.respond(msg.id, { action: 'decline', content: null, _meta: null });
+            break;
+          }
           const meta = params._meta as Record<string, unknown> | null;
           const schema = params.requestedSchema as Record<string, unknown> | null;
           // Codex 0.156.1's internal one-call approval, not arbitrary MCP data
@@ -1293,6 +1298,10 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         case 'item/commandExecution/requestApproval':
         case 'item/fileChange/requestApproval': {
           if (msg.id === undefined) break;
+          if (readOnly) {
+            client.respond(msg.id, { decision: 'decline' });
+            break;
+          }
           const requestId = String(msg.id);
           const isCommand = method === 'item/commandExecution/requestApproval';
           pendingApprovalIds.set(requestId, { id: msg.id, kind: isCommand ? 'command' : 'file' });
@@ -1314,6 +1323,10 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
           if (msg.id === undefined) break;
           const request = params as unknown as PermissionsRequestApprovalParams;
           const permissions = request.permissions;
+          if (readOnly && permissions && typeof permissions === 'object') {
+            client.respond(msg.id, permissionResponse(permissions, false));
+            break;
+          }
           if (
             !permissions ||
             typeof permissions !== 'object' ||
@@ -1478,8 +1491,11 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
         // Normal conversations get a real sandbox + real approval prompts;
         // Full Access gets an unrestricted sandbox and never asks, matching
         // Claude's --dangerously-skip-permissions behavior.
-        const sandbox = spec.dangerous ? 'danger-full-access' : 'workspace-write';
-        const approvalPolicy = spec.dangerous ? 'never' : 'on-request';
+        // A read-only helper reads files but cannot write, reach the network,
+        // ask for approval, or call the client-hosted desktop browser.
+        const sandbox = spec.dangerous ? 'danger-full-access' : readOnly ? 'read-only' : 'workspace-write';
+        const approvalPolicy = spec.dangerous || readOnly ? 'never' : 'on-request';
+        const dynamicTools = readOnly ? [] : [CODEX_BROWSER_TOOL];
         // Inject every materialized MCP server (built-in agents server + the
         // user's connectors + toolbox servers) as a per-thread config override
         // (config.toml-shaped). Passed on both start and resume so the agent
@@ -1503,7 +1519,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             model: spec.model ?? undefined,
             config,
             developerInstructions: spec.developerInstructions ?? undefined,
-            dynamicTools: [CODEX_BROWSER_TOOL],
+            dynamicTools,
           })) as { thread: { id: string } };
           if (killed || settled) {
             void client.releaseIdleThread(res.thread.id).catch(() => undefined);
@@ -1525,7 +1541,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             developerInstructions: spec.developerInstructions ?? undefined,
             // Accepted by current app-server builds even though older schema
             // snapshots omitted it; refreshes the host tool on resumed chats.
-            dynamicTools: [CODEX_BROWSER_TOOL],
+            dynamicTools,
           })) as { thread?: { id: string } } | null;
           if (!res || typeof res !== 'object') throw new Error('thread/resume returned no result');
           return res.thread?.id ?? spec.nativeSessionId;
@@ -1540,7 +1556,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             reasoningEffort: spec.effort ?? undefined,
             config,
             developerInstructions: spec.developerInstructions ?? undefined,
-            dynamicTools: [CODEX_BROWSER_TOOL],
+            dynamicTools,
           })) as { thread: { id: string } };
           if (killed || settled) {
             void client.releaseIdleThread(res.thread.id).catch(() => undefined);

@@ -745,6 +745,31 @@ describe('canonical Codex App Server adapter', () => {
     });
   });
 
+  it('runs a read-only card helper in a read-only sandbox with no approvals or desktop browser', async () => {
+    const dir = tmpDir();
+    dirs.push(dir);
+    const requestLog = path.join(dir, 'requests.jsonl');
+    process.env.REQUEST_LOG = requestLog;
+    const adapter = createCodexAdapter({ codexBin: FAKE, turnTimeoutMs: 60_000, transcriptsDir: dir, log: silent });
+    const handle = adapter.runTurn(turnSpec({ dangerous: false, readOnly: true }), () => undefined);
+    await waitFor(
+      () => fs.existsSync(requestLog) && fs.readFileSync(requestLog, 'utf8').includes('"method":"thread/start"'),
+      'Codex did not write the thread/start request',
+    );
+    handle.kill();
+    await handle.done;
+    const requests = fs
+      .readFileSync(requestLog, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as { method?: string; params?: Record<string, unknown> });
+    expect(requests.find((request) => request.method === 'thread/start')?.params).toMatchObject({
+      sandbox: 'read-only',
+      approvalPolicy: 'never',
+      dynamicTools: [],
+    });
+  });
+
   it.each(['allow', 'deny', 'stop'] as const)('maps MCP %s to a one-call response without policy persistence', async (behavior) => {
     process.env.EMIT_MCP_APPROVAL = '{}';
     const dir = tmpDir(); dirs.push(dir);

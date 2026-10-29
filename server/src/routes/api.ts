@@ -31,7 +31,6 @@ import {
   canSendToConversation,
   canViewConversation,
 } from '../conversations/access.js';
-import { sideChatOpeningMessage } from '../conversations/sideChat.js';
 import { presentConversationEventForUser } from '../conversations/messageOriginPresentation.js';
 import { isUnread, markSeen } from '../conversations/unread.js';
 import { MAX_CONVERSATION_TITLE_LENGTH } from '../conversations/title.js';
@@ -110,6 +109,7 @@ import { ensureSupermemoryConfigured } from '../memory/provision.js';
 import { readConversationDebugContext } from '../conversationDebugContext.js';
 import { resolveEffectiveApprovalMode } from '../approvalMode.js';
 import { ensureConversationInstructionSnapshot } from '../instructions/context.js';
+import { isDecisionHelper } from '../bots/decisionHelper.js';
 import {
   readClaudePreferences,
   writeClaudePreferences,
@@ -869,6 +869,18 @@ export function createApiRouter(ctx: AppContext): Router {
        WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < datetime('now','-5 minutes'))`,
     ).run(user.id);
     req.user = req.agentConversationId ? { ...user, botSession: true } : user;
+    next();
+  });
+
+  // A card helper is read-only by construction: it may read what its bot can
+  // read, and every change (sends, answers, records, memory, files) belongs to
+  // the bot itself. Deny by default rather than list the writes.
+  router.use((req, res, next) => {
+    if (['GET', 'HEAD'].includes(req.method)) return next();
+    if (isDecisionHelper(db, req.agentConversationId) || isDecisionHelper(db, req.agentExecutionConversationId)) {
+      res.status(403).json({ ok: false, error: 'A card helper is read-only; the bot itself makes every change after its current step' });
+      return;
+    }
     next();
   });
 
@@ -2970,96 +2982,6 @@ export function createApiRouter(ctx: AppContext): Router {
     void conversationView(ctx, row, req.user!)
       .then((conversation) => res.status(201).json({ ok: true, conversation }))
       .catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
-  });
-
-  // ── Side chats: ask about a chat without interrupting its agent ───────────
-  // A side chat is a private conversation on the same agent, project and model
-  // as its parent, seeded with the parent's recent exchange. It never posts to
-  // the parent; the parent's turn keeps running untouched.
-  router.get('/conversations/:id/side-chats', (req, res) => {
-    const parent = conversationFor(req, res);
-    if (!parent) return;
-    const rows = db
-      .prepare(
-        `SELECT * FROM conversations
-          WHERE side_chat_of = ? AND NOT EXISTS (SELECT 1 FROM coordination_lanes cl WHERE cl.conversation_id=conversations.id) AND archived = 0 AND (visibility = 'team' OR user_id = ?)
-          ORDER BY last_active_at DESC`,
-      )
-      .all(parent.id, req.user!.id) as ConversationRow[];
-    res.json({
-      ok: true,
-      sideChats: rows.map((row) => ({
-        id: row.id,
-        title: row.title,
-        lastActiveAt: row.last_active_at,
-        status: manager.statusOf(row.id),
-        unread: isUnread(db, req.user!.id, row.id),
-      })),
-    });
-  });
-
-  router.post('/conversations/:id/side-chats', (req, res) => {
-    const parent = conversationFor(req, res);
-    if (!parent) return;
-    const body = z.object({ firstMessage: z.string().trim().min(1).max(20_000) }).safeParse(req.body);
-    if (!body.success) {
-      res.status(400).json({ ok: false, error: 'firstMessage required' });
-      return;
-    }
-    if (parent.side_chat_of) {
-      res.status(400).json({ ok: false, error: 'Open side chats from the main chat' });
-      return;
-    }
-    if (!canUserAccessModel(req.user!.email, parent.provider, parent.model)) {
-      res.status(400).json({ ok: false, error: 'This model is not available' });
-      return;
-    }
-    const assistant = db
-      .prepare('SELECT slug, name FROM assistants WHERE id = ? AND deleted_at IS NULL')
-      .get(parent.assistant_id) as { slug: string; name: string } | undefined;
-    if (!assistant || (req.user!.role === 'member' && ADMIN_ONLY_ASSISTANTS.has(assistant.slug))) {
-      res.status(403).json({ ok: false, error: 'This agent is not available for a side chat.' });
-      return;
-    }
-    const id = crypto.randomUUID();
-    const title = `Side chat · ${parent.title?.trim() || 'Untitled chat'}`;
-    db.transaction(() => {
-      db.prepare(
-        `INSERT INTO conversations
-           (id, assistant_id, user_id, visibility, project_id, title, title_auto,
-            provider, model, effort, approval_mode, native_session_id, channel, side_chat_of, last_user_activity_at)
-         VALUES (?, ?, ?, 'private', ?, ?, 0, ?, ?, ?, ?, ?, 'web', ?, datetime('now'))`,
-      ).run(
-        id,
-        parent.assistant_id,
-        req.user!.id,
-        parent.project_id,
-        title,
-        parent.provider,
-        parent.model,
-        parent.effort,
-        parent.approval_mode,
-        crypto.randomUUID(),
-        parent.id,
-      );
-      if (parent.business_team_id) db.prepare('UPDATE conversations SET business_team_id=? WHERE id=?').run(parent.business_team_id, id);
-      ensureConversationInstructionSnapshot(db, id);
-    })();
-    const row = db.prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow;
-    markSeen(db, req.user!.id, row.id);
-    void (async () => {
-      const [events, status] = await Promise.all([manager.snapshot(parent.id), manager.statusOf(parent.id)]);
-      const opening = sideChatOpeningMessage({
-        parentId: parent.id,
-        parentTitle: parent.title,
-        agentName: assistant.name,
-        status,
-        events,
-        question: body.data.firstMessage,
-      });
-      await manager.postMessage(row.id, opening, req.user!.id);
-      res.status(201).json({ ok: true, conversation: await conversationView(ctx, row, req.user!) });
-    })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
   });
 
   router.get('/conversations/:id/transcript', (req, res) => {

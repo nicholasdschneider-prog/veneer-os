@@ -322,8 +322,6 @@ describe('focused business members', () => {
       expect((await fetch(base + '/scheduled-tasks')).status).toBe(403);
       expect((await fetch(base + '/scheduled-tasks/task/run-now', { method: 'POST' })).status).toBe(403);
       expect((await fetch(base + '/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status).toBe(403);
-      // Side chats beside an assigned bot are ordinary chat features, not new top-level chats.
-      expect((await fetch(base + '/conversations/nora/side-chats')).status).toBe(200);
       expect((await fetch(base + '/focused-workspace/automations')).status).toBe(200);
       expect((await fetch(base + '/admin/users')).status).toBe(403);
     } finally { await new Promise<void>(r => server.close(() => r())); }

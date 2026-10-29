@@ -13,6 +13,10 @@ import { candidateWakeAllowed, startQueuedCandidate } from '../botWorkflows/auto
 import {HistoryPages,type HistoryPage} from './historyPages.js';
 import { queuedRoomWakeAllowed, roomSessionAllowed } from '../rooms/service.js';
 import { botDiscussionWake, botWakeAllowed, queuedDiscussionWake, recordDiscussionDelivery } from '../bots/delivery.js';
+import {
+  DECISION_HELPER_CAP, DECISION_HELPER_PROVIDERS, allDecisionHelpers, createDecisionHelper, decisionHelperOf, decisionHelperPrompt,
+  decisionHelperRules, discussionMessage, helperAnswersAfter, helperForDecision, recordDecisionHelperAnswer, withHelperAnswers,
+} from '../bots/decisionHelper.js';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -720,6 +724,7 @@ export function createConversationManager({
   transcriptArchive,
   approvalTimeoutMs = 10 * 60 * 1000,
   steerAckWaitMs = STEER_ACK_WAIT_MS,
+  decisionHelpers = false,
   log = console,
 }: {
   db: Database.Database;
@@ -760,6 +765,8 @@ export function createConversationManager({
   approvalTimeoutMs?: number;
   /** How long a caller waits for the provider's steer echo before settling for 'delivered'. */
   steerAckWaitMs?: number;
+  /** Answer a card question with a read-only helper while its bot is busy (bots/decisionHelper.ts). */
+  decisionHelpers?: boolean;
   log?: Pick<Console, 'warn' | 'error'>;
 }): ConversationManager {
   const live = new Map<string, LiveConversation>();
@@ -1454,6 +1461,8 @@ export function createConversationManager({
     const ticketLane = lane && !botLane ? csTickets.ticketOfLane(conv.id) : undefined;
     const taskService = createTaskService(db);
     const taskLane = lane && !botLane && !ticketLane ? taskService.taskOfLane(conv.id) : undefined;
+    // A read-only card helper is a plain hidden chat, never a lane: it runs beside its busy bot.
+    const helper = lane ? undefined : decisionHelperOf(db, conv.id);
     const family = coordinationFamily(db, conv.id);
     // A registered bot's human chat never waits behind its bot sessions.
     if (taskLane && lane) {
@@ -1531,7 +1540,8 @@ export function createConversationManager({
       return;
     }
     if (discussion) recordDiscussionDelivery(db, discussion.id, 'turn_started');
-    const text = item.prompt;
+    // The bot's own delivery of a card question carries any quick answer its helper already gave.
+    const text = discussion ? withHelperAnswers(item.prompt, helperAnswersAfter(db, discussion.id)) : item.prompt;
     const skillPrompt = providerSkillPrompt(conv.provider, text);
     const visibleText = skillPrompt.visible;
     const actorUserId = item.actorUserId;
@@ -1661,7 +1671,7 @@ export function createConversationManager({
     let memoryBlock: string | null = null;
     try {
       // Memory reads and the optional semantic gate are bounded and fail open.
-      const recall = !optional && !isolatedRoom && loadMemoryBlock ? await loadMemoryBlock(authority, visibleText, { firstTurn }) : null;
+      const recall = !optional && !helper && !isolatedRoom && loadMemoryBlock ? await loadMemoryBlock(authority, visibleText, { firstTurn }) : null;
       memoryBlock = recall?.block ?? null;
       const memories = recall?.memories ?? [];
       // Persist every successful recall attempt, including an empty result, so
@@ -1738,6 +1748,20 @@ export function createConversationManager({
       stopSpare(db,optional,'Optional checkpoint toolbox could not be prepared','skipped');
       clearPendingTurnStmt.run(conv.id);entry.turn=null;emitStatus(conv.id);return;
     }
+    if (helper && spawnConfig.mcpConfigPath) {
+      // A card helper keeps only Veneer's own tools, whose writes the API refuses
+      // for it: no connectors, Doppler, browsers or other MCP servers.
+      try {
+        const file = spawnConfig.mcpConfigPath;
+        const config = JSON.parse(fs.readFileSync(file,'utf8')) as {mcpServers?:Record<string,unknown>};
+        config.mcpServers = Object.fromEntries(Object.entries(config.mcpServers ?? {}).filter(([name])=>name==='agents'));
+        const helperFile = `${file}.helper.json`;
+        fs.writeFileSync(helperFile,JSON.stringify(config),{mode:0o600});
+        spawnConfig.mcpConfigPath=helperFile;
+      } catch {
+        spawnConfig.mcpConfigPath=null;
+      }
+    }
     if (optional && spawnConfig.mcpConfigPath) {
       try {
       const file = spawnConfig.mcpConfigPath;
@@ -1751,7 +1775,11 @@ export function createConversationManager({
         clearPendingTurnStmt.run(conv.id);entry.turn=null;emitStatus(conv.id);return;
       }
     }
-    if (botLane) {
+    if (helper) {
+      const botName = (db.prepare('SELECT name FROM bot_registrations WHERE conversation_id=?').get(helper.owner_id) as { name: string } | undefined)?.name ?? assistantNameFor(conv);
+      spawnConfig.developerInstructions = `${spawnConfig.developerInstructions ?? ''}\n\n${decisionHelperRules(botName)}`;
+      spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
+    } else if (botLane) {
       spawnConfig.developerInstructions = `${spawnConfig.developerInstructions ?? ''}\n\n${BOT_LANE_RULES(authority.id, lane!.thread_id)}`;
       spawnConfig.instructionHash = crypto.createHash('sha256').update(spawnConfig.developerInstructions).digest('hex');
     } else if (ticketLane) {
@@ -1823,7 +1851,8 @@ export function createConversationManager({
           !firstTurn &&
           Boolean(spawnConfig.instructionHash) &&
           conv.provider_instruction_hash !== spawnConfig.instructionHash,
-        dangerous: optional ? false : workspace.fullAccess ?? false,
+        dangerous: optional || helper ? false : workspace.fullAccess ?? false,
+        ...(helper ? { readOnly: true } : {}),
       },
       (event) => {
         if (event.type === 'text_final') {
@@ -1929,6 +1958,16 @@ export function createConversationManager({
     entry.respondQuestion = handle.respondToQuestion ?? null;
 
     void handle.done.then(() => {
+      // Post a helper's answer before its turn record clears, so the card never
+      // briefly falls back to "queued" between answering and answered.
+      if (helper && !sawError && terminalOutcome === 'completed') {
+        const answer = [...turn.events].reverse().find((event) => event.type === 'text_final');
+        try {
+          if (answer?.type === 'text_final') recordDecisionHelperAnswer(db, conv.id, answer.markdown);
+        } catch (err) {
+          log.warn(`[runtime] card helper answer not posted: ${(err as Error).message}`);
+        }
+      }
       // Turn reached a clean end (result, user interrupt, or timeout) — not a
       // process death — so it should NOT auto-resume. On a restart the process
       // exits before this runs, leaving the row for boot-time resume.
@@ -1979,7 +2018,7 @@ export function createConversationManager({
             }).catch((err: Error) => log.warn(`[runtime] readModel failed: ${err.message}`));
         }
       }
-      if (!optional && !lane && !isolatedRoom && !sawError && captureMemoryTurn && turn.events.some((event) => event.type === 'text_final')) {
+      if (!optional && !lane && !helper && !isolatedRoom && !sawError && captureMemoryTurn && turn.events.some((event) => event.type === 'text_final')) {
         const captureEvents = [...turn.events];
         void captureMemoryTurn(conv, captureEvents).catch((err: Error) =>
           log.warn(`[runtime] memory capture failed: ${err.message}`),
@@ -2091,6 +2130,39 @@ export function createConversationManager({
       disposition,
       queue: queueSnapshot(conv.id),
     };
+  }
+
+  /**
+   * A human's card question has to wait for its busy bot: start (or continue)
+   * that card's read-only helper so the question is answered now. Over the
+   * machine-wide cap, or for a provider that cannot run read-only, the message
+   * simply waits as before.
+   */
+  function startDecisionHelper(owner: ConversationRow, wakeupId: string, ownerEvents: () => Promise<ConversationEvent[]>): void {
+    if (!decisionHelpers || !DECISION_HELPER_PROVIDERS.has(owner.provider)) return;
+    const message = discussionMessage(db, wakeupId);
+    if (!message) return;
+    const d = db.prepare('SELECT id,conversation_id,proposal_json FROM bot_decisions WHERE id=?').get(message.decision_id) as
+      | { id: string; conversation_id: string; proposal_json: string }
+      | undefined;
+    if (!d || d.conversation_id !== owner.id) return;
+    const existing = helperForDecision(db, d.id);
+    const running = allDecisionHelpers(db).filter((id) => live.get(id)?.turn).length;
+    // A follow-up behind a running helper adds no concurrency; anything else respects the cap.
+    if (running >= DECISION_HELPER_CAP && !(existing && live.get(existing)?.turn)) return;
+    void ownerEvents().catch(() => [] as ConversationEvent[]).then((events) => {
+      const botName = (db.prepare('SELECT name FROM bot_registrations WHERE conversation_id=?').get(owner.id) as { name: string } | undefined)?.name ?? assistantNameFor(owner);
+      const thread = (db.prepare(`SELECT t.text,t.actor_conversation_id,u.display_name FROM bot_decision_threads t JOIN users u ON u.id=t.actor_id
+        WHERE t.decision_id=? AND t.rowid < (SELECT rowid FROM bot_decision_threads WHERE id=?) ORDER BY t.rowid`).all(d.id, wakeupId) as
+        { text: string; actor_conversation_id: string | null; display_name: string }[])
+        .map((m) => ({ who: m.actor_conversation_id ? (m.actor_conversation_id === owner.id ? botName : `${botName} (quick answer)`) : m.display_name, text: m.text }));
+      const helperId = existing ?? createDecisionHelper(db, owner, d.id);
+      // A failed earlier helper turn must not hold later questions behind a retry.
+      if (failedTurnStmt.get(helperId)) clearPendingTurnStmt.run(helperId);
+      const helperConv = db.prepare('SELECT * FROM conversations WHERE id=?').get(helperId) as ConversationRow;
+      const prompt = decisionHelperPrompt({ botName, ownerTitle: owner.title, proposal: JSON.parse(d.proposal_json), thread, ownerEvents: events, question: message.text });
+      enqueueMessage(helperConv, prompt, false, { key: `card-helper:${wakeupId}`, sourceKind: 'wakeup' }, message.actor_id, { kind: 'wakeup', from: botName, to: botName });
+    }).catch((err: Error) => log.warn(`[runtime] card helper not started for ${owner.id}: ${err.message}`));
   }
 
   async function steerQueued(
@@ -2275,6 +2347,7 @@ export function createConversationManager({
       }
       if (discussion && posted.disposition !== 'duplicate') {
         if (posted.disposition === 'queued') {
+          startDecisionHelper(conv, wakeupId, () => this.snapshot(conv));
           // The original durable row remains until the provider acknowledges it.
           // Retries use the receipt above and never issue another steer.
           void steerQueued(conv, text, posted, actorUserId, origin, () =>

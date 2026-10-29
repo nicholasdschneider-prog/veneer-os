@@ -271,6 +271,23 @@ describe('claude adapter approval round trip (fake CLI)', () => {
     expect(fullAccess).toEqual(expect.arrayContaining(['--settings', '/tmp/claude-settings.json']));
   });
 
+  it('gives a read-only card helper only the file-reading built-ins and no approval path', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'argv';
+    const adapter = createClaudeAdapter({
+      claudeBin: FAKE_CLAUDE,
+      turnTimeoutMs: 5_000,
+      log: { warn: () => undefined, error: () => undefined },
+    });
+    const events: ConversationEvent[] = [];
+    const handle = adapter.runTurn({ ...turnSpec(), dangerous: false, readOnly: true }, (event) => events.push(event));
+    await handle.done;
+    const output = events.find((event) => event.type === 'text_final');
+    const args = JSON.parse(output && output.type === 'text_final' ? output.markdown : '[]') as string[];
+    expect(args[args.indexOf('--tools') + 1]).toBe('Read,Grep,Glob');
+    expect(args).not.toContain('--permission-prompt-tool');
+    expect(args).not.toContain('acceptEdits');
+  });
+
   it('appends the same developer context when it resumes a native session', async () => {
     process.env.FAKE_CLAUDE_MODE = 'argv';
     const adapter = createClaudeAdapter({

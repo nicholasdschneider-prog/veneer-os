@@ -159,13 +159,15 @@ export function BotWorkingIndicator({
   unavailable = false,
 }: {
   name: string;
-  replyStatus?: 'queued' | 'not_delivered' | 'awaiting_reply' | 'responding' | null;
+  replyStatus?: 'queued' | 'not_delivered' | 'awaiting_reply' | 'responding' | 'helper_answering' | 'helper_answered' | null;
   unavailable?: boolean;
 }) {
   if (!replyStatus && !unavailable) return null;
-  const active = !unavailable && replyStatus === 'responding';
+  const active = !unavailable && (replyStatus === 'responding' || replyStatus === 'helper_answering');
   const label = unavailable ? 'Ticket activity unavailable · Reconnecting…' :
-    active ? `${name} is responding to this ticket…` :
+    replyStatus === 'responding' ? `${name} is responding to this ticket…` :
+    replyStatus === 'helper_answering' ? `${name} is answering…` :
+    replyStatus === 'helper_answered' ? `${name} will pick this up after its current step` :
     replyStatus === 'queued' ? `Your message for this ticket is queued for ${name}` :
     replyStatus === 'not_delivered' ? 'Your message for this ticket was not delivered' :
     `Waiting for ${name} to reply to this ticket`;

@@ -2,6 +2,26 @@
 
 Standing order from the owner, September 23, 2026: employees and bots must discover and know how to use capabilities as they ship. The owner should not have to teach or announce every release.
 
+## Quick answers on question cards; Side chat retired — October 29, 2026
+
+Build #932, approved by Nick. When a human posts in a decision card's discussion and the owning bot
+chat is busy (the wake lands as `queued`), the runner starts or continues that card's helper
+(`server/src/bots/decisionHelper.ts`, table `decision_helpers`, migration 0192): a hidden chat of
+the same bot (`side_chat_of` = the bot chat, same project, model and instruction snapshot, own
+native session), seeded with the proposal, the card discussion, the bot chat's recent exchange and
+the question. It is read-only in code: Claude gets `--tools Read,Grep,Glob`; Codex runs a
+`read-only` sandbox with `never` approvals and no client-hosted browser; its MCP set is only
+`agents`; the API refuses every non-GET call from its token and the Veneer Browser refuses it
+outright. Its final text is posted to the thread by the runner (`helper_answer` event, shown as
+"quick answer while busy"); the card status reads "<bot> is answering…", then "<bot> will pick
+this up after its current step". The human's message still waits for the bot, whose delivery
+includes the helper's answer. One helper per card, at most `DECISION_HELPER_CAP` (3) answering at
+once; above that, for Grok/OpenRouter bots, or when the bot is idle, nothing changes. Enabled by
+`decisionHelpers: true` in `buildAgentRuntime`. The manual Side chat button, panel, question-desk
+tab and `/conversations/:id/side-chats` routes are gone (7 ever opened, none since September 23);
+`side_chat_of` stays because coordination lanes and task chats use it. No `prompt` line: bots
+learn of a helper answer in the delivered message itself.
+
 ## Shared Tasks: the CHAT | TASKS board for every bot — October 28, 2026
 
 Build #908, approved by Nick in Archer's chat (scope: `out/archer-tasks/scope-2026-10-28.md`,

@@ -329,7 +329,7 @@ describe('Veneer Browser MCP endpoint', () => {
   const conversationSession = vi.fn(async () => ({ ...session, active: true, temporaryClone: true }));
   const captureGrantActive = vi.fn(() => false);
   const fetchUrl = vi.fn(async () => ({ ok: true, final_url: 'https://example.com', fetched_at: '2026-09-10T00:00:00Z', text: 'Ready', tables: [], title: 'Example', truncated: false }));
-  const db = { prepare: () => ({ get: () => ({ id: 1 }) }) } as unknown as Database.Database;
+  const db = { prepare: (sql: string) => ({ get: () => (sql.includes('decision_helpers') ? undefined : { id: 1 }) }) } as unknown as Database.Database;
   const runScript = vi.fn(async () => ({ ok: true, steps_run: 2, steps_total: 2, duration_ms: 5, results: [{ step: 2, op: 'text', value: 'Delivered' }], truncated: false, url: 'https://example.com/', title: 'Example', kept_tabs: [], page_opened_tabs: [] }));
   const manager = { runCommand, conversationSession, captureGrantActive, fetchUrl, runScript } as unknown as VeneerBrowserManager;
 
@@ -365,6 +365,25 @@ describe('Veneer Browser MCP endpoint', () => {
     const names = body.result.tools.map((tool) => tool.name);
     for (const name of ['navigate', 'click', 'type', 'read', 'screenshot', 'press', 'scroll', 'hover', 'wait', 'find', 'back', 'forward', 'reload', 'tab', 'fill', 'run', 'click_at', 'hover_at', 'scroll_at', 'dialog']) {
       expect(names).toContain(name);
+    }
+  });
+
+  it('refuses a read-only card helper outright', async () => {
+    const helperDb = { prepare: () => ({ get: () => ({ id: 1 }) }) } as unknown as Database.Database;
+    const helperServer = http.createServer((req, res) => { void handleVeneerBrowserMcp(req, res, { db: helperDb, manager }); });
+    await new Promise<void>((resolve) => helperServer.listen(0, '127.0.0.1', resolve));
+    try {
+      const response = await fetch(`http://127.0.0.1:${(helperServer.address() as AddressInfo).port}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-vp-agent-token': 'token' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'read_public', arguments: { url: 'https://example.com' } } }),
+      });
+      const body = await response.json() as { result: { content: { text: string }[]; isError?: boolean } };
+      expect(body.result.isError).toBe(true);
+      expect(body.result.content[0]!.text).toContain('card helper is read-only');
+      expect(fetchUrl).not.toHaveBeenCalled();
+    } finally {
+      await new Promise<void>((resolve) => helperServer.close(() => resolve()));
     }
   });
 

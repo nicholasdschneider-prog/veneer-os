@@ -338,16 +338,8 @@ export const api = {
       body: JSON.stringify({ firstMessage, ...opts }),
     }),
   conversation: (id: string) => requestJson<{ conversation: Conversation }>(`/api/conversations/${id}`),
-  // Side chats: ask about a chat without interrupting its agent.
   coordinationThreads: (id: string) => requestJson<{threads: import('../components/chat/Coordination').CoordinationSummary[]}>(`/api/conversations/${id}/coordination`),
   coordinationThread: (id: string) => requestJson<import('../components/chat/Coordination').CoordinationView>(`/api/coordination/${encodeURIComponent(id)}`),
-  sideChats: (id: string) =>
-    requestJson<{ sideChats: SideChatSummary[] }>(`/api/conversations/${id}/side-chats`),
-  createSideChat: (id: string, firstMessage: string) =>
-    requestJson<{ conversation: Conversation }>(`/api/conversations/${id}/side-chats`, {
-      method: 'POST',
-      body: JSON.stringify({ firstMessage }),
-    }),
   conversationContext: (id: string) =>
     requestJson<{ context: ConversationDebugContext }>(`/api/conversations/${id}/context`),
   freshConversationContext: (id: string) =>
@@ -1375,14 +1367,6 @@ export interface SessionFile {
 }
 
 /** A file stored on the server, referenced in messages by absolute path. */
-export interface SideChatSummary {
-  id: string;
-  title: string | null;
-  lastActiveAt: string;
-  status: string;
-  unread: boolean;
-}
-
 export interface UploadedFile {
   path: string;
   name: string;
