@@ -46,6 +46,8 @@ export function employeeRouteAllowed(method: string, path: string): boolean {
     /^\/conversations\/[^/]+\/messages\/?$/,
     // Notes on a task and done/reviewed marks, attributed to the employee.
     /^\/conversations\/[^/]+\/tasks\/(mark|[^/]+\/discuss)\/?$/,
+    // Files attached to a note or answer from the bot composer.
+    /^\/uploads\/?$/,
   ].some(pattern => pattern.test(path));
   return false;
 }

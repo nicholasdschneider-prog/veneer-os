@@ -3,6 +3,7 @@ import { ChatUnread, useChatUnread } from '@/components/ChatUnread';
 import { BotGuide } from './BotGuide';
 import { Bots } from './Bots';
 import { ChatWorkspace } from '@/components/chat/ChatWorkspace';
+import { TasksBoard } from './TasksBoard';
 import { BotConversationRail } from '@/components/BotConversationRail';
 import { SplitView, SplitPlaceholder } from '@/components/layout/SplitView';
 import type { ToastAction } from '@/components/ui/toast';
@@ -30,7 +31,7 @@ export function EmployeeWorkspace({ hash, onNavigate, email, onToast }: { hash: 
         mobileShows="detail"
         sidebar={<BotConversationRail selectedId={existingChatId} onNavigate={onNavigate} restricted />}
       >
-        <ChatWorkspace
+        {params.get('view') === 'tasks' ? <TasksBoard key={`tasks:${existingChatId}`} conversationId={existingChatId} taskId={params.get('task')} onNavigate={onNavigate} /> : <ChatWorkspace
           key={existingChatId}
           conversationId={existingChatId}
           restricted
@@ -47,7 +48,7 @@ export function EmployeeWorkspace({ hash, onNavigate, email, onToast }: { hash: 
           onCloseProjectBrowser={unavailable}
           onNavigate={onNavigate}
           onToast={onToast}
-        />
+        />}
       </SplitView> :
         (decisionId || params.get('view') === 'work') ? <Bots restricted canCall decisionId={decisionId} onNavigate={onNavigate} /> : <SplitView storageKey="split:chats" sidebar={<BotConversationRail restricted onNavigate={onNavigate} />}><SplitPlaceholder title="Choose a conversation" hint="Your people, bots, and groups are on the left." /></SplitView>}
     </main>

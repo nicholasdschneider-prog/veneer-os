@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { EmployeeWorkspace } from './EmployeeWorkspace';
 
+vi.mock('@/lib/tasks', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/tasks')>()), tasksApi: { board: () => new Promise(() => {}), task: () => new Promise(() => {}), mark: vi.fn(), discuss: vi.fn(), customerThread: () => new Promise(() => {}) } }));
 vi.mock('./Bots', () => ({ Bots: ({ restricted, decisionId }: { restricted: boolean; decisionId?: string }) => <div data-overview={restricted} data-decision={decisionId} /> }));
 vi.mock('@/components/layout/SplitView', () => ({ SplitPlaceholder: ({title}: {title:string}) => <div>{title}</div>, SplitView: ({ sidebar, children }: { sidebar: React.ReactNode; children: React.ReactNode }) => <>{sidebar}{children}</> }));
 vi.mock('@/components/BotConversationRail', () => ({ BotConversationRail: ({ selectedId, restricted }: { selectedId: string; restricted: boolean }) => <aside data-selected={selectedId} data-restricted={restricted} /> }));
@@ -10,6 +11,15 @@ vi.mock('@/components/chat/ChatWorkspace', () => ({ ChatWorkspace: (props: { con
 const render = (hash: string) => renderToStaticMarkup(<EmployeeWorkspace hash={hash} email="employee@example.com" onNavigate={vi.fn()} onToast={vi.fn()} />);
 
 describe('employee bot navigation', () => {
+  it('opens a shared bot\u2019s Tasks board when the Tasks switch is tapped, and the chat otherwise', () => {
+    (globalThis as { window?: unknown }).window ??= { location: { hash: '#/chat/tess?view=tasks' } };
+    const tasks = render('#/chat/tess?from=bots&view=tasks');
+    expect(tasks).toContain('aria-label="Chat or tasks"');
+    expect(tasks).not.toContain('data-native-chat');
+    expect(tasks).toContain('data-selected="tess"');
+    expect(render('#/chat/tess?from=bots')).toContain('data-native-chat="tess"');
+  });
+
   it('opens an existing bot in the native chat workspace with its bot sidebar and message deep link', () => {
     const html = render('#/chat/grant?from=bots&message=message-1');
     expect(html).toContain('data-native-chat="grant"');
