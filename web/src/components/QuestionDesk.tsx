@@ -8,6 +8,8 @@ import { Bots } from '@/screens/Bots';
 import { useLiveVoice } from './VoiceProvider';
 import { SideChatPanel } from './chat/SideChatPanel';
 import { Chat } from '@/screens/Chat';
+import { TasksBoard } from '@/screens/TasksBoard';
+import { TASKS_VIEW_KEY } from '@/lib/tasks';
 import { DeskPill } from './DeskPill';
 import { BotCallRing, BotCallSettings } from './BotCalls';
 import { DESK_DOCKED_QUERY, DeskSheetContext, deskSheetStyle } from '@/lib/chatViewport';
@@ -21,6 +23,22 @@ const DeskContext = createContext<{ adoptQuestion: (id?: string) => void; adoptS
 export const useQuestionDesk = () => useContext(DeskContext);
 const empty: Line = { decisions: [], sleeping: [], selectedId: null, revision: 0 };
 const navigate = (hash: string) => { window.location.hash = hash; };
+
+/**
+ * Where a hash from the chief's chat or board goes inside the desk: its own Chat | Tasks switch and
+ * task panes stay in the desk, a decision card opens in the desk's question pane, anything else
+ * leaves the desk as before.
+ */
+export function deskRoute(chiefId: string, hash: string): { view: 'chat' } | { view: 'tasks'; taskId: string | null } | { decision: string } | null {
+  const [path, query = ''] = hash.split('?');
+  if (path !== `#/chat/${chiefId}`) return null;
+  const params = new URLSearchParams(query);
+  const side = params.get('side') ?? '';
+  if (side.startsWith('decision:')) return { decision: side.slice('decision:'.length) };
+  if (params.get('view') === 'tasks') return { view: 'tasks', taskId: params.get('task') };
+  return side ? null : { view: 'chat' };
+}
+const rememberedView = (id: string): 'chat' | 'tasks' => { try { return localStorage.getItem(TASKS_VIEW_KEY(id)) === 'tasks' ? 'tasks' : 'chat'; } catch { return 'chat'; } };
 
 /** The desk itself: a full-screen sheet on phones and tablets that shrinks to
  * the visual viewport while a field inside it has the keyboard, and a docked
@@ -144,6 +162,17 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   const adoptSide = useRef((next: Side) => { setSide(next); setMode('side'); }).current;
   const total = line.decisions.length;
   const openChief = () => { setChiefOpened(true); setMode('chief'); };
+  // The chief's CHAT | TASKS view lives in the desk, so switching never leaves the page you are on.
+  const [chiefView, setChiefView] = useState<'chat' | 'tasks'>('chat');
+  const [chiefTask, setChiefTask] = useState<string | null>(null);
+  useEffect(() => { if (chief) setChiefView(rememberedView(chief.id)); }, [chief?.id]);
+  const deskNavigate = (hash: string) => {
+    const route = chief ? deskRoute(chief.id, hash) : null;
+    if (!route) return navigate(hash);
+    if ('decision' in route) return adoptQuestion(route.decision);
+    setChiefView(route.view);
+    setChiefTask(route.view === 'tasks' ? route.taskId : null);
+  };
   return <DeskContext.Provider value={{adoptSide,adoptQuestion,available:true}}>
     <div className="question-desktop-shell flex h-dvh min-w-0 isolate overflow-hidden">
       <div className="min-w-0 flex-1 overflow-hidden">{children}</div>
@@ -179,7 +208,10 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
           {visited.map(id=><div key={`${userId}:${id}`} data-question-id={id} className={!list && selected?.id===id ? 'min-h-0 flex-1' : 'hidden'}><Bots embedded desk active={mode==='question' && selected?.id===id && !list} decisionId={id} onNavigate={hash => { if (hash === '#/bots') setList(true); else navigate(hash); }} /></div>)}
         </div>
         {chief && chiefOpened && <div className={mode === 'chief' ? 'min-h-0 flex-1' : 'hidden'}>
-          <Chat key={chief.id} conversationId={chief.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={navigate} onToast={setNotice} sideChatButton={false} openQuestionsButton={false} />
+          <div className={chiefView === 'chat' ? 'h-full min-h-0' : 'hidden'}>
+            <Chat key={chief.id} conversationId={chief.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={deskNavigate} onToast={setNotice} sideChatButton={false} openQuestionsButton={false} />
+          </div>
+          {chiefView === 'tasks' && <div className="flex h-full min-h-0 flex-col"><TasksBoard compact conversationId={chief.id} taskId={chiefTask} onNavigate={deskNavigate} /></div>}
         </div>}
         {side && <div className={mode === 'side' ? 'min-h-0 flex-1' : 'hidden'}><SideChatPanel key={`${side.parentId}:${side.sideParam}`} {...side} onSelect={value=>setSide(current=>current ? {...current,sideParam:value} : null)} onNavigate={navigate} onToast={setNotice} onClose={()=>setMode(null)} /></div>}
       </DeskSheet>

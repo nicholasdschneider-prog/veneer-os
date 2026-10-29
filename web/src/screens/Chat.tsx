@@ -425,6 +425,7 @@ export function Chat({
   onToast,
   sideChatButton = true,
   openQuestionsButton = true,
+  tasksToggle = true,
 }: {
   conversationId: string; // 'new' for a not-yet-created conversation
   // For a new chat, the project (folder) it will be created in (from the route);
@@ -449,6 +450,8 @@ export function Chat({
   /** Hidden when this chat is itself rendered inside a side chat panel. */
   sideChatButton?: boolean;
   openQuestionsButton?: boolean;
+  /** The CHAT | TASKS switch; independent of Open questions so the question desk can keep it. */
+  tasksToggle?: boolean;
 }) {
   const isNew = conversationId === 'new';
   const { show: showDesktop } = useFloatingDesktop();
@@ -2436,7 +2439,7 @@ export function Chat({
           <X className="size-7" />
         </Button>
       ) : null}
-      {!isNew && <MobileChatHeader id={conversationId} name={title?.trim() || agentName} status={`${creator?.displayName ?? ''} · ${liveStatus || status} · ${visibility}`} onBack={() => onNavigate(backHash ?? (projectId ? `#/?project=${projectId}` : '#/'))} onComputer={onOpenBrowser} toolbar={openQuestionsButton ? <ChatTasksToggle conversationId={conversationId} view="chat" onNavigate={onNavigate} /> : undefined}>
+      {!isNew && <MobileChatHeader id={conversationId} name={title?.trim() || agentName} status={`${creator?.displayName ?? ''} · ${liveStatus || status} · ${visibility}`} onBack={() => onNavigate(backHash ?? (projectId ? `#/?project=${projectId}` : '#/'))} onComputer={onOpenBrowser} toolbar={tasksToggle ? <ChatTasksToggle conversationId={conversationId} view="chat" onNavigate={onNavigate} /> : undefined}>
         {openQuestionsButton && <DropdownMenuItem className="min-h-[44px]" onSelect={() => onNavigate(withSideParam(window.location.hash, 'questions'))}>Open questions</DropdownMenuItem>}
         {sideChatButton && canSend && <DropdownMenuItem onSelect={() => onNavigate(withSideParam(window.location.hash, 'open'))}>Side chat</DropdownMenuItem>}
         {canSend && <DropdownMenuItem className="min-h-[44px]" onSelect={() => liveVoice.open(conversationId)}><span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white"><CallIcon className="size-4" /></span>Talk with this bot</DropdownMenuItem>}
@@ -2535,7 +2538,7 @@ export function Chat({
         </div>
         {!isNew ? (
           <div className="flex shrink-0 items-center gap-1">
-            {openQuestionsButton && <ChatTasksToggle conversationId={conversationId} view="chat" onNavigate={onNavigate} />}
+            {tasksToggle && <ChatTasksToggle conversationId={conversationId} view="chat" onNavigate={onNavigate} />}
             {openQuestionsButton && <OpenQuestionsButton conversationId={conversationId} onNavigate={onNavigate} />}
             {sideChatButton && canSend ? (
               <Button

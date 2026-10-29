@@ -36,7 +36,8 @@ export function groupRows(rows: BoardRow[], showCompleted: boolean): { id: Board
 }
 const dotColor: Record<BoardGroup, string> = { ready_for_review: 'bg-emerald-500', needs_input: 'bg-amber-500', working: 'bg-sky-500', up_next: 'bg-muted-foreground/40', completed: 'bg-muted-foreground/30' };
 
-export function TasksBoard({ conversationId, taskId = null, onNavigate }: { conversationId: string; taskId?: string | null; onNavigate: (hash: string) => void }) {
+/** `compact` keeps one column at any width (the question desk is a narrow column on desktop). */
+export function TasksBoard({ conversationId, taskId = null, onNavigate, compact = false }: { conversationId: string; taskId?: string | null; onNavigate: (hash: string) => void; compact?: boolean }) {
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
@@ -99,9 +100,9 @@ export function TasksBoard({ conversationId, taskId = null, onNavigate }: { conv
   );
   return (
     <div className="flex h-full min-h-0 bg-card">
-      <div className={cn('min-h-0 min-w-0 flex-1 md:max-w-sm md:border-r', taskId && 'hidden md:block')}>{list}</div>
+      <div className={cn('min-h-0 min-w-0 flex-1', !compact && 'md:max-w-sm md:border-r', taskId && (compact ? 'hidden' : 'hidden md:block'))}>{list}</div>
       {taskId ? <TaskPane key={taskId} conversationId={conversationId} taskId={taskId} onNavigate={onNavigate} onChanged={refresh} />
-        : <div className="hidden min-w-0 flex-1 items-center justify-center p-6 text-sm text-muted-foreground md:flex">Open a task to read the bot's work on it and write to it there.</div>}
+        : compact ? null : <div className="hidden min-w-0 flex-1 items-center justify-center p-6 text-sm text-muted-foreground md:flex">Open a task to read the bot's work on it and write to it there.</div>}
     </div>
   );
 }
