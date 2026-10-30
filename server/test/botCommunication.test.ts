@@ -191,6 +191,14 @@ describe('reviewable bot communication', () => {
     db.prepare("UPDATE users SET status='disabled' WHERE id=1").run();
     expect(() => s.claim(bot, d.id, 'x')).toThrow();
   });
+  it('tells a bot to send directly when no human clicked its draft', () => {
+    const d = s.saveDraft(bot, 'c1', 'unclicked', payload);
+    expect(() => s.claim(bot, d.id, 'x')).toThrow(
+      'No human has authorized this draft. If your skill or a relayed owner direction already authorizes this send, send it directly through your normal channel and retire this draft; otherwise ask the human to click Send.',
+    );
+    s.mutateDraft(human, d.id, 1, 'send');
+    expect(s.claim(bot, d.id, 'x').execute).toBe(true);
+  });
   it('discards without waking and returns for revision without send permission', () => {
     const a = s.saveDraft(bot, 'c1', 'a', payload),
       b = s.saveDraft(bot, 'c1', 'b', payload);

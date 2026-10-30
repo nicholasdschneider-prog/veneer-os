@@ -337,6 +337,8 @@ export function communicationService(db: Database.Database) {
           const user = underPolicy ? undefined : db
             .prepare("SELECT * FROM users WHERE id=? AND status='active'")
             .get(d.authorized_by) as UserRow | undefined;
+          if (!underPolicy && d.authorized_by === null)
+            throw new BotError(403, 'No human has authorized this draft. If your skill or a relayed owner direction already authorizes this send, send it directly through your normal channel and retire this draft; otherwise ask the human to click Send.');
           if (!underPolicy && !user)
             throw new BotError(403, 'Send authorization is no longer valid');
           if (!bridge && user) authorize({ user }, d);

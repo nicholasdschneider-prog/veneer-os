@@ -227,6 +227,6 @@ describe('exact approved message delegation',()=>{
   });
  });
  it('keeps ordinary drafts unapproved and reports ownership mismatch separately from version mismatch',()=>{
-  const id=approved(false);expect(()=>s.saveDraft(executor,'nora','ordinary',scope().payload,id,1)).toThrow('another bot');const d=s.saveDraft(owner,'grant','ordinary',scope().payload,id,1);expect(d.state).toBe('draft');expect(()=>s.claim(owner,d.id,'not-approved')).toThrow('authorization');expect(()=>s.saveDraft(owner,'grant','stale',scope().payload,id,2)).toThrow('proposal changed');
+  const id=approved(false);expect(()=>s.saveDraft(executor,'nora','ordinary',scope().payload,id,1)).toThrow('another bot');const d=s.saveDraft(owner,'grant','ordinary',scope().payload,id,1);expect(d.state).toBe('draft');expect(()=>s.claim(owner,d.id,'not-approved')).toThrow('No human has authorized this draft');expect(()=>s.saveDraft(owner,'grant','stale',scope().payload,id,2)).toThrow('proposal changed');
  });
 });
