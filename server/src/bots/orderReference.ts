@@ -13,6 +13,11 @@ export const shopifyOrderSchema = z.object({
   url: z.string().url().refine(isShopifyOrderUrl, 'Use a direct HTTPS Shopify admin order URL'),
 }).strict();
 
+/** The Shopify admin link for an order number in a store (the same search link question cards use), or null without a store. */
+export function shopifyOrderSearchUrl(store: string | null | undefined, number: string): string | null {
+  if (!store || !/^[a-z0-9-]+$/.test(store)) return null;
+  return `https://admin.shopify.com/store/${store}/orders?query=${encodeURIComponent('#' + number)}`;
+}
 /** Legacy cards: use explicit order labels only, never case codes or arbitrary numbers. */
 export function orderReference(proposal: { shopify_order?: z.infer<typeof shopifyOrderSchema> | null }, texts: string[], store?: string | null) {
   if (proposal.shopify_order && shopifyOrderSchema.safeParse(proposal.shopify_order).success)
@@ -25,6 +30,5 @@ export function orderReference(proposal: { shopify_order?: z.infer<typeof shopif
   if (numbers.length !== 1 || urls.length > 1 || ids.length > 1) return null;
   if (urls[0]) return { number: numbers[0]!, url: urls[0], direct: true };
   if (!store || !/^[a-z0-9-]+$/.test(store)) return { number: numbers[0]!, url: null, direct: false };
-  const base = `https://admin.shopify.com/store/${store}/orders`;
-  return { number: numbers[0]!, url: ids[0] ? `${base}/${ids[0]}` : `${base}?query=${encodeURIComponent('#' + numbers[0])}`, direct: Boolean(ids[0]) };
+  return { number: numbers[0]!, url: ids[0] ? `https://admin.shopify.com/store/${store}/orders/${ids[0]}` : shopifyOrderSearchUrl(store, numbers[0]!), direct: Boolean(ids[0]) };
 }

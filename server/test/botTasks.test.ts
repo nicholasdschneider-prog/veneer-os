@@ -230,6 +230,12 @@ describe('shared Tasks capability', () => {
       expect(shared.counts.working).toBe(mine.counts.working);
       expect(await ali(`/api/conversations/${OWNER}/tasks/${payload.created[1]!.id}/discuss`, { method: 'POST', body: JSON.stringify({ text: 'I will take this one.', request_key: 'a1' }) })).toMatchObject({ duplicate: false });
       expect(tasks.events(payload.created[1]!.id, 50).find((e) => e.kind === 'discussion')?.payload).toMatchObject({ by: 'Ali' });
+      // Orders a task names link to Shopify on the board row and in the pane.
+      db.prepare("UPDATE business_teams SET shopify_store='elkhart-rv-parts' WHERE id=?").run(TEAM);
+      db.prepare("UPDATE bot_tasks SET brief='orders: 100121742' WHERE id=?").run(payload.created[2]!.id);
+      const linked = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { rows: { id: string; orders?: { number: string; url: string }[] }[] };
+      expect(linked.rows.find((r) => r.id === payload.created[2]!.id)?.orders).toEqual([{ number: '100121742', url: 'https://admin.shopify.com/store/elkhart-rv-parts/orders?query=%23100121742' }]);
+      expect(((await callApi({})(`/api/conversations/${OWNER}/tasks/${payload.created[2]!.id}`)) as { orders: unknown[] }).orders).toHaveLength(1);
       expect(await ali(`/api/conversations/${OWNER}/tasks/mark`, { method: 'POST', body: JSON.stringify({ kind: 'task', id: payload.created[1]!.id, mark: 'done' }) })).not.toHaveProperty('error');
     });
   });

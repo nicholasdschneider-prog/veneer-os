@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { CustomerThreadSection, groupRows, TaskAnswer, TaskPane, TasksBoard, ThreadBody } from './TasksBoard';
+import { CustomerThreadSection, groupRows, OrderLinks, TaskAnswer, TaskPane, TasksBoard, ThreadBody } from './TasksBoard';
 import { activityLine, cleanTaskTitle, taskAnswers, CUSTOMER_THREAD_KEY, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, type BoardRow, type TaskEvent } from '@/lib/tasks';
 
 vi.mock('@/lib/tasks', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/tasks')>()), tasksApi: { board: () => new Promise(() => {}), task: () => new Promise(() => {}), mark: vi.fn(), discuss: vi.fn(), customerThread: () => new Promise(() => {}) } }));
@@ -90,5 +90,11 @@ describe('tasks board', () => {
     expect(activityLine({ state: 'waiting' }, 'Tess')).toBe('Tess is reading your note…');
     expect(activityLine({ state: 'waiting', reason: 'tasks', others: 2 }, 'Tess')).toBe('Waiting: Tess is busy on 2 other tasks');
     expect(activityLine({ state: 'waiting', reason: 'main_chat' }, 'Tess')).toBe("Waiting: Tess's main chat is busy");
+  });
+  it('links each order a task names to Shopify in a new tab', () => {
+    const html = renderToStaticMarkup(<OrderLinks orders={[{ number: '100121742', url: 'https://admin.shopify.com/store/s/orders?query=%23100121742' }]} />);
+    expect(html).toContain('href="https://admin.shopify.com/store/s/orders?query=%23100121742"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toMatch(/Order #(<!-- -->)?100121742/);
   });
 });

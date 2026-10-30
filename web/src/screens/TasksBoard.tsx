@@ -85,12 +85,15 @@ export function TasksBoard({ conversationId, taskId = null, onNavigate, compact 
             <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 p-3">
               {row.can_mark ? <input type="checkbox" aria-label={`Mark ${row.title} done`} className="mt-1 size-4" checked={false} onChange={() => void mark(row, 'done')} />
                 : <span aria-hidden="true" className={cn('mt-1.5 size-2.5 rounded-full', dotColor[row.group])} />}
-              <button className="min-w-0 text-left" onClick={() => open(row)}>
+              <div className="min-w-0">
+              <button className="w-full min-w-0 text-left" onClick={() => open(row)}>
                 <span className="block font-medium leading-snug">{row.task ? cleanTaskTitle(row.title, row.task.case_key) : row.title}</span>
                 <span className="block truncate text-xs text-muted-foreground"><span className={cn(row.group === 'needs_input' && 'text-amber-700 dark:text-amber-300', row.group === 'ready_for_review' && 'text-emerald-700 dark:text-emerald-300')}>{row.status_line}</span></span>
                 {row.source_line && <span className="block truncate text-xs font-medium text-foreground/80">{row.source_line}</span>}
                 <span className="block text-xs text-muted-foreground">{row.tag}</span>
               </button>
+              {row.orders?.length ? <OrderLinks orders={row.orders} /> : null}
+              </div>
               <span className="text-xs text-muted-foreground">{ago(row.updated_at)}</span>
             </div>
           </li>)}
@@ -110,7 +113,7 @@ export function TasksBoard({ conversationId, taskId = null, onNavigate, compact 
 
 /** One task, in place: its status, its open question, its conversation, and a composer that speaks to it alone. */
 export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { conversationId: string; taskId: string; onNavigate: (hash: string) => void; onChanged: () => Promise<void> }) {
-  const [detail, setDetail] = useState<{ task: BotTask; events: TaskEvent[]; bot_name: string; activity?: TaskActivity; source_line?: string | null } | null>(null);
+  const [detail, setDetail] = useState<{ task: BotTask; events: TaskEvent[]; bot_name: string; activity?: TaskActivity; source_line?: string | null; orders?: { number: string; url: string }[] } | null>(null);
   const [decision, setDecision] = useState<BotDecision | null>(null);
   const [view, setView] = useState<CoordinationView | null>(null);
   const [error, setError] = useState('');
@@ -167,6 +170,7 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
           <h2 className="font-medium leading-snug">{t ? cleanTaskTitle(t.title, t.case_key) : 'Task'}</h2>
           <p className={cn('text-xs', t?.status === 'needs_input' ? 'text-amber-700 dark:text-amber-300' : t?.status === 'ready_for_review' ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground')}>{t?.status_line || (detail ? 'No status yet' : 'Loading…')}{t?.case_key ? ` · case ${t.case_key}` : ''}</p>
           {detail?.source_line && <p className="text-xs font-medium text-foreground/80">{detail.source_line}</p>}
+          {detail?.orders?.length ? <OrderLinks orders={detail.orders} /> : null}
         </div>
         {t && t.status !== 'done' && <Button size="sm" variant="outline" onClick={async () => { await tasksApi.mark(conversationId, { kind: 'task', id: taskId, mark: 'done' }); await load(); await onChanged(); }}>Mark it done</Button>}
         <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Close task" onClick={close}><X className="size-4" /></Button>
@@ -217,6 +221,13 @@ export function TaskAnswer({ bot, answer }: { bot: string; answer: ReturnType<ty
     <button type="button" className="min-h-9 text-xs text-muted-foreground underline-offset-2 hover:underline" aria-expanded={steps} onClick={() => setSteps(!steps)}>{steps ? 'Hide steps' : 'Show steps'}</button>
     {steps && <div className="rounded-lg border p-2 text-xs"><CoordinationTurn turn={answer.turn} /></div>}
   </div>;
+}
+
+/** Tappable Shopify order links, the same ones question cards show; they open Shopify admin in a new tab. */
+export function OrderLinks({ orders }: { orders: { number: string; url: string }[] }) {
+  return <span className="mt-0.5 flex flex-wrap gap-x-3 text-xs">
+    {orders.map((o) => <a key={o.number} href={o.url} target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center font-medium text-primary underline-offset-2 hover:underline">Order #{o.number}</a>)}
+  </span>;
 }
 
 /** A customer photo; if OrderOps was busy it offers a retry instead of a broken image. */
