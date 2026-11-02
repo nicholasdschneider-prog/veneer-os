@@ -390,7 +390,15 @@ export type ConversationEvent =
   | { type: 'context_compacted'; contextTokens: number | null; notice?: string }
   // A neutral, non-failure notice (e.g. "you stopped this turn"). Rendered muted;
   // error rows are red, while turn_done remains authoritative for final status.
-  | { type: 'notice'; message: string; at?: string; /** Bot lane item this line summarizes. */ coordinationThreadId?: string }
+  | {
+      type: 'notice';
+      message: string;
+      at?: string;
+      /** A bot's scheduled multi-line digest, rendered as markdown. */
+      format?: 'digest';
+      /** Bot lane item this line summarizes. */
+      coordinationThreadId?: string;
+    }
   | { type: 'error'; message: string; fatal: boolean; turnId?: string };
 
 export type ConversationStatus = 'working' | 'needs_you' | 'idle' | 'failed';

@@ -21,8 +21,11 @@ import {
   hasBotLane,
   botLaneOfConversation,
   botLaneOwnerOfThread,
+  DIGEST_MAX_CHARS,
   surfaceToHuman,
   surfacedNotice,
+  surfacedReceipts,
+  type SurfaceKind,
 } from './botLane.js';
 
 export function createCoordinationRouter(ctx: AppContext): express.Router {
@@ -171,10 +174,14 @@ export function createCoordinationRouter(ctx: AppContext): express.Router {
     }
     const body = req.body as { summary?: unknown; kind?: unknown; request_key?: unknown };
     const summary = typeof body.summary === 'string' ? body.summary : '';
-    const kind = body.kind === 'urgent' || body.kind === 'result' ? body.kind : null;
+    const kind = body.kind === 'urgent' || body.kind === 'result' || body.kind === 'digest' ? body.kind : null;
     const requestKey = typeof body.request_key === 'string' ? body.request_key.trim() : '';
-    if (!summary.trim() || summary.length > 2000 || !kind || !requestKey || requestKey.length > 200) {
-      res.status(400).json({ error: 'summary (one short line), kind (urgent or result) and request_key are required' });
+    // A digest keeps its lines; anything past the cap is a different message, not a digest.
+    const maxLength = kind === 'digest' ? DIGEST_MAX_CHARS * 2 : 2000;
+    if (!summary.trim() || summary.length > maxLength || !kind || !requestKey || requestKey.length > 200) {
+      res.status(400).json({
+        error: `summary (one short line, or a digest up to ${DIGEST_MAX_CHARS} characters), kind (urgent, result or digest) and request_key are required`,
+      });
       return;
     }
     const botLane = botLaneOfConversation(db, lane.conversation_id);
@@ -191,10 +198,44 @@ export function createCoordinationRouter(ctx: AppContext): express.Router {
         requestKey: `lane:${lane.conversation_id}:${requestKey}`,
       });
       if (!duplicate) ctx.manager.bus.emit('event', lane.owner_id, surfacedNotice(surfaced));
-      res.json({ ok: true, duplicate, id: surfaced.id, shown: surfacedNotice(surfaced).message });
+      res.json({
+        ok: true,
+        duplicate,
+        id: surfaced.id,
+        kind: surfaced.kind,
+        created_at: surfaced.created_at,
+        shown: surfacedNotice(surfaced).message,
+      });
     } catch (err) {
       res.status(409).json({ error: (err as Error).message });
     }
+  });
+  /** A registered bot reads back its own surfaced receipts (lane, coordination
+   * thread or human chat) to tie items to what its human was shown. */
+  router.get('/bot-lane/receipts', (req, res) => {
+    const ownerId = req.agentConversationId;
+    if (!ownerId || !hasBotLane(db, ownerId)) {
+      res.status(409).json({ error: 'Only a registered bot has surfaced receipts' });
+      return;
+    }
+    const kind = typeof req.query.kind === 'string' && req.query.kind ? req.query.kind : undefined;
+    if (kind && kind !== 'urgent' && kind !== 'result' && kind !== 'digest') {
+      res.status(400).json({ error: 'kind must be urgent, result or digest' });
+      return;
+    }
+    const since = typeof req.query.since === 'string' && req.query.since ? req.query.since : undefined;
+    if (since && !Number.isFinite(Date.parse(since))) {
+      res.status(400).json({ error: 'since must be an ISO timestamp' });
+      return;
+    }
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    res.json({
+      receipts: surfacedReceipts(db, ownerId, {
+        ...(kind ? { kind: kind as SurfaceKind } : {}),
+        ...(since ? { since: new Date(since).toISOString() } : {}),
+        ...(limit !== undefined ? { limit } : {}),
+      }),
+    });
   });
   return router;
 }

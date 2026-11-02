@@ -195,6 +195,7 @@ import { ArtifactsStrip } from '../components/chat/ArtifactsStrip';
 import { AutomationStrip } from '../components/chat/AutomationStrip';
 import { ChatContextDialog } from '../components/chat/ChatContextDialog';
 import { ChatArchiveButton } from '../components/chat/ChatArchiveButton';
+import { DigestNotice } from '../components/chat/DigestNotice';
 import { ChatHeaderMenuItems } from '../components/chat/ChatHeaderMenuItems';
 import { MoveChatDialog } from '../components/chat/MoveChatDialog';
 import { QuestionCard } from '../components/chat/QuestionCard';
@@ -4013,6 +4014,17 @@ const ChatRow = memo(function ChatRow({
     if (item.questions[0]?.kind === 'secret') return <SecretCard item={item} />;
     if (item.questions[0]?.kind === 'reveal') return <RevealSecretCard item={item} />;
     return <QuestionCard item={item} />;
+  }
+  if (item.kind === 'notice' && item.format === 'digest') {
+    const thread = item.coordinationThreadId;
+    return (
+      <DigestNotice
+        message={item.message}
+        {...(thread
+          ? { onView: () => { window.location.hash = withSideParam(window.location.hash, `coordination:${thread}`); } }
+          : {})}
+      />
+    );
   }
   if (item.kind === 'notice') {
     // A neutral confirmation (e.g. "Stopped.") — muted, never the alarming red

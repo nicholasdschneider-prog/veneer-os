@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
@@ -18,6 +20,8 @@ import {
   hasBotLane,
   spliceSurfacedNotices,
   surfaceToHuman,
+  surfacedNotice,
+  surfacedReceipts,
   surfacedRows,
   takeSurfacedContext,
   wakeTarget,
@@ -314,6 +318,65 @@ describe('surfaced lines', () => {
     expect(takeSurfacedContext(db, 'clara')).toContain('Result from bot lane: Posted 12 bills');
     expect(takeSurfacedContext(db, 'clara')).toBeNull();
   });
+
+  it('keeps a digest multi-line and capped, with only its first lines in the human context', () => {
+    const lane = enable();
+    const body = `Recommended: approve the REM quote\r\n\r\n\r\n1. REM #100117957 $412\n2. LaVanture invoice SV1436318\nVendor pricing/MAP: none\n4. extra   \n${'y'.repeat(5000)}`;
+    const { row: digest } = surfaceToHuman(db, { ownerId: 'clara', laneConversationId: lane.id, threadId: null, kind: 'digest', sourceLabel: 'bot lane', summary: body, requestKey: 'digest-1' });
+    expect(digest.kind).toBe('digest');
+    expect(digest.summary.length).toBeLessThanOrEqual(4000);
+    expect(digest.summary).not.toContain('\r');
+    expect(digest.summary.startsWith('Recommended: approve the REM quote\n\n1. REM #100117957 $412\n2.')).toBe(true);
+    expect(digest.summary).toContain('\n4. extra\n');
+    expect(surfaceToHuman(db, { ownerId: 'clara', laneConversationId: lane.id, threadId: null, kind: 'digest', sourceLabel: 'bot lane', summary: body, requestKey: 'digest-1' })).toMatchObject({ duplicate: true, row: { id: digest.id } });
+    expect(() => surfaceToHuman(db, { ownerId: 'clara', laneConversationId: lane.id, threadId: null, kind: 'digest', sourceLabel: 'bot lane', summary: 'Changed', requestKey: 'digest-1' })).toThrow('different');
+    expect(() => surfaceToHuman(db, { ownerId: 'clara', laneConversationId: lane.id, threadId: null, kind: 'digest', sourceLabel: 'bot lane', summary: ' \n\n ', requestKey: 'digest-2' })).toThrow('summary');
+    expect(surfacedNotice(digest)).toMatchObject({ type: 'notice', format: 'digest', message: expect.stringMatching(/^Digest from bot lane:\n\nRecommended/) });
+    const context = takeSurfacedContext(db, 'clara')!;
+    expect(context).toContain(`Digest from bot lane (receipt ${digest.id}): Recommended: approve the REM quote / 1. REM #100117957 $412 / 2. LaVanture invoice SV1436318 …`);
+    expect(context).not.toContain('Vendor pricing/MAP');
+  });
+
+  it('lists only the bot’s own receipts, by kind and time, without the internal key prefix', () => {
+    const lane = enable();
+    const other = ensureBotLane(db, row('anna'));
+    surfaceToHuman(db, { ownerId: 'clara', laneConversationId: lane.id, threadId: null, kind: 'result', sourceLabel: 'bot lane', summary: 'Older result', requestKey: `lane:${lane.id}:r1` });
+    db.prepare("UPDATE bot_lane_surfaced SET created_at='2026-11-02T12:00:00.000Z'").run();
+    const { row: digest } = surfaceToHuman(db, { ownerId: 'clara', laneConversationId: lane.id, threadId: null, kind: 'digest', sourceLabel: 'bot lane', summary: '8 AM digest\n1. one', requestKey: `lane:${lane.id}:digest-20261103-0800` });
+    surfaceToHuman(db, { ownerId: 'anna', laneConversationId: other.id, threadId: null, kind: 'digest', sourceLabel: 'bot lane', summary: 'Anna digest', requestKey: 'a' });
+    expect(surfacedReceipts(db, 'clara').map((r) => r.first_line)).toEqual(['8 AM digest', 'Older result']);
+    expect(surfacedReceipts(db, 'clara', { kind: 'digest' })).toEqual([
+      { id: digest.id, kind: 'digest', request_key: 'digest-20261103-0800', created_at: digest.created_at, first_line: '8 AM digest' },
+    ]);
+    expect(surfacedReceipts(db, 'clara', { since: '2026-11-02T13:00:00.000Z' }).map((r) => r.id)).toEqual([digest.id]);
+    expect(surfacedReceipts(db, 'clara', { limit: 1 })).toHaveLength(1);
+  });
+});
+
+describe('digest migration', () => {
+  it('widens the surfaced kinds and keeps every existing row, id and delivery mark', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vp-digest-mig-'));
+    const old = new Database(':memory:');
+    try {
+      for (const f of fs.readdirSync(migrations)) if (f < '0193_') fs.copyFileSync(path.join(migrations, f), path.join(dir, f));
+      migrate(old, dir);
+      old.prepare("INSERT INTO users(id,email,display_name,role) VALUES(1,'o@example.com','O','owner')").run();
+      old.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,channel,visibility) VALUES('c',1,1,'c','claude','s','web','team')").run();
+      old.prepare("INSERT INTO bot_lane_surfaced(id,owner_id,kind,source_label,summary,request_key,created_at,context_delivered_at) VALUES(7,'c','urgent','Anna','Due today','k7','2026-11-01T00:00:00.000Z','2026-11-01T00:01:00.000Z')").run();
+      expect(() => old.prepare("INSERT INTO bot_lane_surfaced(owner_id,kind,source_label,summary,request_key) VALUES('c','digest','x','y','z')").run()).toThrow();
+      fs.copyFileSync(path.join(migrations, '0193_bot_lane_digest.sql'), path.join(dir, '0193_bot_lane_digest.sql'));
+      migrate(old, dir);
+      expect(old.prepare('SELECT * FROM bot_lane_surfaced').all()).toEqual([
+        { id: 7, owner_id: 'c', lane_conversation_id: null, thread_id: null, kind: 'urgent', source_label: 'Anna', summary: 'Due today', request_key: 'k7', created_at: '2026-11-01T00:00:00.000Z', context_delivered_at: '2026-11-01T00:01:00.000Z' },
+      ]);
+      old.prepare("INSERT INTO bot_lane_surfaced(owner_id,kind,source_label,summary,request_key) VALUES('c','digest','x','y','z')").run();
+      expect(() => old.prepare("INSERT INTO bot_lane_surfaced(owner_id,kind,source_label,summary,request_key) VALUES('c','result','x','y','k7')").run()).toThrow(/UNIQUE/);
+      expect(old.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='bot_lane_surfaced_owner'").get()).toBeTruthy();
+    } finally {
+      old.close();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('bot lane API', () => {
@@ -402,6 +465,21 @@ describe('bot lane API', () => {
       expect((await t.call('POST', '/api/bot-lane/surface', { summary: 'Inbox pass done: 9 archived, 2 need you', kind: 'result', request_key: 'pass-1' })).body.duplicate).toBe(true);
       expect(t.shown).toHaveLength(1);
       expect((await t.call('POST', '/api/bot-lane/surface', { summary: '', kind: 'result', request_key: 'e' })).status).toBe(400);
+      expect(shown.body).toMatchObject({ id: expect.any(Number), kind: 'result', created_at: expect.any(String) });
+      const digest = await t.call('POST', '/api/bot-lane/surface', { summary: 'Recommended: none\n1. Vendor pricing/MAP: none', kind: 'digest', request_key: 'digest-1' });
+      expect(digest.status).toBe(200);
+      expect(digest.body).toMatchObject({ kind: 'digest', duplicate: false, shown: 'Digest from bot lane:\n\nRecommended: none\n1. Vendor pricing/MAP: none' });
+      expect(t.shown.at(-1)![1]).toMatchObject({ type: 'notice', format: 'digest' });
+      expect((await t.call('POST', '/api/bot-lane/surface', { summary: 'x'.repeat(9000), kind: 'digest', request_key: 'big' })).status).toBe(400);
+      expect((await t.call('POST', '/api/bot-lane/surface', { summary: 'x', kind: 'note', request_key: 'n' })).status).toBe(400);
+      const receipts = await t.call('GET', '/api/bot-lane/receipts?kind=digest');
+      expect(receipts.body.receipts).toEqual([expect.objectContaining({ id: digest.body.id, kind: 'digest', request_key: 'digest-1' })]);
+      expect((await t.call('GET', '/api/bot-lane/receipts?kind=other')).status).toBe(400);
+      expect((await t.call('GET', '/api/bot-lane/receipts?since=nope')).status).toBe(400);
+      // The human chat of the registered bot can read its receipts too.
+      identity = { email: 'owner@example.com', agentConversationId: 'clara' };
+      expect((await t.call('GET', '/api/bot-lane/receipts')).body.receipts).toHaveLength(2);
+      identity = { email: 'owner@example.com', agentConversationId: 'clara', agentExecutionConversationId: lane.id };
 
       // The lane shows as a bot lane beside the coordination threads.
       identity = { email: 'owner@example.com' };
@@ -410,6 +488,7 @@ describe('bot lane API', () => {
       identity = { email: 'owner@example.com', agentConversationId: 'clara', agentExecutionConversationId: lane.id };
       registered('clara', false);
       expect((await t.call('POST', '/api/bot-lane/surface', { summary: 'Later', kind: 'urgent', request_key: 'later' })).status).toBe(409);
+      expect((await t.call('GET', '/api/bot-lane/receipts')).status).toBe(409);
       expect(botLaneConversationId(db, 'clara')).toBe(lane.id); // history kept
     } finally {
       await t.close();

@@ -237,15 +237,31 @@ const TOOLS: ToolDef[] = [
   {
     name: 'surface_to_human',
     description:
-      "Only from a registered bot's bot lane or coordination thread: show your human chat one short line linking back here. Use it once, only when the human must act (a blocker, money, policy, a deadline) or must see a finished result. Routine progress and informational bot traffic stay in the lane. Not approval and not a question card; raise decisions with raise_decision.",
+      "Only from a registered bot's bot lane or coordination thread: show your human chat something linking back here. Kind urgent or result is one short line, used once, only when the human must act (a blocker, money, policy, a deadline) or must see a finished result. Kind digest is one scheduled multi-line markdown summary (up to 4,000 characters) the human asked to receive; send nothing when a conditional digest has nothing new. Routine progress and informational bot traffic stay in the lane. The result gives a durable receipt id; list_surfaced_receipts reads them back. Not approval and not a question card; raise decisions with raise_decision.",
     inputSchema: {
       type: 'object',
       properties: {
-        summary: { type: 'string', description: 'One short plain line (up to about 200 characters).' },
-        kind: { type: 'string', enum: ['urgent', 'result'] },
-        request_key: { type: 'string', description: 'Stable key for this exact line. Reuse on retry.' },
+        summary: {
+          type: 'string',
+          description: 'urgent/result: one short plain line (up to about 200 characters). digest: the multi-line markdown body.',
+        },
+        kind: { type: 'string', enum: ['urgent', 'result', 'digest'] },
+        request_key: { type: 'string', description: 'Stable key for this exact item. Reuse on retry.' },
       },
       required: ['summary', 'kind', 'request_key'],
+    },
+  },
+  {
+    name: 'list_surfaced_receipts',
+    description:
+      "A registered bot's own receipts for what it showed its human with surface_to_human (and urgent bot messages), newest first: id, kind, request_key, created_at, first line. Use it to find the last delivered digest or record which receipt showed an item. Read-only.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['urgent', 'result', 'digest'] },
+        since: { type: 'string', description: 'ISO timestamp; only receipts created after it.' },
+        limit: { type: 'number', description: 'At most 50; default 20.' },
+      },
     },
   },
   { name: 'read_coordination', description: 'Read a bot coordination thread returned by send_message. Requires current access to both original conversations.', inputSchema: {type:'object',properties:{threadId:{type:'string'}},required:['threadId']} },
@@ -1107,7 +1123,25 @@ async function callTool(
         method: 'POST',
         body: JSON.stringify({ summary: String(args.summary ?? ''), kind: String(args.kind ?? ''), request_key: String(args.request_key ?? '') }),
       });
-      return { content: [{ type: 'text', text: result.duplicate ? `Already shown: ${String(result.shown)}` : `Shown in the human chat: ${String(result.shown)}` }] };
+      const receipt = `receipt ${String(result.id)}, ${String(result.kind)}, ${String(result.created_at)}`;
+      return {
+        content: [
+          {
+            type: 'text',
+            text: result.duplicate
+              ? `Already shown (${receipt}, duplicate): ${String(result.shown)}`
+              : `Shown in the human chat (${receipt}): ${String(result.shown)}`,
+          },
+        ],
+      };
+    }
+    if (name === 'list_surfaced_receipts') {
+      const query = new URLSearchParams();
+      if (typeof args.kind === 'string' && args.kind) query.set('kind', args.kind);
+      if (typeof args.since === 'string' && args.since) query.set('since', args.since);
+      if (args.limit !== undefined) query.set('limit', String(args.limit));
+      const result = await callApi(`/api/bot-lane/receipts${query.size ? `?${query}` : ''}`);
+      return { content: [{ type: 'text', text: JSON.stringify(result.receipts ?? []) }] };
     }
     if (name === 'read_coordination') {
       const result = await callApi(`/api/coordination/${encodeURIComponent(String(args.threadId ?? ''))}`);
