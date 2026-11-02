@@ -21,6 +21,23 @@ export interface BotFeature {
 }
 export const BOT_FEATURES: BotFeature[] = [
   {
+    id: 'master-calendar', title: 'See and manage all your calendars in one panel', category: 'Daily work', updated: '2026-11-02',
+    announcement: 'Veneer now has a calendar panel. Select the calendar button on the left rail (or press Alt+C) to show every connected Google calendar as one day view on the right; it stays open while you move around Veneer. Add, move and edit events, answer invites, and get a reminder popup 10 minutes before each meeting.',
+    audience: 'Signed-in people with their own Google Calendar connected in Settings, Connectors. Each person sees only their own connections.',
+    summary: 'One Google-style day view across every Google account you connected, color coded by account, with editing, invite answers and reminders, so you rarely need to open Google Calendar.',
+    steps: [
+      'Connect each Google account under Settings, Connectors, Google Calendar. Choose Full access to edit; Limited shows events read-only.',
+      'Select the calendar button on the left rail, or press Alt+C (Option+C on a Mac). On a phone, open More, then Calendar. It stays open as you move around Veneer.',
+      'Use the arrows or tap the date to return to today, and switch between one and three days. Use the gear to turn individual calendars on or off and set reminder times.',
+      'Tap an empty time to add an event, or tap an event to see details, join, answer Yes, Maybe or No, change its reminder, edit or delete it. On a computer, drag an event to move it or drag its bottom edge to change its length.',
+      'When an event has guests, choose whether to email them. Guests are emailed only when you press the button that says so.',
+      'Reminders pop up inside Veneer 10 minutes before an event by default. Turn on notifications for this device under the gear to get them with Veneer closed. Snooze or dismiss on one device and it clears on the others.',
+    ],
+    example: 'Press Alt+C, drag Tuesday’s supplier call from 2:00 to 3:30, choose Move and email guests, then accept the invite waiting at the top.',
+    limits: 'Events stay in Google: Veneer reads them about once a minute and writes changes straight to the account that owns the event. Changing a repeating event changes only that occurrence. Only the organizer, or guests the organizer allows, can edit an event. All-day events have no reminder. Phone notifications need notifications turned on for each device; on iPhone, Veneer must be added to the Home Screen first. Calendars you share from another person’s connection do not appear.',
+    agent: 'Humans can see and change their own connected Google calendars in Veneer’s calendar panel (Alt+C) and get reminder popups there. It is a human surface: bots keep using their attached GOOGLECALENDAR connector tools under the existing rules, and should point a person who wants to see their day to the calendar panel. Guide: /#/bot-guide?feature=master-calendar.',
+  },
+  {
     id: 'card-quick-answers', title: 'Get a quick answer on a question card while the bot is busy', category: 'Daily work', updated: '2026-10-29',
     announcement: 'Ask something in a question card\u2019s discussion while the bot is busy and you now get an answer in seconds: a read-only copy of the bot reads the card, its evidence and the bot\u2019s recent work and replies right there. The bot still gets your message after its current step. Side chat is gone; this replaces it.',
     audience: 'Everyone who answers bot question cards',

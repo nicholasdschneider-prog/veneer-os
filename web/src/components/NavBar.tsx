@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Bot,
   BookOpen,
+  CalendarDays,
   Ellipsis,
   MessageSquare,
   Settings,
@@ -39,6 +40,30 @@ import {
 } from '@/lib/useUsage';
 import { DESKTOP_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { useDocumentScrollLock } from '../hooks/useDocumentScrollLock';
+import { MasterCalendarPanel } from './calendar/MasterCalendarPanel';
+import { ReminderHost } from './calendar/ReminderHost';
+import { calendarApi, calendarPanel, useCalendarPanel } from '@/lib/masterCalendar';
+
+let calendarSettingsAdopted = false;
+/** Alt/Option+C opens and closes the calendar anywhere outside a text field. */
+function useCalendarShortcut(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    if (!calendarSettingsAdopted) {
+      calendarSettingsAdopted = true;
+      void calendarApi.settings().then(calendarPanel.adopt).catch(() => undefined);
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.metaKey || e.ctrlKey || e.code !== 'KeyC') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      e.preventDefault();
+      calendarPanel.toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [enabled]);
+}
 
 export type NavKey =
   | 'messages'
@@ -320,6 +345,8 @@ export function NavShell({
   const claudeRing = claudeRingModel(usage, now);
   const codexRing = codexRingModel(usage, now);
   const unread = useChatUnread();
+  const calendar = useCalendarPanel();
+  useCalendarShortcut(!focused);
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
   const clientLogoUrlRef = useRef<string | null>(null);
 
@@ -438,6 +465,20 @@ export function NavShell({
         )}
       >
         <div className="flex shrink-0 items-center justify-center"><WorkspaceSearchButton /></div>
+        {!focused && isDesktop ? (
+          <div className="flex shrink-0 items-center justify-center">
+            <button
+              type="button"
+              onClick={() => calendarPanel.toggle()}
+              aria-label={calendar.open ? 'Hide calendar (Alt+C)' : 'Show calendar (Alt+C)'}
+              title={calendar.open ? 'Hide calendar (Alt+C)' : 'Show calendar (Alt+C)'}
+              aria-pressed={calendar.open}
+              className={cn('flex size-9 items-center justify-center rounded-lg transition-colors', calendar.open ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <CalendarDays className="size-5" />
+            </button>
+          </div>
+        ) : null}
         {/* Desktop: the account menu at the top of the rail. */}
         <div className={cn('text-foreground', isDesktop ? 'order-[-2] mx-auto mb-1 flex h-8 w-12 items-center justify-center' : 'hidden')}>
           <AccountMenu
@@ -489,6 +530,12 @@ export function NavShell({
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="center" className="mb-1 min-w-52">
+                  {!focused ? (
+                    <DropdownMenuItem onSelect={() => calendarPanel.toggle()}>
+                      <CalendarDays className="size-4 shrink-0" />
+                      {calendar.open ? 'Hide calendar' : 'Calendar'}
+                    </DropdownMenuItem>
+                  ) : null}
                   {mobileOverflow.map((item) => {
                     const Icon = item.icon;
                     return (
@@ -540,6 +587,8 @@ export function NavShell({
         </div>
       </nav>
       <main className="relative min-h-0 min-w-0 flex-1">{children}</main>
+      {!focused ? <MasterCalendarPanel desktop={isDesktop} /> : null}
+      {!focused ? <ReminderHost /> : null}
     </div>
   );
 }

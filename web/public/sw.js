@@ -1,7 +1,7 @@
 // Minimal network-first service worker. Never serves a stale app shell when
 // the network is up (Veneer's stale-bundle lesson); cache is a fallback for
 // offline only. Bump CACHE_VERSION to invalidate.
-const CACHE_VERSION = 'vp-v4';
+const CACHE_VERSION = 'vp-v5';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -55,6 +55,19 @@ self.addEventListener('push', event => {
       });
       return;
     }
+    // A calendar reminder. An open, focused Veneer already shows its own popup.
+    if (payload.kind === 'calendar' && typeof payload.occurrenceKey === 'string') {
+      if (windows.some(client => client.focused)) return;
+      const clean = (value, max) => typeof value === 'string' ? value.replace(/[\u0000-\u001f]/g, ' ').slice(0, max).trim() : '';
+      const join = typeof payload.joinUrl === 'string' && /^https:\/\/[^\s<>"']+$/.test(payload.joinUrl) ? payload.joinUrl : null;
+      await self.registration.showNotification(clean(payload.title, 120) || 'Calendar reminder', {
+        body: clean(payload.body, 200), tag: clean(payload.tag, 200) || 'veneer-calendar', renotify: true, requireInteraction: true,
+        icon: '/icons/icon-192.png',
+        data: { calendar: payload.occurrenceKey.slice(0, 1200), join },
+        actions: [...(join ? [{ action: 'join', title: 'Join' }] : []), { action: 'snooze', title: 'Snooze 5 min' }, { action: 'dismiss', title: 'Dismiss' }],
+      });
+      return;
+    }
     const href = typeof payload.href === 'string' && /^#\/(chat|bots)\//.test(payload.href) ? payload.href : '#/bots';
     if (windows.some(client => client.focused && client.url.endsWith(href))) return;
     await self.registration.showNotification('Veneer', {
@@ -66,6 +79,26 @@ self.addEventListener('push', event => {
 });
 self.addEventListener('notificationclick', event => {
   event.notification.close();
+  const calendar = event.notification.data?.calendar;
+  if (typeof calendar === 'string') {
+    event.waitUntil((async () => {
+      const join = event.notification.data?.join;
+      if (event.action === 'snooze' || event.action === 'dismiss' || event.action === 'join') {
+        // Shared with every device: the reminder clears everywhere.
+        await fetch('/api/master-calendar/reminders', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ occurrenceKey: calendar, action: event.action === 'snooze' ? 'snooze' : 'dismiss' }),
+        }).catch(() => {});
+      }
+      if (event.action === 'join' && typeof join === 'string') { await self.clients.openWindow(join); return; }
+      if (event.action === 'snooze' || event.action === 'dismiss') return;
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const existing = windows.find(client => new URL(client.url).origin === self.location.origin);
+      if (existing) await existing.focus();
+      else await self.clients.openWindow(new URL('#/', self.location.origin + '/').href);
+    })());
+    return;
+  }
   const href = event.notification.data?.href;
   const target = new URL(typeof href === 'string' && href.startsWith('#/') ? href : '#/bots', self.location.origin + '/').href;
   event.waitUntil((async () => {

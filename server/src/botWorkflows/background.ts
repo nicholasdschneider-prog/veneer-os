@@ -13,6 +13,8 @@ import { createTaskService } from '../tasks/service.js';
 import { createTaskSourceSweep, type OrderOpsTicket } from '../tasks/sourceStatus.js';
 import crypto from 'node:crypto';
 import { readSecretValue } from '../secrets/readSecret.js';
+import { masterCalendarFor } from '../masterCalendar/instance.js';
+import { createCalendarPushWorker } from '../masterCalendar/push.js';
 export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics = createWebOperationMetrics()) {
   const stopReminders=startCalendarReminderWorker(ctx);
   const stopLoopMetrics = startWebLoopMetrics(ctx.config.dataDir, metrics);
@@ -70,6 +72,19 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
   searchTimer.unref();
   const timer = setInterval(() => void tick(), 5000);
   timer.unref();
+  // Master calendar reminders: Google reads are slow, so they run on their own 30 s pass.
+  const calendarPush = createCalendarPushWorker(ctx, masterCalendarFor(ctx));
+  let calendarBusy = false;
+  const calendarTimer = setInterval(() => {
+    if (calendarBusy) return;
+    calendarBusy = true;
+    void metrics.measureAsync('calendar_push', () => calendarPush())
+      .catch(() => console.warn('[master-calendar] Reminder pass failed; retrying.'))
+      .finally(() => {
+        calendarBusy = false;
+      });
+  }, 30_000);
+  calendarTimer.unref();
   ctx.manager.bus.on('status', (id: string, status: string) => {
     if (status === 'needs_you' || status === 'failed')
       queueNotification(
@@ -85,5 +100,6 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
     stopLoopMetrics();
     clearInterval(timer);
     clearInterval(searchTimer);
+    clearInterval(calendarTimer);
   };
 }
