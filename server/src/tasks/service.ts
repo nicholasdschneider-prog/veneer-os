@@ -351,6 +351,9 @@ export function createTaskService(db: Database.Database) {
     reconcileAfterRestart(bootId: string): number {
       let woken = 0;
       for (const t of db.prepare("SELECT * FROM bot_tasks WHERE status='working'").all() as BotTaskRow[]) {
+        // Only a task whose turn was in flight can have an unknown outcome; an idle task waiting on someone
+        // (and every task on a web-only restart, which interrupts no bot turn) has nothing to reconcile.
+        if (!t.task_conversation_id || !db.prepare("SELECT 1 FROM pending_turns WHERE conversation_id=? AND status='pending' LIMIT 1").get(t.task_conversation_id)) continue;
         if (db.prepare("SELECT 1 FROM bot_task_events WHERE task_id=? AND kind='reconcile' AND json_extract(payload_json,'$.boot')=?").get(t.id, bootId)) continue;
         event(t.id, 'reconcile', { boot: bootId });
         db.prepare('UPDATE bot_tasks SET status_line=? WHERE id=?').run('Reconciling after a restart', t.id);

@@ -157,7 +157,9 @@ describe('shared Tasks capability', () => {
     expect(tasks.contextBlock(lane)).toContain('discussion from Nick: Use the restocking fee table');
     const ali = db.prepare('SELECT * FROM users WHERE id=2').get() as UserRow;
     expect(() => tasks.discuss({ user: ali }, t.task.id, { text: 'x', request_key: 'r2' })).toThrow(/not found/);
-    // Restart: the working task is asked to reconcile once per boot, never retried blindly.
+    // Restart: an idle working task has nothing to reconcile; one whose turn was in flight is asked once per boot, never retried blindly.
+    expect(tasks.reconcileAfterRestart('boot-0')).toBe(0);
+    db.prepare("INSERT INTO pending_turns(conversation_id,prompt,actor_user_id,origin_json,attempts,status) VALUES(?,'p',1,NULL,0,'pending')").run(lane);
     expect(tasks.reconcileAfterRestart('boot-1')).toBe(1);
     expect(tasks.reconcileAfterRestart('boot-1')).toBe(0);
     expect(tasks.read(t.task.id)!.status_line).toBe('Reconciling after a restart');
