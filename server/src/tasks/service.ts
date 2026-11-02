@@ -19,7 +19,26 @@ import { BotError } from '../bots/service.js';
 export const TASK_STATUSES = ['up_next', 'working', 'needs_input', 'ready_for_review', 'done'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 export const TASK_SOURCES = ['human_dump', 'existing_case', 'bot', 'import'] as const;
-export const TASK_CAP_PER_OWNER = 2;
+export const TASK_CAP_PER_OWNER = 4;
+/** A working task whose chat finished its last turn this long ago, with nothing queued, is waiting on someone and frees its slot. */
+export const TASK_IDLE_GRACE_MS = 2 * 60_000;
+/**
+ * A working task holds one of its bot's slots only while its task chat is busy: a turn in flight,
+ * a queued message or a pending task wake, or it started or last ran within the grace period.
+ * Everything else is waiting on someone (a supplier, a customer, a human) and runs again when a
+ * note, an answer or a reply wakes it.
+ */
+export function taskChatBusy(db: Database.Database, t: { id: string; task_conversation_id: string | null; updated_at: string }, now = Date.now()): boolean {
+  const lane = t.task_conversation_id;
+  if (db.prepare("SELECT 1 FROM conversation_wakeups WHERE wake_key LIKE ? AND status='pending' LIMIT 1").get(`bot-task:${t.id}:%`)) return true;
+  if (!lane) return false;
+  if (db.prepare("SELECT 1 FROM pending_turns WHERE conversation_id=? AND status='pending' LIMIT 1").get(lane)) return true;
+  if (db.prepare('SELECT 1 FROM queued_messages WHERE conversation_id=? LIMIT 1').get(lane)) return true;
+  const since = now - TASK_IDLE_GRACE_MS;
+  const sqlTime = (v: string) => Date.parse(v.includes('T') ? v : `${v.replace(' ', 'T')}Z`);
+  const lastTurn = (db.prepare('SELECT MAX(created_at) AS at FROM turn_origins WHERE conversation_id=?').get(lane) as { at: string | null }).at;
+  return (lastTurn !== null && sqlTime(lastTurn) > since) || sqlTime(t.updated_at) > since;
+}
 /** A human's note typed on a task (discuss is human-only); it runs ahead of the bot's other work. */
 export const HUMAN_TASK_NOTE_WAKE = /^bot-task:[^:]+:discuss:/;
 export function isHumanTaskNoteWake(db: Database.Database, wakeupId: string): boolean {
@@ -137,7 +156,7 @@ export function createTaskService(db: Database.Database) {
   function schedule(ownerId: string): { started: string[]; queued: string[] } {
     const started: string[] = []; const queued: string[] = [];
     db.transaction(() => {
-      const working = db.prepare("SELECT * FROM bot_tasks WHERE owner_conversation_id=? AND status='working'").all(ownerId) as BotTaskRow[];
+      const working = (db.prepare("SELECT * FROM bot_tasks WHERE owner_conversation_id=? AND status='working'").all(ownerId) as BotTaskRow[]).filter((w) => taskChatBusy(db, w));
       let slots = TASK_CAP_PER_OWNER - working.length;
       const held = new Map<string, BotTaskRow>();
       for (const w of db.prepare("SELECT * FROM bot_tasks WHERE status='working'").all() as BotTaskRow[]) for (const r of resources(w)) if (!held.has(r)) held.set(r, w);
@@ -150,7 +169,7 @@ export function createTaskService(db: Database.Database) {
           queued.push(t.id);
           continue;
         }
-        if (slots <= 0) { if (!t.status_line.startsWith('Queued')) db.prepare('UPDATE bot_tasks SET status_line=? WHERE id=?').run(`Queued: ${botName(ownerId)} is already working ${TASK_CAP_PER_OWNER} tasks`, t.id); queued.push(t.id); continue; }
+        if (slots <= 0) { if (!t.status_line.startsWith('Queued: starts')) db.prepare('UPDATE bot_tasks SET status_line=? WHERE id=?').run(`Queued: starts when one of ${botName(ownerId)}'s ${TASK_CAP_PER_OWNER} running tasks finishes`, t.id); queued.push(t.id); continue; }
         setStatusRow(t, 'working', 'Starting');
         for (const r of resources(t)) held.set(r, t);
         slots--;

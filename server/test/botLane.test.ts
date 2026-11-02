@@ -216,7 +216,7 @@ describe('human priority and lane parity', () => {
     const { manager } = managerWith(adapter);
     const lane = enable();
     const user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
-    const made = createTaskService(db).intake({ user, conversationId: 'clara' }, { items: [1, 2, 3, 4].map((n) => ({ title: `Case ${n}`, case_key: `C${n}` })), source: 'human_dump' }).created;
+    const made = createTaskService(db).intake({ user, conversationId: 'clara' }, { items: [1, 2, 3, 4, 5, 6].map((n) => ({ title: `Case ${n}`, case_key: `C${n}` })), source: 'human_dump' }).created;
     const chat = (n: number) => row(made[n]!.task_conversation_id!);
     const noteWake = (n: number) => {
       const id = crypto.randomUUID();
@@ -233,20 +233,19 @@ describe('human priority and lane parity', () => {
     expect(manager.deliverWakeup(chat(0), 'Start this task', 'w-start', 1).disposition).toBe('queued');
     await tick();
     expect(turns).toHaveLength(2);
-    // Human notes on two tasks start right away.
-    manager.deliverWakeup(chat(1), 'Nick wrote on task', noteWake(1), 1);
-    manager.deliverWakeup(chat(2), 'Nick wrote on task', noteWake(2), 1);
+    // Human notes on four tasks start right away (the per-bot cap).
+    for (const n of [1, 2, 3, 4]) manager.deliverWakeup(chat(n), 'Nick wrote on task', noteWake(n), 1);
     await tick();
-    expect(turns.map((t) => t.spec.nativeSessionId).slice(2)).toEqual([chat(1).native_session_id, chat(2).native_session_id]);
+    expect(turns.map((t) => t.spec.nativeSessionId).slice(2)).toEqual([1, 2, 3, 4].map((n) => chat(n).native_session_id));
     expect(manager.queueSnapshot(chat(0).id).messages).toHaveLength(1);
-    // A third note waits for one of the two notes to finish, not for the main chat.
-    manager.deliverWakeup(chat(3), 'Nick wrote on task', noteWake(3), 1);
+    // A fifth note waits for one of the four notes to finish, not for the main chat.
+    manager.deliverWakeup(chat(5), 'Nick wrote on task', noteWake(5), 1);
     await tick();
-    expect(turns).toHaveLength(4);
+    expect(turns).toHaveLength(6);
     turns[2]!.finish();
     await tick();
-    expect(turns).toHaveLength(5);
-    expect(turns[4]!.spec.nativeSessionId).toBe(chat(3).native_session_id);
+    expect(turns).toHaveLength(7);
+    expect(turns[6]!.spec.nativeSessionId).toBe(chat(5).native_session_id);
     for (const t of turns) t.finish();
     await tick();
   });

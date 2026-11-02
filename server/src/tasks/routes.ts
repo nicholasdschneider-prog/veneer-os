@@ -6,7 +6,7 @@ import { canViewConversation, canViewCoordinationPair } from '../conversations/a
 import { BotError, createBotService } from '../bots/service.js';
 import { botLabel, botLaneOwnerOfThread } from '../coordination/botLane.js';
 import type { CoordinationThread } from '../coordination/store.js';
-import { createTaskService, TASK_CAP_PER_OWNER, type TaskActor } from './service.js';
+import { createTaskService, TASK_CAP_PER_OWNER, taskChatBusy, type TaskActor } from './service.js';
 import { sourceLines, sourceSubjects } from './sourceStatus.js';
 import { taskOrderLinks, taskOrderNumbers } from './orderLinks.js';
 import { createCsTicketService, presentMessage } from '../csTickets/service.js';
@@ -20,7 +20,7 @@ import { readSecretValue } from '../secrets/readSecret.js';
  * questions, coordination threads, handed-off chats, mirrored tickets, and
  * (chief of staff only) other bots' questions. Status comes from source state.
  */
-export type BoardGroup = 'ready_for_review' | 'needs_input' | 'working' | 'up_next' | 'completed';
+export type BoardGroup = 'ready_for_review' | 'needs_input' | 'working' | 'waiting' | 'up_next' | 'completed';
 export interface BoardRow {
   kind: 'task' | 'decision' | 'question' | 'thread' | 'handoff' | 'ticket';
   id: string;
@@ -38,7 +38,7 @@ export interface BoardRow {
   task?: ReturnType<typeof import('./service.js').present> & { open_decision: { id: string; version: number; question: string } | null; thread_id: string | null };
   decision_id?: string;
 }
-const GROUPS: BoardGroup[] = ['ready_for_review', 'needs_input', 'working', 'up_next', 'completed'];
+const GROUPS: BoardGroup[] = ['ready_for_review', 'needs_input', 'working', 'waiting', 'up_next', 'completed'];
 
 export function createTasksRouter(ctx: AppContext) {
   const router = express.Router();
@@ -113,7 +113,8 @@ export function createTasksRouter(ctx: AppContext) {
     const subjects = sourceSubjects(db, ownTasks.map((t) => t.id));
     const store = shopifyStore(chat);
     for (const t of ownTasks) {
-      const group: BoardGroup = t.status === 'done' ? 'completed' : t.status;
+      // A working task whose chat is idle is waiting on someone; it holds no slot (taskChatBusy).
+      const group: BoardGroup = t.status === 'done' ? 'completed' : t.status === 'working' && !taskChatBusy(db, t) ? 'waiting' : t.status;
       rows.push({ kind: 'task', id: t.id, group, title: t.title, status_line: t.status_line, tag: t.case_key ? `case ${t.case_key}` : t.source.replace('_', ' '), updated_at: t.updated_at,
         // The task chat is read in the owner chat's side panel (it renders a lane's transcript); a lane page on its own is blank.
         // A task opens in the board's own pane (status, question card, the task chat's transcript, composer); never the bare lane page.

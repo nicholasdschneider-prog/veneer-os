@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { ConversationRow, UserRow } from '../src/db/db.js';
 import type { AppContext } from '../src/context.js';
-import { createTaskService, TASK_CAP_PER_OWNER } from '../src/tasks/service.js';
+import { createTaskService, TASK_CAP_PER_OWNER, taskChatBusy } from '../src/tasks/service.js';
 import { createTasksRouter } from '../src/tasks/routes.js';
 import { createBotService, proposalSchema } from '../src/bots/service.js';
 import { wakeTarget } from '../src/coordination/botLane.js';
@@ -46,10 +46,13 @@ describe('shared Tasks capability', () => {
       { title: 'Chargeback 4521 for Dean Marsh', case_key: 'cb-4521', brief: 'Dispute the $191.77 chargeback.' },
       { title: 'Chargeback 4530 for Pat Rivera', case_key: 'cb-4530' },
       { title: 'Chargeback 4533 for Lee Park', case_key: 'cb-4533' },
+      { title: 'Chargeback 4540 for Sam Cole', case_key: 'cb-4540' },
+      { title: 'Chargeback 4541 for Ann Bell', case_key: 'cb-4541' },
     ], source: 'human_dump' });
-    expect(r.summary).toBe('3 tasks: 3 new, 0 matched; 2 started, 1 queued');
-    expect(r.created.map((t) => t.status)).toEqual(['working', 'working', 'up_next']);
-    expect(r.created[2]!.status_line).toContain(`already working ${TASK_CAP_PER_OWNER} tasks`);
+    expect(TASK_CAP_PER_OWNER).toBe(4);
+    expect(r.summary).toBe('5 tasks: 5 new, 0 matched; 4 started, 1 queued');
+    expect(r.created.map((t) => t.status)).toEqual(['working', 'working', 'working', 'working', 'up_next']);
+    expect(r.created[4]!.status_line).toBe(`Queued: starts when one of Clara's ${TASK_CAP_PER_OWNER} running tasks finishes`);
     // Every task has its own chat, a lane of the owner, visible where the owner is and never a human send target.
     for (const t of r.created) {
       expect(coordinationLane(db, t.task_conversation_id!)?.owner_id).toBe(OWNER);
@@ -59,18 +62,41 @@ describe('shared Tasks capability', () => {
     }
     // Start wakes are scheduled on the owner and run in the task chat.
     const starts = pendingWakes(OWNER).filter((w) => w.wake_key.includes(':start:'));
-    expect(starts).toHaveLength(2);
+    expect(starts).toHaveLength(4);
     const firstStart = starts.find((w) => w.wake_key.startsWith(`bot-task:${r.created[0]!.id}:`))!;
     expect(wakeTarget(db, conv(OWNER), 'w', firstStart.wake_key).id).toBe(r.created[0]!.task_conversation_id);
     expect(firstStart.reason).toContain('Dispute the $191.77 chargeback');
     // A repeat of the same case adds direction instead of a second task; a near-identical title matches too.
     const again = tasks.intake(bot(), { items: [{ title: 'Dean Marsh chargeback again', case_key: 'cb-4521', brief: 'He sent the receipt.' }, { title: 'chargeback 4530 for pat rivera' }] });
     expect(again.summary).toBe('2 tasks: 0 new, 2 matched; 0 started, 1 queued');
-    expect(db.prepare('SELECT COUNT(*) AS n FROM bot_tasks').get()).toEqual({ n: 3 });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM bot_tasks').get()).toEqual({ n: 5 });
     expect(pendingWakes(OWNER).some((w) => w.wake_key.includes(':direction:') && w.reason.includes('He sent the receipt'))).toBe(true);
     // Another bot's tasks never match or count against this owner.
     const finn = tasks.intake({ user, conversationId: OTHER }, { items: [{ title: 'Chargeback 4521 for Dean Marsh', case_key: 'cb-4521' }] });
     expect(finn.summary).toBe('1 task: 1 new, 0 matched; 1 started, 0 queued');
+  });
+
+  it('frees a slot when a working task goes idle waiting on someone, and a note brings it back', () => {
+    const items = Array.from({ length: TASK_CAP_PER_OWNER + 1 }, (_, i) => ({ title: `Vendor task ${i + 1}`, case_key: `vendor-${i + 1}` }));
+    const r = tasks.intake(bot(), { items, source: 'human_dump' });
+    const running = r.created.slice(0, TASK_CAP_PER_OWNER), next = r.created[TASK_CAP_PER_OWNER]!;
+    expect(next.status).toBe('up_next');
+    // The started tasks ran their turns and went quiet hours ago: nothing running, queued or waiting to be delivered.
+    db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE wake_key LIKE 'bot-task:%'").run();
+    db.prepare("UPDATE bot_tasks SET updated_at=datetime('now','-3 hours') WHERE status='working'").run();
+    // Turns still in flight keep their slots.
+    for (const t of running) db.prepare("INSERT INTO pending_turns(conversation_id,prompt,actor_user_id,origin_json,attempts,status) VALUES(?,'p',1,NULL,0,'pending')").run(t.task_conversation_id);
+    expect(tasks.schedule(OWNER).started).toEqual([]);
+    expect(tasks.read(next.id)!.status).toBe('up_next');
+    // Once one turn finishes, that task is waiting on someone and the queued task starts.
+    const icon = running[0]!, morryde = running[1]!;
+    db.prepare("DELETE FROM pending_turns WHERE conversation_id=?").run(icon.task_conversation_id);
+    expect(tasks.schedule(OWNER).started).toEqual([next.id]);
+    expect(taskChatBusy(db, tasks.read(icon.id)!)).toBe(false);
+    db.prepare("DELETE FROM pending_turns WHERE conversation_id=?").run(morryde.task_conversation_id);
+    // A human note on a waiting task makes it busy again (its wake is pending).
+    tasks.discuss({ user, conversationId: OWNER }, morryde.id, { text: 'Any word from MORryde?', request_key: 'n1' });
+    expect(taskChatBusy(db, tasks.read(morryde.id)!)).toBe(true);
   });
 
   it('queues a task behind a shared resource another task holds, and starts it when the holder finishes', () => {
@@ -168,9 +194,9 @@ describe('shared Tasks capability', () => {
     };
     it('serves the tools to the bot and the grouped board with counts to the human', async () => {
       expect(BOT_TOOL_DEFINITIONS.map((t) => t.name)).toEqual(expect.arrayContaining(['create_task', 'intake_tasks', 'set_task_status']));
-      const intake = await callBotTool({ name: 'intake_tasks', args: { items: [{ title: 'Chargeback 4521', case_key: 'cb-4521' }, { title: 'Chargeback 4530', case_key: 'cb-4530' }, { title: 'Chargeback 4533', case_key: 'cb-4533' }] }, callApi: callApi({ 'x-test-bot': OWNER }) });
+      const intake = await callBotTool({ name: 'intake_tasks', args: { items: [{ title: 'Chargeback 4521', case_key: 'cb-4521' }, { title: 'Chargeback 4530', case_key: 'cb-4530' }, { title: 'Chargeback 4533', case_key: 'cb-4533' }, { title: 'Chargeback 4540', case_key: 'cb-4540' }, { title: 'Chargeback 4541', case_key: 'cb-4541' }] }, callApi: callApi({ 'x-test-bot': OWNER }) });
       const payload = JSON.parse(intake!.content[0]!.text) as { summary: string; created: { id: string; task_conversation_id: string }[] };
-      expect(payload.summary).toBe('3 tasks: 3 new, 0 matched; 2 started, 1 queued');
+      expect(payload.summary).toBe('5 tasks: 5 new, 0 matched; 4 started, 1 queued');
       const status = await callBotTool({ name: 'set_task_status', args: { status: 'ready_for_review', status_line: 'Evidence packet is ready for you to check.' }, callApi: callApi({ 'x-test-bot': OWNER, 'x-test-execution': payload.created[0]!.task_conversation_id }) });
       expect(JSON.parse(status!.content[0]!.text)).toMatchObject({ task: { status: 'ready_for_review' } });
       expect(JSON.parse((await callBotTool({ name: 'create_task', args: { title: 'x' }, callApi: callApi({ 'x-test-bot': 'nope' }) }))!.content[0]!.text)).toMatchObject({ error: expect.stringContaining('registered bot') });
@@ -178,7 +204,7 @@ describe('shared Tasks capability', () => {
       db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id,origin_conversation_id) VALUES('h1',1,1,'Vendor quote','claude','n-h1','team',?,?)").run(TEAM, OWNER);
       const board = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { counts: Record<string, number>; needs_you: number; rows: { kind: string; group: string; title: string }[]; chat: { bot_name: string; registered: boolean } };
       expect(board.chat).toMatchObject({ bot_name: 'Clara', registered: true });
-      expect(board.counts).toMatchObject({ ready_for_review: 1, needs_input: 0, working: 2, up_next: 0, completed: 1 }); // the review freed a slot, so the queued chargeback started; a finished handoff is Completed, never review work
+      expect(board.counts).toMatchObject({ ready_for_review: 1, needs_input: 0, working: 4, up_next: 0, completed: 1 }); // the review freed a slot, so the queued chargeback started; a finished handoff is Completed, never review work
       expect(board.needs_you).toBe(1);
       expect(board.rows.find((r) => r.kind === 'handoff')).toMatchObject({ title: 'Vendor quote', group: 'completed' });
       laneStatus.set('h1', 'needs_you');
@@ -216,7 +242,7 @@ describe('shared Tasks capability', () => {
       expect(await activity()).toEqual({ state: 'working' });
       laneStatus.delete(first.task_conversation_id);
       for (const t of payload.created.slice(1)) laneStatus.set(t.task_conversation_id, 'working');
-      expect(await activity()).toEqual({ state: 'waiting', reason: 'tasks', others: 2 });
+      expect(await activity()).toEqual({ state: 'waiting', reason: 'tasks', others: 4 });
       db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE wake_key LIKE ?").run(`bot-task:${first.id}:%`);
       expect(await activity()).toEqual({ state: 'idle' });
       // A teammate works the same shared bot's board: an outsider sees nothing, a member sees the
@@ -237,6 +263,12 @@ describe('shared Tasks capability', () => {
       expect(linked.rows.find((r) => r.id === payload.created[2]!.id)?.orders).toEqual([{ number: '100121742', url: 'https://admin.shopify.com/store/elkhart-rv-parts/orders?query=%23100121742' }]);
       expect(((await callApi({})(`/api/conversations/${OWNER}/tasks/${payload.created[2]!.id}`)) as { orders: unknown[] }).orders).toHaveLength(1);
       expect(await ali(`/api/conversations/${OWNER}/tasks/mark`, { method: 'POST', body: JSON.stringify({ kind: 'task', id: payload.created[1]!.id, mark: 'done' }) })).not.toHaveProperty('error');
+      // A working task whose chat has gone quiet shows under Waiting on someone.
+      db.prepare("UPDATE conversation_wakeups SET status='delivered' WHERE wake_key LIKE ?").run(`bot-task:${payload.created[2]!.id}:%`);
+      db.prepare("UPDATE bot_tasks SET status='working', updated_at=datetime('now','-1 hour') WHERE id=?").run(payload.created[2]!.id);
+      const quiet = await callApi({})(`/api/conversations/${OWNER}/tasks`) as unknown as { rows: { id: string; group: string }[]; counts: Record<string, number> };
+      expect(quiet.rows.find((r) => r.id === payload.created[2]!.id)?.group).toBe('waiting');
+      expect(quiet.counts.waiting).toBeGreaterThanOrEqual(1);
     });
   });
 });

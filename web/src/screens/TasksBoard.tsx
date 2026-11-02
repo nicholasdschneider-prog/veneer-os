@@ -34,7 +34,7 @@ const ago = (iso: string | null | undefined) => {
 export function groupRows(rows: BoardRow[], showCompleted: boolean): { id: BoardGroup; label: string; rows: BoardRow[] }[] {
   return BOARD_GROUPS.filter((g) => showCompleted ? g.id === 'completed' : g.id !== 'completed').map((g) => ({ ...g, rows: rows.filter((r) => r.group === g.id) })).filter((g) => showCompleted || g.rows.length > 0);
 }
-const dotColor: Record<BoardGroup, string> = { ready_for_review: 'bg-emerald-500', needs_input: 'bg-amber-500', working: 'bg-sky-500', up_next: 'bg-muted-foreground/40', completed: 'bg-muted-foreground/30' };
+const dotColor: Record<BoardGroup, string> = { ready_for_review: 'bg-emerald-500', needs_input: 'bg-amber-500', working: 'bg-sky-500', waiting: 'bg-violet-400', up_next: 'bg-muted-foreground/40', completed: 'bg-muted-foreground/30' };
 
 /** `compact` keeps one column at any width (the question desk is a narrow column on desktop). */
 export function TasksBoard({ conversationId, taskId = null, onNavigate, compact = false }: { conversationId: string; taskId?: string | null; onNavigate: (hash: string) => void; compact?: boolean }) {

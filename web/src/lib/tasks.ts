@@ -1,11 +1,12 @@
 import { requestJson } from './api';
 
 /** Shared Tasks board (build #908): one list per bot chat over its tasks, questions, threads, handoffs and tickets. */
-export type BoardGroup = 'ready_for_review' | 'needs_input' | 'working' | 'up_next' | 'completed';
+export type BoardGroup = 'ready_for_review' | 'needs_input' | 'working' | 'waiting' | 'up_next' | 'completed';
 export const BOARD_GROUPS: { id: BoardGroup; label: string }[] = [
   { id: 'ready_for_review', label: 'Ready for review' },
   { id: 'needs_input', label: 'Needs input' },
   { id: 'working', label: 'Doing work' },
+  { id: 'waiting', label: 'Waiting on someone' },
   { id: 'up_next', label: 'Up next' },
   { id: 'completed', label: 'Completed' },
 ];
