@@ -211,7 +211,7 @@ describe('human priority and lane parity', () => {
     await tick();
   });
 
-  it('runs a human note on a task at once, while the bot is busy elsewhere; automated task work still waits', async () => {
+  it('runs task chats beside a busy main chat up to the per-bot cap, and a human note waits only for other notes', async () => {
     const { turns, adapter } = fakeProvider();
     const { manager } = managerWith(adapter);
     const lane = enable();
@@ -229,23 +229,23 @@ describe('human priority and lane parity', () => {
     manager.postMessage(row('clara'), 'Human in the main chat');
     await tick();
     expect(turns).toHaveLength(2);
-    // Automated task work waits behind the busy main chat.
-    expect(manager.deliverWakeup(chat(0), 'Start this task', 'w-start', 1).disposition).toBe('queued');
+    // A long main-chat turn no longer freezes the bot's task chats: automated task work starts too.
+    expect(manager.deliverWakeup(chat(0), 'Start this task', 'w-start', 1).disposition).not.toBe('duplicate');
     await tick();
-    expect(turns).toHaveLength(2);
-    // Human notes on four tasks start right away (the per-bot cap).
+    expect(turns).toHaveLength(3);
+    expect(turns[2]!.spec.nativeSessionId).toBe(chat(0).native_session_id);
+    // Human notes on four tasks start right away (notes count only against other notes).
     for (const n of [1, 2, 3, 4]) manager.deliverWakeup(chat(n), 'Nick wrote on task', noteWake(n), 1);
     await tick();
-    expect(turns.map((t) => t.spec.nativeSessionId).slice(2)).toEqual([1, 2, 3, 4].map((n) => chat(n).native_session_id));
-    expect(manager.queueSnapshot(chat(0).id).messages).toHaveLength(1);
-    // A fifth note waits for one of the four notes to finish, not for the main chat.
+    expect(turns.map((t) => t.spec.nativeSessionId).slice(3)).toEqual([1, 2, 3, 4].map((n) => chat(n).native_session_id));
+    // A fifth note waits for one of the four notes to finish, never for the main chat.
     manager.deliverWakeup(chat(5), 'Nick wrote on task', noteWake(5), 1);
     await tick();
-    expect(turns).toHaveLength(6);
-    turns[2]!.finish();
-    await tick();
     expect(turns).toHaveLength(7);
-    expect(turns[6]!.spec.nativeSessionId).toBe(chat(5).native_session_id);
+    turns[3]!.finish();
+    await tick();
+    expect(turns).toHaveLength(8);
+    expect(turns[7]!.spec.nativeSessionId).toBe(chat(5).native_session_id);
     for (const t of turns) t.finish();
     await tick();
   });

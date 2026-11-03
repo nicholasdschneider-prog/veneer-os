@@ -133,6 +133,16 @@ describe('conversation wake-up scheduler', () => {
     expect(scheduler.listPending(conv.id)).toHaveLength(52);
   });
 
+  it('cancels a wake whose delivery is permanently refused instead of retrying it forever', () => {
+    db.prepare("INSERT INTO conversation_wakeups(id,conversation_id,wake_key,reason,scheduled_for,actor_user_id) VALUES('gone',?,'gone-check','Check',?,1)").run(conv.id, new Date(BASE.getTime() - 1000).toISOString());
+    let calls = 0;
+    scheduler.stop();
+    scheduler = createConversationWakeupScheduler({ db, manager: { deliverWakeup() { calls++; throw Object.assign(new Error('Discussion access or version changed'), { terminal: true }); } }, now: () => new Date(current), log });
+    scheduler.tick(); scheduler.tick();
+    expect(calls).toBe(1);
+    expect(db.prepare("SELECT status FROM conversation_wakeups WHERE id='gone'").get()).toEqual({ status: 'cancelled' });
+  });
+
   it('prioritizes human answers and discussion before a full backlog, excluding bot events', () => {
     const canDispatch = vi.fn((row: ConversationWakeupRow) => humanDecisionReplyWake(db, row.id));
     scheduler.stop();
@@ -146,7 +156,8 @@ describe('conversation wake-up scheduler', () => {
     event.run('human-discussion','message',null,'k4');
     event.run('bot-discussion','message',conv.id,'k5');
     const insert = db.prepare("INSERT INTO conversation_wakeups(id,conversation_id,wake_key,reason,scheduled_for,actor_user_id) VALUES(?,?,?,'Check',?,1)");
-    for (let i=0;i<51;i++) insert.run(`ordinary-${i}`,conv.id,`ordinary-${i}`,new Date(BASE.getTime()-3000).toISOString());
+    for (let i=0;i<201;i++) insert.run(`ordinary-${i}`,conv.id,`ordinary-${i}`,new Date(BASE.getTime()-3000).toISOString());
+    insert.run('task-note',conv.id,'bot-task:t1:discuss:e1',new Date(BASE.getTime()-500).toISOString());
     for (const id of ['bot-answer','claim','human-answer','human-discussion','bot-discussion']) insert.run(id,conv.id,`bot-decision:${id}`,new Date(BASE.getTime()-1000).toISOString());
     expect(humanDecisionReplyWake(db,'human-answer')).toBe(true);
     expect(humanDecisionReplyWake(db,'human-discussion')).toBe(true);
@@ -156,7 +167,7 @@ describe('conversation wake-up scheduler', () => {
     expect(humanDecisionReplyWake(db,'ordinary-0')).toBe(false);
     scheduler.tick();
     expect(canDispatch.mock.calls[0]?.[0]).toMatchObject({id:'human-answer'});
-    expect(canDispatch.mock.calls.slice(0,2).map(([row])=>row.id)).toEqual(['human-answer','human-discussion']);
+    expect(canDispatch.mock.calls.slice(0,3).map(([row])=>row.id)).toEqual(['human-answer','human-discussion','task-note']); // a human's task note is never behind the backlog
     expect(canDispatch.mock.calls.map(([row])=>row.id)).not.toContain('bot-answer');
     expect(canDispatch.mock.calls.map(([row])=>row.id)).not.toContain('bot-discussion');
     expect(db.prepare("SELECT status FROM conversation_wakeups WHERE id='human-answer'").get()).toEqual({status:'cancelled'});

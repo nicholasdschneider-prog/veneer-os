@@ -1541,17 +1541,14 @@ export function createConversationManager({
     const family = coordinationFamily(db, conv.id);
     // A registered bot's human chat never waits behind its bot sessions.
     if (taskLane && lane) {
-      // Task chats of one bot run in parallel up to the cap; the bot's human chat still goes first.
-      // A human's note on a task skips that line: it waits only for other human notes at the cap,
-      // never behind the bot's main chat, huddles, coordination or automated task work.
+      // Task chats of one bot run in parallel up to the per-bot cap, beside a long turn in the bot's main
+      // chat, huddles and coordination lanes; only other task chats count. A human's note on a task
+      // waits only for other human notes at the cap. A human message queued in the main chat still
+      // goes first (below).
+      const otherTasks = family.filter(id => id !== conv.id && id !== lane.owner_id && taskService.taskOfLane(id));
       if (entry.queue[0]?.origin?.humanTaskNote) {
-        const notes = family.filter(id => id !== conv.id && id !== lane.owner_id && entryFor(id).turn?.origin?.humanTaskNote).length;
-        if (notes >= TASK_CAP_PER_OWNER) return;
-      } else {
-        const ownerBusy = entryFor(lane.owner_id).turn || entryFor(lane.owner_id).maintenance;
-        const running = family.filter(id => id !== conv.id && id !== lane.owner_id && (entryFor(id).turn || entryFor(id).maintenance)).length;
-        if (ownerBusy || running >= TASK_CAP_PER_OWNER) return;
-      }
+        if (otherTasks.filter(id => entryFor(id).turn?.origin?.humanTaskNote).length >= TASK_CAP_PER_OWNER) return;
+      } else if (otherTasks.filter(id => entryFor(id).turn || entryFor(id).maintenance).length >= TASK_CAP_PER_OWNER) return;
     } else if (!humanFirst(conv.id) && family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;
     // Human work already waiting always goes first; workers never preempt it.
     if (lane && entryFor(lane.owner_id).queue.length) return;
@@ -2421,7 +2418,8 @@ export function createConversationManager({
         actorUserId = resultReply.reply.actor_id;
       }
       const discussion = botDiscussionWake(db, wakeupId);
-      if (discussion && !botWakeAllowed(db, discussion, conv)) throw new Error('Discussion access or version changed');
+      // Permanent: the discussion's access or card version moved on, so retrying can never deliver it.
+      if (discussion && !botWakeAllowed(db, discussion, conv)) throw Object.assign(new Error('Discussion access or version changed'), { terminal: true });
       const name = assistantNameFor(conv);
       const origin: MessageOrigin = resultReply
         ? { kind: 'result_reply', from: resultReply.reply.display_name, to: name }

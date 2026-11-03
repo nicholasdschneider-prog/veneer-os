@@ -237,6 +237,16 @@ export function createConversationWakeupScheduler({
       emitPending(row.conversation_id);
       return true;
     } catch (err) {
+      // A permanent refusal (the discussion's access or version moved on) cancels the wake instead of retrying forever.
+      if ((err as { terminal?: boolean }).terminal) {
+        db.transaction(() => {
+          db.prepare("UPDATE conversation_wakeups SET status='cancelled',cancelled_at=datetime('now') WHERE id=? AND status='pending'").run(row.id);
+          botWakeCancelled(db, row);
+        })();
+        log.warn(`[wakeup] cancelled ${row.id}: ${(err as Error).message}`);
+        emitPending(row.conversation_id);
+        return false;
+      }
       // Leave the row pending. The next tick retries with the same durable
       // delivery key; a crash after enqueue but before this update cannot
       // create a second message.
@@ -264,10 +274,10 @@ export function createConversationWakeupScheduler({
         .prepare(
           `SELECT * FROM conversation_wakeups
            WHERE status = 'pending' AND datetime(scheduled_for) <= datetime(?)
-           ORDER BY CASE WHEN wake_key LIKE 'message-thread:%' OR (wake_key LIKE 'bot-decision:%' AND EXISTS (
+           ORDER BY CASE WHEN wake_key LIKE 'message-thread:%' OR wake_key LIKE 'bot-task:%:discuss:%' OR (wake_key LIKE 'bot-decision:%' AND EXISTS (
              SELECT 1 FROM bot_decision_events e WHERE e.id = conversation_wakeups.id
              AND e.kind IN ('answered','message') AND e.actor_conversation_id IS NULL)) THEN 0 ELSE 1 END, scheduled_for
-           LIMIT 50`,
+           LIMIT 200`,
         )
         .all(now().toISOString()) as ConversationWakeupRow[];
       for (const row of due) {
