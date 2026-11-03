@@ -5,9 +5,10 @@ import { businessHours, eligibility, type SpareAccount } from './policy.js';
 import { spareBinding, stopSpare, taskAllowed, type SpareRun, type SpareTask } from './store.js';
 
 export function normalWorkWaiting(db: Database.Database): boolean {
-  return Boolean(db.prepare(`SELECT 1 FROM pending_turns p WHERE NOT EXISTS
+  return Boolean(db.prepare(`SELECT 1 FROM pending_turns p WHERE p.status='pending' AND NOT EXISTS
     (SELECT 1 FROM spare_allowance_runs r WHERE r.conversation_id=p.conversation_id AND r.status IN ('queued','running'))
-    UNION SELECT 1 FROM queued_messages q WHERE COALESCE(json_extract(q.origin_json,'$.spareRunId'),'')='' LIMIT 1`).get());
+    UNION SELECT 1 FROM queued_messages q WHERE COALESCE(json_extract(q.origin_json,'$.spareRunId'),'')='' AND NOT EXISTS
+    (SELECT 1 FROM pending_turns p WHERE p.conversation_id=q.conversation_id AND p.status='failed') LIMIT 1`).get());
 }
 export function createSpareScheduler(opts: {
   db: Database.Database; manager: ConversationManager;
@@ -17,7 +18,31 @@ export function createSpareScheduler(opts: {
   const now = opts.now ?? Date.now;
   let timer: ReturnType<typeof setInterval>|undefined;
   let refreshing = false;
-  let lastRefresh = 0;
+  let lastRefresh: number | null = null;
+  let lastStatus = '';
+  let lastEvaluationReason = 'Awaiting account evaluation';
+  let lastHeartbeat = 0;
+  function status(reason: string, accountsChecked = false) {
+    const time = new Date(now()).toISOString();
+    if (accountsChecked || reason !== lastStatus || now()-lastHeartbeat >= 30_000) {
+      db.prepare(`INSERT INTO spare_allowance_scheduler(id,checked_at,reason,accounts_checked_at) VALUES(1,?,?,?)
+        ON CONFLICT(id) DO UPDATE SET checked_at=excluded.checked_at,reason=excluded.reason,
+        accounts_checked_at=COALESCE(excluded.accounts_checked_at,spare_allowance_scheduler.accounts_checked_at)`)
+        .run(time,reason,accountsChecked ? time : null);
+      lastStatus=reason;lastHeartbeat=now();
+    }
+  }
+  function taskReason(task: SpareTask, reason: string) {
+    db.prepare('UPDATE spare_allowance_tasks SET checked_at=?,skip_reason=? WHERE id=?')
+      .run(new Date(now()).toISOString(),reason,task.id);
+  }
+  function gate(): string | null {
+    const enabled = db.prepare('SELECT enabled FROM spare_allowance_settings WHERE id=1').get() as {enabled:number};
+    if (!enabled.enabled) return 'Queue paused';
+    if (businessHours(now())) return 'Business hours';
+    if (normalWorkWaiting(db)) return 'Normal work takes priority';
+    return null;
+  }
   const active = () => db.prepare("SELECT * FROM spare_allowance_runs WHERE status IN ('queued','running')").get() as SpareRun|undefined;
   function stop(run: SpareRun, reason: string) {
     stopSpare(db,run,reason);
@@ -46,16 +71,21 @@ export function createSpareScheduler(opts: {
       db.prepare('UPDATE spare_allowance_tasks SET completed_batches=?,cursor=?,status=? WHERE id=?').run(count,checkpoint.cursor,status,task.id);
     }).immediate();
     // Each successor requires a new genuine usage read.
-    lastRefresh = 0;
+    lastRefresh = null;
   }
   async function tick() {
     monitor();
-    if (refreshing || now()-lastRefresh < 10_000) return;
-    const enabled = db.prepare('SELECT enabled FROM spare_allowance_settings WHERE id=1').get() as {enabled:number};
-    if (!enabled.enabled || businessHours(now()) || normalWorkWaiting(db)) return;
     const tasks = db.prepare("SELECT * FROM spare_allowance_tasks WHERE status='ready' AND completed_batches<max_batches ORDER BY priority DESC,created_at,id").all() as SpareTask[];
-    if (!tasks.length) return;
+    const blocked = gate();
+    const reason = blocked ?? (active() ? 'Optional batch running' : tasks.length ? lastEvaluationReason : 'No ready tasks');
+    status(reason);
+    if (!tasks.length || reason === 'Queue paused' || refreshing) return;
+    // Passive provider reads still expose why nothing can run during busy/protected
+    // periods. They do not generate work or grant eligibility. Keep them infrequent.
+    const interval = blocked ? 300_000 : 10_000;
+    if (lastRefresh !== null && now()-lastRefresh < interval) return;
     refreshing = true;
+    status('Checking account eligibility');
     try {
       const accounts = await opts.loadAccounts();
       lastRefresh = now();
@@ -64,10 +94,21 @@ export function createSpareScheduler(opts: {
         for (const account of accounts) db.prepare('INSERT INTO spare_allowance_accounts VALUES(?,?,?,?,?)').run(account.provider,account.accountId,JSON.stringify(account),eligibility(account,now()).reason,new Date(now()).toISOString());
       }).immediate();
       monitor();
-      if (active() || normalWorkWaiting(db) || businessHours(now())) return;
+      const currentGate = gate();
+      status(currentGate ?? (active() ? 'Optional batch running' : 'Checking account eligibility'),true);
+      if (currentGate) {
+        for (const task of tasks) taskReason(task,currentGate);
+        return;
+      }
+      if (active()) return;
       for (const task of tasks) {
         const conv = taskAllowed(db,task);
-        if (!conv || manager.statusOf(conv.id) !== 'idle' || manager.queueSnapshot(conv.id).messages.length) continue;
+        if (!conv) { taskReason(task,'Chat, owner, project or model access changed');continue; }
+        if (manager.statusOf(conv.id) !== 'idle' || manager.queueSnapshot(conv.id).messages.length) {
+          taskReason(task,'Original chat is busy, failed or awaiting input');continue;
+        }
+        const compatible = accounts.filter(a=>a.provider===task.provider && (JSON.parse(task.account_ids_json) as string[]).includes(a.accountId));
+        taskReason(task,compatible.length ? compatible.map(a=>`${a.label}: ${eligibility(a,now()).reason}`).join('; ') : 'Selected account disconnected or unavailable');
         for (const account of accounts) {
           if (account.provider !== task.provider || !(JSON.parse(task.account_ids_json) as string[]).includes(account.accountId)) continue;
           const e = eligibility(account,now());
@@ -81,6 +122,9 @@ export function createSpareScheduler(opts: {
             return true;
           }).immediate();
           if (!reserved) continue;
+          lastEvaluationReason = 'Optional batch dispatched';
+          taskReason(task,'Optional batch dispatched');
+          status('Optional batch running');
           try {
             manager.postMessage(conv,`[Optional spare-allowance batch ${batch}/${task.max_batches}]\nTask: ${task.title}\nRequired output: ${task.output}\n${task.prompt}\nSaved checkpoint: ${task.cursor ?? 'none'}\n\nWork in one small resumable batch. Deadline ${e.deadline}. Save useful artifacts before that deadline. Do not publish, purchase, use paid credits/API keys, send messages, or launch detached jobs. Do not change shared source without its build slot. Preserve original bot identity and approvals. Missing source geometry is a blocker, never invent it. Stop when the deliverable is done; do not manufacture extra work. As the LAST action call record_spare_checkpoint with outcome progress|completed|blocked, a nonsecret cursor and an evidence-grounded summary; then finish. Without that checkpoint, automatic continuation is blocked.`,task.user_id,{kind:'wakeup',from:'Spare allowance',to:task.title,spareRunId:id});
           } catch {
@@ -89,9 +133,14 @@ export function createSpareScheduler(opts: {
           return;
         }
       }
+      lastEvaluationReason = 'No eligible task/account; see task skip reasons';
+      status(lastEvaluationReason);
     } catch {
       lastRefresh = now();
       const run = active(); if (run) stop(run,'Usage refresh unavailable');
+      lastEvaluationReason = 'Account evaluation failed; dispatch skipped';
+      status(lastEvaluationReason);
+      for (const task of tasks) taskReason(task,'Account evaluation failed; dispatch skipped');
     } finally { refreshing = false; }
   }
   return {
@@ -99,6 +148,7 @@ export function createSpareScheduler(opts: {
     start() {
       // A crash may have launched tools. Never feed these pending turns into normal recovery.
       const run = active(); if (run) stopSpare(db,run,'Runner restarted; prior batch outcome unknown');
+      status('Scheduler started; awaiting evaluation');
       manager.bus.on('event',terminal);
       timer = setInterval(()=>{ void tick(); },2_000); timer.unref();
     },

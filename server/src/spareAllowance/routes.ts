@@ -33,12 +33,13 @@ export function createSpareAllowanceRouter(ctx: AppContext) {
     const runs = db.prepare('SELECT r.* FROM spare_allowance_runs r JOIN spare_allowance_tasks t ON t.id=r.task_id WHERE t.user_id=? AND (? IS NULL OR t.conversation_id=?) ORDER BY r.rowid DESC LIMIT 50').all(req.user!.id,req.agentConversationId ?? null,req.agentConversationId ?? null);
     const settings = db.prepare('SELECT enabled FROM spare_allowance_settings WHERE id=1').get();
     const accounts = db.prepare('SELECT * FROM spare_allowance_accounts').all();
+    const scheduler = db.prepare('SELECT checked_at,reason,accounts_checked_at FROM spare_allowance_scheduler WHERE id=1').get() ?? null;
     // Pick from accessible original chats; never create a replacement bot identity.
     const conversations = (db.prepare("SELECT * FROM conversations WHERE archived=0 AND provider IN ('claude','codex') AND model IS NOT NULL AND (? IS NULL OR id=?) ORDER BY last_active_at DESC LIMIT 500").all(req.agentConversationId ?? null,req.agentConversationId ?? null) as ConversationRow[])
       .filter(c=>(!req.agentConversationId || c.id===req.agentConversationId) && canSendToConversation(req.user!,c,db) && !db.prepare('SELECT 1 FROM coordination_lanes WHERE conversation_id=? UNION SELECT 1 FROM team_room_workers WHERE conversation_id=?').get(c.id,c.id))
       .map(c=>({id:c.id,title:c.title,projectId:c.project_id,provider:c.provider,model:c.model}));
     const connectedAccounts = [...ctx.secrets.listClaudeAccounts().map(a=>({provider:'claude',id:a.id,label:a.label})),...ctx.codexAccounts.list().filter(a=>a.connected).map(a=>({provider:'codex',id:a.id,label:a.label}))];
-    res.json({tasks,runs,settings,accounts,conversations,connectedAccounts,policy:{timezone:SPARE_TIME_ZONE,businessHours:'8 a.m.–5 p.m. every day',finalHours:6,reservePercent:1}});
+    res.json({tasks,runs,settings,accounts,scheduler,conversations,connectedAccounts,policy:{timezone:SPARE_TIME_ZONE,businessHours:'8 a.m.–5 p.m. every day',finalHours:6,reservePercent:1}});
   }));
   router.post('/settings',handle((req,res)=>{
     if(req.agentConversationId) throw new Error('Global pause controls belong to the human owner');

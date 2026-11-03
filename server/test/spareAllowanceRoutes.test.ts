@@ -28,7 +28,9 @@ it('rejects employee writes and scopes bot task preparation and reads to its own
   expect((await call('POST','/tasks',input,{'x-user':'2'})).status).toBe(403);
   expect((await call('POST','/tasks',input,{'x-chat':'other'})).status).toBe(409);
   const created=await call('POST','/tasks',input,{'x-chat':'piper'});expect(created.status).toBe(200);
-  const own=await call('GET','/',undefined,{'x-chat':'piper'});expect(own.body.tasks).toHaveLength(1);
+  const own=await call('GET','/',undefined,{'x-chat':'piper'});expect(own.body.tasks).toHaveLength(1);expect(own.body.scheduler).toBeNull();
+  db.prepare("INSERT INTO spare_allowance_scheduler VALUES(1,'2026-11-03T12:00:00Z','Business hours',NULL)").run();
+  expect((await call('GET','/',undefined,{'x-chat':'piper'})).body.scheduler.reason).toBe('Business hours');
   const other=await call('GET','/',undefined,{'x-chat':'other'});expect(other.body.tasks).toHaveLength(0);
   expect(other.body.conversations.every((c:{id:string})=>c.id==='other')).toBe(true);
 });

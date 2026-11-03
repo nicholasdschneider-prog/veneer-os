@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import { eligibility, businessHours, type SpareAccount } from '../src/spareAllowance/policy.js';
 import { recordCheckpoint, spareBinding, spareRun } from '../src/spareAllowance/store.js';
-import { createSpareScheduler } from '../src/spareAllowance/scheduler.js';
+import { createSpareScheduler, normalWorkWaiting } from '../src/spareAllowance/scheduler.js';
 import { createConversationManager } from '../src/runtime/conversationManager.js';
 import type { ConversationRow } from '../src/db/db.js';
 import type { ConversationEvent } from '../src/runtime/events.js';
@@ -78,6 +78,61 @@ describe('durable optional execution',()=>{
     scheduler=createSpareScheduler({db,manager,loadAccounts:load});scheduler.start();
   });
   afterEach(async()=>{scheduler.stop();manager.shutdown();await Promise.resolve();await Promise.resolve();db.close();vi.useRealTimers();});
+  it('ignores retained failed turns and their blocked queues without clearing or retrying them',async()=>{
+    db.prepare("INSERT INTO pending_turns(conversation_id,prompt,status,created_at) VALUES('normal','Retain unknown source effects','failed','2026-10-12 13:15:00')").run();
+    db.prepare("INSERT INTO queued_messages(conversation_id,prompt,actor_user_id) VALUES('normal','Wait for reconciliation',1)").run();
+    expect(normalWorkWaiting(db)).toBe(false);
+    await scheduler.tick();expect(lastSpec?.subscriptionAccountId).toBe('spare');
+    expect(db.prepare("SELECT status FROM pending_turns WHERE conversation_id='normal'").get()).toEqual({status:'failed'});
+    expect(db.prepare("SELECT count(*) n FROM queued_messages WHERE conversation_id='normal'").get()).toEqual({n:1});
+    db.prepare("UPDATE pending_turns SET status='pending' WHERE conversation_id='normal'").run();
+    expect(normalWorkWaiting(db)).toBe(true);scheduler.monitor();expect(killed).toHaveBeenCalled();
+  });
+  it('completes a finite checkpointed task despite an unrelated failed turn and never repeats it',async()=>{
+    db.prepare("INSERT INTO pending_turns(conversation_id,prompt,status) VALUES('normal','Retain for reconciliation','failed')").run();
+    db.prepare('UPDATE spare_allowance_tasks SET max_batches=1').run();
+    await scheduler.tick();
+    expect(lastSpec).toMatchObject({conversationId:'source',subscriptionAccountId:'spare',dangerous:false});
+    recordCheckpoint(db,'source',{outcome:'completed',cursor:'review-complete',summary:'Verified source-reconciliation draft retained in chat'});
+    finish!();await Promise.resolve();await scheduler.tick();
+    expect(db.prepare('SELECT status,completed_batches FROM spare_allowance_tasks').get()).toEqual({status:'completed',completed_batches:1});
+    expect(db.prepare('SELECT status FROM spare_allowance_runs').get()).toEqual({status:'completed'});
+    await scheduler.tick();expect(load).toHaveBeenCalledTimes(1);
+    expect(db.prepare('SELECT count(*) n FROM spare_allowance_runs').get()).toEqual({n:1});
+  });
+  it('records heartbeat and passive meters during business hours without dispatching',async()=>{
+    vi.setSystemTime('2026-10-09T18:00:00Z');
+    await scheduler.tick();expect(lastSpec).toBeUndefined();expect(load).toHaveBeenCalledTimes(1);
+    expect(db.prepare('SELECT reason,accounts_checked_at FROM spare_allowance_scheduler').get()).toMatchObject({reason:'Business hours',accounts_checked_at:new Date().toISOString()});
+    expect(db.prepare('SELECT skip_reason FROM spare_allowance_tasks').get()).toEqual({skip_reason:'Business hours'});
+    expect(db.prepare('SELECT count(*) n FROM spare_allowance_accounts').get()).toEqual({n:1});
+    vi.setSystemTime(Date.now()+31_000);await scheduler.tick();expect(load).toHaveBeenCalledTimes(1);
+    expect(db.prepare('SELECT checked_at FROM spare_allowance_scheduler').get()).toEqual({checked_at:new Date().toISOString()});
+  });
+  it('keeps genuine normal pending and queued work ahead, but still exposes account checks',async()=>{
+    db.prepare("INSERT INTO pending_turns(conversation_id,prompt) VALUES('normal','Normal work')").run();
+    await scheduler.tick();expect(lastSpec).toBeUndefined();expect(load).toHaveBeenCalledTimes(1);
+    expect(db.prepare('SELECT reason FROM spare_allowance_scheduler').get()).toEqual({reason:'Normal work takes priority'});
+    db.prepare("DELETE FROM pending_turns WHERE conversation_id='normal'").run();
+    db.prepare("INSERT INTO queued_messages(conversation_id,prompt,actor_user_id) VALUES('normal','Normal queued',1)").run();
+    expect(normalWorkWaiting(db)).toBe(true);
+    db.prepare("DELETE FROM queued_messages WHERE conversation_id='normal'").run();
+    vi.setSystemTime(NOW+11_000);await scheduler.tick();expect(lastSpec?.subscriptionAccountId).toBe('spare');
+  });
+  it('reports a missing account and provider failures without granting eligibility',async()=>{
+    load.mockResolvedValue([]);await scheduler.tick();
+    expect(db.prepare('SELECT skip_reason FROM spare_allowance_tasks').get()).toEqual({skip_reason:'Selected account disconnected or unavailable'});
+    expect(lastSpec).toBeUndefined();
+    vi.setSystemTime(NOW+11_000);load.mockRejectedValue(new Error('do not log private provider payload'));
+    await scheduler.tick();expect(lastSpec).toBeUndefined();
+    expect(db.prepare('SELECT reason FROM spare_allowance_scheduler').get()).toEqual({reason:'Account evaluation failed; dispatch skipped'});
+  });
+  it('rechecks disable while asynchronous account telemetry is in flight',async()=>{
+    load.mockImplementation(async()=>{db.prepare('UPDATE spare_allowance_settings SET enabled=0').run();return [account()];});
+    await scheduler.tick();expect(lastSpec).toBeUndefined();
+    expect(db.prepare('SELECT reason FROM spare_allowance_scheduler').get()).toEqual({reason:'Queue paused'});
+    vi.setSystemTime(NOW+11_000);await scheduler.tick();expect(load).toHaveBeenCalledTimes(1);
+  });
   it('binds the real TurnSpec to the spare account, limits time and disables Full Access',async()=>{
     await scheduler.tick();
     expect(lastSpec).toMatchObject({subscriptionAccountId:'spare',optionalDeadline:NOW+120000,dangerous:false,conversationId:'source'});
@@ -140,7 +195,7 @@ describe('durable optional execution',()=>{
 
 it('delivers owner setup and optional boundaries to employees and fresh/resumed bots',()=>{
   const feature=botFeatureCatalog(NOW).features.find(f=>f.id==='spare-allowance')!;
-  expect(feature.isNew).toBe(true);expect(feature.steps.join(' ')).toContain('Settings → Usage');
+  expect(feature.isNew).toBe(false);expect(feature.steps.join(' ')).toContain('Settings → Usage');
   expect(employeeRouteAllowed('GET','/bot-workflows/guide')).toBe(true);
   expect(botFeatureInstructions()).toContain(feature.prompt);
   for(const elevated of [false,true])expect(coreVeneerRules({workspaceDir:'/repo',assistantSlug:'piper',elevated})).toContain(feature.prompt);

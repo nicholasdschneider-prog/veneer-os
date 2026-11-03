@@ -3,9 +3,10 @@ import { requestJson } from '../../lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface Task {id:string;title:string;output:string;status:string;completed_batches:number;max_batches:number;conversation_id:string}
+interface Task {id:string;title:string;output:string;status:string;completed_batches:number;max_batches:number;conversation_id:string;skip_reason?:string|null;checked_at?:string|null}
 interface Run {id:string;task_id:string;status:string;reason:string|null;account_id:string;batch:number;usage_before:number;usage_after:number|null;started_at:string}
 interface Backlog {
+  scheduler?:{checked_at:string;reason:string;accounts_checked_at:string|null}|null;
   settings:{enabled:number}; tasks:Task[];runs:Run[];
   accounts:{provider:string;account_id:string;reason:string;checked_at:string;snapshot_json:string}[];
   conversations:{id:string;title:string|null;provider:string;model:string}[];
@@ -43,9 +44,11 @@ export function SpareAllowancePanel() {
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {!data ? <Button variant="outline" onClick={()=>void load()}>Load backlog</Button> : <>
         <p className="text-sm">Queue {data.settings.enabled ? 'enabled' : 'paused'} · {data.tasks.filter(t=>t.status==='ready').length} ready tasks</p>
+        <p role="status" className="text-sm text-muted-foreground">{data.scheduler ? `${data.scheduler.reason} · Scheduler checked ${new Date(data.scheduler.checked_at).toLocaleString()}${Date.now()-Date.parse(data.scheduler.checked_at)>90_000?' · Status is stale; runner may be offline':''}` : 'Awaiting scheduler heartbeat; enabled does not mean evaluated.'}</p>
         {data.tasks.map(t=><div key={t.id} className="space-y-2 rounded-lg border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{t.title}</strong><span className="text-xs text-muted-foreground">{t.status} · {t.completed_batches}/{t.max_batches} batches</span></div>
           <p className="break-words text-sm text-muted-foreground">{t.output}</p>
+          {t.skip_reason && <p className="break-words text-xs text-muted-foreground">{t.skip_reason}{t.checked_at ? ` · Checked ${new Date(t.checked_at).toLocaleString()}` : ''}</p>}
           <div className="flex flex-wrap gap-2">
             <a className="text-sm underline underline-offset-4" href={`/#/chat/${t.conversation_id}`}>Open original chat</a>
             {['ready','paused'].includes(t.status) && <Button size="sm" variant="outline" disabled={busy} onClick={()=>void mutate(`/tasks/${t.id}`,{status:t.status==='ready'?'paused':'ready'},'PATCH')}>{t.status==='ready'?'Pause task':'Resume task'}</Button>}
@@ -64,7 +67,7 @@ export function SpareAllowancePanel() {
           <Button type="submit" disabled={busy||!accounts.length}>Save task</Button>
         </form>}
         <details><summary className="cursor-pointer text-sm">Account eligibility and recent results</summary><div className="mt-3 space-y-3">
-          {!data.accounts.length && <p className="text-sm text-muted-foreground">Usage is evaluated when ready tasks exist, outside business hours, and normal work is idle.</p>}
+          {!data.accounts.length && <p className="text-sm text-muted-foreground">No account evaluation recorded yet. With ready tasks, passive meters are checked every five minutes while busy or during protected hours; dispatch still waits for idle off-hours.</p>}
           {data.accounts.map(a=><p key={`${a.provider}:${a.account_id}`} className="break-words text-sm">{data.connectedAccounts.find(c=>c.provider===a.provider&&c.id===a.account_id)?.label??a.account_id}: {a.reason}<span className="block text-xs text-muted-foreground">Last checked {new Date(a.checked_at).toLocaleString()}</span></p>)}
           {data.runs.map(r=><p key={r.id} className="break-words text-sm">{data.tasks.find(t=>t.id===r.task_id)?.title??'Task'} · batch {r.batch} · {r.status}<span className="block text-xs text-muted-foreground">{r.reason??'Running'} · usage at launch {r.usage_before}%{r.usage_after===null?'':` · last observed ${r.usage_after}%`}</span></p>)}
         </div></details>

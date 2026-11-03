@@ -729,3 +729,19 @@ naming the visible app failed `ambiguous_frame`. A frame spec now targets the on
 (rendered, non-zero size) and ignores hidden or zero-size copies. Two visible matches still fail
 `ambiguous_frame`; only hidden matches fail `frame_not_visible`; any non-iframe match fails
 `frame_not_found`. The `browser-scripts` catalog agent text and the script tool description say so.
+
+
+## Spare-allowance starvation repair — November 3, 2026 (staged)
+
+Build #968 excludes retained failed turns and queues blocked behind those failures
+from the global normal-work blocker. Failed source attempts and UNKNOWN fences
+remain untouched; genuine pending/queued work still preempts optional work.
+A durable scheduler heartbeat and per-task skip reasons appear in Settings → Usage.
+With ready tasks, passive provider checks occur every five minutes while busy or
+during protected hours, and every ten seconds during idle off-hours. These are
+read-only meter checks, not permission to dispatch. Missing fallback proof still blocks.
+
+The November 3 catalog announcement and full employee instructions label this repair
+as staged pending an explicit maintenance window. Existing optional-tool prompts
+still reach fresh/resumed agents without expanding business authority. See
+[repair evidence and validation](./reports/spare-allowance/build968/report.md).

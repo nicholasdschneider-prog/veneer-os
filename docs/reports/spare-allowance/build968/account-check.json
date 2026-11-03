@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-11-03T12:24:43.590Z",
+  "account_id": "2ac39740-6cb9-4b0a-9a2d-89ef9f88f3a1",
+  "account_label": "drmark@mphealth.net",
+  "connected": true,
+  "source": "live",
+  "plan_type": "prolite",
+  "paid_usage_disabled": true,
+  "weekly_used_percent": 0,
+  "weekly_reset": "2026-11-10T12:24:43.000Z",
+  "reason": "Outside final six hours",
+  "method": "Existing Codex account/rateLimits/read via isolated account home; no generation or account selection change"
+}
