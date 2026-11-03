@@ -70,6 +70,8 @@ import {
   namespaceHistory, writeProviderHandoff, PROVIDER_CONTINUATION_RULES,
   type ModelSelection, type SwitchProviderResult,
 } from './providerSwitch.js';
+import { classifyTurnOrigin, governorFlags, recordGovernorEvent, recordTurnUsage, type TurnOriginClass } from '../tokenGovernor/store.js';
+import { recordRotation, rotationCheck, writeRotationHandoff } from '../tokenGovernor/rotation.js';
 
 const TIMEOUT_DENY_MESSAGE =
   'No one approved this action in time, so it was automatically declined. Continue without it and do not retry it.';
@@ -1443,6 +1445,79 @@ export function createConversationManager({
     }
   }
 
+  const queuedWakeKeyStmt = db.prepare(
+    `SELECT w.wake_key FROM hub_inbound_messages h JOIN conversation_wakeups w ON h.idempotency_key = 'wakeup:' || w.id
+     WHERE h.conversation_id = ? AND h.message_id = ? AND h.source_kind = 'wakeup'`,
+  );
+  function queuedWakeKey(conversationId: string, messageId: number): string | null {
+    return (queuedWakeKeyStmt.get(conversationId, messageId) as { wake_key: string } | undefined)?.wake_key ?? null;
+  }
+
+  /**
+   * Replace a governed chat's oversized native session at a turn boundary.
+   * Same mechanics as a provider switch to the same provider: visible history
+   * is frozen into the chat, the next turn receives a structured handoff in a
+   * fresh session. Any failure leaves the session untouched.
+   */
+  async function maybeRotateContext(conv: ConversationRow, usageOrigin: TurnOriginClass): Promise<ConversationRow> {
+    const flags = governorFlags(db, conv.id);
+    if (!flags?.rotation) return conv;
+    try {
+      const base = {
+        conversationId: conv.id, provider: conv.provider, contextTokens: conv.last_input_tokens,
+        flags, firstTurn: isFirstTurn(conv.id),
+      };
+      const pre = rotationCheck(db, base);
+      if (!pre.rotate) {
+        if (!['off', 'provider', 'fresh', 'below_threshold'].includes(pre.reason)) {
+          recordGovernorEvent(db, 'rotation_deferred', flags.botId, conv.id, { reason: pre.reason, context: conv.last_input_tokens });
+        }
+        return conv;
+      }
+      const adapter = adapters[conv.provider];
+      if (!adapter || hasPendingStmt.get(conv.id) || hasPendingQuestion(conv.id)) return conv;
+      const events = await api.snapshot(conv);
+      const check = rotationCheck(db, { ...base, recentEvents: events });
+      if (!check.rotate) {
+        recordGovernorEvent(db, 'rotation_deferred', flags.botId, conv.id, { reason: check.reason, context: conv.last_input_tokens });
+        return conv;
+      }
+      const files = await api.listSessionFiles(conv);
+      const history = namespaceHistory(events);
+      const previous = conv.last_input_tokens ?? 0;
+      const handoff = writeRotationHandoff(db, {
+        cwd: resolveWorkspace(conv).workspaceDir, conversationId: conv.id, botId: flags.botId, events, previousContextTokens: previous,
+      });
+      const notice: ConversationEvent = {
+        type: 'notice', at: new Date().toISOString(),
+        message: `Started a fresh working session to keep this chat fast (context had reached ${Math.round(previous / 1000)}k tokens). Earlier history stays here and open work was handed over.`,
+      };
+      history.push(notice);
+      const nativeSessionId = adapter.mintSessionId();
+      db.transaction(() => {
+        db.prepare(`INSERT INTO conversation_provider_context (conversation_id, history_json, files_json, handoff)
+          VALUES (?, ?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET
+          history_json = excluded.history_json, files_json = excluded.files_json,
+          handoff = excluded.handoff, pending = 1, updated_at = datetime('now')`)
+          .run(conv.id, JSON.stringify(history), JSON.stringify(files), handoff);
+        db.prepare(`UPDATE conversations SET native_session_id = ?, provider_instruction_hash = NULL,
+          last_input_tokens = NULL WHERE id = ? AND native_session_id = ?`)
+          .run(nativeSessionId, conv.id, conv.native_session_id);
+        db.prepare('DELETE FROM settings WHERE key = ?').run(`turn_ran:${conv.id}`);
+        recordRotation(db, flags.botId, conv.id, {
+          previousContext: previous, threshold: check.threshold, origin: usageOrigin, handoffChars: handoff.length,
+        });
+      })();
+      bus.emit('event', conv.id, notice);
+      bus.emit('event', conv.id, { type: 'context_compacted', contextTokens: null });
+      log.warn(`[token-governor] rotated ${conv.id} at ${previous} tokens`);
+      return db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow;
+    } catch (err) {
+      log.warn(`[token-governor] rotation skipped for ${conv.id}: ${(err as Error).message}`);
+      return conv;
+    }
+  }
+
   async function runNext(conv: ConversationRow): Promise<void> {
     const entry = entryFor(conv.id);
     if (entry.turn || entry.maintenance) return;
@@ -1570,6 +1645,15 @@ export function createConversationManager({
     recordPendingTurnStmt.run(conv.id, text, actorUserId, messageOriginJson(origin));
     if (discussion) db.prepare('UPDATE pending_turns SET discussion_message_id=? WHERE conversation_id=?').run(discussion.id, conv.id);
 
+    const turnStartedAt = new Date();
+    const wakeKey = origin?.kind === 'wakeup' && item.id !== null ? queuedWakeKey(conv.id, item.id) : null;
+    const usageOrigin = classifyTurnOrigin({ origin, promptText: visibleText, channel: conv.channel, wakeKey });
+    // Token governor: a governed chat over its context threshold starts this
+    // turn in a fresh native session with a structured handoff. Fails open.
+    // Guarded rather than always awaited: ungoverned chats must not gain a
+    // microtask before the spawn.
+    if (!optional && !helper && governorFlags(db, conv.id)?.rotation) conv = await maybeRotateContext(conv, usageOrigin);
+
     // Has this native session ever run a turn? First turn uses --session-id.
     const firstTurn = isFirstTurn(conv.id);
 
@@ -1577,6 +1661,16 @@ export function createConversationManager({
       if(event.type==='error') event.turnId=turnId;
       if (['turn_done', 'error', 'approval_requested', 'question_asked'].includes(event.type)) {
         clearDiscussionActivity.run(conv.id);
+      }
+      if (event.type === 'turn_done' && !optional && !helper) {
+        try {
+          recordTurnUsage(db, {
+            conversationId: conv.id, turnId, origin: usageOrigin, wakeKey, provider: conv.provider,
+            outcome: event.outcome ?? 'completed', usage: event.usage, startedAt: turnStartedAt, finishedAt: new Date(),
+          });
+        } catch (err) {
+          log.warn(`[token-governor] usage not recorded: ${(err as Error).message}`);
+        }
       }
       if (event.type === 'turn_started') {
         let eventOrigin = event.origin;
@@ -2297,7 +2391,7 @@ export function createConversationManager({
       };
   }
 
-  return {
+  const api: ConversationManager = {
     bus,
     dispatchBuild(conv, text, actorUserId, origin) {
       if (!origin.buildDispatchId) throw new Error('Build dispatch identity required');
@@ -2923,4 +3017,5 @@ export function createConversationManager({
       return [...bySource].map(([path, source]) => ({ path, source }));
     },
   };
+  return api;
 }

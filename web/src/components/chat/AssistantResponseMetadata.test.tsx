@@ -23,7 +23,8 @@ describe('AssistantResponseMetadata', () => {
     expect(html).toContain('<details');
     expect(html).toContain('<summary');
     expect(html).toContain('data-slot="token-count"');
-    expect(html).toContain('aria-label="31,176 input + 24 output tokens this turn"');
+    expect(html).toContain('aria-label="31,176 input (96% cached) + 24 output tokens this turn"');
+    expect(html).toContain('31.2k tokens · 96% cached');
     expect(html).toContain('31.2k tokens');
     expect(html).toContain('data-slot="token-breakdown-card"');
     expect(html).toContain('group-hover/tokens:block');

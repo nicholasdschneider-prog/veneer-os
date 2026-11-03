@@ -349,8 +349,11 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
       totalOutputTokens: number;
       totalTokens: number;
       cachedInputTokens?: number;
+      modelCalls?: number;
     } | undefined;
     let tokenBaseline: CodexTokenCount | undefined;
+    // Each tokenUsage update with a `last` figure is one model request.
+    let modelCalls = 0;
     // approval server-request id (number|string, whatever the server sent) keyed by its
     // stringified form (Veneer's requestId is always a string).
     type PendingApproval =
@@ -1385,6 +1388,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
             // It is dropped outright: the turn-level figure comes off `total`,
             // and a stray last-call value would otherwise leak into turn_done.
             lastUsage = { inputTokens: last.inputTokens, outputTokens: last.outputTokens };
+            modelCalls += 1;
           }
           if (last && total) {
             tokenBaseline ??= {
@@ -1407,6 +1411,7 @@ export function createCodexAdapter(opts: CodexAdapterOptions): ProviderAdapter {
                 totalInputTokens,
                 totalOutputTokens,
                 totalTokens: totalInputTokens + totalOutputTokens,
+                modelCalls,
                 ...(turnCached !== undefined && turnCached >= 0 && turnCached <= totalInputTokens
                   ? { cachedInputTokens: turnCached }
                   : {}),

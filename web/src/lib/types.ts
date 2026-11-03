@@ -188,6 +188,8 @@ export interface TokenUsage {
   cachedInputTokens?: number;
   /** Whole-turn cache writes, a subset of totalInputTokens. Claude only. */
   cacheWriteInputTokens?: number;
+  /** Model requests made during the turn (each resends the context). Codex only. */
+  modelCalls?: number;
   contextPct?: number;
 }
 

@@ -225,7 +225,7 @@ describe('assistant response metadata transport', () => {
       turnId: 'turn-1',
       markdown: 'Finished.',
       at: '2026-08-28T19:45:00.000Z',
-      usage: { totalInputTokens: 31_176, totalOutputTokens: 24, totalTokens: 31_200 },
+      usage: { totalInputTokens: 31_176, totalOutputTokens: 24, totalTokens: 31_200, contextTokens: 18_000 },
     }]);
   });
 

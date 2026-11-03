@@ -6,10 +6,14 @@ export interface ResponseTokenUsage {
   cachedInputTokens?: number;
   /** Cache writes for the turn, a subset of totalInputTokens. Claude only. */
   cacheWriteInputTokens?: number;
+  /** Model requests in the turn; each one resends the whole context. */
+  modelCalls?: number;
+  /** Context size at the turn's last request. */
+  contextTokens?: number;
 }
 
 export interface ResponseTokenRow {
-  key: 'input' | 'cacheRead' | 'cacheWrite' | 'output' | 'total';
+  key: 'input' | 'cacheRead' | 'cacheWrite' | 'output' | 'total' | 'calls' | 'context';
   label: string;
   value: number;
 }
@@ -22,6 +26,8 @@ export function normalizeResponseTokenUsage(value: unknown): ResponseTokenUsage 
     totalOutputTokens?: unknown;
     cachedInputTokens?: unknown;
     cacheWriteInputTokens?: unknown;
+    modelCalls?: unknown;
+    inputTokens?: unknown;
   };
   if (
     typeof usage.totalTokens !== 'number'
@@ -54,7 +60,13 @@ export function normalizeResponseTokenUsage(value: unknown): ResponseTokenUsage 
       : {}),
     ...(hasCacheDetail && cachedInputTokens !== undefined ? { cachedInputTokens } : {}),
     ...(hasCacheDetail && cacheWriteInputTokens !== undefined ? { cacheWriteInputTokens } : {}),
+    ...(positive(usage.modelCalls) !== undefined ? { modelCalls: usage.modelCalls as number } : {}),
+    ...(hasBreakdown && positive(usage.inputTokens) !== undefined ? { contextTokens: usage.inputTokens as number } : {}),
   };
+}
+
+function positive(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
 function cacheSubset(value: unknown): number | undefined {
@@ -82,7 +94,18 @@ export function responseTokenRows(usage: ResponseTokenUsage): ResponseTokenRow[]
   if (cacheWrite !== undefined) rows.push({ key: 'cacheWrite', label: 'Cache write', value: cacheWrite });
   rows.push({ key: 'output', label: 'Output', value: usage.totalOutputTokens });
   rows.push({ key: 'total', label: 'Total', value: usage.totalTokens });
+  if (usage.modelCalls !== undefined) rows.push({ key: 'calls', label: 'Model calls', value: usage.modelCalls });
+  if (usage.contextTokens !== undefined) rows.push({ key: 'context', label: 'Context now', value: usage.contextTokens });
   return rows;
+}
+
+/**
+ * Share of the turn's input served from cache, rounded down so a turn is never
+ * shown as fully cached when it was not. Undefined without a cache split.
+ */
+export function responseCachedPercent(usage: ResponseTokenUsage): number | undefined {
+  if (usage.cachedInputTokens === undefined || !usage.totalInputTokens) return undefined;
+  return Math.floor((usage.cachedInputTokens / usage.totalInputTokens) * 100);
 }
 
 export function formatResponseTime(iso: string | undefined): string {
@@ -114,5 +137,7 @@ export function responseTokenBreakdown(usage: ResponseTokenUsage): string {
   if (usage.totalInputTokens === undefined || usage.totalOutputTokens === undefined) {
     return `${usage.totalTokens.toLocaleString()} tokens used this turn`;
   }
-  return `${usage.totalInputTokens.toLocaleString()} input + ${usage.totalOutputTokens.toLocaleString()} output tokens this turn`;
+  const cached = responseCachedPercent(usage);
+  const calls = usage.modelCalls !== undefined ? ` across ${usage.modelCalls.toLocaleString()} model calls` : '';
+  return `${usage.totalInputTokens.toLocaleString()} input${cached !== undefined ? ` (${cached}% cached)` : ''} + ${usage.totalOutputTokens.toLocaleString()} output tokens this turn${calls}`;
 }

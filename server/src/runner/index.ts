@@ -13,6 +13,9 @@ import { conversationsForSweep, ensureClaudeTranscriptRetention } from '../runti
 import { adoptCodexLogins, createCodexAccountStore } from '../codex/accounts.js';
 import { createSecretStore } from '../secrets/store.js';
 import { effectiveApiKey } from '../secrets/apiKeys.js';
+import { enableProjectDopplerCli } from '../secrets/projectDopplerCli.js';
+import { readSecretValue } from '../secrets/readSecret.js';
+import { createWakeGovernor } from '../tokenGovernor/precheck.js';
 import { createComposioEmailCodeSource, findMailboxConnector } from '../veneerBrowser/emailCode.js';
 import { createUsageStore } from '../usage/store.js';
 import { createClaudeProbe } from '../usage/claudeProbe.js';
@@ -152,7 +155,15 @@ const canDispatchBackground = createBackgroundAdmission(db, Number(process.env.V
   return disk.bavail * disk.bsize;
 });
 const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000, canDispatch: canDispatchBackground });
-const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bus, tickMs: 2_000,
+// Token governor: cheap prechecks before background wakes reach the model.
+// Credentials are read at use time and passed straight to the probe request.
+const governorDoppler = enableProjectDopplerCli(config.dataDir, { ...process.env });
+const wakeGovernor = createWakeGovernor({
+  db,
+  readSecret: async (ref) => (await readSecretValue({ db, projectDopplerCli: governorDoppler }, ref)).value,
+  composioApiKey: () => effectiveApiKey('composio', secrets, config, doppler).value,
+});
+const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bus, tickMs: 2_000, governor: wakeGovernor,
   // A dependency reply must still reach its parent at capacity. Ordinary
   // periodic wakes wait, even for busy chats, so they cannot keep every old
   // worker perpetually queued and prevent the machine from draining. A human

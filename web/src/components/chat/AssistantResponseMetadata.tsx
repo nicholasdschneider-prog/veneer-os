@@ -4,6 +4,7 @@ import {
   formatResponseTime,
   formatResponseTokenCount,
   normalizeResponseTokenUsage,
+  responseCachedPercent,
   responseTokenBreakdown,
   responseTokenRows,
   type ResponseTokenRow,
@@ -39,6 +40,7 @@ export function AssistantResponseMetadata({
 function TokenCount({ usage }: { usage: ResponseTokenUsage }) {
   const rows = responseTokenRows(usage);
   const label = responseTokenBreakdown(usage);
+  const cached = responseCachedPercent(usage);
 
   return (
     <details className="group/tokens relative inline-flex" data-slot="token-count">
@@ -46,7 +48,7 @@ function TokenCount({ usage }: { usage: ResponseTokenUsage }) {
         aria-label={label}
         className="cursor-default list-none rounded-sm underline-offset-2 outline-none select-none hover:underline group-open/tokens:underline focus-visible:ring-2 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden"
       >
-        {formatResponseTokenCount(usage)} tokens
+        {formatResponseTokenCount(usage)} tokens{cached !== undefined ? ` · ${cached}% cached` : ''}
       </summary>
       <span
         role="tooltip"

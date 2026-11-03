@@ -6,6 +6,7 @@ import type { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
 import type { ConversationRow, ConversationWakeupRow } from '../db/db.js';
 import type { PostMessageResult } from '../runtime/conversationManager.js';
+import type { GateDecision } from '../tokenGovernor/precheck.js';
 
 const PENDING = 'pending';
 
@@ -71,6 +72,7 @@ export function createConversationWakeupScheduler({
   tickMs = 2_000,
   now = () => new Date(),
   canDispatch = () => true,
+  governor,
   log = console,
 }: {
   db: Database.Database;
@@ -80,6 +82,8 @@ export function createConversationWakeupScheduler({
   tickMs?: number;
   now?: () => Date;
   canDispatch?: (row: ConversationWakeupRow) => boolean;
+  /** Token governor: may hold, skip, space out or coalesce a due background wake. Manual fire bypasses it. */
+  governor?: { gate(row: ConversationWakeupRow, conv: ConversationRow): GateDecision };
   log?: Pick<Console, 'info' | 'warn' | 'error'>;
 }): ConversationWakeupScheduler {
   let timer: NodeJS.Timeout | null = null;
@@ -284,7 +288,29 @@ export function createConversationWakeupScheduler({
           continue;
         }
 
-        if (canDispatch(row)) deliver(row, conv);
+        if (!canDispatch(row)) continue;
+        const decision: GateDecision = governor ? governor.gate(row, conv) : { action: 'deliver' };
+        if (decision.action === 'wait') continue;
+        if (decision.action === 'skip' || decision.action === 'coalesce') {
+          db.transaction(() => {
+            db.prepare(
+              `UPDATE conversation_wakeups SET status='cancelled',cancelled_at=datetime('now')
+               WHERE id=? AND status='pending'`,
+            ).run(row.id);
+            botWakeCancelled(db, row);
+          })();
+          log.info(`[wakeup] governor ${decision.action} ${row.id} conversation=${row.conversation_id}: ${decision.reason}`);
+          emitPending(row.conversation_id);
+          continue;
+        }
+        if (decision.action === 'defer') {
+          db.prepare("UPDATE conversation_wakeups SET scheduled_for=? WHERE id=? AND status='pending'")
+            .run(decision.until.toISOString(), row.id);
+          log.info(`[wakeup] governor deferred ${row.id} conversation=${row.conversation_id} until=${decision.until.toISOString()}: ${decision.reason}`);
+          emitPending(row.conversation_id);
+          continue;
+        }
+        deliver(row, conv);
       }
     } catch (err) {
       log.error(`[wakeup] tick failed: ${(err as Error).message}`);

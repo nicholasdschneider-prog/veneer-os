@@ -61,6 +61,7 @@ import { createNavigationRouter } from './navigation.js';
 import { createTodosRouter } from './todos.js';
 import { createScheduledTasksRouter } from './scheduledTasks.js';
 import { createSpareAllowanceRouter } from '../spareAllowance/routes.js';
+import { createTokenGovernorRouter } from '../tokenGovernor/routes.js';
 import { describeSchedule, parseScheduleSpec } from '../scheduled/schedule.js';
 import { triggerRecipe } from '../automations/recipes.js';
 import { createBuildQueueRouter } from './buildQueue.js';
@@ -4841,6 +4842,7 @@ export function createApiRouter(ctx: AppContext): Router {
   // nested beneath it as run history.
   router.use('/scheduled-tasks', createScheduledTasksRouter(ctx));
   router.use('/spare-allowance', createSpareAllowanceRouter(ctx));
+  router.use('/token-governor', createTokenGovernorRouter(ctx));
 
   // One durable FIFO for Platform Dev chats sharing the live source checkout.
   router.use('/build-queue', createBuildQueueRouter(ctx));

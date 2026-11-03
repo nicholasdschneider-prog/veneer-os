@@ -3,6 +3,7 @@ import {
   formatResponseTime,
   formatResponseTokenCount,
   normalizeResponseTokenUsage,
+  responseCachedPercent,
   responseTokenBreakdown,
   responseTokenRows,
 } from './responseMetadata';
@@ -17,9 +18,36 @@ describe('assistant response metadata', () => {
       totalTokens: 31_200,
     });
 
-    expect(usage).toEqual({ totalInputTokens: 31_176, totalOutputTokens: 24, totalTokens: 31_200 });
+    expect(usage).toEqual({ totalInputTokens: 31_176, totalOutputTokens: 24, totalTokens: 31_200, contextTokens: 18_000 });
     expect(formatResponseTokenCount(usage!)).toBe('31.2k');
     expect(responseTokenBreakdown(usage!)).toBe('31,176 input + 24 output tokens this turn');
+  });
+
+  it('labels a Codex turn honestly: whole-turn total, cached share, calls and current context', () => {
+    // AutoShip Worker, Nov 3 2026: 79 model calls at ~220k context each.
+    const usage = normalizeResponseTokenUsage({
+      inputTokens: 276_172,
+      outputTokens: 73,
+      totalInputTokens: 17_665_891,
+      totalOutputTokens: 35_575,
+      totalTokens: 17_701_466,
+      cachedInputTokens: 17_574_912,
+      modelCalls: 79,
+    });
+    expect(formatResponseTokenCount(usage!)).toBe('17.7M');
+    expect(responseCachedPercent(usage!)).toBe(99);
+    expect(responseTokenBreakdown(usage!)).toBe(
+      '17,665,891 input (99% cached) + 35,575 output tokens this turn across 79 model calls',
+    );
+    expect(responseTokenRows(usage!).slice(-2)).toEqual([
+      { key: 'calls', label: 'Model calls', value: 79 },
+      { key: 'context', label: 'Context now', value: 276_172 },
+    ]);
+  });
+
+  it('never rounds a partly uncached turn up to 100% cached', () => {
+    expect(responseCachedPercent({ totalTokens: 1_000, totalInputTokens: 1_000, totalOutputTokens: 0, cachedInputTokens: 999 })).toBe(99);
+    expect(responseCachedPercent({ totalTokens: 1_000 })).toBeUndefined();
   });
 
   it('does not round a near-million total to 1000k', () => {
@@ -66,6 +94,7 @@ describe('assistant response metadata', () => {
       totalTokens: 31_200,
       cachedInputTokens: 30_000,
       cacheWriteInputTokens: 1_000,
+      contextTokens: 18_000,
     });
     expect(responseTokenRows(usage!)).toEqual([
       { key: 'input', label: 'Input', value: 176 },
@@ -73,6 +102,7 @@ describe('assistant response metadata', () => {
       { key: 'cacheWrite', label: 'Cache write', value: 1_000 },
       { key: 'output', label: 'Output', value: 24 },
       { key: 'total', label: 'Total', value: 31_200 },
+      { key: 'context', label: 'Context now', value: 18_000 },
     ]);
   });
 
