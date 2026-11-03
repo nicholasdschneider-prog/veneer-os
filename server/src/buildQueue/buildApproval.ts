@@ -170,6 +170,27 @@ export function mintBuildPass(
   return db.prepare('SELECT * FROM build_passes WHERE id = ?').get(id) as BuildPassRow;
 }
 
+/** An approver's approve (or own typed direction) on a decision card is the
+ * same yes as one given in their own turn: mint a pass for the chat that
+ * raised the decision, bound to that decision version. Anyone else mints
+ * nothing. A replayed answer returns the first pass. */
+export function mintDecisionBuildPass(
+  db: Database.Database,
+  input: { approverUserId: number; conversationId: string; decisionId: string; version: number; note: string },
+): BuildPassRow | undefined {
+  if (!buildApproverIds(db).includes(input.approverUserId)) return undefined;
+  const note = input.note.trim().slice(0, BUILD_PASS_NOTE_MAX);
+  if (!note) return undefined;
+  const requestKey = `decision:${input.decisionId}:v${input.version}`;
+  db.prepare(
+    `INSERT OR IGNORE INTO build_passes (id, source_conversation_id, source_turn_at, approver_user_id, target_conversation_id, request_key, scope_note, expires_at)
+     VALUES (?, ?, datetime('now'), ?, ?, ?, ?, datetime('now', ?))`,
+  ).run(crypto.randomUUID(), input.conversationId, input.approverUserId, input.conversationId, requestKey, note, `+${BUILD_PASS_HOURS} hours`);
+  return db
+    .prepare('SELECT * FROM build_passes WHERE source_conversation_id = ? AND request_key = ?')
+    .get(input.conversationId, requestKey) as BuildPassRow | undefined;
+}
+
 /** The unused, unexpired pass this chat holds: the named one, or its only one. */
 export function heldBuildPass(db: Database.Database, conversationId: string, passId?: string | null): BuildPassRow | undefined {
   const rows = db

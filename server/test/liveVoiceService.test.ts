@@ -115,6 +115,8 @@ describe('live voice lifecycle', () => {
     expect(db.prepare("SELECT state,answer_json FROM bot_decisions WHERE id='discussed'").get()).toEqual({state:'needs_input',answer_json:null});
     expect(db.prepare("SELECT count(*) AS n FROM conversation_wakeups WHERE conversation_id='ticket' AND reason LIKE 'VeneerBots answer.%'").get()).toEqual({n:1});
     expect(db.prepare("SELECT count(*) AS n FROM bot_decision_events WHERE decision_id='approved' AND kind='answered'").get()).toEqual({n:1});
+    // A phone approval is the owner's yes like a card click: the raising chat gets its one-time build pass.
+    expect(db.prepare("SELECT target_conversation_id,request_key FROM build_passes").all()).toEqual([{target_conversation_id:'ticket',request_key:'decision:approved:v1'}]);
   });
 
   it('finishes an accepted instruction dispatch after its caller hangs up without replaying it', async () => {

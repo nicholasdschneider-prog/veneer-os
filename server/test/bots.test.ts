@@ -10,6 +10,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { migrate } from '../src/db/migrate.js';
+import { claimBuildPass } from '../src/buildQueue/buildApproval.js';
 import {
   createBotService,
   proposalSchema,
@@ -1314,6 +1315,48 @@ describe('VeneerBots', () => {
         material_evidence_unchanged: true,
       }),
     ).toThrow('delivery');
+  });
+  describe('an approver\'s answer on a decision card carries a build pass', () => {
+    const passes = () => db.prepare('SELECT * FROM build_passes').all() as { id: string; target_conversation_id: string; request_key: string; scope_note: string }[];
+    const answerWake = (id: string) => (db.prepare("SELECT reason FROM conversation_wakeups WHERE conversation_id='fixture-a' AND reason LIKE 'VeneerBots answer.%' AND reason LIKE ?").get(`%${id}%`) as { reason: string } | undefined)?.reason ?? '';
+    it('mints one pass for the raising chat on approve, delivered in the wake and redeemable once', () => {
+      const d = s.raise(bot, { source_key: 'repair', proposal_key: 'fix', proposal: proposal({ blocked_action: 'Queue the Lippert cost-sync repair' }) });
+      s.answer(human, d.id, 1, 'yes', { action: 'approve', text: 'yes', scope: 'this_case' });
+      s.answer(human, d.id, 1, 'yes', { action: 'approve', text: 'yes', scope: 'this_case' });
+      const [pass, ...rest] = passes();
+      expect(rest).toHaveLength(0);
+      expect(pass).toMatchObject({ target_conversation_id: 'fixture-a', request_key: `decision:${d.id}:v1` });
+      expect(pass!.scope_note).toContain('Lippert cost-sync repair');
+      const reason = answerWake(d.id);
+      expect(reason).toContain(`[Build pass ${pass!.id}:`);
+      expect(reason).toContain('queue exactly that approved work once with enqueue_build build_pass');
+      expect(reason).not.toContain('never start a build yourself');
+      expect(claimBuildPass(db, 'fixture-a', pass!.id)?.id).toBe(pass!.id);
+      expect(claimBuildPass(db, 'fixture-a', pass!.id)).toBeUndefined();
+      expect(claimBuildPass(db, 'fixture-b', pass!.id)).toBeUndefined();
+    });
+    it('a custom answer\'s pass covers only what was typed', () => {
+      const d = s.raise(bot, { source_key: 'custom', proposal_key: 'fix', proposal: proposal() });
+      s.answerCustom(human, d.id, 1, 'custom', 'Only fix the cost rounding, nothing else');
+      expect(passes()[0]!.scope_note).toContain('Only fix the cost rounding, nothing else');
+    });
+    it('reject, defer and withdraw mint nothing, and the wake carries no pass', () => {
+      for (const action of ['reject', 'defer'] as const) {
+        const d = s.raise(bot, { source_key: action, proposal_key: 'fix', proposal: proposal() });
+        s.answer(human, d.id, 1, action, { action, text: 'no', scope: 'this_case' });
+        expect(answerWake(d.id)).not.toMatch(/\[Build pass [0-9a-f]{8}-/);
+      }
+      const w = s.raise(bot, { source_key: 'withdraw', proposal_key: 'fix', proposal: proposal() });
+      s.withdraw(bot, w.id, 1, 'withdraw', { reason: 'moot', evidence: 'order shipped' });
+      expect(passes()).toHaveLength(0);
+    });
+    it('an answer from someone who does not approve builds mints nothing', () => {
+      db.prepare("INSERT INTO settings(key,value_json) VALUES('build_approver_user_ids','[3]')").run();
+      const d = s.raise(bot, { source_key: 'other', proposal_key: 'fix', proposal: proposal() });
+      s.answer(human, d.id, 1, 'yes', { action: 'approve', text: 'yes', scope: 'this_case' });
+      expect(passes()).toHaveLength(0);
+      expect(answerWake(d.id)).not.toMatch(/\[Build pass [0-9a-f]{8}-/);
+    });
   });
 });
 

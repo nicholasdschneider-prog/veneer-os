@@ -9,6 +9,7 @@ import { orderReference, shopifyOrderSchema } from './orderReference.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 import { listReadScope } from './listReadScope.js';
+import { buildPassNotice, mintDecisionBuildPass } from '../buildQueue/buildApproval.js';
 
 const text = z.string().trim().min(1).max(12000);
 export const evidenceSchema = z
@@ -569,12 +570,25 @@ export function createBotService(source: Database.Database) {
     })();
     return marked;
   }
+  /** Nick's (or James's) approve or own typed direction is his yes for a
+   * build too: the raising chat gets a one-time pass for this version. A
+   * custom answer's pass covers only what he typed. */
+  function decisionBuildPass(actor: Actor, d: Decision, payload: { action: string; text: string; answer?: string }) {
+    if (payload.action !== 'approve' && payload.action !== 'custom') return undefined;
+    const proposal = JSON.parse(d.proposal_json) as { blocked_action?: string; recommendation?: string; kind?: string };
+    if (proposal.kind === 'autoship_package') return undefined;
+    const note = payload.action === 'custom'
+      ? `Answer to "${proposal.blocked_action ?? 'this decision'}": ${payload.answer ?? payload.text}`
+      : `${proposal.blocked_action ?? ''}${proposal.recommendation ? ` (${proposal.recommendation})` : ''}`;
+    return mintDecisionBuildPass(db, { approverUserId: actor.user.id, conversationId: d.conversation_id, decisionId: d.id, version: d.version, note });
+  }
   function wake(
     actor: Actor,
     d: Decision,
     eventId: string,
     kind: string,
     payload: unknown,
+    notice = '',
   ) {
     const c = chat(actor, d.conversation_id);
     if (c.archived)
@@ -582,7 +596,7 @@ export function createBotService(source: Database.Database) {
         409,
         'Restore the bot chat before sending a decision or message',
       );
-    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize proposal execution. A custom answer does not approve the old proposal; a clear unconditional action direction can be followed within the original bot’s existing business authority and source permissions. A custom answer is the human's own typed direction (payload.answer): read it as the answer to this question, then act on it or raise a revised proposal under the existing guards; it authorizes no exact executable action from the old proposal. A choice payload.answer is the concrete value the human selected; use it directly. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. For an approve answer, revalidate material evidence and call record_decision_result with state running and this version before executing. For a clear unconditional custom action direction within your existing permissions, just do it with your existing tools, with duplicate checks for money and sends, then report the verified result in this thread. No extra tracker, enrollment or duplicate consent is needed. After discussion establishes a concrete changed recommendation or customer reply, call update_decision with the current expected_version and the complete exact revised proposal; do not leave the displayed recommendation stale while describing different text only in discussion. Keep review_summary consistent with the revised scope. Do not revise unchanged proposals or treat a request to edit as approval. Human reply edits create a new version; reread it before responding. Fresh version-bound instructions after defer may answer ONLY the unchanged exact proposal through record_discussion_decision; the service preserves the old defer and creates a successor version. If the human requests different quantities, actions, conditions or message text, revise and review that changed scope instead. Never reuse a legacy null instruction or treat questions, conditional requests or investigation findings as consent. The existing case owner remains accountable through verified delivery and unresolved follow-through. A voice call ending does not cancel this durable wake or require another approval. A technical send/setup failure is recorded as blocked in record_decision_result with the concrete blocker; work around it if you can, otherwise tell Nick in one sentence. Never claim completion and never start a build yourself. Preserve existing executor bindings; do not introduce a routine managerial relay. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.`;
+    const reason = `VeneerBots ${kind}. Decision ${d.id}, proposal version ${d.version}.\n${JSON.stringify({ proposal: JSON.parse(d.proposal_json), payload })}\nRead the decision with list_decisions before acting. Reply in its thread with reply_to_decision. For new human messages with instruction_version in that thread: interpret the whole message in context. If it clearly approves/rejects/defers/withdraws THIS exact proposal, use record_discussion_decision with that message ID and version; do not demand a duplicate click. A clear request to investigate or revise first can be recorded as defer (no execution authority); do the requested read-only follow-up before raising any revised decision. Questions alone, quoted third-party statements, negations, conditional or ambiguous directions are not consent: ask a concise clarification and leave the decision waiting. Never reinterpret old messages or approve a materially different action. Only an approve answer permits consideration of the blocked action; reject, defer, withdraw and discussion do not authorize proposal execution. A custom answer does not approve the old proposal; a clear unconditional action direction can be followed within the original bot’s existing business authority and source permissions. A custom answer is the human's own typed direction (payload.answer): read it as the answer to this question, then act on it or raise a revised proposal under the existing guards; it authorizes no exact executable action from the old proposal. A choice payload.answer is the concrete value the human selected; use it directly. An answer recorded by an authorized shared-queue teammate or through a phone call is a real human decision; do not request a duplicate owner approval or another UI click. For an approve answer, revalidate material evidence and call record_decision_result with state running and this version before executing. For a clear unconditional custom action direction within your existing permissions, just do it with your existing tools, with duplicate checks for money and sends, then report the verified result in this thread. No extra tracker, enrollment or duplicate consent is needed. After discussion establishes a concrete changed recommendation or customer reply, call update_decision with the current expected_version and the complete exact revised proposal; do not leave the displayed recommendation stale while describing different text only in discussion. Keep review_summary consistent with the revised scope. Do not revise unchanged proposals or treat a request to edit as approval. Human reply edits create a new version; reread it before responding. Fresh version-bound instructions after defer may answer ONLY the unchanged exact proposal through record_discussion_decision; the service preserves the old defer and creates a successor version. If the human requests different quantities, actions, conditions or message text, revise and review that changed scope instead. Never reuse a legacy null instruction or treat questions, conditional requests or investigation findings as consent. The existing case owner remains accountable through verified delivery and unresolved follow-through. A voice call ending does not cancel this durable wake or require another approval. A technical send/setup failure is recorded as blocked in record_decision_result with the concrete blocker; work around it if you can, otherwise tell Nick in one sentence. Never claim completion. Start a build only when this wake carries a [Build pass ...] line and the approved answer calls for a build or code repair: then queue exactly that approved work once with enqueue_build build_pass, and never for anything the answer did not approve. Preserve existing executor bindings; do not introduce a routine managerial relay. Existing financial, policy and tool approval gates still apply; standing-rule scope grants no additional authority. Continue unrelated authorized work.${notice ? `\n${notice}` : ''}`;
     db.prepare(
       'INSERT INTO conversation_wakeups(id,conversation_id,actor_user_id,wake_key,reason,scheduled_for) VALUES(?,?,?,?,?,?)',
     ).run(
@@ -1011,7 +1025,8 @@ export function createBotService(source: Database.Database) {
         );
         const ev = event(actor, d, 'answered', payload, key);
         if(JSON.parse(d.proposal_json).purchase_timing) event(actor,d,'purchase_timing_context',{answer_event_id:ev,context:timingHumanContext(db,d.conversation_id,d.id)},key+':timing-context');
-        wake(actor, d, ev, 'answer', payload);
+        const pass = decisionBuildPass(actor, d, payload);
+        wake(actor, d, ev, 'answer', payload, pass ? buildPassNotice(db, pass) : '');
         return view(actor, read(actor, id));
       })();
     },
