@@ -1550,8 +1550,9 @@ export function createConversationManager({
         if (otherTasks.filter(id => entryFor(id).turn?.origin?.humanTaskNote).length >= TASK_CAP_PER_OWNER) return;
       } else if (otherTasks.filter(id => entryFor(id).turn || entryFor(id).maintenance).length >= TASK_CAP_PER_OWNER) return;
     } else if (!humanFirst(conv.id) && family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;
-    // Human work already waiting always goes first; workers never preempt it.
-    if (lane && entryFor(lane.owner_id).queue.length) return;
+    // Human work already waiting always goes first; workers never preempt it. A task chat waits only
+    // for a person's queued message in the main chat, never for bot-to-bot or scheduled traffic queued there.
+    if (lane && (taskLane ? entryFor(lane.owner_id).queue.some(q => !q.origin) : entryFor(lane.owner_id).queue.length)) return;
     const authority = lane ? db.prepare('SELECT * FROM conversations WHERE id=?').get(lane.owner_id) as ConversationRow | undefined : conv;
     if (!authority) return;
     // A turn that exhausted recovery remains visible/retryable. Do not run later

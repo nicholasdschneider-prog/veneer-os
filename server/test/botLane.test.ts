@@ -238,6 +238,9 @@ describe('human priority and lane parity', () => {
     for (const n of [1, 2, 3, 4]) manager.deliverWakeup(chat(n), 'Nick wrote on task', noteWake(n), 1);
     await tick();
     expect(turns.map((t) => t.spec.nativeSessionId).slice(3)).toEqual([1, 2, 3, 4].map((n) => chat(n).native_session_id));
+    // Bot-to-bot traffic queued behind the busy main chat never holds the task chats back.
+    expect(manager.postMessage(row('clara'), 'Nightly margin flags', 1, { kind: 'agent', from: 'Anna', to: 'Clara', sourceConversationId: 'anna' }).disposition).toBe('queued');
+    expect(manager.queueSnapshot('clara').messages).toHaveLength(1);
     // A fifth note waits for one of the four notes to finish, never for the main chat.
     manager.deliverWakeup(chat(5), 'Nick wrote on task', noteWake(5), 1);
     await tick();
