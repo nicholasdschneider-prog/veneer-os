@@ -262,7 +262,7 @@ export function createConversationWakeupScheduler({
            WHERE status = 'pending' AND datetime(scheduled_for) <= datetime(?)
            ORDER BY CASE WHEN wake_key LIKE 'message-thread:%' OR (wake_key LIKE 'bot-decision:%' AND EXISTS (
              SELECT 1 FROM bot_decision_events e WHERE e.id = conversation_wakeups.id
-             AND e.kind = 'answered' AND e.actor_conversation_id IS NULL)) THEN 0 ELSE 1 END, scheduled_for
+             AND e.kind IN ('answered','message') AND e.actor_conversation_id IS NULL)) THEN 0 ELSE 1 END, scheduled_for
            LIMIT 50`,
         )
         .all(now().toISOString()) as ConversationWakeupRow[];

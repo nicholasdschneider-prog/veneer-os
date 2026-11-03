@@ -27,7 +27,7 @@ import { writePidFile } from '../servicePid.js';
 import { startResourceMonitor } from './resourceMonitor.js';
 import { createBackgroundAdmission } from './backgroundAdmission.js';
 import { resultReplyWake } from '../bots/communication.js';
-import { humanDecisionAnswerWake } from '../bots/delivery.js';
+import { humanDecisionReplyWake } from '../bots/delivery.js';
 import { isHumanTaskNoteWake } from '../tasks/service.js';
 import { createDopplerTokenStore, DopplerRuntime } from '../secrets/doppler.js';
 import { installPlatformSkills } from '../skills/platform.js';
@@ -156,10 +156,10 @@ const wakeups = createConversationWakeupScheduler({ db, manager, bus: manager.bu
   // A dependency reply must still reach its parent at capacity. Ordinary
   // periodic wakes wait, even for busy chats, so they cannot keep every old
   // worker perpetually queued and prevent the machine from draining. A human
-  // decision answer or a human's note on a task passes the turn limit but
+  // decision answer, Questions reply, or note on a task passes the turn limit but
   // still respects the disk floor.
   canDispatch: row =>
-    humanDecisionAnswerWake(db, row.id) || isHumanTaskNoteWake(db, row.id)
+    humanDecisionReplyWake(db, row.id) || isHumanTaskNoteWake(db, row.id)
       ? canDispatchBackground({ ignoreActiveLimit: true })
       : canDispatchBackground() || Boolean(resultReplyWake(db, row.id)),
 });

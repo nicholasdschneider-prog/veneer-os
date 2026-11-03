@@ -12,7 +12,7 @@ import { canViewConversation, canSendToConversation, sameBusiness } from '../con
 import { candidateWakeAllowed, startQueuedCandidate } from '../botWorkflows/autoshipCandidates.js';
 import {HistoryPages,type HistoryPage} from './historyPages.js';
 import { queuedRoomWakeAllowed, roomSessionAllowed } from '../rooms/service.js';
-import { botDiscussionWake, botWakeAllowed, queuedDiscussionWake, recordDiscussionDelivery } from '../bots/delivery.js';
+import { botDiscussionWake, botWakeAllowed, humanDecisionReplyWake, queuedDiscussionWake, recordDiscussionDelivery } from '../bots/delivery.js';
 import {
   DECISION_HELPER_CAP, DECISION_HELPER_PROVIDERS, allDecisionHelpers, createDecisionHelper, decisionHelperOf, decisionHelperPrompt,
   decisionHelperRules, discussionMessage, helperAnswersAfter, helperForDecision, recordDecisionHelperAnswer, withHelperAnswers,
@@ -2347,6 +2347,19 @@ export function createConversationManager({
       }
       if (discussion && posted.disposition !== 'duplicate') {
         if (posted.disposition === 'queued') {
+          // Keep human messages in arrival order ahead of automatic wakeups.
+          // Persist the order too, so unsupported steering and restarts retain it.
+          const messages = queueSnapshot(conv.id).messages;
+          const human = (message: (typeof messages)[number]) => {
+            if (!message.origin || message.origin.kind === 'result_reply' || message.origin.kind === 'build_queue') return true;
+            const receipt = db.prepare(`SELECT idempotency_key FROM hub_inbound_messages
+              WHERE conversation_id=? AND message_id=? AND source_kind='wakeup'`).get(conv.id, message.id) as { idempotency_key: string } | undefined;
+            const id = receipt?.idempotency_key.replace(/^wakeup:/, '');
+            return Boolean(id && (humanDecisionReplyWake(db, id) || isHumanTaskNoteWake(db, id)));
+          };
+          this.reorderQueuedMessages(conv.id, [
+            ...messages.filter(human), ...messages.filter(message => !human(message)),
+          ].map(message => message.id));
           startDecisionHelper(conv, wakeupId, () => this.snapshot(conv));
           // The original durable row remains until the provider acknowledges it.
           // Retries use the receipt above and never issue another steer.

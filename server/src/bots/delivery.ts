@@ -53,15 +53,15 @@ export function botWakeAllowed(
   }
 }
 /**
- * A human's answer to a decision is a reply, not periodic automatic work, so
- * the runner delivers it even while background admission is at its turn limit.
+ * Human answers and discussion replies are interactive work. Deliver them
+ * even while background admission is at its turn limit; access checks still apply.
  */
-export function humanDecisionAnswerWake(db: Database.Database, wakeupId: string): boolean {
+export function humanDecisionReplyWake(db: Database.Database, wakeupId: string): boolean {
   return Boolean(
     db
       .prepare(
         `SELECT 1 FROM conversation_wakeups w JOIN bot_decision_events e ON e.id=w.id
-         WHERE w.id=? AND w.wake_key='bot-decision:'||e.id AND e.kind='answered' AND e.actor_conversation_id IS NULL`,
+         WHERE w.id=? AND w.wake_key='bot-decision:'||e.id AND e.kind IN ('answered','message') AND e.actor_conversation_id IS NULL`,
       )
       .get(wakeupId),
   );

@@ -1,3 +1,5 @@
+import { humanDecisionReplyWake } from '../src/bots/delivery.js';
+import { createBackgroundAdmission } from '../src/runner/backgroundAdmission.js';
 import fs from 'node:fs';
 import { createCodexAdapter } from '../src/providers/codexAppServer/adapter.js';
 import { communicationService } from '../src/bots/communication.js';
@@ -650,6 +652,46 @@ describe('VeneerBots', () => {
     expect(runs).toHaveLength(1); expect(runs[0]!.prompt).toMatch(/^Idle follow-up/);
     expect(db.prepare('SELECT origin_json FROM pending_turns').get()).toMatchObject({origin_json:expect.stringContaining('result_reply')});
     expect(db.prepare('SELECT status FROM conversation_wakeups WHERE id=?').get(wake.id)).toEqual({status:'delivered'});
+  });
+  it('delivers discussion at capacity without approving it, retaining disk protection and one receipt', async () => {
+    const other = db.prepare("SELECT * FROM conversations WHERE id='fixture-b'").get() as ConversationRow;
+    manager.postMessage(other, 'Background work'); await flush();
+    let free = 5;
+    const admit = createBackgroundAdmission(db, 1, () => free * 1024 ** 3);
+    scheduler.stop();
+    scheduler = createConversationWakeupScheduler({ db, manager,
+      canDispatch: row => admit({ ignoreActiveLimit: humanDecisionReplyWake(db, row.id) }),
+      log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } });
+    const d = raise();
+    s.reply(human, d.id, 'capacity-reply', 'Where will shipping costs be stored?');
+    scheduler.tick(); await flush();
+    expect(runs).toHaveLength(1);
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBe('queued');
+    free = 20;
+    scheduler.tick(); await flush(); scheduler.tick();
+    expect(runs).toHaveLength(2);
+    expect(runs[1]!.prompt).toContain('Where will shipping costs be stored?');
+    expect(s.view(human, s.read(human, d.id)).reply_status).toBe('responding');
+    expect(s.read(human, d.id).state).toBe('needs_input');
+    expect(db.prepare('SELECT count(*) AS n FROM hub_inbound_messages').get()).toEqual({ n: 1 });
+  });
+  it('keeps human discussion FIFO ahead of automatic work when steering is unavailable', async () => {
+    const conv = db.prepare("SELECT * FROM conversations WHERE id='fixture-a'").get() as ConversationRow;
+    manager.postMessage(conv, 'Current work'); await flush();
+    manager.deliverWakeup(conv, 'Automatic reminder', 'automatic-fixture');
+    const d = raise();
+    s.reply(human, d.id, 'first-human', 'First human question'); scheduler.tick(); await flush();
+    s.reply(human, d.id, 'second-human', 'Second human question'); scheduler.tick(); await flush();
+    const queued = db.prepare('SELECT prompt FROM queued_messages WHERE conversation_id=? ORDER BY sort_order,id').all(conv.id) as {prompt:string}[];
+    expect(queued).toHaveLength(3);
+    expect(queued[0]!.prompt).toContain('First human question');
+    expect(queued[1]!.prompt).toContain('Second human question');
+    expect(queued[2]!.prompt).toBe('Automatic reminder');
+    runs[0]!.finish(); await flush();
+    expect(runs[1]!.prompt).toContain('First human question');
+    runs[1]!.finish(); await flush();
+    expect(runs[2]!.prompt).toContain('Second human question');
+    expect(s.read(human, d.id).state).toBe('needs_input');
   });
   it('steers a human discussion once to the active owner, retiring only the acknowledged row', async () => {
     let ack!: (ok: boolean) => void;
