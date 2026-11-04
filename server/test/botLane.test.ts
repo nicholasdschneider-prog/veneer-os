@@ -31,6 +31,7 @@ import { createConversationManager } from '../src/runtime/conversationManager.js
 import { createTaskService } from '../src/tasks/service.js';
 import type { UserRow } from '../src/db/db.js';
 import { mintAgentToken, resolveAgentTokenContext } from '../src/runtime/agentTokens.js';
+import { turnMayStartBuild } from '../src/buildQueue/buildApproval.js';
 import { createConversationWakeupScheduler } from '../src/scheduled/wakeups.js';
 import type { ConversationEvent } from '../src/runtime/events.js';
 import type { ProviderAdapter, TurnSpec } from '../src/providers/types.js';
@@ -170,6 +171,47 @@ describe('human priority and lane parity', () => {
     });
     return { manager, materialize };
   }
+
+  it('runs a restricted employee\'s turn on the bot\'s tools without giving it the owner\'s authority', async () => {
+    db.prepare("INSERT INTO employee_workspaces(user_id) VALUES(2)").run();
+    db.prepare("INSERT INTO employee_bot_access(user_id,conversation_id) VALUES(2,'clara')").run();
+    const { turns, adapter } = fakeProvider();
+    const { manager, materialize } = managerWith(adapter);
+
+    expect(manager.postMessage(row('clara'), 'File the claim', 2).disposition).toBe('running');
+    await tick();
+    const call = materialize.mock.calls[0]!;
+    expect(resolveAgentTokenContext(db, call[1] as string)?.email).toBe('owner@example.com');
+    expect(call[6]).toBe(1);
+    // Secret tools still follow the person who asked.
+    expect(call[3]).toBe(2);
+    expect(call[4]).toContain('This message is from Other');
+    expect(db.prepare("SELECT actor_user_id FROM pending_turns WHERE conversation_id='clara'").get()).toEqual({ actor_user_id: 2 });
+    expect(turnMayStartBuild(db, 'clara')).toBe(false);
+    expect(turns).toHaveLength(1);
+  });
+
+  it('keeps a restricted employee\'s identity on a bot they were not granted', async () => {
+    db.prepare("INSERT INTO employee_workspaces(user_id) VALUES(2)").run();
+    const { adapter } = fakeProvider();
+    const { manager, materialize } = managerWith(adapter);
+
+    manager.postMessage(row('clara'), 'File the claim', 2);
+    await tick();
+    const call = materialize.mock.calls[0]!;
+    expect(resolveAgentTokenContext(db, call[1] as string)?.email).toBe('other@example.com');
+    expect(call[6]).toBe(2);
+    expect(call[4]).toBeNull();
+  });
+
+  it('keeps the actor\'s identity for ordinary members and owners', async () => {
+    const { adapter } = fakeProvider();
+    const { manager, materialize } = managerWith(adapter);
+
+    manager.postMessage(row('clara'), 'Hello', 2);
+    await tick();
+    expect(resolveAgentTokenContext(db, materialize.mock.calls[0]![1] as string)?.email).toBe('other@example.com');
+  });
 
   it('starts a human turn immediately while the lane works, and the lane waits behind human work', async () => {
     const { turns, adapter } = fakeProvider();

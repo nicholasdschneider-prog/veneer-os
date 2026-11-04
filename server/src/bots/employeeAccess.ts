@@ -5,6 +5,15 @@ export function isEmployee(db: Database.Database, userId: number): boolean {
   return Boolean(db.prepare('SELECT 1 FROM employee_workspaces WHERE user_id=?').get(userId));
 }
 
+/** Whose tools a turn runs on. A restricted employee's own account has no tool
+ * access, so a turn they start in a bot they were granted runs on the bot owner's
+ * tools, like any wake-up. The turn's actor stays the employee, so build and
+ * approval gates still see who asked. */
+export function turnToolUserId(db: Database.Database, actorUserId: number | null, conv: { id: string; user_id: number }): number | null {
+  if (actorUserId === null || !isEmployee(db, actorUserId)) return actorUserId;
+  return db.prepare('SELECT 1 FROM employee_bot_access WHERE user_id=? AND conversation_id=?').get(actorUserId, conv.id) ? conv.user_id : actorUserId;
+}
+
 // Restricted employees have a small operational surface. New platform routes are
 // denied by default; project files, credentials, tools and admin APIs are not inherited.
 export function employeeRouteAllowed(method: string, path: string): boolean {

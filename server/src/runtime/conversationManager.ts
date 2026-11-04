@@ -4,6 +4,7 @@ import { normalWorkWaiting } from '../spareAllowance/scheduler.js';
 import { purchaseBinding } from '../botWorkflows/purchaseEvents.js';
 import { coalescePeriodicChecks } from '../botWorkflows/periodicChecks.js';
 import { resultReplyWake, queuedResultReplyWake } from '../bots/communication.js';
+import { turnToolUserId } from '../bots/employeeAccess.js';
 import { coordinationLane, coordinationFamily } from '../coordination/store.js';
 import { BOT_LANE_RULES, hasBotLane, botLaneOfConversation, spliceSurfacedNotices, surfacedRows, takeSurfacedContext } from '../coordination/botLane.js';
 import { createCsTicketService } from '../csTickets/service.js';
@@ -1679,7 +1680,8 @@ export function createConversationManager({
     try {
     // A bot session works with its bot's own connectors, whoever's message or
     // routine started the turn; the human chat keeps the turn actor's set.
-    const connectorUserId = lane ? authority.user_id : actorUserId;
+    const toolUserId = turnToolUserId(db, actorUserId, authority);
+    const connectorUserId = lane ? authority.user_id : toolUserId;
     const connectorSources = connectorToolSourcesForConversation(db, authority.id, connectorUserId);
     entry.turn = turn;
     entry.lastTurnFailed = false;
@@ -1830,8 +1832,13 @@ export function createConversationManager({
     // The whole ticket record rides along every ticket-chat turn, so the bot never re-reads OrderOps for backstory.
     const ticketRecord = ticketLane ? csTickets.contextBlock(conv.id) : taskLane ? taskService.contextBlock(conv.id) : null;
     if (ticketRecord) memoryBlock = [ticketRecord, memoryBlock].filter(Boolean).join('\n\n');
-    if (surfaced) {
-      memoryBlock = [memoryBlock, surfaced].filter(Boolean).join('\n\n');
+    // The tools run as the owner on this turn; the bot must still know who asked.
+    const requester = toolUserId !== actorUserId
+      ? `This message is from ${(db.prepare('SELECT display_name FROM users WHERE id=?').get(actorUserId) as { display_name: string }).display_name}, a teammate with a restricted account, not the chat's owner. It carries only that person's authority.`
+      : null;
+    const turnNotes = [surfaced, requester].filter(Boolean).join('\n\n');
+    if (turnNotes) {
+      memoryBlock = [memoryBlock, turnNotes].filter(Boolean).join('\n\n');
       if (!db.prepare('SELECT 1 FROM turn_recall WHERE conversation_id = ? AND turn_id = ?').get(conv.id, turnId)) {
         insertTurnRecallStmt.run(conv.id, turnId, visibleText, JSON.stringify([]));
       }
@@ -1864,7 +1871,7 @@ export function createConversationManager({
       try {
         // The callback identity and personal connector set stay bound to the
         // authenticated user who initiated this turn, even in a Team chat.
-        const actorEmail = (activeUserEmailStmt.get(actorUserId) as { email: string } | undefined)?.email;
+        const actorEmail = (activeUserEmailStmt.get(toolUserId) as { email: string } | undefined)?.email;
         if (!actorEmail) throw new Error('The user who initiated this turn is no longer active.');
         spawnConfig = materialize(
           optional ? {...workspace,fullAccess:false} : workspace,
