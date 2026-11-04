@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+import { Worker } from 'node:worker_threads';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +33,39 @@ export function openDb(dataDir: string, migrationsDir: string = MIGRATIONS_DIR):
  * busy_timeout does not apply. BEGIN IMMEDIATE waits its turn instead. `.deferred`
  * stays available for a read-only transaction, and nesting still uses savepoints.
  */
+const CHECKPOINT_WORKER = `
+const { parentPort, workerData } = require('node:worker_threads');
+const Database = require(workerData.driver);
+const db = new Database(workerData.file);
+db.pragma('busy_timeout = 0');
+setInterval(() => { try { db.pragma('wal_checkpoint(PASSIVE)'); } catch { /* Busy: the next pass retries. */ } }, workerData.intervalMs);
+parentPort.postMessage('ready');
+`;
+
+/**
+ * Checkpoint the WAL on a worker thread instead of inside whichever commit
+ * crosses 1000 pages. That inline checkpoint writes back to the main database on
+ * the service's event loop: every request and bot turn in that process waits
+ * for the disk, for seconds under load. If the worker ever stops, this
+ * connection returns to SQLite's default so the WAL cannot grow without bound.
+ */
+export function startBackgroundCheckpoints(
+  db: Database.Database,
+  { intervalMs = 15_000, log = console as Pick<Console, 'warn'> } = {},
+): () => Promise<void> {
+  let stopping = false;
+  const restore = () => { if (db.open) db.pragma('wal_autocheckpoint = 1000'); };
+  const worker = new Worker(CHECKPOINT_WORKER, {
+    eval: true,
+    workerData: { file: db.name, driver: createRequire(import.meta.url).resolve('better-sqlite3'), intervalMs },
+  });
+  worker.once('message', () => { if (!stopping) db.pragma('wal_autocheckpoint = 0'); });
+  worker.on('error', (err) => log.warn(`[db] background checkpoint stopped: ${err.message}`));
+  worker.on('exit', () => { restore(); if (!stopping) log.warn('[db] background checkpoint exited; using inline checkpoints'); });
+  worker.unref();
+  return async () => { stopping = true; restore(); await worker.terminate(); };
+}
+
 export function preferImmediateTransactions(db: Database.Database): void {
   const original = db.transaction.bind(db);
   db.transaction = ((fn: (...args: unknown[]) => unknown) => {

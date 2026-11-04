@@ -203,7 +203,7 @@ const RECONNECT_MIN_MS = 500;
 const READ_RETRY_DELAY_MS = 200;
 /** RPCs that only read runner state; one retry after a socket failure cannot repeat an effect. */
 export const READ_ONLY_RPCS: ReadonlySet<string> = new Set([
-  '/rpc/status', '/rpc/statuses', '/rpc/searchableEvents', '/rpc/activity', '/rpc/isLive', '/rpc/queueSnapshot', '/rpc/snapshot',
+  '/rpc/status', '/rpc/statuses', '/rpc/searchableEvents', '/rpc/activity', '/rpc/activities', '/rpc/isLive', '/rpc/queueSnapshot', '/rpc/snapshot',
   '/rpc/historyPage', '/rpc/historyRecord', '/rpc/listSessionFiles', '/rpc/listModels',
   '/rpc/listWakeups', '/rpc/listBuildQueue', '/rpc/buildQueueHistory', '/rpc/getQuestion',
 ]);
@@ -266,34 +266,41 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     return (await res.json()) as T;
   }
 
-  // Lists ask for many chats' statuses at once. Sent as one request per tick:
-  // parallel single requests can pile up past the runner's 128-connection accept
-  // queue while its event loop is busy, and macOS resets everything beyond that.
-  type StatusWaiters = Map<string, { resolve: (status: ConversationStatus) => void; reject: (err: unknown) => void }[]>;
-  let statusWaiters: StatusWaiters | null = null;
-  function flushStatuses(waiters: StatusWaiters): void {
-    const ids = [...waiters.keys()];
-    const read = ids.length === 1
-      ? rpc<{ status: ConversationStatus }>('/rpc/status', { convId: ids[0] }).then((r) => ({ [ids[0]!]: r.status }))
-      : rpc<{ statuses: Record<string, ConversationStatus> }>('/rpc/statuses', { convIds: ids }).then((r) => r.statuses);
-    void read.then(
-      (statuses) => { for (const [id, list] of waiters) for (const w of list) w.resolve(statuses[id]!); },
-      (err: unknown) => { for (const list of waiters.values()) for (const w of list) w.reject(err); },
-    );
-  }
-  function statusOf(convId: string): Promise<ConversationStatus> {
-    return new Promise((resolve, reject) => {
-      let waiters = statusWaiters;
-      if (!waiters) {
-        const batch: StatusWaiters = new Map();
-        waiters = statusWaiters = batch;
-        setImmediate(() => { statusWaiters = null; flushStatuses(batch); });
+  // Lists ask for many chats' status and activity at once. Sent as one request
+  // per tick: parallel single requests can pile up past the runner's
+  // 128-connection accept queue while its event loop is busy, and macOS resets
+  // everything beyond that.
+  function batchedPerChat<T>(single: (convId: string) => Promise<T>, many: (convIds: string[]) => Promise<Record<string, T>>) {
+    type Waiters = Map<string, { resolve: (value: T) => void; reject: (err: unknown) => void }[]>;
+    let waiters: Waiters | null = null;
+    const flush = (batch: Waiters) => {
+      const ids = [...batch.keys()];
+      const read = ids.length === 1 ? single(ids[0]!).then((value) => ({ [ids[0]!]: value })) : many(ids);
+      void read.then(
+        (values) => { for (const [id, list] of batch) for (const w of list) w.resolve(values[id]!); },
+        (err: unknown) => { for (const list of batch.values()) for (const w of list) w.reject(err); },
+      );
+    };
+    return (convId: string) => new Promise<T>((resolve, reject) => {
+      let batch = waiters;
+      if (!batch) {
+        const created: Waiters = new Map();
+        batch = waiters = created;
+        setImmediate(() => { waiters = null; flush(created); });
       }
-      const list = waiters.get(convId);
+      const list = batch.get(convId);
       if (list) list.push({ resolve, reject });
-      else waiters.set(convId, [{ resolve, reject }]);
+      else batch.set(convId, [{ resolve, reject }]);
     });
   }
+  const statusOf = batchedPerChat<ConversationStatus>(
+    (convId) => rpc<{ status: ConversationStatus }>('/rpc/status', { convId }).then((r) => r.status),
+    (convIds) => rpc<{ statuses: Record<string, ConversationStatus> }>('/rpc/statuses', { convIds }).then((r) => r.statuses),
+  );
+  const activityOf = batchedPerChat<ConversationActivity>(
+    (convId) => rpc<{ activity: ConversationActivity }>('/rpc/activity', { convId }).then((r) => r.activity),
+    (convIds) => rpc<{ activities: Record<string, ConversationActivity> }>('/rpc/activities', { convIds }).then((r) => r.activities),
+  );
 
   // ── Event stream: connect once, re-emit frames on `bus`, auto-reconnect ──────
   let ws: WebSocket | null = null;
@@ -376,8 +383,7 @@ export function createRunnerClient({ baseUrl, dataDir }: { baseUrl: string; data
     resolveApproval: (approvalId, outcome, byUserId) =>
       rpc('/rpc/resolveApproval', { approvalId, outcome, byUserId }),
     statusOf,
-    activityOf: (convId) =>
-      rpc<{ activity: ConversationActivity }>('/rpc/activity', { convId }).then((r) => r.activity),
+    activityOf,
     isLive: (convId) => rpc<{ live: boolean }>('/rpc/isLive', { convId }).then((r) => r.live),
     snapshot: (convId) => rpc<{ events: ConversationEvent[] }>('/rpc/snapshot', { convId }).then((r) => r.events),
     searchableEvents: (convId, since) => rpc<{ events: ConversationEvent[] }>('/rpc/searchableEvents', { convId, since }).then((r) => r.events),

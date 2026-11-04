@@ -12,6 +12,7 @@ import { botsApi, type BotDecision } from '@/lib/bots';
 import { splitAttachmentFooter } from '@/lib/botComposer';
 import { activityLine, BOARD_GROUPS, cleanTaskTitle, taskAnswers, customerThreadPreferred, interleaveDiscussion, rememberCustomerThread, taskPaneHash, tasksApi, type Board, type BoardGroup, type BoardRow, type BotTask, type CustomerThread as CustomerThreadData, type TaskActivity, type TaskEvent } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
+import { whenVisible } from '@/lib/whenVisible';
 
 /**
  * The TASKS view of a bot chat (shared Tasks capability): everything in flight
@@ -51,7 +52,7 @@ export function TasksBoard({ conversationId, taskId = null, onNavigate, compact 
   }, [conversationId]);
   useEffect(() => {
     void refresh();
-    const timer = setInterval(() => void refresh(), 20000);
+    const timer = setInterval(whenVisible(refresh), 20000);
     const onChange = () => void refresh();
     window.addEventListener(CHAT_DECISIONS_CHANGED, onChange);
     return () => { clearInterval(timer); window.removeEventListener(CHAT_DECISIONS_CHANGED, onChange); abort.current?.abort(); };
@@ -135,7 +136,7 @@ export function TaskPane({ conversationId, taskId, onNavigate, onChanged }: { co
   }, [conversationId, taskId]);
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), 4000);
+    const timer = setInterval(whenVisible(load), 4000);
     const onChange = () => void load();
     window.addEventListener(CHAT_DECISIONS_CHANGED, onChange);
     return () => { clearInterval(timer); window.removeEventListener(CHAT_DECISIONS_CHANGED, onChange); };
@@ -279,7 +280,7 @@ export function CustomerThreadSection({ conversationId, taskId, caseKey, bot }: 
   useEffect(() => {
     if (!open) return;
     void load();
-    const timer = setInterval(() => void load(), 30000);
+    const timer = setInterval(whenVisible(load), 30000);
     return () => clearInterval(timer);
   }, [open, load]);
   const toggle = () => { const next = !open; setOpen(next); rememberCustomerThread(next); };

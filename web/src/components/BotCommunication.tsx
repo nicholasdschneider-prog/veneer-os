@@ -7,6 +7,7 @@ import {
   DialogDescription,
 } from './ui/dialog';
 import { requestJson } from '../lib/api';
+import { whenVisible } from '@/lib/whenVisible';
 const root = '/api/bot-communication';
 const post = <T,>(path: string, body: unknown) =>
   requestJson<T>(root + path, { method: 'POST', body: JSON.stringify(body) });
@@ -386,7 +387,7 @@ export function useBotCommunication(conversationId: string) {
           if (active) { setError(e.message); setLoadedConversation(conversationId); }
         });
     void load();
-    const timer = setInterval(() => void load(), 8000);
+    const timer = setInterval(whenVisible(load), 8000);
     return () => {
       active = false;
       clearInterval(timer);

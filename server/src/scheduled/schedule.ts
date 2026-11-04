@@ -66,7 +66,23 @@ export function parseScheduleSpec(json: string): ScheduleSpec {
   return value;
 }
 
-function localParts(date: Date, timeZone: string): { hour: number; minute: number; weekday: number; dateKey: string } {
+type LocalParts = { hour: number; minute: number; weekday: number; dateKey: string };
+/** A schedule scan formats up to 8 days of minutes, for every task, on every
+ * list poll. A minute in a time zone always has the same local parts. */
+const localPartsByMinute = new Map<string, LocalParts>();
+const LOCAL_PARTS_MEMO_MAX = 200_000;
+
+function localParts(date: Date, timeZone: string): LocalParts {
+  const key = `${timeZone}|${Math.floor(date.getTime() / 60_000)}`;
+  const known = localPartsByMinute.get(key);
+  if (known) return known;
+  const parts = formatLocalParts(date, timeZone);
+  if (localPartsByMinute.size >= LOCAL_PARTS_MEMO_MAX) localPartsByMinute.clear();
+  localPartsByMinute.set(key, parts);
+  return parts;
+}
+
+function formatLocalParts(date: Date, timeZone: string): LocalParts {
   let formatter = formatterByTimeZone.get(timeZone);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat('en-US', {

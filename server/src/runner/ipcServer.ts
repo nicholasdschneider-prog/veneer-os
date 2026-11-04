@@ -298,6 +298,10 @@ export function createIpcServer({
         return void sendJson(res, 200, {
           statuses: Object.fromEntries((body.convIds as unknown[]).map(String).map((id) => [id, manager.statusOf(id)])),
         });
+      case '/rpc/activities':
+        return void sendJson(res, 200, {
+          activities: Object.fromEntries((body.convIds as unknown[]).map(String).map((id) => [id, manager.activityOf(id)])),
+        });
       case '/rpc/activity':
         return void sendJson(res, 200, { activity: manager.activityOf(String(body.convId)) });
       case '/rpc/isLive':

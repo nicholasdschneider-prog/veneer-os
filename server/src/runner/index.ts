@@ -6,7 +6,7 @@ import { installTypeOfServiceGuard } from '../net/typeOfServiceGuard.js';
 import { logRunningRelease } from '../release.js';
 import { loadConfig } from '../config.js';
 import { migrateClaudeConfigFile } from '../homes.js';
-import { openDb } from '../db/db.js';
+import { openDb, startBackgroundCheckpoints } from '../db/db.js';
 import { initMediaStore } from '../runtime/media.js';
 import { buildAgentRuntime } from '../runtime/buildAgentRuntime.js';
 import { conversationsForSweep, ensureClaudeTranscriptRetention } from '../runtime/transcriptArchive.js';
@@ -69,6 +69,7 @@ const config = loadConfig();
 // links into both pinned provider profiles before any agent can spawn.
 installPlatformSkills({ sourceDir: config.sourceDir });
 const db = openDb(config.dataDir);
+const stopBackgroundCheckpoints = startBackgroundCheckpoints(db);
 // Runner writes tool-result images (adapter/transcript path); web serves them
 // from the same dataDir/media — shared filesystem, no IPC.
 initMediaStore(config.dataDir);
@@ -262,6 +263,7 @@ const shutdown = createShutdown({
     manager.shutdown();
     doppler.stop();
     clearPidFile();
+    void stopBackgroundCheckpoints();
     db.close();
   },
 });

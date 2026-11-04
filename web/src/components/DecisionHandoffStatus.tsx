@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { decisionHandoffsApi, type DecisionHandoff } from '@/lib/decisionHandoffs';
+import { whenVisible } from '@/lib/whenVisible';
 
 export function DecisionHandoffStatus({ decisionId, className }: { decisionId: string; className?: string }) {
   const [handoffs, setHandoffs] = useState<DecisionHandoff[]>([]);
@@ -11,7 +12,7 @@ export function DecisionHandoffStatus({ decisionId, className }: { decisionId: s
       if (!stopped) { setHandoffs(r.handoffs); setUnavailable(false); }
     }).catch(() => { if (!stopped) { setHandoffs([]); setUnavailable(true); } });
     refresh();
-    const timer = setInterval(refresh, 5000);
+    const timer = setInterval(whenVisible(refresh), 5000);
     return () => { stopped = true; clearInterval(timer); };
   }, [decisionId]);
   if (unavailable) return <p role="status" className={cn("text-xs text-muted-foreground",className)}>Investigation status unavailable. Refresh to try again.</p>;

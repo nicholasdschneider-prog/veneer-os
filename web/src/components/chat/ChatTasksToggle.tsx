@@ -3,6 +3,7 @@ import { ListChecks, MessageSquare } from 'lucide-react';
 import { Button } from '../ui/button';
 import { tasksApi, tasksViewHash, TASKS_VIEW_KEY } from '@/lib/tasks';
 import { CHAT_DECISIONS_CHANGED } from './OpenQuestionsPanel';
+import { whenVisible } from '@/lib/whenVisible';
 
 /** Polls the board count for one chat; shared by the header toggle and the board. */
 export function useTasksCount(conversationId: string, enabled = true): number | null {
@@ -12,7 +13,7 @@ export function useTasksCount(conversationId: string, enabled = true): number | 
     let stop = false;
     const load = () => tasksApi.board(conversationId).then((b) => { if (!stop) setCount(b.needs_you); }).catch(() => {});
     void load();
-    const timer = setInterval(load, 30000);
+    const timer = setInterval(whenVisible(load), 30000);
     window.addEventListener(CHAT_DECISIONS_CHANGED, load);
     return () => { stop = true; clearInterval(timer); window.removeEventListener(CHAT_DECISIONS_CHANGED, load); };
   }, [conversationId, enabled]);

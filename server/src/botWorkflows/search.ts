@@ -37,7 +37,7 @@ const INDEX_BATCH = 200;
  * messages, never its whole history. A document id ignores history namespaces: a
  * session change renames frozen turn ids, but it is still the same message.
  */
-export async function indexConversation(ctx: AppContext, c: ConversationRow) {
+export async function indexConversation(ctx: AppContext, c: Pick<ConversationRow, 'id' | 'last_active_at'>) {
   const progress = ctx.db.prepare('SELECT indexed_activity_at FROM bot_search_progress WHERE conversation_id=?')
     .get(c.id) as { indexed_activity_at: string } | undefined;
   const events = await ctx.manager.searchableEvents(c.id, progress?.indexed_activity_at ?? null);
@@ -85,9 +85,9 @@ export async function indexConversation(ctx: AppContext, c: ConversationRow) {
 export async function tickSearch(ctx: AppContext) {
   for (const c of ctx.db
     .prepare(
-      `SELECT c.* FROM conversations c LEFT JOIN bot_search_progress p ON p.conversation_id=c.id WHERE p.conversation_id IS NULL OR p.indexed_activity_at<c.last_active_at ORDER BY c.last_active_at DESC LIMIT 4`,
+      `SELECT c.id,c.last_active_at FROM conversations c LEFT JOIN bot_search_progress p ON p.conversation_id=c.id WHERE p.conversation_id IS NULL OR p.indexed_activity_at<c.last_active_at ORDER BY c.last_active_at DESC LIMIT 4`,
     )
-    .all() as ConversationRow[]) {
+    .all() as Pick<ConversationRow, 'id' | 'last_active_at'>[]) {
     try {
       await indexConversation(ctx, c);
     } catch {

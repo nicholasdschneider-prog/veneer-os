@@ -42,6 +42,7 @@ import {
   saveChatListFilter,
   type ChatListFilter,
 } from '../lib/chatListFilter';
+import { whenVisible } from '@/lib/whenVisible';
 
 const NO_PENDING_NEW_CHATS: readonly PendingNewChat[] = [];
 
@@ -537,7 +538,7 @@ export function ChatList({
       }
     };
     load();
-    const timer = setInterval(load, 5_000); // list freshness; per-chat is WS-live
+    const timer = setInterval(whenVisible(load), 5_000); // list freshness; per-chat is WS-live
     return () => {
       stop = true;
       clearInterval(timer);

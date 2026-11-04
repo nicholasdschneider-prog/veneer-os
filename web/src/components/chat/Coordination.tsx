@@ -6,6 +6,7 @@ import type { ConversationEvent } from '@/lib/types';
 import { emptyTranscript, reduceEvents, type ChatItem } from '@/lib/transcript';
 import { Markdown } from '../Markdown';
 import { Button } from '../ui/button';
+import { whenVisible } from '@/lib/whenVisible';
 
 export interface CoordinationSummary {
   id: string;
@@ -44,7 +45,7 @@ export function CoordinationActivity({
         });
     setThreads([]);
     void load();
-    const timer = window.setInterval(() => void load(), 8000);
+    const timer = window.setInterval(whenVisible(load), 8000);
     return () => {
       live = false;
       window.clearInterval(timer);

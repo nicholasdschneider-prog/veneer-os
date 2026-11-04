@@ -211,6 +211,7 @@ import {
   extractCitations,
   type Citation,
 } from '../lib/citations';
+import { whenVisible } from '@/lib/whenVisible';
 
 const IS_TOUCH = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 
@@ -2291,7 +2292,7 @@ export function Chat({
         button.disabled=!canSend;
       }
     }).catch(()=>{});
-    void refresh();const timer=setInterval(()=>void refresh(),8000);window.addEventListener('result-reactions-changed',refresh);return()=>{active=false;clearInterval(timer);window.removeEventListener('result-reactions-changed',refresh);};
+    void refresh();const timer=setInterval(whenVisible(refresh),8000);window.addEventListener('result-reactions-changed',refresh);return()=>{active=false;clearInterval(timer);window.removeEventListener('result-reactions-changed',refresh);};
   },[conversationId,isNew,items.length,threadReplies.replies.length,canSend]);
 
   const liveItems = useMemo(()=>groupActivityRuns(items.slice(frozenLen)),[items,frozenLen]);

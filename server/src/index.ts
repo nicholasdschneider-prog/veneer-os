@@ -20,7 +20,7 @@ import { logRunningRelease, runningRelease } from './release.js';
 import { probeRunnerRpc } from './runner/rpcProbe.js';
 import { loadConfig, warnIfDevIdentity } from './config.js';
 import { migrateClaudeConfigFile } from './homes.js';
-import { openDb } from './db/db.js';
+import { openDb, startBackgroundCheckpoints } from './db/db.js';
 import {
   createIdentityResolver,
   type Identity,
@@ -81,6 +81,7 @@ try {
 const config = loadConfig();
 warnIfDevIdentity(config);
 const db = openDb(config.dataDir);
+const stopBackgroundCheckpoints = startBackgroundCheckpoints(db);
 // Tool-result images (screenshots etc.) land here; served at GET /api/media/:id.
 initMediaStore(config.dataDir);
 
@@ -337,6 +338,7 @@ const shutdown = createShutdown({
     memoryProvisioner.stop();
       pageExpiry.close();
     clearPidFile();
+    void stopBackgroundCheckpoints();
     db.close();
   },
 });

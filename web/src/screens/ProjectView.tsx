@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ConversationList, getConversationListPagination } from '../components/ConversationList';
 import { EditProjectDialog } from '../components/EditProjectDialog';
 import { BuildQueue } from '../components/BuildQueue';
+import { whenVisible } from '@/lib/whenVisible';
 
 export function ProjectView({
   projectId,
@@ -57,7 +58,7 @@ export function ProjectView({
       }).catch(() => undefined);
     };
     load();
-    const timer = setInterval(load, 5_000);
+    const timer = setInterval(whenVisible(load), 5_000);
     return () => {
       stop = true;
       clearInterval(timer);

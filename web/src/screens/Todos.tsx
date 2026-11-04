@@ -45,6 +45,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { whenVisible } from '@/lib/whenVisible';
 
 // The implicit, always-first column for todos with no category (categoryId null).
 const INBOX_KEY = '__inbox__';
@@ -130,7 +131,7 @@ export function Todos({
 
   useEffect(() => {
     load();
-    const timer = setInterval(load, 5_000);
+    const timer = setInterval(whenVisible(load), 5_000);
     return () => clearInterval(timer);
   }, [load]);
 

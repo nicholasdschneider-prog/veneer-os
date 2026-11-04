@@ -65,6 +65,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { whenVisible } from '@/lib/whenVisible';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DEFAULT_SCHEDULE_TIME_ZONE = 'America/New_York';
@@ -223,7 +224,7 @@ export function Scheduled({
       if (active) load();
     };
     refresh();
-    const timer = window.setInterval(refresh, 5_000);
+    const timer = window.setInterval(whenVisible(refresh), 5_000);
     return () => {
       active = false;
       window.clearInterval(timer);

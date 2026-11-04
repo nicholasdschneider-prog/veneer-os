@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { botsApi } from '@/lib/bots';
 import { useBotGroups } from '@/lib/botGroups';
 import { isPeopleConversation } from '@/lib/teamRooms';
+import { whenVisible } from '@/lib/whenVisible';
 
 export function useChatUnread(restricted = false) {
   const { groups } = useBotGroups('', restricted);
@@ -17,7 +18,7 @@ export function useChatUnread(restricted = false) {
       }).catch(() => {});
     };
     refresh();
-    const timer = setInterval(refresh, 5000);
+    const timer = setInterval(whenVisible(refresh), 5000);
     window.addEventListener(BOT_PREFERENCES_CHANGED, refresh);
     document.addEventListener('visibilitychange', refresh);
     return () => {

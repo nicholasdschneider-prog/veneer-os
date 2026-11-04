@@ -18,6 +18,7 @@ import {
   type HuddleSummary,
 } from '@/lib/huddles';
 import { cn } from '@/lib/utils';
+import { whenVisible } from '@/lib/whenVisible';
 
 const field =
   'w-full rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -498,7 +499,7 @@ function HuddleDetail({ id, onNavigate }: { id: string; onNavigate: (hash: strin
   useEffect(() => {
     lastSeq.current = 0;
     void refresh();
-    const timer = setInterval(() => void refresh(), 5000);
+    const timer = setInterval(whenVisible(refresh), 5000);
     const onFocus = () => void refresh();
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
@@ -588,7 +589,7 @@ export function Huddles({ huddleId, onNavigate }: { huddleId?: string; onNavigat
       void botsApi.list('all', business).then((r) => active && setTeams(r.teams ?? [])).catch(() => {});
     };
     refresh();
-    const timer = setInterval(refresh, 5000);
+    const timer = setInterval(whenVisible(refresh), 5000);
     return () => {
       active = false;
       clearInterval(timer);

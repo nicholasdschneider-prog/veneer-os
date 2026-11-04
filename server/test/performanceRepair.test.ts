@@ -4,7 +4,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { migrate } from '../src/db/migrate.js';
-import { openDb } from '../src/db/db.js';
+import { openDb, startBackgroundCheckpoints } from '../src/db/db.js';
+import { nextOccurrence } from '../src/scheduled/schedule.js';
 import { indexConversation } from '../src/botWorkflows/search.js';
 import { namespaceHistory, originalNativeId } from '../src/runtime/providerSwitch.js';
 import { HistoryPages } from '../src/runtime/historyPages.js';
@@ -165,5 +166,45 @@ describe('hot path indexes', () => {
     const db = memoryDb();
     expect(plan(db, "SELECT conversation_id FROM coordination_lanes WHERE owner_id='c'")).toContain('idx_coordination_lanes_owner');
     expect(plan(db, "SELECT routine_id FROM bot_routine_deliveries WHERE wakeup_id='w'")).toContain('idx_bot_routine_deliveries_wakeup');
+  });
+});
+
+describe('background checkpoints', () => {
+  it('checkpoints off the main thread, and returns to inline checkpoints when stopped', async () => {
+    const dir = tmp();
+    const db = openDb(dir);
+    db.exec('CREATE TABLE t(x)');
+    const stop = startBackgroundCheckpoints(db, { intervalMs: 20 });
+    try {
+      for (let i = 0; i < 100 && db.pragma('wal_autocheckpoint', { simple: true }) !== 0; i += 1) await new Promise((r) => setTimeout(r, 20));
+      expect(db.pragma('wal_autocheckpoint', { simple: true })).toBe(0);
+      const main = db.pragma('page_count', { simple: true }) as number;
+      db.prepare('INSERT INTO t VALUES (?)').run('x'.repeat(200_000));
+      await new Promise((r) => setTimeout(r, 150));
+      // The worker moved the new pages into the main database file.
+      const size = fs.statSync(path.join(dir, 'veneer-pro.db')).size;
+      expect(size).toBeGreaterThan(main * 4096 + 150_000);
+    } finally {
+      await stop();
+    }
+    expect(db.pragma('wal_autocheckpoint', { simple: true })).toBe(1000);
+    db.close();
+  });
+});
+
+describe('schedule scan memo', () => {
+  it('keeps exact local-time results across a daylight-saving change and between time zones', () => {
+    const spec = { type: 'daily', time: '02:30' } as const;
+    const zone = 'America/Indiana/Indianapolis';
+    // Spring forward 2027-03-14: 02:30 does not exist, so the run lands on the next day.
+    const after = new Date('2027-03-13T12:00:00.000Z');
+    for (let pass = 0; pass < 2; pass += 1) {
+      expect(nextOccurrence(spec, zone, after)?.toISOString()).toBe('2027-03-15T06:30:00.000Z');
+      expect(nextOccurrence(spec, 'UTC', after)?.toISOString()).toBe('2027-03-14T02:30:00.000Z');
+    }
+    const weekly = { type: 'weekly', weekday: 1, time: '09:00' } as const;
+    const memoized = nextOccurrence(weekly, zone, new Date('2026-11-04T18:00:00.000Z'));
+    expect(nextOccurrence(weekly, zone, new Date('2026-11-04T18:00:30.000Z'))?.getTime()).toBe(memoized?.getTime());
+    expect(memoized?.toISOString()).toBe('2026-11-09T14:00:00.000Z');
   });
 });

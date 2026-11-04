@@ -1362,6 +1362,14 @@ export function createApiRouter(ctx: AppContext): Router {
     })().catch(() => res.status(502).json({ ok: false, error: 'Memory could not be forgotten right now.' }));
   });
 
+  // Every chat row carries its fixed instruction snapshot (about 4 KB each). The
+  // list polled every few seconds never shows it, and reading it means disk I/O.
+  let listColumns: string | null = null;
+  const conversationListColumns = () => (listColumns ??= (db.pragma('table_info(conversations)') as { name: string }[])
+    .filter(({ name }) => name !== 'instruction_snapshot_json')
+    .map(({ name }) => `conversations."${name}"`)
+    .join(', '));
+
   router.get('/conversations', (req, res) => {
     void (async () => {
       applyChatAutoArchive(req.user!.id);
@@ -1419,7 +1427,7 @@ export function createApiRouter(ctx: AppContext): Router {
           : 'last_active_at DESC, rowid DESC';
       const rows = db
         .prepare(
-          `SELECT conversations.*,
+          `SELECT ${conversationListColumns()},
                   EXISTS (
                     SELECT 1 FROM conversation_wakeups wake
                     WHERE wake.conversation_id = conversations.id AND wake.status = 'pending'
@@ -1427,9 +1435,9 @@ export function createApiRouter(ctx: AppContext): Router {
              FROM conversations WHERE ${where.join(' AND ')}
            ORDER BY (pin_order IS NULL), pin_order, ${chronologicalOrder}`,
         )
-        .all(...params) as Array<ConversationRow & { has_pending_wakeup: 0 | 1 }>;
+        .all(...params) as Array<Omit<ConversationRow, 'instruction_snapshot_json'> & { has_pending_wakeup: 0 | 1 }>;
       const conversations = await Promise.all(
-        rows.filter(row => sameBusiness(db, req.agentConversationId, row)).map((row) => conversationView(ctx, row, req.user!, row.has_pending_wakeup === 1)),
+        (rows as Array<ConversationRow & { has_pending_wakeup: 0 | 1 }>).filter(row => sameBusiness(db, req.agentConversationId, row)).map((row) => conversationView(ctx, row, req.user!, row.has_pending_wakeup === 1)),
       );
       res.json({ ok: true, conversations });
     })().catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
