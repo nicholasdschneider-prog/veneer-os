@@ -147,3 +147,23 @@ describe('queued wake lookups', () => {
     expect(plan.map((row) => row.detail).join(' ')).not.toMatch(/SCAN/);
   });
 });
+
+describe('hot path indexes', () => {
+  const plan = (db: Database.Database, sql: string) =>
+    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[]).map((row) => row.detail).join(' | ');
+
+  it('reads one chat’s browser events without scanning the audit table', () => {
+    const db = memoryDb();
+    expect(plan(db, "SELECT MAX(id) AS id FROM veneer_browser_audit WHERE client_scope='s' AND conversation_id='c' AND action='clone.created'"))
+      .toContain('idx_veneer_browser_audit_conversation_action');
+    const events = plan(db, "SELECT action, metadata_json, created_at FROM veneer_browser_audit WHERE client_scope='s' AND conversation_id='c' AND id>1 ORDER BY id");
+    expect(events).toContain('idx_veneer_browser_audit_conversation');
+    expect(events).not.toContain('TEMP B-TREE');
+  });
+
+  it('finds a bot’s lanes and a wake’s routine delivery by index', () => {
+    const db = memoryDb();
+    expect(plan(db, "SELECT conversation_id FROM coordination_lanes WHERE owner_id='c'")).toContain('idx_coordination_lanes_owner');
+    expect(plan(db, "SELECT routine_id FROM bot_routine_deliveries WHERE wakeup_id='w'")).toContain('idx_bot_routine_deliveries_wakeup');
+  });
+});

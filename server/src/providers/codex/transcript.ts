@@ -249,7 +249,13 @@ async function backfillConnectorDetails(
   }
   if (!connectorToolIds.size && !agentMessageToolIds.size) return events;
 
-  const records = await readNativeConnectorRecords(nativeSessionId);
+  // New rows carry their own details. Only a historical row is worth parsing up
+  // to 8 MB of native rollout, on every transcript read of this chat.
+  const needsNative = events.some((event) => event.type === 'tool_started' && (
+    (connectorToolIds.has(event.toolId) && !event.connectorDetails)
+    || (agentMessageToolIds.has(event.toolId) && !event.agentMessageDetails)
+  ));
+  const records = needsNative ? await readNativeConnectorRecords(nativeSessionId) : new Map<string, NativeConnectorRecord>();
   return events.map((event) => {
     if (event.type !== 'tool_started' && event.type !== 'tool_finished') return event;
     if (!connectorToolIds.has(event.toolId) && !agentMessageToolIds.has(event.toolId)) return event;

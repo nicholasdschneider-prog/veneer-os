@@ -95,8 +95,9 @@ describe('token governor context rotation', () => {
     expect(await texts(null)).toEqual(expect.arrayContaining(['Understood, 100122410 is on hold until Friday.']));
     expect((await manager.searchableEvents(row(), null)).every((e) => e.type === 'turn_started' || e.type === 'text_final')).toBe(true);
     expect(await texts('2020-01-01 00:00:00')).toContain('Understood, 100122410 is on hold until Friday.');
-    // After the rotation has been indexed, its 70 MB row is not touched.
-    db.prepare("UPDATE conversation_provider_context SET history_json = 'not json', updated_at = '2020-01-01 00:00:00'").run();
+    // After the rotation has been indexed, its 70 MB row is not touched, even minutes later.
+    const minutesAgo = new Date(Date.now() - 5 * 60_000).toISOString().replace('T', ' ').slice(0, 19);
+    db.prepare("UPDATE conversation_provider_context SET history_json = 'not json', updated_at = ?").run(minutesAgo);
     expect(await texts(new Date().toISOString())).toEqual([]);
     await expect(manager.snapshot(row())).rejects.toThrow();
   });

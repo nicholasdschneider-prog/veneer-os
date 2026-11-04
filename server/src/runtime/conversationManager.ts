@@ -3008,10 +3008,13 @@ export function createConversationManager({
       return readSnapshot(conv, true);
     },
     async searchableEvents(conv, since) {
-      const cutoff = since ? parseActivityTime(since) - SEARCH_REINDEX_MARGIN_MS : Number.NEGATIVE_INFINITY;
-      // Frozen history only holds news when the session changed after the last index pass.
+      const sinceMs = since ? parseActivityTime(since) : Number.NEGATIVE_INFINITY;
+      const cutoff = sinceMs - SEARCH_REINDEX_MARGIN_MS;
+      // Frozen history only holds news when the session changed after the last
+      // index pass. No margin here: that row can be 80 MB, and every pass for an
+      // hour after a rotation would otherwise load it again.
       const continuation = providerContinuation(conv.id);
-      const includeFrozen = Boolean(continuation) && !(parseActivityTime(continuation!.updated_at) < cutoff);
+      const includeFrozen = Boolean(continuation) && !(parseActivityTime(continuation!.updated_at) < sinceMs);
       const events = await readSnapshot(conv, includeFrozen);
       return events.filter((event) =>
         (event.type === 'turn_started' || event.type === 'text_final') && !(Date.parse(event.at) < cutoff));
