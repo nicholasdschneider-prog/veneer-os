@@ -9,7 +9,7 @@ import { orderReference, shopifyOrderSchema } from './orderReference.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
 import { canViewConversation, canSendToConversation, sameBusiness } from '../conversations/access.js';
 import { listReadScope } from './listReadScope.js';
-import { buildPassNotice, mintDecisionBuildPass } from '../buildQueue/buildApproval.js';
+import { buildPassNotice, isTechnicalConversation, mintDecisionBuildPass } from '../buildQueue/buildApproval.js';
 
 const text = z.string().trim().min(1).max(12000);
 export const evidenceSchema = z
@@ -365,6 +365,27 @@ export function createBotService(source: Database.Database) {
         .get(d.conversation_id)
     )
       throw new BotError(409, 'Bot registration is inactive');
+  }
+  /** Why a chat with no active registration cannot raise a card, and the routes
+   * that do work from it. Names only bots send_message would accept from this
+   * chat; surface_to_human also needs a registration, so it is never offered. */
+  function unregisteredRaiseError(actor: Actor, c: ConversationRow) {
+    const bots = (db.prepare(`SELECT t.*, b.name FROM bot_registrations b JOIN conversations t ON t.id=b.conversation_id
+      WHERE b.active=1 AND t.archived=0 AND t.id<>? ORDER BY t.project_id IS ? DESC, b.name`).all(c.id, c.project_id) as (ConversationRow & { name: string })[])
+      .filter(t => canSendToConversation(actor.user, t, db) && sameBusiness(db, c.id, t) && !isTechnicalConversation(db, t.id))
+      .slice(0, 12);
+    const route = bots.length
+      ? `Send the question with its evidence by send_message to the registered bot that owns this area: ${bots.map(b => `${b.name} (${b.id})`).join(', ')}. That bot raises the card under its own authority, which grants neither chat anything new, and replies in the coordination thread (read_coordination).`
+      : 'No registered bot is reachable from this chat, so state the question in your final reply.';
+    return new BotError(409, `Bot registration is inactive: this chat is not a registered bot, so no card was created and no human has seen this question. ${route} If your human is reading this chat, ask_user works here instead.`);
+  }
+  function raiseChat(actor: Actor) {
+    if (!actor.conversationId)
+      throw new BotError(403, 'Only a registered bot can raise a decision');
+    const c = chat(actor, actor.conversationId);
+    if (!db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(c.id))
+      throw unregisteredRaiseError(actor, c);
+    return c;
   }
   function human(actor: Actor) {
     if (actor.conversationId)
@@ -851,14 +872,14 @@ export function createBotService(source: Database.Database) {
       });
       return { read_only: true, questions };
     },
+    assertCanRaise(actor: Actor) {
+      raiseChat(actor);
+    },
     raise(
       actor: Actor,
       input: { source_key: string; proposal_key: string; proposal: Proposal },
     ) {
-      if (!actor.conversationId)
-        throw new BotError(403, 'Only a registered bot can raise a decision');
-      const c = chat(actor, actor.conversationId);
-      owner(actor, { conversation_id: c.id } as Decision);
+      const c = raiseChat(actor);
       validateProposal(actor, input.proposal, c.id);
       return db.transaction(() => {
         const existing = db

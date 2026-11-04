@@ -240,6 +240,8 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   router.post(
     '/decisions',
     run(async (req, res) => {
+      // Refuse an unregistered chat before validating or fetching evidence for a card it cannot raise.
+      if (req.agentConversationId) s.assertCanRaise(actor(req));
       const p = z
         .object({
           source_key: key,
