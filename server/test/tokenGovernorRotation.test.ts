@@ -82,6 +82,25 @@ describe('token governor context rotation', () => {
       .toEqual({ origin: 'human', input_tokens: 120_000, cached_input_tokens: 80_000, model_calls: 3, context_tokens: 40_000 });
   });
 
+  it('serves the search index only new messages, reading frozen history only when the session changed since', async () => {
+    const { db, manager, row, runs } = setup(212_000);
+    manager.postMessage(row(), 'Check the replies');
+    await waitForRun(runs);
+    const run = runs[0]!;
+    run.emit({ type: 'turn_done', turnId: run.spec.turnId, outcome: 'completed' });
+    run.finish(); await flush();
+    const texts = async (since: string | null) => (await manager.searchableEvents(row(), since))
+      .map((e) => (e.type === 'text_final' ? e.markdown : e.type === 'turn_started' ? e.text : e.type));
+    // First pass and a pass from before the rotation see the frozen messages, and only messages.
+    expect(await texts(null)).toEqual(expect.arrayContaining(['Understood, 100122410 is on hold until Friday.']));
+    expect((await manager.searchableEvents(row(), null)).every((e) => e.type === 'turn_started' || e.type === 'text_final')).toBe(true);
+    expect(await texts('2020-01-01 00:00:00')).toContain('Understood, 100122410 is on hold until Friday.');
+    // After the rotation has been indexed, its 70 MB row is not touched.
+    db.prepare("UPDATE conversation_provider_context SET history_json = 'not json', updated_at = '2020-01-01 00:00:00'").run();
+    expect(await texts(new Date().toISOString())).toEqual([]);
+    await expect(manager.snapshot(row())).rejects.toThrow();
+  });
+
   it('keeps the session when the chat is under the threshold or the switch is off', async () => {
     const { db, manager, row, runs } = setup(90_000);
     manager.postMessage(row(), 'Small turn');

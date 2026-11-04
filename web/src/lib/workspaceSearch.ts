@@ -13,13 +13,12 @@ export function workspaceSearchFocusKey(
       typeof focus.at !== 'string'
     )
       return null;
+    const sameMessage = items.filter((item) => item.kind === focus.role && item.at === focus.at);
+    // A session change renames frozen turn ids, so a link made earlier can only
+    // fall back to its role and time, and only when that is unambiguous.
     return (
-      items.find(
-        (item) =>
-          item.kind === focus.role &&
-          item.turnId === focus.turn &&
-          item.at === focus.at,
-      )?.key ?? null
+      sameMessage.find((item) => item.turnId === focus.turn)?.key ??
+      (sameMessage.length === 1 ? sameMessage[0]!.key : null)
     );
   } catch {
     return null;

@@ -12,6 +12,7 @@ export function historyRecordText(event:ConversationEvent){
  return fields.filter(k=>typeof e[k]==='string').map(k=>`${k}:\n${e[k]}`).join('\n\n');
 }
 export const HISTORY_EVENTS=300, HISTORY_BYTES=256*1024, HISTORY_EVENT_BYTES=64*1024;
+const OPEN_YIELD_EVENTS=2000;
 export type HistoryPage={events:ConversationEvent[];history:{token:string;before:number;hasOlder:boolean;total:number;nextSequence:number;streamRevision:number;streamEpoch:string;oversized:number[]}};
 type Entry={offset:number;bytes:number;at:number;dependencies:number[]};
 type Archive={conversation:string;file:string;entries:Entry[];created:number;nextSequence:number;revision:number;epoch:string};
@@ -22,11 +23,29 @@ export class HistoryPages {
  private archives=new Map<string,Archive>();
  constructor(){fs.chmodSync(this.root,0o700);}
  open(conversation:string,events:ConversationEvent[],revision=0,epoch="fixture"):HistoryPage {
+  const build=this.begin();
+  try{for(let index=0;index<events.length;index++)build.add(events[index]!,index);build.flush();}finally{build.close();}
+  return this.finish(conversation,build,revision,epoch);
+ }
+ /** Same as open, yielding the event loop so a very long chat cannot freeze the service while it opens. */
+ async openAsync(conversation:string,events:ConversationEvent[],revision=0,epoch="fixture"):Promise<HistoryPage> {
+  const build=this.begin();
+  try{for(let index=0;index<events.length;index++){build.add(events[index]!,index);if((index+1)%OPEN_YIELD_EVENTS===0){build.flush();await new Promise(resolve=>setImmediate(resolve));}}build.flush();}finally{build.close();}
+  return this.finish(conversation,build,revision,epoch);
+ }
+ private finish(conversation:string,build:ReturnType<HistoryPages['begin']>,revision:number,epoch:string):HistoryPage {
+  this.archives.set(build.token,{conversation,file:build.file,entries:build.entries,created:Date.now(),nextSequence:build.nextSequence(),revision,epoch});
+  return this.page(conversation,build.token,build.entries.length,true);
+ }
+ private begin() {
   for(const [token,a] of this.archives) if(Date.now()-a.created>3600000 || this.archives.size>=16){fs.rmSync(a.file,{force:true});this.archives.delete(token);}
   const token=crypto.randomUUID(),file=path.join(this.root,token),fd=fs.openSync(file,'wx',0o600),entries:Entry[]=[];
-  let offset=0,seq=0,turn=-1,lastNotice:string|null=null;
+  let offset=0,seq=0,turn=-1,lastNotice:string|null=null,pending:string[]=[];
   const starts=new Map<string,number>();
-  try {events.forEach((event,index)=>{
+  return {token,file,entries,nextSequence:()=>seq,
+   flush(){if(pending.length){fs.writeSync(fd,pending.join(''));pending=[];}},
+   close(){fs.closeSync(fd);},
+   add(event:ConversationEvent,index:number){
    const e=event as Record<string,unknown>,deps:number[]=[];
    if(e.type==='turn_started')turn=index;
    else if(turn>=0)deps.push(turn);
@@ -35,7 +54,7 @@ export class HistoryPages {
    else if(key && starts.has(key))deps.push(starts.get(key)!);
    const item={...event,historyIndex:index,displaySequence:seq};
    const json=JSON.stringify(item)+'\n',bytes=Buffer.byteLength(json);
-   fs.writeSync(fd,json);entries.push({offset,bytes,at:typeof e.at==='string'?Date.parse(e.at):NaN,dependencies:[...new Set(deps)]});offset+=bytes;
+   pending.push(json);entries.push({offset,bytes,at:typeof e.at==='string'?Date.parse(e.at):NaN,dependencies:[...new Set(deps)]});offset+=bytes;
    switch(e.type){
     case 'turn_started':if(!(typeof e.messageId==='number'&&Number.isSafeInteger(e.messageId)&&e.messageId>0))seq++;lastNotice=null;break;
     case 'text_final':case 'error':seq++;lastNotice=null;break;
@@ -45,9 +64,7 @@ export class HistoryPages {
     case 'approval_requested':case 'question_asked':if(e.requestId==null)seq++;lastNotice=null;break;
     case 'subagent_started':lastNotice=null;break;
    }
-  });}finally{fs.closeSync(fd);}
-  this.archives.set(token,{conversation,file,entries,created:Date.now(),nextSequence:seq,revision,epoch});
-  return this.page(conversation,token,entries.length,true);
+  }};
  }
  private archive(conversation:string,token:string){const a=this.archives.get(token);if(!a||a.conversation!==conversation)throw new Error('History window expired. Reload this conversation to reopen its preserved history.');return a;}
  private read(a:Archive,index:number):ConversationEvent {const entry=a.entries[index];if(!entry)throw new Error('History record not found');const fd=fs.openSync(a.file,'r');try{const b=Buffer.alloc(entry.bytes);fs.readSync(fd,b,0,b.length,entry.offset);return JSON.parse(b.toString());}finally{fs.closeSync(fd);}}

@@ -305,6 +305,10 @@ if (config.lanViewer) {
 
 const clearPidFile = writePidFile(config.dataDir, 'veneer-pro');
 
+// cloudflared keeps idle origin connections for 90 s. Closing ours first (Node
+// defaults to 5 s) races its next request into a connection reset.
+server.keepAliveTimeout = 95_000;
+server.headersTimeout = 100_000;
 server.listen(config.port, '127.0.0.1', () => {
   console.log(`[veneer-pro] listening on http://127.0.0.1:${config.port} (identity: ${config.identity}, data: ${config.dataDir})`);
   // The runner owns turn execution and resumes interrupted turns at its own boot

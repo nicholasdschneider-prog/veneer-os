@@ -8,6 +8,7 @@ import {
 } from '../conversations/access.js';
 import { sanitizeMemoryText } from '../memory/capture.js';
 import { queueNotification } from './notifications.js';
+import { originalNativeId } from '../runtime/providerSwitch.js';
 
 export function indexDocument(
   ctx: AppContext,
@@ -22,21 +23,33 @@ export function indexDocument(
   if (!clean.trim()) return;
   ctx.db
     .prepare(
-      `INSERT INTO bot_search_documents(id,conversation_id,kind,body,at,href) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body,at=excluded.at,href=excluded.href`,
+      `INSERT INTO bot_search_documents(id,conversation_id,kind,body,at,href) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body,at=excluded.at,href=excluded.href
+       WHERE body IS NOT excluded.body OR at IS NOT excluded.at OR href IS NOT excluded.href`,
     )
     .run(id, c, kind, clean, at, href);
 }
+/** Writes per transaction, so a large backfill never holds the write lock for long. */
+const INDEX_BATCH = 200;
+
+/**
+ * Index what is new in a chat. The write lock and the runner's event loop are
+ * shared with every bot and every open page, so an active chat must cost its new
+ * messages, never its whole history. A document id ignores history namespaces: a
+ * session change renames frozen turn ids, but it is still the same message.
+ */
 export async function indexConversation(ctx: AppContext, c: ConversationRow) {
-  const events = await ctx.manager.snapshot(c.id);
-  ctx.db.transaction(() => {
-    for (const e of events) {
+  const progress = ctx.db.prepare('SELECT indexed_activity_at FROM bot_search_progress WHERE conversation_id=?')
+    .get(c.id) as { indexed_activity_at: string } | undefined;
+  const events = await ctx.manager.searchableEvents(c.id, progress?.indexed_activity_at ?? null);
+  const writeBatch = ctx.db.transaction((batch: typeof events) => {
+    for (const e of batch) {
       if (e.type !== 'turn_started' && e.type !== 'text_final') continue;
       const role = e.type === 'text_final' ? 'assistant' : 'user';
       const text = e.type === 'text_final' ? e.markdown : (e.text ?? '');
       const anchor = JSON.stringify({ turn: e.turnId, role, at: e.at });
       const id = crypto
         .createHash('sha256')
-        .update(c.id + anchor + text)
+        .update(c.id + JSON.stringify({ turn: originalNativeId(e.turnId), role, at: e.at }) + text)
         .digest('hex');
       indexDocument(
         ctx,
@@ -51,18 +64,23 @@ export async function indexConversation(ctx: AppContext, c: ConversationRow) {
         queueNotification(
           ctx,
           c.id,
-          `turn:${c.id}:${e.turnId}`,
+          `turn:${c.id}:${originalNativeId(e.turnId)}`,
           'completed',
           `#/chat/${c.id}`,
           e.at,
         );
     }
-    ctx.db
-      .prepare(
-        'INSERT INTO bot_search_progress(conversation_id,indexed_activity_at) VALUES(?,?) ON CONFLICT(conversation_id) DO UPDATE SET indexed_activity_at=excluded.indexed_activity_at',
-      )
-      .run(c.id, c.last_active_at);
-  })();
+  });
+  for (let i = 0; i < events.length; i += INDEX_BATCH) {
+    writeBatch(events.slice(i, i + INDEX_BATCH));
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  // Last, so an interrupted pass is simply read again.
+  ctx.db
+    .prepare(
+      'INSERT INTO bot_search_progress(conversation_id,indexed_activity_at) VALUES(?,?) ON CONFLICT(conversation_id) DO UPDATE SET indexed_activity_at=excluded.indexed_activity_at',
+    )
+    .run(c.id, c.last_active_at);
 }
 export async function tickSearch(ctx: AppContext) {
   for (const c of ctx.db

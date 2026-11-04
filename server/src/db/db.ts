@@ -19,8 +19,26 @@ export function openDb(dataDir: string, migrationsDir: string = MIGRATIONS_DIR):
   db.pragma('busy_timeout = 5000');
   enableWal(db);
   db.pragma('foreign_keys = ON');
+  preferImmediateTransactions(db);
   migrate(db, migrationsDir);
   return db;
+}
+
+/**
+ * Every transaction takes the write lock up front. A deferred transaction that
+ * reads and then writes cannot upgrade once another service has committed:
+ * SQLite fails it at once with "database is locked" (SQLITE_BUSY_SNAPSHOT), and
+ * busy_timeout does not apply. BEGIN IMMEDIATE waits its turn instead. `.deferred`
+ * stays available for a read-only transaction, and nesting still uses savepoints.
+ */
+export function preferImmediateTransactions(db: Database.Database): void {
+  const original = db.transaction.bind(db);
+  db.transaction = ((fn: (...args: unknown[]) => unknown) => {
+    const tx = original(fn);
+    return Object.assign((...args: unknown[]) => tx.immediate(...args), {
+      default: tx.immediate, deferred: tx.deferred, immediate: tx.immediate, exclusive: tx.exclusive,
+    });
+  }) as typeof db.transaction;
 }
 
 /**

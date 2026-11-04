@@ -294,6 +294,10 @@ export function createIpcServer({
         );
       case '/rpc/status':
         return void sendJson(res, 200, { status: manager.statusOf(String(body.convId)) });
+      case '/rpc/statuses':
+        return void sendJson(res, 200, {
+          statuses: Object.fromEntries((body.convIds as unknown[]).map(String).map((id) => [id, manager.statusOf(id)])),
+        });
       case '/rpc/activity':
         return void sendJson(res, 200, { activity: manager.activityOf(String(body.convId)) });
       case '/rpc/isLive':
@@ -330,6 +334,11 @@ export function createIpcServer({
       case '/rpc/historyRecord': {
         const conv=readConv(body.convId);if(!conv)return void sendJson(res,404,{error:'conversation not found'});
         return void sendJson(res,200,manager.historyRecord(conv,String(body.token),Number(body.index)));
+      }
+      case '/rpc/searchableEvents': {
+        const conv = readConv(body.convId);
+        if (!conv) return void sendJson(res, 404, { error: 'conversation not found' });
+        return void sendJson(res, 200, { events: await manager.searchableEvents(conv, typeof body.since === 'string' ? body.since : null) });
       }
       case '/rpc/snapshot': {
         const conv = readConv(body.convId);

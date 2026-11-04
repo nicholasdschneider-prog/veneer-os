@@ -537,7 +537,7 @@ export function resultReplyWake(db: Database.Database, wakeupId: string) {
 /** Recheck access when a durable fallback begins, including after a restart. */
 export function queuedResultReplyWake(db: Database.Database, conversationId: string, messageId: number) {
   return db.prepare(`SELECT w.* FROM hub_inbound_messages h JOIN conversation_wakeups w
-    ON h.idempotency_key='wakeup:' || w.id AND h.source_kind='wakeup'
+    ON w.id=substr(h.idempotency_key, 8) AND h.source_kind='wakeup'
     WHERE h.conversation_id=? AND h.message_id=? AND w.wake_key LIKE 'message-thread:%'`)
     .get(conversationId, messageId) as ConversationWakeupRow | undefined;
 }

@@ -82,6 +82,12 @@ const USER_DENY_MESSAGE = 'The user declined this action. Continue without it an
  * for the fast case, not a delivery test.
  */
 const STEER_ACK_WAIT_MS = 5_000;
+/** Re-read this far behind the last index pass, so clock skew cannot drop a message. */
+const SEARCH_REINDEX_MARGIN_MS = 60 * 60_000;
+/** conversations.last_active_at and context timestamps are SQLite UTC text. */
+function parseActivityTime(value: string): number {
+  return Date.parse(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`);
+}
 
 function messageOriginJson(origin: MessageOrigin | undefined): string | null {
   return origin ? JSON.stringify(origin) : null;
@@ -290,6 +296,8 @@ export interface ConversationManager {
    * current turn's user message — and any events streamed before subscribe.
    */
   snapshot(conv: ConversationRow): Promise<ConversationEvent[]>;
+  /** Messages and replies for the search index, newer than `since` when given. */
+  searchableEvents(conv: ConversationRow, since: string | null): Promise<ConversationEvent[]>;
   historyPage(conv:ConversationRow,token?:string,before?:number):Promise<HistoryPage>;
   historyRecord(conv:ConversationRow,token:string,index:number):ConversationEvent;
   switchProvider(conv: ConversationRow, selection: ModelSelection): Promise<SwitchProviderResult>;
@@ -795,10 +803,11 @@ export function createConversationManager({
   const updateAutoTitleStmt = db.prepare('UPDATE conversations SET title = ? WHERE id = ? AND title_auto = 1');
   const updateModelStmt = db.prepare(`UPDATE conversations SET last_answered_model = ?, last_answered_provider = ?
     WHERE id = ? AND provider = ? AND native_session_id = ?`);
-  const providerContextStmt = db.prepare('SELECT * FROM conversation_provider_context WHERE conversation_id = ?');
-  const providerContext = (id: string) => providerContextStmt.get(id) as {
-    history_json: string; files_json: string; handoff: string; pending: number;
-  } | undefined;
+  // history_json can reach tens of megabytes; only a transcript read should load it.
+  const providerContinuationStmt = db.prepare('SELECT handoff, pending, updated_at FROM conversation_provider_context WHERE conversation_id = ?');
+  const providerContinuation = (id: string) => providerContinuationStmt.get(id) as { handoff: string; pending: number; updated_at: string } | undefined;
+  const providerFilesStmt = db.prepare('SELECT files_json FROM conversation_provider_context WHERE conversation_id = ?');
+  const providerHistoryStmt = db.prepare('SELECT history_json FROM conversation_provider_context WHERE conversation_id = ?');
   const updateContextTokensStmt = db.prepare('UPDATE conversations SET last_input_tokens = ? WHERE id = ?');
   const updateNativeSessionIdStmt = db.prepare('UPDATE conversations SET native_session_id = ? WHERE id = ?');
   const updateProviderInstructionHashStmt = db.prepare(
@@ -1446,11 +1455,48 @@ export function createConversationManager({
   }
 
   const queuedWakeKeyStmt = db.prepare(
-    `SELECT w.wake_key FROM hub_inbound_messages h JOIN conversation_wakeups w ON h.idempotency_key = 'wakeup:' || w.id
+    `SELECT w.wake_key FROM hub_inbound_messages h JOIN conversation_wakeups w ON w.id = substr(h.idempotency_key, 8)
      WHERE h.conversation_id = ? AND h.message_id = ? AND h.source_kind = 'wakeup'`,
   );
   function queuedWakeKey(conversationId: string, messageId: number): string | null {
     return (queuedWakeKeyStmt.get(conversationId, messageId) as { wake_key: string } | undefined)?.wake_key ?? null;
+  }
+
+  async function readSnapshot(conv: ConversationRow, includeFrozen: boolean): Promise<ConversationEvent[]> {
+    const cwd = resolveWorkspace(conv).workspaceDir;
+    const adapter = adapters[conv.provider];
+    // Put the transcript back if the provider deleted it since the last open.
+    // A no-op stat when the native file is still there.
+    if (adapter) await transcriptArchive?.restore(conv.provider, { cwd, nativeSessionId: conv.native_session_id });
+    const fileEvents = adapter ? await adapter.readTranscript({ cwd, nativeSessionId: conv.native_session_id }) : [];
+    // A switch can finish while the old provider transcript is being read.
+    // Restart the read instead of combining the old session with its archived copy.
+    const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
+    if (fresh && (fresh.provider !== conv.provider || fresh.native_session_id !== conv.native_session_id)) {
+      return readSnapshot(fresh, includeFrozen);
+    }
+    const history = includeFrozen ? providerHistoryStmt.get(conv.id) as { history_json: string } | undefined : undefined;
+    const historicalEvents = history ? JSON.parse(history.history_json) as ConversationEvent[] : [];
+    const connectorSources = connectorToolSourcesForConversation(db, conv.id, conv.user_id);
+    const approvals = listConversationApprovalsStmt.all(conv.id) as ApprovalRow[];
+    const questions = listConversationQuestionsStmt.all(conv.id) as QuestionRow[];
+    const merged = reconcileQuestionEvents(
+      reconcileApprovalEvents(
+        [...historicalEvents, ...mergeLiveIntoSnapshot(fileEvents, live.get(conv.id)?.turn ?? null, { settleOrphans: true })],
+        approvals,
+      ),
+      questions,
+    ).map((event) => enrichConnectorToolEvent(event, connectorSources));
+    const withAgentMessageReceipts = spliceAgentMessageReceipts(conv.id, merged);
+    const complete = spliceSurfacedNotices(spliceTurnStops(
+      conv.id,
+      spliceTurnRecall(
+        conv.id,
+        spliceTurnOrigins(conv.id, guardLoopbackDeliverableEvents(withAgentMessageReceipts)),
+      ),
+    ), surfacedRows(db, conv.id));
+    snapshotRevisions.set(complete,streamRevision);
+    return complete;
   }
 
   /**
@@ -1790,7 +1836,7 @@ export function createConversationManager({
         insertTurnRecallStmt.run(conv.id, turnId, visibleText, JSON.stringify([]));
       }
     }
-    const continuation = providerContext(conv.id);
+    const continuation = providerContinuation(conv.id);
     if (continuation?.pending) {
       memoryBlock = [continuation.handoff, memoryBlock].filter(Boolean).join('\n\n');
       // Even when memory recall is disabled, strip the context wrapper from visible history.
@@ -2955,44 +3001,20 @@ export function createConversationManager({
     async historyPage(conv,token,before) {
       if(token)return historyPages.page(conv.id,token,before??0);
       const events=await this.snapshot(conv);
-      return historyPages.open(conv.id,events,snapshotRevisions.get(events)??0,streamEpoch);
+      return historyPages.openAsync(conv.id,events,snapshotRevisions.get(events)??0,streamEpoch);
     },
     historyRecord(conv,token,index){return historyPages.record(conv.id,token,index);},
-    async snapshot(conv) {
-      const cwd = resolveWorkspace(conv).workspaceDir;
-      const adapter = adapters[conv.provider];
-      // Put the transcript back if the provider deleted it since the last open.
-      // A no-op stat when the native file is still there.
-      if (adapter) await transcriptArchive?.restore(conv.provider, { cwd, nativeSessionId: conv.native_session_id });
-      const fileEvents = adapter ? await adapter.readTranscript({ cwd, nativeSessionId: conv.native_session_id }) : [];
-      // A switch can finish while the old provider transcript is being read.
-      // Restart the read instead of combining the old session with its archived copy.
-      const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
-      if (fresh && (fresh.provider !== conv.provider || fresh.native_session_id !== conv.native_session_id)) {
-        return this.snapshot(fresh);
-      }
-      const history = providerContext(conv.id);
-      const historicalEvents = history ? JSON.parse(history.history_json) as ConversationEvent[] : [];
-      const connectorSources = connectorToolSourcesForConversation(db, conv.id, conv.user_id);
-      const approvals = listConversationApprovalsStmt.all(conv.id) as ApprovalRow[];
-      const questions = listConversationQuestionsStmt.all(conv.id) as QuestionRow[];
-      const merged = reconcileQuestionEvents(
-        reconcileApprovalEvents(
-          [...historicalEvents, ...mergeLiveIntoSnapshot(fileEvents, live.get(conv.id)?.turn ?? null, { settleOrphans: true })],
-          approvals,
-        ),
-        questions,
-      ).map((event) => enrichConnectorToolEvent(event, connectorSources));
-      const withAgentMessageReceipts = spliceAgentMessageReceipts(conv.id, merged);
-      const complete = spliceSurfacedNotices(spliceTurnStops(
-        conv.id,
-        spliceTurnRecall(
-          conv.id,
-          spliceTurnOrigins(conv.id, guardLoopbackDeliverableEvents(withAgentMessageReceipts)),
-        ),
-      ), surfacedRows(db, conv.id));
-      snapshotRevisions.set(complete,streamRevision);
-      return complete;
+    snapshot(conv) {
+      return readSnapshot(conv, true);
+    },
+    async searchableEvents(conv, since) {
+      const cutoff = since ? parseActivityTime(since) - SEARCH_REINDEX_MARGIN_MS : Number.NEGATIVE_INFINITY;
+      // Frozen history only holds news when the session changed after the last index pass.
+      const continuation = providerContinuation(conv.id);
+      const includeFrozen = Boolean(continuation) && !(parseActivityTime(continuation!.updated_at) < cutoff);
+      const events = await readSnapshot(conv, includeFrozen);
+      return events.filter((event) =>
+        (event.type === 'turn_started' || event.type === 'text_final') && !(Date.parse(event.at) < cutoff));
     },
     async listSessionFiles(conv) {
       const adapter = adapters[conv.provider];
@@ -3004,7 +3026,7 @@ export function createConversationManager({
       // replies. The strongest deliverable signal there is (the agent chose to
       // present them), and the only one every provider emits. Reported as
       // 'bash' so the registry's heuristic guards (exists + mtime) still apply.
-      const context = providerContext(conv.id);
+      const context = providerFilesStmt.get(conv.id) as { files_json: string } | undefined;
       const previous = context ? JSON.parse(context.files_json) as CreatedFileRef[] : [];
       const bySource = new Map([...previous, ...refs].map((ref) => [ref.path, ref.source]));
       for (const event of await adapter.readTranscript(target)) {

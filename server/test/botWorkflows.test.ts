@@ -84,6 +84,7 @@ describe('Bot workflows', () => {
       manager: {
         bus: new EventEmitter(),
         snapshot: vi.fn(async () => []),
+        searchableEvents: vi.fn(async () => []),
         postMessage: vi.fn(),
       },
       secrets: {
@@ -262,7 +263,7 @@ describe('Bot workflows', () => {
     expect(searchWork(ctx, user, 'PDWALC').results).toEqual([]);
   });
   it('indexes only visible human and assistant text, excluding tool/credential payloads', async () => {
-    vi.mocked(ctx.manager.snapshot).mockResolvedValue([
+    vi.mocked(ctx.manager.searchableEvents).mockResolvedValue([
       {
         type: 'turn_started',
         turnId: 't',

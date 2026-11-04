@@ -44,10 +44,17 @@ export function writeProviderHandoff(cwd: string, conversationId: string, events
  * namespace so returning to the same provider cannot merge separate turns. */
 export function namespaceHistory(events: ConversationEvent[]): ConversationEvent[] {
   const prefix = `${crypto.randomUUID()}:`;
+  const scoped = <T extends string | undefined>(id: T) => (id === undefined ? id : prefix + originalNativeId(id)) as T;
   return events.map((event) => ({
     ...event,
-    ...('turnId' in event ? { turnId: prefix + event.turnId } : {}),
-    ...('toolId' in event ? { toolId: prefix + event.toolId } : {}),
-    ...('agentKey' in event ? { agentKey: prefix + event.agentKey } : {}),
+    ...('turnId' in event ? { turnId: scoped(event.turnId) } : {}),
+    ...('toolId' in event ? { toolId: scoped(event.toolId) } : {}),
+    ...('agentKey' in event ? { agentKey: scoped(event.agentKey) } : {}),
   }));
+}
+
+const HISTORY_NAMESPACE = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:)+/i;
+/** The id a native parser gave an event, without any namespaces added by session changes. */
+export function originalNativeId(id: string): string {
+  return id.replace(HISTORY_NAMESPACE, '');
 }

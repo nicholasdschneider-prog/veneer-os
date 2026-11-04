@@ -223,6 +223,9 @@ const server = createIpcServer({
 });
 const clearPidFile = writePidFile(config.dataDir, 'veneer-pro-runner');
 
+// Same idle-close race as the web listener, for the web service's pooled RPC sockets.
+server.keepAliveTimeout = 95_000;
+server.headersTimeout = 100_000;
 server.listen(config.runnerPort, '127.0.0.1', () => {
   console.log(`[veneer-pro-runner] IPC listening on http://127.0.0.1:${config.runnerPort} (data: ${config.dataDir})`);
   // Now that the IPC server is up (a resumed agent may need it), re-run any

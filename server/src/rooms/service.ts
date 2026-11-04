@@ -782,7 +782,7 @@ export function queuedRoomWakeAllowed(
 ) {
   const w = db
     .prepare(
-      "SELECT w.* FROM hub_inbound_messages h JOIN conversation_wakeups w ON h.idempotency_key='wakeup:'||w.id WHERE h.conversation_id=? AND h.message_id=? AND w.wake_key LIKE 'team-room:%'",
+      "SELECT w.* FROM hub_inbound_messages h JOIN conversation_wakeups w ON w.id=substr(h.idempotency_key, 8) AND h.source_kind='wakeup' WHERE h.conversation_id=? AND h.message_id=? AND w.wake_key LIKE 'team-room:%'",
     )
     .get(conversationId, messageId) as ConversationWakeupRow | undefined;
   return !w || roomWakeAllowed(db, w);

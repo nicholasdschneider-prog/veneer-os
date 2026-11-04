@@ -54,8 +54,8 @@ export function startBotWorkflows(ctx: AppContext, metrics: WebOperationMetrics 
         // Start queued tasks whose owner has a free slot and whose shared resources are free.
         for (const { owner } of ctx.db.prepare("SELECT DISTINCT owner_conversation_id AS owner FROM bot_tasks WHERE status='up_next'").all() as { owner: string }[]) taskService.schedule(owner);
       }
-    } catch {
-      console.warn('[bot-workflows] Background pass failed; retrying.');
+    } catch (err) {
+      console.warn(`[bot-workflows] Background pass failed; retrying: ${(err as Error).message}`);
     } finally {
       busy = false;
     }
