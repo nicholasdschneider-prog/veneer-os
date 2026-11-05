@@ -85,6 +85,10 @@ const USER_DENY_MESSAGE = 'The user declined this action. Continue without it an
 const STEER_ACK_WAIT_MS = 5_000;
 /** Re-read this far behind the last index pass, so clock skew cannot drop a message. */
 const SEARCH_REINDEX_MARGIN_MS = 60 * 60_000;
+/** A rotation handoff quotes two weeks of owner directions and recent work. */
+const HANDOFF_FROZEN_WINDOW_MS = 14 * 86_400_000;
+const HANDOFF_FROZEN_MAX_BYTES = 8 * 1024 * 1024;
+type FrozenRead = 'all' | 'none' | { sinceMs: number } | { windowStartMs: number; maxBytes: number };
 /** conversations.last_active_at and context timestamps are SQLite UTC text. */
 function parseActivityTime(value: string): number {
   return Date.parse(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`);
@@ -809,6 +813,65 @@ export function createConversationManager({
   const providerContinuation = (id: string) => providerContinuationStmt.get(id) as { handoff: string; pending: number; updated_at: string } | undefined;
   const providerFilesStmt = db.prepare('SELECT files_json FROM conversation_provider_context WHERE conversation_id = ?');
   const providerHistoryStmt = db.prepare('SELECT history_json FROM conversation_provider_context WHERE conversation_id = ?');
+  const historySegmentsStmt = db.prepare(
+    'SELECT events_json FROM conversation_history_segments WHERE conversation_id = ? AND created_at >= ? ORDER BY seq',
+  );
+  const recentSegmentsStmt = db.prepare(
+    `SELECT events_json FROM conversation_history_segments WHERE conversation_id = ? AND created_at >= ?
+     ORDER BY seq DESC`,
+  );
+  const insertSegmentStmt = db.prepare(
+    `INSERT INTO conversation_history_segments (conversation_id, seq, events_json, event_count)
+     SELECT ?, COALESCE(MAX(seq), 0) + 1, ?, ? FROM conversation_history_segments WHERE conversation_id = ?`,
+  );
+  // The context row keeps the handoff and file list. Its legacy history_json is
+  // the oldest frozen piece and is never rewritten; new sessions append segments.
+  const upsertContinuationStmt = db.prepare(
+    `INSERT INTO conversation_provider_context (conversation_id, history_json, files_json, handoff)
+     VALUES (?, '[]', ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET
+     files_json = excluded.files_json, handoff = excluded.handoff, pending = 1, updated_at = datetime('now')`,
+  );
+  /** Frozen history, oldest first: the legacy row, then appended segments. */
+  function frozenHistory(conversationId: string, mode: FrozenRead): ConversationEvent[] {
+    if (mode === 'none') return [];
+    const out: ConversationEvent[] = [];
+    if (mode === 'all') {
+      const legacy = providerHistoryStmt.get(conversationId) as { history_json: string } | undefined;
+      if (legacy) out.push(...(JSON.parse(legacy.history_json) as ConversationEvent[]));
+      for (const row of historySegmentsStmt.all(conversationId, '') as { events_json: string }[]) {
+        out.push(...(JSON.parse(row.events_json) as ConversationEvent[]));
+      }
+      return out;
+    }
+    if ('sinceMs' in mode) {
+      // Only segments frozen after the last index pass can hold anything new.
+      for (const row of historySegmentsStmt.all(conversationId, new Date(mode.sinceMs).toISOString()) as { events_json: string }[]) {
+        out.push(...(JSON.parse(row.events_json) as ConversationEvent[]));
+      }
+      return out;
+    }
+    // Recent frozen history for a handoff: newest segments inside the window, up
+    // to a byte budget, then the legacy row only if it fits what is left.
+    const pieces: string[] = [];
+    let budget = mode.maxBytes;
+    for (const row of recentSegmentsStmt.all(conversationId, new Date(mode.windowStartMs).toISOString()) as { events_json: string }[]) {
+      if (row.events_json.length > budget) break;
+      budget -= row.events_json.length;
+      pieces.unshift(row.events_json);
+    }
+    const hasOlder = (db.prepare('SELECT COUNT(*) AS n FROM conversation_history_segments WHERE conversation_id = ?').get(conversationId) as { n: number }).n > pieces.length;
+    if (!hasOlder) {
+      const size = (db.prepare('SELECT length(history_json) AS n FROM conversation_provider_context WHERE conversation_id = ?').get(conversationId) as { n: number } | undefined)?.n ?? 0;
+      if (size && size <= budget) pieces.unshift((providerHistoryStmt.get(conversationId) as { history_json: string }).history_json);
+    }
+    for (const piece of pieces) out.push(...(JSON.parse(piece) as ConversationEvent[]));
+    return out;
+  }
+  /** Append the session that just ended as one new frozen piece. */
+  function freezeSession(conversationId: string, events: ConversationEvent[], files: CreatedFileRef[], handoff: string): void {
+    insertSegmentStmt.run(conversationId, JSON.stringify(events), events.length, conversationId);
+    upsertContinuationStmt.run(conversationId, JSON.stringify(files), handoff);
+  }
   const updateContextTokensStmt = db.prepare('UPDATE conversations SET last_input_tokens = ? WHERE id = ?');
   const updateNativeSessionIdStmt = db.prepare('UPDATE conversations SET native_session_id = ? WHERE id = ?');
   const updateProviderInstructionHashStmt = db.prepare(
@@ -1463,7 +1526,13 @@ export function createConversationManager({
     return (queuedWakeKeyStmt.get(conversationId, messageId) as { wake_key: string } | undefined)?.wake_key ?? null;
   }
 
-  async function readSnapshot(conv: ConversationRow, includeFrozen: boolean): Promise<ConversationEvent[]> {
+  /**
+   * The chat's visible events. `frozen` picks how much frozen history to load;
+   * `forFreeze` leaves out notices spliced in by time from durable tables
+   * (surfaced lines, user stops), so a frozen piece never embeds a copy of them:
+   * every read splices them into the whole timeline.
+   */
+  async function readSnapshot(conv: ConversationRow, frozen: FrozenRead, forFreeze = false): Promise<ConversationEvent[]> {
     const cwd = resolveWorkspace(conv).workspaceDir;
     const adapter = adapters[conv.provider];
     // Put the transcript back if the provider deleted it since the last open.
@@ -1474,10 +1543,9 @@ export function createConversationManager({
     // Restart the read instead of combining the old session with its archived copy.
     const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
     if (fresh && (fresh.provider !== conv.provider || fresh.native_session_id !== conv.native_session_id)) {
-      return readSnapshot(fresh, includeFrozen);
+      return readSnapshot(fresh, frozen, forFreeze);
     }
-    const history = includeFrozen ? providerHistoryStmt.get(conv.id) as { history_json: string } | undefined : undefined;
-    const historicalEvents = history ? JSON.parse(history.history_json) as ConversationEvent[] : [];
+    const historicalEvents = frozenHistory(conv.id, frozen);
     const connectorSources = connectorToolSourcesForConversation(db, conv.id, conv.user_id);
     const approvals = listConversationApprovalsStmt.all(conv.id) as ApprovalRow[];
     const questions = listConversationQuestionsStmt.all(conv.id) as QuestionRow[];
@@ -1489,13 +1557,11 @@ export function createConversationManager({
       questions,
     ).map((event) => enrichConnectorToolEvent(event, connectorSources));
     const withAgentMessageReceipts = spliceAgentMessageReceipts(conv.id, merged);
-    const complete = spliceSurfacedNotices(spliceTurnStops(
+    const perTurn = spliceTurnRecall(
       conv.id,
-      spliceTurnRecall(
-        conv.id,
-        spliceTurnOrigins(conv.id, guardLoopbackDeliverableEvents(withAgentMessageReceipts)),
-      ),
-    ), surfacedRows(db, conv.id));
+      spliceTurnOrigins(conv.id, guardLoopbackDeliverableEvents(withAgentMessageReceipts)),
+    );
+    const complete = forFreeze ? perTurn : spliceSurfacedNotices(spliceTurnStops(conv.id, perTurn), surfacedRows(db, conv.id));
     snapshotRevisions.set(complete,streamRevision);
     return complete;
   }
@@ -1523,17 +1589,21 @@ export function createConversationManager({
       }
       const adapter = adapters[conv.provider];
       if (!adapter || hasPendingStmt.get(conv.id) || hasPendingQuestion(conv.id)) return conv;
-      const events = await api.snapshot(conv);
-      const check = rotationCheck(db, { ...base, recentEvents: events });
+      // Only the session that is ending is read and frozen; earlier pieces stay as written.
+      const session = await readSnapshot(conv, 'none', true);
+      const check = rotationCheck(db, { ...base, recentEvents: session });
       if (!check.rotate) {
         recordGovernorEvent(db, 'rotation_deferred', flags.botId, conv.id, { reason: check.reason, context: conv.last_input_tokens });
         return conv;
       }
       const files = await api.listSessionFiles(conv);
-      const history = namespaceHistory(events);
+      const history = namespaceHistory(session);
       const previous = conv.last_input_tokens ?? 0;
+      // The handoff needs recent work and two weeks of owner directions, not the whole chat.
+      const recentFrozen = frozenHistory(conv.id, { windowStartMs: Date.now() - HANDOFF_FROZEN_WINDOW_MS, maxBytes: HANDOFF_FROZEN_MAX_BYTES });
       const handoff = writeRotationHandoff(db, {
-        cwd: resolveWorkspace(conv).workspaceDir, conversationId: conv.id, botId: flags.botId, events, previousContextTokens: previous,
+        cwd: resolveWorkspace(conv).workspaceDir, conversationId: conv.id, botId: flags.botId,
+        events: [...recentFrozen, ...session], previousContextTokens: previous,
       });
       const notice: ConversationEvent = {
         type: 'notice', at: new Date().toISOString(),
@@ -1542,11 +1612,7 @@ export function createConversationManager({
       history.push(notice);
       const nativeSessionId = adapter.mintSessionId();
       db.transaction(() => {
-        db.prepare(`INSERT INTO conversation_provider_context (conversation_id, history_json, files_json, handoff)
-          VALUES (?, ?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET
-          history_json = excluded.history_json, files_json = excluded.files_json,
-          handoff = excluded.handoff, pending = 1, updated_at = datetime('now')`)
-          .run(conv.id, JSON.stringify(history), JSON.stringify(files), handoff);
+        freezeSession(conv.id, history, files, handoff);
         db.prepare(`UPDATE conversations SET native_session_id = ?, provider_instruction_hash = NULL,
           last_input_tokens = NULL WHERE id = ? AND native_session_id = ?`)
           .run(nativeSessionId, conv.id, conv.native_session_id);
@@ -2664,10 +2730,13 @@ export function createConversationManager({
         if (!models.length || (selection.model && !models.some((model) => model.id === selection.model))) {
           return { ok: false, message: 'This model is not available. Connect the provider and refresh its model list.' };
         }
-        const history = namespaceHistory(await this.snapshot(conv));
+        // The handoff quotes the chat's opening, so it reads everything; storage
+        // appends only the session that is ending.
+        const whole = await this.snapshot(conv);
+        const history = namespaceHistory(await readSnapshot(conv, 'none', true));
         const files = await this.listSessionFiles(conv);
         if (maintenance.interrupted) return { ok: false, message: 'Model switch canceled.' };
-        const handoff = writeProviderHandoff(resolveWorkspace(conv).workspaceDir, conv.id, history);
+        const handoff = writeProviderHandoff(resolveWorkspace(conv).workspaceDir, conv.id, whole);
         const notice: ConversationEvent = {
           type: 'notice', at: new Date().toISOString(),
           message: `Switched from ${conv.provider} to ${selection.provider} (${selection.model ?? 'default model'}). Earlier history is preserved; the next reply receives recorded context in a fresh provider session.`,
@@ -2675,11 +2744,7 @@ export function createConversationManager({
         history.push(notice);
         const nativeSessionId = adapter.mintSessionId();
         db.transaction(() => {
-          db.prepare(`INSERT INTO conversation_provider_context (conversation_id, history_json, files_json, handoff)
-            VALUES (?, ?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET
-            history_json = excluded.history_json, files_json = excluded.files_json,
-            handoff = excluded.handoff, pending = 1, updated_at = datetime('now')`)
-            .run(conv.id, JSON.stringify(history), JSON.stringify(files), handoff);
+          freezeSession(conv.id, history, files, handoff);
           db.prepare(`UPDATE conversations SET provider = ?, model = ?, effort = ?, native_session_id = ?,
             provider_instruction_hash = NULL, last_input_tokens = NULL, files_synced_at = NULL,
             title_auto = CASE WHEN title IS NOT NULL THEN 0 ELSE title_auto END WHERE id = ?`)
@@ -3012,17 +3077,14 @@ export function createConversationManager({
     },
     historyRecord(conv,token,index){return historyPages.record(conv.id,token,index);},
     snapshot(conv) {
-      return readSnapshot(conv, true);
+      return readSnapshot(conv, 'all');
     },
     async searchableEvents(conv, since) {
       const sinceMs = since ? parseActivityTime(since) : Number.NEGATIVE_INFINITY;
       const cutoff = sinceMs - SEARCH_REINDEX_MARGIN_MS;
-      // Frozen history only holds news when the session changed after the last
-      // index pass. No margin here: that row can be 80 MB, and every pass for an
-      // hour after a rotation would otherwise load it again.
-      const continuation = providerContinuation(conv.id);
-      const includeFrozen = Boolean(continuation) && !(parseActivityTime(continuation!.updated_at) < sinceMs);
-      const events = await readSnapshot(conv, includeFrozen);
+      // Only pieces frozen after the last index pass can hold news. No margin
+      // here: a frozen piece can be large, and is loaded only when it is new.
+      const events = await readSnapshot(conv, since ? { sinceMs } : 'all');
       return events.filter((event) =>
         (event.type === 'turn_started' || event.type === 'text_final') && !(Date.parse(event.at) < cutoff));
     },

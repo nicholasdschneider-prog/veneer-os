@@ -162,7 +162,7 @@ export function writeRotationHandoff(db: Database.Database, input: {
 
   return [
     `Context rotation for the SAME chat (${input.conversationId}). The previous native session reached ${input.previousContextTokens.toLocaleString('en-US')} tokens of context, so this turn starts in a fresh session to keep work fast and cheap. Your identity, skills, authority and accepted work are unchanged.`,
-    `Full redacted record of this chat: ${file}`,
+    `Redacted record of recent sessions: ${file} (earlier records are in the same folder; the chat itself keeps all history).`,
     'Before continuing any operation, check its source of truth. Never repeat a send, refund, purchase, label, or other external effect because of this rotation; reconcile by readback. Reload the skills your next step needs.',
     section('Open tasks', tasks.map((t) => `- ${t.title} [${t.status}]${t.case_key ? ` case ${t.case_key}` : ''}${t.status_line ? ` — ${clip(t.status_line, 200)}` : ''} (task ${t.id})`)),
     section('Open decisions you raised', decisions.map((d) => `- ${d.id} v${d.version} [${d.state}] ${clip(question(d.proposal_json), 240)}`)),

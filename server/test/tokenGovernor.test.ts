@@ -132,7 +132,7 @@ describe('context rotation', () => {
     expect(handoff).toContain('orders 100122410');
     expect(handoff).toContain('tickets VLDD79');
     expect(handoff.length).toBeLessThan(30_000);
-    const file = /Full redacted record of this chat: (\S+)/.exec(handoff)![1]!;
+    const file = /Redacted record of recent sessions: (\S+)/.exec(handoff)![1]!;
     expect(fs.readFileSync(file, 'utf8')).toContain('Holding 100122410');
     expect(referencedIds('ABCDEF 123456 A1B2C3').tickets).toEqual(['A1B2C3']);
   });
