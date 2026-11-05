@@ -22,7 +22,7 @@ import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
 import { resolveEffectiveApprovalMode } from '../approvalMode.js';
-import type { ApprovalRow, ConversationRow, QuestionRow } from '../db/db.js';
+import type { ApprovalRow, ConversationRow, ConversationWakeupRow, QuestionRow } from '../db/db.js';
 import { expandUserPath } from '../homes.js';
 import { linkedFilePaths } from '../providers/fileScan.js';
 import type {
@@ -800,6 +800,13 @@ export function createConversationManager({
   function nextQueueRevision(): number {
     lastQueueRevision = Math.max(lastQueueRevision + 1, Date.now() * 1_000);
     return lastQueueRevision;
+  }
+
+  // A task or ticket decision's discussion runs in that task or ticket chat; access is checked against the bot chat that owns the decision.
+  function discussionWakeAllowed(wake: ConversationWakeupRow, conv: ConversationRow): boolean {
+    const owner = wake.conversation_id === conv.id ? conv
+      : db.prepare('SELECT * FROM conversations WHERE id=?').get(wake.conversation_id) as ConversationRow | undefined;
+    return !!owner && botWakeAllowed(db, wake, owner);
   }
 
   const touchStmt = db.prepare("UPDATE conversations SET last_active_at = datetime('now') WHERE id = ?");
@@ -1718,7 +1725,7 @@ export function createConversationManager({
       emitQueue(conv.id); void runNext(conv); return;
     }
     const discussion = item.id === null ? undefined : queuedDiscussionWake(db, conv.id, item.id);
-    if (discussion && !botWakeAllowed(db, discussion, conv)) {
+    if (discussion && !discussionWakeAllowed(discussion, conv)) {
       deleteQueuedMessageStmt.run(item.id);
       recordDiscussionDelivery(db, discussion.id, 'cancelled', 'Access or proposal version changed before queued execution');
       emitQueue(conv.id);
@@ -2539,7 +2546,7 @@ export function createConversationManager({
       }
       const discussion = botDiscussionWake(db, wakeupId);
       // Permanent: the discussion's access or card version moved on, so retrying can never deliver it.
-      if (discussion && !botWakeAllowed(db, discussion, conv)) throw Object.assign(new Error('Discussion access or version changed'), { terminal: true });
+      if (discussion && !discussionWakeAllowed(discussion, conv)) throw Object.assign(new Error('Discussion access or version changed'), { terminal: true });
       const name = assistantNameFor(conv);
       const origin: MessageOrigin = resultReply
         ? { kind: 'result_reply', from: resultReply.reply.display_name, to: name }

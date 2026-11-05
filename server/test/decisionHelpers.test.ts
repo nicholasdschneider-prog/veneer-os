@@ -14,6 +14,7 @@ import {
 import { createConversationWakeupScheduler } from '../src/scheduled/wakeups.js';
 import { createConversationManager } from '../src/runtime/conversationManager.js';
 import { createApiRouter } from '../src/routes/api.js';
+import { createTaskService } from '../src/tasks/service.js';
 import type { AppContext } from '../src/context.js';
 import type { ConversationRow, UserRow } from '../src/db/db.js';
 import type { ConversationEvent } from '../src/runtime/events.js';
@@ -131,6 +132,17 @@ describe('decision card helpers', () => {
     expect(owner.spec.prompt).toContain('a read-only helper copy of you already answered');
     expect(owner.spec.prompt).toContain('$42.10 on order 946');
     expect(owner.spec.readOnly).toBeUndefined();
+  });
+
+  it('delivers a discussion message on a task decision into the task chat', async () => {
+    const t = createTaskService(db).create({ ...human, conversationId: 'sage' }, { title: 'Steps-only source record' });
+    const lane = t.task.task_conversation_id!;
+    const d = raise();
+    createTaskService(db).linkDecision(d.id, lane);
+    await ask(d.id, 'You are saying the steps were shipped and delivered?');
+    expect(db.prepare("SELECT status FROM conversation_wakeups WHERE wake_key LIKE 'bot-decision:%' ORDER BY rowid DESC LIMIT 1").get()).toEqual({ status: 'delivered' });
+    expect(s.view(human, s.read(human, d.id)).reply_status).not.toBe('not_delivered');
+    expect(runs.find((r) => r.conversationId === lane)?.spec.prompt).toContain('shipped and delivered');
   });
 
   it('does not start a helper when the bot is idle', async () => {
