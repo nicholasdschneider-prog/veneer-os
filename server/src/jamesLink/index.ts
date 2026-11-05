@@ -33,6 +33,7 @@ export function startJamesLink(ctx: AppContext) {
     publicOrigin: ctx.config.appPublicOrigin ?? null,
     postToChat: async (conversationId, text) => ctx.manager.postMessage(conversationId, text, ownerId()),
     statusOf: (conversationId) => ctx.manager.statusOf(conversationId),
+    stopBrowser: async (conversationId) => ctx.manager.veneerBrowserConversationStop?.(ownerId(), conversationId),
     log: (message) => console.warn(message),
   });
   current = link;

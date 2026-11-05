@@ -31,7 +31,7 @@ the owner login for this path only.
 | call | effect |
 |---|---|
 | `GET /threads?started_by=james&waiting_on=james\|veneer&status=a,b&james=1&q=&limit=&offset=` | list (archived excluded unless asked; `waiting_on_james=1` still works) |
-| `GET /threads/:id` | thread plus its last 20 messages |
+| `GET /threads/:id` | thread plus its last 20 messages; every thread view carries `project_id` and `project {id, name, slug}` (null = unfiled) |
 | `GET /threads/:id/messages?limit=1-100&before=<ISO>` | older pages; follow `next_before` until it is null |
 | `POST /threads/:id/reply {expected_turn, text}` | posts into the chat; 409 `stale_turn` with `current_turn` if behind |
 | `POST /threads/:id/close` / `archive` / `reopen` `{expected_turn?}` | status change; archive waits while a reply is being written |
@@ -39,7 +39,8 @@ the owner login for this path only.
 | `POST /test-push {thread_id, simulate_webhook_failure?}` | immediate test push |
 | `GET /docs` | machine-readable description of every endpoint (`server/src/jamesLink/docs.ts`) |
 | `GET /projects` | Workspace projects with default agent, open thread count and last activity |
-| `POST /threads {project_id?, title, text}` | new chat under James's name (project default agent, site model defaults); text is turn 1; James follows it; 201 |
+| `POST /threads {project_id, title, text}` | new chat under James's name (project default agent, site model defaults); text is turn 1; James follows it; 201. `project_id` is required since build #1008 (400 `project_id_required`) |
+| `POST /threads/:id/project {project_id}` | move a thread and its side chats into a project, same as the web chat menu (snapshot cleared, files follow, browser stopped); 409 `thread_working` mid-reply; `changed: false` when already there |
 | `GET /bots` | active registered bots with their standing chat as a thread |
 | `POST /bots/{bot}/message {text, expected_turn?}` | message a bot by name or chat id in its standing chat |
 | `GET /builds?project_id=` | the build queue: every queued, running or paused build with `id`, `title`, `position` (1-based within its workspace), `status`, `scope`, `project_id`, `project`, `thread_id` |

@@ -63,13 +63,14 @@ const MessagesQuery = z.object({
 });
 const ReplyBody = z.object({ expected_turn: z.number().int().min(0), text: z.string().trim().min(1).max(20_000) });
 const NewThreadBody = z.object({
-  project_id: z.string().trim().min(1).nullable().optional(),
+  project_id: z.string().trim().min(1),
   title: z.string().trim().min(1).max(200),
   text: z.string().trim().min(1).max(20_000),
 });
 const BotMessageBody = z.object({ text: z.string().trim().min(1).max(20_000), expected_turn: z.number().int().min(0).optional() });
 const StatusBody = z.object({ expected_turn: z.number().int().min(0).optional() }).optional();
 const FollowBody = z.object({ follow: z.boolean() });
+const ProjectBody = z.object({ project_id: z.string().trim().min(1) });
 const MoveBuildBody = z.union([
   z.object({ position: z.number().int().min(1) }).strict(),
   z.object({ before: z.number().int().min(1) }).strict(),
@@ -99,8 +100,14 @@ export function createJamesRouter(db: Database.Database, link: JamesLink, getSec
 
   router.post('/threads', (req, res) => {
     const body = NewThreadBody.safeParse(req.body);
-    if (!body.success) { res.status(400).json({ ok: false, error: 'title and text are required; project_id is optional' }); return; }
-    void link.createThread({ projectId: body.data.project_id ?? null, title: body.data.title, text: body.data.text }).then((result) => {
+    if (!body.success) {
+      const missingProject = body.error.issues.some((issue) => issue.path[0] === 'project_id');
+      res.status(400).json(missingProject
+        ? { ok: false, error: 'project_id_required', detail: 'project_id is required: pass a Workspace project id from GET /projects so the thread gets that project\'s tools.' }
+        : { ok: false, error: 'project_id, title and text are required' });
+      return;
+    }
+    void link.createThread({ projectId: body.data.project_id, title: body.data.title, text: body.data.text }).then((result) => {
       if (!result.ok) { const { status, ...rest } = result; res.status(status).json(rest); return; }
       const { status_code, ...rest } = result;
       res.status(status_code).json(rest);
@@ -176,6 +183,15 @@ export function createJamesRouter(db: Database.Database, link: JamesLink, getSec
       }).catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
     });
   }
+
+  router.post('/threads/:id/project', (req, res) => {
+    const body = ProjectBody.safeParse(req.body);
+    if (!body.success) { res.status(400).json({ ok: false, error: 'project_id is required' }); return; }
+    void link.moveToProject(req.params.id, body.data.project_id).then((result) => {
+      if (!result.ok) { const { status, ...rest } = result; res.status(status).json(rest); return; }
+      res.json(result);
+    }).catch((err: Error) => res.status(500).json({ ok: false, error: err.message }));
+  });
 
   router.post('/threads/:id/follow', (req, res) => {
     const body = FollowBody.safeParse(req.body);

@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import type { ConversationEvent } from '../runtime/events.js';
 import type { Mailer } from './mail.js';
 import { createJamesConversation, UnknownProjectError } from './create.js';
+import { moveConversationToProject } from '../conversations/moveToProject.js';
 import { pruneIdempotency } from './idempotency.js';
 import {
   JAMES_MARKER, ensureThread, excerpt, getState, getThread, iso, isJamesThread, listThreads, resolveThreadId, setState, setStatus,
@@ -53,6 +54,8 @@ export interface JamesLinkDeps {
   /** Post James's text into the chat as an ordinary human message. */
   postToChat(conversationId: string, text: string): Promise<{ disposition?: string }>;
   statusOf(conversationId: string): Promise<string>;
+  /** Stop the chat's browser before a project move drops its project-scoped profile binding. */
+  stopBrowser?(conversationId: string): Promise<unknown>;
   sleep?(ms: number): Promise<void>;
   log?(message: string): void;
 }
@@ -114,6 +117,8 @@ export class JamesLink {
       status: t.status,
       turn: t.turn,
       last_activity: t.last_activity,
+      project_id: t.project_id ?? null,
+      project: t.project_id ? { id: t.project_id, name: t.project_name, slug: t.project_slug } : null,
       url: this.threadUrl(t.conversation_id),
     };
   }
@@ -222,7 +227,7 @@ export class JamesLink {
   }
 
   /** Start a new thread under James's name; he follows it for pushes. */
-  async createThread(input: { projectId: string | null; title: string; text: string }) {
+  async createThread(input: { projectId: string; title: string; text: string }) {
     let id: string;
     try {
       id = createJamesConversation(this.db, { projectId: input.projectId, title: input.title });
@@ -250,7 +255,8 @@ export class JamesLink {
         ORDER BY r.name COLLATE NOCASE`,
     ).all() as { name: string; conversation_id: string; project: string | null; business_team: string | null }[]).map((bot) => {
       const thread = getThread(this.db, bot.conversation_id) ?? ensureThread(this.db, bot.conversation_id);
-      return { name: bot.name, project: bot.project, business_team: bot.business_team, ...(thread ? this.summary(thread) : { thread_id: bot.conversation_id }) };
+      // project stays the project name here, as before; project_id comes from the thread.
+      return { ...(thread ? this.summary(thread) : { thread_id: bot.conversation_id }), name: bot.name, project: bot.project, business_team: bot.business_team };
     });
   }
 
@@ -263,6 +269,24 @@ export class JamesLink {
     if (byName.length === 1) return byName[0]!.conversation_id;
     const id = resolveThreadId(this.db, value);
     return id && this.db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id = ? AND active = 1').get(id) ? id : null;
+  }
+
+  /** Move a thread (and its side chats) into a Workspace project, the same way the web chat menu does. */
+  async moveToProject(idOrPrefix: string, projectId: string) {
+    const id = resolveThreadId(this.db, idOrPrefix);
+    const thread = id ? getThread(this.db, id) : undefined;
+    if (!id || !thread) return { ok: false as const, status: 404, error: 'thread_not_found' };
+    if (!this.db.prepare('SELECT 1 FROM projects WHERE id = ?').get(projectId)) return { ok: false as const, status: 400, error: 'unknown_project' };
+    const side = this.db.prepare('SELECT side_chat_of FROM conversations WHERE id = ?').get(id) as { side_chat_of: string | null };
+    if (side.side_chat_of) return { ok: false as const, status: 400, error: 'side_chat', detail: 'Side chats move with their parent thread.' };
+    if (thread.project_id === projectId) return { ok: true as const, changed: false, thread: this.summary(thread) };
+    const live = await this.deps.statusOf(id).catch(() => 'idle');
+    if (live === 'working' || live === 'needs_you') {
+      return { ok: false as const, status: 409, error: 'thread_working', detail: 'Veneer is mid-reply; move it after the reply lands.' };
+    }
+    await (this.deps.stopBrowser?.(id) ?? Promise.resolve()).catch(() => null);
+    moveConversationToProject(this.db, id, projectId);
+    return { ok: true as const, changed: true, previous_project_id: thread.project_id ?? null, thread: this.summary(getThread(this.db, id)!) };
   }
 
   async changeStatus(idOrPrefix: string, action: 'close' | 'archive' | 'reopen', expectedTurn?: number) {

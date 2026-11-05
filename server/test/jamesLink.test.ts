@@ -388,6 +388,32 @@ describe('API v2: docs, projects, new threads, bots, idempotency', () => {
     expect(conflict.status).toBe(409);
     expect((await conflict.json()).error).toBe('idempotency_conflict');
     expect((await api('/api/james/threads', { method: 'POST', body: JSON.stringify({ project_id: 'nope', title: 't', text: 'x' }) })).status).toBe(400);
+    expect(created.thread).toMatchObject({ project_id: P, project: { id: P, name: 'ERVP', slug: 'ervp' } });
+    const missing = await api('/api/james/threads', { method: 'POST', body: JSON.stringify({ title: 'No project', text: 'x' }) });
+    expect(missing.status).toBe(400);
+    expect((await missing.json()).error).toBe('project_id_required');
+    expect((await api('/api/james/threads', { method: 'POST', body: JSON.stringify({ project_id: null, title: 'No project', text: 'x' }) })).status).toBe(400);
+    const one = await (await api(`/api/james/threads/${created.thread_id}`)).json();
+    expect(one.thread).toMatchObject({ project_id: P, project: { name: 'ERVP', slug: 'ervp' } });
+  });
+
+  it('moves an unfiled thread into a project, idempotently, and lists its project', async () => {
+    const listed = await (await api('/api/james/threads?status=open,waiting_on_james,waiting_on_veneer,done,archived&limit=500')).json();
+    expect(listed.threads.find((t: { thread_id: string }) => t.thread_id === B)).toMatchObject({ project_id: null, project: null });
+    expect((await api(`/api/james/threads/${B}/project`, { method: 'POST', body: JSON.stringify({ project_id: 'nope' }) })).status).toBe(400);
+    expect((await api('/api/james/threads/99999999-9999-4999-8999-999999999999/project', { method: 'POST', body: JSON.stringify({ project_id: P }) })).status).toBe(404);
+    expect((await api(`/api/james/threads/${B}/project`, { method: 'POST', body: '{}' })).status).toBe(400);
+    liveStatus = 'working';
+    expect((await api(`/api/james/threads/${B}/project`, { method: 'POST', body: JSON.stringify({ project_id: P }) })).status).toBe(409);
+    liveStatus = 'idle';
+    const init = { method: 'POST', body: JSON.stringify({ project_id: P }), headers: { 'idempotency-key': 'move-thread-0001' } };
+    const moved = await (await api(`/api/james/threads/${B}/project`, init)).json();
+    expect(moved).toMatchObject({ ok: true, changed: true, previous_project_id: null, thread: { thread_id: B, project_id: P, project: { name: 'ERVP' } } });
+    expect(db.prepare('SELECT project_id, instruction_snapshot_json FROM conversations WHERE id = ?').get(B)).toEqual({ project_id: P, instruction_snapshot_json: null });
+    const replay = await api(`/api/james/threads/${B}/project`, init);
+    expect(replay.headers.get('idempotent-replay')).toBe('true');
+    const again = await (await api(`/api/james/threads/${B}/project`, { method: 'POST', body: JSON.stringify({ project_id: P }) })).json();
+    expect(again).toMatchObject({ ok: true, changed: false });
   });
 
   it('replays an idempotent reply instead of posting twice', async () => {

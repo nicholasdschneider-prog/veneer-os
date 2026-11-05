@@ -1,7 +1,7 @@
 /** Served at GET /api/james/docs: every endpoint, for James and his Grok Bot. */
 export const JAMES_API_DOCS = {
   name: 'Veneer James API',
-  version: 4,
+  version: 5,
   base_url: 'https://nicksworld.dev/api/james',
   auth: 'Authorization: Bearer <key>. The key is the Doppler secret VENEER_JAMES_API_KEY (project main, config prd). 30 failed attempts in a minute get 429.',
   idempotency: 'Send an Idempotency-Key header (8-200 printable characters) on any POST. A retry with the same key and body returns the stored response with the header Idempotent-Replay: true and posts nothing. The same key with a different body is 409 idempotency_conflict; a key still running is 409 idempotency_in_progress. Keys are kept 30 days. Server errors are not stored, so retrying them runs again.',
@@ -9,14 +9,15 @@ export const JAMES_API_DOCS = {
   endpoints: [
     { method: 'GET', path: '/docs', description: 'This description.' },
     { method: 'GET', path: '/projects', description: 'Workspace projects: project_id, name, slug, default_agent, open_threads, last_activity.' },
-    { method: 'GET', path: '/threads', query: 'started_by=james|nick|bot, waiting_on=james|veneer (waiting_on_james=1 also works), status=open,waiting_on_james,waiting_on_veneer,done,archived (comma list; archived excluded by default), james=1 (started or followed by James), followed=0|1, q=<title text or id prefix>, limit<=500, offset', description: 'List threads, newest activity first. Returns total and threads[] {thread_id, title, started_by, followed, status, turn, last_activity, url}.' },
-    { method: 'POST', path: '/threads', body: '{project_id?, title, text}', description: 'Start a new thread in a project (default agent). James\'s text is turn 1; James follows the thread for pushes. 201 with thread_id, turn, url.' },
+    { method: 'GET', path: '/threads', query: 'started_by=james|nick|bot, waiting_on=james|veneer (waiting_on_james=1 also works), status=open,waiting_on_james,waiting_on_veneer,done,archived (comma list; archived excluded by default), james=1 (started or followed by James), followed=0|1, q=<title text or id prefix>, limit<=500, offset', description: 'List threads, newest activity first. Returns total and threads[] {thread_id, title, started_by, followed, status, turn, last_activity, project_id, project {id, name, slug} or null, url}. A null project_id is an unfiled thread that lacks project tools; move it with POST /threads/{id}/project.' },
+    { method: 'POST', path: '/threads', body: '{project_id, title, text}', description: 'Start a new thread in a project (that project\'s default agent and tools). project_id is required (400 project_id_required; 400 unknown_project). James\'s text is turn 1; James follows the thread for pushes. 201 with thread_id, turn and thread (including project_id and project).' },
     { method: 'GET', path: '/threads/{id}', description: 'One thread (full id or unique 8+ character prefix) and its last 20 messages, oldest first. Each message has turn, role, direction, via, at, text, source (ledger since go-live; history before it, with turn null and role user|assistant).' },
     { method: 'GET', path: '/threads/{id}/messages', query: 'limit=1-100 (default 20), before=<ISO time>', description: 'Page further back; pass next_before as before until it is null.' },
     { method: 'POST', path: '/threads/{id}/reply', body: '{expected_turn, text}', description: 'Post into the thread as James. 409 stale_turn if behind, 409 thread_archived if archived (reopen first).' },
     { method: 'POST', path: '/threads/{id}/close', body: '{expected_turn?}', description: 'Mark done. Done threads archive themselves after 7 quiet days.' },
     { method: 'POST', path: '/threads/{id}/archive', body: '{expected_turn?}', description: 'Archive (nothing is deleted). 409 thread_working while Veneer is mid-reply.' },
     { method: 'POST', path: '/threads/{id}/reopen', body: '{expected_turn?}', description: 'Back to open, and unarchive the chat.' },
+    { method: 'POST', path: '/threads/{id}/project', body: '{project_id}', description: 'Move an existing thread (and its side chats) into a Workspace project, as the web chat menu does: the next turn picks up that project\'s instructions, tools and folder. 400 unknown_project, 404 thread_not_found, 409 thread_working while Veneer is mid-reply. Already there is ok with changed false. Returns changed, previous_project_id and thread.' },
     { method: 'POST', path: '/threads/{id}/follow', body: '{follow: true|false}', description: 'Follow or unfollow any thread. A followed thread pushes only actionable Veneer replies (see webhook.rules); its other replies are recorded and counted in the daily digest.' },
     { method: 'GET', path: '/bots', description: 'Active registered bots (Sage, Piper, Finn, Boris, AutoShip Worker, OrderOps Runtime Custodian, ...) with name, project, business_team and their standing chat as a thread.' },
     { method: 'POST', path: '/bots/{bot}/message', body: '{text, expected_turn?}', description: 'Message a bot in its own standing chat. {bot} is the name (case-insensitive, URL-encoded) or chat id. Only the bot\'s reply to this message is pushed to the webhook (its other traffic is not), unless you follow that chat.' },

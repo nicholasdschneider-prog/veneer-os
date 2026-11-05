@@ -36,6 +36,9 @@ export interface ThreadRow {
   james_pending_since?: string | null;
   james_answer_turn_id?: string | null;
   conversation_archived: number;
+  project_id: string | null;
+  project_name: string | null;
+  project_slug: string | null;
 }
 
 export const iso = (ms = Date.now()) => new Date(ms).toISOString();
@@ -80,8 +83,10 @@ export function excerpt(text: string, max = EXCERPT_MAX): string {
 }
 
 const THREAD_SELECT = `
-  SELECT t.*, c.title AS title, c.archived AS conversation_archived
-    FROM james_threads t JOIN conversations c ON c.id = t.conversation_id`;
+  SELECT t.*, c.title AS title, c.archived AS conversation_archived,
+         c.project_id AS project_id, p.name AS project_name, p.slug AS project_slug
+    FROM james_threads t JOIN conversations c ON c.id = t.conversation_id
+    LEFT JOIN projects p ON p.id = c.project_id`;
 
 export function getThread(db: Database.Database, conversationId: string): ThreadRow | undefined {
   return db.prepare(`${THREAD_SELECT} WHERE t.conversation_id = ?`).get(conversationId) as ThreadRow | undefined;
