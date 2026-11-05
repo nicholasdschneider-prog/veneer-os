@@ -128,3 +128,29 @@ reasons. A real completed task still requires a genuinely eligible account/time
 and normal-work idle interval. An external effect, UNKNOWN batch, stale meter or
 missing paid-fallback proof must not be retried or represented as success.
 Until that production verification exists, this thread is not marked ready to archive.
+
+## Production readback — November 5, 2026
+
+Nick approved web/runner deployment after normal work drains. Before restarting,
+readbacks showed the repair already running: migration 0195's status table exists,
+the scheduler heartbeat is current, and genuine provider snapshots are updating.
+No redundant restart was performed and no active turns were interrupted. The exact
+intervening deployment event was not independently attributed in this check.
+
+At 12:29 UTC, scheduler state was “Normal work takes priority”; account evaluation
+was recorded at 12:25:05 UTC. The approved drmark Codex account reported live usage
+40%, paid fallback disabled, and weekly reset November 10 at 22:27:58 UTC
+(5:27:58 p.m. Eastern). It is currently outside the final six hours. Under the
+every-day protected-hours policy, its first potential dispatch interval is only
+after 5 p.m. on November 10, before the reset cutoff, if normal work is idle and
+fresh telemetry/access still pass. Changed provider reset times remain authoritative.
+Other accounts record specific paid-fallback or outside-window reasons; the Piper
+task remains restricted to its approved drmark account.
+
+Local web/runner health passed; public front door returned HTTP 302 and the tunnel
+had four connections. These health checks do not establish authenticated browser
+chat delivery. Authenticated native backlog readback was checked separately.
+No optional run is recorded yet. The starvation/observability repair is verified
+live; actual model execution and checkpoint completion remain to be verified in a
+genuinely eligible window. A follow-up will check that window rather than fabricate
+usage/time, widen accounts, or force a task through normal work.
