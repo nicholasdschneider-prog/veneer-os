@@ -211,6 +211,18 @@ describe('decision evidence and staleness', () => {
     await expect(bindDecisionEvidence(ctx, bot, 'bot', proposal({ evidence_items: [{ kind: 'image', label: 'Photo', source: { system: 'upload', path: join(dataDir, 'uploads', 'abc', 'x.png') } }, refundRecord] }))).rejects.toThrow('bots cite chat files');
   });
 
+  it('retains a chat_file held by a side chat of the citing bot and names the failing item otherwise', async () => {
+    db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id,side_chat_of) VALUES('lane',1,1,'lane','claude','lane','private','team','bot')").run();
+    const held = join(dir, 'held.png'); writeFileSync(held, png);
+    db.prepare("INSERT INTO generated_files(id,path,name,source,conversation_id) VALUES('g1',?,'held.png','bash','lane')").run(held);
+    const item = (conversation_id: string) => ({ kind: 'image', label: 'Bent spring', source: { system: 'chat_file', conversation_id, path: held } });
+    const bound = await bindDecisionEvidence(ctx, bot, 'bot', proposal({ evidence_items: [item('bot'), refundRecord] }));
+    expect(bound.evidence_items![0]).toMatchObject({ retained: true, source: { conversation_id: 'bot', path: held } });
+    const d = s.raise(bot, { source_key: 'T1', proposal_key: 'family', proposal: bound });
+    expect(readDecisionEvidence(ctx, human, d.id, 1, 0).bytes).toEqual(png);
+    await expect(bindDecisionEvidence(ctx, bot, 'bot', proposal({ evidence_items: [item('source'), refundRecord] }))).rejects.toThrow('evidence_items[0] (Bent spring): Image unavailable');
+  });
+
   it('records a human upload as evidence on the question and refuses paths outside uploads', () => {
     const upload = join(dataDir, 'uploads', 'abc', 'unit.png'); writeFileSync(upload, png);
     const d = s.raise(bot, { source_key: 'T1', proposal_key: 'refund', proposal: proposal() });

@@ -28,13 +28,26 @@ export async function loadConversationFile(ctx: AppContext, actor: Actor, botId:
   return load(ctx, actor, botId, ref, accept);
 }
 
+/**
+ * A bot's task chats and coordination lanes are side chats of its main chat and
+ * share its access; a file one of them retained (registered to that exact chat)
+ * may be cited through any chat of the same family. Still an exact registry
+ * row, never a directory or guessed-path grant.
+ */
+function heldByFamily(ctx: AppContext, source: { id: string; side_chat_of?: string | null }, file: string) {
+  const root = source.side_chat_of ?? source.id;
+  return ctx.db.prepare(`SELECT 1 FROM generated_files g JOIN conversations c ON c.id = g.conversation_id
+    WHERE g.path = ? AND (c.id = ? OR c.side_chat_of = ?)`).get(file, root, root);
+}
+
 async function load(ctx: AppContext, actor: Actor, botId: string, image: { conversation_id: string; path: string }, accept: (bytes: Buffer) => string | null = rasterType) {
   const service = createBotService(ctx.db);
   const source = service.chat(actor, image.conversation_id);
   if (!sameBusiness(ctx.db, botId, source)) throw unavailable();
   // Exact registered/session membership, never a root-directory or guessed-path grant.
   if (!path.isAbsolute(image.path) || image.path.includes('\0')) throw unavailable();
-  const registered = ctx.db.prepare('SELECT 1 FROM generated_files WHERE conversation_id=? AND path=?').get(source.id, image.path);
+  const registered = ctx.db.prepare('SELECT 1 FROM generated_files WHERE conversation_id=? AND path=?').get(source.id, image.path)
+    ?? heldByFamily(ctx, source, image.path);
   if (!registered) {
     const refs = await ctx.manager.listSessionFiles(source.id);
     const ref = refs.find(r => r.path === image.path);
@@ -74,8 +87,12 @@ export async function bindDecisionImages(ctx: AppContext, actor: Actor, botId: s
   createBotService(ctx.db).chat(actor, botId);
   if (!proposal.images?.length) return proposal;
   const images: Image[] = [];
-  for (const image of proposal.images) {
-    const found = await load(ctx, actor, botId, image);
+  for (const [index, image] of proposal.images.entries()) {
+    const found = await load(ctx, actor, botId, image).catch((e: unknown) => {
+      // Name the failing reference so the bot can fix that one file, not guess.
+      if (e instanceof BotError && e.status === 404) throw new BotError(404, `images[${index}] (${image.label}): ${e.message}`);
+      throw e;
+    });
     if (image.sha256 && image.sha256 !== found.sha256) throw new BotError(409, 'Image changed. Review the new evidence and revise the proposal with its new image reference.');
     images.push({ ...image, sha256: found.sha256 });
   }

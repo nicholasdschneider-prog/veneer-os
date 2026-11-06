@@ -117,7 +117,10 @@ export async function bindDecisionEvidence(ctx: AppContext, actor: Actor, botId:
     };
     if (item.kind === 'image' || item.kind === 'document') {
       if (src.system === 'chat_file') {
-        const found = await loadConversationFile(ctx, actor, botId, src, acceptFor(item.kind));
+        const found = await loadConversationFile(ctx, actor, botId, src, acceptFor(item.kind)).catch((e: unknown) => {
+          if (e instanceof BotError && e.status === 404) throw new BotError(404, `${label}: ${e.message}`);
+          throw e;
+        });
         bound.push(retain(found.bytes, found.type));
       } else if (src.system === 'upload') {
         if (item.added_by !== 'human') throw new BotError(400, `${label}: bots cite chat files, not composer uploads.`);

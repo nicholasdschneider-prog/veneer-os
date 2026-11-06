@@ -93,5 +93,26 @@ describe('decision image evidence', () => {
     const r=await fetch(url+'0');expect(r.status).toBe(200);expect(r.headers.get('cache-control')).toBe('private, no-store');expect(r.headers.get('content-type')).toContain('image/png');expect(r.headers.get('x-content-type-options')).toBe('nosniff');
     expect((await fetch(url+'99')).status).toBe(400);
   });
+  it('accepts a file retained by a side chat of the same bot, cited through its main chat or a sibling side chat',async()=>{
+    // HRW9V2: photos were extracted in the bot's coordination lane, then cited from its task chat and main chat.
+    for (const id of ['lane','task']) db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,side_chat_of) VALUES(?,1,1,?,'claude',?,'private','bot')").run(id,id,id);
+    const held=join(dir,'held.png');writeFileSync(held,png);
+    db.prepare("INSERT INTO generated_files(id,path,name,source,conversation_id) VALUES('g1',?,'held.png','bash','lane')").run(held);
+    const ref=(conversation_id:string)=>[{conversation_id,path:held,label:'Retained photo',source:'Customer · fixture ticket'}];
+    for (const via of ['bot','task']) {
+      const p=await bindDecisionImages(ctx,actor,'bot',proposal(ref(via)));
+      expect(p.images?.[0]).toMatchObject({conversation_id:via,path:held});expect(p.images?.[0].sha256).toMatch(/^[a-f0-9]{64}$/);
+    }
+    const d=s.raise(actor,{source_key:'family',proposal_key:'photo',proposal:await bindDecisionImages(ctx,actor,'bot',proposal(ref('bot')))});
+    expect((await readDecisionImage(ctx,actor,d.id,1,0)).bytes).toEqual(png);
+    // Another chat's side chat, or an unrelated chat, still does not hold it.
+    await expect(bindDecisionImages(ctx,actor,'bot',proposal(ref('foreign')))).rejects.toThrow('images[0] (Retained photo): Image unavailable');
+    db.prepare("UPDATE generated_files SET conversation_id='foreign' WHERE id='g1'").run();
+    await expect(bindDecisionImages(ctx,actor,'bot',proposal(ref('task')))).rejects.toThrow('unavailable');
+    // Bytes stay bound: a changed file under the same registry row is refused.
+    db.prepare("UPDATE generated_files SET conversation_id='lane' WHERE id='g1'").run();
+    writeFileSync(held,Buffer.concat([png,Buffer.from('x')]));
+    await expect(readDecisionImage(ctx,actor,d.id,1,0)).rejects.toThrow('Image or proposal changed');
+  });
   it('never accepts SVG or HTML as passive raster evidence',()=>{expect(rasterType(Buffer.from('<html>image</html>'))).toBeNull();expect(rasterType(png)).toBe('image/png');});
 });
