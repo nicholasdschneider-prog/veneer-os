@@ -146,6 +146,9 @@ interface LiveTurn {
   discarded?: boolean;
 }
 
+/** After this wait, a bot's incoming message runs ahead of its newer scheduled wake-ups. */
+export const INCOMING_AGED_MS = 10 * 60_000;
+
 /** A message waiting behind the in-flight turn. `id` is its durable
  * queued_messages row (deleted when the message is shifted into a turn); null
  * for a re-enqueued interrupted turn, which owns a pending_turns row instead. */
@@ -1496,6 +1499,27 @@ export function createConversationManager({
     return hasBotLane(db, conversationId);
   }
 
+  /** Incoming work (a person, another bot, James) that has waited this long runs ahead of newer wake-ups. */
+  const queuedCreatedStmt = db.prepare('SELECT created_at FROM queued_messages WHERE id = ?');
+  const agedRetry = new Map<string, NodeJS.Timeout>();
+  /** Milliseconds a queued item has waited, or null for a wake-up or an item with no durable row. */
+  function incomingWaitMs(item: QueuedMessageWork | undefined): number | null {
+    if (!item || item.id === null || item.origin?.kind === 'wakeup') return null;
+    const row = queuedCreatedStmt.get(item.id) as { created_at: string } | undefined;
+    const waited = row ? Date.now() - Date.parse(`${row.created_at.replace(' ', 'T')}Z`) : NaN;
+    return Number.isFinite(waited) ? waited : null;
+  }
+  /** Retry a held lane once its incoming head ages past the threshold, even if no sibling turn ends first. */
+  function retryWhenAged(conv: ConversationRow, waitedMs: number): void {
+    if (agedRetry.has(conv.id)) return;
+    const timer = setTimeout(() => {
+      agedRetry.delete(conv.id);
+      void runNext(conv);
+    }, Math.max(0, INCOMING_AGED_MS - waitedMs) + 50);
+    timer.unref?.();
+    agedRetry.set(conv.id, timer);
+  }
+
   function bufferEvent(turn: LiveTurn, event: ConversationEvent): void {
     if (event.type === 'text_delta') {
       turn.partialText += event.text;
@@ -1666,10 +1690,30 @@ export function createConversationManager({
       // waits only for other human notes at the cap. A human message queued in the main chat still
       // goes first (below).
       const otherTasks = family.filter(id => id !== conv.id && id !== lane.owner_id && taskService.taskOfLane(id));
-      if (entry.queue[0]?.origin?.humanTaskNote) {
+      const head = entry.queue[0];
+      if (head?.origin?.humanTaskNote) {
         if (otherTasks.filter(id => entryFor(id).turn?.origin?.humanTaskNote).length >= TASK_CAP_PER_OWNER) return;
-      } else if (otherTasks.filter(id => entryFor(id).turn || entryFor(id).maintenance).length >= TASK_CAP_PER_OWNER) return;
-    } else if (!humanFirst(conv.id) && family.some(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance))) return;
+      } else {
+        const running = otherTasks.filter(id => entryFor(id).turn || entryFor(id).maintenance).length;
+        if (running >= TASK_CAP_PER_OWNER) return;
+        // Incoming work (not a wake-up) waiting in a sibling task chat keeps the last slot free from wake-ups.
+        if (head?.origin?.kind === 'wakeup' && running >= TASK_CAP_PER_OWNER - 1 && otherTasks.some(id => {
+          const e = entryFor(id);
+          return !e.turn && !e.maintenance && !failedTurnStmt.get(id) && incomingWaitMs(e.queue[0]) !== null;
+        })) return;
+      }
+    } else if (!humanFirst(conv.id)) {
+      // Bot sessions of one bot take turns. Incoming work that has waited INCOMING_AGED_MS stops waiting for the
+      // bot's task chats (their wake-ups can keep every slot busy for hours) and waits only for its main chat,
+      // huddles and coordination lanes.
+      const waited = incomingWaitMs(entry.queue[0]);
+      const aged = waited !== null && waited >= INCOMING_AGED_MS;
+      const blockers = family.filter(id => id !== conv.id && (entryFor(id).turn || entryFor(id).maintenance));
+      if (blockers.some(id => !aged || id === lane?.owner_id || !taskService.taskOfLane(id))) {
+        if (waited !== null && !aged) retryWhenAged(conv, waited);
+        return;
+      }
+    }
     // Human work already waiting always goes first; workers never preempt it. A task chat waits only
     // for a person's queued message in the main chat, never for bot-to-bot or scheduled traffic queued there.
     if (lane && (taskLane ? entryFor(lane.owner_id).queue.some(q => !q.origin) : entryFor(lane.owner_id).queue.length)) return;

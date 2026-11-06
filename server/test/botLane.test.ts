@@ -295,6 +295,112 @@ describe('human priority and lane parity', () => {
     await tick();
   });
 
+  describe('incoming work against a bot\'s own wake-ups', () => {
+    function tasksFor(count: number) {
+      const user = db.prepare('SELECT * FROM users WHERE id=1').get() as UserRow;
+      const made = createTaskService(db).intake({ user, conversationId: 'clara' }, { items: Array.from({ length: count }, (_, n) => ({ title: `Case ${n}`, case_key: `C${n}` })), source: 'human_dump' }).created;
+      return (n: number) => row(made[n]!.task_conversation_id!);
+    }
+    const fromAnna = { kind: 'agent' as const, from: 'Anna', to: 'Clara', sourceConversationId: 'anna' };
+    const age = (minutes: number) => db.prepare(`UPDATE queued_messages SET created_at=datetime('now','-${minutes} minutes')`).run();
+
+    it('holds a fresh bot message behind busy task chats, then runs it beside them once it has waited 10 minutes', async () => {
+      const { turns, adapter } = fakeProvider();
+      const { manager } = managerWith(adapter);
+      const lane = enable();
+      const chat = tasksFor(6);
+      // Every task slot is busy with wake-ups (hourly re-checks).
+      for (const n of [0, 1, 2, 3]) manager.deliverWakeup(chat(n), 'Re-check', `w-${n}`, 1);
+      await tick();
+      expect(turns).toHaveLength(4);
+      // A fresh bot message waits; the next due wake-up still takes a freed slot first (task-notes-first order kept).
+      expect(manager.postMessage(lane, 'Voice intake: call 7BXG2X', 1, fromAnna).disposition).toBe('queued');
+      manager.deliverWakeup(chat(4), 'Re-check', 'w-4', 1);
+      turns[0]!.finish();
+      await tick();
+      expect(turns).toHaveLength(5);
+      expect(turns[4]!.spec.nativeSessionId).toBe(chat(4).native_session_id);
+      expect(manager.queueSnapshot(lane.id).messages).toHaveLength(1);
+      // After 10 minutes it no longer waits for the task chats, even with newer wake-ups queued.
+      age(11);
+      manager.deliverWakeup(chat(5), 'Re-check', 'w-5', 1);
+      turns[1]!.finish();
+      await tick();
+      expect(turns.map((t) => t.spec.nativeSessionId)).toContain(lane.native_session_id);
+      expect(manager.queueSnapshot(lane.id).messages).toHaveLength(0);
+      // Wake-ups are not starved either: the newer one still got the freed task slot.
+      expect(turns.map((t) => t.spec.nativeSessionId)).toContain(chat(5).native_session_id);
+      for (const t of turns) t.finish();
+      await tick();
+    });
+
+    it('still waits for the bot\'s main chat and other bot sessions after 10 minutes', async () => {
+      const { turns, adapter } = fakeProvider();
+      const { manager } = managerWith(adapter);
+      const lane = enable();
+      const other = ensureCoordination(db, row('anna'), row('clara'));
+      expect(manager.deliverWakeup(row(other.lane.conversation_id), 'Anna asks', 'w-other', 1).disposition).toBe('running');
+      await tick();
+      expect(manager.postMessage(lane, 'Voice intake', 1, fromAnna).disposition).toBe('queued');
+      age(11);
+      manager.postMessage(lane, 'Second', 1, fromAnna);
+      await tick();
+      expect(turns).toHaveLength(1);
+      turns[0]!.finish();
+      await tick();
+      expect(turns).toHaveLength(2);
+      expect(turns[1]!.spec.nativeSessionId).toBe(lane.native_session_id);
+      for (const t of turns) t.finish();
+      await tick();
+    });
+
+    it('starts an aged bot message on its own once 10 minutes pass, without waiting for a task turn to end', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], now: Date.now() });
+      try {
+        const { turns, adapter } = fakeProvider();
+        const { manager } = managerWith(adapter);
+        const lane = enable();
+        const chat = tasksFor(1);
+        manager.deliverWakeup(chat(0), 'Long re-check', 'w-long', 1);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(manager.postMessage(lane, 'Voice intake', 1, fromAnna).disposition).toBe('queued');
+        await vi.advanceTimersByTimeAsync(9 * 60_000);
+        expect(turns).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(2 * 60_000);
+        expect(turns).toHaveLength(2);
+        expect(turns[1]!.spec.nativeSessionId).toBe(lane.native_session_id);
+        for (const t of turns) t.finish();
+        await vi.advanceTimersByTimeAsync(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('keeps the last task slot free from wake-ups while a message waits in a task chat', async () => {
+      const { turns, adapter } = fakeProvider();
+      const { manager } = managerWith(adapter);
+      enable();
+      const chat = tasksFor(6);
+      for (const n of [0, 1, 2, 3]) manager.deliverWakeup(chat(n), 'Re-check', `w-${n}`, 1);
+      await tick();
+      // Task 4 has a wake-up queued first; task 5 then gets a bot message. Both wait at the cap.
+      expect(manager.deliverWakeup(chat(4), 'Re-check', 'w-4', 1).disposition).toBe('queued');
+      expect(manager.postMessage(chat(5), 'Anna: the customer called back', 1, fromAnna).disposition).toBe('queued');
+      turns[0]!.finish();
+      await tick();
+      // The freed slot goes to the message, not to the older wake-up.
+      expect(turns).toHaveLength(5);
+      expect(turns[4]!.spec.nativeSessionId).toBe(chat(5).native_session_id);
+      // The wake-up runs as soon as another slot frees.
+      turns[1]!.finish();
+      await tick();
+      expect(turns).toHaveLength(6);
+      expect(turns[5]!.spec.nativeSessionId).toBe(chat(4).native_session_id);
+      for (const t of turns) t.finish();
+      await tick();
+    });
+  });
+
   it('keeps a bot message’s urgent class through the durable queue', () => {
     const { adapter } = fakeProvider();
     const { manager } = managerWith(adapter);
