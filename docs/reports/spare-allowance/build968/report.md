@@ -154,3 +154,20 @@ No optional run is recorded yet. The starvation/observability repair is verified
 live; actual model execution and checkpoint completion remain to be verified in a
 genuinely eligible window. A follow-up will check that window rather than fabricate
 usage/time, widen accounts, or force a task through normal work.
+
+## Eligible-window check — November 10, 2026, 5:08 p.m. Eastern
+
+Live scheduler heartbeat at 22:08:19 UTC reported “Normal work takes priority.”
+The 22:06:17 UTC native meter observation marked the approved drmark account
+eligible: weekly usage 40%, paid fallback disabled, reset still 22:27:58 UTC.
+Piper's task remains ready with zero completed batches and no run reservation.
+
+Other genuine normal turns are pending, including catalog relationship work;
+this verification turn also counts as normal work. No retained failed turn is
+being treated as the blocker. This is a recorded priority hold, not absent
+evaluation. Current dispatch must still refresh the meter within its freshness
+limit after normal work drains. This check does not force dispatch, interrupt
+normal work, modify account/reset policy, or claim a completed draft.
+
+End the observer turn promptly and make one bounded follow-up near the end of
+the current window. A completed checkpoint remains the required success evidence.
