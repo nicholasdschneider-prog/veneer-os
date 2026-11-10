@@ -78,6 +78,28 @@ describe('exact approved message delegation',()=>{
   const delegates=await Promise.all([1,2].map(()=>post('grant','delegate',{decision_id:id,expected_version:1,executor_conversation_id:namedExecutor,request_key:'race-delegate',scope:scope()})));expect(delegates.every(r=>r.status===200)).toBe(true);const gs=await Promise.all(delegates.map(r=>r.json()));expect(gs[0].id).toBe(gs[1].id);
   const accepts=await Promise.all([1,2].map(()=>post(namedExecutor,'accept',{delegation_id:gs[0].id,request_key:'race-accept',scope:scope()})));expect(accepts.every(r=>r.status===200)).toBe(true);const ds=await Promise.all(accepts.map(r=>r.json()));expect(ds[0].id).toBe(ds[1].id);expect(db.prepare('SELECT count(*) n FROM bot_message_drafts').get()).toEqual({n:1});expect(db.prepare('SELECT count(*) n FROM bot_message_delegations').get()).toEqual({n:1});
  });
+ it('lets an employee approver authorize a send that names the bot\'s own task chat as executor',()=>{
+  // Ali-style approver: an employee with access to the owning bot only, never to the task lane.
+  db.prepare('INSERT INTO employee_workspaces(user_id) VALUES(2)').run();
+  db.prepare("UPDATE business_team_members SET role='member' WHERE user_id=2").run();
+  db.prepare("INSERT INTO employee_bot_access(user_id,conversation_id) VALUES(2,'grant')").run();
+  db.prepare("INSERT INTO conversations(id,assistant_id,user_id,title,provider,native_session_id,visibility,business_team_id) VALUES('grant-task',1,1,'Task','claude','grant-task','private','team')").run();
+  db.prepare("INSERT INTO bot_tasks(id,owner_conversation_id,title,task_conversation_id) VALUES('task-1','grant','Task','grant-task')").run();
+  namedExecutor='grant-task';
+  const id=approved();
+  const inspected=bridge.inspect(owner,id,1);expect(inspected.ready).toBe(true);
+  const d=s.saveDraft(owner,'grant','approved-send',scope().payload,id,1);
+  const first=s.claim(owner,d.id,'claim');expect(first.execute).toBe(true);
+  expect((db.prepare('SELECT authorized_by FROM bot_message_drafts WHERE id=?').get(d.id) as {authorized_by:number}).authorized_by).toBe(2);
+  // Every other guard still holds: a deactivated owning bot stops the proof.
+  db.prepare("UPDATE bot_registrations SET active=0 WHERE conversation_id='grant'").run();
+  expect(()=>bridge.inspect(owner,id,1)).toThrow('inactive');
+ });
+ it('still refuses an employee approval whose executor is an unregistered or foreign chat',()=>{
+  db.prepare('INSERT INTO employee_workspaces(user_id) VALUES(2)').run();
+  db.prepare("INSERT INTO employee_bot_access(user_id,conversation_id) VALUES(2,'grant')").run();
+  namedExecutor='foreign';expect(()=>bridge.inspect(owner,approved(),1)).toThrow('same explicit business');
+ });
  describe('owner is the approved named executor',()=>{
   beforeEach(()=>{namedExecutor='grant';executor=owner;});
   it('inspects ready and preserves exact approval through one self-bound draft, claim and receipt',()=>{

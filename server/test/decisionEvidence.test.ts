@@ -286,7 +286,16 @@ describe('decision evidence and staleness', () => {
       expect(error).toContain('proposal.evidence_items.0.source.ticket_id');
       expect(error).toContain('Unexpected fields');
       expect(error).not.toContain('SECRET');expect(error).not.toContain('binding_hash');
+      // A refused raise says plainly that no card exists, so the bot cannot report one as pending.
+      if (path === '/decisions') expect(error).toContain('NO CARD WAS CREATED'); else expect(error).not.toContain('NO CARD');
     }
+    // 59766K (Oct 1): a chat file cited from a chat that does not exist names the item and the id to use.
+    const ghost = await fetch(base+'/decisions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_key:'s',proposal_key:'ghost',proposal:proposal({evidence_items:[{kind:'image',label:'Damage photo',source:{system:'chat_file',conversation_id:'no-such-chat',path:file}},refundRecord]})})});
+    expect(ghost.status).toBe(404);
+    const ghostError = (await ghost.json()).error as string;
+    expect(ghostError).toContain('evidence_items[0] (Damage photo): source.conversation_id no-such-chat is not a chat this bot can cite');
+    expect(ghostError).toContain("this chat's id bot");
+    expect(ghostError).toContain('NO CARD WAS CREATED');
     expect(fetchGmailAttachment).not.toHaveBeenCalled();
     expect(ctx.manager.listSessionFiles).not.toHaveBeenCalled();
     expect(db.prepare('SELECT count(*) n FROM bot_decisions').get()).toEqual(before);

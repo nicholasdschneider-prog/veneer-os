@@ -17,6 +17,9 @@ import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import type { ConversationRow, UserRow } from '../db/db.js';
 import { BotError, createBotService, proposalInputSchema, validateDecisionChoices, validateDecisionEvidence } from './service.js';
+
+/** Appended to every refused raise so the bot can never mistake a failure for a pending card. */
+export const NO_CARD_CREATED = ' NO CARD WAS CREATED: nothing is waiting for a human. Fix what is named above and call raise_decision again now; until a call returns a decision id, never tell a customer or teammate that approval is pending.';
 const key = z.string().min(1).max(200);
 const mutation = z.object({
   expected_version: z.number().int().positive(),
@@ -42,7 +45,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
   router.use(mergeAuthorizationRoutes(ctx, deps.mergeIO));
   const merges = mergeAuthorization(ctx.db, deps.mergeIO ?? mergeIO(ctx));
   const run =
-    (fn: (req: express.Request, res: express.Response) => unknown) =>
+    (fn: (req: express.Request, res: express.Response) => unknown, failureNote = '') =>
     (
       req: express.Request,
       res: express.Response,
@@ -52,15 +55,19 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
         .then(() => fn(req, res))
         .catch((e) => {
           if (e instanceof BotError)
-            res.status(e.status).json({ error: e.message });
+            res.status(e.status).json({ error: e.message + failureNote });
           else if (e instanceof z.ZodError) {
             const proposalError = e.issues.some(x => x.path[0] === 'proposal')
               ? proposalDiagnostics(req.body?.proposal) : null;
             res.status(400).json({
               error: [...(proposalError ? [proposalError] : []), ...e.issues
                 .filter(x => x.path[0] !== 'proposal')
-                .map(x => `${x.path.join('.')}: ${x.message}`)].join('; '),
+                .map(x => `${x.path.join('.')}: ${x.message}`)].join('; ') + failureNote,
             });
+          }
+          else if (failureNote) {
+            console.error('[bots] request failed', e);
+            res.status(500).json({ error: `Server error.${failureNote}` });
           }
           else next(e);
         });
@@ -274,7 +281,7 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
         return d;
       })();
       res.json({ decision: raised });
-    }),
+    }, NO_CARD_CREATED),
   );
   router.get('/decisions/:id/evidence/:version/:index', run((req, res) => {
     const version = z.coerce.number().int().positive().parse(req.params.version);

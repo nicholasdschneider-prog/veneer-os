@@ -48,6 +48,22 @@ export function messageDelegationService(db: Database.Database) {
     user(c.user_id);
     return c;
   }
+  // A task or ticket chat runs as its owning bot (tools act as the owner chat), so
+  // an approval that names the lane as executor names that owning bot.
+  function home(id: string) {
+    const lane = (db.prepare('SELECT owner_conversation_id FROM bot_tasks WHERE task_conversation_id=?').get(id)
+      ?? db.prepare('SELECT owner_conversation_id FROM cs_tickets WHERE ticket_conversation_id=?').get(id)) as {owner_conversation_id:string}|undefined;
+    return lane?.owner_conversation_id ?? id;
+  }
+  // The approval's bots must still be live registered bots with active owners.
+  // This is about the bots, not the approver: an employee who may answer the
+  // card need not be able to send in either bot's chat.
+  function registeredBot(id: string) {
+    const c = db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as {id:string;user_id:number;archived:number;business_team_id:string|null}|undefined;
+    if (!c || c.archived || !db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(id)) throw new BotError(403, 'Bot access or registration is inactive');
+    user(c.user_id);
+    return c;
+  }
   function proof(a: Actor, id: string, version: number, completedReceipt = false) {
     // Read-only: never clear a running conversation's discussion context.
     const d = bots.read({ user: user(a.user.id) }, id);
@@ -71,8 +87,8 @@ export function messageDelegationService(db: Database.Database) {
     // canonical_case may be the ticket, an order case or a Gmail thread ID: the
     // human approved the exact recipients and text, and that is the authority.
     const scope = parsed.data;
-    const owner = activeBot({user:approver},d.conversation_id);
-    const executor = activeBot({user:approver},scope.executor_conversation_id);
+    const owner = registeredBot(d.conversation_id);
+    const executor = registeredBot(home(scope.executor_conversation_id));
     if (!owner.business_team_id || executor.business_team_id !== owner.business_team_id) throw new BotError(403, 'Delegation requires the same explicit business');
     return { d, scope, approval, approver, proposal_hash: canonicalSha256(p), payload_hash: canonicalSha256(scope) };
   }
@@ -122,7 +138,7 @@ export function messageDelegationService(db: Database.Database) {
       const raw = db.prepare('SELECT proposal_json FROM bot_decisions WHERE id=?').get(draft.decision_id) as {proposal_json:string}|undefined;
       if (!raw || !JSON.parse(raw.proposal_json).message_delivery) return false;
       const p = proof(a,draft.decision_id,draft.decision_version);
-      if (p.d.conversation_id !== draft.conversation_id || p.scope.executor_conversation_id !== draft.conversation_id) throw new BotError(409,'Only the decision owner named as executor sends its own draft directly; otherwise use delegate_approved_message');
+      if (p.d.conversation_id !== draft.conversation_id || home(p.scope.executor_conversation_id) !== draft.conversation_id) throw new BotError(409,'Only the decision owner named as executor sends its own draft directly; otherwise use delegate_approved_message');
       if (!equal(sendFields(JSON.parse(draft.payload_json)),sendFields(p.scope.payload))) throw new BotError(409,'Draft channel, account, recipients, subject, body or attachments differ from the approved message; send only what was approved');
       if (db.prepare("SELECT 1 FROM bot_message_drafts WHERE decision_id=? AND id<>? AND (authorized_by IS NOT NULL OR claim_key IS NOT NULL OR state NOT IN ('draft','discarded'))").get(draft.decision_id,draft.id) || db.prepare('SELECT 1 FROM bot_message_delegations WHERE decision_id=?').get(draft.decision_id)) throw new BotError(409,'This approved message already has a send in progress or done; reconcile it, never send twice');
       db.prepare("UPDATE bot_message_drafts SET authorized_by=?,state='queued',updated_at=datetime('now') WHERE id=? AND authorized_by IS NULL AND state='draft'").run(p.approver.id,draft.id);
@@ -137,10 +153,13 @@ export function messageDelegationService(db: Database.Database) {
     },
     delegate(a: Actor, id: string, version: number, executor: string, key: string, scope: Scope) {
       return db.transaction(()=>{
-        const p=proof(a,id,version);activeBot(a,p.d.conversation_id,true);activeBot(a,executor);
+        const p=proof(a,id,version);
+        // Bind the delegation to the bot that actually acts; the scope keeps the approved text verbatim.
+        const named=executor;executor=home(executor);
+        activeBot(a,p.d.conversation_id,true);activeBot(a,executor);
         // The immutable approval may name its owner as executor. Both roles
         // still require their own actor checks; this does not authorize an ordinary draft.
-        if (executor !== p.scope.executor_conversation_id || !equal(scope,p.scope)) throw new BotError(409,'Named executor or exact approved scope differs');
+        if (executor !== home(p.scope.executor_conversation_id) || (named !== p.scope.executor_conversation_id && named !== executor) || !equal(scope,p.scope)) throw new BotError(409,'Named executor or exact approved scope differs');
         const prior=db.prepare('SELECT * FROM bot_message_delegations WHERE (decision_id=? AND decision_version=?) OR (owner_conversation_id=? AND request_key=?)').all(id,version,p.d.conversation_id,key) as Delegation[];
         if(prior.length){const g=prior[0]!;if(prior.length!==1||g.request_key!==key||g.decision_id!==id||g.decision_version!==version||g.delegator_user_id!==a.user.id||g.payload_hash!==p.payload_hash)throw new BotError(409,'Decision version or request key already bound; no new delivery');valid(a,g);return g;}
         const g:Delegation={id:crypto.randomUUID(),decision_id:id,decision_version:version,owner_conversation_id:p.d.conversation_id,executor_conversation_id:executor,executor_user_id:bots.chat(a,executor).user_id,delegator_user_id:a.user.id,approver_user_id:p.approver.id,approval_event_id:p.approval.id,proposal_hash:p.proposal_hash,payload_hash:p.payload_hash,scope_json:canonicalJson(p.scope),request_key:key};

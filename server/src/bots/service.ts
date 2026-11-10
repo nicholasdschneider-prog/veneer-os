@@ -320,8 +320,13 @@ export function createBotService(source: Database.Database) {
   }
   function evidenceAllowed(actor: Actor, p: Proposal, botId?: string) {
     if (p.images?.some(image => !image.sha256)) throw new BotError(400, 'Image evidence must be bound to its verified bytes');
-    for (const e of [...p.evidence, ...(p.images ?? [])]) {
-      const c = chat(actor, e.conversation_id);
+    for (const [index, e] of [...p.evidence.map((e, i) => [`evidence[${i}]`, e] as const), ...(p.images ?? []).map((e, i) => [`images[${i}]`, e] as const)]) {
+      let c: ConversationRow;
+      try { c = chat(actor, e.conversation_id); }
+      catch (err) {
+        if (err instanceof BotError && err.status === 404 && actor.conversationId) throw new BotError(404, `${index}: conversation_id ${e.conversation_id.slice(0, 80)} is not a chat this bot can cite (it may be retired, archived or outside this business). Remove it or cite the fact itself with evidence_items.`);
+        throw err;
+      }
       if (!sameBusiness(db, botId, c)) throw new BotError(403, 'Cross-business evidence is not allowed');
     }
   }

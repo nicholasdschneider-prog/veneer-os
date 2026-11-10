@@ -42,7 +42,12 @@ function heldByFamily(ctx: AppContext, source: { id: string; side_chat_of?: stri
 
 async function load(ctx: AppContext, actor: Actor, botId: string, image: { conversation_id: string; path: string }, accept: (bytes: Buffer) => string | null = rasterType) {
   const service = createBotService(ctx.db);
-  const source = service.chat(actor, image.conversation_id);
+  let source;
+  try { source = service.chat(actor, image.conversation_id); }
+  catch (e) {
+    if (e instanceof BotError && e.status === 404) throw new BotError(404, `source.conversation_id ${image.conversation_id.slice(0, 80)} is not a chat this bot can cite. For a file in your own chat use this chat's id ${botId}.`);
+    throw e;
+  }
   if (!sameBusiness(ctx.db, botId, source)) throw unavailable();
   // Exact registered/session membership, never a root-directory or guessed-path grant.
   if (!path.isAbsolute(image.path) || image.path.includes('\0')) throw unavailable();
