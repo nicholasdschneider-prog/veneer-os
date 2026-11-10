@@ -85,6 +85,11 @@ const USER_DENY_MESSAGE = 'The user declined this action. Continue without it an
 const STEER_ACK_WAIT_MS = 5_000;
 /** Re-read this far behind the last index pass, so clock skew cannot drop a message. */
 const SEARCH_REINDEX_MARGIN_MS = 60 * 60_000;
+/** Push one array onto another without spreading it into call arguments, which
+ * overflows the stack past about 100k items (a large chat's history). */
+function appendEvents<T>(target: T[], items: readonly T[]): void {
+  for (let i = 0; i < items.length; i++) target.push(items[i]!);
+}
 /** A rotation handoff quotes two weeks of owner directions and recent work. */
 const HANDOFF_FROZEN_WINDOW_MS = 14 * 86_400_000;
 const HANDOFF_FROZEN_MAX_BYTES = 8 * 1024 * 1024;
@@ -841,22 +846,31 @@ export function createConversationManager({
      VALUES (?, '[]', ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET
      files_json = excluded.files_json, handoff = excluded.handoff, pending = 1, updated_at = datetime('now')`,
   );
+  /** When this chat last froze a session (SQLite UTC text), or '' if it never did. */
+  function lastFreeze(conversationId: string): string {
+    const row = db.prepare(
+      `SELECT max(t) AS at FROM (
+         SELECT replace(substr(max(created_at), 1, 19), 'T', ' ') AS t FROM conversation_history_segments WHERE conversation_id = ?
+         UNION ALL SELECT updated_at FROM conversation_provider_context WHERE conversation_id = ?)`,
+    ).get(conversationId, conversationId) as { at: string | null };
+    return row.at ?? '';
+  }
   /** Frozen history, oldest first: the legacy row, then appended segments. */
   function frozenHistory(conversationId: string, mode: FrozenRead): ConversationEvent[] {
     if (mode === 'none') return [];
     const out: ConversationEvent[] = [];
     if (mode === 'all') {
       const legacy = providerHistoryStmt.get(conversationId) as { history_json: string } | undefined;
-      if (legacy) out.push(...(JSON.parse(legacy.history_json) as ConversationEvent[]));
+      if (legacy) appendEvents(out, JSON.parse(legacy.history_json) as ConversationEvent[]);
       for (const row of historySegmentsStmt.all(conversationId, '') as { events_json: string }[]) {
-        out.push(...(JSON.parse(row.events_json) as ConversationEvent[]));
+        appendEvents(out, JSON.parse(row.events_json) as ConversationEvent[]);
       }
       return out;
     }
     if ('sinceMs' in mode) {
       // Only segments frozen after the last index pass can hold anything new.
       for (const row of historySegmentsStmt.all(conversationId, new Date(mode.sinceMs).toISOString()) as { events_json: string }[]) {
-        out.push(...(JSON.parse(row.events_json) as ConversationEvent[]));
+        appendEvents(out, JSON.parse(row.events_json) as ConversationEvent[]);
       }
       return out;
     }
@@ -874,7 +888,7 @@ export function createConversationManager({
       const size = (db.prepare('SELECT length(history_json) AS n FROM conversation_provider_context WHERE conversation_id = ?').get(conversationId) as { n: number } | undefined)?.n ?? 0;
       if (size && size <= budget) pieces.unshift((providerHistoryStmt.get(conversationId) as { history_json: string }).history_json);
     }
-    for (const piece of pieces) out.push(...(JSON.parse(piece) as ConversationEvent[]));
+    for (const piece of pieces) appendEvents(out, JSON.parse(piece) as ConversationEvent[]);
     return out;
   }
   /** Append the session that just ended as one new frozen piece. */
@@ -988,12 +1002,12 @@ export function createConversationManager({
     'INSERT INTO turn_origins (conversation_id, turn_id, prompt_text, event_at, message_id, origin_json) VALUES (?, ?, ?, ?, ?, ?)',
   );
   const selectTurnOriginsStmt = db.prepare(
-    'SELECT turn_id, prompt_text, event_at, message_id, origin_json FROM turn_origins WHERE conversation_id = ? ORDER BY id',
+    'SELECT turn_id, prompt_text, event_at, message_id, origin_json FROM turn_origins WHERE conversation_id = ? AND created_at >= ? ORDER BY id',
   );
   const selectAgentMessageReceiptsStmt = db.prepare(
     `SELECT id, target_conversation_id, message_id, message_text, disposition
        FROM agent_message_receipts
-      WHERE source_conversation_id = ?
+      WHERE source_conversation_id = ? AND created_at >= ?
       ORDER BY id`,
   );
   const selectLatestAgentMessageReceiptStmt = db.prepare(
@@ -1054,8 +1068,9 @@ export function createConversationManager({
   function spliceAgentMessageReceipts(
     conversationId: string,
     events: ConversationEvent[],
+    since = '',
   ): ConversationEvent[] {
-    const receipts = selectAgentMessageReceiptsStmt.all(conversationId) as AgentMessageReceiptRow[];
+    const receipts = selectAgentMessageReceiptsStmt.all(conversationId, since) as AgentMessageReceiptRow[];
     if (!receipts.length) return events;
     const used = new Set<number>();
     const receiptByToolId = new Map<string, AgentMessageReceiptRow>();
@@ -1084,9 +1099,9 @@ export function createConversationManager({
     });
   }
 
-  function spliceTurnOrigins(conversationId: string, events: ConversationEvent[]): ConversationEvent[] {
+  function spliceTurnOrigins(conversationId: string, events: ConversationEvent[], since = ''): ConversationEvent[] {
     try {
-      const rows = selectTurnOriginsStmt.all(conversationId) as Array<{
+      const rows = selectTurnOriginsStmt.all(conversationId, since) as Array<{
         turn_id: string;
         prompt_text: string;
         event_at: string;
@@ -1139,7 +1154,7 @@ export function createConversationManager({
     'INSERT INTO turn_recall (conversation_id, turn_id, prompt_text, payload) VALUES (?, ?, ?, ?)',
   );
   const selectTurnRecallStmt = db.prepare(
-    'SELECT turn_id, prompt_text, payload FROM turn_recall WHERE conversation_id = ? ORDER BY id',
+    'SELECT turn_id, prompt_text, payload FROM turn_recall WHERE conversation_id = ? AND created_at >= ? ORDER BY id',
   );
 
   // Re-attach persisted per-prompt recall to a snapshot. On reload the native
@@ -1147,9 +1162,9 @@ export function createConversationManager({
   // UUIDs stored in turn_recall, so rows match turn_started events by prompt
   // text + order and the synthetic event carries the SNAPSHOT's turnId. Fail
   // open: any error returns the events unmodified.
-  function spliceTurnRecall(conversationId: string, events: ConversationEvent[]): ConversationEvent[] {
+  function spliceTurnRecall(conversationId: string, events: ConversationEvent[], since = ''): ConversationEvent[] {
     try {
-      const rows = selectTurnRecallStmt.all(conversationId) as {
+      const rows = selectTurnRecallStmt.all(conversationId, since) as {
         turn_id: string;
         prompt_text: string;
         payload: string;
@@ -1577,21 +1592,30 @@ export function createConversationManager({
       return readSnapshot(fresh, frozen, forFreeze);
     }
     const historicalEvents = frozenHistory(conv.id, frozen);
+    // Frozen events already carry their origins, recall and receipts. Matching
+    // only this session's rows against this session's events is faster, and
+    // keeps an older identical prompt's row from attaching to a new turn.
+    const since = lastFreeze(conv.id);
     const connectorSources = connectorToolSourcesForConversation(db, conv.id, conv.user_id);
     const approvals = listConversationApprovalsStmt.all(conv.id) as ApprovalRow[];
     const questions = listConversationQuestionsStmt.all(conv.id) as QuestionRow[];
-    const merged = reconcileQuestionEvents(
-      reconcileApprovalEvents(
-        [...historicalEvents, ...mergeLiveIntoSnapshot(fileEvents, live.get(conv.id)?.turn ?? null, { settleOrphans: true })],
-        approvals,
+    const session = mergeLiveIntoSnapshot(fileEvents, live.get(conv.id)?.turn ?? null, { settleOrphans: true });
+    // Same per-turn steps and order as before, applied to this session only.
+    const livePart = spliceTurnRecall(
+      conv.id,
+      spliceTurnOrigins(
+        conv.id,
+        guardLoopbackDeliverableEvents(spliceAgentMessageReceipts(conv.id, session, since)),
+        since,
       ),
+      since,
+    );
+    const combined = since ? guardLoopbackDeliverableEvents(historicalEvents) : historicalEvents;
+    appendEvents(combined, livePart);
+    const perTurn = reconcileQuestionEvents(
+      reconcileApprovalEvents(combined, approvals),
       questions,
     ).map((event) => enrichConnectorToolEvent(event, connectorSources));
-    const withAgentMessageReceipts = spliceAgentMessageReceipts(conv.id, merged);
-    const perTurn = spliceTurnRecall(
-      conv.id,
-      spliceTurnOrigins(conv.id, guardLoopbackDeliverableEvents(withAgentMessageReceipts)),
-    );
     const complete = forFreeze ? perTurn : spliceSurfacedNotices(spliceTurnStops(conv.id, perTurn), surfacedRows(db, conv.id));
     snapshotRevisions.set(complete,streamRevision);
     return complete;

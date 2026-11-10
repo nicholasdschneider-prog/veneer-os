@@ -185,3 +185,28 @@ describe('append-only frozen history', () => {
     expect(texts).toEqual(expect.arrayContaining(['question 1', 'answer 1', 'question 2', 'answer 2', 'question 3', 'answer 3']));
   });
 });
+
+describe('large frozen histories', () => {
+  it('opens a chat whose frozen history has more events than a call can spread', async () => {
+    const legacy: ConversationEvent[] = [];
+    for (let i = 0; i < 70_000; i += 1) legacy.push(...turn(i, '2026-10-01T00:00:00.000Z').slice(0, 1 + (i % 2)));
+    const { manager, row, db } = setup(legacy.map((e) => ('turnId' in e ? { ...e, turnId: `22222222-2222-2222-2222-222222222222:${e.turnId}` } : e)) as ConversationEvent[]);
+    db.prepare("INSERT INTO conversation_history_segments (conversation_id, seq, events_json, event_count) VALUES ('bot', 1, ?, ?)")
+      .run(JSON.stringify(legacy.slice(0, 40_000)), 40_000);
+    const events = await manager.snapshot(row());
+    expect(events.length).toBeGreaterThan(145_000);
+    const page = await manager.historyPage(row());
+    expect(page.history.total).toBe(events.length);
+  });
+
+  it('matches only this session’s recall rows, so an old identical prompt never attaches to a new turn', async () => {
+    const { db, manager, row, transcripts } = setup([]);
+    // A recall row from an earlier session with the same prompt text as today's first turn.
+    db.prepare("INSERT INTO turn_recall (conversation_id, turn_id, prompt_text, payload, created_at) VALUES ('bot', 'old', 'question 1', ?, '2026-10-01 00:00:00')")
+      .run(JSON.stringify([{ id: 'm-old', text: 'stale memory' }]));
+    db.prepare("UPDATE conversation_provider_context SET updated_at = '2026-11-01 00:00:00' WHERE conversation_id = 'bot'").run();
+    transcripts.set('session-0', turn(1, new Date().toISOString()));
+    const events = await manager.snapshot(row());
+    expect(events.some((e) => e.type === 'memory_recall')).toBe(false);
+  });
+});
