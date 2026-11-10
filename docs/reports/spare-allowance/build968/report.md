@@ -171,3 +171,33 @@ normal work, modify account/reset policy, or claim a completed draft.
 
 End the observer turn promptly and make one bounded follow-up near the end of
 the current window. A completed checkpoint remains the required success evidence.
+
+## Actual batch dispatched and preempted — November 10, 2026
+
+The final bounded check ran at 22:26 UTC. The scheduler did reserve and dispatch
+Piper's real optional batch at 22:19:05 UTC (5:19:05 p.m. Eastern), after normal
+work permitted admission. Run ID `c1d936f1-eb09-4d66-bc31-90589914735e` belongs to
+original task `0ecf3a0c-1954-45e6-a147-2cea2d4d0d35`. The original Piper chat readback
+contains the optional batch prompt with deadline 22:21:05.684 UTC and the exact
+read-only source-reconciliation scope.
+
+Normal work arrived at 22:20:00 UTC. The run finished UNKNOWN with reason
+“Normal work arrived; reconcile optional batch before continuing.” No immutable
+checkpoint was saved; completed_batches remains zero and task status is blocked.
+There is no evidence of a completed source-reconciliation draft in the readback.
+Do not infer no effects merely from the missing checkpoint, and do not replay
+the batch or rekey it as a retry.
+
+The last recorded authorized-account observation at 22:19:53 UTC still showed
+40% weekly usage, paid fallback disabled and reset 22:27:58 UTC. It was eligible
+at that observation. At final check the heartbeat at 22:25:32 reported normal
+work priority, including active catalog work and this observer. There are no
+additional task runs. The UI task skip_reason still retains “Optional batch
+dispatched”; the run's terminal UNKNOWN reason and blocked task state are the
+authoritative final outcome, not that earlier admission note.
+
+This verifies live dispatch and priority preemption, not successful checkpointed
+completion. The next step is read-only reconciliation of this exact interrupted
+batch before any distinct continuation; no automatic retry or force-run is
+performed. No further window polling is scheduled by this final check. The
+thread is not marked successfully complete or ready to archive.
