@@ -1,6 +1,7 @@
 import { wakeTarget } from '../coordination/botLane.js';
 import { browserCapacityWakeAllowed } from '../veneerBrowser/capacityWait.js';
 import { botWakeAllowed, botWakeDelivered, botWakeCancelled } from '../bots/delivery.js';
+import { HUMAN_TASK_START_WAKE_SQL } from '../tasks/service.js';
 import crypto from 'node:crypto';
 import type { EventEmitter } from 'node:events';
 import type Database from 'better-sqlite3';
@@ -274,7 +275,7 @@ export function createConversationWakeupScheduler({
         .prepare(
           `SELECT * FROM conversation_wakeups
            WHERE status = 'pending' AND datetime(scheduled_for) <= datetime(?)
-           ORDER BY CASE WHEN wake_key LIKE 'message-thread:%' OR wake_key LIKE 'bot-task:%:discuss:%' OR (wake_key LIKE 'bot-decision:%' AND EXISTS (
+           ORDER BY CASE WHEN wake_key LIKE 'message-thread:%' OR wake_key LIKE 'bot-task:%:discuss:%' OR ${HUMAN_TASK_START_WAKE_SQL} OR (wake_key LIKE 'bot-decision:%' AND EXISTS (
              SELECT 1 FROM bot_decision_events e WHERE e.id = conversation_wakeups.id
              AND e.kind IN ('answered','message') AND e.actor_conversation_id IS NULL)) THEN 0 ELSE 1 END, scheduled_for
            LIMIT 200`,

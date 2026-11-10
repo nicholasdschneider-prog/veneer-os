@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../src/db/migrate.js';
 import type { ConversationRow, UserRow } from '../src/db/db.js';
 import type { AppContext } from '../src/context.js';
-import { createTaskService, TASK_CAP_PER_OWNER, taskChatBusy } from '../src/tasks/service.js';
+import { createTaskService, humanStartedTurn, isHumanStartedTaskStartWake, isHumanTaskNoteWake, TASK_CAP_PER_OWNER, taskChatBusy } from '../src/tasks/service.js';
+import { createBackgroundAdmission } from '../src/runner/backgroundAdmission.js';
 import { createTasksRouter } from '../src/tasks/routes.js';
 import { createBotService, proposalSchema } from '../src/bots/service.js';
 import { wakeTarget } from '../src/coordination/botLane.js';
@@ -40,6 +41,52 @@ describe('shared Tasks capability', () => {
     tasks = createTaskService(db);
   });
   afterEach(() => db.close());
+
+  it('lets the start of a task a person asked for pass the turn limit, and nothing a bot started on its own', () => {
+    const startWake = (taskId: string) => db.prepare("SELECT id FROM conversation_wakeups WHERE wake_key LIKE ? AND status='pending'").get(`bot-task:${taskId}:start:%`) as { id: string };
+    const turn = (origin: object | null, actor: number | null = 1) => {
+      db.prepare('DELETE FROM pending_turns WHERE conversation_id=?').run(OWNER);
+      db.prepare("INSERT INTO pending_turns(conversation_id,prompt,actor_user_id,origin_json) VALUES(?,'p',?,?)").run(OWNER, actor, origin ? JSON.stringify(origin) : null);
+    };
+    // No live turn, a wake-up turn, a bot message, a spare run and an ownerless turn are not a person asking.
+    expect(humanStartedTurn(db, OWNER)).toBe(false);
+    const idle = tasks.intake(bot(), { items: [{ title: 'Created with no live turn', case_key: 'a' }], source: 'human_dump' });
+    turn({ kind: 'wakeup', from: 'Clara', to: 'Clara' });
+    expect(humanStartedTurn(db, OWNER)).toBe(false);
+    const woke = tasks.intake(bot(), { items: [{ title: 'Created on a wake-up turn', case_key: 'b' }], source: 'human_dump' });
+    turn({ kind: 'agent', from: 'Finn', to: 'Clara' });
+    expect(humanStartedTurn(db, OWNER)).toBe(false);
+    turn({ kind: 'result_reply', from: 'Nick', to: 'Clara', spareRunId: 's1' });
+    expect(humanStartedTurn(db, OWNER)).toBe(false);
+    turn(null, null);
+    expect(humanStartedTurn(db, OWNER)).toBe(false);
+    // A person's own message, or their reply on a result, is.
+    turn({ kind: 'result_reply', from: 'Nick', to: 'Clara' });
+    expect(humanStartedTurn(db, OWNER)).toBe(true);
+    turn(null);
+    expect(humanStartedTurn(db, OWNER)).toBe(true);
+    const asked = tasks.create(bot(), { title: 'Catalog-wide relationship cleanup', case_key: 'c' });
+    expect(isHumanStartedTaskStartWake(db, startWake(asked.task.id).id)).toBe(true);
+    for (const t of [idle.created[0]!, woke.created[0]!]) expect(isHumanStartedTaskStartWake(db, startWake(t.id).id)).toBe(false);
+    // Only the start wake: the bot's own later direction on the same task still waits.
+    tasks.create(bot(), { title: 'Catalog-wide relationship cleanup', case_key: 'c', brief: 'Resume now.' });
+    const direction = db.prepare("SELECT id FROM conversation_wakeups WHERE wake_key LIKE ?").get(`bot-task:${asked.task.id}:direction:%`) as { id: string };
+    expect(isHumanStartedTaskStartWake(db, direction.id)).toBe(false);
+    expect(isHumanTaskNoteWake(db, startWake(asked.task.id).id)).toBe(false);
+    // The runner's admission rule: at the turn limit the asked-for start is admitted, a bot's own start is not, and the disk floor still wins.
+    let free = 20;
+    const admit = createBackgroundAdmission(db, 1, () => free * 1024 ** 3);
+    const canDispatch = (id: string) => (isHumanStartedTaskStartWake(db, id) ? admit({ ignoreActiveLimit: true }) : admit());
+    expect(canDispatch(startWake(asked.task.id).id)).toBe(true);
+    expect(canDispatch(startWake(woke.created[0]!.id).id)).toBe(false);
+    free = 5;
+    expect(canDispatch(startWake(asked.task.id).id)).toBe(false);
+    // The per-bot task cap is untouched: a fifth asked-for task queues instead of starting.
+    turn(null);
+    const more = tasks.intake(bot(), { items: [{ title: 'Fourth running task here', case_key: 'd' }, { title: 'Fifth task has to queue', case_key: 'e' }] });
+    expect(more.created.map((t) => t.status)).toEqual(['working', 'up_next']);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM conversation_wakeups WHERE wake_key LIKE 'bot-task:%:start:%'").get()).toEqual({ n: TASK_CAP_PER_OWNER });
+  });
 
   it('splits a dump into tasks, matches repeats, starts two and queues the rest with a visible reason', () => {
     const r = tasks.intake(bot(), { items: [

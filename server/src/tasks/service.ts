@@ -45,6 +45,32 @@ export function isHumanTaskNoteWake(db: Database.Database, wakeupId: string): bo
   const row = db.prepare('SELECT wake_key FROM conversation_wakeups WHERE id=?').get(wakeupId) as { wake_key: string } | undefined;
   return Boolean(row && HUMAN_TASK_NOTE_WAKE.test(row.wake_key));
 }
+/**
+ * The start of a task a person asked for (build #1041): the task was created in a turn a human
+ * started, so its first run passes the machine-wide turn limit like a task note does. Tasks a bot
+ * creates on its own wake-ups, routines or bot messages keep waiting their turn.
+ */
+export const HUMAN_TASK_START_WAKE_SQL =
+  "(wake_key LIKE 'bot-task:%:start:%' AND EXISTS (SELECT 1 FROM bot_task_events te WHERE te.task_id = substr(wake_key, 10, 36) AND te.kind = 'created' AND json_extract(te.payload_json, '$.human_turn') = 1))";
+export function isHumanStartedTaskStartWake(db: Database.Database, wakeupId: string): boolean {
+  return Boolean(db.prepare(`SELECT 1 FROM conversation_wakeups WHERE id=? AND ${HUMAN_TASK_START_WAKE_SQL}`).get(wakeupId));
+}
+/** The live turn in this chat was started by a person: their own message or their reply on a result. */
+export function humanStartedTurn(db: Database.Database, conversationId: string | undefined): boolean {
+  if (!conversationId) return false;
+  const conv = db.prepare('SELECT channel FROM conversations WHERE id=?').get(conversationId) as { channel: string } | undefined;
+  if (!conv || conv.channel === 'automation') return false;
+  const turn = db.prepare("SELECT actor_user_id, origin_json FROM pending_turns WHERE conversation_id=? AND status='pending'").get(conversationId) as { actor_user_id: number | null; origin_json: string | null } | undefined;
+  if (!turn || turn.actor_user_id === null) return false;
+  if (turn.origin_json) {
+    try {
+      const origin = JSON.parse(turn.origin_json) as { kind?: string; spareRunId?: string };
+      if (origin.kind !== 'result_reply' || origin.spareRunId) return false;
+    } catch { return false; }
+  }
+  // Scheduled tasks and routines post as their owner without an origin.
+  return !db.prepare("SELECT 1 FROM scheduled_task_runs WHERE conversation_id=? AND status IN ('queued','running')").get(conversationId);
+}
 export interface BotTaskRow {
   id: string;
   owner_conversation_id: string;
@@ -386,7 +412,7 @@ export function createTaskService(db: Database.Database) {
       .run(id, owner.id, p.title, p.brief ?? '', source, p.case_key ?? null, JSON.stringify(p.resources ?? []), actor.user.id, 'Up next');
     const laneId = insertOwnerLane(db, owner, `Task · ${p.title}`.slice(0, 200));
     db.prepare('UPDATE bot_tasks SET task_conversation_id=? WHERE id=?').run(laneId, id);
-    event(id, 'created', { source, case_key: p.case_key ?? null }, actor);
+    event(id, 'created', { source, case_key: p.case_key ?? null, ...(humanStartedTurn(db, actor.executionConversationId ?? actor.conversationId) ? { human_turn: true } : {}) }, actor);
     return taskRow(id)!;
   }
   function addDirection(t: BotTaskRow, text: string, actor: TaskActor) {

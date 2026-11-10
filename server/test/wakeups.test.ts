@@ -158,6 +158,12 @@ describe('conversation wake-up scheduler', () => {
     const insert = db.prepare("INSERT INTO conversation_wakeups(id,conversation_id,wake_key,reason,scheduled_for,actor_user_id) VALUES(?,?,?,'Check',?,1)");
     for (let i=0;i<201;i++) insert.run(`ordinary-${i}`,conv.id,`ordinary-${i}`,new Date(BASE.getTime()-3000).toISOString());
     insert.run('task-note',conv.id,'bot-task:t1:discuss:e1',new Date(BASE.getTime()-500).toISOString());
+    const TASK_A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', TASK_B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const taskEvent = db.prepare("INSERT INTO bot_task_events(id,task_id,kind,payload_json) VALUES(?,?,'created',?)");
+    taskEvent.run('ta',TASK_A,'{"source":"human_dump","human_turn":true}');
+    taskEvent.run('tb',TASK_B,'{"source":"human_dump"}');
+    insert.run('asked-start',conv.id,`bot-task:${TASK_A}:start:s1`,new Date(BASE.getTime()-400).toISOString());
+    insert.run('bot-start',conv.id,`bot-task:${TASK_B}:start:s2`,new Date(BASE.getTime()-400).toISOString());
     for (const id of ['bot-answer','claim','human-answer','human-discussion','bot-discussion']) insert.run(id,conv.id,`bot-decision:${id}`,new Date(BASE.getTime()-1000).toISOString());
     expect(humanDecisionReplyWake(db,'human-answer')).toBe(true);
     expect(humanDecisionReplyWake(db,'human-discussion')).toBe(true);
@@ -168,6 +174,8 @@ describe('conversation wake-up scheduler', () => {
     scheduler.tick();
     expect(canDispatch.mock.calls[0]?.[0]).toMatchObject({id:'human-answer'});
     expect(canDispatch.mock.calls.slice(0,3).map(([row])=>row.id)).toEqual(['human-answer','human-discussion','task-note']); // a human's task note is never behind the backlog
+    expect(canDispatch.mock.calls[3]?.[0]).toMatchObject({id:'asked-start'}); // nor is the start of a task a person asked for
+    expect(canDispatch.mock.calls.map(([row])=>row.id)).not.toContain('bot-start');
     expect(canDispatch.mock.calls.map(([row])=>row.id)).not.toContain('bot-answer');
     expect(canDispatch.mock.calls.map(([row])=>row.id)).not.toContain('bot-discussion');
     expect(db.prepare("SELECT status FROM conversation_wakeups WHERE id='human-answer'").get()).toEqual({status:'cancelled'});
