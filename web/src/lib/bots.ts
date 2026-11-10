@@ -196,6 +196,9 @@ export const botsApi = {
       `/api/bots?filter=${filter}${business ? `&business=${encodeURIComponent(business)}` : ''}`,
       { signal },
     ),
+  /** Bot rows only (no decision bodies): the dock and unread badges poll this. */
+  roster: (signal?: AbortSignal) =>
+    requestJson<{ bots: Bot[]; teams: BusinessTeam[] }>('/api/bots?filter=all&view=roster', { signal }),
   /** Only this conversation's decisions; no bot rows or runner status calls. */
   decisionsFor: (conversationId: string) =>
     requestJson<{ decisions: BotDecision[] }>(`/api/bots?filter=all&conversation=${encodeURIComponent(conversationId)}`),

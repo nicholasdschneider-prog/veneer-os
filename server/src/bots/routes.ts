@@ -184,6 +184,11 @@ export function createBotsRouter(ctx: AppContext, deps: { evidenceFetchers?: Evi
             .filter((user) => canViewConversation(user, ownerChat, ctx.db))
             .map((user) => ({ id: user.id, name: user.display_name }))
         : [];
+      // The bot dock only needs the roster: skip the multi-megabyte decision list.
+      if (req.query.view === 'roster') {
+        res.json({ bots, decisions: [], approvers: [], teams: teams.list(a) });
+        return;
+      }
       res.json({ bots, decisions, approvers, teams: teams.list(a) });
     }),
   );

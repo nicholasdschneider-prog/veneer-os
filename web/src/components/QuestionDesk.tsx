@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Hand, List, ChevronDown, Phone, PhoneIncoming, Clock, MessageSquare } from 'lucide-react';
+import { Hand, List, ChevronDown, Phone, PhoneIncoming, Clock, MessageSquare, ArrowLeft, Bot as BotIcon, ExternalLink, Mail, Maximize2 } from 'lucide-react';
+import { botsApi, type Bot } from '@/lib/bots';
+import { BotDockList, popOutBot, useBotRoster } from './BotDock';
+import { BOT_PREFERENCES_CHANGED } from './BotActions';
 import { ApiError, requestJson } from '@/lib/api';
 import type { BotDecision } from '@/lib/bots';
 import { BotAvatar } from './BotIdentity';
@@ -37,6 +40,10 @@ export function deskRoute(chiefId: string, hash: string): { view: 'chat' } | { v
   return side ? null : { view: 'chat' };
 }
 const rememberedView = (id: string): 'chat' | 'tasks' => { try { return localStorage.getItem(TASKS_VIEW_KEY(id)) === 'tasks' ? 'tasks' : 'chat'; } catch { return 'chat'; } };
+const LAST_BOT_KEY = 'veneer.desk-bot.v1';
+type DeskBot = { id: string; name: string };
+const readLastBot = (): DeskBot | null => { try { const v = JSON.parse(localStorage.getItem(LAST_BOT_KEY) ?? 'null'); return v && typeof v.id === 'string' && typeof v.name === 'string' ? v : null; } catch { return null; } };
+const writeLastBot = (bot: DeskBot) => { try { localStorage.setItem(LAST_BOT_KEY, JSON.stringify(bot)); } catch { /* memory only */ } };
 
 /** The desk itself: a full-screen sheet on phones and tablets that shrinks to
  * the visual viewport while a field inside it has the keyboard, and a docked
@@ -72,15 +79,24 @@ function DeskSheet({ open, children }: { open: boolean; children: ReactNode }) {
   </DeskSheetContext.Provider>;
 }
 
-/** Lives above routing: the active question, conversation and composer never follow navigation. */
+/** Lives above routing: the active question, conversation and composer never follow navigation.
+ * A bot popped out into its own window gets no desk, pill or call ring of its own. */
 export function QuestionDesk({ children }: { children: ReactNode }) {
+  const [popOut] = useState(() => typeof window !== 'undefined' && window.location.hash.startsWith('#/popout/'));
+  return popOut ? <>{children}</> : <Desk>{children}</Desk>;
+}
+
+function Desk({ children }: { children: ReactNode }) {
   const [line, setLine] = useState<Line>(empty);
   const [visited,setVisited]=useState<string[]>([]);
-  const [mode, setMode] = useState<'question'|'chief'|null>(null);
-  // The owner's chief of staff bot: always reachable from the pill, and its
-  // chat stays mounted once opened so a half-written message survives.
-  const [chief, setChief] = useState<{ id: string; name: string } | null>(null);
-  const [chiefOpened, setChiefOpened] = useState(false);
+  const [mode, setMode] = useState<'question'|'bots'|null>(null);
+  // The owner's chief of staff bot: always reachable from the pill. It is one
+  // of the bots in the dock; its button opens its chat directly.
+  const [chief, setChief] = useState<DeskBot | null>(null);
+  // The bot dock: one bot chat open at a time, or the list of every bot.
+  const [deskBot, setDeskBot] = useState<DeskBot | null>(readLastBot);
+  const [botList, setBotList] = useState(true);
+  const roster = useBotRoster(mode === 'bots' && botList);
   const [list, setList] = useState(false);
   const [later, setLater] = useState(false);
   const [calls, setCalls] = useState(false);
@@ -91,6 +107,7 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
   const voice = useLiveVoice();
+  const docked = useMediaQuery(DESK_DOCKED_QUERY);
   const current = useRef(line); current.current = line;
   const serial = useRef(0);
   const pending = useRef(false);
@@ -157,25 +174,37 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
   const actionRef=useRef(act);actionRef.current=act;
   const adoptQuestion=useRef((id?:string)=>{setMode('question');setList(!id);if(id)void actionRef.current('select',id);}).current;
   const total = line.decisions.length;
-  const openChief = () => { setChiefOpened(true); setMode('chief'); };
-  // The chief's CHAT | TASKS view lives in the desk, so switching never leaves the page you are on.
-  const [chiefView, setChiefView] = useState<'chat' | 'tasks'>('chat');
-  const [chiefTask, setChiefTask] = useState<string | null>(null);
-  useEffect(() => { if (chief) setChiefView(rememberedView(chief.id)); }, [chief?.id]);
+  const openBot = (bot: DeskBot) => {
+    setDeskBot(bot); writeLastBot(bot); setBotList(false); setMode('bots');
+    // Opening a bot reads it, like opening a conversation in Messages.
+    void botsApi.preferences(bot.id, { unread: false }).then(() => window.dispatchEvent(new Event(BOT_PREFERENCES_CHANGED))).catch(() => {});
+  };
+  const openChief = () => { if (chief) openBot(chief); };
+  const openBots = () => { setBotList(true); setMode('bots'); };
+  const markUnread = (bot: DeskBot) => {
+    setBotList(true);
+    void botsApi.preferences(bot.id, { unread: true }).then(() => window.dispatchEvent(new Event(BOT_PREFERENCES_CHANGED))).catch(() => setNotice('Could not mark as unread. Please try again.'));
+  };
+  // The open bot's CHAT | TASKS view lives in the desk, so switching never leaves the page you are on.
+  const [botView, setBotView] = useState<'chat' | 'tasks'>('chat');
+  const [botTask, setBotTask] = useState<string | null>(null);
+  useEffect(() => { if (deskBot) { setBotView(rememberedView(deskBot.id)); setBotTask(null); } }, [deskBot?.id]);
   const deskNavigate = (hash: string) => {
-    const route = chief ? deskRoute(chief.id, hash) : null;
+    const route = deskBot ? deskRoute(deskBot.id, hash) : null;
     if (!route) return navigate(hash);
     if ('decision' in route) return adoptQuestion(route.decision);
-    setChiefView(route.view);
-    setChiefTask(route.view === 'tasks' ? route.taskId : null);
+    setBotView(route.view);
+    setBotTask(route.view === 'tasks' ? route.taskId : null);
   };
+  const showBotChat = mode === 'bots' && !botList && !!deskBot;
   return <DeskContext.Provider value={{adoptQuestion,available:true}}>
     <div className="question-desktop-shell flex h-dvh min-w-0 isolate overflow-hidden">
       <div className="min-w-0 flex-1 overflow-hidden">{children}</div>
       <DeskSheet open={!!mode}>
         <header className="flex shrink-0 items-center gap-2 border-b p-2">
           <Button type="button" variant="ghost" aria-pressed={mode === 'question'} onClick={() => setMode('question')}><Hand className="size-4 shrink-0" /> Questions</Button>
-          {chief && <Button type="button" variant="ghost" aria-pressed={mode === 'chief'} onClick={openChief}><MessageSquare className="size-4 shrink-0" /> {chief.name}</Button>}
+          <Button type="button" variant="ghost" aria-pressed={mode === 'bots' && (botList || deskBot?.id !== chief?.id)} onClick={openBots}><BotIcon className="size-4 shrink-0" /> Bots{roster.unread > 0 && <span className="rounded-full bg-blue-500 px-1.5 text-xs font-semibold text-white tabular-nums">{roster.unread}</span>}</Button>
+          {chief && <Button type="button" variant="ghost" aria-pressed={showBotChat && deskBot?.id === chief.id} onClick={openChief}><MessageSquare className="size-4 shrink-0" /> {chief.name}</Button>}
           <div className="flex-1" />
           <Button type="button" variant="ghost" size="icon" aria-label="Collapse question desk" onClick={() => setMode(null)}><ChevronDown className="size-4" /></Button>
         </header>
@@ -202,16 +231,29 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
           </div>}
           {visited.map(id=><div key={`${userId}:${id}`} data-question-id={id} className={!list && selected?.id===id ? 'min-h-0 flex-1' : 'hidden'}><Bots embedded desk active={mode==='question' && selected?.id===id && !list} decisionId={id} onNavigate={hash => { if (hash === '#/bots') setList(true); else navigate(hash); }} /></div>)}
         </div>
-        {chief && chiefOpened && <div className={mode === 'chief' ? 'min-h-0 flex-1' : 'hidden'}>
-          <div className={chiefView === 'chat' ? 'h-full min-h-0' : 'hidden'}>
-            <Chat key={chief.id} conversationId={chief.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={deskNavigate} onToast={setNotice} openQuestionsButton={false} />
+        {mode === 'bots' && botList && <BotDockList bots={roster.bots} loaded={roster.loaded} error={roster.error} selectedId={deskBot?.id ?? null} onOpen={(b: Bot) => openBot({ id: b.conversation_id, name: b.name })} />}
+        {/* Mounted only while on screen: a hidden chat would keep reading new replies and hide their unread dot. */}
+        {showBotChat && deskBot && <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex shrink-0 items-center gap-1 border-b px-1 py-1">
+            <Button type="button" variant="ghost" size="icon" aria-label="All bots" onClick={() => setBotList(true)}><ArrowLeft className="size-4" /></Button>
+            <BotAvatar id={deskBot.id} name={deskBot.name} />
+            <span className="min-w-0 flex-1 truncate px-1 text-sm font-medium">{deskBot.name}</span>
+            <Button type="button" variant="ghost" size="icon" aria-label={`Mark ${deskBot.name} as unread`} title="Mark as unread" onClick={() => markUnread(deskBot)}><Mail className="size-4" /></Button>
+            {docked && <Button type="button" variant="ghost" size="icon" aria-label={`Pop out ${deskBot.name}`} title="Pop out into its own window" onClick={() => popOutBot(deskBot.id)}><ExternalLink className="size-4" /></Button>}
+            <Button type="button" variant="ghost" size="icon" aria-label={`Open ${deskBot.name} full page`} title="Open full page" onClick={() => { setMode(null); navigate(`#/chat/${deskBot.id}?from=bots`); }}><Maximize2 className="size-4" /></Button>
           </div>
-          {chiefView === 'tasks' && <div className="flex h-full min-h-0 flex-col"><TasksBoard compact conversationId={chief.id} taskId={chiefTask} onNavigate={deskNavigate} /></div>}
+          {notice && <p role="status" className="p-2 text-sm text-muted-foreground">{notice}</p>}
+          <div className="min-h-0 flex-1">
+            <div className={botView === 'chat' ? 'h-full min-h-0' : 'hidden'}>
+              <Chat key={deskBot.id} conversationId={deskBot.id} artifacts={[]} onOpenArtifact={() => undefined} onRefreshArtifacts={async () => []} onPublishArtifact={async () => undefined} onOpenCitations={() => undefined} onOpenProjectFile={() => undefined} onNavigate={deskNavigate} onToast={setNotice} openQuestionsButton={false} />
+            </div>
+            {botView === 'tasks' && <div className="flex h-full min-h-0 flex-col"><TasksBoard compact conversationId={deskBot.id} taskId={botTask} onNavigate={deskNavigate} /></div>}
+          </div>
         </div>}
       </DeskSheet>
     </div>
     <BotCallRing enabled={userId !== null} />
-    {!mode && (chief || (loaded && (total > 0 || line.sleeping.length > 0 || (userId && error)))) && <DeskPill
+    {!mode && (chief || roster.bots.length > 0 || (loaded && (total > 0 || line.sleeping.length > 0 || (userId && error)))) && <DeskPill
       front={front ? { id: front.conversation_id, name: front.bot_name } : null}
       total={total}
       error={Boolean(error)}
@@ -219,6 +261,8 @@ export function QuestionDesk({ children }: { children: ReactNode }) {
       onOpenQuestions={() => { setMode('question'); if (front && !selected) void act('select',front.id); }}
       onOpenList={() => { setMode('question'); setList(true); }}
       onOpenChief={openChief}
+      bots={roster.bots.length ? { unread: roster.unread } : null}
+      onOpenBots={openBots}
     />}
   </DeskContext.Provider>;
 }

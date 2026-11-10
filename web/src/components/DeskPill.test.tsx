@@ -67,6 +67,13 @@ describe('desk pill placement', () => {
     expect(clampPillPosition({ x: 792, y: 636 }, size, { width: 400, height: 300 })).toEqual({ x: 192, y: 236 });
     expect(clampPillPosition({ x: 792, y: 636 }, size, { width: 150, height: 40 })).toEqual({ x: 8, y: 8 });
   });
+  it('offers every bot with the unread count', () => {
+    expect(pill()).not.toContain('aria-label="Bots');
+    const html = pill({ bots: { unread: 3 }, onOpenBots: noop });
+    expect(html).toContain('aria-label="Bots, 3 unread"');
+    expect(pill({ bots: { unread: 0 }, onOpenBots: noop })).toContain('aria-label="Bots"');
+    expect(pill({ bots: { unread: 2 }, onOpenBots: noop }, { position: null, minimized: true })).toContain('and 2 unread bots');
+  });
   it('treats a small wobble as a click and real travel as a drag', () => {
     expect(isDrag({ x: 10, y: 10 }, { x: 12, y: 13 })).toBe(false);
     expect(isDrag({ x: 10, y: 10 }, { x: 10 + DRAG_THRESHOLD, y: 10 })).toBe(true);

@@ -13,7 +13,7 @@ export function useChatUnread(restricted = false) {
     let active = true;
     const refresh = () => {
       if (document.hidden) return;
-      void botsApi.list('all').then(r => {
+      void botsApi.roster().then(r => {
         if (active) setBots(r.bots.filter(b => b.unread).length);
       }).catch(() => {});
     };

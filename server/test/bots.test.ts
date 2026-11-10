@@ -1108,6 +1108,10 @@ describe('VeneerBots', () => {
       const full = await (await fetch(`${base}?filter=all`)).json();
       expect(full.bots.length).toBeGreaterThan(0);
       expect(full.decisions.some((d: { id: string }) => d.id === other.id)).toBe(true);
+      // The bot dock polls the roster alone: bot rows, question counts, no decision bodies.
+      const roster = await (await fetch(`${base}?filter=all&view=roster`)).json();
+      expect(roster.bots.length).toBe(full.bots.length);
+      expect(roster.decisions).toEqual([]);
     } finally {
       await new Promise<void>(resolve => server.close(() => resolve()));
     }

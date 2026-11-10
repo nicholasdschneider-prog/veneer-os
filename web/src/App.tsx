@@ -22,6 +22,7 @@ import { ChatList } from './screens/ChatList';
 import { Todos } from './screens/Todos';
 import { Scheduled } from './screens/Scheduled';
 import { ChatWorkspace } from './components/chat/ChatWorkspace';
+import { PopOutChat } from './components/PopOutChat';
 import { TasksBoard } from './screens/TasksBoard';
 import { ProjectView } from './screens/ProjectView';
 import { Settings, type SettingsSection } from './screens/Settings';
@@ -139,6 +140,7 @@ function useHashRoute(): [string, (hash: string) => void] {
 
 /** Routes a focused business member may open; everything else lands on Chats. */
 export function isFocusedRoute(routePath: string, params: URLSearchParams): boolean {
+  if (/^#\/popout\/[^/]+$/.test(routePath)) return true;
   if (routePath === '#/bots') return !params.has('register');
   if (routePath.startsWith('#/bots/')) return routePath.split('/')[2] !== 'talk';
   if (routePath.startsWith('#/messages/')) return true;
@@ -332,6 +334,14 @@ export function App() {
   // list of those bots' automations, and personal appearance settings. Any
   // other route lands on Chats. The server enforces the bot scope itself.
   const focused = Boolean(me.user?.focusedWorkspace);
+  // A bot popped out of the dock into its own window: just its chat, no navigation.
+  const popOutId = /^#\/popout\/([^/]+)$/.exec(routePath)?.[1];
+  if (popOutId) return (
+    <div className="h-dvh">
+      <PopOutChat conversationId={decodeURIComponent(popOutId)} onToast={showToast} />
+      {toastNode}
+    </div>
+  );
   if (focused && !isFocusedRoute(routePath, params)) {
     navigate('#/bots');
     return null;

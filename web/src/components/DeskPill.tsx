@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { Hand, Minus } from 'lucide-react';
+import { Bot as BotIcon, Hand, Minus } from 'lucide-react';
 import { BotAvatar } from './BotIdentity';
 
 export type PillPosition = { x: number; y: number };
@@ -60,6 +60,8 @@ export function DeskPill({
   onOpenQuestions,
   onOpenList,
   onOpenChief,
+  bots = null,
+  onOpenBots,
   initialState,
 }: {
   front: { id: string; name: string } | null;
@@ -69,6 +71,9 @@ export function DeskPill({
   onOpenQuestions: () => void;
   onOpenList: () => void;
   onOpenChief: () => void;
+  /** The bot dock: every bot, with how many have unread replies. Null hides the button. */
+  bots?: { unread: number } | null;
+  onOpenBots?: () => void;
   /** Test seam; the stored per-device state is used when omitted. */
   initialState?: PillState;
 }) {
@@ -159,10 +164,13 @@ export function DeskPill({
         <button
           type="button"
           className="relative flex min-h-12 min-w-12 items-center justify-center rounded-full hover:bg-muted"
-          aria-label={`Show ${chief ? `${chief.name} and ` : ''}${total} waiting questions`}
+          aria-label={`Show ${chief ? `${chief.name} and ` : ''}${total} waiting questions${bots?.unread ? ` and ${bots.unread} unread bots` : ''}`}
           onClick={() => update({ ...state, minimized: false })}
         >
           {avatar ? <BotAvatar id={avatar.id} name={avatar.name} /> : <Hand className="size-4" />}
+          {!!bots?.unread && (
+            <span aria-hidden="true" className="absolute -bottom-1 -right-1 size-3 rounded-full border-2 border-background bg-blue-500" />
+          )}
           {(total > 0 || error) && (
             <span className="absolute -top-1 -right-1 min-w-5 rounded-full border bg-background px-1 text-center text-xs tabular-nums">
               {error ? '!' : total}
@@ -180,6 +188,20 @@ export function DeskPill({
             >
               <BotAvatar id={chief.id} name={chief.name} />
               <span>{chief.name}</span>
+            </button>
+          )}
+          {bots && onOpenBots && (
+            <button
+              type="button"
+              className="relative flex min-h-12 items-center gap-2 rounded-full px-3 text-sm hover:bg-muted"
+              aria-label={bots.unread ? `Bots, ${bots.unread} unread` : 'Bots'}
+              onClick={onOpenBots}
+            >
+              <BotIcon className="size-4" />
+              <span>Bots</span>
+              {bots.unread > 0 && (
+                <span className="min-w-5 rounded-full bg-blue-500 px-1.5 text-center text-xs font-semibold text-white tabular-nums">{bots.unread}</span>
+              )}
             </button>
           )}
           {(front || total > 0 || error || !chief) && (
