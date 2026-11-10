@@ -10,3 +10,10 @@ describe('Daybreak Blue model presentation', () => {
     expect(contextWindowFor('codex', 'gpt-daybreak-blue-latest')).toBe(1_050_000);
   });
 });
+
+describe('Claude Fable 5.2 model presentation', () => {
+  it('labels the model and uses its 1M context window', () => {
+    expect(modelLabel('claude-fable-5-2')).toBe('Fable 5.2');
+    expect(contextWindowFor('claude', 'claude-fable-5-2')).toBe(1_000_000);
+  });
+});

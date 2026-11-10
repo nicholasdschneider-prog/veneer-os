@@ -1,7 +1,7 @@
 {
   "claude": {
     "installerUrl": "https://claude.ai/install.sh",
-    "version": "2.1.296"
+    "version": "2.1.322"
   },
   "codex": {
     "package": "@openai/codex",

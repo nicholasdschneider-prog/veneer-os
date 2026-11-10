@@ -4,6 +4,7 @@ import { modelTier } from './modelTier';
 describe('modelTier', () => {
   it('ranks the Claude families', () => {
     expect(modelTier('claude', 'claude-fable-5')).toBe(4);
+    expect(modelTier('claude', 'claude-fable-5-2')).toBe(4);
     expect(modelTier('claude', 'claude-opus-5')).toBe(3);
     expect(modelTier('claude', 'claude-opus-4-8')).toBe(3);
     expect(modelTier('claude', 'claude-sonnet-5')).toBe(2);

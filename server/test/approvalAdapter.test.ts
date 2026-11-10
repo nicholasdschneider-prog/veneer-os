@@ -79,12 +79,15 @@ describe('claude adapter approval round trip (fake CLI)', () => {
     await adapter.runTurn({...turnSpec(),subscriptionAccountId:'revoked',optionalDeadline:Date.now()+5000},e=>events.push(e)).done;
     expect(active).not.toHaveBeenCalled();expect(events).toContainEqual(expect.objectContaining({type:'turn_done',outcome:'failed'}));
   });
-  it('lists Haiku 5.5 while preserving the existing current Claude models', async () => {
+  it('lists Fable 5.2 and Haiku 5.5 while preserving the existing current Claude models', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       json: async () => ({
         data: [
+          { id: 'claude-fable-5-2', display_name: 'Claude Fable 5.2' },
           { id: 'claude-opus-5-5', display_name: 'Claude Opus 5.5' },
+          { id: 'claude-fable-5-1', display_name: 'Claude Fable 5.1' },
+          { id: 'claude-fable-5', display_name: 'Claude Fable 5' },
           { id: 'claude-opus-5', display_name: 'Claude Opus 5' },
           { id: 'claude-opus-4-8', display_name: 'Claude Opus 4.8' },
           { id: 'claude-sonnet-5-5', display_name: 'Claude Sonnet 5.5' },
@@ -102,7 +105,9 @@ describe('claude adapter approval round trip (fake CLI)', () => {
     });
 
     await expect(adapter.listModels?.()).resolves.toEqual([
+      { id: 'claude-fable-5-2', label: 'Claude Fable 5.2' },
       { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
+      { id: 'claude-fable-5-1', label: 'Claude Fable 5.1' },
       { id: 'claude-opus-5', label: 'Claude Opus 5' },
       { id: 'claude-opus-4-8', label: 'Claude Opus 4.8' },
       { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },

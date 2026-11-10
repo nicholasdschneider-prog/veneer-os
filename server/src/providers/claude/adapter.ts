@@ -50,13 +50,15 @@ const INERT_PRINT_MODE_TOOLS = [
  * https://platform.claude.com/docs/en/about-claude/models/overview — one
  * model per family plus retained previous Opus releases, not the full catalog
  * `GET /v1/models` returns (which also lists legacy/deprecated snapshots like
- * Fable 5, Opus 4.7/4.6, Sonnet 4.6/4.5, Opus 4.5/4.1). Excludes Claude
- * Mythos 5 (Project Glasswing-gated, not generally available). Update this
+ * Fable 5, Opus 4.7/4.6, Sonnet 4.6/4.5, Opus 4.5/4.1). Fable 5.1 stays as
+ * the retained previous Fable release. Excludes Claude Mythos 5 and 5.2
+ * (Project Glasswing-gated, not generally available). Update this
  * set when Anthropic ships a new generation — see shared/models.md in the
  * claude-api skill.
  */
 const LATEST_CLAUDE_MODEL_IDS = new Set([
   'claude-opus-5-5',
+  'claude-fable-5-2',
   'claude-fable-5-1',
   'claude-opus-5',
   'claude-opus-4-8',

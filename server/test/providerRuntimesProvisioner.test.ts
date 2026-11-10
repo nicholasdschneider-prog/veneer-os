@@ -28,7 +28,7 @@ afterEach(() => {
 describe('pinned provider runtime policy', () => {
   it('contains one exact stable version and official source for every provider', () => {
     expect(loadProviderRuntimePolicy()).toEqual({
-      claude: { installerUrl: 'https://claude.ai/install.sh', version: '2.1.296' },
+      claude: { installerUrl: 'https://claude.ai/install.sh', version: '2.1.322' },
       codex: { package: '@openai/codex', version: '0.162.1' },
       grok: { installerUrl: 'https://x.ai/cli/install.sh', version: '1.0.5' },
     });
@@ -58,7 +58,7 @@ describe('pinned provider runtime policy', () => {
     });
     expect(plan.claude).toEqual({
       installerUrl: 'https://claude.ai/install.sh',
-      version: '2.1.296',
+      version: '2.1.322',
     });
     expect(plan.grok).toEqual({
       installerUrl: 'https://x.ai/cli/install.sh',
@@ -75,7 +75,7 @@ describe('pinned provider runtime policy', () => {
 
 describe('provider runtime provisioning and verification', () => {
   it('parses each vendor version format', () => {
-    expect(parseProviderRuntimeVersion('2.1.296 (Claude Code)')).toBe('2.1.296');
+    expect(parseProviderRuntimeVersion('2.1.322 (Claude Code)')).toBe('2.1.322');
     expect(parseProviderRuntimeVersion('codex-cli 0.162.1')).toBe('0.162.1');
     expect(parseProviderRuntimeVersion('grok 1.0.5 (abcdef123)')).toBe('1.0.5');
   });
@@ -111,7 +111,7 @@ describe('provider runtime provisioning and verification', () => {
         fs.symlinkSync(staged, link);
       }
       if (options?.encoding) {
-        if (file.endsWith('/claude')) return '2.1.296 (Claude Code)\n';
+        if (file.endsWith('/claude')) return '2.1.322 (Claude Code)\n';
         if (file.endsWith('/codex')) return 'codex-cli 0.162.1\n';
         if (file.endsWith('/grok')) return 'grok 1.0.5 (build)\n';
       }
@@ -122,14 +122,14 @@ describe('provider runtime provisioning and verification', () => {
       serviceHome,
       npmBin: '/usr/bin/npm',
       execFile: execFile as never,
-    })).toEqual({ claude: '2.1.296', codex: '0.162.1', grok: '1.0.5' });
+    })).toEqual({ claude: '2.1.322', codex: '0.162.1', grok: '1.0.5' });
     for (const file of sentinels) expect(fs.readFileSync(file, 'utf8')).toMatch(/^sentinel:/);
     expect(calls.some((call) => call.file === 'bash' && call.args.at(-1) === '1.0.5')).toBe(true);
     expect(fs.realpathSync(path.join(serviceHome, '.local', 'bin', 'grok'))).toContain(
       '/.local/lib/veneer-provider-runtimes/grok-1.0.5',
     );
     expect(fs.realpathSync(path.join(serviceHome, '.local', 'bin', 'claude'))).toContain(
-      '/.local/lib/veneer-provider-runtimes/claude-2.1.296',
+      '/.local/lib/veneer-provider-runtimes/claude-2.1.322',
     );
   });
 
