@@ -70,7 +70,7 @@ export function ProjectView({
   const listedConversations = conversations?.filter((conversation) => !conversation.isBot && !queuedIds.has(conversation.id)) ?? null;
   const pagination = listedConversations === null
     ? null
-    : getConversationListPagination(listedConversations, selectedId, 'created');
+    : getConversationListPagination(listedConversations, selectedId, 'activity');
   const selectedChatIsOlder =
     pagination !== null && pagination.selectedTopLevelIndex >= 10;
 
@@ -147,7 +147,7 @@ export function ProjectView({
           <ConversationList
             conversations={listedConversations ?? []}
             flat
-            orderBy="created"
+            orderBy="activity"
             maxTopLevel={showAllChats || selectedChatIsOlder ? undefined : 10}
             onOpen={onOpen}
             selectedId={selectedId}

@@ -97,8 +97,8 @@ function groupByRecency(conversations: Conversation[]): { label: string; items: 
 }
 
 // Mirrors the server's list order: pinned first (by manual position), then the
-// requested timestamp. Project lists use creation time so live activity does
-// not move their rows; loose chats keep using recency.
+// requested timestamp. Project and loose lists both use recency, so the chat
+// with the newest reply sits on top.
 // Used to keep optimistic pin/reorder updates in the same order the next poll returns.
 function sortConversations(list: Conversation[], orderBy: 'activity' | 'created'): Conversation[] {
   return [...list].sort((a, b) => {

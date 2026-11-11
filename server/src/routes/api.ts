@@ -1389,13 +1389,10 @@ export function createApiRouter(ctx: AppContext): Router {
               )
           ))`,
       );
-      // Loose chats keep following activity so the Today/This week sections stay
-      // useful. Inside a project, keep the original newest-first creation order:
-      // an agent doing work should not make its row jump around the project list.
-      const chronologicalOrder =
-        !archived && project && project !== 'none'
-          ? 'created_at DESC, rowid DESC'
-          : 'last_active_at DESC, rowid DESC';
+      // Every list follows activity: loose chats keep the Today/This week
+      // sections useful, and inside a project the chat with the newest reply
+      // rises to the top so the owner can see who has answered.
+      const chronologicalOrder = 'last_active_at DESC, rowid DESC';
       const rows = db
         .prepare(
           `SELECT ${conversationListColumns()},

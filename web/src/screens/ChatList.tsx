@@ -724,7 +724,7 @@ export function ChatList({
                   const projectDividerVisibility = projectActionVisibilityClasses(isActive, 'inline-block');
                   const pagination = listedChats === null
                     ? null
-                    : getConversationListPagination(listedChats, revealedId, 'created');
+                    : getConversationListPagination(listedChats, revealedId, 'activity');
                   const selectedChatIsOlder =
                     pagination !== null && pagination.selectedTopLevelIndex >= 10;
                   const showAllChats = showAllProjectChats.has(p.id) || selectedChatIsOlder;
@@ -845,7 +845,7 @@ export function ChatList({
                               <ConversationList
                                 conversations={listedChats ?? []}
                                 flat
-                                orderBy="created"
+                                orderBy="activity"
                                 maxTopLevel={showAllChats ? undefined : 10}
                                 onOpen={(cid) => openChat(cid, p.id)}
                                 selectedId={selectedId}

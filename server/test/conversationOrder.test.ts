@@ -93,10 +93,10 @@ async function conversationIds(project: string): Promise<string[]> {
 }
 
 describe('conversation list order', () => {
-  it('keeps project chats in newest-first creation order', async () => {
-    expect(await conversationIds('project-1')).toEqual(['project-newer', 'project-older']);
+  it('puts the project chat with the newest reply first', async () => {
+    expect(await conversationIds('project-1')).toEqual(['project-older', 'project-newer']);
 
-    db.prepare("UPDATE conversations SET last_active_at = datetime('now', '-4 days') WHERE id = 'project-older'").run();
+    db.prepare("UPDATE conversations SET last_active_at = datetime('now', '-4 days') WHERE id = 'project-newer'").run();
     expect(await conversationIds('project-1')).toEqual(['project-newer', 'project-older']);
   });
 
