@@ -29,6 +29,7 @@ import { createShutdown } from '../shutdown.js';
 import { writePidFile } from '../servicePid.js';
 import { startResourceMonitor } from './resourceMonitor.js';
 import { createBackgroundAdmission } from './backgroundAdmission.js';
+import { writeDiskFloorStatus } from './diskFloorStatus.js';
 import { resultReplyWake } from '../bots/communication.js';
 import { humanDecisionReplyWake } from '../bots/delivery.js';
 import { isHumanStartedTaskStartWake, isHumanTaskNoteWake } from '../tasks/service.js';
@@ -154,7 +155,10 @@ manager.bus.on('status', (conversationId: string, status: string) => {
 const canDispatchBackground = createBackgroundAdmission(db, Number(process.env.VP_BACKGROUND_ACTIVE_LIMIT ?? 4), () => {
   const disk = statfsSync(config.dataDir);
   return disk.bavail * disk.bsize;
-});
+}, (status) => writeDiskFloorStatus(db, status));
+// Keep the published disk floor fresh even when nothing is waiting to dispatch.
+// ignoreActiveLimit only reads the disk; it never changes admission state.
+setInterval(() => canDispatchBackground({ ignoreActiveLimit: true }), 60_000).unref();
 const scheduled = createScheduledTaskScheduler({ db, manager, tickMs: 2_000, canDispatch: canDispatchBackground });
 // Token governor: cheap prechecks before background wakes reach the model.
 // Credentials are read at use time and passed straight to the probe request.

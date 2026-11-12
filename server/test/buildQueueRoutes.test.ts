@@ -9,6 +9,7 @@ import { migrate } from '../src/db/migrate.js';
 import type { AppContext } from '../src/context.js';
 import type { BuildQueueRow, UserRow } from '../src/db/db.js';
 import { createBuildQueueRouter } from '../src/routes/buildQueue.js';
+import { writeDiskFloorStatus } from '../src/runner/diskFloorStatus.js';
 
 const MIGRATIONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
 let db: Database.Database;
@@ -197,6 +198,23 @@ describe('build queue routes', () => {
         },
       ],
     });
+  });
+
+  it('marks queued builds paused while the runner reports a fresh disk floor', async () => {
+    const floor = { diskBlocked: true, freeBytes: 10.8 * 1024 ** 3, sinceAt: '2026-11-12T15:15:00.000Z', resumeAtBytes: 12 * 1024 ** 3, updatedAt: new Date().toISOString() };
+    writeDiskFloorStatus(db, floor);
+    try {
+      const body = await (await fetch(`${base}/api/build-queue`)).json() as { diskFloor: { line: string } | null; jobs: Array<{ id: number; diskFloor?: unknown }> };
+      expect(body.diskFloor?.line).toBe('Paused: disk low (10.8 GiB free, needs 12.0). Builds and bot wake-ups resume automatically once space is freed.');
+      expect(body.jobs.find((job) => job.id === 7)?.diskFloor).toBeUndefined();
+      expect(body.jobs.find((job) => job.id === 8)?.diskFloor).toMatchObject({ freeBytes: floor.freeBytes, resumeAtBytes: floor.resumeAtBytes });
+      writeDiskFloorStatus(db, { ...floor, diskBlocked: false });
+      const clear = await (await fetch(`${base}/api/build-queue`)).json() as { diskFloor: unknown; jobs: Array<{ diskFloor?: unknown }> };
+      expect(clear.diskFloor).toBeNull();
+      expect(clear.jobs.every((job) => job.diskFloor === undefined)).toBe(true);
+    } finally {
+      db.prepare("DELETE FROM settings WHERE key = 'runner_disk_floor'").run();
+    }
   });
 
   it('shows Team queued work and hides another user’s Private queued work', async () => {

@@ -611,6 +611,16 @@ export interface BuildQueueJob {
   error: string | null;
   createdAt: string;
   startedAt: string | null;
+  /** Set on queued jobs while the runner's low-disk floor holds all new automatic work. */
+  diskFloor?: BuildQueueDiskFloor | null;
+}
+
+export interface BuildQueueDiskFloor {
+  freeBytes: number | null;
+  resumeAtBytes: number;
+  sinceAt: string;
+  /** Plain explanation, e.g. "Paused: disk low (10.8 GiB free, needs 12.0). ..." */
+  line: string;
 }
 
 /** One reorder of a queued build (GET /api/build-queue/history). */

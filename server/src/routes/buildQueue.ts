@@ -7,6 +7,7 @@ import { createConversationReactivator } from './conversationActivity.js';
 import type { ConversationRow } from '../db/db.js';
 import type { MoveBuildActor } from '../buildQueue/coordinator.js';
 import { approverName, BUILD_REFUSAL, claimBuildPass, requestMayStartBuild, settleBuildPass, type BuildPassRow } from '../buildQueue/buildApproval.js';
+import { activeDiskFloor, diskFloorLine } from '../runner/diskFloorStatus.js';
 
 const EnqueueSchema = z.object({
   sourceConversationId: z.string().trim().min(1).max(100),
@@ -117,7 +118,14 @@ export function createBuildQueueRouter(ctx: AppContext): Router {
         })));
       })
       .then((jobs) => {
-        res.json({ ok: true, jobs });
+        // The runner's disk floor holds every queued build; say so instead of "Waiting".
+        const floor = activeDiskFloor(ctx.db);
+        const diskFloor = floor ? { freeBytes: floor.freeBytes, resumeAtBytes: floor.resumeAtBytes, sinceAt: floor.sinceAt, line: diskFloorLine(floor) } : null;
+        res.json({
+          ok: true,
+          diskFloor,
+          jobs: diskFloor ? jobs.map((job) => ((job as { status?: unknown }).status === 'queued' ? { ...job, diskFloor } : job)) : jobs,
+        });
       })
       .catch((err: Error) => res.status(503).json({ ok: false, error: err.message }));
   });

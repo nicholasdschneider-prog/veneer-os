@@ -1,7 +1,7 @@
 import { useEffect, useState, type DragEvent } from 'react';
 import { ArrowDown, ArrowUp, Bot, CircleAlert, CircleHelp, CirclePause, GripVertical, Hammer, History, LoaderCircle, RotateCcw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
-import type { BuildQueueJob, BuildQueueMoveTarget, BuildQueueReorder } from '../lib/types';
+import type { BuildQueueDiskFloor, BuildQueueJob, BuildQueueMoveTarget, BuildQueueReorder } from '../lib/types';
 import { isProvider } from '../lib/modelLabel';
 import { cn } from '../lib/utils';
 import { AgentActivityOrb } from './AgentActivityOrb';
@@ -12,7 +12,17 @@ function statusLabel(job: BuildQueueJob): string {
   if (job.status === 'running') return 'Building';
   if (job.status === 'failed') return 'Blocked';
   if (job.status === 'stopped') return 'Stopped';
+  if (job.diskFloor) return diskLowLabel(job.diskFloor);
   return 'Waiting';
+}
+
+function gib(bytes: number): string {
+  return (bytes / 1024 ** 3).toFixed(1);
+}
+
+export function diskLowLabel(floor: BuildQueueDiskFloor): string {
+  const free = floor.freeBytes === null ? 'free space unknown' : `${gib(floor.freeBytes)} GiB free`;
+  return `Paused: disk low (${free}, needs ${gib(floor.resumeAtBytes)})`;
 }
 
 // Retry only makes sense for a job that already stopped; queued work is still
@@ -151,6 +161,7 @@ export function BuildQueue({
   };
 
   if (!jobs.length) return null;
+  const diskFloor = jobs.find((job) => job.status === 'queued' && job.diskFloor)?.diskFloor ?? null;
 
   return (
     <section className="mt-2 border-t border-border pt-2">
@@ -161,6 +172,12 @@ export function BuildQueue({
           {jobs.length}
         </span>
       </div>
+
+      {diskFloor ? (
+        <p role="status" className="mx-3 mb-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+          {diskFloor.line}
+        </p>
+      ) : null}
 
       {removeError ? (
         <p role="alert" className="px-3 py-2 text-xs text-destructive">
@@ -235,14 +252,15 @@ export function BuildQueue({
                   </span>
                 </span>
                 <span
-                  title={job.error ?? undefined}
+                  title={job.error ?? (job.status === 'queued' && job.diskFloor ? job.diskFloor.line : undefined)}
                   className={cn(
                     'flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums',
                     needsInput && 'text-amber-600 dark:text-amber-500',
                     !needsInput && job.status === 'running' && 'text-brand',
                     job.status === 'failed' && 'text-destructive',
                     job.status === 'stopped' && 'text-amber-600 dark:text-amber-400',
-                    job.status === 'queued' && 'text-muted-foreground',
+                    job.status === 'queued' && !job.diskFloor && 'text-muted-foreground',
+                    job.status === 'queued' && job.diskFloor && 'text-amber-600 dark:text-amber-400',
                   )}
                 >
                   {needsInput ? <CircleHelp className="size-3" aria-hidden /> : null}
@@ -256,7 +274,7 @@ export function BuildQueue({
                     />
                   ) : null}
                   {job.status === 'failed' ? <CircleAlert className="size-3" aria-hidden /> : null}
-                  {job.status === 'stopped' ? <CirclePause className="size-3" aria-hidden /> : null}
+                  {job.status === 'stopped' || (job.status === 'queued' && job.diskFloor) ? <CirclePause className="size-3" aria-hidden /> : null}
                   <span>{statusLabel(job)} · {elapsedLabel(elapsedFrom)}</span>
                 </span>
               </button>

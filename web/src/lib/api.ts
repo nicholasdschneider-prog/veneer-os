@@ -4,6 +4,7 @@ import type {
   ArchivedConversationGroup,
   AutomationTriggerRecipe,
   AutomationsSummary,
+  BuildQueueDiskFloor,
   BuildQueueJob,
   BuildQueueMoveTarget,
   BuildQueueReorder,
@@ -501,7 +502,7 @@ export const api = {
   // Projects bundle a folder with settings saved into each new chat snapshot.
   // Repository instruction files stay user-owned.
   projects: () => requestJson<{ projects: Project[] }>('/api/projects'),
-  buildQueue: () => requestJson<{ jobs: BuildQueueJob[] }>('/api/build-queue'),
+  buildQueue: () => requestJson<{ jobs: BuildQueueJob[]; diskFloor?: BuildQueueDiskFloor | null }>('/api/build-queue'),
   removeBuildQueueJob: (id: number) =>
     requestJson<{ ok: boolean }>(`/api/build-queue/${id}/resolve`, {
       method: 'POST',

@@ -168,4 +168,23 @@ describe('BuildQueue', () => {
     expect(html).toMatch(/aria-label="Move Selected build up"[^>]*disabled=""|disabled=""[^>]*aria-label="Move Selected build up"/);
     expect(html).toMatch(/aria-label="Move Third build down"[^>]*disabled=""|disabled=""[^>]*aria-label="Move Third build down"/);
   });
+
+  it('shows a disk-low pause instead of Waiting while the runner disk floor holds builds', () => {
+    const diskFloor = {
+      freeBytes: 10.8 * 1024 ** 3,
+      resumeAtBytes: 12 * 1024 ** 3,
+      sinceAt: '2026-11-12T15:15:00.000Z',
+      line: 'Paused: disk low (10.8 GiB free, needs 12.0). Builds and bot wake-ups resume automatically once space is freed.',
+    };
+    const held = jobs.map((job) => (job.status === 'queued' ? { ...job, diskFloor } : job));
+    const html = renderToStaticMarkup(<BuildQueue jobs={held} onOpen={vi.fn()} onRemoved={vi.fn()} />);
+    expect(html).toContain('Paused: disk low (10.8 GiB free, needs 12.0) · ');
+    expect(html).toContain('resume automatically once space is freed');
+    expect(html).not.toContain('Waiting · ');
+    expect(html).toContain('Building · ');
+
+    const normal = renderToStaticMarkup(<BuildQueue jobs={jobs} onOpen={vi.fn()} onRemoved={vi.fn()} />);
+    expect(normal).toContain('Waiting · ');
+    expect(normal).not.toContain('disk low');
+  });
 });

@@ -1278,13 +1278,14 @@ async function callTool(
       };
     }
     if (name === 'list_build_queue') {
-      const { jobs } = (await callApi('/api/build-queue')) as { jobs: Record<string, unknown>[] };
+      const { jobs, diskFloor } = (await callApi('/api/build-queue')) as { jobs: Record<string, unknown>[]; diskFloor?: { line?: string } | null };
+      const floorLine = diskFloor?.line ? `${diskFloor.line}\n` : '';
       const lines = jobs.map((job) => {
         const error = job.error ? ` — ${String(job.error)}` : '';
         const scope = job.scopeKey === 'source' ? 'Veneer Pro source' : String(job.projectName ?? 'Project');
         return `${scope} ${String(job.position)}. #${String(job.id)} [${String(job.status)}] ${String(job.title)}${error}`;
       });
-      return { content: [{ type: 'text', text: lines.length ? `Build queues:\n${lines.join('\n')}` : 'The build queues are empty.' }] };
+      return { content: [{ type: 'text', text: floorLine + (lines.length ? `Build queues:\n${lines.join('\n')}` : 'The build queues are empty.') }] };
     }
     if(name==='recover_build_queue'){const result=await callApi('/api/build-queue/recover',{method:'POST',body:JSON.stringify(args)});return {content:[{type:'text',text:JSON.stringify(result)}]};}
     if (name === 'move_build_queue') {
