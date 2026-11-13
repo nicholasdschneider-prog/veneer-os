@@ -17,6 +17,7 @@ import { createDockerBackend } from './backends/docker.mjs';
 import { createNativeBackend } from './backends/native.mjs';
 import { installTypeOfServiceGuard } from './type-of-service-guard.mjs';
 import { pruneTabs, waitForStableTabs } from './tab-prune.mjs';
+import { reapOrphanHelpers } from './helper-reaper.mjs';
 
 // Before any request: an undici TOS EINVAL must fail one request, not the manager.
 installTypeOfServiceGuard();
@@ -1488,6 +1489,14 @@ setInterval(() => {
 // Before the listeners: an /open during the restore would register a warm copy
 // that the restore then overwrote, leaving the loser's container behind.
 await backend.restore().catch((error) => console.log(`[veneer-browser] runtime restore failed: ${error.message}`));
+if (BACKEND_KIND === 'native') {
+  // Every native Chrome exit leaves a crashpad handler and an updater launcher
+  // behind; sweep them at boot and every ten minutes.
+  const reapHelpers = () => reapOrphanHelpers()
+    .catch((error) => console.log(`[veneer-browser] helper sweep failed: ${error.message}`));
+  await reapHelpers();
+  setInterval(reapHelpers, 10 * 60_000).unref();
+}
 // Chrome outlives the manager, and the virtual authenticators died with the old
 // manager's sockets, so every working copy still running gets its block back.
 await reattachPasskeyBlocks();
