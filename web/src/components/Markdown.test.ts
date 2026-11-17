@@ -61,6 +61,17 @@ describe('shared Markdown rendering', () => {
     expect(html).not.toContain('src="/tmp/');
   });
 
+  it('routes an image linked through a moved folder to its canonical chat file', () => {
+    const canonical = '/Volumes/VeneerData/Veneer/ervp-out/35TNJ6/photos/customer-photo-1.png';
+    const linked = '/Users/sam/Projects/ERVP/out/35TNJ6/photos/customer-photo-1.png';
+    const sources = chatImageSources('chat', [{ path: canonical, aliases: [linked], name: 'customer-photo-1.png', source: 'bash', size: 1, mtime: 1 }], []);
+    const html = renderToStaticMarkup(createElement(MarkdownImageSourcesContext.Provider, { value: sources },
+      createElement(Markdown, { markdown: `![Customer photo 1](${linked})` }),
+    ));
+    expect(html).toContain(`src="/api/conversations/chat/files/content?path=${encodeURIComponent(canonical)}&amp;inline=1"`);
+    expect(html).not.toContain('Image unavailable');
+  });
+
   it('matches encoded and angle-bracket paths with spaces against registered artifacts', () => {
     const sources = chatImageSources('chat', [], [{ type: 'file', id: 'image-id', path: '/Users/sam/My Images/plot.png', name: 'plot.png', kind: 'image', size: 123, updatedAt: 1 }]);
     for (const target of ['/Users/sam/My Images/plot.png', '</Users/sam/My Images/plot.png>', '/Users/sam/My%20Images/plot.png']) {

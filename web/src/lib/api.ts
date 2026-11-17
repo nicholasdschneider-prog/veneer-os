@@ -1365,6 +1365,8 @@ export interface SessionFile {
   size: number;
   mtime: number;
   source: 'write' | 'bash';
+  /** Other absolute paths the chat linked this file by (e.g. through a symlink). */
+  aliases?: string[];
 }
 
 /** A file stored on the server, referenced in messages by absolute path. */

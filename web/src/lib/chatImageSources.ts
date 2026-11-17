@@ -10,7 +10,11 @@ export function chatImageSources(conversationId: string, files: SessionFile[], a
     sources.set(artifactPathKey(artifact.path), api.generatedFileDownloadUrl(artifact.id, { inline: true }));
   }
   for (const file of files) {
-    sources.set(artifactPathKey(file.path), api.conversationFileInlineUrl(conversationId, file.path));
+    const url = api.conversationFileInlineUrl(conversationId, file.path);
+    sources.set(artifactPathKey(file.path), url);
+    for (const alias of file.aliases ?? []) {
+      if (!sources.has(artifactPathKey(alias))) sources.set(artifactPathKey(alias), url);
+    }
   }
   return sources;
 }

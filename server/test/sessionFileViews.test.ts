@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { linkedFilePaths } from '../src/providers/fileScan.js';
-import { sessionFileView } from '../src/files/sessionFileViews.js';
+import { sessionFileView, sessionFileViews } from '../src/files/sessionFileViews.js';
 
 const roots: string[] = [];
 
@@ -37,5 +37,26 @@ describe('sessionFileView', () => {
 
     expect(view?.path).toBe(fs.realpathSync(realFile));
     expect(view?.name).toBe('mention-chip.png');
+    expect(view?.aliases).toEqual([path.join(aliasDir, 'mention-chip.png')]);
+  });
+
+  it('merges refs to one file through a moved folder into one view with aliases', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vp-session-views-'));
+    roots.push(root);
+    const realDir = path.join(root, 'ssd', '35TNJ6');
+    fs.mkdirSync(realDir, { recursive: true });
+    const aliasDir = path.join(root, 'out-35TNJ6');
+    fs.symlinkSync(realDir, aliasDir);
+    fs.writeFileSync(path.join(realDir, 'photo.png'), 'image');
+    const canonical = fs.realpathSync(path.join(realDir, 'photo.png'));
+
+    const views = sessionFileViews([
+      { path: canonical, source: 'bash' },
+      { path: path.join(aliasDir, 'photo.png'), source: 'bash' },
+      { path: path.join(aliasDir, 'photo.png'), source: 'write' },
+    ], 0);
+
+    expect(views).toHaveLength(1);
+    expect(views[0]).toMatchObject({ path: canonical, source: 'write', aliases: [path.join(aliasDir, 'photo.png')] });
   });
 });

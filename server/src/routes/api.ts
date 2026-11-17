@@ -51,7 +51,7 @@ import { createFilesRouter } from './files.js';
 import { createGeneratedFilesRouter } from './generatedFiles.js';
 import { ensureFileSyncBackfill, listGeneratedFiles } from '../files/generatedFiles.js';
 import { artifactKind } from '../files/artifactKind.js';
-import { sessionFileView, type SessionFileView } from '../files/sessionFileViews.js';
+import { sessionFileViews, type SessionFileView } from '../files/sessionFileViews.js';
 import { miniAppUrl } from '../miniApps/cloudflare.js';
 import { inlineContentSecurityPolicy, inlineContentType } from './inlineContentType.js';
 import { serveMarkdownImage } from './markdownImage.js';
@@ -2988,13 +2988,7 @@ export function createApiRouter(ctx: AppContext): Router {
   async function sessionFilesFor(row: ConversationRow): Promise<SessionFileView[]> {
     // conversations.created_at is sqlite datetime('now') — UTC without a zone.
     const createdAtMs = new Date(`${row.created_at.replace(' ', 'T')}Z`).getTime();
-    const refs = await manager.listSessionFiles(row.id);
-    const files: SessionFileView[] = [];
-    for (const ref of refs) {
-      const file = sessionFileView(ref, createdAtMs);
-      if (file) files.push(file);
-    }
-    return files;
+    return sessionFileViews(await manager.listSessionFiles(row.id), createdAtMs);
   }
 
   router.get('/conversations/:id/files', (req, res) => {
