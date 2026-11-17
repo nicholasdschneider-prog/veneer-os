@@ -55,6 +55,11 @@ const SERVICES = [
   { label: 'com.veneer.browser-manager', plist: 'com.veneer.browser-manager.plist', needsChrome: true },
   { label: 'com.veneer.pro.cloudflared', plist: 'com.veneer.pro.cloudflared.plist', needsTunnel: true },
   { label: 'com.veneer.pro.backup', plist: 'com.veneer.pro.backup.plist' },
+  // Disk housekeeping one-shots: offsite copy after the nightly backup, the
+  // nightly stale-folder sweep, and the 10-minute disk autopilot.
+  { label: 'com.veneer.pro.backup-offsite', plist: 'com.veneer.pro.backup-offsite.plist' },
+  { label: 'com.veneer.disk-sweep', plist: 'com.veneer.disk-sweep.plist' },
+  { label: 'com.veneer.disk-autopilot', plist: 'com.veneer.disk-autopilot.plist' },
   // Reload the runner after every other persistent service. The actual reload
   // runs in a launchd-owned helper, so an install started by a Pro agent cannot
   // kill itself between bootout and bootstrap.

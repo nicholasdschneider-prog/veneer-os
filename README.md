@@ -204,6 +204,24 @@ override requires an explicitly authorized interruption.
 Publishing stays disabled unless the account id, the API token, **and** the public base are all
 present.
 
+### Disk housekeeping and offsite backups (optional)
+
+See [docs/offsite-backups.md](docs/offsite-backups.md). Offsite upload stays off until every
+required `VP_BACKUP_OFFSITE_*` key is set.
+
+| var | default | notes |
+|---|---|---|
+| `VP_BACKUP_OFFSITE_BUCKET` | `veneer-backups` | private R2 bucket for encrypted archives |
+| `VP_BACKUP_OFFSITE_ACCOUNT_ID` | — | Cloudflare account holding the bucket |
+| `VP_BACKUP_OFFSITE_ACCESS_KEY_ID` | — | R2 S3 access key id (the Cloudflare API token's id) |
+| `VP_BACKUP_OFFSITE_SECRET_ACCESS_KEY` | — | R2 S3 secret (SHA-256 of the token value) |
+| `VP_BACKUP_OFFSITE_AGE_RECIPIENT` | — | `age1…` **public** key; the private key lives only in Doppler |
+| `VP_BACKUP_OFFSITE_STATE` | `$VP_BACKUP_DIR/offsite-state.json` | last upload and last error, read by the disk autopilot |
+| `VP_BACKUP_OFFSITE_BWLIMIT` | `06:00,2M 23:00,off` | rclone bandwidth timetable for the upload; unlimited overnight, 2 MiB/s by day |
+| `VP_DISK_AUTOPILOT_CHAT` | — | chat id the disk autopilot wakes when a problem survives self-healing; unset only logs |
+| `VP_DISK_SWEEP_CONFIG` | `~/.config/veneer-pro/disk-sweep.json` (login home) | sweep roots, `minBytes`, `ageHours`, `skipNames`; built-in default moves stale `~/Projects/ERVP/out` folders to `/Volumes/VeneerData/Veneer/ervp-out` |
+| `VP_DISK_SWEEP_LOG` | `<first target's parent>/sweep-log.jsonl` | one JSON line per moved folder |
+
 ### Boot probe (optional)
 
 `scripts/boot-probe.mjs` verifies every service after a reboot and writes a report to the home
