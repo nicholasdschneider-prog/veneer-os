@@ -354,6 +354,38 @@ describe('human priority and lane parity', () => {
       await tick();
     });
 
+    it('runs an aged message in a coordination lane before the bot lane\'s next back-to-back wake-up', async () => {
+      const { turns, adapter } = fakeProvider();
+      const { manager } = managerWith(adapter);
+      const lane = enable();
+      const other = ensureCoordination(db, row('anna'), row('clara'));
+      const coord = row(other.lane.conversation_id);
+      expect(manager.deliverWakeup(lane, 'AutoShip candidate 1', 'w-1', 1).disposition).toBe('running');
+      await tick();
+      expect(manager.postMessage(coord, 'Sage: SPOT3 ready', 1, fromAnna).disposition).toBe('queued');
+      manager.deliverWakeup(lane, 'AutoShip candidate 2', 'w-2', 1);
+      // Fresh: the lane's own wake-ups keep their turn order.
+      turns[0]!.finish();
+      await tick();
+      expect(turns).toHaveLength(2);
+      expect(turns[1]!.spec.nativeSessionId).toBe(lane.native_session_id);
+      // Once the message has waited 10 minutes, the next wake-up yields to it.
+      age(11);
+      manager.deliverWakeup(lane, 'AutoShip candidate 3', 'w-3', 1);
+      turns[1]!.finish();
+      await tick();
+      expect(turns).toHaveLength(3);
+      expect(turns[2]!.spec.nativeSessionId).toBe(coord.native_session_id);
+      expect(manager.queueSnapshot(coord.id).messages).toHaveLength(0);
+      // The yielded wake-up still runs right after.
+      turns[2]!.finish();
+      await tick();
+      expect(turns).toHaveLength(4);
+      expect(turns[3]!.spec.nativeSessionId).toBe(lane.native_session_id);
+      for (const t of turns) t.finish();
+      await tick();
+    });
+
     it('starts an aged bot message on its own once 10 minutes pass, without waiting for a task turn to end', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], now: Date.now() });
       try {

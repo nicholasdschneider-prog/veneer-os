@@ -1737,6 +1737,26 @@ export function createConversationManager({
         if (waited !== null && !aged) retryWhenAged(conv, waited);
         return;
       }
+      // Aged incoming work in another bot session goes before this session's newer or scheduled work.
+      // Otherwise a lane that runs wake-ups back to back (the bot lane) restarts before an idle sibling
+      // is kicked, and a coordination lane holding another bot's messages starves indefinitely.
+      if (!aged) {
+        const starved = family.find(id => {
+          if (id === conv.id || id === lane?.owner_id || taskService.taskOfLane(id)) return false;
+          const e = entryFor(id);
+          if (e.turn || e.maintenance || failedTurnStmt.get(id)) return false;
+          const w = incomingWaitMs(e.queue[0]);
+          return w !== null && w >= INCOMING_AGED_MS;
+        });
+        if (starved) {
+          const next = db.prepare('SELECT * FROM conversations WHERE id=?').get(starved) as ConversationRow | undefined;
+          if (next) {
+            if (waited !== null) retryWhenAged(conv, waited);
+            void runNext(next);
+            return;
+          }
+        }
+      }
     }
     // Human work already waiting always goes first; workers never preempt it. A task chat waits only
     // for a person's queued message in the main chat, never for bot-to-bot or scheduled traffic queued there.
