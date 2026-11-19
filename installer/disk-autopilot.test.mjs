@@ -39,6 +39,7 @@ test('swap-high needs three high samples in a row', () => {
 
 test('external-unmounted suppresses backup-stale; backup-stale after 26 h or with no backup', () => {
   assert.deepEqual(keys({ ...healthy, externalMounted: false, newestBackupAt: null }), ['external-unmounted']);
+  assert.deepEqual(keys({ ...healthy, externalMounted: false, newestBackupAt: null, offsiteConfigured: true, offsite: null }), ['external-unmounted']);
   assert.deepEqual(keys({ ...healthy, newestBackupAt: iso(NOW - 27 * HOUR) }), ['backup-stale']);
   assert.deepEqual(keys({ ...healthy, newestBackupAt: null }), ['backup-stale']);
   assert.deepEqual(keys({ ...healthy, newestBackupAt: iso(NOW - 25 * HOUR) }), []);

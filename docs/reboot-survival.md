@@ -163,3 +163,18 @@ anyone using it, because the site goes away for a minute or two.
 
 If the report says FAIL, the failing check names the hop: loopback checks point
 at a launchd agent, and the edge check points at `cloudflared`.
+
+## External volume gate (ensure-mounted.py)
+
+The service plists on this Mac exec through `~/.local/lib/veneer-volume/ensure-mounted.py`, which unlocks and
+verifies the registered encrypted VeneerData volume before a service starts and never creates a substitute data
+root. The source of record is `installer/veneer-volume/ensure-mounted.py`; copy it over the installed file after
+a change (it takes effect at the next spawn, no restart needed).
+
+On 2026-11-18 an unexplained reboot left the four node services down for 12 minutes: each attempt failed once with
+"Could not unlock the registered volume" and waited for launchd to respawn it. The system log for that window was
+no longer readable, so the cause of the failed unlocks is unproven. Since build #1142 one invocation waits for the
+device and retries unlock and mount every 5 seconds for up to 180 seconds (`VENEER_VOLUME_WAIT_SECONDS`), and
+writes diskutil's own reason to the service log on every failed attempt, so the next occurrence is diagnosable.
+Identity, encryption and permission failures are never retried. The services still refuse to start without the
+volume: transcripts and agent history live there.

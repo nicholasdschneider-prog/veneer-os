@@ -98,7 +98,8 @@ export function evaluate(snapshot, now, previousState) {
   } else if (!snapshot.newestBackupAt || now - Date.parse(snapshot.newestBackupAt) > BACKUP_STALE_MS) {
     conditions.push({ key: 'backup-stale', summary: snapshot.newestBackupAt ? `newest nightly backup is ${ageHours(snapshot.newestBackupAt, now)} h old` : 'no nightly backup found' });
   }
-  if (snapshot.offsiteConfigured) {
+  // The offsite state file lives on the external drive, so it is unknown, not stale, while unmounted.
+  if (snapshot.offsiteConfigured && snapshot.externalMounted) {
     const at = snapshot.offsite?.lastUploadedAt;
     if (!at || now - Date.parse(at) > OFFSITE_STALE_MS) {
       conditions.push({ key: 'offsite-stale', summary: at ? `offsite backup copy is ${ageHours(at, now)} h old` : 'no offsite backup copy has been uploaded' });
@@ -118,9 +119,12 @@ export function unnotified(conditions, state, now) {
 }
 
 export function wakeReason(conditions, snapshot, sweepText, now) {
-  const backup = snapshot.newestBackupAt ? `${ageHours(snapshot.newestBackupAt, now)} h old` : 'none';
+  const unknown = 'unknown while the drive is unmounted';
+  let backup = snapshot.newestBackupAt ? `${ageHours(snapshot.newestBackupAt, now)} h old` : 'none';
+  if (!snapshot.externalMounted) backup = unknown;
   let offsite = 'not configured';
-  if (snapshot.offsiteConfigured) {
+  if (snapshot.offsiteConfigured && !snapshot.externalMounted) offsite = unknown;
+  else if (snapshot.offsiteConfigured) {
     offsite = snapshot.offsite?.lastUploadedAt ? `${ageHours(snapshot.offsite.lastUploadedAt, now)} h old` : 'none';
     if (snapshot.offsite?.lastError) offsite += ` (last error: ${snapshot.offsite.lastError})`;
   }
