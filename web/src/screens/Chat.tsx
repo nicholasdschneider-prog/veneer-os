@@ -837,6 +837,11 @@ export function Chat({
     }
   }, []);
 
+  const stillUploading = attachments.some((a) => a.status === 'uploading');
+  useEffect(() => {
+    if (!stillUploading) setSendError((current) => (current?.startsWith('Still uploading') ? null : current));
+  }, [stillUploading]);
+
   const removeAttachment = useCallback((id: string) => {
     setAttachments((prev) => {
       const hit = prev.find((a) => a.id === id);
@@ -1542,6 +1547,11 @@ export function Chat({
       setSendError('Still uploading — one moment…');
       return;
     }
+    // Never send the words without the file the person attached.
+    if (attachments.some((a) => a.status === 'error')) {
+      setSendError('A file didn’t upload. Remove it or attach it again, then send.');
+      return;
+    }
     // A touch tap on Send should give the conversation its screen space back.
     // Keep hardware/mouse sends focused so desktop users can keep typing.
     if (dismissKeyboard) {
@@ -1709,6 +1719,11 @@ export function Chat({
     if (!text && !messageQuote && readyFiles.length === 0) return false;
     if (attachments.some((a) => a.status === 'uploading')) {
       setSendError('Still uploading — one moment…');
+      return false;
+    }
+    // Never send the words without the file the person attached.
+    if (attachments.some((a) => a.status === 'error')) {
+      setSendError('A file didn’t upload. Remove it or attach it again, then send.');
       return false;
     }
     const withFiles = readyFiles.length

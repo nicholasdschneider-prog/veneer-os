@@ -182,6 +182,8 @@ export interface SystemUsage {
   sampledAt: string;
 }
 
+const UPLOAD_ATTEMPTS = 3;
+
 export const api = {
   me: () => requestJson<Me>('/api/me'),
   systemUsage: () => requestJson<{ ok: true; usage: SystemUsage }>('/api/system/usage'),
@@ -483,19 +485,32 @@ export const api = {
   // Raw-body upload (not multipart): the File streams as the request body and
   // the name travels in the query. Content-Type is forced to octet-stream so
   // the server's JSON body parser never touches it (e.g. an uploaded .json).
+  // A phone on weak Wi-Fi drops a multi-megabyte POST now and then; the File
+  // can be re-read, so a dropped or 5xx attempt is retried before the composer
+  // has to show a failure.
   uploadFile: async (file: File): Promise<UploadedFile> => {
-    const res = await fetch(`/api/uploads?filename=${encodeURIComponent(file.name)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: file,
-    });
-    const body = (await res.json().catch(() => null)) as
-      | { ok?: boolean; error?: string; file?: UploadedFile }
-      | null;
-    if (!res.ok || !body?.ok || !body.file) {
-      throw new Error(body?.error ?? `Upload failed (${res.status})`);
+    let lastError: unknown = new Error('Upload failed');
+    for (let attempt = 0; attempt < UPLOAD_ATTEMPTS; attempt += 1) {
+      if (attempt) await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+      let res: Response;
+      try {
+        res = await fetch(`/api/uploads?filename=${encodeURIComponent(file.name)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: file,
+        });
+      } catch (error) {
+        lastError = error;
+        continue;
+      }
+      const body = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; file?: UploadedFile }
+        | null;
+      if (res.ok && body?.ok && body.file) return body.file;
+      lastError = new Error(body?.error ?? `Upload failed (${res.status})`);
+      if (res.status < 500) break;
     }
-    return body.file;
+    throw lastError instanceof Error ? lastError : new Error('Upload failed');
   },
   deleteConversation: (id: string) => requestJson<{ ok: boolean }>(`/api/conversations/${id}`, { method: 'DELETE' }),
 

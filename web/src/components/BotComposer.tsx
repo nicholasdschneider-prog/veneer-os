@@ -277,6 +277,10 @@ export function BotComposer({
       setError('Still uploading — one moment…');
       return;
     }
+    if (attachments.some((a) => a.status === 'error')) {
+      setError('A file didn’t upload. Remove it or attach it again, then send.');
+      return;
+    }
     if (recording) micDictation.stop();
     if (target && readyPaths.length) { setError('Send attachments to the original discussion first, then request an investigation. Handoffs share text and evidence references only.'); return; }
     const text = withAttachmentFooter(draft, readyPaths);
