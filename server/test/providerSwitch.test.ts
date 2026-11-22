@@ -10,6 +10,7 @@ import type { ProviderAdapter, TurnSpec } from '../src/providers/types.js';
 import type { ConversationEvent } from '../src/runtime/events.js';
 import { createConversationManager } from '../src/runtime/conversationManager.js';
 import { writeProviderHandoff } from '../src/runtime/providerSwitch.js';
+import { insertOwnerLane } from '../src/coordination/store.js';
 
 const migrations = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/db/migrations');
 const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -32,7 +33,8 @@ function setup() {
   const adapter = (id: 'claude' | 'codex'): ProviderAdapter => ({
     id,
     mintSessionId: () => `${id}-new-${runs.length}`,
-    listModels: async () => [{ id: id === 'claude' ? 'opus' : 'gpt-astra', label: 'Available model' }],
+    listModels: async () => [{ id: id === 'claude' ? 'opus' : 'gpt-astra', label: 'Available model' },
+      { id: 'gpt-6.1-sol', label: 'Sol' }],
     readModel: async () => 'stale-fable',
     readTranscript: async ({ nativeSessionId }) => transcripts.get(nativeSessionId) ?? [],
     listCreatedFiles: async ({ nativeSessionId }) => nativeSessionId === 'claude-original' ? [{ path: '/workspace/product.csv', source: 'bash' }] : [],
@@ -55,6 +57,124 @@ function setup() {
   return { cwd, db, manager, row, runs, transcripts, codex, claude };
 }
 const gpt = { provider: 'codex' as const, model: 'gpt-astra', effort: 'high' };
+
+function taskSession(s: ReturnType<typeof setup>) {
+  s.db.prepare("INSERT INTO bot_registrations(conversation_id,name,active,registered_by) VALUES('piper','Piper',1,1)").run();
+  const id = insertOwnerLane(s.db, s.row(), 'Existing case');
+  s.db.prepare("INSERT INTO bot_tasks(id,owner_conversation_id,title,task_conversation_id) VALUES('case','piper','Existing case',?)").run(id);
+  s.db.prepare('UPDATE conversations SET native_session_id=? WHERE id=?').run('claude-original', id);
+  return () => s.db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow;
+}
+
+describe('inherited bot session models', () => {
+  it('transfers an old task to its owner subscription exactly once, preserving identity and context', async () => {
+    const s = setup(); const task = taskSession(s); const original = task();
+    s.db.prepare("UPDATE conversations SET provider='codex',model='gpt-6.1-sol',effort='medium' WHERE id='piper'").run();
+    s.manager.postMessage(task(), 'Continue the case');
+    for (let i=0; i<10; i++) await flush();
+    expect(s.runs).toHaveLength(1);
+    expect(task()).toMatchObject({ provider: 'codex', model: 'gpt-6.1-sol', effort: 'medium', model_inherits_owner: 1,
+      id: original.id, side_chat_of: 'piper', instruction_snapshot_json: original.instruction_snapshot_json });
+    expect(s.runs[0]!.spec.prompt).toContain('Inventory still needs checking');
+    expect(s.runs[0]!.spec.displayPrompt).toBe('Continue the case');
+    expect(await s.manager.listSessionFiles(task())).toContainEqual({ path: '/workspace/product.csv', source: 'bash' });
+    s.runs[0]!.finish(); await flush();
+    const native = task().native_session_id;
+    s.manager.postMessage(task(), 'One more step');
+    expect(s.runs).toHaveLength(2);
+    expect(task().native_session_id).toBe(native);
+    s.runs[1]!.finish(); await flush();
+  });
+
+  it('waits for a running task before applying the new owner model to queued work', async () => {
+    const s = setup(); const task = taskSession(s);
+    s.manager.postMessage(task(), 'Already running');
+    expect(s.runs).toHaveLength(1);
+    s.db.prepare("UPDATE conversations SET provider='codex',model='gpt-6.1-sol',effort='medium' WHERE id='piper'").run();
+    s.manager.postMessage(task(), 'Next step');
+    expect(task().provider).toBe('claude');
+    expect(s.runs).toHaveLength(1);
+    s.runs[0]!.finish();
+    for (let i=0; i<10; i++) await flush();
+    expect(s.runs).toHaveLength(2);
+    expect(s.runs[1]!.spec.model).toBe('gpt-6.1-sol');
+    s.runs[1]!.finish(); await flush();
+  });
+
+  it('preserves explicit session overrides and independent human chats', async () => {
+    const s = setup(); const task = taskSession(s);
+    expect(await s.manager.switchProvider(task(), { provider: 'claude', model: 'opus', effort: 'high' })).toEqual({ ok: true });
+    expect(task().model_inherits_owner).toBe(0);
+    s.db.prepare("UPDATE conversations SET provider='codex',model='gpt-6.1-sol',effort='medium' WHERE id='piper'").run();
+    s.manager.postMessage(task(), 'Analyze with the chosen model');
+    expect(s.runs[0]!.spec.model).toBe('opus');
+    s.runs[0]!.finish(); await flush();
+    expect(s.row().model).toBe('gpt-6.1-sol');
+  });
+
+  it('keeps queued work and the old history when the subscription is unavailable', async () => {
+    const s = setup(); const task = taskSession(s);
+    s.db.prepare("UPDATE conversations SET provider='codex',model='gpt-6.1-sol' WHERE id='piper'").run();
+    let probes = 0;
+    s.codex.listModels = async () => { probes++; return []; };
+    s.manager.postMessage(task(), 'Still needed');
+    for (let i=0; i<10; i++) await flush();
+    expect(s.runs).toHaveLength(0);
+    expect(probes).toBe(1); // A failed transfer must not spin on its own status events.
+    expect(task().provider).toBe('claude');
+    expect(s.db.prepare('SELECT count(*) n FROM queued_messages WHERE conversation_id=?').get(task().id)).toEqual({ n: 1 });
+    expect((await s.manager.snapshot(task())).some(e => e.type==='text_final' && e.markdown.includes('Inventory still'))).toBe(true);
+  });
+
+  it('refreshes a copied GPT model without recreating the native session', async () => {
+    const s = setup();
+    s.db.prepare("UPDATE conversations SET provider='codex',model='gpt-astra' WHERE id='piper'").run();
+    const task = taskSession(s); const native = task().native_session_id;
+    s.db.prepare("UPDATE conversations SET model='gpt-6.1-sol',effort='medium' WHERE id='piper'").run();
+    s.manager.postMessage(task(), 'Routine work');
+    for (let i=0; i<10; i++) await flush();
+    expect(s.runs).toHaveLength(1);
+    expect(s.runs[0]!.spec.model).toBe('gpt-6.1-sol');
+    expect(task().native_session_id).toBe(native);
+    s.runs[0]!.finish(); await flush();
+  });
+
+  it('does not inherit from an inactive bot', async () => {
+    const s = setup(); const task = taskSession(s);
+    s.db.prepare("UPDATE bot_registrations SET active=0 WHERE conversation_id='piper'").run();
+    s.db.prepare("UPDATE conversations SET provider='codex',model='gpt-6.1-sol' WHERE id='piper'").run();
+    s.manager.postMessage(task(), 'Existing work');
+    expect(task().provider).toBe('claude');
+    expect(s.runs[0]!.spec.model).toBe('fable');
+    s.runs[0]!.finish(); await flush();
+  });
+});
+
+it('enrolls legacy routine lanes without switching sessions or replacing specialized selections', () => {
+  const db = new Database(':memory:');
+  try {
+    db.exec(`CREATE TABLE conversations(id TEXT PRIMARY KEY,provider TEXT,model TEXT,native_session_id TEXT);
+      CREATE TABLE bot_registrations(conversation_id TEXT,active INTEGER);
+      CREATE TABLE coordination_lanes(conversation_id TEXT,owner_id TEXT);
+      INSERT INTO conversations VALUES('owner','codex','gpt-6.1-sol','owner-native');
+      INSERT INTO bot_registrations VALUES('owner',1);`);
+    for (const [id,provider,model] of [
+      ['routine','claude','claude-sonnet-5-5'], ['build','claude','claude-opus-5-5'],
+      ['analysis','claude','claude-fable-5-2'], ['special','codex','gpt-6-astra'],
+      ['current','codex','gpt-6.1-sol'], ['human','claude','claude-sonnet-5-5'],
+    ]) {
+      db.prepare('INSERT INTO conversations VALUES(?,?,?,?)').run(id,provider,model,`${id}-native`);
+      if (id!=='human') db.prepare('INSERT INTO coordination_lanes VALUES(?,?)').run(id,'owner');
+    }
+    db.exec(fs.readFileSync(path.join(migrations,'0200_lane_model_inheritance.sql'),'utf8'));
+    expect(db.prepare('SELECT id FROM conversations WHERE model_inherits_owner=1 ORDER BY id').all()).toEqual([
+      { id: 'current' }, { id: 'routine' },
+    ]);
+    expect(db.prepare("SELECT provider,model,native_session_id FROM conversations WHERE id='routine'").get()).toEqual({
+      provider: 'claude', model: 'claude-sonnet-5-5', native_session_id: 'routine-native',
+    });
+  } finally { db.close(); }
+});
 
 describe('provider switching in a permanent chat', () => {
   it('preserves identity, history, files and context across a fresh provider session and restart', async () => {

@@ -1544,9 +1544,9 @@ export function createConversationManager({
     if (event.type !== 'turn_done') turn.events.push(event);
   }
 
-  function emitStatus(conversationId: string): void {
+  function emitStatus(conversationId: string, kickFamily = true): void {
     bus.emit('status', conversationId, statusOf(conversationId), activityOf(conversationId));
-    if (!entryFor(conversationId).turn) queueMicrotask(() => {
+    if (kickFamily && !entryFor(conversationId).turn) queueMicrotask(() => {
       for (const id of coordinationFamily(db, conversationId)) {
         if (!entryFor(id).queue.length) continue;
         const next = db.prepare('SELECT * FROM conversations WHERE id=?').get(id) as ConversationRow | undefined;
@@ -1766,6 +1766,24 @@ export function createConversationManager({
     // A turn that exhausted recovery remains visible/retryable. Do not run later
     // messages past it until the user explicitly retries or skips it.
     if (failedTurnStmt.get(conv.id)) return;
+    // Only internal sessions explicitly marked as inherited follow a registered
+    // bot's selection. Never touch a running reply, a manual override, or an
+    // optional/build run with its own model contract. The normal provider switch
+    // freezes history and hands context over before consuming the queued message.
+    if (lane && conv.model_inherits_owner === 1 && entry.queue.length &&
+        !entry.queue[0]?.origin?.spareRunId && !entry.queue[0]?.origin?.buildDispatchId &&
+        db.prepare('SELECT 1 FROM bot_registrations WHERE conversation_id=? AND active=1').get(authority.id) &&
+        !authority.archived &&
+        (conv.provider !== authority.provider || conv.model !== authority.model || conv.effort !== authority.effort)) {
+      const result = await switchConversationProvider(conv, {
+        provider: authority.provider, model: authority.model, effort: authority.effort,
+      }, false);
+      if (!result.ok) {
+        log.warn(`[bot-model-routing] deferred ${conv.id}: ${result.message}`);
+        return;
+      }
+      conv = db.prepare('SELECT * FROM conversations WHERE id=?').get(conv.id) as ConversationRow;
+    }
     reconcilePeriodicQueue(conv.id);
     const item = entry.queue.shift();
     if (item === undefined) return;
@@ -2603,6 +2621,67 @@ export function createConversationManager({
       };
   }
 
+  async function switchConversationProvider(
+    conv: ConversationRow, selection: ModelSelection, resumeQueue: boolean,
+  ): Promise<SwitchProviderResult> {
+    const entry = entryFor(conv.id);
+    if (entry.turn || entry.maintenance || hasPendingStmt.get(conv.id) || hasPendingQuestion(conv.id)) {
+      return { ok: false, message: 'Finish or stop the current reply before switching models.' };
+    }
+    const adapter = adapters[selection.provider];
+    if (!adapter) return { ok: false, message: 'This provider is not configured.' };
+    const maintenance: NonNullable<LiveConversation['maintenance']> = {
+      kind: 'provider-switch', kill() {}, interrupted: false,
+    };
+    entry.maintenance = maintenance;
+    emitStatus(conv.id, resumeQueue);
+    try {
+      if (selection.provider === conv.provider) {
+        db.prepare('UPDATE conversations SET model = ?, effort = ? WHERE id = ?')
+          .run(selection.model, selection.effort, conv.id);
+        if (resumeQueue) db.prepare('UPDATE conversations SET model_inherits_owner = 0 WHERE id = ?').run(conv.id);
+        return { ok: true };
+      }
+      const models = await adapter.listModels?.() ?? [];
+      if (!models.length || (selection.model && !models.some((model) => model.id === selection.model))) {
+        return { ok: false, message: 'This model is not available. Connect the provider and refresh its model list.' };
+      }
+      // The handoff quotes the chat's opening, so it reads everything; storage
+      // appends only the session that is ending.
+      const whole = await api.snapshot(conv);
+      const history = namespaceHistory(await readSnapshot(conv, 'none', true));
+      const files = await api.listSessionFiles(conv);
+      if (maintenance.interrupted) return { ok: false, message: 'Model switch canceled.' };
+      const handoff = writeProviderHandoff(resolveWorkspace(conv).workspaceDir, conv.id, whole);
+      const notice: ConversationEvent = {
+        type: 'notice', at: new Date().toISOString(),
+        message: `Switched from ${conv.provider} to ${selection.provider} (${selection.model ?? 'default model'}). Earlier history is preserved; the next reply receives recorded context in a fresh provider session.`,
+      };
+      history.push(notice);
+      const nativeSessionId = adapter.mintSessionId();
+      db.transaction(() => {
+        freezeSession(conv.id, history, files, handoff);
+        db.prepare(`UPDATE conversations SET provider = ?, model = ?, effort = ?, native_session_id = ?,
+          provider_instruction_hash = NULL, last_input_tokens = NULL, files_synced_at = NULL,
+          title_auto = CASE WHEN title IS NOT NULL THEN 0 ELSE title_auto END WHERE id = ?`)
+          .run(selection.provider, selection.model, selection.effort, nativeSessionId, conv.id);
+        if (resumeQueue) db.prepare('UPDATE conversations SET model_inherits_owner = 0 WHERE id = ?').run(conv.id);
+        db.prepare('DELETE FROM settings WHERE key = ?').run(`turn_ran:${conv.id}`);
+      })();
+      bus.emit('event', conv.id, notice);
+      bus.emit('event', conv.id, { type: 'context_compacted', contextTokens: null });
+      return { ok: true };
+    } catch {
+      return { ok: false, message: 'Could not transfer the chat context. The provider was not changed.' };
+    } finally {
+      if (entry.maintenance === maintenance) entry.maintenance = null;
+      emitStatus(conv.id, resumeQueue);
+      // Messages arriving during the switch retain their durable queue rows.
+      const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
+      if (resumeQueue && fresh && !fresh.archived && entry.queue.length) void runNext(fresh);
+    }
+  }
+
   const api: ConversationManager = {
     bus,
     dispatchBuild(conv, text, actorUserId, origin) {
@@ -2804,60 +2883,7 @@ export function createConversationManager({
       return { ok: true, queue: emitQueue(conv.id) };
     },
     async switchProvider(conv, selection) {
-      const entry = entryFor(conv.id);
-      if (entry.turn || entry.maintenance || hasPendingStmt.get(conv.id) || hasPendingQuestion(conv.id)) {
-        return { ok: false, message: 'Finish or stop the current reply before switching models.' };
-      }
-      const adapter = adapters[selection.provider];
-      if (!adapter) return { ok: false, message: 'This provider is not configured.' };
-      const maintenance: NonNullable<LiveConversation['maintenance']> = {
-        kind: 'provider-switch', kill() {}, interrupted: false,
-      };
-      entry.maintenance = maintenance;
-      emitStatus(conv.id);
-      try {
-        if (selection.provider === conv.provider) {
-          db.prepare('UPDATE conversations SET model = ?, effort = ? WHERE id = ?')
-            .run(selection.model, selection.effort, conv.id);
-          return { ok: true };
-        }
-        const models = await adapter.listModels?.() ?? [];
-        if (!models.length || (selection.model && !models.some((model) => model.id === selection.model))) {
-          return { ok: false, message: 'This model is not available. Connect the provider and refresh its model list.' };
-        }
-        // The handoff quotes the chat's opening, so it reads everything; storage
-        // appends only the session that is ending.
-        const whole = await this.snapshot(conv);
-        const history = namespaceHistory(await readSnapshot(conv, 'none', true));
-        const files = await this.listSessionFiles(conv);
-        if (maintenance.interrupted) return { ok: false, message: 'Model switch canceled.' };
-        const handoff = writeProviderHandoff(resolveWorkspace(conv).workspaceDir, conv.id, whole);
-        const notice: ConversationEvent = {
-          type: 'notice', at: new Date().toISOString(),
-          message: `Switched from ${conv.provider} to ${selection.provider} (${selection.model ?? 'default model'}). Earlier history is preserved; the next reply receives recorded context in a fresh provider session.`,
-        };
-        history.push(notice);
-        const nativeSessionId = adapter.mintSessionId();
-        db.transaction(() => {
-          freezeSession(conv.id, history, files, handoff);
-          db.prepare(`UPDATE conversations SET provider = ?, model = ?, effort = ?, native_session_id = ?,
-            provider_instruction_hash = NULL, last_input_tokens = NULL, files_synced_at = NULL,
-            title_auto = CASE WHEN title IS NOT NULL THEN 0 ELSE title_auto END WHERE id = ?`)
-            .run(selection.provider, selection.model, selection.effort, nativeSessionId, conv.id);
-          db.prepare('DELETE FROM settings WHERE key = ?').run(`turn_ran:${conv.id}`);
-        })();
-        bus.emit('event', conv.id, notice);
-        bus.emit('event', conv.id, { type: 'context_compacted', contextTokens: null });
-        return { ok: true };
-      } catch {
-        return { ok: false, message: 'Could not transfer the chat context. The provider was not changed.' };
-      } finally {
-        if (entry.maintenance === maintenance) entry.maintenance = null;
-        emitStatus(conv.id);
-        // Messages arriving during the switch retain their durable queue rows.
-        const fresh = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id) as ConversationRow | undefined;
-        if (fresh && !fresh.archived && entry.queue.length) void runNext(fresh);
-      }
+      return switchConversationProvider(conv, selection, true);
     },
     async compactConversation(conv) {
       const entry = entryFor(conv.id);

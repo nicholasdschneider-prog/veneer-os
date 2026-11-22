@@ -226,6 +226,8 @@ export interface ConversationRow {
   provider: 'claude' | 'openrouter' | 'codex' | 'grok';
   model: string | null;
   effort: string | null;
+  /** Internal execution sessions follow their owner unless explicitly overridden. */
+  model_inherits_owner?: number;
   /** Per-chat approval override; null inherits the assistant's setting. */
   approval_mode: 'ask' | 'auto' | null;
   last_answered_model?: string | null;

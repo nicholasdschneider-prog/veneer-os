@@ -3918,6 +3918,9 @@ export function createApiRouter(ctx: AppContext): Router {
       if (body.data.effort !== undefined) {
         db.prepare('UPDATE conversations SET effort = ? WHERE id = ?').run(body.data.effort, row.id);
       }
+      if (body.data.model !== undefined || body.data.effort !== undefined) {
+        db.prepare('UPDATE conversations SET model_inherits_owner = 0 WHERE id = ?').run(row.id);
+      }
       if (body.data.approval_mode !== undefined) {
         db.prepare('UPDATE conversations SET approval_mode = ? WHERE id = ?').run(body.data.approval_mode, row.id);
       }

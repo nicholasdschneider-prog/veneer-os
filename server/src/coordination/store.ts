@@ -49,8 +49,8 @@ export function insertLaneConversation(
 ): string {
   const id = crypto.randomUUID();
   db.prepare(
-    `INSERT INTO conversations(id,assistant_id,user_id,visibility,business_team_id,project_id,title,title_auto,provider,model,effort,approval_mode,native_session_id,channel,side_chat_of,instruction_snapshot_json,instruction_snapshot_at)
-    VALUES(?,?,?,?,?,?,?,0,?,?,?,?,?,'web',?,?,?)`,
+    `INSERT INTO conversations(id,assistant_id,user_id,visibility,business_team_id,project_id,title,title_auto,provider,model,effort,approval_mode,native_session_id,channel,side_chat_of,instruction_snapshot_json,instruction_snapshot_at,model_inherits_owner)
+    VALUES(?,?,?,?,?,?,?,0,?,?,?,?,?,'web',?,?,?,1)`,
   ).run(
     id,
     target.assistant_id,
