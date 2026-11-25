@@ -81,6 +81,10 @@ Every endpoint except the file links needs `Authorization: Bearer <VENEER_JAMES_
     `card` state. On a 409, Brock withdraws his copy and does not ask again.
   - 404 `card_not_found`; 400 `idempotency_key_required` or `invalid_body`.
   - A replay with the same key and body returns the stored response with `Idempotent-Replay: true`.
+- `POST /webhook-config`
+  - Write-only. Headers: `Idempotency-Key` (required). Body: `{url, secret}` (https URL; secret of 24-200 printable characters).
+  - Saves `BROCK_RELAY_WEBHOOK_URL` and `BROCK_RELAY_WEBHOOK_SECRET` to Doppler main/prd and refreshes the web service's copy, so no restart is needed. Works in every mode and never changes `BROCK_RELAY_MODE`.
+  - Never echoes, logs or returns the secret. 200: `{ok, url, secret_length, secret_sha256_prefix}` (the first 12 hex characters of the secret's SHA-256). The idempotency record keeps only a SHA-256 of the request and this response.
 - `GET /cards`: cards currently active on Brock.
 - `GET /cards/{id}`: the current card with freshly signed file links, or `card: null` once it has
   resolved.

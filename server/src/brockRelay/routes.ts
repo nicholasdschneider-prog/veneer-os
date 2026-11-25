@@ -11,7 +11,19 @@ import { attachmentPath } from '../csTickets/poll.js';
 import { createTaskService } from '../tasks/service.js';
 import { jamesAuth } from '../jamesLink/routes.js';
 import { idempotency } from '../jamesLink/idempotency.js';
-import { buildCard, ownerId, verifyFileToken, type BrockRelay, type FileClaims } from './relay.js';
+import { buildCard, ownerId, verifyFileToken, BROCK_KEYS, type BrockRelay, type FileClaims } from './relay.js';
+import { redactDopplerError, setDopplerSecret } from '../secrets/doppler.js';
+
+/** Writes one secret to the connected Doppler config (main/prd) and refreshes the in-memory snapshot. */
+export type DopplerWriter = (pairs: { name: string; value: string }[]) => Promise<void>;
+export function contextDopplerWriter(ctx: AppContext): DopplerWriter {
+  return async (pairs) => {
+    const token = ctx.dopplerTokens.get().agentToken;
+    if (!token) throw new BotError(409, 'Doppler is not connected');
+    for (const p of pairs) await setDopplerSecret(token, p.name, p.value);
+    await ctx.doppler.refresh();
+  };
+}
 
 export interface AttachmentMirror { fetchAttachment(reference: string): Promise<{ type: string; bytes: Buffer } | { error: string; status: number }> }
 
@@ -20,6 +32,10 @@ const AnswerBody = z.object({
   expected_version: z.number().int().positive(),
   answer_text: z.string().trim().min(1).max(2000),
   answered_via: z.literal('grokbot_brock'),
+}).strict();
+const WebhookConfigBody = z.object({
+  url: z.string().trim().max(500).url().refine((u) => new URL(u).protocol === 'https:', 'url must be https'),
+  secret: z.string().regex(/^[\x21-\x7e]{24,200}$/, 'secret must be 24-200 printable characters'),
 }).strict();
 const TestCardBody = z.object({ with_attachments: z.boolean().optional() }).strict();
 
@@ -32,7 +48,7 @@ const TEST_PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
  * James router. File links are public and authenticated only by their signed,
  * expiring token; everything else needs the James bearer key.
  */
-export function createBrockRouter(ctx: AppContext, relay: BrockRelay, getSecret: (name: string) => string | null, mirror: AttachmentMirror) {
+export function createBrockRouter(ctx: AppContext, relay: BrockRelay, getSecret: (name: string) => string | null, mirror: AttachmentMirror, writeDoppler: DopplerWriter = contextDopplerWriter(ctx)) {
   const db = ctx.db;
   const router = express.Router();
   const bots = createBotService(db);
@@ -103,11 +119,35 @@ export function createBrockRouter(ctx: AppContext, relay: BrockRelay, getSecret:
 
   router.use(express.json({ limit: '64kb' }));
   router.use(jamesAuth(getSecret));
+  router.use(idempotency(db));
+
+  /**
+   * Write-only: James sets Brock's webhook URL and secret without the secret
+   * passing through a chat. The secret is never echoed, logged or returned;
+   * the idempotency record keeps only a SHA-256 of the request and this
+   * response. Works in every mode and never changes BROCK_RELAY_MODE.
+   */
+  router.post('/webhook-config', async (req, res) => {
+    if (!req.get('idempotency-key')?.trim()) { res.status(400).json({ ok: false, error: 'idempotency_key_required' }); return; }
+    const parsed = WebhookConfigBody.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ ok: false, error: 'invalid_body', issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`) }); return; }
+    const { url, secret } = parsed.data;
+    try {
+      await writeDoppler([{ name: BROCK_KEYS.url, value: url }, { name: BROCK_KEYS.secret, value: secret }]);
+    } catch (err) {
+      const message = (err instanceof BotError ? err.message : redactDopplerError(err)).split(secret).join('[REDACTED]');
+      console.warn('[brock-relay] webhook-config write failed');
+      res.status(err instanceof BotError ? err.status : 502).json({ ok: false, error: 'doppler_write_failed', detail: message });
+      return;
+    }
+    console.warn(`[brock-relay] webhook config updated (secret length ${secret.length})`);
+    res.json({ ok: true, url, secret_length: secret.length, secret_sha256_prefix: crypto.createHash('sha256').update(secret).digest('hex').slice(0, 12) });
+  });
+
   router.use((req: Request, res: Response, next: NextFunction) => {
     if (!relay.settings()) { res.status(404).json({ ok: false, error: 'brock_relay_off' }); return; }
     next();
   });
-  router.use(idempotency(db));
 
   const cardState = (id: string) => {
     const d = db.prepare('SELECT id,version,state,stale_json,answer_json,updated_at FROM bot_decisions WHERE id=?').get(id) as Pick<Decision, 'id' | 'version' | 'state' | 'stale_json' | 'answer_json' | 'updated_at'> | undefined;

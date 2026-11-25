@@ -61,9 +61,15 @@ describe('Brock relay', () => {
   });
   const raise = (actor: Actor = tess, extra: Record<string, unknown> = {}) => createBotService(db).raise(actor, { source_key: 's', proposal_key: crypto.randomUUID(), proposal: proposal(extra) });
   const events = () => sent.map((x) => JSON.parse(x.body) as Record<string, any>);
+  let writes: { name: string; value: string }[][] = [];
+  let writeFails = false;
   async function serve() {
     const app = express();
-    app.use('/api/james/brock', createBrockRouter(ctx, relay, (n) => secrets[n] ?? null, { fetchAttachment: async () => ({ error: 'none', status: 404 }) }));
+    const writer = async (pairs: { name: string; value: string }[]) => {
+      if (writeFails) throw new Error(`doppler refused value ${pairs[1]!.value}`);
+      writes.push(pairs); for (const p of pairs) secrets[p.name] = p.value;
+    };
+    app.use('/api/james/brock', createBrockRouter(ctx, relay, (n) => secrets[n] ?? null, { fetchAttachment: async () => ({ error: 'none', status: 404 }) }, writer));
     const server = app.listen(0); servers.push(server);
     await new Promise<void>((r) => server.once('listening', () => r()));
     return `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/james/brock`;
@@ -241,5 +247,37 @@ describe('Brock relay', () => {
     for (const a of e!.card.attachments) expect((await fetch(a.url.replace('https://example.test/api/james/brock', base))).status).toBe(200);
     const cards = await fetch(`${base}/cards`, { headers: { authorization: `Bearer ${JAMES_KEY}` } });
     expect(await cards.json()).toMatchObject({ cards: [{ card_id, test: true }] });
+  });
+
+  it('webhook-config writes URL and secret to Doppler without ever returning or logging the secret', async () => {
+    secrets.BROCK_RELAY_MODE = 'off'; writes = []; writeFails = false;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const base = await serve();
+    const newSecret = 'grok-side-secret-' + 'x'.repeat(33);
+    const post = (body: unknown, key: string | null = crypto.randomUUID(), auth = JAMES_KEY) => fetch(`${base}/webhook-config`, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${auth}`, ...(key ? { 'idempotency-key': key } : {}) }, body: JSON.stringify(body) });
+    const good = { url: 'https://api2.example.test/automations/webhook/abc', secret: newSecret };
+    expect((await post(good, crypto.randomUUID(), 'wrong-key')).status).toBe(401);
+    expect((await post(good, null)).status).toBe(400);
+    expect((await post({ ...good, url: 'http://insecure.test/hook' })).status).toBe(400);
+    expect((await post({ ...good, secret: 'short' })).status).toBe(400);
+    expect((await post({ ...good, extra: 1 })).status).toBe(400);
+    expect(writes).toHaveLength(0);
+    const r = await post(good, 'webhook-config-0001');
+    const text = await r.text();
+    expect(r.status).toBe(200);
+    expect(JSON.parse(text)).toEqual({ ok: true, url: good.url, secret_length: newSecret.length, secret_sha256_prefix: crypto.createHash('sha256').update(newSecret).digest('hex').slice(0, 12) });
+    expect(text).not.toContain(newSecret);
+    expect(writes).toEqual([[{ name: 'BROCK_RELAY_WEBHOOK_URL', value: good.url }, { name: 'BROCK_RELAY_WEBHOOK_SECRET', value: newSecret }]]);
+    expect(secrets.BROCK_RELAY_MODE).toBe('off');
+    const stored = db.prepare("SELECT request_hash, response_json FROM james_idempotency WHERE key='webhook-config-0001'").get() as { request_hash: string; response_json: string };
+    expect(JSON.stringify(stored)).not.toContain(newSecret);
+    writeFails = true;
+    const failed = await post({ ...good, secret: newSecret + 'y' });
+    const failedText = await failed.text();
+    expect(failed.status).toBe(502);
+    expect(failedText).not.toContain(newSecret);
+    for (const call of warn.mock.calls) expect(call.join(' ')).not.toContain(newSecret);
+    warn.mockRestore();
   });
 });
