@@ -33,6 +33,7 @@ import { ensureFileSyncBackfill, syncConversationFiles } from './files/generated
 import { createApiRouter } from './routes/api.js';
 import { createComposioWebhookRouter } from './routes/composioWebhook.js';
 import { startJamesLink } from './jamesLink/index.js';
+import { startBrockRelay } from './brockRelay/index.js';
 import { createAutoshipVerifierRouter } from './bots/verifierRoutes.js';
 import { attachWebSocket } from './channels/webSocket.js';
 import { attachSpeechToText } from './channels/speechToText.js';
@@ -201,6 +202,7 @@ app.disable('x-powered-by');
 app.use('/webhooks/bot-events', createBotEventsWebhook(ctx));
 const stopBotWorkflows = startBotWorkflows(ctx);
 const jamesLink = startJamesLink(ctx);
+const brockRelay = startBrockRelay(ctx);
 app.get('/healthz', async (_req, res) => {
   try {
     const response = await fetch(`http://127.0.0.1:${config.runnerPort}/healthz`, {
@@ -235,6 +237,8 @@ app.use('/api/autoship/verifier', createAutoshipVerifierRouter({ db, config }));
 // install's own proxy key and refused for anything that arrived through the tunnel.
 // James's API: its own Cloudflare Access bypass for this path only, authenticated
 // here with the bearer key held in Doppler (VENEER_JAMES_API_KEY).
+// Brock relay (docs/brock-relay.md): ahead of the James router so its signed file links stay public.
+app.use('/api/james/brock', brockRelay.router);
 app.use('/api/james', jamesLink.router);
 app.use(REMOTE_MCP_PROXY_PATH, createRemoteMcpProxyRouter(ctx, ctx.remoteMcp, (slug) => connectorDef(slug)?.remoteMcp?.url ?? null));
 app.use('/api', createApiRouter(ctx));
@@ -334,6 +338,7 @@ const shutdown = createShutdown({
     codexUsage.shutdown();
     stopBotWorkflows();
     jamesLink.stop();
+    brockRelay.stop();
     doppler.stop();
     memoryProvisioner.stop();
       pageExpiry.close();
